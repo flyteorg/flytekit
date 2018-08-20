@@ -231,26 +231,16 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
                 }
             )
 
-        checkpoint_config = {
-            "class_name": "SimpleCheckpoint",
-            "validations": [
-                {
-                    "batch_request": final_batch_request,
-                    "expectation_suite_name": self._expectation_suite_name,
-                }
-            ],
-        }
-
         if self._checkpoint_params:
             checkpoint = SimpleCheckpoint(
                 f"_tmp_checkpoint_{self._expectation_suite_name}",
                 context,
-                **checkpoint_config,
                 **self._checkpoint_params,
             )
         else:
             checkpoint = SimpleCheckpoint(
-                f"_tmp_checkpoint_{self._expectation_suite_name}", context, **checkpoint_config
+                f"_tmp_checkpoint_{self._expectation_suite_name}",
+                context,
             )
 
         # identify every run uniquely
@@ -261,7 +251,15 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             }
         )
 
-        checkpoint_result = checkpoint.run(run_id=run_id)
+        checkpoint_result = checkpoint.run(
+            run_id=run_id,
+            validations=[
+                {
+                    "batch_request": final_batch_request,
+                    "expectation_suite_name": self._expectation_suite_name,
+                }
+            ],
+        )
         final_result = convert_to_json_serializable(checkpoint_result.list_validation_results())[0]
 
         result_string = ""

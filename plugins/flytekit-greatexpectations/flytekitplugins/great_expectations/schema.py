@@ -286,27 +286,14 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
                 }
             )
 
-        checkpoint_config = {
-            "class_name": "SimpleCheckpoint",
-            "validations": [
-                {
-                    "batch_request": final_batch_request,
-                    "expectation_suite_name": ge_conf.expectation_suite_name,
-                }
-            ],
-        }
-
         if ge_conf.checkpoint_params:
             checkpoint = SimpleCheckpoint(
                 f"_tmp_checkpoint_{ge_conf.expectation_suite_name}",
                 context,
-                **checkpoint_config,
                 **ge_conf.checkpoint_params,
             )
         else:
-            checkpoint = SimpleCheckpoint(
-                f"_tmp_checkpoint_{ge_conf.expectation_suite_name}", context, **checkpoint_config
-            )
+            checkpoint = SimpleCheckpoint(f"_tmp_checkpoint_{ge_conf.expectation_suite_name}", context)
 
         # identify every run uniquely
         run_id = RunIdentifier(
@@ -316,7 +303,15 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             }
         )
 
-        checkpoint_result = checkpoint.run(run_id=run_id)
+        checkpoint_result = checkpoint.run(
+            run_id=run_id,
+            validations=[
+                {
+                    "batch_request": final_batch_request,
+                    "expectation_suite_name": ge_conf.expectation_suite_name,
+                }
+            ],
+        )
         final_result = convert_to_json_serializable(checkpoint_result.list_validation_results())[0]
 
         result_string = ""
