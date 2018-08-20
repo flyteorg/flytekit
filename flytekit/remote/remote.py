@@ -1194,9 +1194,7 @@ class FlyteRemote(object):
 
                 dynamic_flyte_wf = FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
                 execution._underlying_node_executions = [
-                    self.sync_node_execution(
-                        FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map
-                    )
+                    self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map)
                     for cne in child_node_executions
                 ]
                 # This is copied from below - dynamic tasks have both task executions (executions of the parent
