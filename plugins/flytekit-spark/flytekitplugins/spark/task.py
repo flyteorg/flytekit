@@ -110,6 +110,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
             # If either of above cases is not true, then we are in local execution of this task
             # Add system spark-conf for local/notebook based execution.
             spark_conf = _pyspark.SparkConf()
+            spark_conf.set("spark.driver.bindAddress", "127.0.0.1")
             for k, v in self.task_config.spark_conf.items():
                 spark_conf.set(k, v)
             # In local execution, propagate PYTHONPATH to executors too. This makes the spark
