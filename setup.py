@@ -34,7 +34,7 @@ setup(
     ],
     install_requires=[
         "sloth-import>=0.2.3,<1.0.0",
-        "flyteidl>=0.11.6,<1.0.0",
+        "flyteidl==0.1.1b2",
         "click>=6.6,<7.0",
         "configparser>=3.0.0,<4.0.0",
         "croniter>=0.3.20,<4.0.0",
