@@ -132,11 +132,12 @@ class ReturnOutputsTask(UnitTestEngineTask):
         :param dict[Text,flytekit.models.common.FlyteIdlEntity] outputs:
         :rtype: T
         """
+        literal_map = outputs[_sdk_constants.OUTPUT_FILE_NAME]
         return {
             name: _type_helpers.get_sdk_type_from_literal_type(
                 variable.type
             ).promote_from_model(
-                outputs.literals[name]
+                literal_map.literals[name]
             ).to_python_std()
             for name, variable in _six.iteritems(self.sdk_task.interface.outputs)
         }
