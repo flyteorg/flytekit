@@ -78,21 +78,29 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         self._cluster_label = cluster_label
         self._tags = tags
 
-    def _generate_hive_queries(self, context, inputs_dict):
+    def _generate_plugin_objects(self, context, inputs_dict):
         """
         Runs user code and and produces hive queries
         :param flytekit.engines.common.EngineContext context:
         :param dict[Text, T] inputs:
-        :rtype: _qubole.QuboleHiveJob
+        :rtype: list[_qubole.QuboleHiveJob]
         """
         queries_from_task = super(SdkHiveTask, self)._execute_user_code(context, inputs_dict) or []
         if not isinstance(queries_from_task, list):
             queries_from_task = [queries_from_task]
 
         self._validate_queries(queries_from_task)
+        plugin_objects = []
+
         queries = _qubole.HiveQueryCollection(
             [_qubole.HiveQuery(query=q, timeout_sec=self.metadata.timeout.seconds,
                                retry_count=self.metadata.retries.retries) for q in queries_from_task])
+
+        for q in queries_from_task:
+            hive_query = _qubole.HiveQuery(query=q, timeout_sec=self.metadata.timeout.seconds,
+                               retry_count=self.metadata.retries.retries)
+            plugin_objects.append(_qubole.QuboleHiveJob(hive_query, self._cluster_label, self._tags))
+
         return _qubole.QuboleHiveJob(queries, self._cluster_label, self._tags)
 
     @staticmethod
@@ -146,28 +154,29 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         # Add outputs to inputs
         inputs_dict.update(outputs_dict)
 
-        # Note: Today a hive task corresponds to a dynamic job spec with one node, which contains multiple
-        # queries. We may change this in future.
         nodes = []
         tasks = []
-        generated_queries = self._generate_hive_queries(context, inputs_dict)
+        # One node per query
+        generated_queries = self._generate_plugin_objects(context, inputs_dict)
 
         # Create output bindings always - this has to happen after user code has run
         output_bindings = [_literal_models.Binding(var=name, binding=_interface.BindingData.from_python_std(
             b.sdk_type.to_flyte_literal_type(), b.value))
                            for name, b in _six.iteritems(outputs_dict)]
 
-        if len(generated_queries.query_collection.queries) > 0:
+        i = 0
+        for quboleHiveJob in generated_queries:
             hive_job_node = _create_hive_job_node(
-                "HiveQueries",
-                generated_queries.to_flyte_idl(),
+                "HiveQuery_{}".format(i),
+                quboleHiveJob.to_flyte_idl(),
                 self.metadata
             )
             nodes.append(hive_job_node)
             tasks.append(hive_job_node.executable_sdk_object)
+            i += 1
 
         dynamic_job_spec = _dynamic_job.DynamicJobSpec(
-            min_successes=len(nodes),  # At most we only have one node for now, see above comment
+            min_successes=len(nodes),
             tasks=tasks,
             nodes=nodes,
             outputs=output_bindings,
