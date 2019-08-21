@@ -1,0 +1,50 @@
+from __future__ import absolute_import
+from flytekit.common import schedules as _schedules
+from flytekit.common.exceptions import user as _user_exceptions
+import datetime as _datetime
+import pytest as _pytest
+
+
+def test_cron():
+    obj = _schedules.CronSchedule("* * ? * * *", kickoff_time_input_arg="abc")
+    assert obj.kickoff_time_input_arg == "abc"
+    assert obj.cron_expression == "* * ? * * *"
+    assert obj == _schedules.CronSchedule.from_flyte_idl(obj.to_flyte_idl())
+
+
+def test_cron_validation():
+    with _pytest.raises(_user_exceptions.FlyteAssertion):
+        _schedules.CronSchedule("* * * * * *", kickoff_time_input_arg="abc")
+
+    with _pytest.raises(_user_exceptions.FlyteAssertion):
+        _schedules.CronSchedule("* * ? * *", kickoff_time_input_arg="abc")
+
+
+def test_fixed_rate():
+    obj = _schedules.FixedRate(_datetime.timedelta(hours=10), kickoff_time_input_arg="abc")
+    assert obj.rate.unit == _schedules.FixedRate.FixedRateUnit.HOUR
+    assert obj.rate.value == 10
+    assert obj == _schedules.FixedRate.from_flyte_idl(obj.to_flyte_idl())
+
+    obj = _schedules.FixedRate(_datetime.timedelta(hours=24), kickoff_time_input_arg="abc")
+    assert obj.rate.unit == _schedules.FixedRate.FixedRateUnit.DAY
+    assert obj.rate.value == 1
+    assert obj == _schedules.FixedRate.from_flyte_idl(obj.to_flyte_idl())
+
+    obj = _schedules.FixedRate(_datetime.timedelta(minutes=30), kickoff_time_input_arg="abc")
+    assert obj.rate.unit == _schedules.FixedRate.FixedRateUnit.MINUTE
+    assert obj.rate.value == 30
+    assert obj == _schedules.FixedRate.from_flyte_idl(obj.to_flyte_idl())
+
+    obj = _schedules.FixedRate(_datetime.timedelta(minutes=120), kickoff_time_input_arg="abc")
+    assert obj.rate.unit == _schedules.FixedRate.FixedRateUnit.HOUR
+    assert obj.rate.value == 2
+    assert obj == _schedules.FixedRate.from_flyte_idl(obj.to_flyte_idl())
+
+
+def test_fixed_rate_bad_duration():
+    pass
+
+
+def test_fixed_rate_negative_duration():
+    pass

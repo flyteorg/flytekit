@@ -1,0 +1,95 @@
+from __future__ import absolute_import
+from __future__ import print_function
+
+import os as _os
+
+import click
+
+try:
+    from pathlib import Path
+except ImportError:
+    from pathlib2 import Path  # python 2 backport
+
+from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
+from flytekit.clis.sdk_in_container.register import register
+from flytekit.clis.sdk_in_container.serialize import serialize
+from flytekit.clis.sdk_in_container.constants import CTX_PROJECT, CTX_DOMAIN, CTX_TEST, CTX_VERSION
+from flytekit.clis.sdk_in_container.launch_plan import launch_plans
+from flytekit.configuration import internal as _internal_config, platform as _platform_config
+
+from flytekit.configuration.internal import CONFIGURATION_PATH
+from flytekit.configuration.platform import URL as _URL
+from flytekit.configuration import set_flyte_config_file
+from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag, \
+    IMAGE as _IMAGE
+from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
+
+
+@click.group('pyflyte', invoke_without_command=True)
+@click.option('-p', '--project', required=True, type=str,
+              help='Flyte project to use. You can have more than one project per repo')
+@click.option('-d', '--domain', required=True, type=str, help='This is usually development, staging, or production')
+@click.option('-c', '--config', required=False, type=str, help='Path to config file for use within container')
+@click.option('-k', '--pkgs', required=False, multiple=True,
+              help='Dot separated python packages to operate on.  Multiple may be specified  Please note that this '
+                   'option will override the option specified in the configuration file, or environment variable')
+@click.option('-v', '--version', required=False, type=str, help='This is the version to apply globally for this '
+                                                                'context')
+@click.option('-i', '--insecure', required=False, type=bool, help='Do not use SSL to connect to Admin')
+@click.option('--test', is_flag=True, help='Dry run, do not actually register with Admin')
+@click.pass_context
+def main(ctx, project, domain, config=None, pkgs=None, version=None, insecure=None, test=False):
+    """
+    Entrypoint for all the user commands.
+    """
+    update_configuration_file(config)
+
+    ctx.obj = dict()
+    ctx.obj[CTX_PROJECT] = project
+    ctx.obj[CTX_DOMAIN] = domain
+    ctx.obj[CTX_TEST] = test
+    version = version or _look_up_version_from_image_tag(_IMAGE.get())
+    ctx.obj[CTX_VERSION] = version
+
+    # Determine SSL.  Note that the insecure option in this command is not a flag because we want to look
+    # up configuration settings if it's missing.  If the command line option says insecure but the config object
+    # says no, let's override the config object by overriding the environment variable.
+    if insecure and not _platform_config.INSECURE.get():
+        _platform_config.INSECURE.get()
+        _os.environ[_platform_config.INSECURE.env_var] = 'True'
+
+    # Handle package management - get from config if not specified on the command line
+    pkgs = pkgs or []
+    if len(pkgs) == 0:
+        pkgs = _WORKFLOW_PACKAGES.get()
+    ctx.obj[CTX_PACKAGES] = pkgs
+
+    _os.environ[_internal_config.PROJECT.env_var] = project
+    _os.environ[_internal_config.DOMAIN.env_var] = domain
+    _os.environ[_internal_config.VERSION.env_var] = version
+
+
+def update_configuration_file(config_file_path):
+    """
+    Changes the configuration singleton object to read from another file if specified, which should be
+    at the base of the repository.
+
+    :param Text config_file_path:
+    """
+    configuration_file = Path(config_file_path or CONFIGURATION_PATH.get())
+    if configuration_file.is_file():
+        click.secho('Using configuration file at {}'.format(configuration_file.absolute().as_posix()),
+                    fg='green')
+        set_flyte_config_file(configuration_file.as_posix())
+        click.secho('Flyte Admin URL {}'.format(_URL.get()), fg='green')
+    else:
+        click.secho("Configuration file '{}' could not be loaded.".format(CONFIGURATION_PATH.get()), color='red')
+        exit(-1)
+
+
+main.add_command(register)
+main.add_command(serialize)
+main.add_command(launch_plans)
+
+if __name__ == "__main__":
+    main()
