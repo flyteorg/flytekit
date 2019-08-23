@@ -5,7 +5,8 @@ pyspark = _lazy_loader.LazyLoadPlugin(
     "spark",
     ["pyspark>=2.4.0,<3.0.0"],
     [
-        "pyspark"
+        "pyspark",
+        "flyteidl.plugins.spark_pb2",
     ]
 )
 
@@ -15,6 +16,7 @@ k8s = _lazy_loader.LazyLoadPlugin(
     [
         "k8s.io.api.core.v1.generated_pb2",
         "k8s.io.apimachinery.pkg.api.resource.generated_pb2",
+        "flyteidl.plugins.sidecar_pb2",
     ]
 )
 
