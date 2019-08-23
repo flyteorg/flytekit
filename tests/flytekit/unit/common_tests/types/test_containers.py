@@ -45,6 +45,12 @@ def test_list():
     with pytest.raises(_user_exceptions.FlyteTypeException):
         list_type.from_string('[1, 2, 3, []]')
 
+    with pytest.raises(_user_exceptions.FlyteTypeException):
+        list_type.from_string('\'["not list json"]\'')
+
+    with pytest.raises(_user_exceptions.FlyteTypeException):
+        list_type.from_string('["unclosed","list"')
+
 
 def test_string_list():
     list_type = containers.List(primitives.String)
