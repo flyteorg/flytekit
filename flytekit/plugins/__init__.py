@@ -6,7 +6,6 @@ pyspark = _lazy_loader.LazyLoadPlugin(
     ["pyspark>=2.4.0,<3.0.0"],
     [
         "pyspark",
-        "flyteidl.plugins.spark_pb2",
     ]
 )
 
