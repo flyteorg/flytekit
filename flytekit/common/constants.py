@@ -23,3 +23,8 @@ class SdkTaskType(object):
 
 
 GLOBAL_INPUT_NODE_ID = ''
+
+
+class CloudProvider(object):
+    AWS = "aws"
+    GCP = "gcp"

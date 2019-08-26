@@ -1,11 +1,12 @@
 from __future__ import absolute_import
 
-from flytekit.configuration import sdk as _sdk_config
+from flytekit.configuration import sdk as _sdk_config, platform as _platform_config
 from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
+from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
 from flytekit.interfaces.data.local import local_file_proxy as _local_file_proxy
 from flytekit.interfaces.data.http import http_data_proxy as _http_data_proxy
 from flytekit.common.exceptions import user as _user_exception
-from flytekit.common import utils as _common_utils
+from flytekit.common import utils as _common_utils, constants as _constants
 import six as _six
 
 
@@ -34,10 +35,10 @@ class _OutputDataContext(object):
     def __init__(self, context):
         self._context = context
 
-    def __enter__(self):
         self._CONTEXTS.append(self._context)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+    def __enter__(self):
         self._CONTEXTS.pop()
 
     @classmethod
@@ -58,14 +59,33 @@ class LocalDataContext(_OutputDataContext):
 
 
 class RemoteDataContext(_OutputDataContext):
-    def __init__(self):
-        super(RemoteDataContext, self).__init__(_s3proxy.AwsS3Proxy())
+
+    _CLOUD_PROVIDER_TO_PROXIES = {
+        _constants.CloudProvider.AWS: _s3proxy.AwsS3Proxy(),
+        _constants.CloudProvider.GCP: _gcs_proxy.GCSProxy(),
+    }
+
+    def __init__(self, cloud_provider=None):
+        """
+        :param Optional[Text] cloud_provider: From flytekit.common.constants.CloudProvider enum
+        """
+        cloud_provider = cloud_provider or _platform_config.CLOUD_PROVIDER.get()
+        proxy = type(self)._CLOUD_PROVIDER_TO_PROXIES.get(cloud_provider, None)
+        if proxy is None:
+            raise _user_exception.FlyteAssertion(
+                "Configured cloud provider is not supported for data I/O.  Received: {}, expected one of: {}".format(
+                    cloud_provider,
+                    list(type(self)._CLOUD_PROVIDER_TO_PROXIES.keys())
+                )
+            )
+        super(RemoteDataContext, self).__init__(proxy)
 
 
 class Data(object):
     # TODO: More proxies for more environments.
     _DATA_PROXIES = {
         "s3:/": _s3proxy.AwsS3Proxy(),
+        "gs:/": _gcs_proxy.GCSProxy(),
         "http://": _http_data_proxy.HttpFileProxy(),
         "https://": _http_data_proxy.HttpFileProxy(),
     }
