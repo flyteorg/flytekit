@@ -134,10 +134,9 @@ class ReturnOutputsTask(UnitTestEngineTask):
         """
         literal_map = outputs[_sdk_constants.OUTPUT_FILE_NAME]
         return {
-            name: _type_helpers.get_sdk_type_from_literal_type(
-                variable.type
-            ).promote_from_model(
-                literal_map.literals[name]
+            name: _type_helpers.get_sdk_value_from_literal(
+                literal_map.literals[name],
+                sdk_type=_type_helpers.get_sdk_type_from_literal_type(variable.type)
             ).to_python_std()
             for name, variable in _six.iteritems(self.sdk_task.interface.outputs)
         }
