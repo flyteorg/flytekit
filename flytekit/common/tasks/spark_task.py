@@ -1,6 +1,9 @@
 from __future__ import absolute_import
 
-from inspect import getargspec as _getargspec
+try:
+    from inspect import getfullargspec as _getargspec
+except ImportError:
+    from inspect import getargspec as _getargspec
 
 import os as _os
 import pyspark as _pyspark

@@ -191,3 +191,13 @@ def test_subset_of_columns():
 
     o = source.unit_test()
     sink.unit_test(**o)
+
+
+@flyte_test
+def test_no_output_set():
+    @outputs(a=Types.Schema())
+    @python_task()
+    def null_set(wf_params, a):
+        pass
+
+    assert null_set.unit_test()['a'] is None
