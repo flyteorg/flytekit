@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-from deprecated import deprecated
 from flyteidl.plugins import qubole_pb2 as _qubole
 
 from flytekit.models import common as _common
@@ -64,7 +63,6 @@ class HiveQuery(_common.FlyteIdlEntity):
             retry_count=pb2_object.retryCount
         )
 
-@deprecated
 class HiveQueryCollection(_common.FlyteIdlEntity):
     def __init__(self, queries):
         """
@@ -116,7 +114,6 @@ class QuboleHiveJob(_common.FlyteIdlEntity):
         self._tags = tags
         self._query_collection = query_collection
 
-    @deprecated
     @property
     def query_collection(self):
         """
