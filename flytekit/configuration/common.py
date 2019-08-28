@@ -22,15 +22,12 @@ class FlyteConfigurationFile(object):
 
     def __init__(self, location=None):
         """
-        This singleton is initialized on module load with empty location. It'll attempt to use the env var to load
-        config at that time. If pyflyte is called with a config flag, it'll reload the singleton with the passed
-        config path.
+        This singleton is initialized on module load with empty location. If pyflyte is called with
+        a config flag, it'll reload the singleton with the passed config path.
 
-        :param Text location: used to load config from this location. If location is None, it'll attempt to use
-                FLYTE_INTERNAL_CONFIGURATION_PATH env var.
+        :param Text location: used to load config from this location.
         """
-        # Can't use internal module here to get env var name to avoid circular dependency.
-        self._location = location or _os.environ.get("FLYTE_INTERNAL_CONFIGURATION_PATH")
+        self._location = location
         self._config = None
 
     def _load_config(self):

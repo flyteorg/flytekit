@@ -2,6 +2,11 @@ from __future__ import absolute_import
 import os as _os
 import six as _six
 
+try:
+    import pathlib as _pathlib
+except ImportError:
+    import pathlib2 as _pathlib # python 2 backport
+
 
 def set_flyte_config_file(config_file_path):
     """
@@ -29,7 +34,7 @@ class TemporaryConfiguration(object):
             _common.format_section_key('internal', k): v
             for k, v in _six.iteritems(internal_overrides or {})
         }
-        self._new_config_path = _os.path.abspath(new_config_path)
+        self._new_config_path = _os.path.abspath(new_config_path) if new_config_path else None
         self._old_config_path = None
         self._old_internals = None
 
@@ -42,7 +47,7 @@ class TemporaryConfiguration(object):
         }
         self._old_config_path = _os.environ.get(_internal.CONFIGURATION_PATH.env_var)
         _os.environ.update(self._internal_overrides)
-        set_flyte_config_file(self._new_config_path)
+        self._set_flyte_config_file()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         set_flyte_config_file(self._old_config_path)
@@ -52,3 +57,9 @@ class TemporaryConfiguration(object):
             else:
                 _os.environ.pop(k, None)
         self._old_internals = None
+
+    def _set_flyte_config_file(self):
+        if self._new_config_path and _pathlib.Path(self._new_config_path).is_file():
+            set_flyte_config_file(self._new_config_path)
+        else:
+            set_flyte_config_file(None)

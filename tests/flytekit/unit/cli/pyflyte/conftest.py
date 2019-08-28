@@ -13,11 +13,14 @@ def _fake_module_load(name):
     yield simple
 
 
-@pytest.yield_fixture(scope='function', autouse=True)
-def mock_ctx():
-    with _config.TemporaryConfiguration(
-        os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../common/configs/local.config')
-    ):
+@pytest.yield_fixture(scope='function', autouse=True,
+                      params=[
+                          os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../common/configs/local.config'),
+                          '/foo/bar',
+                          None
+                      ])
+def mock_ctx(request):
+    with _config.TemporaryConfiguration(request.param):
         sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../..'))
         try:
             with _mock.patch('flytekit.tools.module_loader.iterate_modules') as mock_module_load:
