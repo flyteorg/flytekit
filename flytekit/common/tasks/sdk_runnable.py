@@ -132,11 +132,13 @@ class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task
     @property
     def env(self):
         """
-        :rtype: dict[Text, Text]
+        :rtype: dict[Text,Text]
         """
-        self._env.update(
+        env = super(SdkRunnableContainer, self).env.copy()
+        env.update(
             {
                 _internal_config.CONFIGURATION_PATH.env_var: _internal_config.CONFIGURATION_PATH.get(),
+                _internal_config.IMAGE.env_var: _internal_config.IMAGE.get(),
                 # TODO: Phase out the below.  Propeller will set these and these are not SDK specific
                 _internal_config.PROJECT.env_var: _internal_config.PROJECT.get(),
                 _internal_config.DOMAIN.env_var: _internal_config.DOMAIN.get(),
@@ -144,7 +146,7 @@ class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task
                 _internal_config.VERSION.env_var: _internal_config.VERSION.get(),
             }
         )
-        return super(SdkRunnableContainer, self).env
+        return env
 
 
 class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task.SdkTask)):
