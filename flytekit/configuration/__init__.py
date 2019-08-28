@@ -3,9 +3,9 @@ import os as _os
 import six as _six
 
 try:
-    from pathlib import Path
+    import pathlib as _pathlib
 except ImportError:
-    from pathlib2 import Path  # python 2 backport
+    import pathlib2 as _pathlib # python 2 backport
 
 
 def set_flyte_config_file(config_file_path):
@@ -59,7 +59,7 @@ class TemporaryConfiguration(object):
         self._old_internals = None
 
     def _set_flyte_config_file(self):
-        if self._new_config_path and Path(self._new_config_path).is_file():
+        if self._new_config_path and _pathlib.Path(self._new_config_path).is_file():
             set_flyte_config_file(self._new_config_path)
         else:
             set_flyte_config_file(None)
