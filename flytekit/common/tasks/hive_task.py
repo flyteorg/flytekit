@@ -92,16 +92,12 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         self._validate_queries(queries_from_task)
         plugin_objects = []
 
-        queries = _qubole.HiveQueryCollection(
-            [_qubole.HiveQuery(query=q, timeout_sec=self.metadata.timeout.seconds,
-                               retry_count=self.metadata.retries.retries) for q in queries_from_task])
-
         for q in queries_from_task:
             hive_query = _qubole.HiveQuery(query=q, timeout_sec=self.metadata.timeout.seconds,
-                               retry_count=self.metadata.retries.retries)
+                                           retry_count=self.metadata.retries.retries)
             plugin_objects.append(_qubole.QuboleHiveJob(hive_query, self._cluster_label, self._tags))
 
-        return _qubole.QuboleHiveJob(queries, self._cluster_label, self._tags)
+        return plugin_objects
 
     @staticmethod
     def _validate_task_parameters(cluster_label, tags):

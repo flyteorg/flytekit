@@ -2,8 +2,8 @@ from __future__ import absolute_import
 import os as _os
 
 if not _os.environ.get('FLYTEKIT_SETUP', None):
-    from lazy_import import lazy_module as _lazy_module
-
+    from lazy_import import lazy_module as _lazy_module, logger as _lazy_logger
+    _lazy_logger.setLevel(100)
 
 class LazyLoadPlugin(object):
 

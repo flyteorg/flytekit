@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+from deprecated import deprecated
 from flyteidl.plugins import qubole_pb2 as _qubole
 
 from flytekit.models import common as _common
@@ -63,7 +64,7 @@ class HiveQuery(_common.FlyteIdlEntity):
             retry_count=pb2_object.retryCount
         )
 
-
+@deprecated
 class HiveQueryCollection(_common.FlyteIdlEntity):
     def __init__(self, queries):
         """
@@ -101,18 +102,21 @@ class HiveQueryCollection(_common.FlyteIdlEntity):
 
 class QuboleHiveJob(_common.FlyteIdlEntity):
 
-    def __init__(self, query_collection, cluster_label, tags):
+    def __init__(self, query, cluster_label, tags, query_collection=None):
         """
         Initializes a HiveJob.
 
-        :param HiveQueryCollection query_collection: Queries to execute.
+        :param HiveQuery query: Single query to execute
         :param Text cluster_label: The qubole cluster label to execute the query on
         :param list[Text] tags: User tags for the queries
+        :param HiveQueryCollection query_collection: Deprecated Queries to execute.
         """
-        self._query_collection = query_collection
+        self._query = query
         self._cluster_label = cluster_label
         self._tags = tags
+        self._query_collection = query_collection
 
+    @deprecated
     @property
     def query_collection(self):
         """
@@ -120,6 +124,15 @@ class QuboleHiveJob(_common.FlyteIdlEntity):
         :rtype: HiveQueryCollection
         """
         return self._query_collection
+
+    @property
+    def query(self):
+        """
+        The query to be executed
+        :rtype: HiveQuery
+        """
+        return self._query
+
 
     @property
     def cluster_label(self):
@@ -142,19 +155,23 @@ class QuboleHiveJob(_common.FlyteIdlEntity):
         :rtype: _qubole.QuboleHiveJob
         """
         return _qubole.QuboleHiveJob(
-            query_collection=self._query_collection.to_flyte_idl(),
+            query_collection=self._query_collection.to_flyte_idl() if self._query_collection else None,
+            query=self._query.to_flyte_idl() if self._query else None,
             cluster_label=self._cluster_label,
             tags=self._tags
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object):
+    def from_flyte_idl(cls, p):
         """
-        :param _qubole.QuboleHiveJob pb2_object:
+        :param _qubole.QuboleHiveJob p:
         :rtype: QuboleHiveJob
         """
         return cls(
-            query_collection=HiveQueryCollection.from_flyte_idl(pb2_object.query_collection),
-            cluster_label=pb2_object.cluster_label,
-            tags=pb2_object.tags,
+            # email=EmailNotification.from_flyte_idl(p.email) if p.HasField("email") else None,
+            query_collection=HiveQueryCollection.from_flyte_idl(p.query_collection) if p.HasField(
+                "query_collection") else None,
+            query=HiveQuery.from_flyte_idl(p.query) if p.HasField("query") else None,
+            cluster_label=p.cluster_label,
+            tags=p.tags,
         )
