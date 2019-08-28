@@ -33,16 +33,6 @@ class GCSProxy(_common_data.DataProxy):
         if not _which(GCSProxy._GS_UTIL_CLI):
             raise _FlyteUserException('gsutil (gcloud cli) not found at Please install.')
 
-    @staticmethod
-    def _split_s3_path_to_bucket_and_key(path):
-        """
-        :param Text path:
-        :rtype: (Text, Text)
-        """
-        path = path[len("gs://"):]
-        first_slash = path.index('/')
-        return path[:first_slash], path[first_slash + 1:]
-
     def exists(self, remote_path):
         """
         :param Text remote_path: remote gs:// path
