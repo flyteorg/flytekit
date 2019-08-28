@@ -83,7 +83,7 @@ def update_configuration_file(config_file_path):
         set_flyte_config_file(configuration_file.as_posix())
     else:
         click.secho("Configuration file '{}' could not be loaded. Using values from environment.".format(CONFIGURATION_PATH.get()),
-                    color='red')
+                    color='yellow')
         set_flyte_config_file(None)
     click.secho('Flyte Admin URL {}'.format(_URL.get()), fg='green')
 
