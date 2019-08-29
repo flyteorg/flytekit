@@ -110,8 +110,10 @@ def test_hive_task_query_generation():
 
         qubole_hive_jobs = two_queries._generate_plugin_objects(context, references)
         assert len(qubole_hive_jobs) == 2
-        assert qubole_hive_jobs[0].query_collection is None  # deprecated, should be None
-        assert qubole_hive_jobs[1].query_collection is None  # deprecated, should be None
+
+        # deprecated, collection is only here for backwards compatibility
+        assert len(qubole_hive_jobs[0].query_collection.queries) == 1
+        assert len(qubole_hive_jobs[1].query_collection.queries) == 1
 
         # The output references should now have the same fake S3 path as the formatted queries
         assert references['hive_results'].value[0].uri != ''

@@ -95,7 +95,15 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         for q in queries_from_task:
             hive_query = _qubole.HiveQuery(query=q, timeout_sec=self.metadata.timeout.seconds,
                                            retry_count=self.metadata.retries.retries)
-            plugin_objects.append(_qubole.QuboleHiveJob(hive_query, self._cluster_label, self._tags))
+
+            # TODO: Remove this after all users of older SDK versions that did the single node, multi-query pattern are
+            #       deprecated. This is only here for backwards compatibility - in addition to writing the query to the
+            #       query field, we also construct a QueryCollection with only one query. This will ensure that the
+            #       older plugin will continue to work.
+            query_collection = _qubole.HiveQueryCollection([hive_query])
+
+            plugin_objects.append(_qubole.QuboleHiveJob(hive_query, self._cluster_label, self._tags,
+                                                        query_collection=query_collection))
 
         return plugin_objects
 
