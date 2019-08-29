@@ -17,7 +17,7 @@ class SdkTaskType(object):
     #       for backward compatibility (Note: it is a "batch-task" with a different name)
     #    2. hive-job is the actual set of queries to be executed. This is called hive_job
     BATCH_HIVE_TASK = "batch_hive"
-    HIVE_JOB = "hive-task"
+    HIVE_JOB = "hive"
     SIDECAR_TASK = "sidecar"
 
 GLOBAL_INPUT_NODE_ID = ''
