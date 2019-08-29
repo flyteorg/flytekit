@@ -165,7 +165,6 @@ class QuboleHiveJob(_common.FlyteIdlEntity):
         :rtype: QuboleHiveJob
         """
         return cls(
-            # email=EmailNotification.from_flyte_idl(p.email) if p.HasField("email") else None,
             query_collection=HiveQueryCollection.from_flyte_idl(p.query_collection) if p.HasField(
                 "query_collection") else None,
             query=HiveQuery.from_flyte_idl(p.query) if p.HasField("query") else None,
