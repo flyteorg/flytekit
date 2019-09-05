@@ -58,7 +58,8 @@ class SdkLaunchPlan(
         :param Text project:
         :param Text domain:
         :param Text name:
-        :param Text version:
+        :param Text version: [Optional] If not set, the SDK will fetch the active launch plan for the given project,
+            domain, and name.
         :rtype: SdkLaunchPlan
         """
         version = version or _internal_config.VERSION.get()
@@ -67,7 +68,7 @@ class SdkLaunchPlan(
         )
         lp = _engine_loader.get_engine().fetch_launch_plan(launch_plan_id)
         sdk_lp = cls.promote_from_model(lp.spec)
-        sdk_lp._id = launch_plan_id
+        sdk_lp._id = lp.id
         return sdk_lp
 
     @_exception_scopes.system_entry_point

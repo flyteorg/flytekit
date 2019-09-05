@@ -160,31 +160,48 @@ def activate_all_impl(project, domain, version, pkgs):
 
     # Discover all launch plans by loading the modules
     for m, k, lp in iterate_registerable_entities_in_order(pkgs, include_entities={_SdkLaunchPlan}):
-        if lp.is_scheduled:
-            lp._id = _identifier.Identifier(
-                _identifier.ResourceType.LAUNCH_PLAN,
-                project,
-                domain,
-                _utils.fqdn(m.__name__, k, entity_type=lp.resource_type),
-                version
-            )
-            lp.update(_launch_plan_model.LaunchPlanState.ACTIVE)
+        lp._id = _identifier.Identifier(
+            _identifier.ResourceType.LAUNCH_PLAN,
+            project,
+            domain,
+            _utils.fqdn(m.__name__, k, entity_type=lp.resource_type),
+            version
+        )
+        lp.update(_launch_plan_model.LaunchPlanState.ACTIVE)
 
 
-@click.command('activate-all-schedules')
+@click.command('activate-all-schedules', deprecated=True)
 @click.option('-v', '--version', type=str, help='Version to register tasks with. This is normally parsed from the'
                                                 'image, but you can override here.')
 @click.pass_context
 def activate_all_schedules(ctx, version=None):
     """
-    This command will activate all schedules for the found launch plans at the given version.  If there are existing
-    active scheduled launch plans that collide on project, domain, and name, but differ on version, those will be
-    deactivated in favor of the version specified in this command.
+    THIS COMMAND IS DEPRECATED. PLEASE USE activate-all
+
+    The behavior of this command is identical to activate-all.
+    """
+    project = ctx.obj[_constants.CTX_PROJECT]
+    domain = ctx.obj[_constants.CTX_DOMAIN]
+    pkgs = ctx.obj[_constants.CTX_PACKAGES]
+    version = version or ctx.obj[_constants.CTX_VERSION] or _look_up_version_from_image_tag(_IMAGE.get())
+    activate_all_impl(project, domain, version, pkgs)
+
+
+@click.command('activate-all')
+@click.option('-v', '--version', type=str, help='Version to register tasks with. This is normally parsed from the'
+                                                'image, but you can override here.')
+@click.pass_context
+def activate_all_schedules(ctx, version=None):
+    """
+    This command will activate all found launch plans at the given version.  If there are existing
+    active launch plans that collide on project, domain, and name, but differ on version, those will be
+    deactivated in favor of the version specified in this command. If a launch plan is associated with a schedule,
+    the schedule will also be deactivated or activated as appropriate.
 
     Note:
         1.  Currently, this is not a transaction.  Therefore, if the command fails, it is possible that some schedules
             have been updated.
-        2.  If a launch plan is scheduled on an older version for a given project, domain, and name.  If there is not a
+        2.  If a launch plan is scheduled on an older version for a given project, domain, and name AND there is not a
             matching scheduled launch plan found when running this command, the existing schedule will remain active
             until it is manually disabled.
     """
