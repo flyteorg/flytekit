@@ -16,11 +16,10 @@ def set_flyte_config_file(config_file_path):
     import flytekit.configuration.internal as _internal
     if config_file_path is not None:
         config_file_path = _os.path.abspath(config_file_path)
-    _common.CONFIGURATION_SINGLETON.reset_config(config_file_path)
-
-    # TODO: Understand why this is the way it is
-    if config_file_path is not None:
         _os.environ[_internal.CONFIGURATION_PATH.env_var] = config_file_path
+    elif _internal.CONFIGURATION_PATH.env_var in _os.environ:
+        del _os.environ[_internal.CONFIGURATION_PATH.env_var]
+    _common.CONFIGURATION_SINGLETON.reset_config(config_file_path)
 
 
 class TemporaryConfiguration(object):
@@ -34,7 +33,7 @@ class TemporaryConfiguration(object):
             _common.format_section_key('internal', k): v
             for k, v in _six.iteritems(internal_overrides or {})
         }
-        self._new_config_path = _os.path.abspath(new_config_path) if new_config_path else None
+        self._new_config_path = new_config_path
         self._old_config_path = None
         self._old_internals = None
 
@@ -47,19 +46,13 @@ class TemporaryConfiguration(object):
         }
         self._old_config_path = _os.environ.get(_internal.CONFIGURATION_PATH.env_var)
         _os.environ.update(self._internal_overrides)
-        self._set_flyte_config_file()
+        set_flyte_config_file(self._new_config_path)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        set_flyte_config_file(self._old_config_path)
         for k, v in _six.iteritems(self._old_internals):
             if v is not None:
                 _os.environ[k] = v
             else:
                 _os.environ.pop(k, None)
         self._old_internals = None
-
-    def _set_flyte_config_file(self):
-        if self._new_config_path and _pathlib.Path(self._new_config_path).is_file():
-            set_flyte_config_file(self._new_config_path)
-        else:
-            set_flyte_config_file(None)
+        set_flyte_config_file(self._old_config_path)
