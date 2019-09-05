@@ -258,7 +258,7 @@ def test_execution_annotation_overrides(mock_client_factory):
     )
 
 
-@patch.object(engine, '_SynchronousFlyteClient')
+@patch.object(engine._FlyteClientManager, '_CLIENT', new_callable=PropertyMock)
 def test_fetch_launch_plan(mock_client_factory):
     mock_client = MagicMock()
     mock_client.get_launch_plan = MagicMock(
@@ -277,4 +277,26 @@ def test_fetch_launch_plan(mock_client_factory):
 
     mock_client.get_launch_plan.assert_called_once_with(
         identifier.Identifier(identifier.ResourceType.LAUNCH_PLAN, "p", "d", "n", "v")
+    )
+
+
+@patch.object(engine._FlyteClientManager, '_CLIENT', new_callable=PropertyMock)
+def test_fetch_active_launch_plan(mock_client_factory):
+    mock_client = MagicMock()
+    mock_client.get_active_launch_plan = MagicMock(
+        return_value=_launch_plan_models.LaunchPlan(
+            identifier.Identifier(identifier.ResourceType.LAUNCH_PLAN, "p1", "d1", "n1", "v1"),
+            MagicMock(),
+            MagicMock(),
+        )
+    )
+    mock_client_factory.return_value = mock_client
+
+    lp = engine.FlyteEngineFactory().fetch_launch_plan(
+        identifier.Identifier(identifier.ResourceType.LAUNCH_PLAN, "p", "d", "n", "")
+    )
+    assert lp.id == identifier.Identifier(identifier.ResourceType.LAUNCH_PLAN, "p1", "d1", "n1", "v1")
+
+    mock_client.get_active_launch_plan.assert_called_once_with(
+        _common_models.NamedEntityIdentifier("p", "d", "n")
     )

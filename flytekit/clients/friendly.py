@@ -371,6 +371,22 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
+    def get_active_launch_plan(self, identifier):
+        """
+        Retrieves the active launch plan entity given a named entity identifier (project, domain, name).  Raises an
+        error if no active launch plan exists.
+
+        :param flytekit.models.common.NamedEntityIdentifier identifier: NamedEntityIdentifier to list.
+        :rtype: flytekit.models.launch_plan.LaunchPlan
+        """
+        return _launch_plan.LaunchPlan.from_flyte_idl(
+            super(SynchronousFlyteClient, self).get_active_launch_plan(
+                _launch_plan_pb2.ActiveLaunchPlanRequest(
+                    id=identifier.to_flyte_idl()
+                )
+            )
+        )
+
     def list_launch_plan_ids_paginated(
             self,
             project,
@@ -415,9 +431,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
         return [
-                   _common.NamedEntityIdentifier.from_flyte_idl(identifier_pb)
-                   for identifier_pb in identifier_list.entities
-               ], _six.text_type(identifier_list.token)
+            _common.NamedEntityIdentifier.from_flyte_idl(identifier_pb)
+            for identifier_pb in identifier_list.entities
+        ], _six.text_type(identifier_list.token)
 
     def list_launch_plans_paginated(
             self,
@@ -460,6 +476,55 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 limit=limit,
                 token=token,
                 filters=_filters.FilterList(filters or []).to_flyte_idl(),
+                sort_by=None if sort_by is None else sort_by.to_flyte_idl()
+            )
+        )
+        # TODO: tmp workaround
+        for pb in lp_list.launch_plans:
+            pb.id.resource_type = _identifier.ResourceType.LAUNCH_PLAN
+        return [_launch_plan.LaunchPlan.from_flyte_idl(pb) for pb in lp_list.launch_plans], \
+            _six.text_type(lp_list.token)
+
+    def list_active_launch_plans_paginated(
+            self,
+            project,
+            domain,
+            limit=100,
+            token=None,
+            sort_by=None
+    ):
+        """
+        This returns a page of currently active launch plan meta-information for launch plans in a given project and
+        domain.
+
+        .. note ::
+
+            This is a paginated API.  Use the token field in the request to specify a page offset token.
+            The user of the API is responsible for providing this token.
+
+        .. note ::
+
+            If entries are added to the database between requests for different pages, it is possible to receive
+            entries on the second page that also appeared on the first.
+
+        :param Text project:
+        :param Text domain:
+        :param int limit: [Optional] The maximum number of entries to return.  Must be greater than 0.  The maximum
+            page size is determined by the Flyte Admin Service configuration.  If limit is greater than the maximum
+            page size, an exception will be raised.
+        :param int token: [Optional] If specified, this specifies where in the rows of results to skip before reading.
+            If you previously retrieved a page response with token="foo" and you want the next page,
+            specify token="foo". Please see the notes for this function about the caveats of the paginated API.
+        :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
+        :raises: TODO
+        :rtype: list[flytekit.models.launch_plan.LaunchPlan], str
+        """
+        lp_list = super(SynchronousFlyteClient, self).list_active_launch_plans_paginated(
+            _launch_plan_pb2.ActiveLaunchPlanListRequest(
+                project=project,
+                domain=domain,
+                limit=limit,
+                token=token,
                 sort_by=None if sort_by is None else sort_by.to_flyte_idl()
             )
         )
