@@ -191,7 +191,7 @@ def activate_all_schedules(ctx, version=None):
 @click.option('-v', '--version', type=str, help='Version to register tasks with. This is normally parsed from the'
                                                 'image, but you can override here.')
 @click.pass_context
-def activate_all_schedules(ctx, version=None):
+def activate_all(ctx, version=None):
     """
     This command will activate all found launch plans at the given version.  If there are existing
     active launch plans that collide on project, domain, and name, but differ on version, those will be
