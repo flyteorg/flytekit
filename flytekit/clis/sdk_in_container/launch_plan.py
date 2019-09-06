@@ -170,7 +170,7 @@ def activate_all_impl(project, domain, version, pkgs):
         lp.update(_launch_plan_model.LaunchPlanState.ACTIVE)
 
 
-@click.command('activate-all-schedules', deprecated=True)
+@click.command('activate-all-schedules')
 @click.option('-v', '--version', type=str, help='Version to register tasks with. This is normally parsed from the'
                                                 'image, but you can override here.')
 @click.pass_context
@@ -180,6 +180,7 @@ def activate_all_schedules(ctx, version=None):
 
     The behavior of this command is identical to activate-all.
     """
+    click.secho("activate-all-schedules is deprecated, please used activate-all instead.", color="yellow")
     project = ctx.obj[_constants.CTX_PROJECT]
     domain = ctx.obj[_constants.CTX_DOMAIN]
     pkgs = ctx.obj[_constants.CTX_PACKAGES]
