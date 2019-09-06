@@ -27,8 +27,9 @@ class FlyteConfigurationFile(object):
 
         :param Text location: used to load config from this location.
         """
-        self._location = location
+        self._location = None
         self._config = None
+        self.reset_config(location)
 
     def _load_config(self):
         if self._config is None and self._location:
@@ -84,11 +85,11 @@ class FlyteConfigurationFile(object):
                 pass
         return default
 
-    def reset_config(self, new_path):
+    def reset_config(self, location):
         """
-        :param Text new_path:
+        :param Text location:
         """
-        self._location = new_path
+        self._location = location or _os.environ.get('FLYTE_INTERNAL_CONFIGURATION_PATH')
         self._config = None
 
 
