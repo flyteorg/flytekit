@@ -18,7 +18,7 @@ from flytekit.engines import common as _common_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import task as _task_models, execution as _execution_models, \
-    literals as _literals
+    literals as _literals, common as _common_models
 from flytekit.models.admin import workflow as _workflow_model
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core.identifier import WorkflowExecutionIdentifier
@@ -114,10 +114,21 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
             type of kind LaunchPlan.
         :rtype: flytekit.models.launch_plan.LaunchPlan
         """
-        return _FlyteClientManager(
-            _platform_config.URL.get(),
-            insecure=_platform_config.INSECURE.get()
-        ).client.get_launch_plan(launch_plan_id)
+        if launch_plan_id.version:
+            return _FlyteClientManager(
+                _platform_config.URL.get(),
+                insecure=_platform_config.INSECURE.get()
+            ).client.get_launch_plan(launch_plan_id)
+        else:
+            named_entity_id = _common_models.NamedEntityIdentifier(
+                launch_plan_id.project,
+                launch_plan_id.domain,
+                launch_plan_id.name
+            )
+            return _FlyteClientManager(
+                _platform_config.URL.get(),
+                insecure=_platform_config.INSECURE.get()
+            ).client.get_active_launch_plan(named_entity_id)
 
     def fetch_workflow(self, workflow_id):
         """

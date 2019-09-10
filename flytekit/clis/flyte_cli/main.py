@@ -778,17 +778,11 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
 
     while True:
-        active_lps, next_token = client.list_launch_plans_paginated(
-            _common_models.NamedEntityIdentifier(
-                project,
-                domain
-            ),
+        active_lps, next_token = client.list_active_launch_plans_paginated(
+            project,
+            domain,
             limit=limit,
             token=token,
-            filters=[
-                _filters.Equal('state', '1'),
-                _filters.ValueIn('schedule_type', ['CRON', 'RATE'])
-            ],
             sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None
         )
 

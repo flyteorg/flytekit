@@ -262,6 +262,16 @@ class RawSynchronousFlyteClient(object):
         return self._stub.GetLaunchPlan(object_get_request)
 
     @_handle_rpc_error
+    def get_active_launch_plan(self, active_launch_plan_request):
+        """
+        Retrieves a launch plan entity.
+
+        :param flyteidl.admin.common_pb2.ActiveLaunchPlanRequest active_launch_plan_request:
+        :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlan
+        """
+        return self._stub.GetActiveLaunchPlan(active_launch_plan_request)
+
+    @_handle_rpc_error
     def update_launch_plan(self, update_request):
         """
         Allows updates to a launch plan at a given identifier.  Currently, a launch plan may only have it's state
@@ -291,6 +301,16 @@ class RawSynchronousFlyteClient(object):
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanList
         """
         return self._stub.ListLaunchPlans(resource_list_request)
+
+    @_handle_rpc_error
+    def list_active_launch_plans_paginated(self, active_launch_plan_list_request):
+        """
+        Lists Active Launch Plans for a given (project, domain)
+
+        :param: flyteidl.admin.common_pb2.ActiveLaunchPlanListRequest active_launch_plan_list_request:
+        :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanList
+        """
+        return self._stub.ListActiveLaunchPlans(active_launch_plan_list_request)
 
     ####################################################################################################################
     #
