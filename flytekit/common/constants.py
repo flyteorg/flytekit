@@ -20,4 +20,5 @@ class SdkTaskType(object):
     HIVE_JOB = "hive"
     SIDECAR_TASK = "sidecar"
 
+
 GLOBAL_INPUT_NODE_ID = ''
