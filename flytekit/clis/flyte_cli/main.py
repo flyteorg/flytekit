@@ -773,7 +773,7 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
     if not urns_only:
         _welcome_message()
         _click.echo("Active Launch Plan Found in {}:{}\n".format(_tt(project), _tt(domain)))
-        _click.echo("{:50} {:80} {:15}".format('Version', 'Urn', "Schedule"))
+        _click.echo("{:30} {:50} {:80}".format('Schedule', 'Version', 'Urn'))
 
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
 
@@ -793,10 +793,10 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
                 ))
             else:
                 _click.echo(
-                    "{:50} {:80} {:30}".format(
+                    "{:30} {:50} {:80}".format(
+                        _render_schedule_expr(lp),
                         _tt(lp.id.version),
                         _tt(_identifier.Identifier.promote_from_model(lp.id)),
-                        _render_schedule_expr(lp)
                     ),
                 )
 
