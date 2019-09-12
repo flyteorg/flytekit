@@ -816,7 +816,7 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
 @_flyte_cli.command('list-launch-plan-versions', cls=_FlyteSubCommand)
 @_project_option
 @_domain_option
-@_name_option
+@_optional_name_option
 @_host_option
 @_insecure_option
 @_token_option
@@ -824,16 +824,18 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
 @_show_all_option
 @_filter_option
 @_sort_by_option
-def list_launch_plan_versions(project, domain, name, host, insecure, token, limit, show_all, filter, sort_by):
+@_optional_urns_only_option
+def list_launch_plan_versions(project, domain, name, host, insecure, token, limit, show_all, filter, sort_by,
+                              urns_only):
     """
     List the versions of all the launch plans under the scope specified by {project, domain}.
     """
-    _welcome_message()
+    if not urns_only:
+        _welcome_message()
+        _click.echo("Launch Plan Versions Found for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name)))
+        _click.echo("{:50} {:80} {:30} {:15}".format('Version', 'Urn', "Schedule", "Schedule State"))
+
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
-
-    _click.echo("Launch Plan Versions Found for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name)))
-
-    _click.echo("{:50} {:80} {:30} {:15}".format('Version', 'Urn', "Schedule", "Schedule State"))
 
     while True:
         lp_list, next_token = client.list_launch_plans_paginated(
@@ -848,33 +850,37 @@ def list_launch_plan_versions(project, domain, name, host, insecure, token, limi
             sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None
         )
         for l in lp_list:
-            _click.echo(
-                "{:50} {:80} ".format(
-                    _tt(l.id.version),
-                    _tt(_identifier.Identifier.promote_from_model(l.id))
-                ),
-                nl=False
-            )
-            if l.spec.entity_metadata.schedule.cron_expression or l.spec.entity_metadata.schedule.rate:
+            if urns_only:
+                _click.echo(_tt(_identifier.Identifier.promote_from_model(l.id)))
+            else:
                 _click.echo(
-                    "{:30} ".format(_render_schedule_expr(l)),
+                    "{:50} {:80} ".format(
+                        _tt(l.id.version),
+                        _tt(_identifier.Identifier.promote_from_model(l.id))
+                    ),
                     nl=False
                 )
-                _click.secho(
-                    _launch_plan.LaunchPlanState.enum_to_string(l.closure.state),
-                    fg="green" if l.closure.state == _launch_plan.LaunchPlanState.ACTIVE else None
-                )
-            else:
-                _click.echo()
+                if l.spec.entity_metadata.schedule.cron_expression or l.spec.entity_metadata.schedule.rate:
+                    _click.echo(
+                        "{:30} ".format(_render_schedule_expr(l)),
+                        nl=False
+                    )
+                    _click.secho(
+                        _launch_plan.LaunchPlanState.enum_to_string(l.closure.state),
+                        fg="green" if l.closure.state == _launch_plan.LaunchPlanState.ACTIVE else None
+                    )
+                else:
+                    _click.echo()
 
         if show_all is not True:
-            if next_token:
+            if next_token and not urns_only:
                 _click.echo("Received next token: {}\n".format(next_token))
             break
         if not next_token:
             break
         token = next_token
-    _click.echo("")
+    if not urns_only:
+        _click.echo("")
 
 
 @_flyte_cli.command('get-launch-plan', cls=_FlyteSubCommand)
