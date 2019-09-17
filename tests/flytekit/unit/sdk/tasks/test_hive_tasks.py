@@ -108,14 +108,18 @@ def test_hive_task_query_generation():
             for name, variable in _six.iteritems(two_queries.interface.outputs)
         }
 
-        qubole_hive_job = two_queries._generate_hive_queries(context, references)
-        assert (len(qubole_hive_job.query_collection.queries) == 2)
+        qubole_hive_jobs = two_queries._generate_plugin_objects(context, references)
+        assert len(qubole_hive_jobs) == 2
+
+        # deprecated, collection is only here for backwards compatibility
+        assert len(qubole_hive_jobs[0].query_collection.queries) == 1
+        assert len(qubole_hive_jobs[1].query_collection.queries) == 1
 
         # The output references should now have the same fake S3 path as the formatted queries
         assert references['hive_results'].value[0].uri != ''
         assert references['hive_results'].value[1].uri != ''
-        assert references['hive_results'].value[0].uri in qubole_hive_job.query_collection.queries[0].query
-        assert references['hive_results'].value[1].uri in qubole_hive_job.query_collection.queries[1].query
+        assert references['hive_results'].value[0].uri in qubole_hive_jobs[0].query.query
+        assert references['hive_results'].value[1].uri in qubole_hive_jobs[1].query.query
 
 
 def test_hive_task_dynamic_job_spec_generation():
