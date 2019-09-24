@@ -176,9 +176,10 @@ def _secho_task_execution_status(status, nl=True):
 def _secho_one_execution(ex, urns_only):
     if not urns_only:
         _click.echo(
-            "{:100} {:40} ".format(
+            "{:100} {:40} {:40}".format(
                 _tt(_identifier.WorkflowExecutionIdentifier.promote_from_model(ex.id)),
-                _tt(ex.id.name)
+                _tt(ex.id.name),
+                _tt(ex.spec.launch_plan.name),
             ),
             nl=False
         )
