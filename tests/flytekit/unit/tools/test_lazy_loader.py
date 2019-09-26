@@ -5,13 +5,14 @@ import six
 
 
 def test_lazy_loader_error_message():
+    lazy_mod = lazy_loader.lazy_load_module("made.up.module")
     lazy_loader.LazyLoadPlugin(
         "uninstalled_plugin",
         [],
-        ["made.up.module"]
+        [lazy_mod]
     )
     with pytest.raises(ImportError) as e:
-        import made.up.module as m
-        m.a
+        lazy_mod.some_bad_attr
 
-    assert 'flytekit[uninstalled_plugin]' in six.text_type(e)
+    assert 'uninstalled_plugin' in six.text_type(e)
+    assert 'flytekit[all]' in six.text_type(e)

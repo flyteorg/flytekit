@@ -1,6 +1,4 @@
 from __future__ import absolute_import
-import os
-os.environ["FLYTEKIT_SETUP"] = 'True'
 
 from setuptools import setup, find_packages  # noqa
 import flytekit  # noqa

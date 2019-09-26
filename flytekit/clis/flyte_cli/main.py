@@ -788,6 +788,7 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
         )
 
         for lp in active_lps:
+            print(lp)
             if urns_only:
                 _click.echo("{:80}".format(
                     _tt(_identifier.Identifier.promote_from_model(lp.id))
@@ -897,6 +898,31 @@ def get_launch_plan(urn, host, insecure):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     _click.echo(_tt(client.get_launch_plan(_identifier.Identifier.from_python_std(urn))))
     # TODO: Print launch plan pretty
+    _click.echo("")
+
+
+@_flyte_cli.command('get-active-launch-plan', cls=_FlyteSubCommand)
+@_project_option
+@_domain_option
+@_name_option
+@_host_option
+@_insecure_option
+def get_active_launch_plan(project, domain, name, host, insecure):
+    """
+    List the versions of all the launch plans under the scope specified by {project, domain}.
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+
+    lp = client.get_active_launch_plan(
+        _common_models.NamedEntityIdentifier(
+            project,
+            domain,
+            name
+        )
+    )
+    _click.echo("Active Launch Plan for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name)))
+    _click.echo(lp)
     _click.echo("")
 
 
