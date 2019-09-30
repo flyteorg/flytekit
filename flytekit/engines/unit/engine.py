@@ -260,10 +260,8 @@ class HiveTask(DynamicTask):
             }
             for node in futures.nodes:
                 queries.extend(
-                    [
-                        q.query
-                        for q in task_ids_to_defs[node.task_node.reference_id.name].query_collection.queries
-                    ]
+                    q.query
+                    for q in task_ids_to_defs[node.task_node.reference_id.name].query_collection.queries
                 )
             return queries
         else:
