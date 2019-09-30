@@ -251,15 +251,20 @@ class HiveTask(DynamicTask):
         """
         futures = outputs.get(_sdk_constants.FUTURES_FILE_NAME)
         if futures:
+            queries = []
             task_ids_to_defs = {
                 t.id.name: _qubole_models.QuboleHiveJob.from_flyte_idl(
                     _ParseDict(t.custom, _qubole_pb2.QuboleHiveJob())
                 )
                 for t in futures.tasks
             }
-            return [
-                q.query
-                for q in task_ids_to_defs[futures.nodes[0].task_node.reference_id.name].query_collection.queries
-            ]
+            for node in futures.nodes:
+                queries.extend(
+                    [
+                        q.query
+                        for q in task_ids_to_defs[node.task_node.reference_id.name].query_collection.queries
+                    ]
+                )
+            return queries
         else:
             return []
