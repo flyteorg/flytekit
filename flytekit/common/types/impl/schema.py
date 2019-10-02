@@ -1,9 +1,9 @@
 from __future__ import absolute_import
 
 import collections as _collections
-import numpy as _np
+from flytekit.plugins import numpy as _np
+from flytekit.plugins import pandas as _pd
 import os as _os
-import pandas as _pd
 import six as _six
 import uuid as _uuid
 
