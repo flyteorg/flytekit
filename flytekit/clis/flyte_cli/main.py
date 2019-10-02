@@ -788,7 +788,6 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
         )
 
         for lp in active_lps:
-            print(lp)
             if urns_only:
                 _click.echo("{:80}".format(
                     _tt(_identifier.Identifier.promote_from_model(lp.id))
