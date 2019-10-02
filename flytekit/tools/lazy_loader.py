@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 import importlib as _importlib
 import sys as _sys
+import types as _types
 
 
 class LazyLoadPlugin(object):
@@ -33,17 +34,17 @@ class LazyLoadPlugin(object):
 def lazy_load_module(module):
     """
     :param Text module: 
-    :rtype: types.ModuleType[T]
+    :rtype: _types.ModuleType
     """
-    class LazyLoadModule(_LazyLoadModule):   
+    class LazyLoadModule(_LazyLoadModule):
         _module = module
         _lazy_submodules = dict()
         _plugins = []
 
-    return LazyLoadModule()
+    return LazyLoadModule(module)
 
 
-class _LazyLoadModule(object):
+class _LazyLoadModule(_types.ModuleType):
 
     _ERROR_MSG_FMT = "Attempting to use a plugin functionality that requires module " \
                      "`{module}`, but it couldn't be loaded. Please pip install at least one of {plugins} or " \
