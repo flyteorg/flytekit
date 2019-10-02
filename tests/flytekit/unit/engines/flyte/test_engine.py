@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
 import os
-
+import pytest
 from flyteidl.core import errors_pb2
 from mock import MagicMock, patch, PropertyMock
 
@@ -12,6 +12,21 @@ from flytekit.engines.flyte import engine
 from flytekit.models import literals, execution as _execution_models, common as _common_models, launch_plan as \
     _launch_plan_models
 from flytekit.models.core import errors, identifier
+
+
+@pytest.fixture(scope="function", autouse=True)
+def temp_config():
+    with TemporaryConfiguration(
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../common/configs/local.config'),
+            internal_overrides={
+                'image': 'myflyteimage:{}'.format(
+                    os.environ.get('IMAGE_VERSION', 'sha')
+                ),
+                'project': 'myflyteproject',
+                'domain': 'development'
+            }
+    ):
+        yield
 
 
 @scopes.system_entry_point
@@ -26,54 +41,34 @@ def _raise_user_exception(*args, **kwargs):
 
 @scopes.system_entry_point
 def test_task_system_failure():
-    with TemporaryConfiguration(
-        os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../common/configs/local.config'),
-        internal_overrides={
-            'image': 'myflyteimage:{}'.format(
-                os.environ.get('IMAGE_VERSION', 'sha')
-            ),
-            'project': 'myflyteproject',
-            'domain': 'development'
-        }
-    ):
-        m = MagicMock()
-        m.execute = _raise_system_exception
+    m = MagicMock()
+    m.execute = _raise_system_exception
 
-        with utils.AutoDeletingTempDir("test") as tmp:
-            engine.FlyteTask(m).execute(None, {'output_prefix': tmp.name})
+    with utils.AutoDeletingTempDir("test") as tmp:
+        engine.FlyteTask(m).execute(None, {'output_prefix': tmp.name})
 
-            doc = errors.ErrorDocument.from_flyte_idl(
-                utils.load_proto_from_file(errors_pb2.ErrorDocument, os.path.join(tmp.name, constants.ERROR_FILE_NAME))
-            )
-            assert doc.error.code == "SYSTEM:Unknown"
-            assert doc.error.kind == errors.ContainerError.Kind.RECOVERABLE
-            assert "errorERRORerror" in doc.error.message
+        doc = errors.ErrorDocument.from_flyte_idl(
+            utils.load_proto_from_file(errors_pb2.ErrorDocument, os.path.join(tmp.name, constants.ERROR_FILE_NAME))
+        )
+        assert doc.error.code == "SYSTEM:Unknown"
+        assert doc.error.kind == errors.ContainerError.Kind.RECOVERABLE
+        assert "errorERRORerror" in doc.error.message
 
 
 @scopes.system_entry_point
 def test_task_user_failure():
-    with TemporaryConfiguration(
-        os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../common/configs/local.config'),
-        internal_overrides={
-            'image': 'flyteimage:{}'.format(
-                os.environ.get('IMAGE_VERSION', 'sha')
-            ),
-            'project': 'myflyteproject',
-            'domain': 'development'
-        }
-    ):
-        m = MagicMock()
-        m.execute = _raise_user_exception
+    m = MagicMock()
+    m.execute = _raise_user_exception
 
-        with utils.AutoDeletingTempDir("test") as tmp:
-            engine.FlyteTask(m).execute(None, {'output_prefix': tmp.name})
+    with utils.AutoDeletingTempDir("test") as tmp:
+        engine.FlyteTask(m).execute(None, {'output_prefix': tmp.name})
 
-            doc = errors.ErrorDocument.from_flyte_idl(
-                utils.load_proto_from_file(errors_pb2.ErrorDocument, os.path.join(tmp.name, constants.ERROR_FILE_NAME))
-            )
-            assert doc.error.code == "USER:Unknown"
-            assert doc.error.kind == errors.ContainerError.Kind.NON_RECOVERABLE
-            assert "userUSERuser" in doc.error.message
+        doc = errors.ErrorDocument.from_flyte_idl(
+            utils.load_proto_from_file(errors_pb2.ErrorDocument, os.path.join(tmp.name, constants.ERROR_FILE_NAME))
+        )
+        assert doc.error.code == "USER:Unknown"
+        assert doc.error.kind == errors.ContainerError.Kind.NON_RECOVERABLE
+        assert "userUSERuser" in doc.error.message
 
 
 @patch.object(engine._FlyteClientManager, '_CLIENT', new_callable=PropertyMock)

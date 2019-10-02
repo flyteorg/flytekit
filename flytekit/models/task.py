@@ -5,7 +5,8 @@ import json as _json
 import six as _six
 from flyteidl.admin import task_pb2 as _admin_task
 from flyteidl.core import tasks_pb2 as _core_task, literals_pb2 as _literals_pb2, compiler_pb2 as _compiler
-from flyteidl.plugins import spark_pb2 as _spark_task, sidecar_pb2 as _sidecar_task
+from flyteidl.plugins import spark_pb2 as _spark_task
+from flytekit.plugins import flyteidl as _lazy_flyteidl
 from google.protobuf import json_format as _json_format, struct_pb2 as _struct
 
 from flytekit.models import common as _common, literals as _literals, interface as _interface
@@ -732,7 +733,7 @@ class SidecarJob(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.tasks_pb2.SidecarJob
         """
-        return _sidecar_task.SidecarJob(
+        return _lazy_flyteidl.plugins.sidecar_pb2.SidecarJob(
             pod_spec=self.pod_spec,
             primary_container_name=self.primary_container_name
         )

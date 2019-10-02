@@ -11,8 +11,7 @@ from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.models import task as _task_models
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
-import k8s.io.api.core.v1.generated_pb2 as _k8s_pb2
-import k8s.io.apimachinery.pkg.api.resource.generated_pb2 as _resource_pb2
+from flytekit.plugins import k8s as _lazy_k8s
 
 
 class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnable.SdkRunnableTask)):
@@ -93,7 +92,7 @@ class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
                 primary_exists = True
                 break
         if not primary_exists:
-            containers.extend([_k8s_pb2.Container(name=primary_container_name)])
+            containers.extend([_lazy_k8s.io.api.core.v1.generated_pb2.Container(name=primary_container_name)])
 
         final_containers = []
         for container in containers:
@@ -108,22 +107,22 @@ class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
                 del container.args[:]
                 container.args.extend(self._container.args)
 
-                resource_requirements = _k8s_pb2.ResourceRequirements()
+                resource_requirements = _lazy_k8s.io.api.core.v1.generated_pb2.ResourceRequirements()
                 for resource in self._container.resources.limits:
                     resource_requirements.limits[
                         _core_task.Resources.ResourceName.Name(resource.name).lower()].CopyFrom(
-                        _resource_pb2.Quantity(string=resource.value))
+                        _lazy_k8s.io.apimachinery.pkg.api.resource.generated_pb2.Quantity(string=resource.value))
                 for resource in self._container.resources.requests:
                     resource_requirements.requests[
                         _core_task.Resources.ResourceName.Name(resource.name).lower()].CopyFrom(
-                        _resource_pb2.Quantity(string=resource.value))
+                        _lazy_k8s.io.apimachinery.pkg.api.resource.generated_pb2.Quantity(string=resource.value))
                 if resource_requirements.ByteSize():
                     # Important! Only copy over resource requirements if they are non-empty.
                     container.resources.CopyFrom(resource_requirements)
 
                 del container.env[:]
                 container.env.extend(
-                    [_k8s_pb2.EnvVar(name=key, value=val) for key, val in
+                    [_lazy_k8s.io.api.core.v1.generated_pb2.EnvVar(name=key, value=val) for key, val in
                      _six.iteritems(self._container.env)])
 
             final_containers.append(container)
