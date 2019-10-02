@@ -7,21 +7,22 @@ import stat as _stat
 
 import click as _click
 import six as _six
-from flyteidl.core import literals_pb2 as _literals_pb2
+from flyteidl.core import literals_pb2 as _literals_pb2, workflow_closure_pb2 as _workflow_closure_pb2
 
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
 from flytekit.clis.helpers import construct_literal_map_from_variable_map as _construct_literal_map_from_variable_map, \
     construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map, \
     parse_args_into_dict as _parse_args_into_dict, str2bool as _str2bool
-from flytekit.common import utils as _utils, launch_plan as _launch_plan_common
+from flytekit.common import utils as _utils, launch_plan as _launch_plan_common, workflow as _workflow
+from flytekit.common.tasks import task as _task
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
 from flytekit.configuration import platform as _platform_config
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import common as _common_models, filters as _filters, launch_plan as _launch_plan, literals as \
-    _literals
+    _literals, workflow_closure as _workflow_closure
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import execution as _core_execution_models
 from flytekit.models.execution import ExecutionSpec as _ExecutionSpec, ExecutionMetadata as _ExecutionMetadata
@@ -1415,6 +1416,44 @@ def register_project(identifier, name, host, insecure):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     client.register_project(_Project(identifier, name))
     _click.echo("Registered project [id: {}, name: {}]".format(identifier, name))
+
+
+@_flyte_cli.command('register-workflow', cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+@_click.argument(
+    "closure",
+    type=_click.File("rb"),
+)
+def register_workflow(host, insecure, closure):
+    """
+    Register a new workflow from a serialized workflow-closure protobuf specified in
+    \b
+      https://github.com/lyft/flyteidl/blob/master/protos/flyteidl/core/workflow_closure.proto
+    \b
+      Argument: `closure` Path to the Workflow closure protobuf file that should be registered with flyteadmin
+
+    """
+    _welcome_message()
+
+    c = _workflow_closure_pb2.WorkflowClosure()
+    c.ParseFromString(closure.read())
+    wc = _workflow_closure.WorkflowClosure.from_flyte_idl(c)
+
+    with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
+        for t in wc.tasks:
+            _click.echo(t.short_string())
+            tk = _task.SdkTask.promote_from_model(t)
+            _click.echo("Registering task... {}:{}:{}:{}".format(t.id.project, t.id.domain, t.id.name, t.id.version))
+            tk.register(t.id.project, t.id.domain, t.id.name, t.id.version)
+        _click.echo("All tasks registered, building workflow...")
+
+        w = wc.workflow
+        _click.echo(w)
+        wf = _workflow.SdkWorkflow.promote_from_model(w)
+        _click.echo("Registering workflow...{}:{}:{}:{}".format(w.id.project, w.id.domain, w.id.name, w.id.version))
+        wf.register(w.id.project, w.id.domain, w.id.name, w.id.version)
+        _click.echo("Registered workflow")
 
 
 if __name__ == "__main__":

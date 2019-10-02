@@ -12,6 +12,7 @@ from flytekit.configuration import TemporaryConfiguration
 from flytekit.configuration.internal import CONFIGURATION_PATH
 from flytekit.configuration.internal import IMAGE as _IMAGE
 from flytekit.models.workflow_closure import WorkflowClosure as _WorkflowClosure
+from flytekit.common.core import identifier as _identifier
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
 
@@ -33,11 +34,23 @@ def serialize_workflows(pkgs):
         tmap[t.id] = t
 
     for m, k, w in iterate_registerable_entities_in_order(pkgs, include_entities={_workflow.SdkWorkflow}):
-        click.echo('Serializing {}'.format(_utils.fqdn(m.__name__, k, entity_type=w.resource_type)))
+        name = _utils.fqdn(m.__name__, k, entity_type=w.resource_type)
+        click.echo('Serializing {}'.format(name))
         task_templates = []
         for n in w.nodes:
             if n.task_node is not None:
                 task_templates.append(tmap[n.task_node.reference_id])
+
+
+        # The SDK today creates a default workflow ID that is a uuid. We replace that with the name of the module
+        # TODO determine if we could just replace the name rather than a UUID?
+        w._id = _identifier.Identifier(
+            w.id.resource_type,
+            w.id.project,
+            w.id.domain,
+            name,
+            w.id.version
+        )
 
         wc = _WorkflowClosure(workflow=w, tasks=task_templates)
         wc_pb = wc.to_flyte_idl()

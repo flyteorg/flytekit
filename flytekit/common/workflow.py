@@ -8,19 +8,21 @@ from six.moves import queue as _queue
 from flytekit.common import interface as _interface, nodes as _nodes, sdk_bases as _sdk_bases, \
     launch_plan as _launch_plan, promise as _promise
 from flytekit.common.core import identifier as _identifier
+from flytekit.common.tasks.task import SdkTask as _SdkTask
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin
 from flytekit.common.types import helpers as _type_helpers
+from flytekit.common.promise import Input as _Input
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
-from flytekit.models import interface as _interface_models, literals as _literal_models,\
+from flytekit.models import interface as _interface_models, literals as _literal_models, \
     launch_plan as _launch_plan_models
 from flytekit.models.core import workflow as _workflow_models, identifier as _identifier_model
 
 
 class Output(object):
 
-    def __init__(self, name, value, sdk_type=None, help=None):
+    def __init__(self, name, value, sdk_type=None, binding_data=None, help=None):
         """
         :param Text name:
         :param T value:
@@ -36,7 +38,10 @@ class Output(object):
             sdk_type = Output._infer_type(value)
         sdk_type = _type_helpers.python_std_to_sdk_type(sdk_type)
 
-        self._binding_data = _interface.BindingData.from_python_std(sdk_type.to_flyte_literal_type(), value)
+        if binding_data is None:
+            self._binding_data = _interface.BindingData.from_python_std(sdk_type.to_flyte_literal_type(), value)
+        else:
+            self._binding_data = binding_data
         self._var = _interface_models.Variable(sdk_type.to_flyte_literal_type(), help or '')
         self._name = name
 
@@ -182,7 +187,8 @@ class SdkWorkflow(
                 [],
                 n.inputs,
                 n.metadata,
-                sdk_task=None,
+                sdk_task=_SdkTask.fetch(n.task_node.reference_id.project, n.task_node.reference_id.domain,
+                                        n.task_node.reference_id.name, n.task_node.reference_id.version),
                 sdk_workflow=None,
                 sdk_branch=None  # TODO: Hydrate these objects by reference from the engine.
             )
@@ -192,12 +198,16 @@ class SdkWorkflow(
         for v in _six.itervalues(node_map):
             v.upstream_nodes[:] = [node_map[k] for k in v.upstream_node_ids]
 
+        iface = _interface.TypedInterface.promote_from_model(base_model.interface)
+        inputs = [_Input(name=k, sdk_type=_type_helpers.get_sdk_type_from_literal_type(v.type), required=True) for k, v
+                  in _six.iteritems(iface.inputs)]
+        outputs = [Output(name=o.var, value=None, binding_data=o.binding,
+                          sdk_type=_type_helpers.get_sdk_type_from_literal_type(iface.outputs[o.var].type)) for o in
+                   base_model.outputs]
         return cls(
-            metadata=base_model.metadata,
-            interface=_interface.TypedInterface.promote_from_model(base_model.interface),
+            inputs=inputs,
+            outputs=outputs,
             nodes=list(node_map.values()),
-            outputs=base_model.outputs,
-            failure_node=None  # TODO: Implement failure node
         )
 
     @_exception_scopes.system_entry_point
