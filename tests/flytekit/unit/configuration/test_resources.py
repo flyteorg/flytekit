@@ -15,6 +15,7 @@ def test_resource_hints_default():
     assert resources.DEFAULT_STORAGE_REQUEST.get() is None
     assert resources.DEFAULT_STORAGE_LIMIT.get() is None
 
+
 def test_resource_hints():
     set_flyte_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'configs/good.config'))
     assert resources.DEFAULT_CPU_REQUEST.get() == "500m"
