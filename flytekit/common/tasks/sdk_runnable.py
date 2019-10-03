@@ -12,7 +12,7 @@ from flytekit.common import interface as _interface, constants as _constants, sd
 from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
 from flytekit.common.tasks import task as _base_task, output as _task_output
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import sdk as _sdk_config, internal as _internal_config
+from flytekit.configuration import sdk as _sdk_config, internal as _internal_config, resources as _resource_config
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import literals as _literal_models, task as _task_models
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
@@ -376,13 +376,17 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         :param Text cpu_limit:
         :param Text gpu_limit:
         :param Text memory_limit:
-        :param dict[Text, Text] environment:
+        :param dict[Text,Text] environment:
         :rtype: flytekit.models.task.Container
         """
-        storage_limit = storage_limit or storage_request
-        cpu_limit = cpu_limit or cpu_request
-        gpu_limit = gpu_limit or gpu_request
-        memory_limit = memory_limit or memory_request
+        storage_limit = storage_limit or _resource_config.DEFAULT_STORAGE_LIMIT.get()
+        storage_request = storage_request or _resource_config.DEFAULT_STORAGE_REQUEST.get()
+        cpu_limit = cpu_limit or _resource_config.DEFAULT_CPU_LIMIT.get()
+        cpu_request = cpu_request or _resource_config.DEFAULT_CPU_REQUEST.get()
+        gpu_limit = gpu_limit or _resource_config.DEFAULT_GPU_LIMIT.get()
+        gpu_request = gpu_request or _resource_config.DEFAULT_GPU_REQUEST.get()
+        memory_limit = memory_limit or _resource_config.DEFAULT_MEMORY_LIMIT.get()
+        memory_request = memory_request or _resource_config.DEFAULT_MEMORY_REQUEST.get()
 
         requests = []
         if storage_request:
