@@ -50,5 +50,11 @@ cp -rf hadoop-dist/share/hadoop/tools/lib/aws-java-sdk-1.7.4.jar /opt/spark/jars
 rm -rf hadoop-dist.tgz
 rm -rf hadoop-dist
 
-wget http://repo.hortonworks.com/content/repositories/releases/org/spark-project/hive/hive-contrib/1.21.1.2.6.4.80-1/hive-contrib-1.21.1.2.6.4.80-1.jar -P /opt/spark/jars
-echo 'c8169f8dd936f6270a7d990016b06c0d7c8dbf81cc543ee1d8d8d5e311587035  /opt/spark/jars/hive-contrib-1.21.1.2.6.4.80-1.jar' | sha256sum --check
+# Patch latest k8sclient for https://issues.apache.org/jira/browse/SPARK-28921. Ref: https://github.com/apache/spark/pull/25640/
+rm /opt/spark/jars/kubernetes-client-4.1.2.jar
+rm /opt/spark/jars/kubernetes-model-4.1.2.jar
+rm /opt/spark/jars/kubernetes-model-common-4.1.2.jar
+
+wget https://repo1.maven.org/maven2/io/fabric8/kubernetes-client/4.4.2/kubernetes-client-4.4.2.jar -P /opt/spark/jars
+wget https://repo1.maven.org/maven2/io/fabric8/kubernetes-model/4.4.2/kubernetes-model-4.4.2.jar -P /opt/spark/jars
+wget https://repo1.maven.org/maven2/io/fabric8/kubernetes-model-common/4.4.2/kubernetes-model-common-4.4.2.jar -P /opt/spark/jars
