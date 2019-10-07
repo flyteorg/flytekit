@@ -22,8 +22,8 @@ mkdir -p /opt/spark/work-dir
 touch /opt/spark/RELEASE
 
 # Fetch Spark Distribution with PySpark K8 support
-wget https://archive.apache.org/dist/spark/spark-2.4.0/spark-2.4.0-bin-hadoop2.7.tgz -O spark-dist.tgz
-echo 'c93c096c8d64062345b26b34c85127a6848cff95a4bb829333a06b83222a5cfa  spark-dist.tgz' | sha256sum --check
+wget https://archive.apache.org/dist/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz -O spark-dist.tgz
+echo '80a4c564ceff0d9aff82b7df610b1d34e777b45042e21e2d41f3e497bb1fa5d8  spark-dist.tgz' | sha256sum --check
 mkdir -p spark-dist
 tar -xvf spark-dist.tgz -C spark-dist --strip-components 1
 
