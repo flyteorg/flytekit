@@ -6,7 +6,6 @@ except ImportError:
     from inspect import getargspec as _getargspec
 
 import os as _os
-import pyspark as _pyspark
 import sys as _sys
 import six as _six
 from flytekit.bin import spark_executor
@@ -15,6 +14,7 @@ from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import output as _task_output, sdk_runnable as _sdk_runnable
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.models import literals as _literal_models, task as _task_models
+from flytekit.plugins import pyspark as _pyspark
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
 
