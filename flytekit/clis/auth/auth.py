@@ -15,7 +15,10 @@ except ImportError:
         import httplib as StatusCodes
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 
-from urlparse import urlparse, urljoin, parse_qsl
+try:  # Python 3
+    from urllib.parse import urlparse, urljoin, parse_qsl
+except ImportError:  # Python 2
+    from urlparse import urlparse, urljoin, parse_qsl
 
 code_verifier_length = 64
 
@@ -133,11 +136,11 @@ class Credentials(object):
 
 
 class AuthorizationClient(object):
-    def __init__(self, auth_endpoint=None, token_endpoint=None, client_id=None, redirect_path=None):
+    def __init__(self, auth_endpoint=None, token_endpoint=None, client_id=None, redirect_uri=None):
         self._auth_endpoint = auth_endpoint
         self._token_endpoint = token_endpoint
         self._client_id = client_id
-        self._redirect_path = redirect_path
+        self._redirect_uri = redirect_uri
         self._code_verifier = generate_code_verifier()
         code_challenge = create_code_challenge(self._code_verifier)
         self._code_challenge = code_challenge
@@ -151,7 +154,7 @@ class AuthorizationClient(object):
             "response_type": "code",  # Indicates the authorization code grant
             "scope": "openid",  # ensures that the /token endpoint returns an ID token
             # callback location where the user-agent will be directed to.
-            "redirect_uri": urljoin("http://localhost:8088", self._redirect_path),
+            "redirect_uri": self._redirect_uri,
             "state": state,
             "code_challenge": code_challenge,
             "code_challenge_method": "S256",
@@ -163,10 +166,10 @@ class AuthorizationClient(object):
         self._start_callback_server()
 
     def _start_callback_server(self):
-        # TODO: change okta application port
-        server_address = ('localhost', 8088)
+        server_url = urlparse(self._redirect_uri)
+        server_address = (server_url.hostname, server_url.port)
         q = Queue()
-        server = OAuthHTTPServer(server_address, OAuthCallbackHandler, redirect_path=self._redirect_path, queue=q)
+        server = OAuthHTTPServer(server_address, OAuthCallbackHandler, redirect_path=server_url.path, queue=q)
         server_process = Process(target=server.handle_request)
 
         server_process.start()
@@ -224,11 +227,7 @@ class AuthorizationClient(object):
         self._credentials = Credentials(access_token=response_body["access_token"], id_token=response_body["id_token"])
 
     def credentials(self):
+        """
+        :return flytekit.clis.auth.Credentials:
+        """
         return self._credentials
-
-
-if __name__ == '__main__':
-    client = AuthorizationClient(redirect_path="/callback", client_id="my_client",
-                                 auth_endpoint="https://myoauth.com/oauth2/default/v1/authorize",
-                                 token_endpoint="https://myoauth.com/oauth2/default/v1/token")
-    client.credentials()
