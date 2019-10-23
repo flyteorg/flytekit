@@ -1,31 +1,22 @@
 from __future__ import absolute_import
-import os as _os
-
-if not _os.environ.get('FLYTEKIT_SETUP', None):
-    from lazy_import import lazy_module as _lazy_module
+import importlib as _importlib
+import sys as _sys
+import types as _types
 
 
 class LazyLoadPlugin(object):
 
     LAZY_LOADING_PLUGINS = {}
-    _ERROR_MSG_FMT = "Attempting to use a plugin functionality that requires module " \
-                     "`{{module}}`, but it couldn't be loaded. Please `pip install flytekit[{plugin_name}]` or " \
-                     "`flytekit[all]` to get these dependencies."
 
-    def __init__(self, plugin_name, plugin_requirements, modules):
+    def __init__(self, plugin_name, plugin_requirements, related_modules):
         """
         :param Text plugin_name:
         :param list[Text] plugin_requirements:
-        :param list[Text] modules:
+        :param list[LazyLoadModule] related_modules:
         """
-        if not _os.environ.get('FLYTEKIT_SETUP', None):
-            self._lazy_modules = [
-                _lazy_module(module, error_strings={'msg': type(self)._ERROR_MSG_FMT.format(plugin_name=plugin_name)})
-                for module in modules
-            ]
-        else:
-            self._lazy_modules = []
         type(self).LAZY_LOADING_PLUGINS[plugin_name] = plugin_requirements
+        for m in related_modules:
+            type(m).tag_with_plugin(plugin_name)
 
     @classmethod
     def get_extras_require(cls):
@@ -38,3 +29,83 @@ class LazyLoadPlugin(object):
             all_plugins.extend(d[k])
         d['all'] = all_plugins
         return d
+
+
+def lazy_load_module(module):
+    """
+    :param Text module: 
+    :rtype: _types.ModuleType
+    """
+    class LazyLoadModule(_LazyLoadModule):
+        _module = module
+        _lazy_submodules = dict()
+        _plugins = []
+
+    return LazyLoadModule(module)
+
+
+class _LazyLoadModule(_types.ModuleType):
+
+    _ERROR_MSG_FMT = "Attempting to use a plugin functionality that requires module " \
+                     "`{module}`, but it couldn't be loaded. Please pip install at least one of {plugins} or " \
+                     "`flytekit[all]` to get these dependencies.\n" \
+                     "\n" \
+                     "Original message: {msg}"
+
+    @classmethod
+    def _load(cls):
+        module = _sys.modules.get(cls._module)
+        if not module:
+            try:
+                module = _importlib.import_module(cls._module)
+            except ImportError as e:
+                raise ImportError(
+                    cls._ERROR_MSG_FMT.format(
+                        module=cls._module,
+                        plugins=cls._plugins,
+                        msg=e
+                    )
+                )
+        return module
+
+    def __getattribute__(self, item):
+        if item in type(self)._lazy_submodules:
+            return type(self)._lazy_submodules[item]
+        m = type(self)._load()
+        return getattr(m, item)
+
+    def __setattr__(self, key, value):
+        m = type(self)._load()
+        return setattr(m, key, value)
+
+    @classmethod
+    def _add_sub_module(cls, submodule):
+        """
+        Add a submodule.
+        :param Text submodule:  This should be a single submodule. Do NOT include periods
+        :rtype: LazyLoadModule
+        """
+        m = cls._lazy_submodules.get(submodule)
+        if not m:
+            m = cls._lazy_submodules[submodule] = lazy_load_module("{}.{}".format(cls._module, submodule))
+        return m
+
+    @classmethod
+    def add_sub_module(cls, submodule):
+        """
+        Add a submodule.
+        :param Text submodule: If periods are included, it will be added recursively
+        :rtype: LazyLoadModule
+        """
+        parts = submodule.split(".", 1)
+        m = cls._add_sub_module(parts[0])
+        if len(parts) > 1:
+            m = type(m).add_sub_module(parts[1])
+        return m
+
+    @classmethod
+    def tag_with_plugin(cls, p):
+        """
+        :param LazyLoadPlugin p:
+        """
+        cls._plugins.append(p)

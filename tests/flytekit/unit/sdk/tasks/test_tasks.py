@@ -3,9 +3,11 @@ from flytekit.sdk.tasks import python_task, inputs, outputs
 from flytekit.sdk.types import Types
 from flytekit.common import constants as _common_constants
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
-from flytekit.models import types as _type_models
+from flytekit import configuration as _configuration
+from flytekit.models import types as _type_models, task as _task_models
 from flytekit.models.core import identifier as _identifier
 import datetime as _datetime
+import os as _os
 
 
 @inputs(in1=Types.Integer)
@@ -34,3 +36,82 @@ def test_default_python_task():
     assert default_task.metadata.discoverable is False
     assert default_task.metadata.discovery_version == ''
     assert default_task.metadata.retries.retries == 0
+    assert len(default_task.container.resources.limits) == 0
+    assert len(default_task.container.resources.requests) == 0
+
+
+def test_default_resources():
+    with _configuration.TemporaryConfiguration(
+            _os.path.join(
+                _os.path.dirname(_os.path.realpath(__file__)),
+                '../../configuration/configs/good.config'
+            )
+    ):
+        @inputs(in1=Types.Integer)
+        @outputs(out1=Types.String)
+        @python_task()
+        def default_task2(wf_params, in1, out1):
+            pass
+
+        request_map = {
+            r.name: r.value
+            for r in default_task2.container.resources.requests
+        }
+
+        limit_map = {
+            l.name: l.value
+            for l in default_task2.container.resources.limits
+        }
+
+        assert request_map[_task_models.Resources.ResourceName.CPU] == "500m"
+        assert request_map[_task_models.Resources.ResourceName.MEMORY] == "500Gi"
+        assert request_map[_task_models.Resources.ResourceName.GPU] == "1"
+        assert request_map[_task_models.Resources.ResourceName.STORAGE] == "500Gi"
+
+        assert limit_map[_task_models.Resources.ResourceName.CPU] == "501m"
+        assert limit_map[_task_models.Resources.ResourceName.MEMORY] == "501Gi"
+        assert limit_map[_task_models.Resources.ResourceName.GPU] == "2"
+        assert limit_map[_task_models.Resources.ResourceName.STORAGE] == "501Gi"
+
+
+def test_overriden_resources():
+    with _configuration.TemporaryConfiguration(
+            _os.path.join(
+                _os.path.dirname(_os.path.realpath(__file__)),
+                '../../configuration/configs/good.config'
+            )
+    ):
+        @inputs(in1=Types.Integer)
+        @outputs(out1=Types.String)
+        @python_task(
+            memory_limit="100Gi",
+            memory_request="50Gi",
+            cpu_limit="1000m",
+            cpu_request="500m",
+            gpu_limit="1",
+            gpu_request="0",
+            storage_request="100Gi",
+            storage_limit="200Gi"
+        )
+        def default_task2(wf_params, in1, out1):
+            pass
+
+        request_map = {
+            r.name: r.value
+            for r in default_task2.container.resources.requests
+        }
+
+        limit_map = {
+            l.name: l.value
+            for l in default_task2.container.resources.limits
+        }
+
+        assert request_map[_task_models.Resources.ResourceName.CPU] == "500m"
+        assert request_map[_task_models.Resources.ResourceName.MEMORY] == "50Gi"
+        assert request_map[_task_models.Resources.ResourceName.GPU] == "0"
+        assert request_map[_task_models.Resources.ResourceName.STORAGE] == "100Gi"
+
+        assert limit_map[_task_models.Resources.ResourceName.CPU] == "1000m"
+        assert limit_map[_task_models.Resources.ResourceName.MEMORY] == "100Gi"
+        assert limit_map[_task_models.Resources.ResourceName.GPU] == "1"
+        assert limit_map[_task_models.Resources.ResourceName.STORAGE] == "200Gi"

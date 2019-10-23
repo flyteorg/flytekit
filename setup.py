@@ -1,6 +1,4 @@
 from __future__ import absolute_import
-import os
-os.environ["FLYTEKIT_SETUP"] = 'True'
 
 from setuptools import setup, find_packages  # noqa
 import flytekit  # noqa
@@ -33,7 +31,6 @@ setup(
         "pip>10.0.0,<19.2.0"
     ],
     install_requires=[
-        "sloth-import>=0.2.3,<1.0.0",
         "flyteidl>=0.14.0,<1.0.0",
         "click>=6.6,<8.0",
         "configparser>=3.0.0,<4.0.0",
@@ -41,7 +38,7 @@ setup(
         "deprecation>=2.0,<3.0",
         "boto3>=1.4.4,<2.0",
         "grpcio>=1.3.0,<2.0",
-        "protobuf>=3.6.1,<3.7.0",
+        "protobuf>=3.6.1,<4",
         "pytimeparse>=1.1.8,<2.0.0",
         "pytz>=2017.2,<2018.5",
         "requests>=2.18.4,<3.0.0",
