@@ -87,7 +87,7 @@ class OAuthCallbackHandler(_BaseHTTPRequestHandler):
             self.end_headers()
             self.handle_login(dict(_parse_qsl(url.query)))
         else:
-            self.send_response(404)
+            self.send_response(_StatusCodes.NOT_FOUND)
 
     def handle_login(self, data):
         self.server.handle_authorization_code(AuthorizationCode(data['code'], data['state']))
@@ -156,7 +156,7 @@ class AuthorizationClient(object):
             "code_challenge_method": "S256",
         }
 
-        # Initialize token request flow
+        # Initiate token request flow
         self._request_authorization_code()
         # Start a server to handle the callback url.
         self._start_callback_server()

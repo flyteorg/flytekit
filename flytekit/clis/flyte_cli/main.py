@@ -250,7 +250,7 @@ def _fetch_metadata():
         credentials = _credentials_access.get_credentials()
         _keyring.set_password(_metadata, _metadata_access_token, credentials.access_token)
         access_token = credentials.access_token
-    return [(_creds_config.AUTHORIZATION_METADATA_KEY.get(), access_token)]
+    return [(_creds_config.AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(access_token))]
 
 
 _HOST_URL_ENV = _os.environ.get(_platform_config.URL.env_var, None)
