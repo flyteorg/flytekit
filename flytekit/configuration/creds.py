@@ -20,3 +20,11 @@ REDIRECT_URI = _config_common.FlyteStringConfigurationEntry('credentials', 'redi
 This is the redirect uri registered with the app which handles authorization for a Flyte deployment.
 More details here: https://www.oauth.com/oauth2-servers/redirect-uris/.
 """
+
+
+AUTHORIZATION_METADATA_KEY = _config_common.FlyteStringConfigurationEntry('credentials', 'authorization_metadata_key',
+                                                                          default="authorization")
+"""
+The authorization metadata key used for passing access tokens in gRPC requests.
+Traditionally this value is 'authorization' however it is made configurable.
+"""

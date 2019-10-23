@@ -1,16 +1,16 @@
-import requests
+import requests as _requests
 
 try:  # Python 3.5+
-    from http import HTTPStatus as StatusCodes
+    from http import HTTPStatus as _StatusCodes
 except ImportError:
     try:  # Python 3
-        from http import client as StatusCodes
+        from http import client as _StatusCodes
     except ImportError:  # Python 2
-        import httplib as StatusCodes
+        import httplib as _StatusCodes
 
 # These response keys are defined in https://tools.ietf.org/id/draft-ietf-oauth-discovery-08.html.
-authorization_endpoint_key = "authorization_endpoint"
-token_endpoint_key = "token_endpoint"
+_authorization_endpoint_key = "authorization_endpoint"
+_token_endpoint_key = "token_endpoint"
 
 
 class AuthorizationEndpoints(object):
@@ -32,35 +32,43 @@ class AuthorizationEndpoints(object):
 
 class DiscoveryClient(object):
     """
-    Discovers
+    Discovers well known OpenID configuration and parses out authorization endpoints required for initiating the PKCE
+    auth flow.
     """
 
     def __init__(self, discovery_url=None):
         self._discovery_url = discovery_url
         self._authorization_endpoints = None
 
+    @property
+    def authorization_endpoints(self):
+        """
+        :rtype: flytekit.clis.auth.discovery.AuthorizationEndpoints:
+        """
+        return self._authorization_endpoints
+
     def get_authorization_endpoints(self):
-        if self._authorization_endpoints is not None:
-            return self._authorization_endpoints
-        resp = requests.get(
+        if self.authorization_endpoints is not None:
+            return self.authorization_endpoints
+        resp = _requests.get(
             url=self._discovery_url,
         )
         # Follow at most one redirect.
-        if resp.status_code == StatusCodes.FOUND:
+        if resp.status_code == _StatusCodes.FOUND:
             redirect_location = resp.headers['Location']
             if redirect_location is None:
                 raise ValueError('Received a 302 but no follow up location was provided in headers')
-            resp = requests.get(
+            resp = _requests.get(
                 url=redirect_location,
             )
 
         response_body = resp.json()
-        if response_body[authorization_endpoint_key] is None:
+        if response_body[_authorization_endpoint_key] is None:
             raise ValueError('Unable to discover authorization endpoint')
 
-        if response_body[token_endpoint_key] is None:
+        if response_body[_token_endpoint_key] is None:
             raise ValueError('Unable to discover token endpoint')
 
-        self._authorization_endpoints = AuthorizationEndpoints(auth_endpoint=response_body[authorization_endpoint_key],
-                                                               token_endpoint=response_body[token_endpoint_key])
-        return self._authorization_endpoints
+        self._authorization_endpoints = AuthorizationEndpoints(auth_endpoint=response_body[_authorization_endpoint_key],
+                                                               token_endpoint=response_body[_token_endpoint_key])
+        return self.authorization_endpoints

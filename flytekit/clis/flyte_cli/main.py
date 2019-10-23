@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import importlib as _importlib
+import keyring as _keyring
 import os as _os
 import sys as _sys
 import stat as _stat
@@ -11,6 +12,7 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
+from flytekit.clis.auth import credentials as _credentials_access
 from flytekit.clis.helpers import construct_literal_map_from_variable_map as _construct_literal_map_from_variable_map, \
     construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map, \
     parse_args_into_dict as _parse_args_into_dict, str2bool as _str2bool
@@ -18,7 +20,7 @@ from flytekit.common import utils as _utils, launch_plan as _launch_plan_common
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
-from flytekit.configuration import platform as _platform_config
+from flytekit.configuration import creds as _creds_config, platform as _platform_config
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import common as _common_models, filters as _filters, launch_plan as _launch_plan, literals as \
     _literals
@@ -29,6 +31,11 @@ from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
 
 _tt = _six.text_type
+
+# Identifies the 'metadata' service used for storing passwords in keyring
+_metadata = "metadata"
+# Identifies the access token username for storing and fetching access token values in keyring.
+_metadata_access_token = "access_token"
 
 
 def _welcome_message():
@@ -203,7 +210,7 @@ def _terminate_one_execution(client, urn, cause, shouldPrint=True):
 
 
 def _update_one_launch_plan(urn, host, insecure, state):
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
 
     if state == "active":
         state = _launch_plan.LaunchPlanState.ACTIVE
@@ -227,6 +234,23 @@ def _render_schedule_expr(lp):
             value=_tt(lp.spec.entity_metadata.schedule.rate.value)
         )
     return "{:30}".format(sched_expr)
+
+
+def _fetch_metadata():
+    """
+    Initializes gRPC metadata according to parameters set in the flyte config.
+    Currently this is used to pass security credentials when authentication is enabled.
+    :return [(Text, Text)]: metadata pairs to be transmitted to the service-side of the RPC.
+    """
+    if not _platform_config.AUTH.get():
+        # nothing to do
+        return None
+    access_token = _keyring.get_password(_metadata, _metadata_access_token)
+    if access_token is None:
+        credentials = _credentials_access.get_credentials()
+        _keyring.set_password(_metadata, _metadata_access_token, credentials.access_token)
+        access_token = credentials.access_token
+    return [(_creds_config.AUTHORIZATION_METADATA_KEY.get(), access_token)]
 
 
 _HOST_URL_ENV = _os.environ.get(_platform_config.URL.env_var, None)
@@ -518,7 +542,7 @@ def list_task_names(project, domain, host, insecure, token, limit, show_all, sor
     a specific project and domain.
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
 
     _click.echo("Task Names Found in {}:{}\n".format(_tt(project), _tt(domain)))
     while True:
@@ -560,7 +584,7 @@ def list_task_versions(project, domain, name, host, insecure, token, limit, show
     versions of that particular task (identifiable by {Project, Domain, Name}).
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
 
     _click.echo("Task Versions Found for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name or '*')))
     _click.echo("{:50} {:40}".format('Version', 'Urn'))
@@ -599,7 +623,7 @@ def get_task(urn, host, insecure):
     The URN of the versioned task is in the form of ``tsk:<project>:<domain>:<task_name>:<version>``.
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
     t = client.get_task(_identifier.Identifier.from_python_std(urn))
     _click.echo(_tt(t))
     _click.echo("")
@@ -625,7 +649,7 @@ def list_workflow_names(project, domain, host, insecure, token, limit, show_all,
     List the names of the workflows under a scope specified by ``{project, domain}``.
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
 
     _click.echo("Workflow Names Found in {}:{}\n".format(_tt(project), _tt(domain)))
     while True:
@@ -667,7 +691,7 @@ def list_workflow_versions(project, domain, name, host, insecure, token, limit, 
     versions of that particular workflow (identifiable by ``{project, domain, name}``).
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
 
     _click.echo("Workflow Versions Found for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name or '*')))
     _click.echo("{:50} {:40}".format('Version', 'Urn'))
@@ -706,7 +730,7 @@ def get_workflow(urn, host, insecure):
     ``wf:<project>:<domain>:<workflow_name>:<version>``
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
     _click.echo(client.get_workflow(_identifier.Identifier.from_python_std(urn)))
     # TODO: Print workflow pretty
     _click.echo("")
@@ -732,7 +756,7 @@ def list_launch_plan_names(project, domain, host, insecure, token, limit, show_a
     List the names of the launch plans under the scope specified by {project, domain}.
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
 
     _click.echo("Launch Plan Names Found in {}:{}\n".format(_tt(project), _tt(domain)))
     while True:
@@ -776,7 +800,7 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
         _click.echo("Active Launch Plan Found in {}:{}\n".format(_tt(project), _tt(domain)))
         _click.echo("{:30} {:50} {:80}".format('Schedule', 'Version', 'Urn'))
 
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
 
     while True:
         active_lps, next_token = client.list_active_launch_plans_paginated(
@@ -836,7 +860,7 @@ def list_launch_plan_versions(project, domain, name, host, insecure, token, limi
         _click.echo("Launch Plan Versions Found for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name)))
         _click.echo("{:50} {:80} {:30} {:15}".format('Version', 'Urn', "Schedule", "Schedule State"))
 
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
 
     while True:
         lp_list, next_token = client.list_launch_plans_paginated(
@@ -894,7 +918,7 @@ def get_launch_plan(urn, host, insecure):
     The URN of a launch plan is in the form of ``lp:<project>:<domain>:<launch_plan_name>:<version>``
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
     _click.echo(_tt(client.get_launch_plan(_identifier.Identifier.from_python_std(urn))))
     # TODO: Print launch plan pretty
     _click.echo("")
@@ -911,7 +935,7 @@ def get_active_launch_plan(project, domain, name, host, insecure):
     List the versions of all the launch plans under the scope specified by {project, domain}.
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
 
     lp = client.get_active_launch_plan(
         _common_models.NamedEntityIdentifier(
@@ -1030,7 +1054,7 @@ def relaunch_execution(project, domain, name, host, insecure, urn, principal, ve
     Users should use the get-execution and get-launch-plan commands to ascertain the names of inputs to use.
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
 
     _click.echo("Relaunching execution {}\n".format(_tt(urn)))
     existing_workflow_execution_identifier = _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
@@ -1107,7 +1131,7 @@ def terminate_execution(host, insecure, cause, urn=None):
             -u lp:flyteexamples:development:some-execution:abc123
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
 
     _click.echo("Killing the following executions:\n")
     _click.echo("{:100} {:40}".format("Urn", "Cause"))
@@ -1159,7 +1183,7 @@ def list_executions(project, domain, host, insecure, token, limit, show_all, fil
         _click.echo("Executions Found in {}:{}\n".format(_tt(project), _tt(domain)))
         _click.echo("{:100} {:40} {:10}".format("Urn", "Name", "Status"))
 
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
 
     while True:
         exec_ids, next_token = client.list_executions_paginated(
@@ -1404,7 +1428,7 @@ def get_execution(urn, host, insecure, show_io, verbose):
     The URN of an execution is in the form of ``ex:<project>:<domain>:<execution_name>``
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
     e = client.get_execution(_identifier.WorkflowExecutionIdentifier.from_python_std(urn))
     node_execs = _get_all_node_executions(client, workflow_execution_identifier=e.id)
     _render_node_executions(client, node_execs, show_io, verbose, host, insecure, wf_execution=e)
@@ -1418,7 +1442,7 @@ def get_execution(urn, host, insecure, show_io, verbose):
 @_verbose_option
 def get_child_executions(urn, host, insecure, show_io, verbose):
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
     node_execs = _get_all_node_executions(
         client,
         task_execution_identifier=_identifier.TaskExecutionIdentifier.from_python_std(urn)
@@ -1437,7 +1461,7 @@ def register_project(identifier, name, host, insecure):
 
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, metadata=_fetch_metadata())
     client.register_project(_Project(identifier, name))
     _click.echo("Registered project [id: {}, name: {}]".format(identifier, name))
 
