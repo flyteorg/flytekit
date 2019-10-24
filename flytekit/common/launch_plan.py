@@ -62,7 +62,6 @@ class SdkLaunchPlan(
             domain, and name.
         :rtype: SdkLaunchPlan
         """
-        version = version or _internal_config.VERSION.get()
         launch_plan_id = _identifier.Identifier(
             _identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version
         )
