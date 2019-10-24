@@ -26,7 +26,6 @@ def test_execution_spec(literal_value_pair):
 
     obj = _execution.ExecutionSpec(
         _identifier.Identifier(_identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version"),
-        _literal_models.LiteralMap(literals={'a': literal_value}),
         _execution.ExecutionMetadata(_execution.ExecutionMetadata.ExecutionMode.MANUAL, 'tester', 1),
         notifications=_execution.NotificationList(
             [
@@ -57,7 +56,6 @@ def test_execution_spec(literal_value_pair):
     assert obj2.launch_plan.project == "project"
     assert obj2.launch_plan.name == "name"
     assert obj2.launch_plan.version == "version"
-    assert obj2.inputs.literals['a'] == literal_value
     assert obj2.metadata.mode == _execution.ExecutionMetadata.ExecutionMode.MANUAL
     assert obj2.metadata.nesting == 1
     assert obj2.metadata.principal == 'tester'
@@ -67,7 +65,6 @@ def test_execution_spec(literal_value_pair):
 
     obj = _execution.ExecutionSpec(
         _identifier.Identifier(_identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version"),
-        _literal_models.LiteralMap(literals={'a': literal_value}),
         _execution.ExecutionMetadata(_execution.ExecutionMetadata.ExecutionMode.MANUAL, 'tester', 1),
         disable_all=True
     )
@@ -76,7 +73,6 @@ def test_execution_spec(literal_value_pair):
     assert obj.launch_plan.project == "project"
     assert obj.launch_plan.name == "name"
     assert obj.launch_plan.version == "version"
-    assert obj.inputs.literals['a'] == literal_value
     assert obj.metadata.mode == _execution.ExecutionMetadata.ExecutionMode.MANUAL
     assert obj.metadata.nesting == 1
     assert obj.metadata.principal == 'tester'
@@ -90,7 +86,6 @@ def test_execution_spec(literal_value_pair):
     assert obj2.launch_plan.project == "project"
     assert obj2.launch_plan.name == "name"
     assert obj2.launch_plan.version == "version"
-    assert obj2.inputs.literals['a'] == literal_value
     assert obj2.metadata.mode == _execution.ExecutionMetadata.ExecutionMode.MANUAL
     assert obj2.metadata.nesting == 1
     assert obj2.metadata.principal == 'tester'

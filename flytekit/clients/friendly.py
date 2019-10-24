@@ -591,6 +591,21 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
+    def get_execution_data(self, id):
+        """
+        Returns signed URLs to LiteralMap blobs for an execution's inputs and outputs (when available).
+
+        :param flytekit.models.core.identifier.WorkflowExecutionIdentifier id:
+        :rtype: flytekit.models.execution.WorkflowExecutionGetDataResponse
+        """
+        return _execution.WorkflowExecutionGetDataResponse.from_flyte_idl(
+            super(SynchronousFlyteClient, self).get_execution_data(
+                _execution_pb2.WorkflowExecutionGetDataRequest(
+                    id=id.to_flyte_idl()
+                )
+            )
+        )
+
     def list_executions_paginated(
             self,
             project,
@@ -667,6 +682,21 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         return _node_execution.NodeExecution.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_node_execution(
                 _node_execution_pb2.NodeExecutionGetRequest(
+                    id=node_execution_identifier.to_flyte_idl()
+                )
+            )
+        )
+
+    def get_node_execution_data(self, node_execution_identifier):
+        """
+        Returns signed URLs to LiteralMap blobs for a node execution's inputs and outputs (when available).
+
+        :param flytekit.models.core.identifier.NodeExecutionIdentifier node_execution_identifier:
+        :rtype: flytekit.models.execution.NodeExecutionGetDataResponse
+        """
+        return _execution.NodeExecutionGetDataResponse.from_flyte_idl(
+            super(SynchronousFlyteClient, self).get_node_execution_data(
+                _node_execution_pb2.NodeExecutionGetDataRequest(
                     id=node_execution_identifier.to_flyte_idl()
                 )
             )
@@ -749,6 +779,21 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             super(SynchronousFlyteClient, self).get_task_execution(
                 _task_execution_pb2.TaskExecutionGetRequest(
                     id=id.to_flyte_idl()
+                )
+            )
+        )
+
+    def get_task_execution_data(self, task_execution_identifier):
+        """
+        Returns signed URLs to LiteralMap blobs for a node execution's inputs and outputs (when available).
+
+        :param flytekit.models.core.identifier.TaskExecutionIdentifier task_execution_identifier:
+        :rtype: flytekit.models.execution.NodeExecutionGetDataResponse
+        """
+        return _execution.TaskExecutionGetDataResponse.from_flyte_idl(
+            super(SynchronousFlyteClient, self).get_task_execution_data(
+                _task_execution_pb2.TaskExecutionGetDataRequest(
+                    id=task_execution_identifier.to_flyte_idl()
                 )
             )
         )

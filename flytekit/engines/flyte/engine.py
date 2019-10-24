@@ -185,7 +185,6 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanExecutor):
             name,
             _execution_models.ExecutionSpec(
                 self.sdk_launch_plan.id,
-                inputs,
                 _execution_models.ExecutionMetadata(
                     _execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
                     'sdk',  # TODO: get principle
@@ -195,7 +194,8 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanExecutor):
                 disable_all=disable_all,
                 labels=label_overrides,
                 annotations=annotation_overrides,
-            )
+            ),
+            inputs,
         )
         return client.get_execution(exec_id)
 
@@ -344,21 +344,31 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
         """
         :rtype: flytekit.models.literals.LiteralMap
         """
-        return self.sdk_workflow_execution.closure.computed_inputs
+        client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
+        url_blob = client.get_execution_data(self.sdk_workflow_execution.id)
+        if url_blob.inputs.bytes > 0:
+            with _common_utils.AutoDeletingTempDir() as t:
+                tmp_name = _os.path.join(t.name, "inputs.pb")
+                _data_proxy.Data.get_data(url_blob.inputs.url, tmp_name)
+                return _literals.LiteralMap.from_flyte_idl(
+                    _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                )
+        return _literals.LiteralMap({})
 
     def get_outputs(self):
         """
         :rtype: flytekit.models.literals.LiteralMap
         """
-        if self.sdk_workflow_execution.closure.outputs.values:
-            return self.sdk_workflow_execution.closure.outputs.values
-        else:
+        client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
+        url_blob = client.get_execution_data(self.sdk_workflow_execution.id)
+        if url_blob.outputs.bytes > 0:
             with _common_utils.AutoDeletingTempDir() as t:
                 tmp_name = _os.path.join(t.name, "outputs.pb")
-                _data_proxy.Data.get_data(self.sdk_workflow_execution.closure.outputs.uri, tmp_name)
+                _data_proxy.Data.get_data(url_blob.outputs.url, tmp_name)
                 return _literals.LiteralMap.from_flyte_idl(
                     _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                 )
+        return _literals.LiteralMap({})
 
     def terminate(self, cause):
         """
@@ -383,29 +393,37 @@ class FlyteNodeExecution(_common_engine.BaseNodeExecution):
         """
         :rtype: list[flytekit.common.workflow_execution.SdkWorkflowExecution]
         """
-        raise NotImplementedError("Cannot retrieve sub-workflopw information from a node execution yet.")
+        raise NotImplementedError("Cannot retrieve sub-workflow information from a node execution yet.")
 
     def get_inputs(self):
         """
         :rtype: flytekit.models.literals.LiteralMap
         """
-        with _common_utils.AutoDeletingTempDir() as t:
-            tmp_name = _os.path.join(t.name, "inputs.pb")
-            _data_proxy.Data.get_data(self.sdk_node_execution.input_uri, tmp_name)
-            return _literals.LiteralMap.from_flyte_idl(
-                _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
-            )
+        client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
+        url_blob = client.get_node_execution_data(self.sdk_node_execution.id)
+        if url_blob.inputs.bytes > 0:
+            with _common_utils.AutoDeletingTempDir() as t:
+                tmp_name = _os.path.join(t.name, "inputs.pb")
+                _data_proxy.Data.get_data(url_blob.inputs.url, tmp_name)
+                return _literals.LiteralMap.from_flyte_idl(
+                    _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                )
+        return _literals.LiteralMap({})
 
     def get_outputs(self):
         """
         :rtype: flytekit.models.literals.LiteralMap
         """
-        with _common_utils.AutoDeletingTempDir() as t:
-            tmp_name = _os.path.join(t.name, "outputs.pb")
-            _data_proxy.Data.get_data(self.sdk_node_execution.closure.output_uri, tmp_name)
-            return _literals.LiteralMap.from_flyte_idl(
-                _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
-            )
+        client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
+        url_blob = client.get_node_execution_data(self.sdk_node_execution.id)
+        if url_blob.outputs.bytes > 0:
+            with _common_utils.AutoDeletingTempDir() as t:
+                tmp_name = _os.path.join(t.name, "outputs.pb")
+                _data_proxy.Data.get_data(url_blob.outputs.url, tmp_name)
+                return _literals.LiteralMap.from_flyte_idl(
+                    _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                )
+        return _literals.LiteralMap({})
 
     def sync(self):
         """
@@ -421,23 +439,31 @@ class FlyteTaskExecution(_common_engine.BaseTaskExecution):
         """
         :rtype: flytekit.models.literals.LiteralMap
         """
-        with _common_utils.AutoDeletingTempDir() as t:
-            tmp_name = _os.path.join(t.name, "inputs.pb")
-            _data_proxy.Data.get_data(self.sdk_task_execution.input_uri, tmp_name)
-            return _literals.LiteralMap.from_flyte_idl(
-                _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
-            )
+        client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
+        url_blob = client.get_task_execution_data(self.sdk_task_execution.id)
+        if url_blob.inputs.bytes > 0:
+            with _common_utils.AutoDeletingTempDir() as t:
+                tmp_name = _os.path.join(t.name, "inputs.pb")
+                _data_proxy.Data.get_data(url_blob.inputs.url, tmp_name)
+                return _literals.LiteralMap.from_flyte_idl(
+                    _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                )
+        return _literals.LiteralMap({})
 
     def get_outputs(self):
         """
         :rtype: flytekit.models.literals.LiteralMap
         """
-        with _common_utils.AutoDeletingTempDir() as t:
-            tmp_name = _os.path.join(t.name, "outputs.pb")
-            _data_proxy.Data.get_data(self.sdk_task_execution.closure.output_uri, tmp_name)
-            return _literals.LiteralMap.from_flyte_idl(
-                _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
-            )
+        client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
+        url_blob = client.get_task_execution_data(self.sdk_task_execution.id)
+        if url_blob.outputs.bytes > 0:
+            with _common_utils.AutoDeletingTempDir() as t:
+                tmp_name = _os.path.join(t.name, "outputs.pb")
+                _data_proxy.Data.get_data(url_blob.outputs.url, tmp_name)
+                return _literals.LiteralMap.from_flyte_idl(
+                    _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                )
+        return _literals.LiteralMap({})
 
     def sync(self):
         """

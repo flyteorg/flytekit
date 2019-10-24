@@ -365,7 +365,7 @@ class Annotations(FlyteIdlEntity):
 
     def to_flyte_idl(self):
         """
-        :rtype: dict[Text, Text]
+        :rtype: _common_pb2.Annotations
         """
         return _common_pb2.Annotations(
             values={k: v for k, v in _six.iteritems(self.values)}
@@ -378,3 +378,42 @@ class Annotations(FlyteIdlEntity):
         :rtype: Annotations
         """
         return cls({k: v for k, v in _six.iteritems(pb2_object.values)})
+
+
+class UrlBlob(FlyteIdlEntity):
+
+    def __init__(self, url, bytes):
+        """
+        :param Text url:
+        :param int bytes:
+        """
+        self._url = url
+        self._bytes = bytes
+
+    @property
+    def url(self):
+        """
+        :rtype: Text
+        """
+        return self._url
+
+    @property
+    def bytes(self):
+        """
+        :rtype: int
+        """
+        return self._bytes
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin.common_pb2.UrlBlob
+        """
+        return _common_pb2.UrlBlob(url=self.url, bytes=self.bytes)
+
+    @classmethod
+    def from_flyte_idl(cls, pb):
+        """
+        :param flyteidl.admin.common_pb2.UrlBlob pb:
+        :rtype: UrlBlob
+        """
+        return cls(url=pb.url, bytes=pb.url)

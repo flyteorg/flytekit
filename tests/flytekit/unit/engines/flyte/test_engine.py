@@ -104,14 +104,14 @@ def test_execution_notification_overrides(mock_client_factory):
                 "name",
                 "version"
             ),
-            literals.LiteralMap({}),
             _execution_models.ExecutionMetadata(
                 _execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
                 'sdk',
                 0
             ),
             disable_all=True,
-        )
+        ),
+        literals.LiteralMap({}),
     )
 
 
@@ -150,14 +150,14 @@ def test_execution_notification_soft_overrides(mock_client_factory):
                 "name",
                 "version"
             ),
-            literals.LiteralMap({}),
             _execution_models.ExecutionMetadata(
                 _execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
                 'sdk',
                 0
             ),
             notifications=_execution_models.NotificationList([notification]),
-        )
+        ),
+        literals.LiteralMap({}),
     )
 
 
@@ -203,7 +203,8 @@ def test_execution_label_overrides(mock_client_factory):
             ),
             disable_all=True,
             labels=labels,
-        )
+        ),
+        literals.LiteralMap({}),
     )
 
 
@@ -249,7 +250,8 @@ def test_execution_annotation_overrides(mock_client_factory):
             ),
             disable_all=True,
             annotations=annotations,
-        )
+        ),
+        literals.LiteralMap({}),
     )
 
 
