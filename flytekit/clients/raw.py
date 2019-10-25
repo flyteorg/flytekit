@@ -384,8 +384,8 @@ class RawSynchronousFlyteClient(object):
         """
         Returns signed URLs to LiteralMap blobs for a node execution's inputs and outputs (when available).
 
-        :param flyteidl.admin.execution_pb2.NodeExecutionGetDataRequest get_node_execution_data_request:
-        :rtype: flyteidl.admin.execution_pb2.NodeExecutionGetDataResponse
+        :param flyteidl.admin.node_execution_pb2.NodeExecutionGetDataRequest get_node_execution_data_request:
+        :rtype: flyteidl.admin.node_execution_pb2.NodeExecutionGetDataResponse
         """
         return self._stub.GetNodeExecutionData(get_node_execution_data_request)
 
@@ -424,8 +424,8 @@ class RawSynchronousFlyteClient(object):
         """
         Returns signed URLs to LiteralMap blobs for a task execution's inputs and outputs (when available).
 
-        :param flyteidl.admin.execution_pb2.TaskExecutionGetDataRequest get_task_execution_data_request:
-        :rtype: flyteidl.admin.execution_pb2.TaskExecutionGetDataResponse
+        :param flyteidl.admin.task_execution_pb2.TaskExecutionGetDataRequest get_task_execution_data_request:
+        :rtype: flyteidl.admin.task_execution_pb2.TaskExecutionGetDataResponse
         """
         return self._stub.GetTaskExecutionData(get_task_execution_data_request)
 

@@ -425,4 +425,4 @@ class TaskExecutionGetDataResponse(_CommonDataResponse):
 
 
 class NodeExecutionGetDataResponse(_CommonDataResponse):
-    _PB = _task_execution_pb2.NodeExecutionGetDataResponse
+    _PB = _node_execution_pb2.NodeExecutionGetDataResponse
