@@ -195,7 +195,6 @@ def test_execution_label_overrides(mock_client_factory):
                 "name",
                 "version"
             ),
-            literals.LiteralMap({}),
             _execution_models.ExecutionMetadata(
                 _execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
                 'sdk',
@@ -242,7 +241,6 @@ def test_execution_annotation_overrides(mock_client_factory):
                 "name",
                 "version"
             ),
-            literals.LiteralMap({}),
             _execution_models.ExecutionMetadata(
                 _execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
                 'sdk',

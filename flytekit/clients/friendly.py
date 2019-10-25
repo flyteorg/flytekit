@@ -557,13 +557,14 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     #
     ####################################################################################################################
 
-    def create_execution(self, project, domain, name, execution_spec):
+    def create_execution(self, project, domain, name, execution_spec, inputs):
         """
         This will create an execution for the given execution spec.
         :param Text project:
         :param Text domain:
         :param Text name:
         :param flytekit.models.execution.ExecutionSpec execution_spec: This is the specification for the execution.
+        :param flytekit.models.literals.LiteralMap inputs: The inputs for the execution
         :returns: The unique identifier for the execution.
         :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier
         """
@@ -573,7 +574,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                     project=project,
                     domain=domain,
                     name=name,
-                    spec=execution_spec.to_flyte_idl()
+                    spec=execution_spec.to_flyte_idl(),
+                    inputs=inputs.to_flyte_idl(),
                 )
             ).id
         )

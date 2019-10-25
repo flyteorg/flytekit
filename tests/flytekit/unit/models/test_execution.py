@@ -41,7 +41,6 @@ def test_execution_spec(literal_value_pair):
     assert obj.launch_plan.project == "project"
     assert obj.launch_plan.name == "name"
     assert obj.launch_plan.version == "version"
-    assert obj.inputs.literals['a'] == literal_value
     assert obj.metadata.mode == _execution.ExecutionMetadata.ExecutionMode.MANUAL
     assert obj.metadata.nesting == 1
     assert obj.metadata.principal == 'tester'

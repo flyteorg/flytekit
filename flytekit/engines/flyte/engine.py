@@ -20,8 +20,7 @@ from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import task as _task_models, execution as _execution_models, \
     literals as _literals, common as _common_models
 from flytekit.models.admin import workflow as _workflow_model
-from flytekit.models.core import errors as _error_models
-from flytekit.models.core.identifier import WorkflowExecutionIdentifier
+from flytekit.models.core import errors as _error_models, identifier as _identifier
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 
@@ -177,26 +176,28 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanExecutor):
             )
             disable_all = None
 
-        # TODO: Handle idempotency when admin is prepared.
-        client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
-        exec_id = client.create_execution(
-            project,
-            domain,
-            name,
-            _execution_models.ExecutionSpec(
-                self.sdk_launch_plan.id,
-                _execution_models.ExecutionMetadata(
-                    _execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
-                    'sdk',  # TODO: get principle
-                    0  # TODO: Detect nesting
+        try:
+            client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
+            exec_id = client.create_execution(
+                project,
+                domain,
+                name,
+                _execution_models.ExecutionSpec(
+                    self.sdk_launch_plan.id,
+                    _execution_models.ExecutionMetadata(
+                        _execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
+                        'sdk',  # TODO: get principle
+                        0  # TODO: Detect nesting
+                    ),
+                    notifications=notification_overrides,
+                    disable_all=disable_all,
+                    labels=label_overrides,
+                    annotations=annotation_overrides,
                 ),
-                notifications=notification_overrides,
-                disable_all=disable_all,
-                labels=label_overrides,
-                annotations=annotation_overrides,
-            ),
-            inputs,
-        )
+                inputs,
+            )
+        except _user_exceptions.FlyteEntityAlreadyExistsException:
+            exec_id = _identifier.WorkflowExecutionIdentifier(project, domain, name)
         return client.get_execution(exec_id)
 
     def update(self, identifier, state):
@@ -260,7 +261,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                         try:
                             output_file_dict = self.sdk_task.execute(
                                 _common_engine.EngineContext(
-                                    execution_id=WorkflowExecutionIdentifier(
+                                    execution_id=_identifier.WorkflowExecutionIdentifier(
                                         project=_internal_config.EXECUTION_PROJECT.get(),
                                         domain=_internal_config.EXECUTION_DOMAIN.get(),
                                         name=_internal_config.EXECUTION_NAME.get()
