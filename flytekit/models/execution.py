@@ -285,7 +285,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         """
         :param flytekit.models.literals.LiteralMap computed_inputs:
         :param int phase: From the flytekit.models.core.execution.WorkflowExecutionPhase enum
-        :param datetime started_at:
+        :param datetime.datetime started_at:
         :param flytekit.models.core.execution.ExecutionError error:
         :param LiteralMapBlob outputs:
         """
@@ -313,7 +313,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
     @property
     def started_at(self):
         """
-        :rtype: datetime
+        :rtype: datetime.datetime
         """
         return self._started_at
 
