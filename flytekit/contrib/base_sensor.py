@@ -7,7 +7,7 @@ import time as _time
 import traceback as _traceback
 
 import six as _six
-from lyft_logging import logging as _logging
+import logging as _logging
 
 
 class Sensor(_six.with_metaclass(_abc.ABCMeta, object)):
