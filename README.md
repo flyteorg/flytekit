@@ -72,6 +72,7 @@ Flytekit is Python 2.7+ compatible, so when feasible, it is recommended to test 
 virtualenv ~/.virtualenvs/flytekit2
 source ~/.virtualenvs/flytekit2/bin/activate
 python -m pip install -r requirements.txt
+python -m pip install -U .[all]
 ```
 
 #### Execute
