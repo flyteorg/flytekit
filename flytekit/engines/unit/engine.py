@@ -29,7 +29,8 @@ class UnitTestEngineFactory(_common_engine.BaseExecutionEngineFactory):
         """
         if sdk_task.type in {
             _sdk_constants.SdkTaskType.PYTHON_TASK,
-            _sdk_constants.SdkTaskType.SPARK_TASK
+            _sdk_constants.SdkTaskType.SPARK_TASK,
+            _sdk_constants.SdkTaskType.SENSOR_TASK,
         }:
             return ReturnOutputsTask(sdk_task)
         elif sdk_task.type in {
