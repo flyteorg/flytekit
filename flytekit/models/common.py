@@ -416,4 +416,4 @@ class UrlBlob(FlyteIdlEntity):
         :param flyteidl.admin.common_pb2.UrlBlob pb:
         :rtype: UrlBlob
         """
-        return cls(url=pb.url, bytes=pb.url)
+        return cls(url=pb.url, bytes=pb.bytes)

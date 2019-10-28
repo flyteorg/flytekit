@@ -90,3 +90,33 @@ def test_execution_spec(literal_value_pair):
     assert obj2.metadata.principal == 'tester'
     assert obj2.notifications is None
     assert obj2.disable_all is True
+
+
+def test_workflow_execution_data_response():
+    input_blob = _common_models.UrlBlob("in", 1)
+    output_blob = _common_models.UrlBlob("out", 2)
+    obj = _execution.WorkflowExecutionGetDataResponse(input_blob, output_blob)
+    obj2 = _execution.WorkflowExecutionGetDataResponse.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == obj2
+    assert obj2.inputs == input_blob
+    assert obj2.outputs == output_blob
+
+
+def test_node_execution_data_response():
+    input_blob = _common_models.UrlBlob("in", 1)
+    output_blob = _common_models.UrlBlob("out", 2)
+    obj = _execution.NodeExecutionGetDataResponse(input_blob, output_blob)
+    obj2 = _execution.NodeExecutionGetDataResponse.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == obj2
+    assert obj2.inputs == input_blob
+    assert obj2.outputs == output_blob
+
+
+def test_task_execution_data_response():
+    input_blob = _common_models.UrlBlob("in", 1)
+    output_blob = _common_models.UrlBlob("out", 2)
+    obj = _execution.TaskExecutionGetDataResponse(input_blob, output_blob)
+    obj2 = _execution.TaskExecutionGetDataResponse.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == obj2
+    assert obj2.inputs == input_blob
+    assert obj2.outputs == output_blob
