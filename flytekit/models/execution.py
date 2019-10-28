@@ -338,7 +338,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         return _execution_pb2.ExecutionClosure(
             computed_inputs=self.computed_inputs.to_flyte_idl(),
             phase=self.phase,
-            start_at=self.started_at,
+            started_at=self.started_at,
             error=self.error.to_flyte_idl() if self.error is not None else None,
             outputs=self.outputs.to_flyte_idl() if self.outputs is not None else None
         )
