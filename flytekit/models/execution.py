@@ -360,7 +360,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             error=error,
             outputs=outputs,
             phase=pb2_object.phase,
-            started_at=pb2_object.started_at,
+            started_at=pb2_object.started_at.ToDatetime().replace(tzinfo=_pytz.UTC),
             computed_inputs=_literal_models.LiteralMap.from_flyte_idl(pb2_object.computed_inputs)
         )
 
