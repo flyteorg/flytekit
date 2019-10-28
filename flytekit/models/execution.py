@@ -281,15 +281,17 @@ class Execution(_common_models.FlyteIdlEntity):
 
 class ExecutionClosure(_common_models.FlyteIdlEntity):
 
-    def __init__(self, computed_inputs, phase, error=None, outputs=None):
+    def __init__(self, computed_inputs, phase, started_at, error=None, outputs=None):
         """
         :param flytekit.models.literals.LiteralMap computed_inputs:
         :param int phase: From the flytekit.models.core.execution.WorkflowExecutionPhase enum
+        :param datetime started_at:
         :param flytekit.models.core.execution.ExecutionError error:
         :param LiteralMapBlob outputs:
         """
         self._computed_inputs = computed_inputs
         self._phase = phase
+        self._started_at = started_at
         self._error = error
         self._outputs = outputs
 
@@ -307,6 +309,13 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         :rtype: int
         """
         return self._phase
+
+    @property
+    def started_at(self):
+        """
+        :rtype: datetime
+        """
+        return self._started_at
 
     @property
     def outputs(self):
@@ -329,6 +338,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         return _execution_pb2.ExecutionClosure(
             computed_inputs=self.computed_inputs.to_flyte_idl(),
             phase=self.phase,
+            start_at=self.started_at,
             error=self.error.to_flyte_idl() if self.error is not None else None,
             outputs=self.outputs.to_flyte_idl() if self.outputs is not None else None
         )
@@ -349,6 +359,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             error=error,
             outputs=outputs,
             phase=pb2_object.phase,
+            started_at=pb2_object.started_at,
             computed_inputs=_literal_models.LiteralMap.from_flyte_idl(pb2_object.computed_inputs)
         )
 
