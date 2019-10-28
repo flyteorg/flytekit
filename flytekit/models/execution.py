@@ -4,7 +4,7 @@ import flyteidl.admin.execution_pb2 as _execution_pb2
 
 from flytekit.models import common as _common_models, literals as _literal_models
 from flytekit.models.core import execution as _core_execution, identifier as _identifier
-
+import pytz as _pytz
 
 class ExecutionMetadata(_common_models.FlyteIdlEntity):
 
@@ -335,13 +335,14 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionClosure
         """
-        return _execution_pb2.ExecutionClosure(
+        obj = _execution_pb2.ExecutionClosure(
             computed_inputs=self.computed_inputs.to_flyte_idl(),
             phase=self.phase,
-            started_at=self.started_at,
             error=self.error.to_flyte_idl() if self.error is not None else None,
             outputs=self.outputs.to_flyte_idl() if self.outputs is not None else None
         )
+        obj.started_at.FromDatetime(self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None))
+        return obj
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
