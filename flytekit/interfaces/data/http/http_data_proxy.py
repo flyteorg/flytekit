@@ -1,12 +1,15 @@
 from __future__ import absolute_import
 
-import os as _os
 import requests as _requests
 from flytekit.interfaces.data import common as _common_data
 from flytekit.common.exceptions import user as _user_exceptions
 
 
 class HttpFileProxy(_common_data.DataProxy):
+
+    _HTTP_OK = 200
+    _HTTP_FORBIDDEN = 403
+    _HTTP_NOT_FOUND = 404
 
     def __init__(self, sandbox):
         """
@@ -19,7 +22,17 @@ class HttpFileProxy(_common_data.DataProxy):
         :param Text path: the path of the file
         :rtype bool: whether the file exists or not
         """
-        return _os.path.exists(path)
+        rsp = _requests.head(path)
+        allowed_codes = {type(self)._HTTP_OK, type(self)._HTTP_NOT_FOUND, type(self)._HTTP_FORBIDDEN}
+        if rsp.status_code not in allowed_codes:
+            raise _user_exceptions.FlyteValueException(
+                rsp.status_code,
+                "Data at {} could not be checked for existence. Expected one of: {}".format(
+                    path,
+                    allowed_codes
+                )
+            )
+        return rsp.status_code == type(self)._HTTP_OK
 
     def download_directory(self, from_path, to_path):
         """
@@ -33,13 +46,13 @@ class HttpFileProxy(_common_data.DataProxy):
         :param Text from_path:
         :param Text to_path:
         """
-        _HTTP_OK = 200
+
         _CONTENT_TYPE = 'binary/octet-stream'
         rsp = _requests.get(from_path)
-        if rsp.status_code != _HTTP_OK:
+        if rsp.status_code != type(self)._HTTP_OK:
             raise _user_exceptions.FlyteValueException(
                 rsp.status_code,
-                "Request for data @ {} failed. Expected status code {}".format(from_path, _HTTP_OK)
+                "Request for data @ {} failed. Expected status code {}".format(from_path, type(self)._HTTP_OK)
             )
         if rsp.headers.get('content-type') != _CONTENT_TYPE:
             raise _user_exceptions.FlyteValueException(
