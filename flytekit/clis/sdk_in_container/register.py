@@ -36,17 +36,20 @@ def register_tasks_only(project, domain, pkgs, test, version):
         t.register(project, domain, _utils.fqdn(m.__name__, k, entity_type=t.resource_type), version)
 
 
-
 @click.group('register')
+@click.option('--pkgs', multiple=True, hidden=True)  # DEPRECATED, use same arg on pyflyte.main instead
 @click.option('--test', is_flag=True, help='Dry run, do not actually register with Admin')
 @click.pass_context
-def register(ctx, test=None):
+def register(ctx, pkgs=None, test=None):
     """
     Run registration steps for the workflows in this container.
 
     Run with the --test switch for a dry run to see what will be registered.  A default launch plan will also be
     created, if a role can be found in the environment variables.
     """
+    if pkgs is not None:
+        raise ValueError("--pkgs must now be specified before the 'register' keyword on the command line")
+
     ctx.obj[CTX_TEST] = test
 
 
