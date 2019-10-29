@@ -1,9 +1,9 @@
 from __future__ import absolute_import
 
-import hmsclient as _hmsclient
-from hmsclient.genthrift.hive_metastore import ttypes as _ttypes
+import flytekit.plugins.hmsclient as _hmsclient
+import flytekit.plugins.hmsclient.genthrift.hive_metastore.ttypes as _ttypes
 
-from flytekit.contrib.base_sensor import Sensor as _Sensor
+from flytekit.contrib.sensors.base_sensor import Sensor as _Sensor
 
 
 class _HiveSensor(_Sensor):
@@ -19,7 +19,7 @@ class _HiveSensor(_Sensor):
         :param Text host:
         :param Text port:
         :param Text schema: The schema/database that we should consider.
-        :param **kwargs: See flytekitextensions.sensors.base_sensor.Sensor for more
+        :param **kwargs: See flytekit.contrib.sensors.base_sensor.Sensor for more
             parameters.
         """
         self._schema = schema
@@ -42,7 +42,7 @@ class HiveTableSensor(_HiveSensor):
         :param Text host: The host for the Hive metastore Thrift service.
         :param Text port: The port for the Hive metastore Thrift Service
         :param Text table_name: The name of the table to look for.
-        :param **kwargs: See _HiveSensor and flytekitextensions.sensors.base_sensor.Sensor for more
+        :param **kwargs: See _HiveSensor and flytekit.contrib.sensors.base_sensor.Sensor for more
             parameters.
         """
         super(HiveTableSensor, self).__init__(
@@ -82,7 +82,7 @@ class HiveNamedPartitionSensor(_HiveSensor):
         :param Text partition_name: The name of the partition to listen for  (example: 'ds=2017-01-01/region=NYC')
         :param Text host: The host for the Hive metastore Thrift service.
         :param Text port: The port for the Hive metastore Thrift Service
-        :param **kwargs: See _HiveSensor and flytekitextensions.sensors.base_sensor.Sensor for more
+        :param **kwargs: See _HiveSensor and flytekit.contrib.sensors.base_sensor.Sensor for more
             parameters.
         """
         super(HiveNamedPartitionSensor, self).__init__(host, port, **kwargs)
@@ -121,7 +121,7 @@ class HiveFilteredPartitionSensor(_HiveSensor):
             region='NYC')
         :param Text host: The host for the Hive metastore Thrift service.
         :param Text port: The port for the Hive metastore Thrift Service
-        :param **kwargs: See _HiveSensor and flytekitextensions.sensors.base_sensor.Sensor for more
+        :param **kwargs: See _HiveSensor and flytekit.contrib.sensors.base_sensor.Sensor for more
             parameters.
         """
         super(HiveFilteredPartitionSensor, self).__init__(

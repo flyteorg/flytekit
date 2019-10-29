@@ -29,3 +29,13 @@ def test_sidecar_plugin():
     import k8s.io.apimachinery.pkg.api.resource.generated_pb2
     k8s.io.api.core.v1.generated_pb2.Container
     k8s.io.apimachinery.pkg.api.resource.generated_pb2.Quantity
+
+
+@pytest.mark.run(order=2)
+def test_hive_sensor_plugin():
+    assert isinstance(plugins.hmsclient, lazy_loader._LazyLoadModule)
+    assert isinstance(plugins.hmsclient.genthrift.hive_metastore.ttypes, lazy_loader._LazyLoadModule)
+    import hmsclient
+    import hmsclient.genthrift.hive_metastore.ttypes
+    hmsclient.HMSClient
+    hmsclient.genthrift.hive_metastore.ttypes.NoSuchObjectException

@@ -5,9 +5,9 @@ import mock
 from hmsclient import HMSClient
 from hmsclient.genthrift.hive_metastore import ttypes as _ttypes
 
-from flytekit.contrib.sensors import HiveFilteredPartitionSensor
-from flytekit.contrib.sensors import HiveNamedPartitionSensor
-from flytekit.contrib.sensors import HiveTableSensor
+from flytekit.contrib.sensors.impl import HiveFilteredPartitionSensor
+from flytekit.contrib.sensors.impl import HiveNamedPartitionSensor
+from flytekit.contrib.sensors.impl import HiveTableSensor
 
 
 def test_HiveTableSensor():
