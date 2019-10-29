@@ -36,20 +36,18 @@ def register_tasks_only(project, domain, pkgs, test, version):
         t.register(project, domain, _utils.fqdn(m.__name__, k, entity_type=t.resource_type), version)
 
 
-@click.group('register')
-@click.option('--pkgs', multiple=True, help='Comma separated list of dot separated python packages to operate on')
-@click.pass_context
-def register(ctx, pkgs=None):
-    """
-    Run registration steps for the workflow package location defined in this container.  Run with the --test switch
-    for a dry run to see what will be registered.  A default launch plan will also be created, if a role can be found
-    in the environment variables.
-    """
-    pkgs = pkgs or []
-    if len(pkgs) == 0:
-        pkgs = _WORKFLOW_PACKAGES.get()
 
-    ctx.obj[CTX_PACKAGES] = pkgs
+@click.group('register')
+@click.option('--test', is_flag=True, help='Dry run, do not actually register with Admin')
+@click.pass_context
+def register(ctx, test=None):
+    """
+    Run registration steps for the workflows in this container.
+
+    Run with the --test switch for a dry run to see what will be registered.  A default launch plan will also be
+    created, if a role can be found in the environment variables.
+    """
+    ctx.obj[CTX_TEST] = test
 
 
 @click.command('tasks')

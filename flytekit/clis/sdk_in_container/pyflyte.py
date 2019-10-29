@@ -13,7 +13,7 @@ except ImportError:
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.serialize import serialize
-from flytekit.clis.sdk_in_container.constants import CTX_PROJECT, CTX_DOMAIN, CTX_TEST, CTX_VERSION
+from flytekit.clis.sdk_in_container.constants import CTX_PROJECT, CTX_DOMAIN, CTX_VERSION
 from flytekit.clis.sdk_in_container.launch_plan import launch_plans
 from flytekit.configuration import internal as _internal_config, platform as _platform_config
 
@@ -36,9 +36,8 @@ from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
 @click.option('-v', '--version', required=False, type=str, help='This is the version to apply globally for this '
                                                                 'context')
 @click.option('-i', '--insecure', required=False, type=bool, help='Do not use SSL to connect to Admin')
-@click.option('--test', is_flag=True, help='Dry run, do not actually register with Admin')
 @click.pass_context
-def main(ctx, project, domain, config=None, pkgs=None, version=None, insecure=None, test=False):
+def main(ctx, project, domain, config=None, pkgs=None, version=None, insecure=None):
     """
     Entrypoint for all the user commands.
     """
@@ -47,7 +46,6 @@ def main(ctx, project, domain, config=None, pkgs=None, version=None, insecure=No
     ctx.obj = dict()
     ctx.obj[CTX_PROJECT] = project
     ctx.obj[CTX_DOMAIN] = domain
-    ctx.obj[CTX_TEST] = test
     version = version or _look_up_version_from_image_tag(_IMAGE.get())
     ctx.obj[CTX_VERSION] = version
 
