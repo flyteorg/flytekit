@@ -20,8 +20,12 @@ def register_all(project, domain, pkgs, test, version):
 
     for m, k, o in iterate_registerable_entities_in_order(pkgs):
         name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
-        click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), name))
-        o.register(project, domain, name, version)
+
+        if test:
+            click.echo("Would register {:20} {}".format("{}:".format(o.entity_type_text), name))
+        else:
+            click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), name))
+            o.register(project, domain, name, version)
 
 
 def register_tasks_only(project, domain, pkgs, test, version):
@@ -33,8 +37,13 @@ def register_tasks_only(project, domain, pkgs, test, version):
 
     # Discover all tasks by loading the module
     for m, k, t in iterate_registerable_entities_in_order(pkgs, include_entities={_task.SdkTask}):
-        t.register(project, domain, _utils.fqdn(m.__name__, k, entity_type=t.resource_type), version)
+        name = _utils.fqdn(m.__name__, k, entity_type=t.resource_type)
 
+        if test:
+            click.echo("Would register task {:20} {}".format("{}:".format(o.entity_type_text), name))
+        else:
+            click.echo("Registering task {:20} {}".format("{}:".format(o.entity_type_text), name))
+            t.register(project, domain, name, version)
 
 @click.group('register')
 # --pkgs on the register group is DEPRECATED, use same arg on pyflyte.main instead
