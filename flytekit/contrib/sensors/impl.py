@@ -1,8 +1,6 @@
 from __future__ import absolute_import
 
-import flytekit.plugins.hmsclient as _hmsclient
-import flytekit.plugins.hmsclient.genthrift.hive_metastore.ttypes as _ttypes
-
+from flytekit.plugins import hmsclient as _hmsclient
 from flytekit.contrib.sensors.base_sensor import Sensor as _Sensor
 
 
@@ -60,7 +58,7 @@ class HiveTableSensor(_HiveSensor):
             try:
                 client.get_table(self._schema, self._table_name)
                 return True, None
-            except _ttypes.NoSuchObjectException:
+            except _hmsclient.genthrift.hive_metastore.ttypes.NoSuchObjectException:
                 return False, None
 
 
@@ -98,7 +96,7 @@ class HiveNamedPartitionSensor(_HiveSensor):
                 for partition_name in self._partition_names:
                     client.get_partition_by_name(self._schema, self._table_name, partition_name)
                 return True, None
-            except _ttypes.NoSuchObjectException:
+            except _hmsclient.genthrift.hive_metastore.ttypes.NoSuchObjectException:
                 return False, None
 
 
