@@ -111,6 +111,8 @@ def sensor_task(
             timeout=timeout,
             environment=environment,
             custom={},
+            discovery_version='',
+            discoverable=False,
         )
 
     # This is syntactic-sugar, so that when calling this decorator without args, you can either
