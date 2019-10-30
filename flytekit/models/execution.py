@@ -6,7 +6,7 @@ import flyteidl.admin.task_execution_pb2 as _task_execution_pb2
 
 from flytekit.models import common as _common_models
 from flytekit.models.core import execution as _core_execution, identifier as _identifier
-
+import pytz as _pytz
 
 class ExecutionMetadata(_common_models.FlyteIdlEntity):
 
@@ -272,13 +272,15 @@ class Execution(_common_models.FlyteIdlEntity):
 
 class ExecutionClosure(_common_models.FlyteIdlEntity):
 
-    def __init__(self, phase, error=None, outputs=None):
+    def __init__(self, phase, started_at, error=None, outputs=None):
         """
         :param int phase: From the flytekit.models.core.execution.WorkflowExecutionPhase enum
+        :param datetime.datetime started_at:
         :param flytekit.models.core.execution.ExecutionError error:
         :param LiteralMapBlob outputs:
         """
         self._phase = phase
+        self._started_at = started_at
         self._error = error
         self._outputs = outputs
 
@@ -298,6 +300,13 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         return self._phase
 
     @property
+    def started_at(self):
+        """
+        :rtype: datetime.datetime
+        """
+        return self._started_at
+
+    @property
     def outputs(self):
         """
         :rtype: LiteralMapBlob
@@ -308,11 +317,14 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionClosure
         """
-        return _execution_pb2.ExecutionClosure(
+        obj = _execution_pb2.ExecutionClosure(
+            computed_inputs=self.computed_inputs.to_flyte_idl(),
             phase=self.phase,
             error=self.error.to_flyte_idl() if self.error is not None else None,
             outputs=self.outputs.to_flyte_idl() if self.outputs is not None else None
         )
+        obj.started_at.FromDatetime(self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None))
+        return obj
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -330,6 +342,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             error=error,
             outputs=outputs,
             phase=pb2_object.phase,
+            started_at=pb2_object.started_at.ToDatetime().replace(tzinfo=_pytz.UTC),
         )
 
 
@@ -371,7 +384,6 @@ class _CommonDataResponse(_common_models.FlyteIdlEntity):
     Currently, node, task, and workflow execution all have the same get data response. So we'll create this common
     superclass to reduce code duplication until things diverge in the future.
     """
-    _PB = None
 
     def __init__(self, inputs, outputs):
         """
@@ -395,34 +407,68 @@ class _CommonDataResponse(_common_models.FlyteIdlEntity):
         """
         return self._outputs
 
-    def to_flyte_idl(self):
-        """
-        :rtype: _execution_pb2.WorkflowExecutionGetDataResponse
-        """
-        return type(self)._PB(
-            inputs=self.inputs.to_flyte_idl(),
-            outputs=self.outputs.to_flyte_idl(),
-        )
 
+class WorkflowExecutionGetDataResponse(_CommonDataResponse):
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         """
-        :param T pb2_object:
-        :rtype: _CommonDataResponse
+        :param _execution_pb2.WorkflowExecutionGetDataResponse pb2_object:
+        :rtype: WorkflowExecutionGetDataResponse
         """
         return cls(
             inputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.inputs),
             outputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.outputs),
         )
 
-
-class WorkflowExecutionGetDataResponse(_CommonDataResponse):
-    _PB = _execution_pb2.WorkflowExecutionGetDataResponse
+    def to_flyte_idl(self):
+        """
+        :rtype: _execution_pb2.WorkflowExecutionGetDataResponse
+        """
+        return _execution_pb2.WorkflowExecutionGetDataResponse(
+            inputs=self.inputs.to_flyte_idl(),
+            outputs=self.outputs.to_flyte_idl(),
+        )
 
 
 class TaskExecutionGetDataResponse(_CommonDataResponse):
-    _PB = _task_execution_pb2.TaskExecutionGetDataResponse
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param _task_execution_pb2.TaskExecutionGetDataResponse pb2_object:
+        :rtype: TaskExecutionGetDataResponse
+        """
+        return cls(
+            inputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.inputs),
+            outputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.outputs),
+        )
+
+    def to_flyte_idl(self):
+        """
+        :rtype: _task_execution_pb2.TaskExecutionGetDataResponse
+        """
+        return _task_execution_pb2.TaskExecutionGetDataResponse(
+            inputs=self.inputs.to_flyte_idl(),
+            outputs=self.outputs.to_flyte_idl(),
+        )
 
 
 class NodeExecutionGetDataResponse(_CommonDataResponse):
-    _PB = _node_execution_pb2.NodeExecutionGetDataResponse
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param _node_execution_pb2.NodeExecutionGetDataResponse pb2_object:
+        :rtype: NodeExecutionGetDataResponse
+        """
+        return cls(
+            inputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.inputs),
+            outputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.outputs),
+        )
+
+    def to_flyte_idl(self):
+        """
+        :rtype: _node_execution_pb2.NodeExecutionGetDataResponse
+        """
+        return _node_execution_pb2.NodeExecutionGetDataResponse(
+            inputs=self.inputs.to_flyte_idl(),
+            outputs=self.outputs.to_flyte_idl(),
+        )

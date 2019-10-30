@@ -14,6 +14,9 @@ type(flyteidl).add_sub_module("plugins.sidecar_pb2")
 numpy = _lazy_loader.lazy_load_module("numpy")  # type: types.ModuleType
 pandas = _lazy_loader.lazy_load_module("pandas")  # type: types.ModuleType
 
+hmsclient = _lazy_loader.lazy_load_module("hmsclient")  # type: types.ModuleType
+type(hmsclient).add_sub_module("genthrift.hive_metastore.ttypes")
+
 _lazy_loader.LazyLoadPlugin(
     "spark",
     ["pyspark>=2.4.0,<3.0.0"],
@@ -34,4 +37,12 @@ _lazy_loader.LazyLoadPlugin(
         "pyarrow>=0.11.0,<1.0.0",
     ],
     [numpy, pandas]
+)
+
+_lazy_loader.LazyLoadPlugin(
+    "hive_sensor",
+    [
+        "hmsclient>=0.0.1,<1.0.0",
+    ],
+    [hmsclient]
 )

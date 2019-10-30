@@ -6,7 +6,7 @@ import six
 from click.testing import CliRunner
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit.bin.entrypoint import execute_task_cmd, execute_task
+from flytekit.bin.entrypoint import execute_task_cmd, _execute_task
 from flytekit.common import utils as _utils, constants as _constants
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.models import literals as _literals
@@ -35,7 +35,7 @@ def test_single_step_entrypoint_in_proc():
             _utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
 
             with _utils.AutoDeletingTempDir("out") as output_dir:
-                execute_task(
+                _execute_task(
                     _task_defs.add_one.task_module,
                     _task_defs.add_one.task_function_name,
                     input_file,
@@ -116,7 +116,7 @@ def test_arrayjob_entrypoint_in_proc():
             os.environ['BATCH_JOB_ARRAY_INDEX_VAR_NAME'] = 'AWS_BATCH_JOB_ARRAY_INDEX'
             os.environ['AWS_BATCH_JOB_ARRAY_INDEX'] = '0'
 
-            execute_task(
+            _execute_task(
                 _task_defs.add_one.task_module,
                 _task_defs.add_one.task_function_name,
                 dir.name,
