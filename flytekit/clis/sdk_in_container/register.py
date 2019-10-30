@@ -37,19 +37,21 @@ def register_tasks_only(project, domain, pkgs, test, version):
 
 
 @click.group('register')
-@click.option('--pkgs', multiple=True, help='Comma separated list of dot separated python packages to operate on')
+# --pkgs on the register group is DEPRECATED, use same arg on pyflyte.main instead
+@click.option('--pkgs', multiple=True, hidden=True)
+@click.option('--test', is_flag=True, help='Dry run, do not actually register with Admin')
 @click.pass_context
-def register(ctx, pkgs=None):
+def register(ctx, pkgs=None, test=None):
     """
-    Run registration steps for the workflow package location defined in this container.  Run with the --test switch
-    for a dry run to see what will be registered.  A default launch plan will also be created, if a role can be found
-    in the environment variables.
-    """
-    pkgs = pkgs or []
-    if len(pkgs) == 0:
-        pkgs = _WORKFLOW_PACKAGES.get()
+    Run registration steps for the workflows in this container.
 
-    ctx.obj[CTX_PACKAGES] = pkgs
+    Run with the --test switch for a dry run to see what will be registered.  A default launch plan will also be
+    created, if a role can be found in the environment variables.
+    """
+    if pkgs:
+        raise click.UsageError("--pkgs must now be specified before the 'register' keyword on the command line")
+
+    ctx.obj[CTX_TEST] = test
 
 
 @click.command('tasks')
