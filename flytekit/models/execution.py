@@ -318,7 +318,6 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         :rtype: flyteidl.admin.execution_pb2.ExecutionClosure
         """
         obj = _execution_pb2.ExecutionClosure(
-            computed_inputs=self.computed_inputs.to_flyte_idl(),
             phase=self.phase,
             error=self.error.to_flyte_idl() if self.error is not None else None,
             outputs=self.outputs.to_flyte_idl() if self.outputs is not None else None
