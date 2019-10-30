@@ -1,17 +1,11 @@
-from datetime import timedelta as _timedelta
-
+from __future__ import absolute_import
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
-
-from flytekit.contrib.base_sensor import Sensor as _Sensor
+from flytekit.contrib.sensors.base_sensor import Sensor as _Sensor
 
 
 class SensorTask(_sdk_runnable.SdkRunnableTask):
-
-    def __init__(self, **kwargs):
-        super(SensorTask, self).__init__(**kwargs)
-
     def _execute_user_code(self, context, inputs):
         sensor = super(SensorTask, self)._execute_user_code(context=context, inputs=inputs)
         if sensor is not None:
@@ -27,7 +21,6 @@ class SensorTask(_sdk_runnable.SdkRunnableTask):
 
 def sensor_task(
     _task_function=None,
-    cache_version='',
     retries=0,
     deprecated='',
     storage_request=None,
@@ -38,13 +31,13 @@ def sensor_task(
     cpu_limit=None,
     gpu_limit=None,
     memory_limit=None,
-    cache=False,
     timeout=None,
     environment=None,
     cls=None,
 ):
     """
     Decorator to create a Sensor Task definition.  This task will run as a single unit of work on the platform.
+
     .. code-block:: python
         @sensor_task(retries=3)
         def my_task(wf_params):
@@ -54,13 +47,10 @@ def sensor_task(
                 host='localhost',
                 port=1234,
             )
+
     :param _task_function: this is the decorated method and shouldn't be declared explicitly.  The function must
         take a first argument, and then named arguments matching those defined in @inputs.  No keyword
         arguments are allowed for wrapped task functions.
-    :param Text cache_version: [optional] string representing logical version for discovery.  This field should be
-        updated whenever the underlying algorithm changes.
-        .. note::
-            This argument is required to be a non-empty string if `cache` is True.
     :param int retries: [optional] integer determining number of times task can be retried on
         :py:exc:`flytekit.sdk.exceptions.RecoverableException` or transient platform failures.  Defaults
         to 0.
@@ -94,22 +84,20 @@ def sensor_task(
     :param Text memory_limit: [optional]  Kubernetes resource string for upper-bound of physical memory
         necessary for the task to execute.  This amount is not guaranteed!  If not specified, it is set equal to
         memory_request.
-    :param bool cache: [optional] boolean describing if the outputs of this task should be cached and
-        re-usable.
     :param datetime.timedelta timeout: [optional] describes how long the task should be allowed to
         run at max before triggering a retry (if retries are enabled).  By default, tasks are allowed to run
         indefinitely.  If a null timedelta is passed (i.e. timedelta(seconds=0)), the task will not timeout.
     :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  A user can use this to
-        inject bespoke logic into the base Flyte programming model.
-    :rtype: flytekit.common.tasks.sdk_runnable.SdkRunnableTask
+        inject bespoke logic into the base Flyte programming model. Ideally, should be a sub-class of SensorTask or
+        otherwise mimic the behavior.
+    :rtype: SensorTask
     """
     def wrapper(fn):
-        return SensorTask(
+        return (SensorTask or cls)(
             task_function=fn,
             task_type=_common_constants.SdkTaskType.SENSOR_TASK,
-            discovery_version='',
             retries=retries,
             deprecated=deprecated,
             storage_request=storage_request,
@@ -120,10 +108,11 @@ def sensor_task(
             cpu_limit=cpu_limit,
             gpu_limit=gpu_limit,
             memory_limit=memory_limit,
-            discoverable=False,
             timeout=timeout,
             environment=environment,
             custom={},
+            discovery_version='',
+            discoverable=False,
         )
 
     # This is syntactic-sugar, so that when calling this decorator without args, you can either

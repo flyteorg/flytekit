@@ -47,7 +47,6 @@ setup(
         "statsd>=3.0.0,<4.0.0",
         "urllib3>=1.22,<1.25",
         "wrapt>=1.0.0,<2.0.0",
-        "hmsclient",
     ],
     extras_require=extras_require,
     scripts=[

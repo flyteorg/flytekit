@@ -1,5 +1,6 @@
-from flytekit.contrib.base_sensor import Sensor as _Sensor
-from flytekit.contrib.task import sensor_task
+from flytekit.contrib.sensors.base_sensor import Sensor as _Sensor
+
+from flytekit.contrib.sensors.task import sensor_task
 
 
 class MyMockSensor(_Sensor):
