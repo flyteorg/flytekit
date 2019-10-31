@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 from flytekit.interfaces.data.local import local_file_proxy as _local_file_proxy
+from flytekit.interfaces.data.http import http_data_proxy as _http_data_proxy
 from flytekit.common.exceptions import user as _user_exception
 from flytekit.common import utils as _common_utils
 import six as _six
@@ -64,7 +65,9 @@ class RemoteDataContext(_OutputDataContext):
 class Data(object):
     # TODO: More proxies for more environments.
     _DATA_PROXIES = {
-        "s3:/": _s3proxy.AwsS3Proxy()
+        "s3:/": _s3proxy.AwsS3Proxy(),
+        "http://": _http_data_proxy.HttpFileProxy(),
+        "https://": _http_data_proxy.HttpFileProxy(),
     }
 
     @classmethod
@@ -73,7 +76,10 @@ class Data(object):
         :param Text path:
         :rtype: flytekit.interfaces.data.common.DataProxy
         """
-        return cls._DATA_PROXIES.get(path[:4], _OutputDataContext.get_default_proxy())
+        for k, v in _six.iteritems(cls._DATA_PROXIES):
+            if path.startswith(k):
+                return v
+        return _OutputDataContext.get_default_proxy()
 
     @classmethod
     def data_exists(cls, path):
