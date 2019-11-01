@@ -365,6 +365,14 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.TerminateExecution(terminate_execution_request)
 
+    @_handle_rpc_error
+    def relaunch_execution(self, relaunch_execution_request):
+        """
+        :param flyteidl.admin.execution_pb2.ExecutionRelaunchRequest relaunch_execution_request:
+        :rtype: flyteidl.admin.execution_pb2.ExecutionCreateResponse
+        """
+        return self._stub.RelaunchExecution(relaunch_execution_request)
+
     ####################################################################################################################
     #
     #  Node Execution Endpoints

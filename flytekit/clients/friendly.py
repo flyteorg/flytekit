@@ -670,6 +670,23 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
+    def relaunch_execution(self, id, name=None):
+        """
+        :param flytekit.common.core.identifier.WorkflowExecutionIdentifier id:
+        :param Text name: [Optional] name for the new execution. If not specified, a randomly generated name will be
+            used
+        :returns: The unique identifier for the new execution.
+        :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier
+        """
+        return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
+            super(SynchronousFlyteClient, self).relaunch_execution(
+                _execution_pb2.ExecutionRelaunchRequest(
+                    id=id.to_flyte_idl(),
+                    name=name
+                )
+            ).id
+        )
+
     ####################################################################################################################
     #
     #  Node Execution Endpoints
