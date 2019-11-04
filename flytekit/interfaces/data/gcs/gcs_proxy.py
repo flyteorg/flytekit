@@ -95,7 +95,7 @@ class GCSProxy(_common_data.DataProxy):
             raise ValueError("Not an GS Key. Please use FQN (GS ARN) of the format gs://...")
 
         GCSProxy._check_binary()
-        cmd = [GCSProxy._GS_UTIL_CLI, "cp", "-r", local_path, remote_path]
+        cmd = [GCSProxy._GS_UTIL_CLI, "cp", "-r", local_path + "/*", remote_path]
         return _update_cmd_config_and_execute(cmd)
 
     def get_random_path(self):
