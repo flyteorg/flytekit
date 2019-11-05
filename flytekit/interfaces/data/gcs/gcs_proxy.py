@@ -23,7 +23,7 @@ def _update_cmd_config_and_execute(cmd):
 
 
 def _amend_path(path):
-    return path + "/*" if not path.endswith("*") else path
+    return _os.path.join(path, '*') if not path.endswith("*") else path
 
 
 class GCSProxy(_common_data.DataProxy):
