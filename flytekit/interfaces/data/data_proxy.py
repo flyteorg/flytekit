@@ -35,10 +35,10 @@ class _OutputDataContext(object):
     def __init__(self, context):
         self._context = context
 
+    def __enter__(self):
         self._CONTEXTS.append(self._context)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-    def __enter__(self):
         self._CONTEXTS.pop()
 
     @classmethod
