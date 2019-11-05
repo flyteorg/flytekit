@@ -56,7 +56,7 @@ class GCSProxy(_common_data.DataProxy):
 
     def download_directory(self, remote_path, local_path):
         """
-        :param Text remote_path: remote s3:// path
+        :param Text remote_path: remote gs:// path
         :param Text local_path: directory to copy to
         """
         GCSProxy._check_binary()
@@ -69,7 +69,7 @@ class GCSProxy(_common_data.DataProxy):
 
     def download(self, remote_path, local_path):
         """
-        :param Text remote_path: remote s3:// path
+        :param Text remote_path: remote gs:// path
         :param Text local_path: directory to copy to
         """
         if not remote_path.startswith("gs://"):
