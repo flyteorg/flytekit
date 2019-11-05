@@ -22,6 +22,10 @@ def _update_cmd_config_and_execute(cmd):
     return _subprocess.check_call(cmd, env=env)
 
 
+def _amend_path(path):
+    return path + "/*" if not path.endswith("*") else path
+
+
 class GCSProxy(_common_data.DataProxy):
     _GS_UTIL_CLI = "gsutil"
 
@@ -60,7 +64,7 @@ class GCSProxy(_common_data.DataProxy):
         if not remote_path.startswith("gs://"):
             raise ValueError("Not an GS Key. Please use FQN (GS ARN) of the format gs://...")
 
-        cmd = [GCSProxy._GS_UTIL_CLI, "cp", "-r", remote_path, local_path]
+        cmd = [GCSProxy._GS_UTIL_CLI, "cp", "-r", _amend_path(remote_path), local_path]
         return _update_cmd_config_and_execute(cmd)
 
     def download(self, remote_path, local_path):
@@ -95,7 +99,7 @@ class GCSProxy(_common_data.DataProxy):
             raise ValueError("Not an GS Key. Please use FQN (GS ARN) of the format gs://...")
 
         GCSProxy._check_binary()
-        cmd = [GCSProxy._GS_UTIL_CLI, "cp", "-r", local_path, remote_path]
+        cmd = [GCSProxy._GS_UTIL_CLI, "cp", "-r", _amend_path(local_path), remote_path]
         return _update_cmd_config_and_execute(cmd)
 
     def get_random_path(self):
