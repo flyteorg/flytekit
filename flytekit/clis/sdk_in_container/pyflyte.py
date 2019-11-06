@@ -58,8 +58,11 @@ def main(ctx, project, domain, config=None, pkgs=None, version=None, insecure=No
 
     # Handle package management - get from config if not specified on the command line
     pkgs = pkgs or []
+    print('1. pkgs {}'.format(pkgs))
     if len(pkgs) == 0:
+        print('2. pkgs {}'.format(pkgs))
         pkgs = _WORKFLOW_PACKAGES.get()
+    print('3. pkgs {}'.format(pkgs))
     ctx.obj[CTX_PACKAGES] = pkgs
 
     _os.environ[_internal_config.PROJECT.env_var] = project
