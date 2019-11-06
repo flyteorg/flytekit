@@ -14,5 +14,5 @@ def test_lazy_loader_error_message():
     with pytest.raises(ImportError) as e:
         lazy_mod.some_bad_attr
 
-    assert 'uninstalled_plugin' in six.text_type(e)
-    assert 'flytekit[all]' in six.text_type(e)
+    assert 'uninstalled_plugin' in six.text_type(e.value)
+    assert 'flytekit[all]' in six.text_type(e.value)

@@ -49,7 +49,7 @@ def _map_job_index_to_child_index(local_input_dir, datadir, index):
 
 
 @_scopes.system_entry_point
-def execute_task(task_module, task_name, inputs, output_prefix, test):
+def _execute_task(task_module, task_name, inputs, output_prefix, test):
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with _utils.AutoDeletingTempDir('input_dir') as input_dir:
             # Load user code
@@ -88,7 +88,12 @@ def execute_task(task_module, task_name, inputs, output_prefix, test):
                 )
 
 
-@_click.command('pyflyte-execute')
+@_click.group()
+def _pass_through():
+    pass
+
+
+@_pass_through.command('pyflyte-execute')
 @_click.option('--task-module', required=True)
 @_click.option('--task-name', required=True)
 @_click.option('--inputs', required=True)
@@ -96,4 +101,8 @@ def execute_task(task_module, task_name, inputs, output_prefix, test):
 @_click.option('--test', is_flag=True)
 def execute_task_cmd(task_module, task_name, inputs, output_prefix, test):
     _click.echo(_utils.get_version_message())
-    execute_task(task_module, task_name, inputs, output_prefix, test)
+    _execute_task(task_module, task_name, inputs, output_prefix, test)
+
+
+if __name__ == '__main__':
+    _pass_through()
