@@ -14,7 +14,11 @@ except ImportError:
         from http import client as _StatusCodes
     except ImportError:  # Python 2
         import httplib as _StatusCodes
-from BaseHTTPServer import HTTPServer as _HTTPServer, BaseHTTPRequestHandler as _BaseHTTPRequestHandler
+
+try:  # Python 3
+    from http.server import HTTPServer as _HTTPServer, BaseHTTPRequestHandler as _BaseHTTPRequestHandler
+except ImportError:  # Python 2
+    from BaseHTTPServer import HTTPServer as _HTTPServer, BaseHTTPRequestHandler as _BaseHTTPRequestHandler
 
 try:  # Python 3
     from urllib.parse import urlparse as _urlparse, parse_qsl as _parse_qsl
@@ -98,6 +102,7 @@ class OAuthHTTPServer(_HTTPServer):
     A simple wrapper around the BaseHTTPServer.HTTPServer implementation that binds an authorization_client for handling
     authorization code callbacks.
     """
+
     def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True,
                  redirect_path=None, queue=None):
         _HTTPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)

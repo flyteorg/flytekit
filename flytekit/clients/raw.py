@@ -35,7 +35,7 @@ class RawSynchronousFlyteClient(object):
         :param Text credentials: [Optional] If provided, a secure channel will be opened with the Flyte Admin Service.
         :param dict[Text, Text] options: [Optional] A dict of key-value string pairs for configuring the gRPC core
             runtime.
-        :param [(Text, Text)] metadata: [Optional] metadata pairs to be transmitted to the
+        :param [(Text,Text)] metadata: [Optional] metadata pairs to be transmitted to the
             service-side of the RPC.
         """
         self._channel = None
