@@ -1,9 +1,9 @@
 from __future__ import absolute_import
 
 import uuid as _uuid
-
 import six as _six
 
+from flyteidl.core import tasks_pb2 as _tasks_pb2
 from flytekit.common import interface as _interfaces, nodes as _nodes, sdk_bases as _sdk_bases
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
@@ -23,30 +23,79 @@ class SdkTask(
     )
 ):
 
-    def __init__(self, type, metadata, interface, custom, container=None):
+    def __init__(self, type=None, metadata=None, interface=None, custom=None, container=None, id=None **_):
         """
         :param Text type: This is used to define additional extensions for use by Propeller or SDK.
-        :param TaskMetadata metadata: This contains information needed at runtime to determine behavior such as
-            whether or not outputs are discoverable, timeouts, and retries.
+        :param _task_model.TaskMetadata metadata: This contains information needed at runtime to determine behavior
+            such as whether or not outputs are discoverable, timeouts, and retries.
         :param flytekit.common.interface.TypedInterface interface: The interface definition for this task.
-        :param dict[Text, T] custom: Arbitrary type for use by plugins.
-        :param Container container: Provides the necessary entrypoint information for execution.  For instance,
-            a Container might be specified with the necessary command line arguments.
+        :param dict[Text,T] custom: Arbitrary type for use by plugins.
+        :param _task_model.Container container: Provides the necessary entrypoint information for execution.  For
+            instance, a Container might be specified with the necessary command line arguments.
+        :param _identifier.Identifier id: ID to assign to this task.
         """
         super(SdkTask, self).__init__(
-            _identifier.Identifier(
-                _identifier_model.ResourceType.TASK,
-                _internal_config.PROJECT.get(),
-                _internal_config.DOMAIN.get(),
-                _uuid.uuid4().hex,
-                _internal_config.VERSION.get()
-            ),
-            type,
-            metadata,
-            interface,
-            custom,
-            container=container
+            id or type(self)._get_default_id(),
+            type or type(self)._get_default_type(),
+            metadata or type(self)._get_default_metadata(),
+            interface or type(self)._get_default_interface(),
+            custom or type(self)._get_default_custom(),
+            container=container or type(self)._get_default_container()
         )
+
+    @classmethod
+    def _get_default_id(cls):
+        """
+        Override to negate the need for setting kwarg inputs to the task constructor
+        :rtype: _identifier.Identifier
+        """
+        return _identifier.Identifier(
+            _identifier_model.ResourceType.TASK,
+            _internal_config.PROJECT.get(),
+            _internal_config.DOMAIN.get(),
+            _uuid.uuid4().hex,
+            _internal_config.VERSION.get()
+        )
+
+    @classmethod
+    def _get_default_type(cls):
+        """
+        Override to negate the need for setting kwarg inputs to the task constructor
+        :rtype: Text
+        """
+        return 'undefined'
+
+    @classmethod
+    def _get_default_metadata(cls):
+        """
+        Override to negate the need for setting kwarg inputs to the task constructor
+        :rtype: _task_model.TaskMetadata
+        """
+        return _task_model.TaskMetadata.from_flyte_idl(_tasks_pb2.TaskMetadata())
+
+    @classmethod
+    def _get_default_interface(cls):
+        """
+        Override to negate the need for setting kwarg inputs to the task constructor
+        :rtype: flytekit.common.interface.TypedInterface
+        """
+        return _interfaces.TypedInterface({}, {})
+
+    @classmethod
+    def _get_default_custom(cls):
+        """
+        Override to negate the need for setting kwarg inputs to the task constructor
+        :rtype: dict[Text,T]
+        """
+        return {}
+
+    @classmethod
+    def _get_default_container(cls):
+        """
+        Override to negate the need for setting kwarg inputs to the task constructor
+        :rtype: _task_model.Container
+        """
+        return None
 
     @property
     def interface(self):

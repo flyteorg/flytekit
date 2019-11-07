@@ -189,8 +189,8 @@ class TaskMetadata(_common.FlyteIdlEntity):
         :param Text discovery_version: This is the version used to create a logical version for data in the cache.
             This is only used when `discoverable` is true.  Data is considered discoverable if: the inputs to a given
             task are the same and the discovery_version is also the same.
-        :param Text deprecated: This string can be used to mark the task as deprecated.  Consumers of the task will
-            receive deprecation warnings.
+        :param Text deprecated_error_message: This string can be used to mark the task as deprecated.  Consumers of the
+            task will receive deprecation warnings.
         """
         self._discoverable = discoverable
         self._runtime = runtime

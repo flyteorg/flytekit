@@ -52,30 +52,15 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
     """
     def __init__(
             self,
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            deprecated,
-            discoverable,
-            timeout,
-            spark_conf,
-            hadoop_conf,
-            environment,
+            spark_conf=None,
+            hadoop_conf=None,
+            **kwargs
     ):
         """
-        :param task_function: Function container user code.  This will be executed via the SDK's engine.
-        :param Text task_type: string describing the task type
-        :param Text discovery_version: string describing the version for task discovery purposes
-        :param int retries: Number of retries to attempt
-        :param Text deprecated:
-        :param bool discoverable:
-        :param datetime.timedelta timeout:
-        :param dict[Text, Text] spark_conf:
-        :param dict[Text, Text] hadoop_conf:
-        :param dict[Text, Text] environment: [optional] environment variables to set when executing this task.
+        :param dict[Text,Text] spark_conf:
+        :param dict[Text,Text] hadoop_conf:
+        :param kwargs: See _sdk_runnable.SdkRunnableTask
         """
-
         spark_exec_path = _os.path.abspath(spark_executor.__file__)
         if spark_exec_path.endswith('.pyc'):
             spark_exec_path = spark_exec_path[:-1]
@@ -87,23 +72,8 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
             executor_path=_sys.executable,
         ).to_flyte_idl()
         super(SdkSparkTask, self).__init__(
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            deprecated,
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            discoverable,
-            timeout,
-            environment,
-            _MessageToDict(spark_job),
+            custom=_MessageToDict(spark_job),
+            **kwargs,
         )
 
     @_exception_scopes.system_entry_point

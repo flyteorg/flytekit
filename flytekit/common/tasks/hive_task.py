@@ -31,49 +31,16 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
 
     def __init__(
             self,
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            deprecated,
-            storage_request,
-            cpu_request,
-            gpu_request,
-            memory_request,
-            storage_limit,
-            cpu_limit,
-            gpu_limit,
-            memory_limit,
-            discoverable,
-            timeout,
-            cluster_label,
-            tags,
-            environment
+            cluster_label=None,
+            tags=None,
+            **kwargs
     ):
         """
-        :param task_function: Function container user code.  This will be executed via the SDK's engine.
-        :param Text task_type: string describing the task type
-        :param Text discovery_version: string describing the version for task discovery purposes
-        :param int retries: Number of retries to attempt
-        :param Text deprecated:
-        :param Text storage_request:
-        :param Text cpu_request:
-        :param Text gpu_request:
-        :param Text memory_request:
-        :param Text storage_limit:
-        :param Text cpu_limit:
-        :param Text gpu_limit:
-        :param Text memory_limit:
-        :param bool discoverable:
-        :param datetime.timedelta timeout:
         :param Text cluster_label:
         :param list[Text] tags:
-        :param dict[Text, Text] environment:
+        :param kwargs: See _sdk_runnable.SdkRunnableTask
         """
-        self._task_function = task_function
-        super(SdkHiveTask, self).__init__(task_function, task_type, discovery_version, retries, deprecated,
-                                          storage_request, cpu_request, gpu_request, memory_request, storage_limit,
-                                          cpu_limit, gpu_limit, memory_limit, discoverable, timeout, environment, {})
+        super(SdkHiveTask, self).__init__(**kwargs)
         self._validate_task_parameters(cluster_label, tags)
         self._cluster_label = cluster_label
         self._tags = tags
@@ -82,7 +49,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         """
         Runs user code and and produces hive queries
         :param flytekit.engines.common.EngineContext context:
-        :param dict[Text, T] inputs:
+        :param dict[Text,T] inputs_dict:
         :rtype: list[_qubole.QuboleHiveJob]
         """
         queries_from_task = super(SdkHiveTask, self)._execute_user_code(context, inputs_dict) or []

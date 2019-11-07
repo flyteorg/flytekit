@@ -22,26 +22,11 @@ class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
     """
 
     def __init__(self,
-                 task_function,
-                 task_type,
-                 discovery_version,
-                 retries,
-                 deprecated,
-                 storage_request,
-                 cpu_request,
-                 gpu_request,
-                 memory_request,
-                 storage_limit,
-                 cpu_limit,
-                 gpu_limit,
-                 memory_limit,
-                 discoverable,
-                 timeout,
-                 environment,
                  pod_spec=None,
-                 primary_container_name=None):
+                 primary_container_name=None,
+                 **kwargs):
         """
-        :param _sdk_runnable.SdkRunnableTask sdk_runnable_task:
+        :param kwargs: See _sdk_runnable.SdkRunnableTask:
         :param generated_pb2.PodSpec pod_spec:
         :param Text primary_container_name:
         :raises: flytekit.common.exceptions.user.FlyteValidationException
@@ -50,27 +35,7 @@ class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             raise _user_exceptions.FlyteValidationException("A pod spec cannot be undefined")
         if not primary_container_name:
             raise _user_exceptions.FlyteValidationException("A primary container name cannot be undefined")
-
-        super(SdkSidecarTask, self).__init__(
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            deprecated,
-            storage_request,
-            cpu_request,
-            gpu_request,
-            memory_request,
-            storage_limit,
-            cpu_limit,
-            gpu_limit,
-            memory_limit,
-            discoverable,
-            timeout,
-            environment,
-            custom=None,
-        )
-
+        super(SdkSidecarTask, self).__init__(custom=None, **kwargs)
         self.reconcile_partial_pod_spec_and_task(pod_spec, primary_container_name)
 
     def reconcile_partial_pod_spec_and_task(self,

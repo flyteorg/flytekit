@@ -5,6 +5,7 @@ try:
 except ImportError:
     from inspect import getargspec as _getargspec
 
+import abc as _abc
 import six as _six
 
 from flytekit import __version__
@@ -15,105 +16,69 @@ from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import sdk as _sdk_config, internal as _internal_config, resources as _resource_config
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import literals as _literal_models, task as _task_models
-from flytekit.common.core.identifier import WorkflowExecutionIdentifier
-
-
-class ExecutionParameters(object):
-
-    """
-    This is the parameter object that will be provided as the first parameter for every execution of any @*_task
-    decorated function.
-    """
-
-    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging):
-        self._stats = stats
-        self._execution_date = execution_date
-        self._working_directory = tmp_dir
-        self._execution_id = execution_id
-        self._logging = logging
-
-    @property
-    def stats(self):
-        """
-        A handle to a special statsd object that provides usefully tagged stats.
-
-        TODO: Usage examples and better comments
-
-        :rtype: flytekit.interfaces.stats.taggable.TaggableStats
-        """
-        return self._stats
-
-    @property
-    def logging(self):
-        """
-        A handle to a useful logging object.
-
-        TODO: Usage examples
-
-        :rtype: logging
-        """
-        return self._logging
-
-    @property
-    def working_directory(self):
-        """
-        A handle to a special working directory for easily producing temporary files.
-
-        TODO: Usage examples
-
-        :rtype: flytekit.common.utils.AutoDeletingTempDir
-        """
-        return self._working_directory
-
-    @property
-    def execution_date(self):
-        """
-        This is a datetime representing the time at which a workflow was started.  This is consistent across all tasks
-        executed in a workflow or sub-workflow.
-
-        .. note::
-
-            Do NOT use this execution_date to drive any production logic.  It might be useful as a tag for data to help
-            in debugging.
-
-        :rtype: datetime.datetime
-        """
-        return self._execution_date
-
-    @property
-    def execution_id(self):
-        """
-        This is the identifier of the workflow execution within the underlying engine.  It will be consistent across all
-        task executions in a workflow or sub-workflow execution.
-
-        .. note::
-
-            Do NOT use this execution_id to drive any production logic.  This execution ID should only be used as a tag
-            on output data to link back to the workflow run that created it.
-
-        :rtype: Text
-        """
-        return self._execution_id
 
 
 class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task_models.Container)):
 
     def __init__(
         self,
-        command,
-        args,
-        resources,
-        env,
-        config
+        command=None,
+        args=None,
+        resources=None,
+        env=None,
+        config=None,
+        image=None,
     ):
         super(SdkRunnableContainer, self).__init__(
-            "",
-            command,
-            args,
-            resources,
-            env or {},
-            config
+            image or type(self)._get_default_image(),
+            command or type(self)._get_default_command(),
+            args or type(self)._get_default_args(),
+            resources or type(self)._get_default_resources(),
+            env or type(self)._get_default_env(),
+            config or type(self)._get_default_config()
         )
+
+    @classmethod
+    def _get_default_image(cls):
+        """
+        :rtype: Text
+        """
+        return ""
+
+    @classmethod
+    def _get_default_command(cls):
+        """
+        :rtype: list[Text]
+        """
+        return []
+
+    @classmethod
+    def _get_default_args(cls):
+        """
+        :rtype: list[Text]
+        """
+        return []
+
+    @classmethod
+    def _get_default_resources(cls):
+        """
+        :rtype: _task_models.Resources
+        """
+        return _task_models.Resources(limits=[], requests=[])
+
+    @classmethod
+    def _get_default_env(cls):
+        """
+        :rtype: dict[Text,Text]
+        """
+        return dict()
+
+    @classmethod
+    def _get_default_config(cls):
+        """
+        :rtype: dict[Text,Text]
+        """
+        return dict()
 
     @property
     def args(self):
@@ -160,23 +125,24 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
 
     def __init__(
             self,
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            deprecated,
-            storage_request,
-            cpu_request,
-            gpu_request,
-            memory_request,
-            storage_limit,
-            cpu_limit,
-            gpu_limit,
-            memory_limit,
-            discoverable,
-            timeout,
-            environment,
-            custom
+            task_function=None,
+            task_type='',
+            discovery_version='',
+            retries=0,
+            deprecated=False,
+            storage_request=None,
+            cpu_request=None,
+            gpu_request=None,
+            memory_request=None,
+            storage_limit=None,
+            cpu_limit=None,
+            gpu_limit=None,
+            memory_limit=None,
+            discoverable=None,
+            timeout=None,
+            environment=None,
+            custom=None,
+            **kwargs
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -199,9 +165,10 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         """
         self._task_function = task_function
 
+        # TODO: Defaults ^^
         super(SdkRunnableTask, self).__init__(
-            task_type,
-            _task_models.TaskMetadata(
+            type=task_type,
+            metadata=_task_models.TaskMetadata(
                 discoverable,
                 _task_models.RuntimeMetadata(
                     _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
@@ -213,8 +180,8 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 discovery_version,
                 deprecated
             ),
-            _interface.TypedInterface({}, {}),
-            custom,
+            interface=_interface.TypedInterface({}, {}),
+            custom=custom,
             container=self._get_container_definition(
                 storage_request=storage_request,
                 cpu_request=cpu_request,
@@ -225,7 +192,8 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 gpu_limit=gpu_limit,
                 memory_limit=memory_limit,
                 environment=environment
-            )
+            ),
+            **kwargs
         )
         self.id._name = "{}.{}".format(self.task_module, self.task_function_name)
 
@@ -236,24 +204,6 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
     def promote_from_model(cls, base_model):
         # TODO: If the task exists in this container, we should be able to retrieve it.
         raise _user_exceptions.FlyteAssertion("Cannot promote a base object to a runnable task.")
-
-    @property
-    def task_function(self):
-        return self._task_function
-
-    @property
-    def task_function_name(self):
-        """
-        :rtype: Text
-        """
-        return self.task_function.__name__
-
-    @property
-    def task_module(self):
-        """
-        :rtype: Text
-        """
-        return self._task_function.__module__
 
     def validate(self):
         super(SdkRunnableTask, self).validate()
@@ -297,62 +247,88 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             })
         )
 
-    def _execute_user_code(self, context, inputs):
+    # TODO: Docstrings
+    def _unpack_inputs(self, context, inputs):
         """
-        :param flytekit.engines.common.EngineContext context:
-        :param dict[Text, T] inputs: This variable is a bit of a misnomer, since it's both inputs and outputs. The
-            dictionary passed here will be passed to the user-defined function, and will have values that are a
-            variety of types.  The T's here are Python std values for inputs.  If there isn't a native Python type for
-            something (like Schema or Blob), they are the Flyte classes.  For outputs they are OutputReferences.
-            (Note that these are not the same OutputReferences as in BindingData's)
-        :rtype: Any: the returned object from user code.
-        :returns: This function must return a dictionary mapping 'filenames' to Flyte Interface Entities.  These
-            entities will be used by the engine to pass data from node to node, populate metadata, etc. etc..  Each
-            engine will have different behavior.  For instance, the Flyte engine will upload the entities to a remote
-            working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
-            workflow.  Where as local engine will merely feed the outputs directly into the next node.
+        :param context:
+        :return:
         """
-
-        return _exception_scopes.user_entry_point(self.task_function)(
-            ExecutionParameters(
-                execution_date=context.execution_date,
-                # TODO: it might be better to consider passing the full struct
-                execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
-                stats=context.stats,
-                logging=context.logging,
-                tmp_dir=context.working_directory
-            ),
-            **inputs
+        return _type_helpers.unpack_literal_map_to_sdk_python_std(
+            inputs,
+            {
+                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
+                for k, v in _six.iteritems(self.interface.inputs)
+            }
         )
+
+    def _unpack_output_references(self, context):
+        """
+        :param context:
+        :return:
+        """
+        return {
+            name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
+            for name, variable in _six.iteritems(self.interface.outputs)
+        }
+
+    def _handle_user_returns(self, context, user_returned):
+        """
+        :param context:
+        :param user_returned:
+        :return:
+        """
+        return dict()
+
+    def _pack_output_references(self, context, outputs):
+        """
+        :param context:
+        :param outputs:
+        :return:
+        """
+        return {
+            _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
+                literals={k: v.sdk_value for k, v in _six.iteritems(outputs)}
+            )
+        }
+
+    @_abc.abstractmethod
+    def _execute_user_code(self, context, inputs, outputs):
+        """
+        Mixins override this method to determine how to execute the user-provided code.
+
+        :param flytekit.engines.common.EngineContext context:
+        :param dict[Text,T] inputs: This is the unpacked values for inputs to user code as defined by the type
+            engine.
+        :param dict[Text,OutputReferences] outputs: The outputs to be set by user code.
+        :rtype: Any: the returned object from user code.
+        """
+        pass
+    # TODO: End docstrings
 
     @_exception_scopes.system_entry_point
     def execute(self, context, inputs):
         """
+        It is not recommended to override this function unless implementing a mixin like in
+        flytekit.common.tasks.mixins.executable_traits. This function might be modified by mixins to ensure behavior
+        given the execution context. However, the general flow should adhere to the order laid out in this method.
+
+        To modify behavior for a task extension that is being authored, override the methods called from this function.
+
         :param flytekit.engines.common.EngineContext context:
         :param flytekit.models.literals.LiteralMap inputs:
-        :rtype: dict[Text, flytekit.models.common.FlyteIdlEntity]
+        :rtype: dict[Text,flytekit.models.common.FlyteIdlEntity]
         :returns: This function must return a dictionary mapping 'filenames' to Flyte Interface Entities.  These
             entities will be used by the engine to pass data from node to node, populate metadata, etc. etc..  Each
             engine will have different behavior.  For instance, the Flyte engine will upload the entities to a remote
             working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
-        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(inputs, {
-            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)
-        })
-        outputs_dict = {
-            name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
-            for name, variable in _six.iteritems(self.interface.outputs)
-        }
-        inputs_dict.update(outputs_dict)
-
-        self._execute_user_code(context, inputs_dict)
-
-        return {
-            _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
-                literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
-            )
-        }
+        inputs_dict = self._unpack_inputs(context, inputs)
+        outputs_dict = self._unpack_output_references(context)
+        user_returned = self._execute_user_code(context, inputs_dict, outputs_dict)
+        out_protos = self._handle_user_returns(context, user_returned)
+        out_protos.update(self._pack_output_references(context, outputs_dict))
+        return out_protos
 
     def _get_container_definition(
             self,
@@ -365,7 +341,6 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             gpu_limit=None,
             memory_limit=None,
             environment=None,
-            **kwargs
     ):
         """
         :param Text storage_request:

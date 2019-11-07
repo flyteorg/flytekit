@@ -45,51 +45,16 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
 
     def __init__(
             self,
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            deprecated,
-            storage_request,
-            cpu_request,
-            gpu_request,
-            memory_request,
-            storage_limit,
-            cpu_limit,
-            gpu_limit,
-            memory_limit,
-            discoverable,
-            timeout,
-            allowed_failure_ratio,
-            max_concurrency,
-            environment,
-            custom
+            allowed_failure_ratio=0.0,
+            max_concurrency=0,
+            **kwargs
     ):
         """
-        :param task_function: Function container user code.  This will be executed via the SDK's engine.
-        :param Text task_type: string describing the task type
-        :param Text discovery_version: string describing the version for task discovery purposes
-        :param int retries: Number of retries to attempt
-        :param Text deprecated:
-        :param Text storage_request:
-        :param Text cpu_request:
-        :param Text gpu_request:
-        :param Text memory_request:
-        :param Text storage_limit:
-        :param Text cpu_limit:
-        :param Text gpu_limit:
-        :param Text memory_limit:
-        :param bool discoverable:
-        :param datetime.timedelta timeout:
         :param float allowed_failure_ratio:
-        :param int max_concurrency:
-        :param dict[Text, Text] environment:
-        :param dict[Text, T] custom:
+        :param int max_concurrency: 0 means unlimited
+        :param kwargs: See _sdk_runnable.SdkRunnableTask
         """
-        super(SdkDynamicTask, self).__init__(
-            task_function, task_type, discovery_version, retries, deprecated,
-            storage_request, cpu_request, gpu_request, memory_request, storage_limit,
-            cpu_limit, gpu_limit, memory_limit, discoverable, timeout, environment, custom)
+        super(SdkDynamicTask, self).__init__(**kwargs)
 
         # These will only appear in the generated futures
         self._allowed_failure_ratio = allowed_failure_ratio
