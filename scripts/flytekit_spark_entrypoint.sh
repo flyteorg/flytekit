@@ -42,6 +42,7 @@ case "$SPARK_K8S_CMD" in
       shift 1
       ;;
     "")
+      echo "Empty command received. Exiting."
       exit
       ;;
     *)
