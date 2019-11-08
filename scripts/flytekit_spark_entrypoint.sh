@@ -42,10 +42,13 @@ case "$SPARK_K8S_CMD" in
       shift 1
       ;;
     "")
+      echo "Empty command received. Exiting."
+      exit
       ;;
     *)
       echo "Non-spark-on-k8s command provided, proceeding in pass-through mode..."
       exec "$@"
+      exit
       ;;
 esac
 

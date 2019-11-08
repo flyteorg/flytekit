@@ -8,7 +8,7 @@ except ImportError:
 import os as _os
 import sys as _sys
 import six as _six
-from flytekit.bin import spark_executor
+from flytekit.bin import entrypoint as _entrypoint
 from flytekit.common import constants as _constants
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import output as _task_output, sdk_runnable as _sdk_runnable
@@ -40,6 +40,7 @@ class SdkRunnableSparkContainer(_sdk_runnable.SdkRunnableContainer):
     @property
     def args(self):
         """
+        Override args to remove the injection of command prefixes
         :rtype: list[Text]
         """
         return self._args
@@ -61,7 +62,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
         :param dict[Text,Text] hadoop_conf:
         :param kwargs: See _sdk_runnable.SdkRunnableTask
         """
-        spark_exec_path = _os.path.abspath(spark_executor.__file__)
+        spark_exec_path = _os.path.abspath(_entrypoint.__file__)
         if spark_exec_path.endswith('.pyc'):
             spark_exec_path = spark_exec_path[:-1]
 
@@ -81,7 +82,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
         """
         :param flytekit.engines.common.EngineContext context:
         :param flytekit.models.literals.LiteralMap inputs:
-        :rtype: dict[Text, flytekit.models.common.FlyteIdlEntity]
+        :rtype: dict[Text,flytekit.models.common.FlyteIdlEntity]
         :returns: This function must return a dictionary mapping 'filenames' to Flyte Interface Entities.  These
             entities will be used by the engine to pass data from node to node, populate metadata, etc. etc..  Each
             engine will have different behavior.  For instance, the Flyte engine will upload the entities to a remote
@@ -118,29 +119,12 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
 
     def _get_container_definition(
             self,
-            environment=None,
             **kwargs
     ):
         """
-        :rtype: flytekit.models.task.Container
+        :rtype: SdkRunnableSparkContainer
         """
-        return SdkRunnableSparkContainer(
-            command=[],
-            args=[
-                "execute_spark_task",
-                "--task-module",
-                self.task_module,
-                "--task-name",
-                self.task_function_name,
-                "--inputs",
-                "{{.input}}",
-                "--output-prefix",
-                "{{.outputPrefix}}"
-            ],
-            resources=_task_models.Resources(limits=[], requests=[]),
-            env=environment or {},
-            config={}
-        )
+        return super(SdkSparkTask, self)._get_container_definition(cls=SdkRunnableSparkContainer, **kwargs)
 
     def _get_kwarg_inputs(self):
         # Trim off first two parameters as they are reserved for workflow_parameters and spark_context

@@ -69,13 +69,14 @@ Flytekit is Python 2.7+ compatible, so when feasible, it is recommended to test 
 
 #### Setup (Do Once)
 ```bash
-virtualenv ~/.virtualenvs/flytekit2
-source ~/.virtualenvs/flytekit2/bin/activate
+virtualenv ~/.virtualenvs/flytekit
+source ~/.virtualenvs/flytekit/bin/activate
 python -m pip install -r requirements.txt
+python -m pip install -U .[all]
 ```
 
 #### Execute
 ```bash
-source ~/.virtualenvs/flytekit2/bin/activate
+source ~/.virtualenvs/flytekit/bin/activate
 python -m pytest tests/flytekit/unit
 ```

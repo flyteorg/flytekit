@@ -1,19 +1,22 @@
 from __future__ import absolute_import
 from flytekit import configuration as _config
 from flytekit.clis.sdk_in_container import constants as _constants
+from flytekit.clis.sdk_in_container import pyflyte as _pyflyte
+from flytekit.tools import module_loader as _module_loader
+from click.testing import CliRunner
 import mock as _mock
 import pytest
 import os
 import sys
 
 
-def _fake_module_load(name):
-    assert name == 'common.workflows'
+def _fake_module_load(names):
+    assert names == ('common.workflows',)
     from common.workflows import simple
     yield simple
 
 
-@pytest.yield_fixture(scope='function', autouse=True,
+@pytest.yield_fixture(scope='function',
                       params=[
                           os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../common/configs/local.config'),
                           '/foo/bar',
@@ -27,7 +30,7 @@ def mock_ctx(request):
                 mock_module_load.side_effect = _fake_module_load
                 ctx = _mock.MagicMock()
                 ctx.obj = {
-                    _constants.CTX_PACKAGES: 'common.workflows',
+                    _constants.CTX_PACKAGES: ('common.workflows',),
                     _constants.CTX_PROJECT: 'tests',
                     _constants.CTX_DOMAIN: 'unit',
                     _constants.CTX_VERSION: 'version'
@@ -35,3 +38,29 @@ def mock_ctx(request):
                 yield ctx
         finally:
             sys.path.pop()
+
+
+@pytest.fixture
+def mock_clirunner(monkeypatch):
+    def f(*args, **kwargs):
+        runner = CliRunner()
+        base_args = [
+            '-p', 'tests',
+            '-d', 'unit',
+            '-v', 'version',
+            '--pkgs', 'common.workflows',
+        ]
+
+        result = runner.invoke(_pyflyte.main, base_args + list(args), **kwargs)
+
+        if result.exception:
+            raise result.exception
+
+        return result
+
+    tests_dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../..')
+    config_path = os.path.join(tests_dir_path, 'common/configs/local.config')
+    with _config.TemporaryConfiguration(config_path):
+        monkeypatch.syspath_prepend(tests_dir_path)
+        monkeypatch.setattr(_module_loader, 'iterate_modules', _fake_module_load)
+        yield f

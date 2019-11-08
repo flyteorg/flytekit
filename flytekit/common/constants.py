@@ -19,6 +19,12 @@ class SdkTaskType(object):
     BATCH_HIVE_TASK = "batch_hive"
     HIVE_JOB = "hive"
     SIDECAR_TASK = "sidecar"
+    SENSOR_TASK = "sensor-task"
 
 
 GLOBAL_INPUT_NODE_ID = ''
+
+
+class CloudProvider(object):
+    AWS = "aws"
+    GCP = "gcp"

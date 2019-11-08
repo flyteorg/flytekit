@@ -195,7 +195,7 @@ class SdkTask(
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def fetch(cls, project, domain, name, version=None):
+    def fetch(cls, project, domain, name, version):
         """
         This function uses the engine loader to call create a hydrated task from Admin.
         :param Text project:
@@ -204,7 +204,6 @@ class SdkTask(
         :param Text version:
         :rtype: SdkTask
         """
-        version = version or _internal_config.VERSION.get()
         task_id = _identifier.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, version)
         admin_task = _engine_loader.get_engine().fetch_task(task_id=task_id)
         sdk_task = cls.promote_from_model(admin_task.closure.compiled_task.template)
