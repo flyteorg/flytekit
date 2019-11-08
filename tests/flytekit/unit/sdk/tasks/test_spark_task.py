@@ -40,7 +40,6 @@ def test_default_python_task():
     assert default_task.metadata.retries.retries == 0
     assert len(default_task.container.resources.limits) == 0
     assert len(default_task.container.resources.requests) == 0
-    print(default_task.custom)
     assert default_task.custom['sparkConf']['A'] == 'B'
     assert default_task.custom['hadoopConf']['C'] == 'D'
     assert _os.path.abspath(_entrypoint.__file__)[:-1] in default_task.custom['mainApplicationFile']
