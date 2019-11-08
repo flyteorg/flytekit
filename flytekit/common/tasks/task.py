@@ -13,6 +13,8 @@ from flytekit.engines import loader as _engine_loader
 from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
 
+_get_type = type
+
 
 class SdkTask(
     _six.with_metaclass(
@@ -23,7 +25,7 @@ class SdkTask(
     )
 ):
 
-    def __init__(self, type=None, metadata=None, interface=None, custom=None, container=None, id=None **_):
+    def __init__(self, type=None, metadata=None, interface=None, custom=None, container=None, id=None, **_):
         """
         :param Text type: This is used to define additional extensions for use by Propeller or SDK.
         :param _task_model.TaskMetadata metadata: This contains information needed at runtime to determine behavior
@@ -35,12 +37,12 @@ class SdkTask(
         :param _identifier.Identifier id: ID to assign to this task.
         """
         super(SdkTask, self).__init__(
-            id or type(self)._get_default_id(),
-            type or type(self)._get_default_type(),
-            metadata or type(self)._get_default_metadata(),
-            interface or type(self)._get_default_interface(),
-            custom or type(self)._get_default_custom(),
-            container=container or type(self)._get_default_container()
+            id or _get_type(self)._get_default_id(),
+            type or _get_type(self)._get_default_type(),
+            metadata or _get_type(self)._get_default_metadata(),
+            interface or _get_type(self)._get_default_interface(),
+            custom or _get_type(self)._get_default_custom(),
+            container=container or _get_type(self)._get_default_container()
         )
 
     @classmethod

@@ -2,21 +2,30 @@ from __future__ import absolute_import
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.common.tasks.mixins.executable_traits import function as _function_mixin, notebook as _notebook_mixin
 from flytekit.contrib.sensors.base_sensor import Sensor as _Sensor
 
 
-class SensorTask(_sdk_runnable.SdkRunnableTask):
-    def _execute_user_code(self, context, inputs):
-        sensor = super(SensorTask, self)._execute_user_code(context=context, inputs=inputs)
-        if sensor is not None:
-            if not isinstance(sensor, _Sensor):
+class _SensorTask(_sdk_runnable.SdkRunnableTask):
+    def _handle_user_returns(self, context, user_returned):
+        if user_returned is not None:
+            if not isinstance(user_returned, _Sensor):
                 raise _user_exceptions.FlyteTypeException(
-                    received_type=type(sensor),
+                    received_type=type(user_returned),
                     expected_type=_Sensor,
                 )
-            succeeded = sensor.sense()
+            succeeded = user_returned.sense()
             if not succeeded:
                 raise _user_exceptions.FlyteRecoverableException()
+        return dict()
+
+
+class SensorFunctionTask(_function_mixin.WrappedFunctionTask, _SensorTask):
+    pass
+
+
+class SensorNotebookTask(_notebook_mixin.NotebookTask, _SensorTask):
+    pass
 
 
 def sensor_task(
@@ -95,7 +104,7 @@ def sensor_task(
     :rtype: SensorTask
     """
     def wrapper(fn):
-        return (SensorTask or cls)(
+        return (SensorFunctionTask or cls)(
             task_function=fn,
             task_type=_common_constants.SdkTaskType.SENSOR_TASK,
             retries=retries,

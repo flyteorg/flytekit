@@ -186,6 +186,7 @@ class _SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runna
 
         return dynamic_job_spec, generated_files
 
+    # TODO: Refactor
     @_exception_scopes.system_entry_point
     def execute(self, context, inputs):
         """

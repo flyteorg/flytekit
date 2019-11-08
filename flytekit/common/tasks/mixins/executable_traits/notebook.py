@@ -12,8 +12,9 @@ class NotebookTask(_six.with_metaclass(_abc.ABCMeta, object)):
     def __init__(self, notebook_path=None, **kwargs):
         self._notebook_path = notebook_path
         super(NotebookTask, self).__init__(**kwargs)
-        # Get name in thing
+        # Get name and module in thing
 
+    # TODO: ?????
     def _execute_user_code(self, context, inputs, outputs):
         # todo: remove
         full_args = inputs.copy()
@@ -29,6 +30,5 @@ class NotebookTask(_six.with_metaclass(_abc.ABCMeta, object)):
                 logging=context.logging,
                 tmp_dir=context.working_directory
             ),
-            **full_args,
+            **full_args
         )
-        pass

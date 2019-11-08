@@ -322,6 +322,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         )
 
     # TODO: Docstrings
+    # TODO: Ensure opportunity to add to output dictionary for all methods
     def _get_vargs(self, context):
         """
         :param context:
@@ -382,21 +383,15 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 literals={k: v.sdk_value for k, v in _six.iteritems(outputs)}
             )
         }
+    # TODO: End docstrings
 
     @_abc.abstractmethod
-    def _execute_user_code(self, context, vargs, inputs, outputs):
+    def _execute_user_code(self, *_, **__):
         """
-        Mixins override this method to determine how to execute the user-provided code.
-
-        :param flytekit.engines.common.EngineContext context:
-        :param list[Any] vargs:
-        :param dict[Text,Any] inputs: This is the unpacked values for inputs to user code as defined by the type
-            engine.
-        :param dict[Text,OutputReferences] outputs: The outputs to be set by user code.
-        :rtype: Any: the returned object from user code.
+        This method should be overridden via mixin deriving from
+        ref:`flytekit.common.tasks.mixins.executable_traits.common.ExecutableTaskMixin`
         """
         pass
-    # TODO: End docstrings
 
     @_exception_scopes.system_entry_point
     def execute(self, context, inputs):
@@ -417,7 +412,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
         inputs_dict = self._unpack_inputs(context, inputs)
-        vargs = self._get_vargs()
+        vargs = self._get_vargs(context)
         outputs_dict = self._unpack_output_references(context)
         user_returned = self._execute_user_code(context, vargs, inputs_dict, outputs_dict)
         out_protos = self._handle_user_returns(context, user_returned)
@@ -519,6 +514,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 )
             )
 
+        # TODO: Resolve this issue with spark and notebook vs decorated function
         return (cls or SdkRunnableContainer)(
             command=[],
             args=[

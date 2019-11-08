@@ -72,7 +72,7 @@ class _SdkSparkTask(_sdk_runnable.SdkRunnableTask):
         ).to_flyte_idl()
         super(_SdkSparkTask, self).__init__(
             custom=_MessageToDict(spark_job),
-            **kwargs,
+            **kwargs
         )
 
     def _get_vargs(self, *args, **kwargs):

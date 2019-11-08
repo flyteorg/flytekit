@@ -3,7 +3,7 @@ import abc as _abc
 import six as _six
 
 
-class ExecutableTaskMixin(_six.with_metclass(_abc.ABCMeta, object)):
+class ExecutableTaskMixin(_six.with_metaclass(_abc.ABCMeta, object)):
     """
     The following interface must be defined in order to mixin with a SdkRunnableTask. It is also possible to override
     SdkRunnableTask methods and attributes (SdkRunnableTask will be reached by super()), but should be done with care.
@@ -19,6 +19,7 @@ class ExecutableTaskMixin(_six.with_metclass(_abc.ABCMeta, object)):
         :param dict[Text,Any] inputs: This is the unpacked values for inputs to user code as defined by the type
             engine.
         :param dict[Text,OutputReferences] outputs: The outputs to be set by user code.
-        :rtype: Any: the returned object from user code.
+        :rtype: Any
+        :returns: the returned object from user code.
         """
         pass

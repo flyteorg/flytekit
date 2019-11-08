@@ -155,6 +155,7 @@ class _SdkHiveTask(_sdk_runnable.SdkRunnableTask):
 
         return dynamic_job_spec
 
+    # TODO: Re-write
     @_exception_scopes.system_entry_point
     def execute(self, context, inputs):
         """

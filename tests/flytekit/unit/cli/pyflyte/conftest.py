@@ -16,12 +16,14 @@ def _fake_module_load(names):
     yield simple
 
 
-@pytest.yield_fixture(scope='function',
-                      params=[
-                          os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../common/configs/local.config'),
-                          '/foo/bar',
-                          None
-                      ])
+@pytest.yield_fixture(
+    scope='function',
+    params=[
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../common/configs/local.config'),
+        '/foo/bar',
+        None
+    ]
+)
 def mock_ctx(request):
     with _config.TemporaryConfiguration(request.param):
         sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../..'))
