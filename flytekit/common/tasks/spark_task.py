@@ -154,8 +154,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
         """
         :rtype: SdkRunnableSparkContainer
         """
-        container = super(SdkSparkTask, self)._get_container_definition(**kwargs)
-        return SdkRunnableSparkContainer.from_flyte_idl(container.to_flyte_idl())
+        return super(SdkSparkTask, self)._get_container_definition(cls=SdkRunnableSparkContainer, **kwargs)
 
     def _get_kwarg_inputs(self):
         # Trim off first two parameters as they are reserved for workflow_parameters and spark_context
