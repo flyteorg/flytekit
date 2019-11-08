@@ -48,7 +48,7 @@ simple_sidecar_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, 
 
 def test_sidecar_task():
     assert isinstance(simple_sidecar_task, _sdk_task.SdkTask)
-    assert isinstance(simple_sidecar_task, _sidecar_task.SdkSidecarTask)
+    assert isinstance(simple_sidecar_task, _sidecar_task._SdkSidecarTask)
 
     pod_spec = simple_sidecar_task.custom['podSpec']
     assert pod_spec['restartPolicy'] == 'OnFailure'

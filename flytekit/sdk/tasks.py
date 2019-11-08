@@ -218,7 +218,7 @@ def python_task(
     :rtype: flytekit.common.tasks.sdk_runnable.SdkRunnableTask
     """
     def wrapper(fn):
-        return (cls or _sdk_runnable_tasks.SdkRunnableTask)(
+        return (cls or _sdk_runnable_tasks.RunnablePythonFunctionTask)(
             task_function=fn,
             task_type=_common_constants.SdkTaskType.PYTHON_TASK,
             discovery_version=cache_version,
@@ -358,13 +358,13 @@ def dynamic_task(
     :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  Generally, it should be a
-        subclass of flytekit.common.tasks.sdk_dynamic.SdkDynamicTask.  A user can use this parameter to inject bespoke
+        subclass of flytekit.common.tasks.sdk_dynamic._SdkDynamicTask.  A user can use this parameter to inject bespoke
         logic into the base Flyte programming model.
-    :rtype: flytekit.common.tasks.sdk_runnable.SdkDynamicTask
+    :rtype: flytekit.common.tasks.sdk_runnable._SdkDynamicTask
     """
 
     def wrapper(fn):
-        return (cls or _sdk_dynamic.SdkDynamicTask)(
+        return (cls or _sdk_dynamic.DynamicFunctionTask)(
             task_function=fn,
             task_type=_common_constants.SdkTaskType.DYNAMIC_TASK,
             discovery_version=cache_version,
@@ -452,13 +452,13 @@ def spark_task(
     :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  Generally, it should be a
-        subclass of flytekit.common.tasks.spark_task.SdkSparkTask.  A user can use this parameter to inject bespoke
+        subclass of flytekit.common.tasks.spark_task._SdkSparkTask.  A user can use this parameter to inject bespoke
         logic into the base Flyte programming model.
     :rtype: flytekit.common.tasks.sdk_runnable.SdkRunnableTask
     """
 
     def wrapper(fn):
-        return (cls or _sdk_spark_tasks.SdkSparkTask)(
+        return (cls or _sdk_spark_tasks.SparkFunctionTask)(
             task_function=fn,
             task_type=_common_constants.SdkTaskType.SPARK_TASK,
             discovery_version=cache_version,
@@ -475,13 +475,6 @@ def spark_task(
         return wrapper(_task_function)
     else:
         return wrapper
-
-
-def qubole_spark_task(*args, **kwargs):
-    """
-    :rtype: flytekit.common.tasks.sdk_runnable.SdkRunnableTask
-    """
-    raise NotImplementedError("Qubole Spark Task is currently not supported in Flyte.")
 
 
 def hive_task(
@@ -586,14 +579,14 @@ def hive_task(
         container.
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided should be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask. Generally, it should be
-        a subclass of flytekit.common.tasks.hive_task.SdkHiveTask. A user can use this to inject bespoke logic into
+        a subclass of flytekit.common.tasks.hive_task._SdkHiveTask. A user can use this to inject bespoke logic into
         the base Flyte programming model.
 
-    :rtype: flytekit.common.tasks.sdk_runnable.SdkHiveTask
+    :rtype: flytekit.common.tasks.sdk_runnable._SdkHiveTask
     """
     def wrapper(fn):
 
-        return (cls or _sdk_hive_tasks.SdkHiveTask)(
+        return (cls or _sdk_hive_tasks.HiveFunctionTask)(
             task_function=fn,
             task_type=_common_constants.SdkTaskType.BATCH_HIVE_TASK,
             discovery_version=cache_version,
@@ -727,14 +720,14 @@ def qubole_hive_task(
         container.
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided should be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask. Generally, it should be
-        a subclass of flytekit.common.tasks.hive_task.SdkHiveTask. A user can use this to inject bespoke logic into
+        a subclass of flytekit.common.tasks.hive_task._SdkHiveTask. A user can use this to inject bespoke logic into
         the base Flyte programming model.
 
-    :rtype: flytekit.common.tasks.sdk_runnable.SdkHiveTask
+    :rtype: flytekit.common.tasks.sdk_runnable._SdkHiveTask
     """
     def wrapper(fn):
 
-        return (cls or _sdk_hive_tasks.SdkHiveTask)(
+        return (cls or _sdk_hive_tasks.HiveFunctionTask)(
             task_function=fn,
             task_type=_common_constants.SdkTaskType.BATCH_HIVE_TASK,
             discovery_version=cache_version,
@@ -913,7 +906,7 @@ def sidecar_task(
     """
     def wrapper(fn):
 
-        return (cls or _sdk_sidecar_tasks.SdkSidecarTask)(
+        return (cls or _sdk_sidecar_tasks.SidecarFunctionTask)(
             task_function=fn,
             task_type=_common_constants.SdkTaskType.SIDECAR_TASK,
             discovery_version=cache_version,

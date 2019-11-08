@@ -53,7 +53,7 @@ def sample_qubole_hive_task(wf_params, in1):
 
 def test_hive_task():
     assert isinstance(sample_hive_task, _sdk_runnable.SdkRunnableTask)
-    assert isinstance(sample_hive_task, _hive_task.SdkHiveTask)
+    assert isinstance(sample_hive_task, _hive_task._SdkHiveTask)
 
     sample_hive_task.unit_test(in1=5)
 

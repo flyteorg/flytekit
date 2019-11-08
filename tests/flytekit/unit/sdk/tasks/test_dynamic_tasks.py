@@ -111,7 +111,7 @@ def no_future_batch_task(wf_params, in1, out_str):
 
 def test_batch_task():
     assert isinstance(sample_batch_task, _sdk_runnable.SdkRunnableTask)
-    assert isinstance(sample_batch_task, _sdk_dynamic.SdkDynamicTask)
+    assert isinstance(sample_batch_task, _sdk_dynamic._SdkDynamicTask)
 
     expected = {
         'out_str': ["I'm the first result", 'hello 0', "I'm after each sub-task result", 'hello 1',

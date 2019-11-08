@@ -9,6 +9,7 @@ import six as _six
 from flytekit.common import constants as _constants, interface as _interface, sdk_bases as _sdk_bases
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import output as _task_output, sdk_runnable as _sdk_runnable
+from flytekit.common.tasks.mixins.executable_traits import function as _function_mixin, notebook as _notebook_mixin
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import _dnsify
 from flytekit.models import literals as _literal_models, dynamic_job as _dynamic_job, array_job as _array_job
@@ -34,12 +35,12 @@ class PromiseOutputReference(_task_output.OutputReference):
         self._raw_value = value
 
 
-class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnable.SdkRunnableTask)):
+class _SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnable.SdkRunnableTask)):
     """
     This class includes the additional logic for building a task that executes parent-child tasks in Python code.  It
     has even more validation checks to ensure proper behavior than it's superclasses.
 
-    Since an SdkDynamicTask is assumed to run by hooking into Python code, we will provide additional shortcuts and
+    Since an _SdkDynamicTask is assumed to run by hooking into Python code, we will provide additional shortcuts and
     methods on this object.
     """
 
@@ -54,7 +55,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         :param int max_concurrency: 0 means unlimited
         :param kwargs: See _sdk_runnable.SdkRunnableTask
         """
-        super(SdkDynamicTask, self).__init__(**kwargs)
+        super(_SdkDynamicTask, self).__init__(**kwargs)
 
         # These will only appear in the generated futures
         self._allowed_failure_ratio = allowed_failure_ratio
@@ -96,7 +97,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
 
         inputs_dict.update(outputs_dict)
         yielded_sub_tasks = [sub_task for sub_task in
-                             super(SdkDynamicTask, self)._execute_user_code(context, inputs_dict) or []]
+                             super(_SdkDynamicTask, self)._execute_user_code(context, inputs_dict) or []]
 
         upstream_nodes = list()
         output_bindings = [_literal_models.Binding(var=name, binding=_interface.BindingData.from_python_std(
@@ -130,7 +131,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
 
             # If the task can run as an array job, group its instances together. Otherwise, keep each invocation as a
             # separate node.
-            if SdkDynamicTask._can_run_as_array(sub_task_node.executable_sdk_object.type):
+            if _SdkDynamicTask._can_run_as_array(sub_task_node.executable_sdk_object.type):
                 if sub_task_node.executable_sdk_object in array_job_index:
                     array_job, node = array_job_index[sub_task_node.executable_sdk_object]
                     array_job.size += 1
@@ -213,3 +214,11 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             })
 
             return generated_files
+
+
+class DynamicFunctionTask(_function_mixin.WrappedFunctionTask, _SdkDynamicTask):
+    pass
+
+
+class DynamicNotebookTask(_notebook_mixin.NotebookTask, _SdkDynamicTask):
+    pass

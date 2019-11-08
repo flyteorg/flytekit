@@ -9,8 +9,8 @@ from flytekit.common import constants as _constants, nodes as _nodes, interface 
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions.user import FlyteTypeException as _FlyteTypeException, \
     FlyteValueException as _FlyteValueException
-from flytekit.common.tasks import output as _task_output
-from flytekit.common.tasks import sdk_runnable as _sdk_runnable, task as _base_task
+from flytekit.common.tasks import output as _task_output, sdk_runnable as _sdk_runnable, task as _base_task
+from flytekit.common.tasks.mixins.executable_traits import function as _function_mixin, notebook as _notebook_mixin
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.models import (
     qubole as _qubole,
@@ -24,7 +24,7 @@ ALLOWED_TAGS_COUNT = int(6)
 MAX_TAG_LENGTH = int(20)
 
 
-class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
+class _SdkHiveTask(_sdk_runnable.SdkRunnableTask):
     """
     This class includes the additional logic for building a task that executes as a batch hive task.
     """
@@ -40,7 +40,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         :param list[Text] tags:
         :param kwargs: See _sdk_runnable.SdkRunnableTask
         """
-        super(SdkHiveTask, self).__init__(**kwargs)
+        super(_SdkHiveTask, self).__init__(**kwargs)
         self._validate_task_parameters(cluster_label, tags)
         self._cluster_label = cluster_label
         self._tags = tags
@@ -52,7 +52,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         :param dict[Text,T] inputs_dict:
         :rtype: list[_qubole.QuboleHiveJob]
         """
-        queries_from_task = super(SdkHiveTask, self)._execute_user_code(context, inputs_dict) or []
+        queries_from_task = super(_SdkHiveTask, self)._execute_user_code(context, inputs_dict) or []
         if not isinstance(queries_from_task, list):
             queries_from_task = [queries_from_task]
 
@@ -200,11 +200,11 @@ def _create_hive_job_node(name, hive_job, metadata):
         upstream_nodes=[],
         bindings=[],
         metadata=_workflow_model.NodeMetadata(name, metadata.timeout, _literal_models.RetryStrategy(0)),
-        sdk_task=SdkHiveJob(hive_job, metadata)
+        sdk_task=_SdkHiveJob(hive_job, metadata)
     )
 
 
-class SdkHiveJob(_base_task.SdkTask):
+class _SdkHiveJob(_base_task.SdkTask):
     """
     This class encapsulates the hive-job that is submitted to the Qubole Operator.
 
@@ -220,7 +220,7 @@ class SdkHiveJob(_base_task.SdkTask):
         :param TaskMetadata metadata: This contains information needed at runtime to determine behavior such as
             whether or not outputs are discoverable, timeouts, and retries.
         """
-        super(SdkHiveJob, self).__init__(
+        super(_SdkHiveJob, self).__init__(
             _constants.SdkTaskType.HIVE_JOB,
             metadata,
             # Individual hive tasks never take anything, or return anything. They just run a query that's already
@@ -228,3 +228,11 @@ class SdkHiveJob(_base_task.SdkTask):
             _interface_model.TypedInterface({}, {}),
             _MessageToDict(hive_job),
         )
+
+
+class HiveFunctionTask(_function_mixin.WrappedFunctionTask, _SdkHiveTask):
+    pass
+
+
+class HiveNotebookTask(_notebook_mixin.NotebookTask, _SdkHiveTask):
+    pass

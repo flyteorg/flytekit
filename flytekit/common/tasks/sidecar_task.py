@@ -6,6 +6,7 @@ from flyteidl.core import tasks_pb2 as _core_task
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.common.tasks.mixins.executable_traits import function as _function_mixin, notebook as _notebook_mixin
 from flytekit.common import sdk_bases as _sdk_bases
 
 from flytekit.models import task as _task_models
@@ -14,7 +15,7 @@ from google.protobuf.json_format import MessageToDict as _MessageToDict
 from flytekit.plugins import k8s as _lazy_k8s
 
 
-class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnable.SdkRunnableTask)):
+class _SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnable.SdkRunnableTask)):
 
     """
     This class includes the additional logic for building a task that executes as a Sidecar Job.
@@ -35,7 +36,7 @@ class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             raise _user_exceptions.FlyteValidationException("A pod spec cannot be undefined")
         if not primary_container_name:
             raise _user_exceptions.FlyteValidationException("A primary container name cannot be undefined")
-        super(SdkSidecarTask, self).__init__(custom=None, **kwargs)
+        super(_SdkSidecarTask, self).__init__(custom=dict(), **kwargs)
         self.reconcile_partial_pod_spec_and_task(pod_spec, primary_container_name)
 
     def reconcile_partial_pod_spec_and_task(self,
@@ -43,10 +44,9 @@ class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
                                             primary_container_name):
         """
         Assigns the custom field as a the reconciled primary container and pod spec defintion.
-        :param _sdk_runnable.SdkRunnableTask sdk_runnable_task:
         :param generated_pb2.PodSpec pod_spec:
         :param Text primary_container_name:
-        :rtype: SdkSidecarTask
+        :rtype: _SdkSidecarTask
         """
 
         # First, insert a placeholder primary container if it is not defined in the pod spec.
@@ -100,4 +100,13 @@ class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             primary_container_name=primary_container_name,
         ).to_flyte_idl()
 
-        self.assign_custom_and_return(_MessageToDict(sidecar_job_plugin))
+        self._custom = _MessageToDict(sidecar_job_plugin)
+
+
+# TODO: Refactor task_type into constructor for all tasks
+class SidecarFunctionTask(_function_mixin.WrappedFunctionTask, _SdkSidecarTask):
+    pass
+
+
+class SidecarNotebookTask(_notebook_mixin.NotebookTask, _SdkSidecarTask):
+    pass
