@@ -36,7 +36,7 @@ def _topo_sort_helper(
         recursion_stack,
         include_entities,
         ignore_entities,
-        only_include_defs):
+        detect_unreferenced_entities):
     visited.add(obj)
     recursion_stack.append(obj)
     if obj in recursion_set:
@@ -61,7 +61,7 @@ def _topo_sort_helper(
                         recursion_stack,
                         include_entities,
                         ignore_entities,
-                        only_include_defs
+                        detect_unreferenced_entities
                     ):
                 yield m1, k1, o1
 
@@ -71,7 +71,7 @@ def _topo_sort_helper(
     if isinstance(obj, include_entities) or not isinstance(obj, ignore_entities):
         if obj in entity_to_module_key:
             yield entity_to_module_key[obj] + (obj,)
-        elif only_include_defs:
+        elif detect_unreferenced_entities:
             raise _user_exceptions.FlyteAssertion(
                 "An entity was not found in modules accessible from the workflow packages configuration.  Please "
                 "ensure that entities in '{}' are moved to a configured packaged, or adjust the configuration.".format(
@@ -80,7 +80,12 @@ def _topo_sort_helper(
             )
 
 
-def iterate_registerable_entities_in_order(pkgs, ignore_entities=None, include_entities=None, only_include_defs=True):
+def iterate_registerable_entities_in_order(
+        pkgs,
+        ignore_entities=None,
+        include_entities=None,
+        detect_unreferenced_entities=True
+):
     """
     This function will iterate all discovered entities in the given package list.  It will then attempt to
     topologically sort such that any entity with a dependency on another comes later in the list.  Note that workflows
@@ -90,7 +95,8 @@ def iterate_registerable_entities_in_order(pkgs, ignore_entities=None, include_e
         entities will be taken.  Only one of ignore_entities or include_entities can be set.
     :param set[type] include_entities: If specified, include these entities while doing a topological sort.  All
         other entities will be ignored.  Only one of ignore_entities or include_entities can be set.
-    :param bool only_include_defs: If false, we will possibly return duplicate references to an entity.
+    :param bool detect_unreferenced_entities: If true, we will raise exceptions on entities not included in the package
+        configuration.
     :rtype: module, Text, flytekit.common.mixins.registerable.RegisterableEntity
     """
     if ignore_entities and include_entities:
@@ -128,6 +134,6 @@ def iterate_registerable_entities_in_order(pkgs, ignore_entities=None, include_e
                         recursion_stack,
                         include_entities,
                         ignore_entities,
-                        only_include_defs=only_include_defs
+                        detect_unreferenced_entities=detect_unreferenced_entities
                     ):
                 yield m, k, o2

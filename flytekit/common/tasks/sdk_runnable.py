@@ -104,7 +104,7 @@ class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task
         args,
         resources,
         env,
-        config
+        config,
     ):
         super(SdkRunnableContainer, self).__init__(
             "",
@@ -365,7 +365,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             gpu_limit=None,
             memory_limit=None,
             environment=None,
-            **kwargs
+            cls=None,
     ):
         """
         :param Text storage_request:
@@ -377,6 +377,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         :param Text gpu_limit:
         :param Text memory_limit:
         :param dict[Text,Text] environment:
+        :param cls Optional[type]: Type of container to instantiate. Generally should subclass SdkRunnableContainer.
         :rtype: flytekit.models.task.Container
         """
         storage_limit = storage_limit or _resource_config.DEFAULT_STORAGE_LIMIT.get()
@@ -448,7 +449,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 )
             )
 
-        return SdkRunnableContainer(
+        return (cls or SdkRunnableContainer)(
             command=[],
             args=[
                 "pyflyte-execute",

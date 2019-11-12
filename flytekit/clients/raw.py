@@ -35,7 +35,7 @@ class RawSynchronousFlyteClient(object):
         :param Text credentials: [Optional] If provided, a secure channel will be opened with the Flyte Admin Service.
         :param dict[Text, Text] options: [Optional] A dict of key-value string pairs for configuring the gRPC core
             runtime.
-        :param [(Text, Text)] metadata: [Optional] metadata pairs to be transmitted to the
+        :param list[(Text,Text)] metadata: [Optional] metadata pairs to be transmitted to the
             service-side of the RPC.
         """
         self._channel = None
@@ -341,6 +341,16 @@ class RawSynchronousFlyteClient(object):
         return self._stub.GetExecution(get_object_request, metadata=self._metadata)
 
     @_handle_rpc_error
+    def get_execution_data(self, get_execution_data_request):
+        """
+        Returns signed URLs to LiteralMap blobs for an execution's inputs and outputs (when available).
+
+        :param flyteidl.admin.execution_pb2.WorkflowExecutionGetRequest get_execution_data_request:
+        :rtype: flyteidl.admin.execution_pb2.WorkflowExecutionGetDataResponse
+        """
+        return self._stub.GetExecutionData(get_execution_data_request)
+
+    @_handle_rpc_error
     def list_executions_paginated(self, resource_list_request):
         """
         Lists the executions for a given identifier.
@@ -358,12 +368,21 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.TerminateExecution(terminate_execution_request, metadata=self._metadata)
 
+    @_handle_rpc_error
+    def relaunch_execution(self, relaunch_execution_request):
+        """
+        :param flyteidl.admin.execution_pb2.ExecutionRelaunchRequest relaunch_execution_request:
+        :rtype: flyteidl.admin.execution_pb2.ExecutionCreateResponse
+        """
+        return self._stub.RelaunchExecution(relaunch_execution_request)
+
     ####################################################################################################################
     #
     #  Node Execution Endpoints
     #
     ####################################################################################################################
 
+    @_handle_rpc_error
     def get_node_execution(self, node_execution_request):
         """
         :param flyteidl.admin.node_execution_pb2.NodeExecutionGetRequest node_execution_request:
@@ -371,6 +390,17 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetNodeExecution(node_execution_request, metadata=self._metadata)
 
+    @_handle_rpc_error
+    def get_node_execution_data(self, get_node_execution_data_request):
+        """
+        Returns signed URLs to LiteralMap blobs for a node execution's inputs and outputs (when available).
+
+        :param flyteidl.admin.node_execution_pb2.NodeExecutionGetDataRequest get_node_execution_data_request:
+        :rtype: flyteidl.admin.node_execution_pb2.NodeExecutionGetDataResponse
+        """
+        return self._stub.GetNodeExecutionData(get_node_execution_data_request)
+
+    @_handle_rpc_error
     def list_node_executions_paginated(self, node_execution_list_request):
         """
         :param flyteidl.admin.node_execution_pb2.NodeExecutionListRequest node_execution_list_request:
@@ -378,6 +408,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.ListNodeExecutions(node_execution_list_request, metadata=self._metadata)
 
+    @_handle_rpc_error
     def list_node_executions_for_task_paginated(self, node_execution_for_task_list_request):
         """
         :param flyteidl.admin.node_execution_pb2.NodeExecutionListRequest node_execution_for_task_list_request:
@@ -391,6 +422,7 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
+    @_handle_rpc_error
     def get_task_execution(self, task_execution_request):
         """
         :param flyteidl.admin.task_execution_pb2.TaskExecutionGetRequest task_execution_request:
@@ -398,6 +430,17 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetTaskExecution(task_execution_request, metadata=self._metadata)
 
+    @_handle_rpc_error
+    def get_task_execution_data(self, get_task_execution_data_request):
+        """
+        Returns signed URLs to LiteralMap blobs for a task execution's inputs and outputs (when available).
+
+        :param flyteidl.admin.task_execution_pb2.TaskExecutionGetDataRequest get_task_execution_data_request:
+        :rtype: flyteidl.admin.task_execution_pb2.TaskExecutionGetDataResponse
+        """
+        return self._stub.GetTaskExecutionData(get_task_execution_data_request)
+
+    @_handle_rpc_error
     def list_task_executions_paginated(self, task_execution_list_request):
         """
         :param flyteidl.admin.task_execution_pb2.TaskExecutionListRequest task_execution_list_request:

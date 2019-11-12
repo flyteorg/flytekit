@@ -1,0 +1,17 @@
+language: python
+python:
+    - "2.7"
+    - "3.6"
+install:
+  - pip install -r requirements.txt
+  - pip install -U .[all]
+script:
+  - pytest
+deploy:
+  provider: pypi
+  user: "__token__"
+  # This is encrypted and safe!
+  password: "G8wOh8G9gxpFFR47pFAV4+PfIkHEkQnwzAwWrkTo52Ej917RuiVUzs3+6lUo72Hga93fUV205IZOm1PL75W6Jn50EZ7UYcws7bw/WTBeiAMDGFjnhkRODRPWnMQAjOePYsTF3MKRjMlC95hhB/F66pJVp5rEzPrErg6uhufvN19WC8GEa//7HE3+okQLE5PGjawbQeJq6C5Hk6vkuD946HAZaN2EXEEBXzFBGF6en6FLpcheQbjDZb5Njf2ijyRbbpcbGqocuIAJPkYKH0b7QBHETDPPXfOOWoUIuqliSbshY1k/dTEhTNKz6/UNadyhFGqqQ9qast53kYrmBj4vTOvGXmDrMsZzNhfQEsTabW7jdo5dxNw26v2iH60rlVCqlV6YsRImiK9SBn2A++EwKkJ+m85rC2pJmItldc+l2hyKD3bOAAQ9pEd8EzNU3cKQcRGDHSt/s0d/z5Lub9C+b20PzXhHzHB1dSceZcetpm7YDC7/W5nx+y4RdXmFCAtP4VYexYdKwX5hWSumL4czVkeTl4ADYq5ONR4ZRrI4Z/2bSNhYQt/ZgCqx4WskHcTsNkqiZXGU5+BRxZZxnEDv81d1V2T24OZUUbaZ0nrGIUTRHWqOGQi1OLT01wgVgdILVsJWh9gl5SuMvK4rW4pRaKQxB1hifJjMUG6t1hpQLmo="
+  on:
+    tags: true
+    fork: false
