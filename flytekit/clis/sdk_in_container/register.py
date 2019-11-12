@@ -47,7 +47,7 @@ def register_tasks_only(project, domain, pkgs, test, version):
 
 @click.group('register')
 # --pkgs on the register group is DEPRECATED, use same arg on pyflyte.main instead
-@click.option('--pkgs', multiple=True, hidden=True)
+@click.option('--pkgs', multiple=True, help="DEPRECATED. This arg can only be used before the 'register' keyword")
 @click.option('--test', is_flag=True, help='Dry run, do not actually register with Admin')
 @click.pass_context
 def register(ctx, pkgs=None, test=None):
