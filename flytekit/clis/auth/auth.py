@@ -162,21 +162,24 @@ class AuthorizationClient(object):
         }
 
         # Initiate token request flow
-        self._request_authorization_code()
-        # Start a server to handle the callback url.
-        self._start_callback_server()
-
-    def _start_callback_server(self):
-        server_url = _urlparse.urlparse(self._redirect_uri)
-        server_address = (server_url.hostname, server_url.port)
         q = _Queue()
-        server = OAuthHTTPServer(server_address, OAuthCallbackHandler, redirect_path=server_url.path, queue=q)
+        # First prepare the callback server in the background
+        server = self._create_callback_server(q)
         server_process = _Process(target=server.handle_request)
-
         server_process.start()
+
+        # Send the call to request the authorization code
+        self._request_authorization_code()
+
+        # Request the access token once the auth code has been received.
         auth_code = q.get()
         server_process.terminate()
         self.request_access_token(auth_code)
+
+    def _create_callback_server(self, q):
+        server_url = _urlparse.urlparse(self._redirect_uri)
+        server_address = (server_url.hostname, server_url.port)
+        return OAuthHTTPServer(server_address, OAuthCallbackHandler, redirect_path=server_url.path, queue=q)
 
     def _request_authorization_code(self):
         resp = _requests.get(
