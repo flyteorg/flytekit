@@ -2,10 +2,10 @@ from __future__ import absolute_import
 
 from flytekit.configuration import common as _config_common
 
-DISCOVERY_ENDPOINT = _config_common.FlyteStringConfigurationEntry('credentials', 'discovery_endpoint', default=None)
+DISCOVERY_ENDPOINT = _config_common.FlyteStringConfigurationEntry('credentials', 'discovery_endpoint', default='https://company.idp.com/.well-known/oauth-authorization-server')
 """
-This endpoint fetches authorization server metadata as describe in this proposal:
-https://tools.ietf.org/id/draft-ietf-oauth-discovery-08.html.
+This endpoint fetches authorization server metadata as described in:
+https://tools.ietf.org/html/rfc8414
 The endpoint path can be relative or absolute.
 """
 
@@ -15,12 +15,15 @@ This is the public identifier for the app which handles authorization for a Flyt
 More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
 """
 
-REDIRECT_URI = _config_common.FlyteStringConfigurationEntry('credentials', 'redirect_uri', default=None)
+REDIRECT_URI = _config_common.FlyteStringConfigurationEntry('credentials', 'redirect_uri', default="http://localhost:53593/callback")
 """
-This is the redirect uri registered with the app which handles authorization for a Flyte deployment.
+This is the callback uri registered with the app which handles authorization for a Flyte deployment.
+Please note the hardcoded port number. Ideally we would not do this, but some IDPs do not allow wildcards for
+the URL, which means we have to use the same port every time. This is the only reason this is a configuration option,
+otherwise, we'd just hardcode the callback path as a constant.
+FYI, to see if a given port is already in use, run `sudo lsof -i :<port>` if on a Linux system.
 More details here: https://www.oauth.com/oauth2-servers/redirect-uris/.
 """
-
 
 AUTHORIZATION_METADATA_KEY = _config_common.FlyteStringConfigurationEntry('credentials', 'authorization_metadata_key',
                                                                           default="authorization")

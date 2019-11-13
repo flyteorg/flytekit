@@ -14,7 +14,10 @@ except ImportError:
         from http import client as _StatusCodes
     except ImportError:  # Python 2
         import httplib as _StatusCodes
-import BaseHTTPServer as _BaseHTTPServer
+try:  # Python 3
+    import http.server as _BaseHTTPServer
+except ImportError:  # Python 2
+    import BaseHTTPServer as _BaseHTTPServer
 
 try:  # Python 3
     import urllib.parse as _urlparse

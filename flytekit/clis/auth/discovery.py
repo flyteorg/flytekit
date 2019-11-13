@@ -53,14 +53,6 @@ class DiscoveryClient(object):
         resp = _requests.get(
             url=self._discovery_url,
         )
-        # Follow at most one redirect.
-        if resp.status_code == _StatusCodes.FOUND:
-            redirect_location = resp.headers['Location']
-            if redirect_location is None:
-                raise ValueError('Received a 302 but no follow up location was provided in headers')
-            resp = _requests.get(
-                url=redirect_location,
-            )
 
         response_body = resp.json()
         if response_body[_authorization_endpoint_key] is None:
