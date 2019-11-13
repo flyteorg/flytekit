@@ -167,7 +167,7 @@ class AuthorizationClient(object):
         self._start_callback_server()
 
     def _start_callback_server(self):
-        server_url = _urlparse(self._redirect_uri)
+        server_url = _urlparse.urlparse(self._redirect_uri)
         server_address = (server_url.hostname, server_url.port)
         q = _Queue()
         server = OAuthHTTPServer(server_address, OAuthCallbackHandler, redirect_path=server_url.path, queue=q)

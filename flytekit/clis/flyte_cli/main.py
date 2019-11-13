@@ -8,6 +8,7 @@ import stat as _stat
 
 import click as _click
 import six as _six
+
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import __version__
@@ -21,6 +22,7 @@ from flytekit.common.core import identifier as _identifier
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
 from flytekit.configuration import creds as _creds_config, platform as _platform_config
+from flytekit.configuration import set_flyte_config_file
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import common as _common_models, filters as _filters, launch_plan as _launch_plan, literals as \
     _literals
@@ -36,10 +38,25 @@ _tt = _six.text_type
 _metadata = "metadata"
 # Identifies the access token username for storing and fetching access token values in keyring.
 _metadata_access_token = "access_token"
+# Similar to how kubectl has a config file in the users home directory, this Flyte CLI will also look for one.
+# The format of this config file is the same as a workflow's config file, except that the relevant fields are different.
+# Please see the example.config file
+_default_config_file_path = ".flyte/config"
 
 
 def _welcome_message():
     _click.secho("Welcome to Flyte CLI! Version: {}".format(_tt(__version__)), bold=True)
+    _detect_default_config_file()
+
+
+def _detect_default_config_file():
+    home = _os.path.expanduser("~")
+    config_file = _os.path.join(home, _default_config_file_path)
+    if home and _os.path.exists(config_file):
+        _click.secho("Using default config file at {}".format(_tt(config_file)), fg='blue')
+        set_flyte_config_file(config_file_path=config_file)
+    else:
+        _click.secho("Config file not found at default location, relying on environment variables instead", fg='blue')
 
 
 def _get_io_string(literal_map, verbose=False):
