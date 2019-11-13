@@ -19,6 +19,7 @@ try:  # Python 3
 except ImportError:  # Python 2
     import BaseHTTPServer as _BaseHTTPServer
 
+import urllib as _urllib
 try:  # Python 3
     import urllib.parse as _urlparse
 except ImportError:  # Python 2
@@ -182,17 +183,10 @@ class AuthorizationClient(object):
         return OAuthHTTPServer(server_address, OAuthCallbackHandler, redirect_path=server_url.path, queue=q)
 
     def _request_authorization_code(self):
-        resp = _requests.get(
-            url=self._auth_endpoint,
-            params=self._params,
-            allow_redirects=False
-        )
-        if resp.status_code == _StatusCodes.FOUND:
-            # Follow the redirect
-            redirect_location = resp.headers['Location']
-            if redirect_location is None:
-                raise ValueError('Received a 302 but no follow up location was provided in headers')
-            _webbrowser.open_new_tab(redirect_location)
+        scheme, netloc, path, _, _, _ = _urlparse.urlparse(self._auth_endpoint)
+        query = _urllib.urlencode(self._params)
+        endpoint = _urlparse.urlunparse((scheme, netloc, path, None, query, None))
+        _webbrowser.open_new_tab(endpoint)
 
     def request_access_token(self, auth_code):
         if self._state != auth_code.state:
