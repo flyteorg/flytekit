@@ -34,10 +34,11 @@ from flytekit.models.schedule import Schedule as _Schedule
 
 _tt = _six.text_type
 
-# Identifies the 'metadata' service used for storing passwords in keyring
-_metadata = "metadata"
-# Identifies the access token username for storing and fetching access token values in keyring.
-_metadata_access_token = "access_token"
+# Identifies the service used for storing passwords in keyring
+_keyring_service_name = "flytecli"
+# Identifies the key used for storing and fetching from keyring. In our case, instead of a username as the keyring docs
+# suggest, we are storing a user's oidc.
+_keyring_storage_key = "access_token"
 # Similar to how kubectl has a config file in the users home directory, this Flyte CLI will also look for one.
 # The format of this config file is the same as a workflow's config file, except that the relevant fields are different.
 # Please see the example.config file
@@ -262,10 +263,10 @@ def _fetch_metadata():
     if not _platform_config.AUTH.get():
         # nothing to do
         return None
-    access_token = _keyring.get_password(_metadata, _metadata_access_token)
+    access_token = _keyring.get_password(_keyring_service_name, _keyring_storage_key)
     if access_token is None:
         credentials = _credentials_access.get_credentials()
-        _keyring.set_password(_metadata, _metadata_access_token, credentials.access_token)
+        _keyring.set_password(_keyring_service_name, _keyring_storage_key, credentials.access_token)
         access_token = credentials.access_token
     return [(_creds_config.AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(access_token))]
 

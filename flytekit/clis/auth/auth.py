@@ -21,7 +21,7 @@ except ImportError:  # Python 2
 
 try:  # Python 3
     import urllib.parse as _urlparse
-    from _urlparse import urlencode as _urlencode
+    from urllib.parse import urlencode as _urlencode
 except ImportError:  # Python 2
     import urlparse as _urlparse
     from urllib import urlencode as _urlencode
