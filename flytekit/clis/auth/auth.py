@@ -19,11 +19,12 @@ try:  # Python 3
 except ImportError:  # Python 2
     import BaseHTTPServer as _BaseHTTPServer
 
-import urllib as _urllib
 try:  # Python 3
     import urllib.parse as _urlparse
+    from _urlparse import urlencode as _urlencode
 except ImportError:  # Python 2
     import urlparse as _urlparse
+    from urllib import urlencode as _urlencode
 
 _code_verifier_length = 64
 _random_seed_length = 40
@@ -184,7 +185,7 @@ class AuthorizationClient(object):
 
     def _request_authorization_code(self):
         scheme, netloc, path, _, _, _ = _urlparse.urlparse(self._auth_endpoint)
-        query = _urllib.urlencode(self._params)
+        query = _urlencode(self._params)
         endpoint = _urlparse.urlunparse((scheme, netloc, path, None, query, None))
         _webbrowser.open_new_tab(endpoint)
 
