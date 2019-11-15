@@ -74,12 +74,12 @@ class FlyteScopedException(Exception):
         """
         :rtype: Text
         """
-        if hasattr(self._exc_value, "error_code"):
+        if isinstance(self._exc_value, FlyteScopedException):
             return self._exc_value.error_code
-        elif hasattr(type(self._exc_value), "error_code"):
+
+        if hasattr(type(self._exc_value), "error_code"):
             return type(self._exc_value).error_code
-        else:
-            return "{}:Unknown".format(self._context)
+        return "{}:Unknown".format(self._context)
 
     @property
     def kind(self):
