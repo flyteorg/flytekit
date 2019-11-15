@@ -10,11 +10,17 @@ def _handle_rpc_error(fn):
     def handler(*args, **kwargs):
         try:
             return fn(*args, **kwargs)
+        except AuthError as ae:
+            new_token = try_refreshing()
+            meta = new_token
+            return fn(*args, **kwargs)
         except _RpcError as e:
             if e.code() == _GrpcStatusCode.ALREADY_EXISTS:
                 raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
             else:
                 raise
+
+
     return handler
 
 

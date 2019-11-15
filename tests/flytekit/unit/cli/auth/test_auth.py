@@ -13,9 +13,7 @@ def test_discovery_client():
     discovery_client = DiscoveryClient(discovery_url=discovery_endpoint)
     authorization_endpoints = discovery_client.get_authorization_endpoints()
     print("///////////////////////////////////////|||||||||||||||||||||||||||||||||||||||||")
-    print(authorization_endpoints.auth_endpoint)
     print(authorization_endpoints.token_endpoint)
-    # client = _AuthorizationClient(redirect_uri=_REDIRECT_URI.get(),
-    #                               client_id=_CLIENT_ID.get(),
-    #                               auth_endpoint=authorization_endpoints.auth_endpoint,
-    #                               token_endpoint=authorization_endpoints.token_endpoint)
+    token_endpoint = authorization_endpoints.token_endpoint
+    scope = 'svc'
+    

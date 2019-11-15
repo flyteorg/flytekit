@@ -15,7 +15,8 @@ This is the public identifier for the app which handles authorization for a Flyt
 More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
 """
 
-REDIRECT_URI = _config_common.FlyteStringConfigurationEntry('credentials', 'redirect_uri', default="http://localhost:53593/callback")
+REDIRECT_URI = _config_common.FlyteStringConfigurationEntry('credentials', 'redirect_uri',
+                                                            default="http://localhost:12345/callback")
 """
 This is the callback uri registered with the app which handles authorization for a Flyte deployment.
 Please note the hardcoded port number. Ideally we would not do this, but some IDPs do not allow wildcards for
@@ -31,3 +32,10 @@ AUTHORIZATION_METADATA_KEY = _config_common.FlyteStringConfigurationEntry('crede
 The authorization metadata key used for passing access tokens in gRPC requests.
 Traditionally this value is 'authorization' however it is made configurable.
 """
+
+
+CLIENT_CREDENTIALS_ID_LOCATION = _config_common.FlyteStringConfigurationEntry(
+    'credentials', 'client_id_location', default=None)
+CLIENT_CREDENTIALS_SECRET_LOCATION =  _config_common.FlyteStringConfigurationEntry(
+    'credentials', 'client_secret_location', default=None)
+CLIENT_CREDENTIALS_SCOPE =  _config_common.FlyteStringConfigurationEntry('credentials', 'scope', default=None)

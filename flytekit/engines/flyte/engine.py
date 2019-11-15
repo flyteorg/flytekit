@@ -13,7 +13,8 @@ from flytekit import __version__ as _api_version
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.common import utils as _common_utils, constants as _constants
 from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
-from flytekit.configuration import platform as _platform_config, internal as _internal_config, sdk as _sdk_config
+from flytekit.configuration import platform as _platform_config, internal as _internal_config, sdk as _sdk_config, \
+    creds as _credentials_config
 from flytekit.engines import common as _common_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
