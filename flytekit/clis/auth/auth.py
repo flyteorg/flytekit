@@ -151,11 +151,13 @@ class AuthorizationClient(object):
         state = _generate_state_parameter()
         self._state = state
         self._credentials = None
+        self._refresh_token = None
+        self._headers = {'content-type': "application/x-www-form-urlencoded"}
 
         self._params = {
             "client_id": client_id,  # This must match the Client ID of the OAuth application.
             "response_type": "code",  # Indicates the authorization code grant
-            "scope": "openid",  # ensures that the /token endpoint returns an ID token
+            "scope": "openid offline_access",  # ensures that the /token endpoint returns an ID and refresh token
             # callback location where the user-agent will be directed to.
             "redirect_uri": self._redirect_uri,
             "state": state,
@@ -189,6 +191,25 @@ class AuthorizationClient(object):
         endpoint = _urlparse.urlunparse((scheme, netloc, path, None, query, None))
         _webbrowser.open_new_tab(endpoint)
 
+    def _initialize_credentials(self, auth_token_resp):
+
+        """
+        The auth_token_resp body is of the form:
+        {
+          "access_token": "foo",
+          "refresh_token": "bar",
+          "id_token": "baz",
+          "token_type": "Bearer"
+        }
+        """
+        response_body = auth_token_resp.json()
+        if "access_token" not in response_body:
+            raise ValueError('Expected "access_token" in response from oauth server')
+        if "refresh_token" in response_body:
+            self._refresh_token = response_body["refresh_token"]
+
+        self._credentials = Credentials(access_token=response_body["access_token"], id_token=response_body["id_token"])
+
     def request_access_token(self, auth_code):
         if self._state != auth_code.state:
             raise ValueError("Unexpected state parameter [{}] passed".format(auth_code.state))
@@ -200,7 +221,7 @@ class AuthorizationClient(object):
         resp = _requests.post(
             url=self._token_endpoint,
             data=self._params,
-            headers={'content-type': "application/x-www-form-urlencoded"},
+            headers=self._headers,
             allow_redirects=False
         )
         if resp.status_code != _StatusCodes.OK:
@@ -208,21 +229,24 @@ class AuthorizationClient(object):
             #  https://auth0.com/docs/flows/guides/device-auth/call-api-device-auth#token-responses
             raise Exception('Failed to request access token with response: [{}] {}'.format(
                 resp.status_code, resp.content))
+        self._initialize_credentials(resp)
 
-        """
-        The response body is of the form:
-        {
-          "access_token": "foo",
-          "refresh_token": "bar",
-          "id_token": "baz",
-          "token_type": "Bearer"
-        }
-        """
-        response_body = resp.json()
-        if "access_token" not in response_body:
-            raise ValueError('Expected "access_token" in response from oauth server')
+    def refresh_access_token(self):
+        if self._refresh_token is None:
+            raise ValueError("no refresh token available with which to refresh authorization credentials")
 
-        self._credentials = Credentials(access_token=response_body["access_token"], id_token=response_body["id_token"])
+        resp = _requests.post(
+            url=self._token_endpoint,
+            data={'grant_type': 'refresh_token',
+                  'client_id': self._client_id,
+                  'refresh_token': self._refresh_token},
+            headers=self._headers,
+            allow_redirects=False
+        )
+        if resp.status_code != _StatusCodes.OK:
+            raise Exception('Failed to request access token with response: [{}] {}'.format(
+                resp.status_code, resp.content))
+        self._initialize_credentials(resp)
 
     @property
     def credentials(self):

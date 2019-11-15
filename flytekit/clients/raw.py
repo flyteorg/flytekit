@@ -1,17 +1,46 @@
 from __future__ import absolute_import
+
 from grpc import insecure_channel as _insecure_channel, secure_channel as _secure_channel, RpcError as _RpcError, \
     StatusCode as _GrpcStatusCode, ssl_channel_credentials as _ssl_channel_credentials
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flytekit.common.exceptions import user as _user_exceptions
 import six as _six
+from flytekit.configuration import creds as _creds_config, platform as _platform_config
+
+from flytekit.clis.auth import credentials as _credentials_access
+from flytekit.clients.helpers import (
+    get_global_access_token as _get_global_access_token, set_global_access_token as _set_global_access_token
+)
+
+
+def _try_three_times(fn):
+    def handler(*args, **kwargs):
+        attempt = 0
+        while True:
+            try:
+                attempt += 1
+                return fn(*args, **kwargs)
+            except Exception as e:
+                if attempt >= 3:
+                    raise e
+                else:
+                    print('retrying')
+    return handler
 
 
 def _handle_rpc_error(fn):
+    @_try_three_times
     def handler(*args, **kwargs):
         try:
             return fn(*args, **kwargs)
         except _RpcError as e:
-            if e.code() == _GrpcStatusCode.ALREADY_EXISTS:
+            if e.code() == _GrpcStatusCode.UNAUTHENTICATED:
+                _credentials_access.get_client().refresh_access_token()
+                _set_global_access_token()
+                flyte_client = args[0]
+                flyte_client.refresh_metadata()
+                raise
+            elif e.code() == _GrpcStatusCode.ALREADY_EXISTS:
                 raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
             else:
                 raise
@@ -25,8 +54,9 @@ class RawSynchronousFlyteClient(object):
     This client should be usable regardless of environment in which this is used. In other words, configurations should
     be explicit as opposed to inferred from the environment or a configuration file.
     """
+    authentication_client = None
 
-    def __init__(self, url, insecure=False, credentials=None, options=None, metadata=None):
+    def __init__(self, url, insecure=False, credentials=None, options=None):
         """
         Initializes a gRPC channel to the given Flyte Admin service.
 
@@ -50,7 +80,15 @@ class RawSynchronousFlyteClient(object):
                 options=list((options or {}).items())
             )
         self._stub = _admin_service.AdminServiceStub(self._channel)
-        self._metadata = metadata
+        self._metadata = None
+        self.refresh_metadata()
+
+    def refresh_metadata(self):
+        if not _platform_config.AUTH.get():
+            # nothing to do
+            self._metadata = None
+        access_token = _get_global_access_token()
+        self._metadata = [(_creds_config.AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(access_token))]
 
     ####################################################################################################################
     #

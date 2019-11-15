@@ -1,3 +1,12 @@
+import keyring as _keyring
+
+from flytekit.clis.auth import credentials as _credentials_access
+
+# Identifies the service used for storing passwords in keyring
+_keyring_service_name = "flytecli"
+# Identifies the key used for storing and fetching from keyring. In our case, instead of a username as the keyring docs
+# suggest, we are storing a user's oidc.
+_keyring_storage_key = "access_token"
 
 
 def iterate_node_executions(
@@ -75,3 +84,18 @@ def iterate_task_executions(client, node_execution_identifier, limit=None, filte
         if not next_token:
             break
         token = next_token
+
+
+# Fetches an existing authorization access token if it exists in keyring or sets if it's unassigned.
+def get_global_access_token():
+    access_token = _keyring.get_password(_keyring_service_name, _keyring_storage_key)
+    if access_token is None:
+        access_token = set_global_access_token()
+    return access_token
+
+
+# Assigns and returns the authorization access token in keyring.
+def set_global_access_token():
+    credentials = _credentials_access.get_client().credentials
+    _keyring.set_password(_keyring_service_name, _keyring_storage_key, credentials.access_token)
+    return credentials.access_token
