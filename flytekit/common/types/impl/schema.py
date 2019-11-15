@@ -596,6 +596,7 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
             o = cls()
             with o as w:
                 w.write(t_value)
+            return o
         else:
             raise _user_exceptions.FlyteTypeException(
                 type(t_value),
