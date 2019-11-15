@@ -301,7 +301,16 @@ def test_casting():
 
 
 def test_from_python_std():
-    _schema_impl.Schema.from_python_std(t_value=_pd.DataFrame.from_dict({'a': [1, 2, 3, 4], 'b': [5, 6, 7, 8]}))
+    with _test_utils.LocalTestFileSystem():
+        df1 = _pd.DataFrame.from_dict({'a': [1, 2, 3, 4], 'b': [5, 6, 7, 8]})
+        s = _schema_impl.Schema.from_python_std(t_value=df1, schema_type=_schema_impl.SchemaType([('a', _primitives.Integer), ('b', _primitives.Integer)]))
+        assert s is not None
+        n = _schema_impl.Schema.fetch(s.uri,  schema_type=_schema_impl.SchemaType([('a', _primitives.Integer), ('b', _primitives.Integer)]))
+        with n as reader:
+            df2 = reader.read()
+            assert df2.columns.values.all() == df1.columns.values.all()
+            assert df2['b'].tolist() == df1['b'].tolist()
+
 
 
 def test_promote_from_model_schema_type():
