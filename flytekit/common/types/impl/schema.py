@@ -591,6 +591,11 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
             return schema
         elif isinstance(t_value, cls):
             return t_value
+        elif isinstance(t_value, _pd.DataFrame):
+            # Adds support for accepting a pandas dataframe and native convert to a Schema object
+            o = cls()
+            with o as w:
+                w.write(t_value)
         else:
             raise _user_exceptions.FlyteTypeException(
                 type(t_value),

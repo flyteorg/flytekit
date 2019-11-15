@@ -301,7 +301,7 @@ def test_casting():
 
 
 def test_from_python_std():
-    pass
+    _schema_impl.Schema.from_python_std(t_value=_pd.DataFrame.from_dict({'a': [1, 2, 3, 4], 'b': [5, 6, 7, 8]}))
 
 
 def test_promote_from_model_schema_type():
