@@ -68,7 +68,6 @@ _HIVE_QUERY_FORMATTER_V2 = \
         FROM {table};
     """
 
-
 # Set location in both parts of this query so in case of a partial failure, we will always have some data backing a
 # partition.
 _WRITE_HIVE_PARTITION_QUERY_FORMATTER = \
@@ -406,7 +405,6 @@ class _SchemaBackingMpBlob(_blob_impl.MultiPartBlob):
 
 
 class SchemaType(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.SchemaType)):
-
     _LITERAL_TYPE_TO_PROTO_ENUM = {
         _primitives.Integer.to_flyte_literal_type(): _type_models.SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
         _primitives.Float.to_flyte_literal_type(): _type_models.SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
@@ -591,6 +589,27 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
             return schema
         elif isinstance(t_value, cls):
             return t_value
+        elif isinstance(t_value, _pd.DataFrame):
+            # Accepts a pandas dataframe and converts to a Schema object
+            o = cls.create_at_any_location(schema_type=schema_type)
+            with o as w:
+                w.write(t_value)
+            return o
+        elif isinstance(t_value, list):
+            # Accepts a list of pandas dataframe and converts to a Schema object
+            o = cls.create_at_any_location(schema_type=schema_type)
+            with o as w:
+                for x in t_value:
+                    if isinstance(x, _pd.DataFrame):
+                        w.write(x)
+                    else:
+                        raise _user_exceptions.FlyteTypeException(
+                            type(t_value),
+                            {str, _six.text_type, Schema},
+                            received_value=x,
+                            additional_msg="A Schema object can only be create from a pandas DataFrame or a list of pandas DataFrame."
+                        )
+            return o
         else:
             raise _user_exceptions.FlyteTypeException(
                 type(t_value),
@@ -894,8 +913,8 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
 
             # TODO np.issubdtype is deprecated. Replace it
             if all(
-                not _np.issubdtype(dtype, allowed_type)
-                for allowed_type in get_supported_literal_types_to_pandas_types()[literal_type]
+                    not _np.issubdtype(dtype, allowed_type)
+                    for allowed_type in get_supported_literal_types_to_pandas_types()[literal_type]
             ):
                 if read:
                     read_or_write_msg = "read data frame object from schema"
