@@ -5,6 +5,7 @@ from grpc import insecure_channel as _insecure_channel, secure_channel as _secur
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flytekit.common.exceptions import user as _user_exceptions
 import six as _six
+import retry as _retry
 from flytekit.configuration import creds as _creds_config, platform as _platform_config
 
 from flytekit.clis.auth import credentials as _credentials_access
@@ -13,23 +14,8 @@ from flytekit.clients.helpers import (
 )
 
 
-def _try_three_times(fn):
-    def handler(*args, **kwargs):
-        attempt = 0
-        while True:
-            try:
-                attempt += 1
-                return fn(*args, **kwargs)
-            except Exception as e:
-                if attempt >= 3:
-                    raise e
-                else:
-                    print('retrying')
-    return handler
-
-
 def _handle_rpc_error(fn):
-    @_try_three_times
+    @_retry.retry(tries=3)
     def handler(*args, **kwargs):
         try:
             return fn(*args, **kwargs)
