@@ -358,6 +358,9 @@ class EngineContext(object):
         self._working_directory = tmp_dir
         self._execution_id = execution_id
         self._logging = logging
+        self._output_protos = dict()
+        self._raw_output_files = dict()
+        self._scratch = dict()
 
     @property
     def stats(self):
@@ -390,6 +393,32 @@ class EngineContext(object):
     @property
     def execution_id(self):
         """
-        :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier
+        :rtype: TODO:
         """
         return self._execution_id
+
+    @property
+    def output_protos(self):
+        """
+        A dictionary of Flyte IDL entities that will be dumped to files at their respective key in the remote output
+        directory dictated by the scheduler. Use this dict to return files to the scheduler.
+        :rtype: dict[Text,flytekit.models.common.FlyteIdlEntity]
+        """
+        return self._output_protos
+
+    @property
+    def raw_output_files(self):
+        """
+        A dictionary of desired file names to paths that should be uploaded to the tasks metadata directory for
+        propeller to read.
+        :rtype: dict[Text,Text]
+        """
+        return self._raw_output_files
+
+    @property
+    def scratch(self):
+        """
+        Use this dictionary to pass arbitrary objects around in process.
+        :rtype: dict[Text,Any]
+        """
+        return self._scratch

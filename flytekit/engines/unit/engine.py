@@ -98,20 +98,19 @@ class UnitTestEngineTask(_common_engine.BaseTaskExecutor):
         :rtype: dict[Text,flytekit.models.common.FlyteIdlEntity]
         """
         with _common_utils.AutoDeletingTempDir("user_dir") as user_working_directory:
-            return self.sdk_task.execute(
-                _common_engine.EngineContext(
-                    execution_id=WorkflowExecutionIdentifier(
-                        project='unit_test',
-                        domain='unit_test',
-                        name='unit_test'
-                    ),
-                    execution_date=_datetime.utcnow(),
-                    stats=MockStats(),
-                    logging=_logging,  # TODO: A mock logging object that we can read later.
-                    tmp_dir=user_working_directory
+            engine_context = _common_engine.EngineContext(
+                execution_id=WorkflowExecutionIdentifier(
+                    project='unit_test',
+                    domain='unit_test',
+                    name='unit_test'
                 ),
-                inputs
+                execution_date=_datetime.utcnow(),
+                stats=MockStats(),
+                logging=_logging,  # TODO: A mock logging object that we can read later.
+                tmp_dir=user_working_directory
             )
+            self.sdk_task.execute(engine_context, inputs)
+            return engine_context.output_protos
 
     def _transform_for_user_output(self, outputs):
         """

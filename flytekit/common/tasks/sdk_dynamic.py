@@ -31,7 +31,6 @@ class PromiseOutputReference(_task_output.OutputReference):
         :param T value:
         :raises: flytekit.common.exceptions.user.FlyteValueException
         """
-
         self._raw_value = value
 
 
@@ -43,6 +42,8 @@ class _SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runna
     Since an _SdkDynamicTask is assumed to run by hooking into Python code, we will provide additional shortcuts and
     methods on this object.
     """
+
+    _SUBTASK_SCRATCH_KEY = 'subtasks'
 
     def __init__(
             self,
@@ -80,29 +81,35 @@ class _SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runna
         """
         return task_type == _constants.SdkTaskType.PYTHON_TASK
 
-    def _produce_dynamic_job_spec(self, context, inputs):
+    def _unpack_output_references(self, context):
         """
-        Runs user code and and produces future task nodes to run sub-tasks.
         :param context:
-        :param flytekit.models.literals.LiteralMap literal_map inputs:
-        :rtype: (_dynamic_job.DynamicJobSpec, dict[Text, flytekit.models.common.FlyteIdlEntity])
+        :rtype: dict[Text,_task_output.OutputReference]
         """
-        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(inputs, {
-            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)
-        })
-        outputs_dict = {
+        return {
             name: PromiseOutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
             for name, variable in _six.iteritems(self.interface.outputs)
         }
 
-        inputs_dict.update(outputs_dict)
-        yielded_sub_tasks = [sub_task for sub_task in
-                             super(_SdkDynamicTask, self)._execute_user_code(context, inputs_dict) or []]
+    def _handle_user_returns(self, context, user_returned):
+        """
+        :param context:
+        :param user_returned:
+        """
+        context.scratch[type(self)._SUBTASK_SCRATCH_KEY] = [sub_task for sub_task in (user_returned or [])]
 
+    def _pack_output_references(self, context, outputs):
+        yielded_sub_tasks = context.scratch.get(type(self)._SUBTASK_SCRATCH_KEY)
         upstream_nodes = list()
-        output_bindings = [_literal_models.Binding(var=name, binding=_interface.BindingData.from_python_std(
-            b.sdk_type.to_flyte_literal_type(), b.raw_value, upstream_nodes=upstream_nodes))
-                           for name, b in _six.iteritems(outputs_dict)]
+        output_bindings = [
+            _literal_models.Binding(
+                var=name,
+                binding=_interface.BindingData.from_python_std(
+                    b.sdk_type.to_flyte_literal_type(), b.raw_value, upstream_nodes=upstream_nodes
+                )
+            )
+            for name, b in _six.iteritems(outputs)
+        ]
         upstream_nodes = set(upstream_nodes)
 
         generated_files = {}
@@ -171,8 +178,11 @@ class _SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runna
         # assign custom field to the ArrayJob properties computed.
         for task, (array_job, _) in _six.iteritems(array_job_index):
             # TODO: Reconstruct task template object instead of modifying an existing one?
-            tasks.append(task.assign_custom_and_return(array_job.to_dict()).assign_type_and_return(
-                _constants.SdkTaskType.CONTAINER_ARRAY_TASK))
+            tasks.append(
+                task.assign_custom_and_return(array_job.to_dict()).assign_type_and_return(
+                    _constants.SdkTaskType.CONTAINER_ARRAY_TASK
+                )
+            )
 
         # min_successes is absolute, it's computed as the reverse of allowed_failure_ratio and multiplied by the
         # total length of tasks to get an absolute count.
@@ -184,37 +194,14 @@ class _SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runna
             outputs=output_bindings,
             subworkflows=[])
 
-        return dynamic_job_spec, generated_files
-
-    # TODO: Refactor
-    @_exception_scopes.system_entry_point
-    def execute(self, context, inputs):
-        """
-        Executes batch task's user code and produces futures file as well as all sub-task inputs.pb files.
-
-        :param flytekit.engines.common.EngineContext context:
-        :param flytekit.models.literals.LiteralMap inputs:
-        :rtype: dict[Text, flytekit.models.common.FlyteIdlEntity]
-        :returns: This function must return a dictionary mapping 'filenames' to Flyte Interface Entities.  These
-            entities will be used by the engine to pass data from node to node, populate metadata, etc. etc..  Each
-            engine will have different behavior.  For instance, the Flyte engine will upload the entities to a remote
-            working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
-            workflow.  Where as local engine will merely feed the outputs directly into the next node.
-        """
-        spec, generated_files = self._produce_dynamic_job_spec(context, inputs)
-
-        # If no sub-tasks are requested to run, just produce an outputs file like any other single-step tasks.
-        if len(generated_files) == 0:
-            return {
-                _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
-                    literals={binding.var: binding.binding.to_literal_model() for binding in spec.outputs})
-            }
+        if len(generated_files) > 0:
+            # If we have sub-jobs to run, we must return the futures file with bindings that will be resolved by
+            # Propeller when all sub-jobs have completed.
+            context.output_protos.update(generated_files)
+            context.output_protos[_constants.FUTURES_FILE_NAME] = dynamic_job_spec
         else:
-            generated_files.update({
-                _constants.FUTURES_FILE_NAME: spec
-            })
-
-            return generated_files
+            # If no sub-jobs, we just return outputs like any normal task.
+            super(_SdkDynamicTask, self)._pack_output_references(context, outputs)
 
 
 class DynamicFunctionTask(_function_mixin.WrappedFunctionTask, _SdkDynamicTask):

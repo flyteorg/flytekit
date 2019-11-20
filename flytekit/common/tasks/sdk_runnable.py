@@ -1,17 +1,14 @@
 from __future__ import absolute_import
 
-try:
-    from inspect import getfullargspec as _getargspec
-except ImportError:
-    from inspect import getargspec as _getargspec
-
 import abc as _abc
+import importlib as _importlib
 import six as _six
 
 from flytekit import __version__
 from flytekit.common import interface as _interface, constants as _constants, sdk_bases as _sdk_bases
 from flytekit.common.core import identifier as _identifier
-from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
+from flytekit.common.exceptions import user as _user_exceptions, system as _system_exceptions, \
+    scopes as _exception_scopes
 from flytekit.common.tasks import task as _base_task, output as _task_output
 from flytekit.common.tasks.mixins.executable_traits import function as _function_mixin, notebook as _notebook_mixin
 from flytekit.common.types import helpers as _type_helpers
@@ -108,6 +105,7 @@ class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task
         env=None,
         config=None,
         image=None,
+        runnable_task=None,
     ):
         super(SdkRunnableContainer, self).__init__(
             image or type(self)._get_default_image(),
@@ -117,6 +115,7 @@ class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task
             env or type(self)._get_default_env(),
             config or type(self)._get_default_config()
         )
+        self._runnable_task = runnable_task
 
     @classmethod
     def _get_default_image(cls):
@@ -165,6 +164,19 @@ class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task
         """
         :rtype: list[Text]
         """
+        if not self._args:
+            print(type(self))
+            return _sdk_config.SDK_PYTHON_VENV.get() + [
+                "pyflyte-execute",
+                "--task-module",
+                self._runnable_task.task_module,
+                "--task-name",
+                self._runnable_task.task_name,
+                "--inputs",
+                "{{.input}}",
+                "--output-prefix",
+                "{{.outputPrefix}}"
+            ]
         return _sdk_config.SDK_PYTHON_VENV.get() + self._args
 
     @property
@@ -240,7 +252,12 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         :param datetime.timedelta timeout:
         :param dict[Text, Text] environment:
         :param dict[Text, T] custom:
+        :param Text _instantiated_in:  Module name in which this object was instantiated. This will be automatically
+            provided.
+        :param Text _instantiated_in_file:  File in which this object was instantiated. This will be
+            automatically provided.
         """
+        self._discovered_attribute = None
         super(SdkRunnableTask, self).__init__(
             type=task_type,
             metadata=_task_models.TaskMetadata(
@@ -278,6 +295,39 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
     def promote_from_model(cls, base_model):
         # TODO: If the task exists in this container, we should be able to retrieve it.
         raise _user_exceptions.FlyteAssertion("Cannot promote a base object to a runnable task.")
+
+    @property
+    def task_name(self):
+        """
+        :rtype: Text
+        """
+        # TODO: This is a current limitation of the SDK engine. It requires we be able to load a task definition from
+        # TODO: a module-level attribute. Therefore, we need to know this information about the object. This also leads
+        # TODO: this late-binding code which is confusing.
+        if not self._discovered_attribute:
+            try:
+                m = _importlib.import_module(self.task_module)
+            except:
+                raise _system_exceptions.FlyteSystemAssertion(
+                    "Cannot load module: {} for your task. This exception being raised indicates a bug which should "
+                    "have been identified upstream."
+                )
+            for k in dir(m):
+                if getattr(m, k) is self:
+                    self._discovered_attribute = k
+                    break
+            if not self._discovered_attribute:
+                raise _user_exceptions.FlyteAssertion(
+                    "Your task defined in {} must be stored as a class-level attribute.".format(self.task_module)
+                )
+        return self._discovered_attribute
+
+    @property
+    def task_module(self):
+        """
+        :rtype: Text
+        """
+        return self._instantiated_in
 
     def validate(self):
         super(SdkRunnableTask, self).validate()
@@ -344,7 +394,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
     def _unpack_inputs(self, context, inputs):
         """
         :param context:
-        :return:
+        :rtype: TODO
         """
         return _type_helpers.unpack_literal_map_to_sdk_python_std(
             inputs,
@@ -357,7 +407,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
     def _unpack_output_references(self, context):
         """
         :param context:
-        :return:
+        :rtype: dict[Text,_task_output.OutputReference]
         """
         return {
             name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
@@ -368,21 +418,18 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         """
         :param context:
         :param user_returned:
-        :return:
         """
-        return dict()
+        pass
 
     def _pack_output_references(self, context, outputs):
         """
         :param context:
         :param outputs:
-        :return:
+        :rtype:
         """
-        return {
-            _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
-                literals={k: v.sdk_value for k, v in _six.iteritems(outputs)}
-            )
-        }
+        context.output_protos[_constants.OUTPUT_FILE_NAME] = _literal_models.LiteralMap(
+            literals={k: v.sdk_value for k, v in _six.iteritems(outputs)}
+        )
     # TODO: End docstrings
 
     @_abc.abstractmethod
@@ -402,22 +449,20 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
 
         To modify behavior for a task extension that is being authored, override the methods called from this function.
 
+        The goal of this function is to fill out the output_protos and raw_output_files dicts in the 'context' object.
+        These files and protos will be written to the metadata path specified by the scheduler and can be read by
+        service-side components.
+
         :param flytekit.engines.common.EngineContext context:
         :param flytekit.models.literals.LiteralMap inputs:
         :rtype: dict[Text,flytekit.models.common.FlyteIdlEntity]
-        :returns: This function must return a dictionary mapping 'filenames' to Flyte Interface Entities.  These
-            entities will be used by the engine to pass data from node to node, populate metadata, etc. etc..  Each
-            engine will have different behavior.  For instance, the Flyte engine will upload the entities to a remote
-            working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
-            workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
         inputs_dict = self._unpack_inputs(context, inputs)
         vargs = self._get_vargs(context)
         outputs_dict = self._unpack_output_references(context)
         user_returned = self._execute_user_code(context, vargs, inputs_dict, outputs_dict)
-        out_protos = self._handle_user_returns(context, user_returned)
-        out_protos.update(self._pack_output_references(context, outputs_dict))
-        return out_protos
+        self._handle_user_returns(context, user_returned)
+        self._pack_output_references(context, outputs_dict)
 
     def _get_container_definition(
             self,
@@ -514,75 +559,12 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 )
             )
 
-        # TODO: Resolve this issue with spark and notebook vs decorated function
+        # TODO: No circular reference
         return (cls or SdkRunnableContainer)(
-            command=[],
-            args=[
-                "pyflyte-execute",
-                "--task-module",
-                self.task_module,
-                "--task-name",
-                self.task_function_name,
-                "--inputs",
-                "{{.input}}",
-                "--output-prefix",
-                "{{.outputPrefix}}"
-            ],
+            runnable_task=self,
             resources=_task_models.Resources(limits=limits, requests=requests),
             env=environment,
-            config={}
         )
-
-    def _validate_inputs(self, inputs):
-        """
-        This method should be overridden in sub-classes that intend to do additional checks on inputs.  If validation
-        fails, this function should raise an informative exception.
-        :param dict[Text, flytekit.models.interface.Variable] inputs:  Input variables to validate
-        :raises: flytekit.common.exceptions.user.FlyteValidationException
-        """
-        super(SdkRunnableTask, self)._validate_inputs(inputs)
-        for k, v in _six.iteritems(inputs):
-            if not self._is_argname_in_function_definition(k):
-                raise _user_exceptions.FlyteValidationException(
-                    "The input '{}' was not specified in the task function.  Therefore, this input cannot be "
-                    "provided to the task.".format(v)
-                )
-            if _type_helpers.get_sdk_type_from_literal_type(v.type) in type(self)._banned_inputs:
-                raise _user_exceptions.FlyteValidationException(
-                    "The input '{}' is not an accepted input type.".format(v)
-                )
-
-    def _validate_outputs(self, outputs):
-        """
-        This method should be overridden in sub-classes that intend to do additional checks on outputs.  If validation
-        fails, this function should raise an informative exception.
-        :param dict[Text, flytekit.models.interface.Variable] outputs:  Output variables to validate
-        :raises: flytekit.common.exceptions.user.FlyteValidationException
-        """
-        super(SdkRunnableTask, self)._validate_outputs(outputs)
-        for k, v in _six.iteritems(outputs):
-            if not self._is_argname_in_function_definition(k):
-                raise _user_exceptions.FlyteValidationException(
-                    "The output named '{}' was not specified in the task function.  Therefore, this output cannot be "
-                    "provided to the task."
-                )
-            if _type_helpers.get_sdk_type_from_literal_type(v.type) in type(self)._banned_outputs:
-                raise _user_exceptions.FlyteValidationException(
-                    "The output '{}' is not an accepted output type.".format(v)
-                )
-
-    def _get_kwarg_inputs(self):
-        # Trim off first parameter as it is reserved for workflow_parameters
-        return set(_getargspec(self.task_function).args[1:])
-
-    def _is_argname_in_function_definition(self, key):
-        return key in self._get_kwarg_inputs()
-
-    def _missing_mapped_inputs_outputs(self):
-        # Trim off first parameter as it is reserved for workflow_parameters
-        args = self._get_kwarg_inputs()
-        inputs_and_outputs = set(self.interface.outputs.keys()) | set(self.interface.inputs.keys())
-        return args ^ inputs_and_outputs
 
 
 class RunnablePythonFunctionTask(_function_mixin.WrappedFunctionTask, SdkRunnableTask):

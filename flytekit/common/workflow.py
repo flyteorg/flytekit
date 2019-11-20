@@ -76,12 +76,12 @@ class SdkWorkflow(
     _six.with_metaclass(
         _sdk_bases.ExtendedSdkType,
         _hash_mixin.HashOnReferenceMixin,
-        _workflow_models.WorkflowTemplate,
         _registerable.RegisterableEntity,
+        _workflow_models.WorkflowTemplate,
     )
 ):
 
-    def __init__(self, inputs, outputs, nodes):
+    def __init__(self, inputs, outputs, nodes, **kwargs):
         """
         :param list[flytekit.common.promise.Input] inputs:
         :param list[Output] outputs:
@@ -111,6 +111,7 @@ class SdkWorkflow(
             ),
             nodes=nodes,
             outputs=[_literal_models.Binding(v.name, v.binding_data) for v in outputs],
+            **kwargs
         )
         self._user_inputs = inputs
         self._upstream_entities = set(n.executable_sdk_object for n in nodes)

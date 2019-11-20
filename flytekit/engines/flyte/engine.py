@@ -1,11 +1,11 @@
 from __future__ import absolute_import
 
 import logging as _logging
+import shutil as _shutil
+import six as _six
 import os as _os
 import traceback as _traceback
 from datetime import datetime as _datetime
-
-import six as _six
 
 from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions, iterate_task_executions as \
     _iterate_task_executions
@@ -250,48 +250,45 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
             with _common_utils.AutoDeletingTempDir("task_dir") as task_dir:
                 with _data_proxy.LocalWorkingDirectoryContext(task_dir):
                     with _data_proxy.RemoteDataContext():
-                        output_file_dict = dict()
-
                         # This sets the logging level for user code and is the only place an sdk setting gets
                         # used at runtime.  Optionally, Propeller can set an internal config setting which
                         # takes precedence.
                         log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
                         _logging.getLogger().setLevel(log_level)
 
-                        try:
-                            output_file_dict = self.sdk_task.execute(
-                                _common_engine.EngineContext(
-                                    execution_id=_identifier.WorkflowExecutionIdentifier(
-                                        project=_internal_config.EXECUTION_PROJECT.get(),
-                                        domain=_internal_config.EXECUTION_DOMAIN.get(),
-                                        name=_internal_config.EXECUTION_NAME.get()
-                                    ),
-                                    execution_date=_datetime.utcnow(),
-                                    stats=_get_stats(
-                                        # Stats metric path will be:
-                                        # registration_project.registration_domain.app.module.task_name.user_stats
-                                        # and it will be tagged with execution-level values for project/domain/wf/lp
-                                        "{}.{}.{}.user_stats".format(
-                                            _internal_config.TASK_PROJECT.get() or _internal_config.PROJECT.get(),
-                                            _internal_config.TASK_DOMAIN.get() or _internal_config.DOMAIN.get(),
-                                            _internal_config.TASK_NAME.get() or _internal_config.NAME.get()
-                                        ),
-                                        tags={
-                                            'exec_project': _internal_config.EXECUTION_PROJECT.get(),
-                                            'exec_domain': _internal_config.EXECUTION_DOMAIN.get(),
-                                            'exec_workflow': _internal_config.EXECUTION_WORKFLOW.get(),
-                                            'exec_launchplan': _internal_config.EXECUTION_LAUNCHPLAN.get(),
-                                            'api_version': _api_version
-                                        }
-                                    ),
-                                    logging=_logging,
-                                    tmp_dir=task_dir
+                        engine_context = _common_engine.EngineContext(
+                            execution_id=_identifier.WorkflowExecutionIdentifier(
+                                project=_internal_config.EXECUTION_PROJECT.get(),
+                                domain=_internal_config.EXECUTION_DOMAIN.get(),
+                                name=_internal_config.EXECUTION_NAME.get()
+                            ),
+                            execution_date=_datetime.utcnow(),
+                            stats=_get_stats(
+                                # Stats metric path will be:
+                                # registration_project.registration_domain.app.module.task_name.user_stats
+                                # and it will be tagged with execution-level values for project/domain/wf/lp
+                                "{}.{}.{}.user_stats".format(
+                                    _internal_config.TASK_PROJECT.get() or _internal_config.PROJECT.get(),
+                                    _internal_config.TASK_DOMAIN.get() or _internal_config.DOMAIN.get(),
+                                    _internal_config.TASK_NAME.get() or _internal_config.NAME.get()
                                 ),
-                                inputs
-                            )
+                                tags={
+                                    'exec_project': _internal_config.EXECUTION_PROJECT.get(),
+                                    'exec_domain': _internal_config.EXECUTION_DOMAIN.get(),
+                                    'exec_workflow': _internal_config.EXECUTION_WORKFLOW.get(),
+                                    'exec_launchplan': _internal_config.EXECUTION_LAUNCHPLAN.get(),
+                                    'api_version': _api_version
+                                }
+                            ),
+                            logging=_logging,
+                            tmp_dir=task_dir
+                        )
+
+                        try:
+                            self.sdk_task.execute(engine_context, inputs)
                         except _exception_scopes.FlyteScopedException as e:
                             _logging.error("!!! Begin Error Captured by Flyte !!!")
-                            output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+                            engine_context.output_protos[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
                                 _error_models.ContainerError(
                                     e.error_code,
                                     e.verbose_message,
@@ -303,7 +300,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                         except Exception:
                             _logging.error("!!! Begin Unknown System Error Captured by Flyte !!!")
                             exc_str = _traceback.format_exc()
-                            output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+                            engine_context.output_protos[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
                                 _error_models.ContainerError(
                                     "SYSTEM:Unknown",
                                     exc_str,
@@ -313,11 +310,13 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                             _logging.error(exc_str)
                             _logging.error("!!! End Error Captured by Flyte !!!")
                         finally:
-                            for k, v in _six.iteritems(output_file_dict):
+                            for k, v in _six.iteritems(engine_context.output_protos):
                                 _common_utils.write_proto_to_file(
                                     v.to_flyte_idl(),
                                     _os.path.join(temp_dir.name, k)
                                 )
+                            for k, v in _six.iteritems(engine_context.raw_output_files):
+                                _shutil.copyfile(v, _os.path.join(temp_dir.name, k))
                             _data_proxy.Data.put_data(temp_dir.name, context['output_prefix'], is_multipart=True)
 
 

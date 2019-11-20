@@ -5,7 +5,7 @@ from datetime import datetime as _datetime
 import logging as _logging
 import six as _six
 
-from flytekit.common import utils as _common_utils
+from flytekit.common import utils as _common_utils, constants as _constants
 from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable, hive_task as _hive_task
 from flytekit.common.types import base_sdk_types as _base_sdk_types, containers as _containers, schema as _schema
@@ -108,7 +108,8 @@ def test_hive_task_query_generation():
             for name, variable in _six.iteritems(two_queries.interface.outputs)
         }
 
-        qubole_hive_jobs = two_queries._generate_plugin_objects(context, references)
+        two_queries.execute(context, references)
+        qubole_hive_jobs = context.output_protos[_constants.FUTURES_FILE_NAME].nodes
         assert len(qubole_hive_jobs) == 2
 
         # deprecated, collection is only here for backwards compatibility
@@ -135,7 +136,8 @@ def test_hive_task_dynamic_job_spec_generation():
             logging=_logging,  # TODO: A mock logging object that we can read later.
             tmp_dir=user_working_directory
         )
-        dj_spec = two_queries._produce_dynamic_job_spec(context, _literals.LiteralMap(literals={}))
+        two_queries.execute(context, _literals.LiteralMap(literals={}))
+        dj_spec = context.output_protos[_constants.FUTURES_FILE_NAME]
 
         # Bindings
         assert len(dj_spec.outputs[0].binding.collection.bindings) == 2

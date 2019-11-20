@@ -461,7 +461,7 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
 
 class WorkflowTemplate(_common.FlyteIdlEntity):
 
-    def __init__(self, id, metadata, interface, nodes, outputs, failure_node=None):
+    def __init__(self, id, metadata, interface, nodes, outputs, failure_node=None, **_):
         """
         A workflow template encapsulates all the task, branch, and subworkflow nodes to run a statically analyzable,
         directed acyclic graph. It contains also metadata that tells the system how to execute the workflow (i.e.

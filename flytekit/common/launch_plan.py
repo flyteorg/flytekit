@@ -238,6 +238,7 @@ class SdkRunnableLaunchPlan(
             labels=None,
             annotations=None,
             auth=None,
+            **kwargs
     ):
         """
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
@@ -286,6 +287,7 @@ class SdkRunnableLaunchPlan(
             labels or _common_models.Labels({}),
             annotations or _common_models.Annotations({}),
             auth,
+            **kwargs
         )
         self._interface = _interface.TypedInterface(
             {k: v.var for k, v in _six.iteritems(default_inputs)},

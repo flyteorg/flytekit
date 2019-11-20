@@ -5,12 +5,14 @@ try:
 except ImportError:
     from inspect import getargspec as _getargspec
 
+import json as _json
 import os as _os
 import sys as _sys
 from flytekit.bin import entrypoint as _entrypoint
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.tasks.mixins.executable_traits import function as _function_mixin, notebook as _notebook_mixin
+from flytekit.configuration import sdk as _sdk_config
 from flytekit.models import task as _task_models
 from flytekit.plugins import pyspark as _pyspark
 from google.protobuf.json_format import MessageToDict as _MessageToDict
@@ -34,14 +36,13 @@ class GlobalSparkContext(object):
 
 
 class SdkRunnableSparkContainer(_sdk_runnable.SdkRunnableContainer):
-
     @property
     def args(self):
-        """
-        Override args to remove the injection of command prefixes
-        :rtype: list[Text]
-        """
-        return self._args
+        # Override args to remove the injection of command prefixes
+        args = super(SdkRunnableSparkContainer, self).args
+        if _sdk_config.SDK_PYTHON_VENV.is_set():
+            args = args[1:]
+        return args
 
 
 class _SdkSparkTask(_sdk_runnable.SdkRunnableTask):
@@ -65,8 +66,8 @@ class _SdkSparkTask(_sdk_runnable.SdkRunnableTask):
             spark_exec_path = spark_exec_path[:-1]
 
         spark_job = _task_models.SparkJob(
-            spark_conf=spark_conf,
-            hadoop_conf=hadoop_conf,
+            spark_conf=spark_conf or self._get_default_spark_conf(),
+            hadoop_conf=hadoop_conf or self._get_default_hadoop_conf(),
             application_file="local://" + spark_exec_path,
             executor_path=_sys.executable,
         ).to_flyte_idl()
@@ -93,9 +94,6 @@ class _SdkSparkTask(_sdk_runnable.SdkRunnableTask):
             self,
             **kwargs
     ):
-        """
-        :rtype: SdkRunnableSparkContainer
-        """
         return super(_SdkSparkTask, self)._get_container_definition(cls=SdkRunnableSparkContainer, **kwargs)
 
     def _get_kwarg_inputs(self):
@@ -108,4 +106,22 @@ class SparkFunctionTask(_function_mixin.WrappedFunctionTask, _SdkSparkTask):
 
 
 class SparkNotebookTask(_notebook_mixin.NotebookTask, _SdkSparkTask):
-    pass
+
+    def _get_dict_from_section(self, section):
+        with open(self._notebook_path) as json_file:
+            data = _json.load(json_file)
+            for p in data['cells']:
+                meta = p['metadata']
+                if "tags" in meta:
+                    if section in meta["tags"]:
+                        # TODO: Morph into json and raise error if not.
+                        sc_str = ' '.join(p["source"])
+                        ldict = {}
+                        exec (sc_str, globals(), ldict)
+                        return ldict[section]
+
+    def _get_default_spark_conf(self):
+        return self._get_dict_from_section("spark_conf")
+
+    def _get_default_hadoop_conf(self):
+        return self._get_dict_from_section("hadoop_conf")

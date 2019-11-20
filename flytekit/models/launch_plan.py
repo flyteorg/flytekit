@@ -108,7 +108,7 @@ class Auth(_common.FlyteIdlEntity):
 
 class LaunchPlanSpec(_common.FlyteIdlEntity):
 
-    def __init__(self, workflow_id, entity_metadata, default_inputs, fixed_inputs, labels, annotations, auth):
+    def __init__(self, workflow_id, entity_metadata, default_inputs, fixed_inputs, labels, annotations, auth, **_):
         """
         The spec for a Launch Plan.
 

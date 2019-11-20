@@ -99,7 +99,6 @@ class _SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runna
             pod_spec=pod_spec,
             primary_container_name=primary_container_name,
         ).to_flyte_idl()
-
         self._custom = _MessageToDict(sidecar_job_plugin)
 
 

@@ -11,24 +11,9 @@ def test_basic_unit_test():
     def add_one(wf_params, value_in, value_out):
         value_out.set(value_in + 1)
 
-    t = sdk_runnable.SdkRunnableTask(
-        add_one,
-        _common_constants.SdkTaskType.PYTHON_TASK,
-        "1",
-        1,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        False,
-        None,
-        {},
-        None,
+    t = sdk_runnable.RunnablePythonFunctionTask(
+        task_function=add_one,
+        task_type=_common_constants.SdkTaskType.PYTHON_TASK,
     )
     t.add_inputs({'value_in': interface.Variable(primitives.Integer.to_flyte_literal_type(), "")})
     t.add_outputs({'value_out': interface.Variable(primitives.Integer.to_flyte_literal_type(), "")})

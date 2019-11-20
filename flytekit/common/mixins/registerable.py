@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 import abc as _abc
 import inspect as _inspect
+import os as _os
 import six as _six
 from flytekit.common import sdk_bases as _sdk_bases
 
@@ -17,21 +18,30 @@ class _InstanceTracker(_sdk_bases.ExtendedSdkType):
     by inspecting the call stack when __call__ is called on the metaclass (thus instantiating an object).
     """
     @staticmethod
-    def _find_instance_module():
+    def _find_instance_module_and_file():
         frame = _inspect.currentframe()
         while frame:
             if frame.f_code.co_name == '<module>':
-                return frame.f_globals['__name__']
+                return frame.f_globals['__name__'], _os.path.abspath(frame.f_globals['__file__'])
             frame = frame.f_back
-        return None
+        return None, None
 
     def __call__(cls, *args, **kwargs):
-        o = super(_InstanceTracker, cls).__call__(*args, **kwargs)
-        o._instantiated_in = _InstanceTracker._find_instance_module()
-        return o
+        instantiated_in, instantiated_in_file = _InstanceTracker._find_instance_module_and_file()
+        return super(_InstanceTracker, cls).__call__(
+            _instantiated_in=instantiated_in,
+            _instantiated_in_file=instantiated_in_file,
+            *args,
+            **kwargs
+        )
 
 
 class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
+
+    def __init__(self, _instantiated_in=None, _instantiated_in_file=None, *args, **kwargs):
+        self._instantiated_in = _instantiated_in
+        self._instantiated_in_file = _instantiated_in_file
+        super(RegisterableEntity, self).__init__(*args, **kwargs)
 
     @_abc.abstractmethod
     def register(self, project, domain, name, version):
@@ -73,3 +83,11 @@ class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
         :rtype: Optional[Text]
         """
         return self._instantiated_in
+
+    @property
+    def instantiated_in_file(self):
+        """
+        If found, we try to specify the file where the task was first instantiated.
+        :rtype: Optional[Text]
+        """
+        return self._instantiated_in_file
