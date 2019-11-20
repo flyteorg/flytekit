@@ -122,7 +122,7 @@ class NotebookTask(_six.with_metaclass(_abc.ABCMeta, _common.ExecutableTaskMixin
         # Add output_notebook as an implicit output to the task.
         if type(self).OUTPUT_NOTEBOOK in outputs:
             raise ValueError(
-                "{} is a reserved output keyword. Please use a different output name.".format(
+                "{} is a reserved output. Please use a different output name.".format(
                     type(self).OUTPUT_NOTEBOOK
                 )
             )
@@ -138,7 +138,6 @@ class NotebookTask(_six.with_metaclass(_abc.ABCMeta, _common.ExecutableTaskMixin
         """
         return inputs.to_flyte_idl()
 
-    # TODO: Extend papermill's engine and translators to more elegantly manage Flyte types.
     def _augment_notebook(self, context, inputs):
         with open(self._notebook_path) as json_file:
             data = _json.load(json_file)

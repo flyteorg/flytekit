@@ -8,19 +8,19 @@ import six as _six
 from google.protobuf import text_format as _text_format
 from pyspark import SparkConf, SparkContext
 from flytekit.sdk.types import Types as _Types
-from flytekit.common.types import helpers as _type_helpers, primitives as _p
+from flytekit.common.types import helpers as _type_helpers, primitives as _primitives
 from flytekit.common import constants as _constants, sdk_bases as _sdk_bases
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import output as _task_output, task as _base_tasks
 from flytekit.models import literals as _literal_models
 
 type_map = {
-    int: _p.Integer,
-    bool: _p.Boolean,
-    float: _p.Float,
-    str: _p.String,
-    _datetime.datetime: _p.Datetime,
-    _datetime.timedelta: _p.Timedelta,
+    int: _primitives.Integer,
+    bool: _primitives.Boolean,
+    float: _primitives.Float,
+    str: _primitives.String,
+    _datetime.datetime: _primitives.Datetime,
+    _datetime.timedelta: _primitives.Timedelta,
 }
 
 OUTPUT_NOTEBOOK = 'output_notebook'
@@ -41,54 +41,6 @@ def get_spark_context(spark_conf):
     spark_conf.add(("spark.master", "local"))
     conf = SparkConf().setAll(spark_conf)
     return SparkContext(conf=conf)
-
-
-def python_notebook(
-        notebook_path='',
-        inputs={},
-        outputs={},
-        cache_version='',
-        retries=0,
-        deprecated='',
-        storage_request=None,
-        cpu_request=None,
-        gpu_request=None,
-        memory_request=None,
-        storage_limit=None,
-        cpu_limit=None,
-        gpu_limit=None,
-        memory_limit=None,
-        cache=False,
-        timeout=None,
-        environment=None,
-        cls=None,
-
-):
-    """
-    Decorator to create a Python Notebook Task definition.  This task will run as a single unit of work on the platform.
-
-    :rtype: flytekit.common.tasks.sdk_runnable.SdkNotebookTask
-    """
-    return SdkNotebookTask(
-            notebook_path=notebook_path,
-            inputs=inputs,
-            outputs=outputs,
-            task_type=_constants.SdkTaskType.PYTHON_TASK,
-            discovery_version=cache_version,
-            retries=retries,
-            deprecated=deprecated,
-            storage_request=storage_request,
-            cpu_request=cpu_request,
-            gpu_request=gpu_request,
-            memory_request=memory_request,
-            storage_limit=storage_limit,
-            cpu_limit=cpu_limit,
-            gpu_limit=gpu_limit,
-            memory_limit=memory_limit,
-            discoverable=cache,
-            timeout=timeout or _datetime.timedelta(seconds=0),
-            environment=environment,
-            custom={})
 
 
 class SdkNotebookTask(
