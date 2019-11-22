@@ -1,97 +1,82 @@
 from __future__ import absolute_import
 
-import datetime as _datetime
-import os as _os
-import json as _json
 import six as _six
 
-from google.protobuf import text_format as _text_format
-from pyspark import SparkConf, SparkContext
-from flytekit.sdk.types import Types as _Types
-from flytekit.common.types import helpers as _type_helpers, primitives as _primitives
-from flytekit.common import constants as _constants, sdk_bases as _sdk_bases
-from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.tasks import output as _task_output, task as _base_tasks
-from flytekit.models import literals as _literal_models
+from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exception
+from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.common.tasks.mixins.executable_traits import notebook as _notebook_mixin
+from flytekit.sdk import types as _types
+from flytekit.plugins import papermill as _papermill, scrapbook as _scrapbook
 
-type_map = {
-    int: _primitives.Integer,
-    bool: _primitives.Boolean,
-    float: _primitives.Float,
-    str: _primitives.String,
-    _datetime.datetime: _primitives.Datetime,
-    _datetime.timedelta: _primitives.Timedelta,
-}
 
 OUTPUT_NOTEBOOK = 'output_notebook'
 
 
-# TODO: Move to spark  task
-def get_spark_context(spark_conf):
-    """
-       outputs: SparkContext
-       Returns appropriate SparkContext based on whether invoked via a Notebook or a Flyte workflow.
-    """
-    # We run in cluster-mode in Flyte.
-    # Ref https://github.com/lyft/flyteplugins/blob/master/go/tasks/v1/flytek8s/k8s_resource_adds.go#L46
-    if "FLYTE_INTERNAL_EXECUTION_ID" in _os.environ:
-        return SparkContext()
+class PapermillNotebookMixin(_notebook_mixin.NotebookTask):
 
-    # Add system spark-conf for local/notebook based execution.
-    spark_conf.add(("spark.master", "local"))
-    conf = SparkConf().setAll(spark_conf)
-    return SparkContext(conf=conf)
+    # TODO: This can probably be made way more flexible with scrapbook
+    _SUPPORTED_TYPES = {
+        _types.Types.Integer.to_flyte_literal_type(),
+        _types.Types.Boolean.to_flyte_literal_type(),
+        _types.Types.Float.to_flyte_literal_type(),
+        _types.Types.String.to_flyte_literal_type(),
+        _types.Types.Datetime.to_flyte_literal_type(),
+        _types.Types.Timedelta.to_flyte_literal_type(),
+        _types.Types.Generic.to_flyte_literal_type(),
+    }
 
-
-class SdkNotebookTask(
-        _six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_tasks.SdkTask)):
-
-    @_exception_scopes.system_entry_point
-    def execute(self, context, inputs):
+    def _validate_inputs(self, inputs):
         """
-        :param flytekit.engines.common.EngineContext context:
-        :param flytekit.models.literals.LiteralMap inputs:
-        :rtype: dict[Text, flytekit.models.common.FlyteIdlEntity]
-        :returns: This function must return a dictionary mapping 'filenames' to Flyte Interface Entities.  These
-            entities will be used by the engine to pass data from node to node, populate metadata, etc. etc..  Each
-            engine will have different behavior.  For instance, the Flyte engine will upload the entities to a remote
-            working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
-            workflow.  Where as local engine will merely feed the outputs directly into the next node.
+        Overriding from flytekit.common.tasks.sdk_runnable.SdkRunnableTask
         """
-        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(inputs, {
-            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)
-        })
+        super(PapermillNotebookMixin, self)._validate_inputs(inputs)
+        for k, v in _six.iteritems(inputs):
+            # TODO: Add ability to use collections
+            if v.type not in type(self)._SUPPORTED_TYPES:
+                raise _user_exception.FlyteAssertion(
+                    "Could not accept input '{}' because it is not a supported type. Supported types for Papermill "
+                    "tasks must all be JSON serializable. ".format(k)
+                )
 
-        input_notebook_path = self._notebook_path
-        # Execute Notebook via Papermill.
-        output_notebook_path = input_notebook_path + '.out'
-        _pm.execute_notebook(
-            input_notebook_path,
-            output_notebook_path,
-            parameters=inputs_dict
+    def _validate_outputs(self, outputs):
+        """
+        Overriding from flytekit.common.tasks.sdk_runnable.SdkRunnableTask
+        """
+        super(PapermillNotebookMixin, self)._validate_outputs(outputs)
+        for k, v in _six.iteritems(outputs):
+            # TODO: Add ability to use collections
+            if k is not type(self).OUTPUT_NOTEBOOK and v.type not in type(self)._SUPPORTED_TYPES:
+                raise _user_exception.FlyteAssertion(
+                    "Could not accept output '{}' because it is not a supported type. Supported types for Papermill "
+                    "tasks must all be JSON serializable. ".format(k)
+                )
+
+    def _pack_output_references(self, context, references):
+        """
+        Overriding from flytekit.common.tasks.mixins.executable_traits.notebook.NotebookTask
+        """
+        nb = _scrapbook.read_notebook(self._get_augmented_notebook_path(context, type(self).OUTPUT_SUFFIX))
+        for k, ref in _six.iteritems(references):
+            if k in nb.scraps:
+                scrap = nb.scraps.get(k)
+                if scrap.encoder != 'json':
+                    raise _user_exception.FlyteValueException(
+                        scrap.encoder,
+                        "All scraps returned from papermill must be JSON encoded."
+                    )
+                ref.set(scrap.data)
+        super(PapermillNotebookMixin, self)._pack_output_references(context, references)
+
+    def _execute_user_code(self, context, vargs, inputs, outputs):
+        """
+        Overriding from flytekit.common.tasks.mixins.executable_traits.notebook.NotebookTask
+        """
+        _exception_scopes.user_entry_point(_papermill.execute_notebook)(
+            self._notebook_path,
+            self._get_augmented_notebook_path(context, type(self).OUTPUT_SUFFIX),
+            parameters=inputs
         )
 
-        # Parse Outputs from Notebook.
-        outputs = None
-        with open(output_notebook_path) as json_file:
-            data = _json.load(json_file)
-            for p in data['cells']:
-                meta = p['metadata']
-                if "outputs" in meta["tags"]:
-                    outputs = ' '.join(p['outputs'][0]['data']['text/plain'])
 
-        if outputs is not None:
-            dict = _literal_models._literals_pb2.LiteralMap()
-            _text_format.Parse(outputs, dict)
-
-        # Add output_notebook as an output to the task.
-        output_notebook = _task_output.OutputReference(
-            _type_helpers.get_sdk_type_from_literal_type(_Types.Blob.to_flyte_literal_type()))
-        output_notebook.set(output_notebook_path)
-
-        output_literal_map = _literal_models.LiteralMap.from_flyte_idl(dict)
-        output_literal_map.literals[OUTPUT_NOTEBOOK] = output_notebook.sdk_value
-
-        return {
-            _constants.OUTPUT_FILE_NAME: output_literal_map
-        }
+class PapermillNotebookTask(PapermillNotebookMixin, _sdk_runnable.SdkRunnableTask):
+    pass

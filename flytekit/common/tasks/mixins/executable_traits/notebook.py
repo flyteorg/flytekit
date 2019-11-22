@@ -6,19 +6,15 @@ import six as _six
 
 from flyteidl.core import literals_pb2 as _literals_pb2, interface_pb2 as _interface_pb2
 from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.common import constants as _constants, utils as _utils
+from flytekit.common import constants as _constants, interface as _interface, utils as _utils
 from flytekit.common.tasks.mixins.executable_traits import common as _common
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.models import literals as _literals, interface as _interface
-from flytekit.plugins import papermill as _pm
-
-_DEFAULT_INPUT_CELL_NAME = "parameters"
-_INJECTED_TAG = "flyte_injected"
-_AUGMENTED_SUFFIX = ".aug.ipynb"
-_OUTPUT_SUFFIX = ".out.ipynb"
+from flytekit.plugins import papermill as _papermill
+from flytekit.sdk import types as _types
 
 _HIDDEN_INPUT_CELL_FORMAT = """
-# !! SYSTEM GENERATED. IGNORE. DO NOT EDIT !!
+# !! SYSTEM GENERATED. IGNORE. DO NOT COPY OR CHECK-IN !!
 from flytekit.common.tasks.mixins.executable_traits.notebook import inject_inputs as __flyte_inject_inputs
 
 __flyte_inputs_dict = __flyte_inject_inputs({variable_map_bytes}, {input_bytes}, {working_directory})
@@ -27,7 +23,7 @@ __flyte_inputs_dict = __flyte_inject_inputs({variable_map_bytes}, {input_bytes},
 _SHOWN_INPUT_CELL_FORMAT = "{input} = __flyte_inputs_dict.get('{input}')\n"
 
 _HIDDEN_OUTPUT_CELL_FORMAT = """
-# !! SYSTEM GENERATED. IGNORE. DO NOT EDIT !!
+# !! SYSTEM GENERATED. IGNORE. DO NOT COPY OR CHECK-IN !!
 from flytekit.common.tasks.mixins.executable_traits.notebook import handle_outputs as __flyte_handle_outputs
 
 __flyte_handle_outputs({variable_map_bytes}, {python_std_map}, {scratch_directory})
@@ -70,10 +66,11 @@ def handle_user_returned(task_module, task_name, last_cell_output, scratch_direc
     """
     Currently, there is a short-coming here where we need to load the task object to understand the correct way to
     handle the user returned value. This means the task object must be stored as a module-level attribute. This is
-    not ideal and should be fixed.
+    not ideal and should be fixed because it makes writing tests annoying.
     :param Text task_module:
     :param Text task_name:
     :param Any last_cell_output:
+    :param Text scratch_directory:
     """
     pass
 
@@ -92,7 +89,7 @@ def handle_outputs(variable_map_bytes, python_std_map, scratch_directory):
         python_std_map,
         {
             k: _type_helpers.get_sdk_type_from_literal_type(v.type)
-            for k, v in _six.iteritems(outputs.variables)
+            for k, v in _six.iteritems(outputs.variables) if k in python_std_map
         }
     )
 
@@ -105,6 +102,10 @@ def handle_outputs(variable_map_bytes, python_std_map, scratch_directory):
 
 class NotebookTask(_six.with_metaclass(_abc.ABCMeta, _common.ExecutableTaskMixin)):
 
+    DEFAULT_INPUT_CELL_NAME = "parameters"
+    INJECTED_TAG = "flyte_injected"
+    AUGMENTED_SUFFIX = ".aug.ipynb"
+    OUTPUT_SUFFIX = ".out.ipynb"
     OUTPUT_NOTEBOOK = 'output_notebook'
 
     def __init__(self, notebook_path=None, inputs=None, outputs=None, **kwargs):
@@ -127,23 +128,23 @@ class NotebookTask(_six.with_metaclass(_abc.ABCMeta, _common.ExecutableTaskMixin
                 )
             )
 
-        # TODO: Add a Notebook output type that derives from Blob instead of directly using Blob here.
-        # outputs[type(self).OUTPUT_NOTEBOOK] = _types.Types.Blob
+        outputs[type(self).OUTPUT_NOTEBOOK] = _interface.Variable(
+            _types.Types.Blob.to_flyte_literal_type(),
+            "This is a copy of the resulting, completed notebook."
+        )
         self.add_inputs(inputs)
         self.add_outputs(outputs)
 
-    def _unpack_inputs(self, context, inputs):
-        """
-        Just return the raw proto object. We want to inject the raw bytes into the notebook for reproducibility
-        """
-        return inputs.to_flyte_idl()
-
     def _augment_notebook(self, context, inputs):
+        pb2_inputs = _type_helpers.pack_python_std_map_to_literal_map(
+            inputs,
+            self.interface.inputs
+        ).to_flyte_idl()
         with open(self._notebook_path) as json_file:
             data = _json.load(json_file)
             insert_before = 0
             for idx, p in enumerate(data['cells']):
-                if _DEFAULT_INPUT_CELL_NAME in p.get('metadata', {}).get('tags', []):
+                if type(self).DEFAULT_INPUT_CELL_NAME in p.get('metadata', {}).get('tags', []):
                     insert_before = idx + 1
                     break
 
@@ -157,7 +158,7 @@ class NotebookTask(_six.with_metaclass(_abc.ABCMeta, _common.ExecutableTaskMixin
                         for input_key in self.interface.inputs.keys()
                     ],
                     'cell_type': 'code',
-                    'metadata': {'tags': [_INJECTED_TAG]},
+                    'metadata': {'tags': [type(self).INJECTED_TAG]},
                     'outputs': [],
                     'execution_count': 0,
                 }
@@ -170,7 +171,7 @@ class NotebookTask(_six.with_metaclass(_abc.ABCMeta, _common.ExecutableTaskMixin
                         'tags':  [
                             'hide_input',
                             'hide_output',
-                            _INJECTED_TAG,
+                            type(self).INJECTED_TAG,
                         ],
                     },
                     'outputs': [],
@@ -178,14 +179,16 @@ class NotebookTask(_six.with_metaclass(_abc.ABCMeta, _common.ExecutableTaskMixin
                     'execution_count': 0,
                     'source': _HIDDEN_INPUT_CELL_FORMAT.format(
                         variable_map_bytes=repr(self.interface.to_flyte_idl().inputs.SerializeToString()),
-                        input_bytes=repr(inputs.SerializeToString()),
+                        input_bytes=repr(pb2_inputs.SerializeToString()),
                         working_directory=repr(context.working_directory.name),
                     ).splitlines(True),
                 }
             )
-            # Insert a cell which handles the outputs using the SDK type engine
+            # Insert a cell which handles the outputs using the SDK type engine. Do not provide the handler for the
+            # output notebook since that will not be retrieved from inside the notebook.
             output_str = ",".join(
-                "'{key}': locals().get('{key}')".format(key=k) for k in _six.iterkeys(self.interface.outputs)
+                "'{key}': locals().get('{key}')".format(key=k)
+                for k in _six.iterkeys(self.interface.outputs) if k != type(self).OUTPUT_NOTEBOOK
             )
             data['cells'].append(
                 {
@@ -193,7 +196,7 @@ class NotebookTask(_six.with_metaclass(_abc.ABCMeta, _common.ExecutableTaskMixin
                         'tags':  [
                             'hide_input',
                             'hide_output',
-                            _INJECTED_TAG,
+                            type(self).INJECTED_TAG,
                         ],
                     },
                     'outputs': [],
@@ -206,9 +209,7 @@ class NotebookTask(_six.with_metaclass(_abc.ABCMeta, _common.ExecutableTaskMixin
                     ).splitlines(True),
                 }
             )
-
-        # TODO: Write to output path
-        with open(self._get_augmented_notebook_path(context, _AUGMENTED_SUFFIX), 'w') as writer:
+        with open(self._get_augmented_notebook_path(context, type(self).AUGMENTED_SUFFIX), 'w') as writer:
             writer.write(_json.dumps(data))
 
     def _get_augmented_notebook_path(self, context, suffix):
@@ -220,16 +221,25 @@ class NotebookTask(_six.with_metaclass(_abc.ABCMeta, _common.ExecutableTaskMixin
         """
         return _os.path.join(context.working_directory.name, _os.path.basename(self._notebook_path) + suffix)
 
-    def _pack_output_references(self, context, _):
+    def _pack_output_references(self, context, references):
         """
         TODO: Doc
         :param context:
         :return:
         """
-        with open(_os.path.join(context.working_directory.name, _constants.OUTPUT_FILE_NAME), 'r') as r:
-            lm_pb2 = _literals_pb2.LiteralMap()
-            lm_pb2.ParseFromString(r.read())
-            context.output_protos[_constants.OUTPUT_FILE_NAME] = _literals.LiteralMap.from_flyte_idl(lm_pb2)
+        # Set the implicit output to reference the IPython notebook
+        references[type(self).OUTPUT_NOTEBOOK].set(self._get_augmented_notebook_path(context, type(self).OUTPUT_SUFFIX))
+        # Pack up what the references are set to like any other task.
+        super(NotebookTask, self)._pack_output_references(context, references)
+        # If an output file was already generated, then merge those values into the existing references.
+        output_path = _os.path.join(context.working_directory.name, _constants.OUTPUT_FILE_NAME)
+        if _os.path.exists(output_path):
+            with open(output_path, 'r') as r:
+                lm_pb2 = _literals_pb2.LiteralMap()
+                lm_pb2.ParseFromString(r.read())
+                context.output_protos[_constants.OUTPUT_FILE_NAME].literals.update(
+                    _literals.LiteralMap.from_flyte_idl(lm_pb2).literals
+                )
 
     def _execute_user_code(self, context, vargs, inputs, outputs):
         """
@@ -241,7 +251,8 @@ class NotebookTask(_six.with_metaclass(_abc.ABCMeta, _common.ExecutableTaskMixin
         :return:
         """
         self._augment_notebook(context, inputs)
-        _pm.execute_notebook(
-            self._get_augmented_notebook_path(context, _AUGMENTED_SUFFIX),
-            self._get_augmented_notebook_path(context, _OUTPUT_SUFFIX)
+        # TODO: Don't use papermill for this, it is too heavyweight.
+        _papermill.execute_notebook(
+            self._get_augmented_notebook_path(context, type(self).AUGMENTED_SUFFIX),
+            self._get_augmented_notebook_path(context, type(self).OUTPUT_SUFFIX)
         )

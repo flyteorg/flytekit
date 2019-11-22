@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from flytekit.common import constants
-from flytekit.common.tasks import sdk_runnable
+from flytekit.contrib.papermill import notebook
 from flytekit.common.types import helpers
 from flytekit.models import interface
 from flytekit.sdk import types
@@ -14,7 +14,7 @@ GOOD_INPUTS = {
 GOOD_OUTPUTS = {
     'x': types.Types.Integer,
 }
-GOOD_NOTEBOOK = sdk_runnable.RunnableNotebookTask(
+GOOD_NOTEBOOK = notebook.PapermillNotebookTask(
     notebook_path="notebooks/good.ipynb",
     inputs={
         k: interface.Variable(

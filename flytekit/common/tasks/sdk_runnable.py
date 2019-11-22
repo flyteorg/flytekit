@@ -165,7 +165,6 @@ class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task
         :rtype: list[Text]
         """
         if not self._args:
-            print(type(self))
             return _sdk_config.SDK_PYTHON_VENV.get() + [
                 "pyflyte-execute",
                 "--task-module",

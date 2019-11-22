@@ -18,6 +18,7 @@ hmsclient = _lazy_loader.lazy_load_module("hmsclient")  # type: types.ModuleType
 type(hmsclient).add_sub_module("genthrift.hive_metastore.ttypes")
 
 papermill = _lazy_loader.lazy_load_module("papermill")  # type: types.ModuleType
+scrapbook = _lazy_loader.lazy_load_module("scrapbook")  # type: types.ModuleType
 
 _lazy_loader.LazyLoadPlugin(
     "spark",
@@ -53,6 +54,7 @@ _lazy_loader.LazyLoadPlugin(
     "papermill",
     [
         "papermill>=1.0.0,<2.0.0",
+        "nteract-scrapbook>=0.3.0,<1.0.0",
     ],
     [papermill]
 )
