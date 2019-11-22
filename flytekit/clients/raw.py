@@ -5,7 +5,6 @@ from grpc import insecure_channel as _insecure_channel, secure_channel as _secur
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flytekit.common.exceptions import user as _user_exceptions
 import six as _six
-import retry as _retry
 from flytekit.configuration import creds as _creds_config, platform as _platform_config
 
 from flytekit.clis.auth import credentials as _credentials_access
@@ -14,23 +13,38 @@ from flytekit.clients.helpers import (
 )
 
 
-def _handle_rpc_error(fn):
-    @_retry.retry(tries=3)
-    def handler(*args, **kwargs):
-        try:
-            return fn(*args, **kwargs)
-        except _RpcError as e:
-            if e.code() == _GrpcStatusCode.UNAUTHENTICATED:
-                _credentials_access.get_client().refresh_access_token()
-                _set_global_access_token()
-                flyte_client = args[0]
-                flyte_client.refresh_metadata()
-                raise
-            elif e.code() == _GrpcStatusCode.ALREADY_EXISTS:
-                raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
-            else:
-                raise
-    return handler
+def _refresh_credentials(flyte_client):
+    _credentials_access.get_client().refresh_access_token()
+    _set_global_access_token()
+    flyte_client.refresh_metadata()
+
+
+def _handle_rpc_error(raw_cli_fn=None, callback_function=None):
+    def wrapper(raw_cli_fn):
+        def handler(*args, **kwargs):
+            retries = 3
+            try:
+                for i in range(retries):
+                    try:
+                        return raw_cli_fn(*args, **kwargs)
+                    except _RpcError as e:
+                        if e.code() == _GrpcStatusCode.UNAUTHENTICATED:
+                            if i == (retries - 1):
+                                # Exit the loop and wrap the authentication error.
+                                raise _user_exceptions.FlyteAuthenticationException(_six.text_type(e))
+                            callback_function(args[0])
+                        else:
+                            raise
+            except _RpcError as e:
+                if e.code() == _GrpcStatusCode.ALREADY_EXISTS:
+                    raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
+                else:
+                    raise
+        return handler
+    if raw_cli_fn:
+        return wrapper(raw_cli_fn)
+    else:
+        return wrapper
 
 
 class RawSynchronousFlyteClient(object):
@@ -82,7 +96,7 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    @_handle_rpc_error
+    @_handle_rpc_error()
     def create_task(self, task_create_request):
         """
         This will create a task definition in the Admin database. Once successful, the task object can be
@@ -103,7 +117,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.CreateTask(task_create_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def list_task_ids_paginated(self, identifier_list_request):
         """
         This returns a page of identifiers for the tasks for a given project and domain. Filters can also be
@@ -129,7 +143,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.ListTaskIds(identifier_list_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def list_tasks_paginated(self, resource_list_request):
         """
         This returns a page of task metadata for tasks in a given project and domain.  Optionally,
@@ -151,7 +165,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.ListTasks(resource_list_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def get_task(self, get_object_request):
         """
         This returns a single task for a given identifier.
@@ -168,7 +182,7 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def create_workflow(self, workflow_create_request):
         """
         This will create a workflow definition in the Admin database.  Once successful, the workflow object can be
@@ -189,7 +203,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.CreateWorkflow(workflow_create_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def list_workflow_ids_paginated(self, identifier_list_request):
         """
         This returns a page of identifiers for the workflows for a given project and domain. Filters can also be
@@ -215,7 +229,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.ListWorkflowIds(identifier_list_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def list_workflows_paginated(self, resource_list_request):
         """
         This returns a page of workflow meta-information for workflows in a given project and domain.  Optionally,
@@ -237,7 +251,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.ListWorkflows(resource_list_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def get_workflow(self, get_object_request):
         """
         This returns a single workflow for a given identifier.
@@ -254,7 +268,7 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def create_launch_plan(self, launch_plan_create_request):
         """
         This will create a launch plan definition in the Admin database.  Once successful, the launch plan object can be
@@ -278,7 +292,7 @@ class RawSynchronousFlyteClient(object):
 
     # TODO: List endpoints when they come in
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def get_launch_plan(self, object_get_request):
         """
         Retrieves a launch plan entity.
@@ -288,7 +302,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetLaunchPlan(object_get_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def get_active_launch_plan(self, active_launch_plan_request):
         """
         Retrieves a launch plan entity.
@@ -298,7 +312,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetActiveLaunchPlan(active_launch_plan_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def update_launch_plan(self, update_request):
         """
         Allows updates to a launch plan at a given identifier.  Currently, a launch plan may only have it's state
@@ -309,7 +323,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.UpdateLaunchPlan(update_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def list_launch_plan_ids_paginated(self, identifier_list_request):
         """
         Lists launch plan named identifiers for a given project and domain.
@@ -319,7 +333,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.ListLaunchPlanIds(identifier_list_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def list_launch_plans_paginated(self, resource_list_request):
         """
         Lists Launch Plans for a given Identifer (project, domain, name)
@@ -329,7 +343,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.ListLaunchPlans(resource_list_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def list_active_launch_plans_paginated(self, active_launch_plan_list_request):
         """
         Lists Active Launch Plans for a given (project, domain)
@@ -345,7 +359,7 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def create_execution(self, create_execution_request):
         """
         This will create an execution for the given execution spec.
@@ -354,7 +368,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.CreateExecution(create_execution_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def get_execution(self, get_object_request):
         """
         Returns an execution of a workflow entity.
@@ -364,7 +378,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetExecution(get_object_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def get_execution_data(self, get_execution_data_request):
         """
         Returns signed URLs to LiteralMap blobs for an execution's inputs and outputs (when available).
@@ -374,7 +388,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetExecutionData(get_execution_data_request)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def list_executions_paginated(self, resource_list_request):
         """
         Lists the executions for a given identifier.
@@ -384,7 +398,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.ListExecutions(resource_list_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def terminate_execution(self, terminate_execution_request):
         """
         :param flyteidl.admin.execution_pb2.TerminateExecutionRequest terminate_execution_request:
@@ -392,7 +406,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.TerminateExecution(terminate_execution_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def relaunch_execution(self, relaunch_execution_request):
         """
         :param flyteidl.admin.execution_pb2.ExecutionRelaunchRequest relaunch_execution_request:
@@ -406,7 +420,7 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def get_node_execution(self, node_execution_request):
         """
         :param flyteidl.admin.node_execution_pb2.NodeExecutionGetRequest node_execution_request:
@@ -414,7 +428,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetNodeExecution(node_execution_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def get_node_execution_data(self, get_node_execution_data_request):
         """
         Returns signed URLs to LiteralMap blobs for a node execution's inputs and outputs (when available).
@@ -424,7 +438,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetNodeExecutionData(get_node_execution_data_request)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def list_node_executions_paginated(self, node_execution_list_request):
         """
         :param flyteidl.admin.node_execution_pb2.NodeExecutionListRequest node_execution_list_request:
@@ -432,7 +446,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.ListNodeExecutions(node_execution_list_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def list_node_executions_for_task_paginated(self, node_execution_for_task_list_request):
         """
         :param flyteidl.admin.node_execution_pb2.NodeExecutionListRequest node_execution_for_task_list_request:
@@ -446,7 +460,7 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def get_task_execution(self, task_execution_request):
         """
         :param flyteidl.admin.task_execution_pb2.TaskExecutionGetRequest task_execution_request:
@@ -454,7 +468,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetTaskExecution(task_execution_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def get_task_execution_data(self, get_task_execution_data_request):
         """
         Returns signed URLs to LiteralMap blobs for a task execution's inputs and outputs (when available).
@@ -464,7 +478,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetTaskExecutionData(get_task_execution_data_request)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def list_task_executions_paginated(self, task_execution_list_request):
         """
         :param flyteidl.admin.task_execution_pb2.TaskExecutionListRequest task_execution_list_request:
@@ -478,7 +492,7 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def list_projects(self, project_list_request):
         """
         This will return a list of the projects registered with the Flyte Admin Service
@@ -487,7 +501,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.ListProjects(project_list_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error(callback_function=_refresh_credentials)
     def register_project(self, project_register_request):
         """
         Registers a project along with a set of domains.
