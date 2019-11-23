@@ -19,9 +19,11 @@ echo ""
 # Go into the directory representing the user's repo
 pushd $1
 
-# Grab the repo name from the argument
+# Grab the repo name from the argument if not already defined
 # Note that this repo name will be the name of the Docker image.
-IMAGE_NAME=${PWD##*/}
+if [ -z "IMAGE_NAME" ]; then
+  IMAGE_NAME=${PWD##*/}
+fi
 
 # Do not do anything if there are unstaged git changes
 CHANGED=$(git status --porcelain)
