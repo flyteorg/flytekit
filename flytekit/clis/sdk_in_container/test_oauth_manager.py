@@ -10,7 +10,7 @@ from flytekit.configuration.platform import URL as _URL
 # This will be deleted
 from flytekit.clis.flyte_cli.main import _welcome_message
 
-from flytekit.clis.sdk_in_container import oauth_manager
+from flytekit.clis.sdk_in_container import basic_auth
 
 _welcome_message()
 
@@ -23,11 +23,11 @@ def test_discovery_client():
     print(authorization_endpoints.token_endpoint)
     token_endpoint = authorization_endpoints.token_endpoint
     scope = 'svc'
-    client_id = oauth_manager.get_file_contents('/Users/ytong/.ssh/flyte_jenkins_id')
-    client_secret = oauth_manager.get_file_contents('/Users/ytong/.ssh/flyte_jenkins_secret')
+    client_id = basic_auth.get_file_contents('/Users/ytong/.ssh/flyte_jenkins_id')
+    client_secret = basic_auth.get_file_contents('/Users/ytong/.ssh/flyte_jenkins_secret')
     print(client_id, client_secret)
-    authorization_header = oauth_manager.get_basic_authorization_header(client_id, client_secret)
-    token, expires_in = oauth_manager.get_token(token_endpoint, authorization_header, scope)
+    authorization_header = basic_auth.get_basic_authorization_header(client_id, client_secret)
+    token, expires_in = basic_auth.get_token(token_endpoint, authorization_header, scope)
     print(token, expires_in)
 
 

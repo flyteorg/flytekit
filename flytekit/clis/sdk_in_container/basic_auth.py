@@ -1,11 +1,10 @@
 from __future__ import absolute_import
-from flytekit.clis.auth.discovery import DiscoveryClient as _DiscoveryClient
+
 import base64 as _base64
-from flytekit.configuration.creds import (
-    DISCOVERY_ENDPOINT as _DISCOVERY_ENDPOINT
-)
 import logging as _logging
+
 import requests as _requests
+
 from flytekit.common.exceptions.base import FlyteException as _FlyteException
 
 _utf_8 = 'utf-8'
@@ -13,12 +12,6 @@ _utf_8 = 'utf-8'
 
 class FlyteAuthenticationException(_FlyteException):
     _ERROR_CODE = "FlyteAuthenticationFailed"
-
-
-def get_token_endpoint():
-    discovery_endpoint = _DISCOVERY_ENDPOINT.get()
-    discovery_client = _DiscoveryClient(discovery_url=discovery_endpoint)
-    return discovery_client.get_authorization_endpoints().token_endpoint
 
 
 def get_file_contents(location):

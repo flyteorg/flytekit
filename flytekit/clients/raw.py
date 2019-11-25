@@ -10,7 +10,7 @@ from flytekit.configuration.creds import (
     AUTHORIZATION_METADATA_KEY as _AUTHORIZATION_METADATA_KEY,
     CLIENT_CREDENTIALS_SCOPE as _SCOPE,
 )
-from flytekit.clis.sdk_in_container import oauth_manager
+from flytekit.clis.sdk_in_container import basic_auth
 import logging
 import six as _six
 from flytekit.configuration import creds as _creds_config, platform as _platform_config
@@ -30,10 +30,10 @@ def _refresh_credentials_standard(flyte_client):
 def _refresh_credentials_basic(flyte_client):
     auth_endpoints = _credentials_access.get_authorization_endpoints()
     token_endpoint = auth_endpoints.token_endpoint
-    client_secret = oauth_manager.get_file_contents(_CREDENTIALS_SECRET_FILE.get())
+    client_secret = basic_auth.get_file_contents(_CREDENTIALS_SECRET_FILE.get())
     logging.debug('Basic authorization flow with client id {} scope {}', _CLIENT_ID.get(), _SCOPE.get())
-    authorization_header = oauth_manager.get_basic_authorization_header(_CLIENT_ID.get(), client_secret)
-    token, expires_in = oauth_manager.get_token(token_endpoint, authorization_header, _SCOPE.get())
+    authorization_header = basic_auth.get_basic_authorization_header(_CLIENT_ID.get(), client_secret)
+    token, expires_in = basic_auth.get_token(token_endpoint, authorization_header, _SCOPE.get())
     logging.info('Retrieved new token, expires in {}'.format(expires_in))
     flyte_client._metadata = [(_AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(token))]
 

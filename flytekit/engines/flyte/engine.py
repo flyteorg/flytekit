@@ -235,7 +235,6 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
 
     def register(self, identifier):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
-        print('+++++++++ {}'.format(client._metadata))
         try:
             client.create_task(
                 identifier,
