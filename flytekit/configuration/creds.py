@@ -35,8 +35,17 @@ Traditionally this value is 'authorization' however it is made configurable.
 
 CLIENT_CREDENTIALS_SECRET_LOCATION =  _config_common.FlyteStringConfigurationEntry(
     'credentials', 'client_secret_location', default=None)
+"""
+Used for basic auth, which is automatically called during pyflyte. This is the location to look for the password. The
+client id config setting is shared across the basic and standard auth flows.
+"""
 
 CLIENT_CREDENTIALS_SCOPE =  _config_common.FlyteStringConfigurationEntry('credentials', 'scope', default=None)
+"""
+Used for basic auth, which is automatically called during pyflyte. This is the scope that will be requested. Because
+there is no user explicitly in this auth flow, certain IDPs require a custom scope for basic auth in the configuration
+of the authorization server.
+"""
 
 AUTH_MODE = _config_common.FlyteStringConfigurationEntry('credentials', 'auth_mode', default="standard")
 """
