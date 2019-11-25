@@ -36,8 +36,9 @@ class _FlyteClientManager(object):
         # TODO: use cases.
         if type(self)._CLIENT is None:
             c = _SynchronousFlyteClient(*args, **kwargs)
+            # todo remove this - this is here to make admin return an error, currently auth is not required if you just don't
+            # give it a token. In order to get an auth error, you have to give it a bad token
             c._metadata = [(_AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format('abc'))]
-            print(c._metadata)
             type(self)._CLIENT = c
 
     @property

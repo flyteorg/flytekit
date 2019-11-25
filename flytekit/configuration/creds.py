@@ -35,4 +35,14 @@ Traditionally this value is 'authorization' however it is made configurable.
 
 CLIENT_CREDENTIALS_SECRET_LOCATION =  _config_common.FlyteStringConfigurationEntry(
     'credentials', 'client_secret_location', default=None)
+
 CLIENT_CREDENTIALS_SCOPE =  _config_common.FlyteStringConfigurationEntry('credentials', 'scope', default=None)
+
+AUTH_MODE = _config_common.FlyteStringConfigurationEntry('credentials', 'auth_mode', default="standard")
+"""
+The auth mode defines the behavior used to request and refresh credentials. The currently supported modes include:
+- 'standard' This uses the pkce-enhanced authorization code flow by opening a browser window to initiate credentials
+        access.
+- 'basic' This uses cert-based auth in which the end user enters his/her username and password and public key encryption
+        is used to facilitate authentication.
+"""

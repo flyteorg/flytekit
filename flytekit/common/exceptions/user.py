@@ -72,3 +72,7 @@ class FlyteTimeout(FlyteAssertion):
 
 class FlyteRecoverableException(FlyteUserException, _Recoverable):
     _ERROR_CODE = "USER:Recoverable"
+
+
+class FlyteAuthenticationException(FlyteAssertion):
+    _ERROR_CODE = "USER:AuthenticationError"

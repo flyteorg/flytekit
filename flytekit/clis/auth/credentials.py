@@ -20,15 +20,30 @@ def _is_absolute(url):
     return bool(_urlparse.urlparse(url).netloc)
 
 
-def get_credentials():
+# Lazy initialized authorization client singleton
+_authorization_client = None
+
+
+def get_client():
+    global _authorization_client
+    if _authorization_client is not None:
+        return _authorization_client
     discovery_endpoint = _DISCOVERY_ENDPOINT.get()
     if not _is_absolute(discovery_endpoint):
         discovery_endpoint = _urlparse.urljoin(_URL.get(), discovery_endpoint)
     discovery_client = _DiscoveryClient(discovery_url=discovery_endpoint)
     authorization_endpoints = discovery_client.get_authorization_endpoints()
 
-    client = _AuthorizationClient(redirect_uri=_REDIRECT_URI.get(),
-                                  client_id=_CLIENT_ID.get(),
-                                  auth_endpoint=authorization_endpoints.auth_endpoint,
-                                  token_endpoint=authorization_endpoints.token_endpoint)
-    return client.credentials
+    _authorization_client =\
+        _AuthorizationClient(redirect_uri=_REDIRECT_URI.get(), client_id=_CLIENT_ID.get(),
+                             auth_endpoint=authorization_endpoints.auth_endpoint,
+                             token_endpoint=authorization_endpoints.token_endpoint)
+    return _authorization_client
+
+
+def get_authorization_endpoints():
+    discovery_endpoint = _DISCOVERY_ENDPOINT.get()
+    if not _is_absolute(discovery_endpoint):
+        discovery_endpoint = _urlparse.urljoin(_URL.get(), discovery_endpoint)
+    discovery_client = _DiscoveryClient(discovery_url=discovery_endpoint)
+    return discovery_client.get_authorization_endpoints()

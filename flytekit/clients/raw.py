@@ -1,51 +1,70 @@
 from __future__ import absolute_import
+
 from grpc import insecure_channel as _insecure_channel, secure_channel as _secure_channel, RpcError as _RpcError, \
     StatusCode as _GrpcStatusCode, ssl_channel_credentials as _ssl_channel_credentials
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.configuration.creds import (
-    DISCOVERY_ENDPOINT as _DISCOVERY_ENDPOINT,
     CLIENT_ID as _CLIENT_ID,
     CLIENT_CREDENTIALS_SECRET_LOCATION as _CREDENTIALS_SECRET_FILE,
-    AUTHORIZATION_METADATA_KEY as _AUTHORIZATION_METADATA_KEY
+    AUTHORIZATION_METADATA_KEY as _AUTHORIZATION_METADATA_KEY,
+    CLIENT_CREDENTIALS_SCOPE as _SCOPE,
 )
 from flytekit.clis.sdk_in_container import oauth_manager
-
-import six as _six
 import logging
+import six as _six
+from flytekit.configuration import creds as _creds_config, platform as _platform_config
+
+from flytekit.clis.auth import credentials as _credentials_access
+from flytekit.clients.helpers import (
+    get_global_access_token as _get_global_access_token, set_global_access_token as _set_global_access_token
+)
 
 
-def basic_auth(client):
-    print('here ---------- 3')
-    from flytekit.clis.auth.discovery import DiscoveryClient
-    discovery_endpoint = _DISCOVERY_ENDPOINT.get()
-    discovery_client = DiscoveryClient(discovery_url=discovery_endpoint)
-    authorization_endpoints = discovery_client.get_authorization_endpoints()
-    print('Token endpoint: {}'.format(authorization_endpoints.token_endpoint))
-    token_endpoint = authorization_endpoints.token_endpoint
-    scope = 'svc'
-    client_id = _CLIENT_ID.get()
+def _refresh_credentials_standard(flyte_client):
+    _credentials_access.get_client().refresh_access_token()
+    _set_global_access_token()
+    flyte_client.refresh_metadata()
+
+
+def _refresh_credentials_basic(flyte_client):
+    auth_endpoints = _credentials_access.get_authorization_endpoints()
+    token_endpoint = auth_endpoints.token_endpoint
     client_secret = oauth_manager.get_file_contents(_CREDENTIALS_SECRET_FILE.get())
-    print(client_id, client_secret)
-    authorization_header = oauth_manager.get_basic_authorization_header(client_id, client_secret)
-    token, expires_in = oauth_manager.get_token(token_endpoint, authorization_header, scope)
+    logging.debug('Basic authorization flow with client id {} scope {}', _CLIENT_ID.get(), _SCOPE.get())
+    authorization_header = oauth_manager.get_basic_authorization_header(_CLIENT_ID.get(), client_secret)
+    token, expires_in = oauth_manager.get_token(token_endpoint, authorization_header, _SCOPE.get())
     logging.info('Retrieved new token, expires in {}'.format(expires_in))
-    client._metadata = [(_AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(token))]
+    flyte_client._metadata = [(_AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(token))]
+
+
+def _get_refresh_handler(auth_mode):
+    if auth_mode == "standard":
+        return _refresh_credentials_standard
+    elif auth_mode == "basic":
+        return _refresh_credentials_basic
+    else:
+        raise ValueError(
+            "Invalid auth mode [{}] specified. Please update the creds config to use a valid value".format(auth_mode))
 
 
 def _handle_rpc_error(fn):
     def handler(*args, **kwargs):
+        retries = 2
         try:
-            return fn(*args, **kwargs)
+            for i in range(retries):
+                try:
+                    return fn(*args, **kwargs)
+                except _RpcError as e:
+                    if e.code() == _GrpcStatusCode.UNAUTHENTICATED:
+                        if i == (retries - 1):
+                            # Exit the loop and wrap the authentication error.
+                            raise _user_exceptions.FlyteAuthenticationException(_six.text_type(e))
+                        refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
+                        refresh_handler_fn(args[0])
+                    else:
+                        raise
         except _RpcError as e:
-            print('here ---------- 1')
-            if e.code() == _GrpcStatusCode.UNAUTHENTICATED:
-                print('here ---------- 2')
-                # Because this decorator should only ever be applied on instance methods, the first argument should
-                # be the client itself
-                client = args[0]
-                basic_auth(client)
-                return fn(*args, **kwargs)
             if e.code() == _GrpcStatusCode.ALREADY_EXISTS:
                 raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
             else:
@@ -60,8 +79,9 @@ class RawSynchronousFlyteClient(object):
     This client should be usable regardless of environment in which this is used. In other words, configurations should
     be explicit as opposed to inferred from the environment or a configuration file.
     """
+    authentication_client = None
 
-    def __init__(self, url, insecure=False, credentials=None, options=None, metadata=None):
+    def __init__(self, url, insecure=False, credentials=None, options=None):
         """
         Initializes a gRPC channel to the given Flyte Admin service.
 
@@ -85,7 +105,18 @@ class RawSynchronousFlyteClient(object):
                 options=list((options or {}).items())
             )
         self._stub = _admin_service.AdminServiceStub(self._channel)
-        self._metadata = metadata
+        self._metadata = None
+        self.refresh_metadata()
+
+    def set_access_token(self, access_token):
+        self._metadata = [(_creds_config.AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(access_token))]
+
+    def refresh_metadata(self):
+        if not _platform_config.AUTH.get():
+            # nothing to do
+            self._metadata = None
+        access_token = _get_global_access_token()
+        self.set_access_token(access_token)
 
     ####################################################################################################################
     #
