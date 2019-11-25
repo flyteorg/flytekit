@@ -144,7 +144,11 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
 class FlyteLaunchPlan(_common_engine.BaseLaunchPlanExecutor):
 
     def register(self, identifier):
-        client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
+        client = _FlyteClientManager(
+            _platform_config.URL.get(),
+            username=_platform_config.USERNAME.get(),
+            password=_platform_config.PASSWORD.get(),
+            insecure=_platform_config.INSECURE.get()).client
         try:
             client.create_launch_plan(
                 identifier,
@@ -214,7 +218,11 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanExecutor):
 class FlyteWorkflow(_common_engine.BaseWorkflowExecutor):
 
     def register(self, identifier):
-        client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
+        client = _FlyteClientManager(
+            _platform_config.URL.get(),
+            username=_platform_config.USERNAME.get(),
+            password=_platform_config.PASSWORD.get(),
+            insecure=_platform_config.INSECURE.get()).client
         try:
             return client.create_workflow(
                 identifier,
@@ -227,7 +235,11 @@ class FlyteWorkflow(_common_engine.BaseWorkflowExecutor):
 class FlyteTask(_common_engine.BaseTaskExecutor):
 
     def register(self, identifier):
-        client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
+        client = _FlyteClientManager(
+            _platform_config.URL.get(),
+            username=_platform_config.USERNAME.get(),
+            password=_platform_config.PASSWORD.get(),
+            insecure=_platform_config.INSECURE.get()).client
         try:
             client.create_task(
                 identifier,

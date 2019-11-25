@@ -1,9 +1,11 @@
 from __future__ import absolute_import
 from grpc import insecure_channel as _insecure_channel, secure_channel as _secure_channel, RpcError as _RpcError, \
-    StatusCode as _GrpcStatusCode, ssl_channel_credentials as _ssl_channel_credentials
+    StatusCode as _GrpcStatusCode, ssl_channel_credentials as _ssl_channel_credentials, access_token_call_credentials as _access_token_call_credentials, composite_channel_credentials as _composite_channel_credentials
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flytekit.common.exceptions import user as _user_exceptions
 import six as _six
+import requests
+import getpass
 
 
 def _handle_rpc_error(fn):
@@ -26,7 +28,7 @@ class RawSynchronousFlyteClient(object):
     be explicit as opposed to inferred from the environment or a configuration file.
     """
 
-    def __init__(self, url, insecure=False, credentials=None, options=None):
+    def __init__(self, url, insecure=False, credentials=None, options=None, username=None, password=None):
         """
         Initializes a gRPC channel to the given Flyte Admin service.
 
@@ -37,6 +39,20 @@ class RawSynchronousFlyteClient(object):
             runtime.
         """
         self._channel = None
+
+        if username:
+            # do not allow sending credentials insecurely
+            insecure = False
+            if not password:
+                password = getpass.getpass()
+            login_endpoint = "https://{}/api/v1/login/{}".format(url, username)
+            response = requests.put(login_endpoint, json={'password': password})
+            if response.status_code != 200:
+                raise Exception("login failed: {}".format(response.text))
+            login = response.json()
+            access_token = login['token']
+            call_credentials = _access_token_call_credentials(access_token)
+            credentials = _composite_channel_credentials(_ssl_channel_credentials(), call_credentials)
 
         # TODO: Revert all the for loops below
         if insecure:
