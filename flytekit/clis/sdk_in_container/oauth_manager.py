@@ -69,27 +69,3 @@ def get_token(token_endpoint, authorization_header, scope):
 
     response = response.json()
     return response['access_token'], response['expires_in']
-
-
-class OAuthManager(object):
-    """
-    This class wraps the logic above for dealing with the IDP. The functions above will retrieve one token, but
-    sometimes we need to be able to query Admin for hours. The prime example of this is when a task launches
-    another workflow, and waits for it until it's done. The task ends up polling Admin for hours, which may be more
-    than the expiration time of the token. This manager will keep track of the
-    """
-
-    def __init__(self):
-        self._token = None
-        self._expiry = None
-
-    @property
-    def token(self):
-        return self._token
-
-    @property
-    def expiry(self):
-        return self._expiry
-
-    def get_token(self):
-        pass
