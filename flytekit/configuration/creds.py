@@ -40,6 +40,14 @@ Used for basic auth, which is automatically called during pyflyte. This is the l
 client id config setting is shared across the basic and standard auth flows.
 """
 
+CLIENT_CREDENTIALS_SECRET =  _config_common.FlyteStringConfigurationEntry('credentials', 'client_secret', default=None)
+"""
+Used for basic auth, which is automatically called during pyflyte. This will allow the Flyte engine to read the
+password directly from the environment variable. Note that this is less secure! Please only use this if mounting the
+secret as a file is impossible.
+"""
+
+
 CLIENT_CREDENTIALS_SCOPE =  _config_common.FlyteStringConfigurationEntry('credentials', 'scope', default=None)
 """
 Used for basic auth, which is automatically called during pyflyte. This is the scope that will be requested. Because
