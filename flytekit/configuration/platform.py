@@ -12,5 +12,7 @@ CLOUD_PROVIDER = _config_common.FlyteStringConfigurationEntry(
 
 AUTH = _config_common.FlyteBoolConfigurationEntry('platform', 'auth', default=False)
 """
-Whether to use auth when communicating with the Flyte platform.
+This config setting should not normally be filled in. Whether or not an admin server requires authentication should be
+something published by the admin server itself (typically by returning a 401). However, to help with migration, this
+config object is here to force the SDK to attempt the auth flow even without prompting by Admin.
 """

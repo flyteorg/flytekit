@@ -15,9 +15,6 @@ from flytekit.clients.helpers import iterate_node_executions as _iterate_node_ex
 from flytekit.common import utils as _common_utils, constants as _constants
 from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
 from flytekit.configuration import platform as _platform_config, internal as _internal_config, sdk as _sdk_config
-from flytekit.configuration.creds import (
-    AUTHORIZATION_METADATA_KEY as _AUTHORIZATION_METADATA_KEY
-)
 from flytekit.engines import common as _common_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
@@ -36,9 +33,9 @@ class _FlyteClientManager(object):
         # TODO: use cases.
         if type(self)._CLIENT is None:
             c = _SynchronousFlyteClient(*args, **kwargs)
-            # TODO: remove this before merging - this is here to make admin return an error, currently auth is not required if you just don't
-            # give it a token. In order to get an auth error, you have to give it a bad token
-            c._metadata = [(_AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format('abc'))]
+            if _platform_config.AUTH.get():
+                # Force authentication
+                c.force_auth_flow()
             type(self)._CLIENT = c
 
     @property

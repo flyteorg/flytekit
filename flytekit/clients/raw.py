@@ -78,7 +78,6 @@ class RawSynchronousFlyteClient(object):
     This client should be usable regardless of environment in which this is used. In other words, configurations should
     be explicit as opposed to inferred from the environment or a configuration file.
     """
-    authentication_client = None
 
     def __init__(self, url, insecure=False, credentials=None, options=None):
         """
@@ -109,6 +108,10 @@ class RawSynchronousFlyteClient(object):
 
     def set_access_token(self, access_token):
         self._metadata = [(_creds_config.AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(access_token))]
+
+    def force_auth_flow(self):
+        refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
+        refresh_handler_fn(self)
 
     def refresh_metadata(self):
         if not _platform_config.AUTH.get():
