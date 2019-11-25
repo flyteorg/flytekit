@@ -31,3 +31,13 @@ AUTHORIZATION_METADATA_KEY = _config_common.FlyteStringConfigurationEntry('crede
 The authorization metadata key used for passing access tokens in gRPC requests.
 Traditionally this value is 'authorization' however it is made configurable.
 """
+
+# TODO(katrogan) Make this an enum rather than a string config entry
+AUTH_MODE = _config_common.FlyteStringConfigurationEntry('credentials', 'auth_mode', default="standard")
+"""
+The auth mode defines the behavior used to request and refresh credentials. The currently supported modes include:
+- 'standard' This uses the pkce-enhanced authorization code flow by opening a browser window to initiate credentials
+        access.
+- 'basic' This uses cert-based auth in which the end user enters his/her username and password and public key encryption
+        is used to facilitate authentication.
+"""
