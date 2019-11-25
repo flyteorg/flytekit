@@ -16,29 +16,3 @@ def test_discovery_client():
     print(authorization_endpoints.token_endpoint)
     token_endpoint = authorization_endpoints.token_endpoint
     scope = 'svc'
-
-
-def outer_dec(fn=None, other=None):
-    def wrapper(fn):
-        def handler(*args, **kwargs):
-            import ipdb; ipdb.set_trace()
-
-            print('other is {}'.format(other))
-            return fn(*args, **kwargs)
-        return handler
-
-    if fn:
-        return wrapper(fn)
-    else:
-        return wrapper
-
-
-@outer_dec(other=5)
-def hi():
-    import ipdb
-    ipdb.set_trace()
-    print('hi')
-
-
-def test_asdfds():
-    hi()

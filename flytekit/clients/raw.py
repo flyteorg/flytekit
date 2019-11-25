@@ -3,24 +3,53 @@ from grpc import insecure_channel as _insecure_channel, secure_channel as _secur
     StatusCode as _GrpcStatusCode, ssl_channel_credentials as _ssl_channel_credentials
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.configuration.creds import (
+    DISCOVERY_ENDPOINT as _DISCOVERY_ENDPOINT,
+    CLIENT_ID as _CLIENT_ID,
+    CLIENT_CREDENTIALS_SECRET_LOCATION as _CREDENTIALS_SECRET_FILE,
+    AUTHORIZATION_METADATA_KEY as _AUTHORIZATION_METADATA_KEY
+)
+from flytekit.clis.sdk_in_container import oauth_manager
+
 import six as _six
+import logging
+
+
+def basic_auth(client):
+    print('here ---------- 3')
+    from flytekit.clis.auth.discovery import DiscoveryClient
+    discovery_endpoint = _DISCOVERY_ENDPOINT.get()
+    discovery_client = DiscoveryClient(discovery_url=discovery_endpoint)
+    authorization_endpoints = discovery_client.get_authorization_endpoints()
+    print('Token endpoint: {}'.format(authorization_endpoints.token_endpoint))
+    token_endpoint = authorization_endpoints.token_endpoint
+    scope = 'svc'
+    client_id = _CLIENT_ID.get()
+    client_secret = oauth_manager.get_file_contents(_CREDENTIALS_SECRET_FILE.get())
+    print(client_id, client_secret)
+    authorization_header = oauth_manager.get_basic_authorization_header(client_id, client_secret)
+    token, expires_in = oauth_manager.get_token(token_endpoint, authorization_header, scope)
+    logging.info('Retrieved new token, expires in {}'.format(expires_in))
+    client._metadata = [(_AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(token))]
 
 
 def _handle_rpc_error(fn):
     def handler(*args, **kwargs):
         try:
             return fn(*args, **kwargs)
-        except AuthError as ae:
-            new_token = try_refreshing()
-            meta = new_token
-            return fn(*args, **kwargs)
         except _RpcError as e:
+            print('here ---------- 1')
+            if e.code() == _GrpcStatusCode.UNAUTHENTICATED:
+                print('here ---------- 2')
+                # Because this decorator should only ever be applied on instance methods, the first argument should
+                # be the client itself
+                client = args[0]
+                basic_auth(client)
+                return fn(*args, **kwargs)
             if e.code() == _GrpcStatusCode.ALREADY_EXISTS:
                 raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
             else:
                 raise
-
-
     return handler
 
 

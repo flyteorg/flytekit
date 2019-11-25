@@ -30,6 +30,7 @@ def test_discovery_client():
     token, expires_in = oauth_manager.get_token(token_endpoint, authorization_header, scope)
     print(token, expires_in)
 
+
 def test_a():
     class A(object):
         def xx(self):
@@ -37,6 +38,7 @@ def test_a():
 
     a = A()
     a.xx()
+
 
 if __name__ == '__main__':
     test_discovery_client()

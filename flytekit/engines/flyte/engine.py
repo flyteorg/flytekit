@@ -6,15 +6,18 @@ import traceback as _traceback
 from datetime import datetime as _datetime
 
 import six as _six
+from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions, iterate_task_executions as \
-    _iterate_task_executions
 from flytekit import __version__ as _api_version
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
+from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions, iterate_task_executions as \
+    _iterate_task_executions
 from flytekit.common import utils as _common_utils, constants as _constants
 from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
-from flytekit.configuration import platform as _platform_config, internal as _internal_config, sdk as _sdk_config, \
-    creds as _credentials_config
+from flytekit.configuration import platform as _platform_config, internal as _internal_config, sdk as _sdk_config
+from flytekit.configuration.creds import (
+    AUTHORIZATION_METADATA_KEY as _AUTHORIZATION_METADATA_KEY
+)
 from flytekit.engines import common as _common_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
@@ -22,7 +25,6 @@ from flytekit.models import task as _task_models, execution as _execution_models
     literals as _literals, common as _common_models
 from flytekit.models.admin import workflow as _workflow_model
 from flytekit.models.core import errors as _error_models, identifier as _identifier
-from flyteidl.core import literals_pb2 as _literals_pb2
 
 
 class _FlyteClientManager(object):
@@ -33,7 +35,10 @@ class _FlyteClientManager(object):
         # TODO: React to changing configs.  For now this is frozen for the lifetime of the process, which covers most
         # TODO: use cases.
         if type(self)._CLIENT is None:
-            type(self)._CLIENT = _SynchronousFlyteClient(*args, **kwargs)
+            c = _SynchronousFlyteClient(*args, **kwargs)
+            c._metadata = [(_AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format('abc'))]
+            print(c._metadata)
+            type(self)._CLIENT = c
 
     @property
     def client(self):
@@ -229,6 +234,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
 
     def register(self, identifier):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
+        print('+++++++++ {}'.format(client._metadata))
         try:
             client.create_task(
                 identifier,
