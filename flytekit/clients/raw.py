@@ -94,12 +94,15 @@ class RawSynchronousFlyteClient(object):
         self._metadata = None
         self.refresh_metadata()
 
+    def set_access_token(self, access_token):
+        self._metadata = [(_creds_config.AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(access_token))]
+
     def refresh_metadata(self):
         if not _platform_config.AUTH.get():
             # nothing to do
             self._metadata = None
         access_token = _get_global_access_token()
-        self._metadata = [(_creds_config.AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(access_token))]
+        self.set_access_token(access_token)
 
     ####################################################################################################################
     #
