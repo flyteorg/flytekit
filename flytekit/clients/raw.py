@@ -20,12 +20,19 @@ from flytekit.clients.helpers import (
 
 
 def _refresh_credentials_standard(flyte_client):
-    _credentials_access.get_client().refresh_access_token()
-    _set_global_access_token()
-
+    """
+    This function is used when the configuration value for AUTH_MODE is set to 'standard'.
+    This either fetches the existing access token or initiates the flow to request a valid access token and store it.
+    :param flyte_client: RawSynchronousFlyteClient
+    :return:
+    """
     if not _platform_config.AUTH.get():
         # nothing to do
         return
+
+    _credentials_access.get_client().refresh_access_token()
+    _set_global_access_token()
+
     access_token = _get_global_access_token()
     flyte_client.set_access_token(access_token)
 

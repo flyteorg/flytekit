@@ -19,7 +19,7 @@ class AuthorizationEndpoints(object):
     A simple wrapper around commonly discovered endpoints used for the PKCE auth flow.
     """
     def __init__(self, auth_endpoint=None, token_endpoint=None):
-        self._auth_endpoint = auth_endpoint
+        self._auth_endpoint  = auth_endpoint
         self._token_endpoint = token_endpoint
 
     @property
