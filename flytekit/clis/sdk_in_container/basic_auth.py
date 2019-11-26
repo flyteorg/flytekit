@@ -61,7 +61,8 @@ def get_token(token_endpoint, authorization_header, scope):
     :param token_endpoint:
     :param authorization_header:
     :param scope:
-    :rtype: (Text,Int)
+    :rtype: (Text,Int) The first element is the access token retrieved from the IDP, the second is the expiration
+            in seconds
     """
     headers = {
         'Authorization': authorization_header,
