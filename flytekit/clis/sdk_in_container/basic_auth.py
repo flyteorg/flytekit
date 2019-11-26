@@ -53,7 +53,7 @@ def get_basic_authorization_header(client_id, client_secret):
     :rtype: Text
     """
     concated = "{}:{}".format(client_id, client_secret)
-    return "Basic {}".format(str(_base64.b64encode(concated.encode(_utf_8)), _utf_8))
+    return "Basic {}".format(_base64.b64encode(concated.encode(_utf_8)).decode(_utf_8))
 
 
 def get_token(token_endpoint, authorization_header, scope):
