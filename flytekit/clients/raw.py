@@ -6,7 +6,6 @@ from flyteidl.service import admin_pb2_grpc as _admin_service
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.configuration.creds import (
     CLIENT_ID as _CLIENT_ID,
-    CLIENT_CREDENTIALS_SECRET_LOCATION as _CREDENTIALS_SECRET_FILE,
     CLIENT_CREDENTIALS_SCOPE as _SCOPE,
 )
 from flytekit.clis.sdk_in_container import basic_auth
@@ -32,6 +31,15 @@ def _refresh_credentials_standard(flyte_client):
 
 
 def _refresh_credentials_basic(flyte_client):
+    """
+    This function is used by the _handle_rpc_error decorator, depending on the AUTH_MODE config object. This handler
+    is meant for SDK use-cases of auth (like pyflyte, or when users call SDK functions that require access to Admin,
+    like when waiting for another workflow to complete from within a task). This function uses basic auth, which means
+    the credentials for basic auth must be present from wherever this code is running.
+
+    :param flyte_client: RawSynchronousFlyteClient
+    :return:
+    """
     auth_endpoints = _credentials_access.get_authorization_endpoints()
     token_endpoint = auth_endpoints.token_endpoint
     client_secret = basic_auth.get_secret()
