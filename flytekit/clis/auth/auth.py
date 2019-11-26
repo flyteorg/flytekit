@@ -121,7 +121,6 @@ class OAuthHTTPServer(_BaseHTTPServer.HTTPServer):
 
 
 class Credentials(object):
-    # TODO(katrogan): Also add expires_in handling.
     def __init__(self, access_token=None, id_token=None):
         self._access_token = access_token
         self._id_token = id_token

@@ -54,6 +54,12 @@ def _get_refresh_handler(auth_mode):
 
 def _handle_rpc_error(fn):
     def handler(*args, **kwargs):
+        """
+        Wraps rpc errors as Flyte exceptions and handles authentication the client.
+        :param args:
+        :param kwargs:
+        :return:
+        """
         retries = 2
         try:
             for i in range(retries):
