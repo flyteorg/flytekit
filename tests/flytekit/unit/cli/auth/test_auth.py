@@ -15,7 +15,7 @@ def test_generate_code_verifier():
     verifier = _auth._generate_code_verifier()
     assert verifier is not None
     assert 43 < len(verifier) < 128
-    assert not re.search(r'[^a-zA-Z0-9]+', verifier)
+    assert not re.search(r'[^a-zA-Z0-9_\-.~]+', verifier)
 
 
 def test_generate_state_parameter():
