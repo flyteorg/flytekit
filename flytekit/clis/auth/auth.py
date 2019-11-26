@@ -39,7 +39,7 @@ def _generate_code_verifier():
     """
     code_verifier = _base64.urlsafe_b64encode(_os.urandom(_code_verifier_length)).decode(_utf_8)
     # Eliminate invalid characters.
-    code_verifier = _re.sub('[^a-zA-Z0-9_\-.~]+', '', code_verifier)
+    code_verifier = _re.sub(r'[^a-zA-Z0-9_\-.~]+', '', code_verifier)
     if len(code_verifier) < 43:
         raise ValueError("Verifier too short. number of bytes must be > 30.")
     elif len(code_verifier) > 128:

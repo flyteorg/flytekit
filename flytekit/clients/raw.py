@@ -98,7 +98,6 @@ class RawSynchronousFlyteClient(object):
         """
         self._channel = None
 
-        # TODO: Revert all the for loops below
         if insecure:
             self._channel = _insecure_channel(url, options=list((options or {}).items()))
         else:
