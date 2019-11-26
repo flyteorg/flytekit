@@ -15,7 +15,8 @@ This is the public identifier for the app which handles authorization for a Flyt
 More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
 """
 
-REDIRECT_URI = _config_common.FlyteStringConfigurationEntry('credentials', 'redirect_uri', default="http://localhost:53593/callback")
+REDIRECT_URI = _config_common.FlyteStringConfigurationEntry('credentials', 'redirect_uri',
+                                                            default="http://localhost:12345/callback")
 """
 This is the callback uri registered with the app which handles authorization for a Flyte deployment.
 Please note the hardcoded port number. Ideally we would not do this, but some IDPs do not allow wildcards for
@@ -32,7 +33,28 @@ The authorization metadata key used for passing access tokens in gRPC requests.
 Traditionally this value is 'authorization' however it is made configurable.
 """
 
-# TODO(katrogan) Make this an enum rather than a string config entry
+CLIENT_CREDENTIALS_SECRET_LOCATION =  _config_common.FlyteStringConfigurationEntry(
+    'credentials', 'client_secret_location', default=None)
+"""
+Used for basic auth, which is automatically called during pyflyte. This is the location to look for the password. The
+client id config setting is shared across the basic and standard auth flows.
+"""
+
+CLIENT_CREDENTIALS_SECRET =  _config_common.FlyteStringConfigurationEntry('credentials', 'client_secret', default=None)
+"""
+Used for basic auth, which is automatically called during pyflyte. This will allow the Flyte engine to read the
+password directly from the environment variable. Note that this is less secure! Please only use this if mounting the
+secret as a file is impossible.
+"""
+
+
+CLIENT_CREDENTIALS_SCOPE =  _config_common.FlyteStringConfigurationEntry('credentials', 'scope', default=None)
+"""
+Used for basic auth, which is automatically called during pyflyte. This is the scope that will be requested. Because
+there is no user explicitly in this auth flow, certain IDPs require a custom scope for basic auth in the configuration
+of the authorization server.
+"""
+
 AUTH_MODE = _config_common.FlyteStringConfigurationEntry('credentials', 'auth_mode', default="standard")
 """
 The auth mode defines the behavior used to request and refresh credentials. The currently supported modes include:

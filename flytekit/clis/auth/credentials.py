@@ -39,3 +39,11 @@ def get_client():
                              auth_endpoint=authorization_endpoints.auth_endpoint,
                              token_endpoint=authorization_endpoints.token_endpoint)
     return _authorization_client
+
+
+def get_authorization_endpoints():
+    discovery_endpoint = _DISCOVERY_ENDPOINT.get()
+    if not _is_absolute(discovery_endpoint):
+        discovery_endpoint = _urlparse.urljoin(_URL.get(), discovery_endpoint)
+    discovery_client = _DiscoveryClient(discovery_url=discovery_endpoint)
+    return discovery_client.get_authorization_endpoints()

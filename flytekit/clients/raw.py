@@ -4,6 +4,13 @@ from grpc import insecure_channel as _insecure_channel, secure_channel as _secur
     StatusCode as _GrpcStatusCode, ssl_channel_credentials as _ssl_channel_credentials
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.configuration.creds import (
+    CLIENT_ID as _CLIENT_ID,
+    CLIENT_CREDENTIALS_SECRET_LOCATION as _CREDENTIALS_SECRET_FILE,
+    CLIENT_CREDENTIALS_SCOPE as _SCOPE,
+)
+from flytekit.clis.sdk_in_container import basic_auth
+import logging
 import six as _six
 from flytekit.configuration import creds as _creds_config, platform as _platform_config
 
@@ -25,8 +32,14 @@ def _refresh_credentials_standard(flyte_client):
 
 
 def _refresh_credentials_basic(flyte_client):
-    # TODO(wild-endeavor): fill me in
-    pass
+    auth_endpoints = _credentials_access.get_authorization_endpoints()
+    token_endpoint = auth_endpoints.token_endpoint
+    client_secret = basic_auth.get_secret()
+    logging.debug('Basic authorization flow with client id {} scope {}', _CLIENT_ID.get(), _SCOPE.get())
+    authorization_header = basic_auth.get_basic_authorization_header(_CLIENT_ID.get(), client_secret)
+    token, expires_in = basic_auth.get_token(token_endpoint, authorization_header, _SCOPE.get())
+    logging.info('Retrieved new token, expires in {}'.format(expires_in))
+    flyte_client.set_access_token(token)
 
 
 def _get_refresh_handler(auth_mode):
@@ -41,7 +54,7 @@ def _get_refresh_handler(auth_mode):
 
 def _handle_rpc_error(fn):
     def handler(*args, **kwargs):
-        retries = 3
+        retries = 2
         try:
             for i in range(retries):
                 try:
@@ -70,7 +83,6 @@ class RawSynchronousFlyteClient(object):
     This client should be usable regardless of environment in which this is used. In other words, configurations should
     be explicit as opposed to inferred from the environment or a configuration file.
     """
-    authentication_client = None
 
     def __init__(self, url, insecure=False, credentials=None, options=None):
         """
@@ -100,6 +112,10 @@ class RawSynchronousFlyteClient(object):
 
     def set_access_token(self, access_token):
         self._metadata = [(_creds_config.AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(access_token))]
+
+    def force_auth_flow(self):
+        refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
+        refresh_handler_fn(self)
 
     ####################################################################################################################
     #

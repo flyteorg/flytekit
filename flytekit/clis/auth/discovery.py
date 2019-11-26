@@ -1,4 +1,5 @@
 import requests as _requests
+import logging
 
 try:  # Python 3.5+
     from http import HTTPStatus as _StatusCodes
@@ -37,6 +38,7 @@ class DiscoveryClient(object):
     """
 
     def __init__(self, discovery_url=None):
+        logging.debug("Initializing discovery client with {}".format(discovery_url))
         self._discovery_url = discovery_url
         self._authorization_endpoints = None
 
