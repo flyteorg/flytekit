@@ -16,7 +16,12 @@ from flytekit.clients.helpers import (
 def _refresh_credentials_standard(flyte_client):
     _credentials_access.get_client().refresh_access_token()
     _set_global_access_token()
-    flyte_client.refresh_metadata()
+
+    if not _platform_config.AUTH.get():
+        # nothing to do
+        return
+    access_token = _get_global_access_token()
+    flyte_client.set_access_token(access_token)
 
 
 def _refresh_credentials_basic(flyte_client):
@@ -92,17 +97,9 @@ class RawSynchronousFlyteClient(object):
             )
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._metadata = None
-        self.refresh_metadata()
 
     def set_access_token(self, access_token):
         self._metadata = [(_creds_config.AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(access_token))]
-
-    def refresh_metadata(self):
-        if not _platform_config.AUTH.get():
-            # nothing to do
-            self._metadata = None
-        access_token = _get_global_access_token()
-        self.set_access_token(access_token)
 
     ####################################################################################################################
     #
