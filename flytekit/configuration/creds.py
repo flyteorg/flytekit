@@ -55,7 +55,7 @@ there is no user explicitly in this auth flow, certain IDPs require a custom sco
 of the authorization server.
 """
 
-AUTH_MODE = _config_common.FlyteStringConfigurationEntry('credentials', 'auth_mode', default=None)
+AUTH_MODE = _config_common.FlyteStringConfigurationEntry('credentials', 'auth_mode', default="standard")
 """
 The auth mode defines the behavior used to request and refresh credentials. The currently supported modes include:
 - 'standard' This uses the pkce-enhanced authorization code flow by opening a browser window to initiate credentials
