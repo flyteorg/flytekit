@@ -40,7 +40,6 @@ _default_config_file_path = ".flyte/config"
 
 def _welcome_message():
     _click.secho("Welcome to Flyte CLI! Version: {}".format(_tt(__version__)), bold=True)
-    _detect_default_config_file()
 
 
 def _detect_default_config_file():
@@ -51,6 +50,10 @@ def _detect_default_config_file():
         set_flyte_config_file(config_file_path=config_file)
     else:
         _click.secho("Config file not found at default location, relying on environment variables instead", fg='blue')
+
+
+# Run this as the module is loading to pick up settings that click can then use when constructing the commands
+_detect_default_config_file()
 
 
 def _get_io_string(literal_map, verbose=False):
@@ -426,7 +429,6 @@ class _FlyteSubCommand(_click.Command):
         'project': _PROJECT_FLAGS[0],
         'domain': _DOMAIN_FLAGS[0],
         'name': _NAME_FLAGS[0],
-        'host': _HOST_FLAGS[0]
     }
 
     _PASSABLE_FLAGS = {
@@ -440,6 +442,16 @@ class _FlyteSubCommand(_click.Command):
                     param.name in parent.params and \
                     parent.params[param.name] is not None:
                 prefix_args.extend([type(self)._PASSABLE_ARGS[param.name], _six.text_type(parent.params[param.name])])
+
+            # Special handling for the host option, because this option can be specified in the user's ~/.flyte/config
+            # file, and unlike other options, doesn't get picked up before click commands are run
+            if param.name == 'host':
+                if param.name in parent.params and parent.params[param.name] is not None:
+                    prefix_args.extend(
+                        [_HOST_FLAGS[0], _six.text_type(parent.params[param.name])])
+                elif _platform_config.URL.get():
+                    prefix_args.extend(
+                        [_HOST_FLAGS[0], _six.text_type(_platform_config.URL.get())])
 
             # For flags, we don't append the value of the flag, otherwise click will fail to parse
             if param.name in type(self)._PASSABLE_FLAGS and \
