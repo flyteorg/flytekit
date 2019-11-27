@@ -26,7 +26,7 @@ def _refresh_credentials_standard(flyte_client):
     :param flyte_client: RawSynchronousFlyteClient
     :return:
     """
-    if not _platform_config.AUTH.get():
+    if not _platform_config.AUTH.get() or not _creds_config.AUTH_MODE.get():
         # nothing to do
         return
 
@@ -57,8 +57,14 @@ def _refresh_credentials_basic(flyte_client):
     flyte_client.set_access_token(token)
 
 
+def _refresh_credentials_noop(flyte_client):
+    pass
+
+
 def _get_refresh_handler(auth_mode):
-    if auth_mode == "standard":
+    if not auth_mode:
+        return _refresh_credentials_noop
+    elif auth_mode == "standard":
         return _refresh_credentials_standard
     elif auth_mode == "basic":
         return _refresh_credentials_basic

@@ -134,10 +134,6 @@ class Credentials(object):
         return self._id_token
 
 
-# TODO:
-#  do we need to support initiate login URI? https://devforum.okta.com/t/initiate-login-uri-for-all-subdomain-urls/3766
-
-
 class AuthorizationClient(object):
     def __init__(self, auth_endpoint=None, token_endpoint=None, client_id=None, redirect_uri=None):
         self._auth_endpoint = auth_endpoint
