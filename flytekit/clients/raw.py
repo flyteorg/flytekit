@@ -26,12 +26,13 @@ def _refresh_credentials_standard(flyte_client):
     :param flyte_client: RawSynchronousFlyteClient
     :return:
     """
-    if not _platform_config.AUTH.get():
-        # nothing to do
-        return
 
     _credentials_access.get_client().refresh_access_token()
     _set_global_access_token()
+
+    if not _platform_config.AUTH.get():
+        # nothing to do
+        return
 
     access_token = _get_global_access_token()
     flyte_client.set_access_token(access_token)
