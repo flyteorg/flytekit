@@ -9,8 +9,8 @@ from flytekit.common import constants, utils
 from flytekit.common.exceptions import scopes
 from flytekit.configuration import TemporaryConfiguration
 from flytekit.engines.flyte import engine
-from flytekit.models import literals, execution as _execution_models, \
-    common as _common_models, launch_plan as _launch_plan_models, task as _task
+from flytekit.models import literals, execution as _execution_models, common as _common_models, launch_plan as \
+    _launch_plan_models, task as _task_models
 from flytekit.models.admin import common as _common
 from flytekit.models.core import errors, identifier
 from flytekit.sdk import test_utils
@@ -576,7 +576,7 @@ def test_get_task_execution_outputs(mock_client_factory, execution_data_location
 def test_fetch_latest_task(mock_client_factory):
     mock_client = MagicMock()
     mock_client.list_tasks_paginated = MagicMock(
-        return_value=([_task.Task(
+        return_value=([_task_models.Task(
             identifier.Identifier(identifier.ResourceType.TASK, "p1", "d1", "n1", "v1"),
             MagicMock(),
         )], 0)
