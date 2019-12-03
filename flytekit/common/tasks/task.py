@@ -10,8 +10,7 @@ from flytekit.common.exceptions import user as _user_exceptions, scopes as _exce
 from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
-from flytekit.models import task as _task_model
-from flytekit.models.common import NamedEntityIdentifier as _NamedEntityIdentifier
+from flytekit.models import common as _common_model, task as _task_model
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
 
 
@@ -172,7 +171,7 @@ class SdkTask(
         :param Text name:
         :rtype: SdkTask
         """
-        named_task = _NamedEntityIdentifier(project, domain, name)
+        named_task = _common_model.NamedEntityIdentifier(project, domain, name)
         admin_task = _engine_loader.get_engine().fetch_latest_task(named_task)
         if not admin_task:
             raise _user_exceptions.FlyteEntityNotExistException("Named task {} not found".format(named_task))

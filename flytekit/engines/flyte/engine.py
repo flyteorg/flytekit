@@ -19,8 +19,7 @@ from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import task as _task_models, execution as _execution_models, \
     literals as _literals, common as _common_models
-from flytekit.models.admin import workflow as _workflow_model
-from flytekit.models.admin.common import Sort as _Sort
+from flytekit.models.admin import common as _common, workflow as _workflow_model
 from flytekit.models.core import errors as _error_models, identifier as _identifier
 from flyteidl.core import literals_pb2 as _literals_pb2
 
@@ -119,7 +118,7 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         ).client.list_tasks_paginated(
             named_task,
             limit=1,
-            sort_by=_Sort("created_at", _Sort.Direction.DESCENDING),
+            sort_by=_common.Sort("created_at", _common.Sort.Direction.DESCENDING),
         )
         return task_list[0] if task_list else None
 

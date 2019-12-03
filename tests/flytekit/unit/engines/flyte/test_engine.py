@@ -9,8 +9,9 @@ from flytekit.common import constants, utils
 from flytekit.common.exceptions import scopes
 from flytekit.configuration import TemporaryConfiguration
 from flytekit.engines.flyte import engine
-from flytekit.models import literals, execution as _execution_models, common as _common_models, launch_plan as \
-    _launch_plan_models
+from flytekit.models import literals, execution as _execution_models, \
+    common as _common_models, launch_plan as _launch_plan_models, task as _task
+from flytekit.models.admin import common as _common
 from flytekit.models.core import errors, identifier
 from flytekit.sdk import test_utils
 
@@ -568,4 +569,47 @@ def test_get_task_execution_outputs(mock_client_factory, execution_data_location
             ),
             0
         )
+    )
+
+
+@patch.object(engine._FlyteClientManager, '_CLIENT', new_callable=PropertyMock)
+def test_fetch_latest_task(mock_client_factory):
+    mock_client = MagicMock()
+    mock_client.list_tasks_paginated = MagicMock(
+        return_value=([_task.Task(
+            identifier.Identifier(identifier.ResourceType.TASK, "p1", "d1", "n1", "v1"),
+            MagicMock(),
+        )], 0)
+    )
+    mock_client_factory.return_value = mock_client
+
+    task = engine.FlyteEngineFactory().fetch_latest_task(
+        _common_models.NamedEntityIdentifier("p", "d", "n")
+    )
+    assert task.id == identifier.Identifier(identifier.ResourceType.TASK, "p1", "d1", "n1", "v1")
+
+    mock_client.list_tasks_paginated.assert_called_once_with(
+        _common_models.NamedEntityIdentifier("p", "d", "n"),
+        limit=1,
+        sort_by=_common.Sort("created_at", _common.Sort.Direction.DESCENDING)
+    )
+
+
+@patch.object(engine._FlyteClientManager, '_CLIENT', new_callable=PropertyMock)
+def test_fetch_latest_task_not_exit(mock_client_factory):
+    mock_client = MagicMock()
+    mock_client.list_tasks_paginated = MagicMock(
+        return_value=([], 0)
+    )
+    mock_client_factory.return_value = mock_client
+
+    task = engine.FlyteEngineFactory().fetch_latest_task(
+        _common_models.NamedEntityIdentifier("p", "d", "n")
+    )
+    assert not task
+
+    mock_client.list_tasks_paginated.assert_called_once_with(
+        _common_models.NamedEntityIdentifier("p", "d", "n"),
+        limit=1,
+        sort_by=_common.Sort("created_at", _common.Sort.Direction.DESCENDING)
     )
