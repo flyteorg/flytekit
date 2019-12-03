@@ -572,41 +572,27 @@ def test_get_task_execution_outputs(mock_client_factory, execution_data_location
     )
 
 
+@pytest.mark.parametrize("tasks",
+                         [[_task_models.Task(
+                             identifier.Identifier(identifier.ResourceType.TASK, "p1", "d1", "n1", "v1"),
+                             MagicMock(),
+                         )], []])
 @patch.object(engine._FlyteClientManager, '_CLIENT', new_callable=PropertyMock)
-def test_fetch_latest_task(mock_client_factory):
+def test_fetch_latest_task(mock_client_factory, tasks):
     mock_client = MagicMock()
     mock_client.list_tasks_paginated = MagicMock(
-        return_value=([_task_models.Task(
-            identifier.Identifier(identifier.ResourceType.TASK, "p1", "d1", "n1", "v1"),
-            MagicMock(),
-        )], 0)
+        return_value=(tasks, 0)
     )
     mock_client_factory.return_value = mock_client
 
     task = engine.FlyteEngineFactory().fetch_latest_task(
         _common_models.NamedEntityIdentifier("p", "d", "n")
     )
-    assert task.id == identifier.Identifier(identifier.ResourceType.TASK, "p1", "d1", "n1", "v1")
 
-    mock_client.list_tasks_paginated.assert_called_once_with(
-        _common_models.NamedEntityIdentifier("p", "d", "n"),
-        limit=1,
-        sort_by=_common.Sort("created_at", _common.Sort.Direction.DESCENDING)
-    )
-
-
-@patch.object(engine._FlyteClientManager, '_CLIENT', new_callable=PropertyMock)
-def test_fetch_latest_task_not_exit(mock_client_factory):
-    mock_client = MagicMock()
-    mock_client.list_tasks_paginated = MagicMock(
-        return_value=([], 0)
-    )
-    mock_client_factory.return_value = mock_client
-
-    task = engine.FlyteEngineFactory().fetch_latest_task(
-        _common_models.NamedEntityIdentifier("p", "d", "n")
-    )
-    assert not task
+    if tasks:
+        assert task.id == tasks[0].id
+    else:
+        assert not task
 
     mock_client.list_tasks_paginated.assert_called_once_with(
         _common_models.NamedEntityIdentifier("p", "d", "n"),
