@@ -69,6 +69,9 @@ class UnitTestEngineFactory(_common_engine.BaseExecutionEngineFactory):
     def fetch_task(self, _):
         raise _user_exceptions.FlyteAssertion("Unit testing does not fetch real tasks.")
 
+    def fetch_latest_task(self, task):
+        raise _user_exceptions.FlyteAssertion("Unit testing does not fetch real task.")
+
     def fetch_launch_plan(self, _):
         raise _user_exceptions.FlyteAssertion("Unit testing does not fetch real launch plans.")
 

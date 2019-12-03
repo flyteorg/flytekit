@@ -20,6 +20,7 @@ from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import task as _task_models, execution as _execution_models, \
     literals as _literals, common as _common_models
 from flytekit.models.admin import workflow as _workflow_model
+from flytekit.models.admin.common import Sort as _Sort
 from flytekit.models.core import errors as _error_models, identifier as _identifier
 from flyteidl.core import literals_pb2 as _literals_pb2
 
@@ -106,6 +107,21 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
             _platform_config.URL.get(),
             insecure=_platform_config.INSECURE.get()
         ).client.get_task(task_id)
+
+    def fetch_latest_task(self, task):
+        """
+        Fetches latest tasks
+        :param flytekit.models.common.NamedEntityIdentifier task: NamedEntityIdentifier to fetch
+        :rtype: flytekit.models.task.Task
+        """
+        task_list, _ = _FlyteClientManager(
+            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
+        ).client.list_tasks_paginated(
+            task,
+            limit=1,
+            sort_by=_Sort("created_at", _Sort.Direction.DESCENDING),
+        )
+        return task_list[0] if task_list else None
 
     def fetch_launch_plan(self, launch_plan_id):
         """

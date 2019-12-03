@@ -333,6 +333,15 @@ class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta
         pass
 
     @_abc.abstractmethod
+    def fetch_latest_task(self, task):
+        """
+        Fetches latest tasks
+        :param flytekit.models.common.NamedEntityIdentifier task: NamedEntityIdentifier to fetch
+        :rtype: flytekit.models.task.Task
+        """
+        pass
+
+    @_abc.abstractmethod
     def fetch_launch_plan(self, launch_plan_id):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan_id: This identifier should have a resource
