@@ -11,6 +11,7 @@ from flytekit.common.mixins import registerable as _registerable, hash as _hash_
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import task as _task_model
+from flytekit.models.common import NamedEntityIdentifier as _NamedEntityIdentifier
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
 
 
@@ -159,6 +160,24 @@ class SdkTask(
         admin_task = _engine_loader.get_engine().fetch_task(task_id=task_id)
         sdk_task = cls.promote_from_model(admin_task.closure.compiled_task.template)
         sdk_task._id = task_id
+        return sdk_task
+
+    @classmethod
+    @_exception_scopes.system_entry_point
+    def fetch_latest(cls, project, domain, name):
+        """
+        This function uses the engine loader to call create a latest hydrated task from Admin.
+        :param Text project:
+        :param Text domain:
+        :param Text name:
+        :rtype: SdkTask
+        """
+        named_task = _NamedEntityIdentifier(project, domain, name)
+        admin_task = _engine_loader.get_engine().fetch_latest_task(named_task)
+        if not admin_task:
+            raise _user_exceptions.FlyteEntityNotExistException("Named task {} not found".format(named_task))
+        sdk_task = cls.promote_from_model(admin_task.closure.compiled_task.template)
+        sdk_task._id = admin_task.id
         return sdk_task
 
     @_exception_scopes.system_entry_point

@@ -333,10 +333,10 @@ class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta
         pass
 
     @_abc.abstractmethod
-    def fetch_latest_task(self, task):
+    def fetch_latest_task(self, named_task):
         """
-        Fetches latest tasks
-        :param flytekit.models.common.NamedEntityIdentifier task: NamedEntityIdentifier to fetch
+        Fetches the latest task
+        :param flytekit.models.common.NamedEntityIdentifier named_task: NamedEntityIdentifier to fetch
         :rtype: flytekit.models.task.Task
         """
         pass

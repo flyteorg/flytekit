@@ -108,16 +108,16 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
             insecure=_platform_config.INSECURE.get()
         ).client.get_task(task_id)
 
-    def fetch_latest_task(self, task):
+    def fetch_latest_task(self, named_task):
         """
-        Fetches latest tasks
-        :param flytekit.models.common.NamedEntityIdentifier task: NamedEntityIdentifier to fetch
+        Fetches the latest task
+        :param flytekit.models.common.NamedEntityIdentifier named_task: NamedEntityIdentifier to fetch
         :rtype: flytekit.models.task.Task
         """
         task_list, _ = _FlyteClientManager(
             _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
         ).client.list_tasks_paginated(
-            task,
+            named_task,
             limit=1,
             sort_by=_Sort("created_at", _Sort.Direction.DESCENDING),
         )
