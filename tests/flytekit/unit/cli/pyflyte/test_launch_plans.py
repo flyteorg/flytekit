@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-from click import Group
 from flytekit.clis.sdk_in_container import launch_plan
 from flytekit.clis.sdk_in_container.launch_plan import launch_plans
 import pytest
@@ -27,6 +26,5 @@ def test_get_commands(mock_ctx):
 
 
 def test_launch_plans_commands(mock_ctx):
-    command_group: Group = launch_plans
-    command_names = [c for c in command_group.list_commands(mock_ctx)]
+    command_names = [c for c in launch_plans.list_commands(mock_ctx)]
     assert command_names == sorted(['execute', 'activate-all', 'activate-all-schedules'])
