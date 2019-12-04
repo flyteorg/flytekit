@@ -2,13 +2,6 @@ from __future__ import absolute_import
 
 from flytekit.configuration import common as _config_common
 
-DISCOVERY_ENDPOINT = _config_common.FlyteStringConfigurationEntry('credentials', 'discovery_endpoint', default='https://company.idp.com/.well-known/oauth-authorization-server')
-"""
-This endpoint fetches authorization server metadata as described in:
-https://tools.ietf.org/html/rfc8414
-The endpoint path can be relative or absolute.
-"""
-
 CLIENT_ID = _config_common.FlyteStringConfigurationEntry('credentials', 'client_id', default=None)
 """
 This is the public identifier for the app which handles authorization for a Flyte deployment.
