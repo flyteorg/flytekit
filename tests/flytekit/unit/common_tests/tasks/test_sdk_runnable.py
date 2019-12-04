@@ -1,9 +1,11 @@
 from __future__ import absolute_import
 
 from flytekit.common import constants as _common_constants
+from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_runnable
 from flytekit.common.types import primitives
 from flytekit.models import interface
+import pytest as _pytest
 
 
 def test_basic_unit_test():
@@ -34,3 +36,9 @@ def test_basic_unit_test():
     t.add_outputs({'value_out': interface.Variable(primitives.Integer.to_flyte_literal_type(), "")})
     out = t.unit_test(value_in=1)
     assert out['value_out'] == 2
+
+    with _pytest.raises(_user_exceptions.FlyteAssertion) as e:
+        t()
+
+    assert "value_in" in str(e.value)
+    assert "INTEGER" in str(e.value)
