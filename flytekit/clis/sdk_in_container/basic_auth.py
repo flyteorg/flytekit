@@ -5,16 +5,12 @@ import logging as _logging
 
 import requests as _requests
 
-from flytekit.common.exceptions.base import FlyteException as _FlyteException
+from flytekit.common.exceptions.user import FlyteAuthenticationException as _FlyteAuthenticationException
 from flytekit.configuration.creds import (
     CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET,
 )
 
 _utf_8 = 'utf-8'
-
-
-class FlyteAuthenticationException(_FlyteException):
-    _ERROR_CODE = "FlyteAuthenticationFailed"
 
 
 def get_secret():
@@ -26,7 +22,7 @@ def get_secret():
     secret = _CREDENTIALS_SECRET.get()
     if secret:
         return secret
-    raise FlyteAuthenticationException('No secret could be found')
+    raise _FlyteAuthenticationException('No secret could be found')
 
 
 def get_basic_authorization_header(client_id, client_secret):
@@ -62,7 +58,7 @@ def get_token(token_endpoint, authorization_header, scope):
     response = _requests.post(token_endpoint, data=body, headers=headers)
     if response.status_code != 200:
         _logging.error("Non-200 ({}) received from IDP: {}".format(response.status_code, response.text))
-        raise FlyteAuthenticationException('Non-200 received from IDP')
+        raise _FlyteAuthenticationException('Non-200 received from IDP')
 
     response = response.json()
     return response['access_token'], response['expires_in']
