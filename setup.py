@@ -27,9 +27,6 @@ setup(
             'flyte-cli=flytekit.clis.flyte_cli.main:_flyte_cli'
         ]
     },
-    setup_requires=[
-        "pip>10.0.0,<19.2.0"
-    ],
     install_requires=[
         "flyteidl>=0.15.0,<1.0.0",
         "click>=6.6,<8.0",
