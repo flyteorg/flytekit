@@ -153,6 +153,25 @@ class _FlyteConfigurationEntry(_six.with_metaclass(_abc.ABCMeta, object)):
         pass
 
     def retrieve_value(self):
+        """
+        The logic in this function changes the lookup behavior for all configuration objects before hitting the
+        configuration file.
+
+        For a given configuration object ('mysection', 'mysetting'), it will now look at this waterfall:
+
+            i.) The environment variable named 'FLYTE_MYSECTION_MYSETTING'
+
+            ii.) The value of the environment variable that is named the value of the environment variable named
+                 'FLYTE_MYSECTION_MYSETTING'. That is if os.environ['FLYTE_MYSECTION_MYSETTING'] = 'AAA' and
+                  os.environ['AA'] = 'abc', then 'abc' will be the final value.
+
+            iii.) The contents of the file pointed to by the environment variable named 'FLYTE_MYSECTION_MYSETTING',
+                  assuming the value is a file.
+
+        While it is helpful, this pattern does interrupt the manually specified fallback logic, by effective injecting
+        two more fallbacks behind the scenes. Just keep this in mind as you are using/creating configuration objects.
+        :rtype: Text
+        """
         val = _os.environ.get(self.env_var, None)
         if val is None:
             referenced_env_var = _os.environ.get("{}_FROM_ENV_VAR".format(self.env_var), None)
