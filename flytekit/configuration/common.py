@@ -118,6 +118,20 @@ class _FlyteConfigurationPatcher(object):
             del _os.environ[self._config.env_var]
 
 
+def _get_file_contents(location):
+    """
+    This reads an input file, and returns the string contents, and should be used for reading credentials.
+    This function will also strip newlines.
+
+    :param Text location: The file path holding the client id or secret
+    :rtype: Text
+    """
+    if _os.path.isfile(location):
+        with open(location, 'r') as f:
+            return f.read().replace('\n', '')
+    return None
+
+
 class _FlyteConfigurationEntry(_six.with_metaclass(_abc.ABCMeta, object)):
 
     def __init__(self, section, key, default=None, validator=None, fallback=None):
@@ -137,6 +151,18 @@ class _FlyteConfigurationEntry(_six.with_metaclass(_abc.ABCMeta, object)):
     @_abc.abstractmethod
     def _getter(self):
         pass
+
+    def retrieve_value(self):
+        val = _os.environ.get(self.env_var, None)
+        if val is None:
+            referenced_env_var = _os.environ.get("{}_FROM_ENV_VAR".format(self.env_var), None)
+            if referenced_env_var is not None:
+                val = _os.environ.get(referenced_env_var, None)
+            if val is None:
+                referenced_file = _os.environ.get("{}_FROM_FILE".format(self.env_var), None)
+                if referenced_file is not None:
+                    val = _get_file_contents(referenced_file)
+        return val
 
     def get(self):
         val = self._getter()
@@ -178,7 +204,7 @@ class _FlyteRequiredConfigurationEntry(_FlyteConfigurationEntry):
 
 class FlyteStringConfigurationEntry(_FlyteConfigurationEntry):
     def _getter(self):
-        val = _os.environ.get(self.env_var, None)
+        val = self.retrieve_value()
         if val is None:
             val = CONFIGURATION_SINGLETON.get_string(self._section, self._key, default=self._default)
         return val
@@ -186,7 +212,7 @@ class FlyteStringConfigurationEntry(_FlyteConfigurationEntry):
 
 class FlyteIntegerConfigurationEntry(_FlyteConfigurationEntry):
     def _getter(self):
-        val = _os.environ.get(self.env_var, None)
+        val = self.retrieve_value()
         if val is None:
             val = CONFIGURATION_SINGLETON.get_int(self._section, self._key, default=self._default)
         if val is not None:
@@ -196,7 +222,7 @@ class FlyteIntegerConfigurationEntry(_FlyteConfigurationEntry):
 
 class FlyteBoolConfigurationEntry(_FlyteConfigurationEntry):
     def _getter(self):
-        val = _os.environ.get(self.env_var, None)
+        val = self.retrieve_value()
 
         if val is None:
             return CONFIGURATION_SINGLETON.get_bool(self._section, self._key, default=self._default)
@@ -209,7 +235,7 @@ class FlyteBoolConfigurationEntry(_FlyteConfigurationEntry):
 
 class FlyteStringListConfigurationEntry(_FlyteConfigurationEntry):
     def _getter(self):
-        val = _os.environ.get(self.env_var, None)
+        val = self.retrieve_value()
         if val is None:
             val = CONFIGURATION_SINGLETON.get_string(self._section, self._key)
         if val is None:
@@ -219,7 +245,7 @@ class FlyteStringListConfigurationEntry(_FlyteConfigurationEntry):
 
 class FlyteRequiredStringConfigurationEntry(_FlyteRequiredConfigurationEntry):
     def _getter(self):
-        val = _os.environ.get(self.env_var, None)
+        val = self.retrieve_value()
         if val is None:
             val = CONFIGURATION_SINGLETON.get_string(self._section, self._key, default=self._default)
         return val
@@ -227,7 +253,7 @@ class FlyteRequiredStringConfigurationEntry(_FlyteRequiredConfigurationEntry):
 
 class FlyteRequiredIntegerConfigurationEntry(_FlyteRequiredConfigurationEntry):
     def _getter(self):
-        val = _os.environ.get(self.env_var, None)
+        val = self.retrieve_value()
         if val is None:
             val = CONFIGURATION_SINGLETON.get_int(self._section, self._key, default=self._default)
         return int(val)
@@ -235,7 +261,7 @@ class FlyteRequiredIntegerConfigurationEntry(_FlyteRequiredConfigurationEntry):
 
 class FlyteRequiredBoolConfigurationEntry(_FlyteRequiredConfigurationEntry):
     def _getter(self):
-        val = _os.environ.get(self.env_var, None)
+        val = self.retrieve_value()
         if val is None:
             val = CONFIGURATION_SINGLETON.get_bool(self._section, self._key, default=self._default)
         return bool(val)
@@ -243,7 +269,7 @@ class FlyteRequiredBoolConfigurationEntry(_FlyteRequiredConfigurationEntry):
 
 class FlyteRequiredStringListConfigurationEntry(_FlyteRequiredConfigurationEntry):
     def _getter(self):
-        val = _os.environ.get(self.env_var, None)
+        val = self.retrieve_value()
         if val is None:
             val = CONFIGURATION_SINGLETON.get_string(self._section, self._key)
         if val is None:
