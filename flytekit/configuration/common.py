@@ -194,6 +194,26 @@ class FlyteIntegerConfigurationEntry(_FlyteConfigurationEntry):
         return None
 
 
+class FlyteEnvStringConfigurationEntry(_FlyteConfigurationEntry):
+    def _getter(self):
+        referenced_env_var = _os.environ.get(self.env_var, None)
+        if referenced_env_var is None:
+            referenced_env_var = CONFIGURATION_SINGLETON.get_int(self._section, self._key, default=self._default)
+
+        if referenced_env_var is not None:
+            return _os.environ.get(referenced_env_var, None)
+
+
+class FlyteRequiredEnvStringConfigurationEntry(_FlyteRequiredConfigurationEntry):
+    def _getter(self):
+        referenced_env_var = _os.environ.get(self.env_var, None)
+        if referenced_env_var is None:
+            referenced_env_var = CONFIGURATION_SINGLETON.get_int(self._section, self._key, default=self._default)
+
+        if referenced_env_var is not None:
+            return _os.environ.get(referenced_env_var, None)
+
+
 class FlyteBoolConfigurationEntry(_FlyteConfigurationEntry):
     def _getter(self):
         val = _os.environ.get(self.env_var, None)

@@ -26,14 +26,19 @@ The authorization metadata key used for passing access tokens in gRPC requests.
 Traditionally this value is 'authorization' however it is made configurable.
 """
 
+CLIENT_CREDENTIALS_SECRET_ENV_VAR = _config_common.FlyteEnvStringConfigurationEntry(
+    'credentials', 'client_secret_env_var', default=None)
+
+
 CLIENT_CREDENTIALS_SECRET_LOCATION =  _config_common.FlyteStringConfigurationEntry(
-    'credentials', 'client_secret_location', default=None)
+    'credentials', 'client_secret_location', default=None, fallback=CLIENT_CREDENTIALS_SECRET_ENV_VAR)
 """
 Used for basic auth, which is automatically called during pyflyte. This is the location to look for the password. The
 client id config setting is shared across the basic and standard auth flows.
 """
 
-CLIENT_CREDENTIALS_SECRET =  _config_common.FlyteStringConfigurationEntry('credentials', 'client_secret', default=None)
+CLIENT_CREDENTIALS_SECRET =  _config_common.FlyteStringConfigurationEntry('credentials', 'client_secret', default=None,
+                                                                          fallback=CLIENT_CREDENTIALS_SECRET_LOCATION)
 """
 Used for basic auth, which is automatically called during pyflyte. This will allow the Flyte engine to read the
 password directly from the environment variable. Note that this is less secure! Please only use this if mounting the
