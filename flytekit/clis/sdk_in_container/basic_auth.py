@@ -7,7 +7,6 @@ import requests as _requests
 
 from flytekit.common.exceptions.base import FlyteException as _FlyteException
 from flytekit.configuration.creds import (
-    CLIENT_CREDENTIALS_SECRET_LOCATION as _CREDENTIALS_SECRET_FILE,
     CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET,
 )
 
@@ -18,30 +17,16 @@ class FlyteAuthenticationException(_FlyteException):
     _ERROR_CODE = "FlyteAuthenticationFailed"
 
 
-def get_file_contents(location):
-    """
-    This reads an input file, and returns the string contents, and should be used for reading credentials.
-    This function will also strip newlines.
-
-    :param Text location: The file path holding the client id or secret
-    :rtype: Text
-    """
-    with open(location, 'r') as f:
-        return f.read().replace('\n', '')
-
-
 def get_secret():
     """
     This function will either read in the password from the file path given by the CLIENT_CREDENTIALS_SECRET_LOCATION
     config object, or from the environment variable using the CLIENT_CREDENTIALS_SECRET config object.
     :rtype: Text
     """
-    if _CREDENTIALS_SECRET_FILE.get():
-        return get_file_contents(_CREDENTIALS_SECRET_FILE.get())
-    elif _CREDENTIALS_SECRET.get():
-        return _CREDENTIALS_SECRET.get()
-    raise FlyteAuthenticationException('No secret could be found in either {} or the {} env variable'.format(
-        _CREDENTIALS_SECRET_FILE.get(), _CREDENTIALS_SECRET.env_var))
+    secret = _CREDENTIALS_SECRET.get()
+    if secret:
+        return secret
+    raise FlyteAuthenticationException('No secret could be found')
 
 
 def get_basic_authorization_header(client_id, client_secret):
