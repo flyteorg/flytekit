@@ -1,17 +1,20 @@
 from __future__ import absolute_import
 
-import collections as _collections
-import os as _os
-import pytest as _pytest
-import pandas as _pd
-import uuid as _uuid
 import datetime as _datetime
-from flytekit.common.types.impl import schema as _schema_impl
-from flytekit.common.types import primitives as _primitives, blobs as _blobs
+import os as _os
+import uuid as _uuid
+
+import collections as _collections
+import pandas as _pd
+import pytest as _pytest
+import six.moves as _six_moves
+
 from flytekit.common import utils as _utils
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.types import primitives as _primitives, blobs as _blobs
+from flytekit.common.types.impl import schema as _schema_impl
 from flytekit.models import types as _type_models, literals as _literal_models
 from flytekit.sdk import test_utils as _test_utils
-import six.moves as _six_moves
 
 
 def test_schema_type():
@@ -301,7 +304,57 @@ def test_casting():
 
 
 def test_from_python_std():
-    pass
+    with _test_utils.LocalTestFileSystem():
+        def single_dataframe():
+            df1 = _pd.DataFrame.from_dict({'a': [1, 2, 3, 4], 'b': [5, 6, 7, 8]})
+            s = _schema_impl.Schema.from_python_std(t_value=df1, schema_type=_schema_impl.SchemaType(
+                [('a', _primitives.Integer), ('b', _primitives.Integer)]))
+            assert s is not None
+            n = _schema_impl.Schema.fetch(s.uri, schema_type=_schema_impl.SchemaType(
+                [('a', _primitives.Integer), ('b', _primitives.Integer)]))
+            with n as reader:
+                df2 = reader.read()
+                assert df2.columns.values.all() == df1.columns.values.all()
+                assert df2['b'].tolist() == df1['b'].tolist()
+
+        def list_of_dataframes():
+            df1 = _pd.DataFrame.from_dict({'a': [1, 2, 3, 4], 'b': [5, 6, 7, 8]})
+            df2 = _pd.DataFrame.from_dict({'a': [9, 10, 11, 12], 'b': [13, 14, 15, 16]})
+            s = _schema_impl.Schema.from_python_std(t_value=[df1, df2], schema_type=_schema_impl.SchemaType(
+                [('a', _primitives.Integer), ('b', _primitives.Integer)]))
+            assert s is not None
+            n = _schema_impl.Schema.fetch(s.uri, schema_type=_schema_impl.SchemaType(
+                [('a', _primitives.Integer), ('b', _primitives.Integer)]))
+            with n as reader:
+                actual = []
+                for df in reader.iter_chunks():
+                    assert df.columns.values.all() == df1.columns.values.all()
+                    actual.extend(df['b'].tolist())
+                b_val = df1['b'].tolist()
+                b_val.extend(df2['b'].tolist())
+                assert actual == b_val
+
+        def mixed_list():
+            df1 = _pd.DataFrame.from_dict({'a': [1, 2, 3, 4], 'b': [5, 6, 7, 8]})
+            df2 = [1, 2, 3]
+            with _pytest.raises(_user_exceptions.FlyteTypeException):
+                _schema_impl.Schema.from_python_std(t_value=[df1, df2], schema_type=_schema_impl.SchemaType(
+                    [('a', _primitives.Integer), ('b', _primitives.Integer)]))
+
+        def empty_list():
+            s = _schema_impl.Schema.from_python_std(t_value=[], schema_type=_schema_impl.SchemaType(
+                [('a', _primitives.Integer), ('b', _primitives.Integer)]))
+            assert s is not None
+            n = _schema_impl.Schema.fetch(s.uri, schema_type=_schema_impl.SchemaType(
+                [('a', _primitives.Integer), ('b', _primitives.Integer)]))
+            with n as reader:
+                df = reader.read()
+                assert df is None
+
+        single_dataframe()
+        mixed_list()
+        empty_list()
+        list_of_dataframes()
 
 
 def test_promote_from_model_schema_type():

@@ -7,6 +7,7 @@ from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
 extras_require = LazyLoadPlugin.get_extras_require()
 
 extras_require[':python_version<"3"'] = [
+    "configparser>=3.0.0,<4.0.0",
     "futures>=3.2.0,<4.0.0",
     "pathlib2>=2.3.2,<3.0.0"
 ]
@@ -27,13 +28,9 @@ setup(
             'flyte-cli=flytekit.clis.flyte_cli.main:_flyte_cli'
         ]
     },
-    setup_requires=[
-        "pip>10.0.0,<19.2.0"
-    ],
     install_requires=[
         "flyteidl>=0.15.0,<1.0.0",
-        "click>=7.0,<8.0",
-        "configparser>=3.0.0,<4.0.0",
+        "click>=6.6,<8.0",
         "croniter>=0.3.20,<4.0.0",
         "deprecation>=2.0,<3.0",
         "boto3>=1.4.4,<2.0",
