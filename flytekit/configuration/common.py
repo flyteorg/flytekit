@@ -198,20 +198,56 @@ class FlyteEnvStringConfigurationEntry(_FlyteConfigurationEntry):
     def _getter(self):
         referenced_env_var = _os.environ.get(self.env_var, None)
         if referenced_env_var is None:
-            referenced_env_var = CONFIGURATION_SINGLETON.get_int(self._section, self._key, default=self._default)
+            referenced_env_var = CONFIGURATION_SINGLETON.get_string(self._section, self._key, default=self._default)
 
         if referenced_env_var is not None:
             return _os.environ.get(referenced_env_var, None)
+        return None
 
 
 class FlyteRequiredEnvStringConfigurationEntry(_FlyteRequiredConfigurationEntry):
     def _getter(self):
         referenced_env_var = _os.environ.get(self.env_var, None)
         if referenced_env_var is None:
-            referenced_env_var = CONFIGURATION_SINGLETON.get_int(self._section, self._key, default=self._default)
+            referenced_env_var = CONFIGURATION_SINGLETON.get_string(self._section, self._key, default=self._default)
 
         if referenced_env_var is not None:
             return _os.environ.get(referenced_env_var, None)
+        return None
+
+
+def get_file_contents(location):
+    """
+    This reads an input file, and returns the string contents, and should be used for reading credentials.
+    This function will also strip newlines.
+
+    :param Text location: The file path holding the client id or secret
+    :rtype: Text
+    """
+    with open(location, 'r') as f:
+        return f.read().replace('\n', '')
+
+
+class FlyteFileStringConfigurationEntry(_FlyteConfigurationEntry):
+    def _getter(self):
+        referenced_filename = _os.environ.get(self.env_var, None)
+        if referenced_filename is None:
+            referenced_filename = CONFIGURATION_SINGLETON.get_string(self._section, self._key, default=self._default)
+
+        if referenced_filename is not None:
+            return get_file_contents(referenced_filename)
+        return None
+
+
+class FlyteRequiredFileStringConfigurationEntry(_FlyteRequiredConfigurationEntry):
+    def _getter(self):
+        referenced_filename = _os.environ.get(self.env_var, None)
+        if referenced_filename is None:
+            referenced_filename = CONFIGURATION_SINGLETON.get_string(self._section, self._key, default=self._default)
+
+        if referenced_filename is not None:
+            return get_file_contents(referenced_filename)
+        return None
 
 
 class FlyteBoolConfigurationEntry(_FlyteConfigurationEntry):

@@ -30,7 +30,7 @@ CLIENT_CREDENTIALS_SECRET_ENV_VAR = _config_common.FlyteEnvStringConfigurationEn
     'credentials', 'client_secret_env_var', default=None)
 
 
-CLIENT_CREDENTIALS_SECRET_LOCATION =  _config_common.FlyteStringConfigurationEntry(
+CLIENT_CREDENTIALS_SECRET_LOCATION =  _config_common.FlyteFileStringConfigurationEntry(
     'credentials', 'client_secret_location', default=None, fallback=CLIENT_CREDENTIALS_SECRET_ENV_VAR)
 """
 Used for basic auth, which is automatically called during pyflyte. This is the location to look for the password. The

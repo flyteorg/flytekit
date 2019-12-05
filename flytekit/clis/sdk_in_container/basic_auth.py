@@ -18,18 +18,6 @@ class FlyteAuthenticationException(_FlyteException):
     _ERROR_CODE = "FlyteAuthenticationFailed"
 
 
-def get_file_contents(location):
-    """
-    This reads an input file, and returns the string contents, and should be used for reading credentials.
-    This function will also strip newlines.
-
-    :param Text location: The file path holding the client id or secret
-    :rtype: Text
-    """
-    with open(location, 'r') as f:
-        return f.read().replace('\n', '')
-
-
 def get_secret():
     """
     This function will either read in the password from the file path given by the CLIENT_CREDENTIALS_SECRET_LOCATION
