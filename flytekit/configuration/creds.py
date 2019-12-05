@@ -26,12 +26,6 @@ The authorization metadata key used for passing access tokens in gRPC requests.
 Traditionally this value is 'authorization' however it is made configurable.
 """
 
-CLIENT_CREDENTIALS_SECRET_LOCATION =  _config_common.FlyteStringConfigurationEntry(
-    'credentials', 'client_secret_location', default=None)
-"""
-Used for basic auth, which is automatically called during pyflyte. This is the location to look for the password. The
-client id config setting is shared across the basic and standard auth flows.
-"""
 
 CLIENT_CREDENTIALS_SECRET =  _config_common.FlyteStringConfigurationEntry('credentials', 'client_secret', default=None)
 """
