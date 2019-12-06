@@ -7,7 +7,7 @@ from flytekit.configuration.creds import (
     REDIRECT_URI as _REDIRECT_URI,
     CLIENT_ID as _CLIENT_ID
 )
-from flytekit.configuration.platform import URL as _URL
+from flytekit.configuration.platform import URL as _URL, INSECURE as _INSECURE
 
 try:  # Python 3
     import urllib.parse as _urlparse
@@ -19,7 +19,9 @@ discovery_endpoint_path = ".well-known/oauth-authorization-server"
 
 
 def _get_discovery_endpoint():
-    return _urlparse.urljoin(_URL.get(), discovery_endpoint_path)
+    if _INSECURE.get():
+        return _urlparse.urljoin('http://{}/'.format(_URL.get()), discovery_endpoint_path)
+    return _urlparse.urljoin('https://{}/'.format(_URL.get()), discovery_endpoint_path)
 
 
 # Lazy initialized authorization client singleton
