@@ -272,7 +272,6 @@ class RawSynchronousFlyteClient(object):
         :rtype: flyteidl.admin.common_pb2.NamedEntityIdentifierList
         :raises: TODO
         """
-        _logging.warn("hi katrina, metadata is {}".format(self._metadata))
         return self._stub.ListWorkflowIds(identifier_list_request, metadata=self._metadata)
 
     @_handle_rpc_error

@@ -37,7 +37,6 @@ _keyring_service_name = "flyteauth"
 # Identifies the key used for storing and fetching from keyring. In our case, instead of a username as the keyring docs
 # suggest, we are storing a user's oidc.
 _keyring_access_token_storage_key = "access_token"
-_keyring_id_token_storage_key = "id_token"
 _keyring_refresh_token_storage_key = "refresh_token"
 
 
@@ -131,17 +130,12 @@ class OAuthHTTPServer(_BaseHTTPServer.HTTPServer):
 
 
 class Credentials(object):
-    def __init__(self, access_token=None, id_token=None):
+    def __init__(self, access_token=None):
         self._access_token = access_token
-        self._id_token = id_token
 
     @property
     def access_token(self):
         return self._access_token
-
-    @property
-    def id_token(self):
-        return self._id_token
 
 
 class AuthorizationClient(object):
@@ -174,9 +168,8 @@ class AuthorizationClient(object):
         # Prefer to use already-fetched token values when they've been set globally.
         self._refresh_token = _keyring.get_password(_keyring_service_name, _keyring_refresh_token_storage_key)
         access_token = _keyring.get_password(_keyring_service_name, _keyring_access_token_storage_key)
-        id_token = _keyring.get_password(_keyring_service_name, _keyring_id_token_storage_key)
-        if access_token and id_token:
-            self._credentials = Credentials(access_token=access_token, id_token=id_token)
+        if access_token:
+            self._credentials = Credentials(access_token=access_token)
             return
 
         # In the absence of globally-set token values, initiate the token request flow
@@ -223,13 +216,11 @@ class AuthorizationClient(object):
             self._refresh_token = response_body["refresh_token"]
 
         access_token = response_body["access_token"]
-        id_token = response_body["id_token"]
         refresh_token = response_body["refresh_token"]
 
         _keyring.set_password(_keyring_service_name, _keyring_access_token_storage_key, access_token)
-        _keyring.set_password(_keyring_service_name, _keyring_id_token_storage_key, id_token)
         _keyring.set_password(_keyring_service_name, _keyring_refresh_token_storage_key, refresh_token)
-        self._credentials = Credentials(access_token=access_token, id_token=id_token)
+        self._credentials = Credentials(access_token=access_token)
 
     def request_access_token(self, auth_code):
         if self._state != auth_code.state:
@@ -268,6 +259,9 @@ class AuthorizationClient(object):
             self._expired = True
             # In the absence of a successful response, assume the refresh token is expired. This should indicate
             # to the caller that the AuthorizationClient is defunct and a new one needs to be re-initialized.
+
+            _keyring.delete_password(_keyring_service_name, _keyring_access_token_storage_key)
+            _keyring.delete_password(_keyring_service_name, _keyring_refresh_token_storage_key)
             return
         self._initialize_credentials(resp)
 
