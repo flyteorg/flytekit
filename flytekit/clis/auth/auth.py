@@ -1,5 +1,6 @@
 import base64 as _base64
 import hashlib as _hashlib
+import keyring as _keyring
 import os as _os
 import re as _re
 import requests as _requests
@@ -29,6 +30,15 @@ except ImportError:  # Python 2
 _code_verifier_length = 64
 _random_seed_length = 40
 _utf_8 = 'utf-8'
+
+
+# Identifies the service used for storing passwords in keyring
+_keyring_service_name = "flyteauth"
+# Identifies the key used for storing and fetching from keyring. In our case, instead of a username as the keyring docs
+# suggest, we are storing a user's oidc.
+_keyring_access_token_storage_key = "access_token"
+_keyring_id_token_storage_key = "id_token"
+_keyring_refresh_token_storage_key = "refresh_token"
 
 
 def _generate_code_verifier():
@@ -148,6 +158,7 @@ class AuthorizationClient(object):
         self._credentials = None
         self._refresh_token = None
         self._headers = {'content-type': "application/x-www-form-urlencoded"}
+        self._expired = False
 
         self._params = {
             "client_id": client_id,  # This must match the Client ID of the OAuth application.
@@ -160,7 +171,15 @@ class AuthorizationClient(object):
             "code_challenge_method": "S256",
         }
 
-        # Initiate token request flow
+        # Prefer to use already-fetched token values when they've been set globally.
+        self._refresh_token = _keyring.get_password(_keyring_service_name, _keyring_refresh_token_storage_key)
+        access_token = _keyring.get_password(_keyring_service_name, _keyring_access_token_storage_key)
+        id_token = _keyring.get_password(_keyring_service_name, _keyring_id_token_storage_key)
+        if access_token and id_token:
+            self._credentials = Credentials(access_token=access_token, id_token=id_token)
+            return
+
+        # In the absence of globally-set token values, initiate the token request flow
         q = _Queue()
         # First prepare the callback server in the background
         server = self._create_callback_server(q)
@@ -203,7 +222,14 @@ class AuthorizationClient(object):
         if "refresh_token" in response_body:
             self._refresh_token = response_body["refresh_token"]
 
-        self._credentials = Credentials(access_token=response_body["access_token"], id_token=response_body["id_token"])
+        access_token = response_body["access_token"]
+        id_token = response_body["id_token"]
+        refresh_token = response_body["refresh_token"]
+
+        _keyring.set_password(_keyring_service_name, _keyring_access_token_storage_key, access_token)
+        _keyring.set_password(_keyring_service_name, _keyring_id_token_storage_key, id_token)
+        _keyring.set_password(_keyring_service_name, _keyring_refresh_token_storage_key, refresh_token)
+        self._credentials = Credentials(access_token=access_token, id_token=id_token)
 
     def request_access_token(self, auth_code):
         if self._state != auth_code.state:
@@ -239,8 +265,10 @@ class AuthorizationClient(object):
             allow_redirects=False
         )
         if resp.status_code != _StatusCodes.OK:
-            raise Exception('Failed to request access token with response: [{}] {}'.format(
-                resp.status_code, resp.content))
+            self._expired = True
+            # In the absence of a successful response, assume the refresh token is expired. This should indicate
+            # to the caller that the AuthorizationClient is defunct and a new one needs to be re-initialized.
+            return
         self._initialize_credentials(resp)
 
     @property
@@ -249,3 +277,10 @@ class AuthorizationClient(object):
         :return flytekit.clis.auth.auth.Credentials:
         """
         return self._credentials
+
+    @property
+    def expired(self):
+        """
+        :return bool:
+        """
+        return self._expired

@@ -4,6 +4,7 @@ from grpc import insecure_channel as _insecure_channel, secure_channel as _secur
     StatusCode as _GrpcStatusCode, ssl_channel_credentials as _ssl_channel_credentials
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.configuration.platform import AUTH as _AUTH
 from flytekit.configuration.creds import (
     CLIENT_ID as _CLIENT_ID,
     CLIENT_CREDENTIALS_SCOPE as _SCOPE,
@@ -14,9 +15,6 @@ import six as _six
 from flytekit.configuration import creds as _creds_config, platform as _platform_config
 
 from flytekit.clis.auth import credentials as _credentials_access
-from flytekit.clients.helpers import (
-    get_global_access_token as _get_global_access_token, set_global_access_token as _set_global_access_token
-)
 
 
 def _refresh_credentials_standard(flyte_client):
@@ -28,14 +26,7 @@ def _refresh_credentials_standard(flyte_client):
     """
 
     _credentials_access.get_client().refresh_access_token()
-    _set_global_access_token()
-
-    if not _platform_config.AUTH.get():
-        # nothing to do
-        return
-
-    access_token = _get_global_access_token()
-    flyte_client.set_access_token(access_token)
+    flyte_client.set_access_token(_credentials_access.get_client().credentials.access_token)
 
 
 def _refresh_credentials_basic(flyte_client):
@@ -134,6 +125,8 @@ class RawSynchronousFlyteClient(object):
             )
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._metadata = None
+        if _AUTH.get():
+            self.force_auth_flow()
 
     def set_access_token(self, access_token):
         self._metadata = [(_creds_config.AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(access_token))]
@@ -279,6 +272,7 @@ class RawSynchronousFlyteClient(object):
         :rtype: flyteidl.admin.common_pb2.NamedEntityIdentifierList
         :raises: TODO
         """
+        _logging.warn("hi katrina, metadata is {}".format(self._metadata))
         return self._stub.ListWorkflowIds(identifier_list_request, metadata=self._metadata)
 
     @_handle_rpc_error

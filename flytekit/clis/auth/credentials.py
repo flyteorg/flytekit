@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-
 from flytekit.clis.auth.auth import AuthorizationClient as _AuthorizationClient
 from flytekit.clis.auth.discovery import DiscoveryClient as _DiscoveryClient
 
@@ -28,11 +27,9 @@ _authorization_client = None
 
 def get_client():
     global _authorization_client
-    if _authorization_client is not None:
+    if _authorization_client is not None and not _authorization_client.expired:
         return _authorization_client
-    discovery_endpoint = _get_discovery_endpoint()
-    discovery_client = _DiscoveryClient(discovery_url=discovery_endpoint)
-    authorization_endpoints = discovery_client.get_authorization_endpoints()
+    authorization_endpoints = get_authorization_endpoints()
 
     _authorization_client =\
         _AuthorizationClient(redirect_uri=_REDIRECT_URI.get(), client_id=_CLIENT_ID.get(),
