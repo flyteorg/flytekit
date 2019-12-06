@@ -39,9 +39,9 @@ def get_basic_authorization_header(client_id, client_secret):
 
 def get_token(token_endpoint, authorization_header, scope):
     """
-    :param token_endpoint:
-    :param authorization_header:
-    :param scope:
+    :param Text token_endpoint:
+    :param Text authorization_header: This is the value for the "Authorization" key. (eg 'Bearer abc123')
+    :param Text scope:
     :rtype: (Text,Int) The first element is the access token retrieved from the IDP, the second is the expiration
             in seconds
     """
@@ -53,8 +53,9 @@ def get_token(token_endpoint, authorization_header, scope):
     }
     body = {
         'grant_type': 'client_credentials',
-        'scope': scope,
     }
+    if scope is not None:
+        body['scope'] = scope
     response = _requests.post(token_endpoint, data=body, headers=headers)
     if response.status_code != 200:
         _logging.error("Non-200 ({}) received from IDP: {}".format(response.status_code, response.text))

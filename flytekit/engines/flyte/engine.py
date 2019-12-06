@@ -33,9 +33,6 @@ class _FlyteClientManager(object):
         # TODO: use cases.
         if type(self)._CLIENT is None:
             c = _SynchronousFlyteClient(*args, **kwargs)
-            if _platform_config.AUTH.get():
-                # Force authentication
-                c.force_auth_flow()
             type(self)._CLIENT = c
 
     @property
