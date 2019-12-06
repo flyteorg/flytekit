@@ -1,15 +1,90 @@
 from __future__ import absolute_import
+
 from grpc import insecure_channel as _insecure_channel, secure_channel as _secure_channel, RpcError as _RpcError, \
     StatusCode as _GrpcStatusCode, ssl_channel_credentials as _ssl_channel_credentials
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.configuration.platform import AUTH as _AUTH
+from flytekit.configuration.creds import (
+    CLIENT_ID as _CLIENT_ID,
+    CLIENT_CREDENTIALS_SCOPE as _SCOPE,
+)
+from flytekit.clis.sdk_in_container import basic_auth as _basic_auth
+import logging as _logging
 import six as _six
+from flytekit.configuration import creds as _creds_config, platform as _platform_config
+
+from flytekit.clis.auth import credentials as _credentials_access
+
+
+def _refresh_credentials_standard(flyte_client):
+    """
+    This function is used when the configuration value for AUTH_MODE is set to 'standard'.
+    This either fetches the existing access token or initiates the flow to request a valid access token and store it.
+    :param flyte_client: RawSynchronousFlyteClient
+    :return:
+    """
+
+    _credentials_access.get_client().refresh_access_token()
+    flyte_client.set_access_token(_credentials_access.get_client().credentials.access_token)
+
+
+def _refresh_credentials_basic(flyte_client):
+    """
+    This function is used by the _handle_rpc_error decorator, depending on the AUTH_MODE config object. This handler
+    is meant for SDK use-cases of auth (like pyflyte, or when users call SDK functions that require access to Admin,
+    like when waiting for another workflow to complete from within a task). This function uses basic auth, which means
+    the credentials for basic auth must be present from wherever this code is running.
+
+    :param flyte_client: RawSynchronousFlyteClient
+    :return:
+    """
+    auth_endpoints = _credentials_access.get_authorization_endpoints()
+    token_endpoint = auth_endpoints.token_endpoint
+    client_secret = _basic_auth.get_secret()
+    _logging.debug('Basic authorization flow with client id {} scope {}', _CLIENT_ID.get(), _SCOPE.get())
+    authorization_header = _basic_auth.get_basic_authorization_header(_CLIENT_ID.get(), client_secret)
+    token, expires_in = _basic_auth.get_token(token_endpoint, authorization_header, _SCOPE.get())
+    _logging.info('Retrieved new token, expires in {}'.format(expires_in))
+    flyte_client.set_access_token(token)
+
+
+def _refresh_credentials_noop(flyte_client):
+    pass
+
+
+def _get_refresh_handler(auth_mode):
+    if auth_mode == "standard":
+        return _refresh_credentials_standard
+    elif auth_mode == "basic":
+        return _refresh_credentials_basic
+    else:
+        raise ValueError(
+            "Invalid auth mode [{}] specified. Please update the creds config to use a valid value".format(auth_mode))
 
 
 def _handle_rpc_error(fn):
     def handler(*args, **kwargs):
+        """
+        Wraps rpc errors as Flyte exceptions and handles authentication the client.
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        retries = 2
         try:
-            return fn(*args, **kwargs)
+            for i in range(retries):
+                try:
+                    return fn(*args, **kwargs)
+                except _RpcError as e:
+                    if e.code() == _GrpcStatusCode.UNAUTHENTICATED:
+                        if i == (retries - 1):
+                            # Exit the loop and wrap the authentication error.
+                            raise _user_exceptions.FlyteAuthenticationException(_six.text_type(e))
+                        refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
+                        refresh_handler_fn(args[0])
+                    else:
+                        raise
         except _RpcError as e:
             if e.code() == _GrpcStatusCode.ALREADY_EXISTS:
                 raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
@@ -35,10 +110,11 @@ class RawSynchronousFlyteClient(object):
         :param Text credentials: [Optional] If provided, a secure channel will be opened with the Flyte Admin Service.
         :param dict[Text, Text] options: [Optional] A dict of key-value string pairs for configuring the gRPC core
             runtime.
+        :param list[(Text,Text)] metadata: [Optional] metadata pairs to be transmitted to the
+            service-side of the RPC.
         """
         self._channel = None
 
-        # TODO: Revert all the for loops below
         if insecure:
             self._channel = _insecure_channel(url, options=list((options or {}).items()))
         else:
@@ -48,6 +124,16 @@ class RawSynchronousFlyteClient(object):
                 options=list((options or {}).items())
             )
         self._stub = _admin_service.AdminServiceStub(self._channel)
+        self._metadata = None
+        if _AUTH.get():
+            self.force_auth_flow()
+
+    def set_access_token(self, access_token):
+        self._metadata = [(_creds_config.AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(access_token))]
+
+    def force_auth_flow(self):
+        refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
+        refresh_handler_fn(self)
 
     ####################################################################################################################
     #
@@ -74,7 +160,7 @@ class RawSynchronousFlyteClient(object):
             task is already registered.
         :raises grpc.RpcError:
         """
-        return self._stub.CreateTask(task_create_request)
+        return self._stub.CreateTask(task_create_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def list_task_ids_paginated(self, identifier_list_request):
@@ -100,7 +186,7 @@ class RawSynchronousFlyteClient(object):
         :rtype: flyteidl.admin.common_pb2.NamedEntityIdentifierList
         :raises: TODO
         """
-        return self._stub.ListTaskIds(identifier_list_request)
+        return self._stub.ListTaskIds(identifier_list_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def list_tasks_paginated(self, resource_list_request):
@@ -122,7 +208,7 @@ class RawSynchronousFlyteClient(object):
         :rtype: flyteidl.admin.task_pb2.TaskList
         :raises: TODO
         """
-        return self._stub.ListTasks(resource_list_request)
+        return self._stub.ListTasks(resource_list_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def get_task(self, get_object_request):
@@ -133,7 +219,7 @@ class RawSynchronousFlyteClient(object):
         :rtype: flyteidl.admin.task_pb2.Task
         :raises: TODO
         """
-        return self._stub.GetTask(get_object_request)
+        return self._stub.GetTask(get_object_request, metadata=self._metadata)
 
     ####################################################################################################################
     #
@@ -160,7 +246,7 @@ class RawSynchronousFlyteClient(object):
             identical workflow is already registered.
         :raises grpc.RpcError:
         """
-        return self._stub.CreateWorkflow(workflow_create_request)
+        return self._stub.CreateWorkflow(workflow_create_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def list_workflow_ids_paginated(self, identifier_list_request):
@@ -186,7 +272,7 @@ class RawSynchronousFlyteClient(object):
         :rtype: flyteidl.admin.common_pb2.NamedEntityIdentifierList
         :raises: TODO
         """
-        return self._stub.ListWorkflowIds(identifier_list_request)
+        return self._stub.ListWorkflowIds(identifier_list_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def list_workflows_paginated(self, resource_list_request):
@@ -208,7 +294,7 @@ class RawSynchronousFlyteClient(object):
         :rtype: flyteidl.admin.workflow_pb2.WorkflowList
         :raises: TODO
         """
-        return self._stub.ListWorkflows(resource_list_request)
+        return self._stub.ListWorkflows(resource_list_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def get_workflow(self, get_object_request):
@@ -219,7 +305,7 @@ class RawSynchronousFlyteClient(object):
         :rtype: flyteidl.admin.workflow_pb2.Workflow
         :raises: TODO
         """
-        return self._stub.GetWorkflow(get_object_request)
+        return self._stub.GetWorkflow(get_object_request, metadata=self._metadata)
 
     ####################################################################################################################
     #
@@ -247,7 +333,7 @@ class RawSynchronousFlyteClient(object):
             the identical launch plan is already registered.
         :raises grpc.RpcError:
         """
-        return self._stub.CreateLaunchPlan(launch_plan_create_request)
+        return self._stub.CreateLaunchPlan(launch_plan_create_request, metadata=self._metadata)
 
     # TODO: List endpoints when they come in
 
@@ -259,7 +345,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.common_pb2.ObjectGetRequest object_get_request:
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlan
         """
-        return self._stub.GetLaunchPlan(object_get_request)
+        return self._stub.GetLaunchPlan(object_get_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def get_active_launch_plan(self, active_launch_plan_request):
@@ -269,7 +355,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.common_pb2.ActiveLaunchPlanRequest active_launch_plan_request:
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlan
         """
-        return self._stub.GetActiveLaunchPlan(active_launch_plan_request)
+        return self._stub.GetActiveLaunchPlan(active_launch_plan_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def update_launch_plan(self, update_request):
@@ -280,7 +366,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.launch_plan_pb2.LaunchPlanUpdateRequest update_request:
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanUpdateResponse
         """
-        return self._stub.UpdateLaunchPlan(update_request)
+        return self._stub.UpdateLaunchPlan(update_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def list_launch_plan_ids_paginated(self, identifier_list_request):
@@ -290,7 +376,7 @@ class RawSynchronousFlyteClient(object):
         :param: flyteidl.admin.common_pb2.NamedEntityIdentifierListRequest identifier_list_request:
         :rtype: flyteidl.admin.common_pb2.NamedEntityIdentifierList
         """
-        return self._stub.ListLaunchPlanIds(identifier_list_request)
+        return self._stub.ListLaunchPlanIds(identifier_list_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def list_launch_plans_paginated(self, resource_list_request):
@@ -300,7 +386,7 @@ class RawSynchronousFlyteClient(object):
         :param: flyteidl.admin.common_pb2.ResourceListRequest resource_list_request:
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanList
         """
-        return self._stub.ListLaunchPlans(resource_list_request)
+        return self._stub.ListLaunchPlans(resource_list_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def list_active_launch_plans_paginated(self, active_launch_plan_list_request):
@@ -310,7 +396,7 @@ class RawSynchronousFlyteClient(object):
         :param: flyteidl.admin.common_pb2.ActiveLaunchPlanListRequest active_launch_plan_list_request:
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanList
         """
-        return self._stub.ListActiveLaunchPlans(active_launch_plan_list_request)
+        return self._stub.ListActiveLaunchPlans(active_launch_plan_list_request, metadata=self._metadata)
 
     ####################################################################################################################
     #
@@ -325,7 +411,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.execution_pb2.ExecutionCreateRequest create_execution_request:
         :rtype: flyteidl.admin.execution_pb2.ExecutionCreateResponse
         """
-        return self._stub.CreateExecution(create_execution_request)
+        return self._stub.CreateExecution(create_execution_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def get_execution(self, get_object_request):
@@ -335,7 +421,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.execution_pb2.WorkflowExecutionGetRequest get_object_request:
         :rtype: flyteidl.admin.execution_pb2.Execution
         """
-        return self._stub.GetExecution(get_object_request)
+        return self._stub.GetExecution(get_object_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def get_execution_data(self, get_execution_data_request):
@@ -355,7 +441,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.common_pb2.ResourceListRequest resource_list_request:
         :rtype: flyteidl.admin.execution_pb2.ExecutionList
         """
-        return self._stub.ListExecutions(resource_list_request)
+        return self._stub.ListExecutions(resource_list_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def terminate_execution(self, terminate_execution_request):
@@ -363,7 +449,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.execution_pb2.TerminateExecutionRequest terminate_execution_request:
         :rtype: flyteidl.admin.execution_pb2.TerminateExecutionResponse
         """
-        return self._stub.TerminateExecution(terminate_execution_request)
+        return self._stub.TerminateExecution(terminate_execution_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def relaunch_execution(self, relaunch_execution_request):
@@ -385,7 +471,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.node_execution_pb2.NodeExecutionGetRequest node_execution_request:
         :rtype: flyteidl.admin.node_execution_pb2.NodeExecution
         """
-        return self._stub.GetNodeExecution(node_execution_request)
+        return self._stub.GetNodeExecution(node_execution_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def get_node_execution_data(self, get_node_execution_data_request):
@@ -403,7 +489,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.node_execution_pb2.NodeExecutionListRequest node_execution_list_request:
         :rtype: flyteidl.admin.node_execution_pb2.NodeExecutionList
         """
-        return self._stub.ListNodeExecutions(node_execution_list_request)
+        return self._stub.ListNodeExecutions(node_execution_list_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def list_node_executions_for_task_paginated(self, node_execution_for_task_list_request):
@@ -411,7 +497,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.node_execution_pb2.NodeExecutionListRequest node_execution_for_task_list_request:
         :rtype: flyteidl.admin.node_execution_pb2.NodeExecutionList
         """
-        return self._stub.ListNodeExecutionsForTask(node_execution_for_task_list_request)
+        return self._stub.ListNodeExecutionsForTask(node_execution_for_task_list_request, metadata=self._metadata)
 
     ####################################################################################################################
     #
@@ -425,7 +511,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.task_execution_pb2.TaskExecutionGetRequest task_execution_request:
         :rtype: flyteidl.admin.task_execution_pb2.TaskExecution
         """
-        return self._stub.GetTaskExecution(task_execution_request)
+        return self._stub.GetTaskExecution(task_execution_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def get_task_execution_data(self, get_task_execution_data_request):
@@ -443,7 +529,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.task_execution_pb2.TaskExecutionListRequest task_execution_list_request:
         :rtype: flyteidl.admin.task_execution_pb2.TaskExecutionList
         """
-        return self._stub.ListTaskExecutions(task_execution_list_request)
+        return self._stub.ListTaskExecutions(task_execution_list_request, metadata=self._metadata)
 
     ####################################################################################################################
     #
@@ -458,7 +544,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.project_pb2.ProjectListRequest project_list_request:
         :rtype: flyteidl.admin.project_pb2.Projects
         """
-        return self._stub.ListProjects(project_list_request)
+        return self._stub.ListProjects(project_list_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def register_project(self, project_register_request):
@@ -467,7 +553,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.project_pb2.ProjectRegisterRequest project_register_request:
         :rtype: flyteidl.admin.project_pb2.ProjectRegisterResponse
         """
-        return self._stub.RegisterProject(project_register_request)
+        return self._stub.RegisterProject(project_register_request, metadata=self._metadata)
 
     ####################################################################################################################
     #
