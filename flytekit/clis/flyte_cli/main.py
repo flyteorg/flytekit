@@ -422,6 +422,12 @@ _project_name_option = _click.option(
     type=str,
     help="The human-readable name for the project."
 )
+_project_description_option = _click.option(
+    '-d', '--description',
+    required=True,
+    type=str,
+    help="Concise description for the project."
+)
 
 
 class _FlyteSubCommand(_click.Command):
@@ -1459,17 +1465,18 @@ def get_child_executions(urn, host, insecure, show_io, verbose):
 @_flyte_cli.command('register-project', cls=_FlyteSubCommand)
 @_project_identifier_option
 @_project_name_option
+@_project_description_option
 @_host_option
 @_insecure_option
-def register_project(identifier, name, host, insecure):
+def register_project(identifier, name, description, host, insecure):
     """
     Register a new project.
 
     """
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
-    client.register_project(_Project(identifier, name))
-    _click.echo("Registered project [id: {}, name: {}]".format(identifier, name))
+    client.register_project(_Project(identifier, name, description))
+    _click.echo("Registered project [id: {}, name: {}, description: {}]".format(identifier, name, description))
 
 
 if __name__ == "__main__":
