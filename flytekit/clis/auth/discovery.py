@@ -57,12 +57,22 @@ class DiscoveryClient(object):
         )
 
         response_body = resp.json()
-        if response_body[_authorization_endpoint_key] is None:
+
+        authorization_endpoint = response_body[_authorization_endpoint_key]
+        token_endpoint = response_body[_token_endpoint_key]
+
+        if authorization_endpoint is None:
             raise ValueError('Unable to discover authorization endpoint')
 
-        if response_body[_token_endpoint_key] is None:
+        if token_endpoint is None:
             raise ValueError('Unable to discover token endpoint')
 
-        self._authorization_endpoints = AuthorizationEndpoints(auth_endpoint=response_body[_authorization_endpoint_key],
-                                                               token_endpoint=response_body[_token_endpoint_key])
+        if authorization_endpoint.startswith("/"):
+             authorization_endpoint= _requests.compat.urljoin(self._discovery_url, authorization_endpoint)
+
+        if token_endpoint.startswith("/"):
+            token_endpoint = _requests.compat.urljoin(self._discovery_url, token_endpoint)
+
+        self._authorization_endpoints = AuthorizationEndpoints(auth_endpoint=authorization_endpoint,
+                                                               token_endpoint=token_endpoint)
         return self.authorization_endpoints
