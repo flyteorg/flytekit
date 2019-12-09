@@ -66,6 +66,10 @@ class FlyteEntityAlreadyExistsException(FlyteAssertion):
     _ERROR_CODE = "USER:EntityAlreadyExists"
 
 
+class FlyteEntityNotExistException(FlyteAssertion):
+    _ERROR_CODE = "USER:EntityNotExist"
+
+
 class FlyteTimeout(FlyteAssertion):
     _ERROR_CODE = "USER:Timeout"
 
