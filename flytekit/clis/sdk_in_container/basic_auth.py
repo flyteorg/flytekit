@@ -4,6 +4,7 @@ import base64 as _base64
 import logging as _logging
 
 import requests as _requests
+import getpass as _getpass
 
 from flytekit.common.exceptions.user import FlyteAuthenticationException as _FlyteAuthenticationException
 from flytekit.configuration.creds import (
@@ -20,6 +21,9 @@ def get_secret():
     :rtype: Text
     """
     secret = _CREDENTIALS_SECRET.get()
+    if secret:
+        return secret
+    secret = _getpass.getpass()
     if secret:
         return secret
     raise _FlyteAuthenticationException('No secret could be found')
