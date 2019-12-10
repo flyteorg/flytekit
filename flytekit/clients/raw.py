@@ -129,7 +129,8 @@ class RawSynchronousFlyteClient(object):
             self.force_auth_flow()
 
     def set_access_token(self, access_token):
-        self._metadata = [(_creds_config.AUTHORIZATION_METADATA_KEY.get(), "Bearer {}".format(access_token))]
+        # Always set the header to lower-case regardless of what the config is.
+        self._metadata = [(_creds_config.AUTHORIZATION_METADATA_KEY.get().lower(), "Bearer {}".format(access_token))]
 
     def force_auth_flow(self):
         refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())

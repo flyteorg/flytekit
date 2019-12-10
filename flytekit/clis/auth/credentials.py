@@ -1,12 +1,15 @@
 from __future__ import absolute_import
+
+import logging
+
 from flytekit.clis.auth.auth import AuthorizationClient as _AuthorizationClient
 from flytekit.clis.auth.discovery import DiscoveryClient as _DiscoveryClient
 
 from flytekit.configuration.creds import (
     REDIRECT_URI as _REDIRECT_URI,
-    CLIENT_ID as _CLIENT_ID
+    CLIENT_ID as _CLIENT_ID,
 )
-from flytekit.configuration.platform import URL as _URL, INSECURE as _INSECURE
+from flytekit.configuration.platform import URL as _URL, INSECURE as _INSECURE, HTTP_URL as _HTTP_URL
 
 try:  # Python 3
     import urllib.parse as _urlparse
@@ -18,6 +21,16 @@ discovery_endpoint_path = ".well-known/oauth-authorization-server"
 
 
 def _get_discovery_endpoint():
+
+    if _HTTP_URL.get():
+        scheme, netloc, path, _, _, _ = _urlparse.urlparse(_HTTP_URL.get())
+        if not scheme:
+            scheme = 'http' if _INSECURE.get() else 'https'
+
+        computed_endpoint = _urlparse.urlunparse((scheme, netloc, path or discovery_endpoint_path, None, None, None))
+        logging.info('Using {} as discovery endpoint'.format(computed_endpoint))
+        return computed_endpoint
+
     if _INSECURE.get():
         return _urlparse.urljoin('http://{}/'.format(_URL.get()), discovery_endpoint_path)
     return _urlparse.urljoin('https://{}/'.format(_URL.get()), discovery_endpoint_path)
