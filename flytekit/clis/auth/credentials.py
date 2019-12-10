@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-import logging
+import logging as _logging
 
 from flytekit.clis.auth.auth import AuthorizationClient as _AuthorizationClient
 from flytekit.clis.auth.discovery import DiscoveryClient as _DiscoveryClient
@@ -28,7 +28,7 @@ def _get_discovery_endpoint():
             scheme = 'http' if _INSECURE.get() else 'https'
 
         computed_endpoint = _urlparse.urlunparse((scheme, netloc, path or discovery_endpoint_path, None, None, None))
-        logging.info('Using {} as discovery endpoint'.format(computed_endpoint))
+        _logging.info('Using {} as discovery endpoint'.format(computed_endpoint))
         return computed_endpoint
 
     if _INSECURE.get():
