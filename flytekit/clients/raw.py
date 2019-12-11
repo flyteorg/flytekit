@@ -129,7 +129,8 @@ class RawSynchronousFlyteClient(object):
             self.force_auth_flow()
 
     def set_access_token(self, access_token):
-        # Always set the header to lower-case regardless of what the config is.
+        # Always set the header to lower-case regardless of what the config is. The grpc libraries that Admin uses
+        # to parse the metadata don't change the metadata, but they do automatically lower the key you're looking for.
         self._metadata = [(_creds_config.AUTHORIZATION_METADATA_KEY.get().lower(), "Bearer {}".format(access_token))]
 
     def force_auth_flow(self):
