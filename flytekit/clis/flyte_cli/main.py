@@ -411,7 +411,7 @@ _optional_urns_only_option = _click.option(
     help="[Optional] Set the flag if you want to list the urns only"
 )
 _project_identifier_option = _click.option(
-    '-i', '--identifier',
+    '--identifier',
     required=True,
     type=str,
     help="Unique identifier for the project."
