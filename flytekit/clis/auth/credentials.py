@@ -28,7 +28,6 @@ def _get_discovery_endpoint(http_config_val, platform_url_val, insecure_val):
             scheme = 'http' if insecure_val else 'https'
 
         if path:
-            print('====================in here ')
             path = '/'.join([path, discovery_endpoint_path])
         else:
             path = discovery_endpoint_path
