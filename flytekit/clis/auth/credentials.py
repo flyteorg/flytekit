@@ -20,20 +20,25 @@ except ImportError:  # Python 2
 discovery_endpoint_path = ".well-known/oauth-authorization-server"
 
 
-def _get_discovery_endpoint():
+def _get_discovery_endpoint(http_config_val, platform_url_val, insecure_val):
 
-    if _HTTP_URL.get():
-        scheme, netloc, path, _, _, _ = _urlparse.urlparse(_HTTP_URL.get())
+    if http_config_val:
+        scheme, netloc, path, _, _, _ = _urlparse.urlparse(http_config_val)
         if not scheme:
-            scheme = 'http' if _INSECURE.get() else 'https'
+            scheme = 'http' if insecure_val else 'https'
 
-        computed_endpoint = _urlparse.urlunparse((scheme, netloc, path or discovery_endpoint_path, None, None, None))
+        if path:
+            print('====================in here ')
+            path = '/'.join([path, discovery_endpoint_path])
+        else:
+            path = discovery_endpoint_path
+        computed_endpoint = _urlparse.urlunparse((scheme, netloc, path, None, None, None))
         _logging.info('Using {} as discovery endpoint'.format(computed_endpoint))
         return computed_endpoint
 
-    if _INSECURE.get():
-        return _urlparse.urljoin('http://{}/'.format(_URL.get()), discovery_endpoint_path)
-    return _urlparse.urljoin('https://{}/'.format(_URL.get()), discovery_endpoint_path)
+    if insecure_val:
+        return _urlparse.urljoin('http://{}/'.format(platform_url_val), discovery_endpoint_path)
+    return _urlparse.urljoin('https://{}/'.format(platform_url_val), discovery_endpoint_path)
 
 
 # Lazy initialized authorization client singleton
@@ -54,6 +59,6 @@ def get_client():
 
 
 def get_authorization_endpoints():
-    discovery_endpoint = _get_discovery_endpoint()
+    discovery_endpoint = _get_discovery_endpoint(_HTTP_URL.get(), _URL.get(), _INSECURE.get())
     discovery_client = _DiscoveryClient(discovery_url=discovery_endpoint)
     return discovery_client.get_authorization_endpoints()
