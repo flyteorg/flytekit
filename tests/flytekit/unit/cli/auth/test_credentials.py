@@ -11,7 +11,6 @@ def test_get_discovery_endpoint():
     assert endpoint == 'https://localhost:8088/.well-known/oauth-authorization-server'
 
     endpoint = _credentials._get_discovery_endpoint('//localhost:8088/path', 'localhost:8089', True)
-    print(endpoint)
     assert endpoint == 'http://localhost:8088/path/.well-known/oauth-authorization-server'
 
     endpoint = _credentials._get_discovery_endpoint('//localhost:8088/path', 'localhost:8089', False)
