@@ -17,7 +17,7 @@ except ImportError:  # Python 2
     import urlparse as _urlparse
 
 # Default, well known-URI string used for fetching JSON metadata. See https://tools.ietf.org/html/rfc8414#section-3.
-discovery_endpoint_path = ".well-known/oauth-authorization-server"
+discovery_endpoint_path = "./.well-known/oauth-authorization-server"
 
 
 def _get_discovery_endpoint(http_config_val, platform_url_val, insecure_val):
@@ -26,18 +26,17 @@ def _get_discovery_endpoint(http_config_val, platform_url_val, insecure_val):
         scheme, netloc, path, _, _, _ = _urlparse.urlparse(http_config_val)
         if not scheme:
             scheme = 'http' if insecure_val else 'https'
+    else:  # Use the main _URL config object effectively
+        scheme = 'http' if insecure_val else 'https'
+        netloc = platform_url_val
+        path = ''
 
-        if path:
-            path = '/'.join([path, discovery_endpoint_path])
-        else:
-            path = discovery_endpoint_path
-        computed_endpoint = _urlparse.urlunparse((scheme, netloc, path, None, None, None))
-        _logging.info('Using {} as discovery endpoint'.format(computed_endpoint))
-        return computed_endpoint
-
-    if insecure_val:
-        return _urlparse.urljoin('http://{}/'.format(platform_url_val), discovery_endpoint_path)
-    return _urlparse.urljoin('https://{}/'.format(platform_url_val), discovery_endpoint_path)
+    computed_endpoint = _urlparse.urlunparse((scheme, netloc, path, None, None, None))
+    # The urljoin function needs a trailing slash in order to append things correctly. Also, having an extra slash
+    # at the end is okay, it just gets stripped out.
+    computed_endpoint = _urlparse.urljoin(computed_endpoint + '/', discovery_endpoint_path)
+    _logging.info('Using {} as discovery endpoint'.format(computed_endpoint))
+    return computed_endpoint
 
 
 # Lazy initialized authorization client singleton

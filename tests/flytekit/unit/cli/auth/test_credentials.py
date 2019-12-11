@@ -33,3 +33,9 @@ def test_get_discovery_endpoint():
 
     endpoint = _credentials._get_discovery_endpoint(None, 'flyte.corp.com', False)
     assert endpoint == 'https://flyte.corp.com/.well-known/oauth-authorization-server'
+
+    endpoint = _credentials._get_discovery_endpoint(None, 'localhost:8089', True)
+    assert endpoint == 'http://localhost:8089/.well-known/oauth-authorization-server'
+
+    endpoint = _credentials._get_discovery_endpoint(None, 'localhost:8089', False)
+    assert endpoint == 'https://localhost:8089/.well-known/oauth-authorization-server'
