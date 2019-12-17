@@ -17,11 +17,11 @@ echo "------------------------------------"
 echo ""
 
 # Go into the directory representing the user's repo
-pushd $1
+pushd "$1"
 
 # Grab the repo name from the argument if not already defined
 # Note that this repo name will be the name of the Docker image.
-if [ -z "IMAGE_NAME" ]; then
+if [ -z "${IMAGE_NAME}" ]; then
   IMAGE_NAME=${PWD##*/}
 fi
 
@@ -59,7 +59,7 @@ if [ -n "$REGISTRY" ]; then
 
   # Also push if there's a registry to push to
   if [[ "${REGISTRY}" == "docker.io"* ]]; then
-    docker login --username=${DOCKERHUB_USERNAME} --password=${DOCKERHUB_PASSWORD}
+    docker login --username="${DOCKERHUB_USERNAME}" --password="${DOCKERHUB_PASSWORD}"
   fi
   docker push "${FLYTE_INTERNAL_IMAGE}"
   echo "${FLYTE_INTERNAL_IMAGE} pushed to remote"

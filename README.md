@@ -79,4 +79,5 @@ python -m pip install -U .[all]
 ```bash
 source ~/.virtualenvs/flytekit/bin/activate
 python -m pytest tests/flytekit/unit
+shellcheck **/*.sh
 ```
