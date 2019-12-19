@@ -1531,6 +1531,11 @@ def register_project(identifier, name, description, host, insecure):
 @_host_option
 @_insecure_option
 def setup_config(client_id, redirect_uri, authorization_metadata_key, host, insecure):
+    """
+    Set-up a default config file.
+
+    """
+    _welcome_message()
     config_file = _get_config_file_path()
     if _get_user_filepath_home() and _os.path.exists(config_file):
         _click.secho("Config file already exists at {}".format(_tt(config_file)), fg='blue')
