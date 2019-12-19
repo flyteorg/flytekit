@@ -42,14 +42,21 @@ def _welcome_message():
     _click.secho("Welcome to Flyte CLI! Version: {}".format(_tt(__version__)), bold=True)
 
 
+def _get_user_filepath_home():
+    return _os.path.expanduser("~")
+
+def _get_config_file_path():
+    home = _get_user_filepath_home()
+    return _os.path.join(home, _default_config_file_path)
+
 def _detect_default_config_file():
-    home = _os.path.expanduser("~")
-    config_file = _os.path.join(home, _default_config_file_path)
-    if home and _os.path.exists(config_file):
+    config_file = _get_config_file_path()
+    if _get_user_filepath_home() and _os.path.exists(config_file):
         _click.secho("Using default config file at {}".format(_tt(config_file)), fg='blue')
         set_flyte_config_file(config_file_path=config_file)
     else:
-        _click.secho("Config file not found at default location, relying on environment variables instead", fg='blue')
+        _click.secho("""Config file not found at default location, relying on environment variables instead.
+                        To setup your config file run 'flyte-cli setup-config'""", fg='blue')
 
 
 # Run this as the module is loading to pick up settings that click can then use when constructing the commands
@@ -513,9 +520,47 @@ def _flyte_cli(ctx, project, domain, name, host, insecure):
 
 ########################################################################################################################
 #
+#  Flyte-cli auth config set-up options.
+#
+########################################################################################################################
+
+_client_id_option = _click.option(
+    "--client-id",
+    required=False,
+    type=str,
+    default=None,
+    help="""This is the public identifier for the app which handles authorization for a Flyte deployment.
+            More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/."""
+)
+
+_redirect_uri_option = _click.option(
+    "--redirect-uri",
+    required=False,
+    type=str,
+    default=None,
+    help="""This is the callback uri registered with the app which handles authorization for a Flyte deployment.
+            Please note the hardcoded port number. Ideally we would not do this, but some IDPs do not allow wildcards
+            for the URL, which means we have to use the same port every time. This is the only reason this is a
+            configuration option, otherwise, we'd just hardcode the callback path as a constant.
+            FYI, to see if a given port is already in use, run `sudo lsof -i :<port>` if on a Linux system.
+            More details here: https://www.oauth.com/oauth2-servers/redirect-uris/."""
+)
+
+_authorization_metadata_key_option = _click.option(
+    "--authorization-metadata-key",
+    required=False,
+    type=str,
+    default="authorization",
+    help="""The authorization metadata key used for passing access tokens in gRPC requests.
+            Traditionally this value is 'authorization' however it is made configurable."""
+)
+
+########################################################################################################################
+#
 #  Miscellaneous Commands
 #
 ########################################################################################################################
+
 
 @_flyte_cli.command('parse-proto', cls=_click.Command)
 @_filename_option
@@ -1477,6 +1522,40 @@ def register_project(identifier, name, description, host, insecure):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     client.register_project(_Project(identifier, name, description))
     _click.echo("Registered project [id: {}, name: {}, description: {}]".format(identifier, name, description))
+
+
+@_flyte_cli.command('setup-config', cls=_click.Command)
+@_client_id_option
+@_redirect_uri_option
+@_authorization_metadata_key_option
+@_host_option
+@_insecure_option
+def setup_config(client_id, redirect_uri, authorization_metadata_key, host, insecure):
+    config_file = _get_config_file_path()
+    if _get_user_filepath_home() and _os.path.exists(config_file):
+        _click.secho("Config file already exists at {}".format(_tt(config_file)), fg='blue')
+        return
+
+    with open(config_file, "w+") as f:
+        f.write("[platform]")
+        f.write("\n")
+        f.write("url={}".format(host))
+        f.write("\n")
+        f.write("insecure={}".format(insecure))
+        f.write("\n\n")
+
+        f.write("[credentials]")
+        f.write("\n")
+        f.write("client_id={}".format(client_id))
+        f.write("\n")
+        f.write("redirect_uri={}".format(redirect_uri))
+        f.write("\n")
+        f.write("authorization_metadata_key={}".format(authorization_metadata_key))
+        f.write("\n")
+        f.write("auth_mode=standard")
+        f.write("\n")
+    set_flyte_config_file(config_file_path=config_file)
+    _click.secho("Wrote default config file to {}".format(_tt(config_file)), fg='blue')
 
 
 if __name__ == "__main__":
