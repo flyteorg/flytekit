@@ -1497,7 +1497,7 @@ def register_project(identifier, name, description, host, insecure):
 @_flyte_cli.command('setup-config', cls=_click.Command)
 @_host_option
 @_insecure_option
-def setup_config(client_id, redirect_uri, authorization_metadata_key, host, insecure):
+def setup_config(host, insecure):
     """
     Set-up a default config file.
 
