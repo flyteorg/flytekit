@@ -30,6 +30,13 @@ from flytekit.models.execution import ExecutionSpec as _ExecutionSpec, Execution
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
 
+
+import requests as _requests
+try:  # Python 3
+    import urllib.parse as _urlparse
+except ImportError:  # Python 2
+    import urlparse as _urlparse
+
 _tt = _six.text_type
 
 # Similar to how kubectl has a config file in the users home directory, this Flyte CLI will also look for one.
@@ -42,14 +49,21 @@ def _welcome_message():
     _click.secho("Welcome to Flyte CLI! Version: {}".format(_tt(__version__)), bold=True)
 
 
+def _get_user_filepath_home():
+    return _os.path.expanduser("~")
+
+def _get_config_file_path():
+    home = _get_user_filepath_home()
+    return _os.path.join(home, _default_config_file_path)
+
 def _detect_default_config_file():
-    home = _os.path.expanduser("~")
-    config_file = _os.path.join(home, _default_config_file_path)
-    if home and _os.path.exists(config_file):
+    config_file = _get_config_file_path()
+    if _get_user_filepath_home() and _os.path.exists(config_file):
         _click.secho("Using default config file at {}".format(_tt(config_file)), fg='blue')
         set_flyte_config_file(config_file_path=config_file)
     else:
-        _click.secho("Config file not found at default location, relying on environment variables instead", fg='blue')
+        _click.secho("""Config file not found at default location, relying on environment variables instead.
+                        To setup your config file run 'flyte-cli setup-config'""", fg='blue')
 
 
 # Run this as the module is loading to pick up settings that click can then use when constructing the commands
@@ -516,6 +530,7 @@ def _flyte_cli(ctx, project, domain, name, host, insecure):
 #  Miscellaneous Commands
 #
 ########################################################################################################################
+
 
 @_flyte_cli.command('parse-proto', cls=_click.Command)
 @_filename_option
@@ -1477,6 +1492,46 @@ def register_project(identifier, name, description, host, insecure):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     client.register_project(_Project(identifier, name, description))
     _click.echo("Registered project [id: {}, name: {}, description: {}]".format(identifier, name, description))
+
+
+@_flyte_cli.command('setup-config', cls=_click.Command)
+@_host_option
+@_insecure_option
+def setup_config(host, insecure):
+    """
+    Set-up a default config file.
+
+    """
+    _welcome_message()
+    config_file = _get_config_file_path()
+    if _get_user_filepath_home() and _os.path.exists(config_file):
+        _click.secho("Config file already exists at {}".format(_tt(config_file)), fg='blue')
+        return
+
+    full_host = "http://{}".format(host) if insecure else "https://{}".format(host)
+    config_url = _urlparse.urljoin(full_host, "config/v1/flyte_client")
+    response = _requests.get(config_url)
+    data = response.json()
+    with open(config_file, "w+") as f:
+        f.write("[platform]")
+        f.write("\n")
+        f.write("url={}".format(host))
+        f.write("\n")
+        f.write("insecure={}".format(insecure))
+        f.write("\n\n")
+
+        f.write("[credentials]")
+        f.write("\n")
+        f.write("client_id={}".format(data["client_id"]))
+        f.write("\n")
+        f.write("redirect_uri={}".format(data["redirect_uri"]))
+        f.write("\n")
+        f.write("authorization_metadata_key={}".format(data["authorization_metadata_key"]))
+        f.write("\n")
+        f.write("auth_mode=standard")
+        f.write("\n")
+    set_flyte_config_file(config_file_path=config_file)
+    _click.secho("Wrote default config file to {}".format(_tt(config_file)), fg='blue')
 
 
 if __name__ == "__main__":
