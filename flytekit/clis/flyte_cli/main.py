@@ -30,6 +30,13 @@ from flytekit.models.execution import ExecutionSpec as _ExecutionSpec, Execution
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
 
+
+import requests as _requests
+try:  # Python 3
+    import urllib.parse as _urlparse
+except ImportError:  # Python 2
+    import urlparse as _urlparse
+
 _tt = _six.text_type
 
 # Similar to how kubectl has a config file in the users home directory, this Flyte CLI will also look for one.
@@ -517,43 +524,6 @@ def _flyte_cli(ctx, project, domain, name, host, insecure):
     """
     pass
 
-
-########################################################################################################################
-#
-#  Flyte-cli auth config set-up options.
-#
-########################################################################################################################
-
-_client_id_option = _click.option(
-    "--client-id",
-    required=False,
-    type=str,
-    default=None,
-    help="""This is the public identifier for the app which handles authorization for a Flyte deployment.
-            More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/."""
-)
-
-_redirect_uri_option = _click.option(
-    "--redirect-uri",
-    required=False,
-    type=str,
-    default=None,
-    help="""This is the callback uri registered with the app which handles authorization for a Flyte deployment.
-            Please note the hardcoded port number. Ideally we would not do this, but some IDPs do not allow wildcards
-            for the URL, which means we have to use the same port every time. This is the only reason this is a
-            configuration option, otherwise, we'd just hardcode the callback path as a constant.
-            FYI, to see if a given port is already in use, run `sudo lsof -i :<port>` if on a Linux system.
-            More details here: https://www.oauth.com/oauth2-servers/redirect-uris/."""
-)
-
-_authorization_metadata_key_option = _click.option(
-    "--authorization-metadata-key",
-    required=False,
-    type=str,
-    default="authorization",
-    help="""The authorization metadata key used for passing access tokens in gRPC requests.
-            Traditionally this value is 'authorization' however it is made configurable."""
-)
 
 ########################################################################################################################
 #
@@ -1525,9 +1495,6 @@ def register_project(identifier, name, description, host, insecure):
 
 
 @_flyte_cli.command('setup-config', cls=_click.Command)
-@_client_id_option
-@_redirect_uri_option
-@_authorization_metadata_key_option
 @_host_option
 @_insecure_option
 def setup_config(client_id, redirect_uri, authorization_metadata_key, host, insecure):
@@ -1541,6 +1508,10 @@ def setup_config(client_id, redirect_uri, authorization_metadata_key, host, inse
         _click.secho("Config file already exists at {}".format(_tt(config_file)), fg='blue')
         return
 
+    full_host = "http://{}".format(host) if insecure else "https://{}".format(host)
+    config_url = _urlparse.urljoin(full_host, "config/v1/flyte_client")
+    response = _requests.get(config_url)
+    data = response.json()
     with open(config_file, "w+") as f:
         f.write("[platform]")
         f.write("\n")
@@ -1551,11 +1522,11 @@ def setup_config(client_id, redirect_uri, authorization_metadata_key, host, inse
 
         f.write("[credentials]")
         f.write("\n")
-        f.write("client_id={}".format(client_id))
+        f.write("client_id={}".format(data["client_id"]))
         f.write("\n")
-        f.write("redirect_uri={}".format(redirect_uri))
+        f.write("redirect_uri={}".format(data["redirect_uri"]))
         f.write("\n")
-        f.write("authorization_metadata_key={}".format(authorization_metadata_key))
+        f.write("authorization_metadata_key={}".format(data["authorization_metadata_key"]))
         f.write("\n")
         f.write("auth_mode=standard")
         f.write("\n")
