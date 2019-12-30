@@ -253,9 +253,9 @@ def _render_schedule_expr(lp):
 
 # These two flags are special in that they are specifiable in both the user's default ~/.flyte/config file, and in the
 # flyte-cli command itself, both in the parent-command position (flyte-cli) , and in the child-command position
-# (list-task-names). To get around this, first we read the value of the config object, and store it. Below are two
-# options for each of these options, one for the parent command, and one for the child command. If not set by the
-# parent, and also not set by the child, then the value from the config file is used.
+# (e.g. list-task-names). To get around this, first we read the value of the config object, and store it. Later in the
+# file below are options for each of these options, one for the parent command, and one for the child command. If not
+# set by the parent, and also not set by the child, then the value from the config file is used.
 #
 # For both host and insecure, command line values will override the setting in ~/.flyte/config file.
 #
