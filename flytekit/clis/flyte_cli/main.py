@@ -29,6 +29,7 @@ from flytekit.models.core import execution as _core_execution_models
 from flytekit.models.execution import ExecutionSpec as _ExecutionSpec, ExecutionMetadata as _ExecutionMetadata
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
+from flytekit.common.exceptions.user import FlyteAssertion as _FlyteAssertion
 
 _tt = _six.text_type
 
@@ -250,8 +251,23 @@ def _render_schedule_expr(lp):
     return "{:30}".format(sched_expr)
 
 
-_HOST_URL_ENV = _os.environ.get(_platform_config.URL.env_var, None)
-_INSECURE_ENV = _os.environ.get(_platform_config.INSECURE.env_var, None)
+# These two flags are special in that they are specifiable in both the user's default ~/.flyte/config file, and in the
+# flyte-cli command itself, both in the parent-command position (flyte-cli) , and in the child-command position
+# (list-task-names). To get around this, first we read the value of the config object, and store it. Below are two
+# options for each of these options, one for the parent command, and one for the child command. If not set by the
+# parent, and also not set by the child, then the value from the config file is used.
+#
+# For both host and insecure, command line values will override the setting in ~/.flyte/config file.
+#
+# The host url option is a required setting, so if missing it will fail, but it may be set in the click command, so we
+# don't have to check now. It will be checked later.
+_HOST_URL = None
+try:
+    _HOST_URL = _platform_config.URL.get()
+except _FlyteAssertion:
+    pass
+_INSECURE_FLAG = _platform_config.INSECURE.get()
+
 _PROJECT_FLAGS = ["-p", "--project"]
 _DOMAIN_FLAGS = ["-d", "--domain"]
 _NAME_FLAGS = ["-n", "--name"]
@@ -308,14 +324,15 @@ _optional_principal_option = _click.option(
 _insecure_option = _click.option(
     *_INSECURE_FLAGS,
     is_flag=True,
-    required=True,
+    required=False,
+    default=_INSECURE_FLAG,
     help="Do not use SSL"
 )
 _insecure_optional_option = _click.option(
     *_INSECURE_FLAGS,
     is_flag=True,
     required=False,
-    default=False if _INSECURE_ENV is None else _str2bool(_INSECURE_ENV),
+    default=False,
     help="Do not use SSL communication"
 )
 _urn_option = _click.option(
@@ -332,8 +349,8 @@ _optional_urn_option = _click.option(
 
 _host_option = _click.option(
     *_HOST_FLAGS,
-    required=not bool(_HOST_URL_ENV),
-    default=_HOST_URL_ENV,
+    required=not bool(_HOST_URL),
+    default=_HOST_URL,
     help="The URL for the Flyte Admin Service. If you intend for this to be consistent, set the FLYTE_PLATFORM_URL "
          "environment variable to the desired URL and this will not need to be set."
 )
@@ -435,6 +452,7 @@ class _FlyteSubCommand(_click.Command):
         'project': _PROJECT_FLAGS[0],
         'domain': _DOMAIN_FLAGS[0],
         'name': _NAME_FLAGS[0],
+        'host': _HOST_FLAGS[0],
     }
 
     _PASSABLE_FLAGS = {
@@ -448,16 +466,6 @@ class _FlyteSubCommand(_click.Command):
                     param.name in parent.params and \
                     parent.params[param.name] is not None:
                 prefix_args.extend([type(self)._PASSABLE_ARGS[param.name], _six.text_type(parent.params[param.name])])
-
-            # Special handling for the host option, because this option can be specified in the user's ~/.flyte/config
-            # file, and unlike other options, doesn't get picked up before click commands are run
-            if param.name == 'host':
-                if param.name in parent.params and parent.params[param.name] is not None:
-                    prefix_args.extend(
-                        [_HOST_FLAGS[0], _six.text_type(parent.params[param.name])])
-                elif _platform_config.URL.get():
-                    prefix_args.extend(
-                        [_HOST_FLAGS[0], _six.text_type(_platform_config.URL.get())])
 
             # For flags, we don't append the value of the flag, otherwise click will fail to parse
             if param.name in type(self)._PASSABLE_FLAGS and \
@@ -504,7 +512,7 @@ class _FlyteSubCommand(_click.Command):
 @_insecure_optional_option
 @_click.group("flyte-cli")
 @_click.pass_context
-def _flyte_cli(ctx, project, domain, name, host, insecure):
+def _flyte_cli(ctx, host, project, domain, name, insecure):
     """
     Command line tool for interacting with all entities on the Flyte Platform.
     """
