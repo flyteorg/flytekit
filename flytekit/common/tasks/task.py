@@ -10,7 +10,7 @@ from flytekit.common.exceptions import user as _user_exceptions, scopes as _exce
 from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
-from flytekit.models import task as _task_model
+from flytekit.models import common as _common_model, task as _task_model
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
 
 
@@ -146,7 +146,7 @@ class SdkTask(
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def fetch(cls, project, domain, name, version=None):
+    def fetch(cls, project, domain, name, version):
         """
         This function uses the engine loader to call create a hydrated task from Admin.
         :param Text project:
@@ -155,11 +155,28 @@ class SdkTask(
         :param Text version:
         :rtype: SdkTask
         """
-        version = version or _internal_config.VERSION.get()
         task_id = _identifier.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, version)
         admin_task = _engine_loader.get_engine().fetch_task(task_id=task_id)
         sdk_task = cls.promote_from_model(admin_task.closure.compiled_task.template)
         sdk_task._id = task_id
+        return sdk_task
+
+    @classmethod
+    @_exception_scopes.system_entry_point
+    def fetch_latest(cls, project, domain, name):
+        """
+        This function uses the engine loader to call create a latest hydrated task from Admin.
+        :param Text project:
+        :param Text domain:
+        :param Text name:
+        :rtype: SdkTask
+        """
+        named_task = _common_model.NamedEntityIdentifier(project, domain, name)
+        admin_task = _engine_loader.get_engine().fetch_latest_task(named_task)
+        if not admin_task:
+            raise _user_exceptions.FlyteEntityNotExistException("Named task {} not found".format(named_task))
+        sdk_task = cls.promote_from_model(admin_task.closure.compiled_task.template)
+        sdk_task._id = admin_task.id
         return sdk_task
 
     @_exception_scopes.system_entry_point

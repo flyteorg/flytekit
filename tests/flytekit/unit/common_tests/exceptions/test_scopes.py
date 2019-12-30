@@ -17,27 +17,27 @@ def _system_func(ex_to_raise):
 def test_base_scope():
     with pytest.raises(ValueError) as e:
         _user_func(ValueError("Bad value"))
-    assert "Bad value" in str(e)
+    assert "Bad value" in str(e.value)
 
     with pytest.raises(ValueError) as e:
         _system_func(ValueError("Bad value"))
-    assert "Bad value" in str(e)
+    assert "Bad value" in str(e.value)
 
     with pytest.raises(user.FlyteAssertion) as e:
         _user_func(user.FlyteAssertion("Bad assert"))
-    assert "Bad assert" in str(e)
+    assert "Bad assert" in str(e.value)
 
     with pytest.raises(system.FlyteSystemAssertion) as e:
         _user_func(system.FlyteSystemAssertion("Bad assert"))
-    assert "Bad assert" in str(e)
+    assert "Bad assert" in str(e.value)
 
     with pytest.raises(user.FlyteAssertion) as e:
         _system_func(user.FlyteAssertion("Bad assert"))
-    assert "Bad assert" in str(e)
+    assert "Bad assert" in str(e.value)
 
     with pytest.raises(system.FlyteSystemAssertion) as e:
         _system_func(system.FlyteSystemAssertion("Bad assert"))
-    assert "Bad assert" in str(e)
+    assert "Bad assert" in str(e.value)
 
 
 @scopes.user_entry_point
@@ -50,6 +50,7 @@ def test_intercepted_scope_non_flyte_exception():
     assert e.value == value_error
     assert "Bad value" in e.verbose_message
     assert "User error." in e.verbose_message
+    assert e.error_code == "USER:Unknown"
     assert e.kind == _error_models.ContainerError.Kind.NON_RECOVERABLE
 
     with pytest.raises(scopes.FlyteScopedSystemException) as e:
@@ -59,6 +60,7 @@ def test_intercepted_scope_non_flyte_exception():
     assert e.value == value_error
     assert "Bad value" in e.verbose_message
     assert "SYSTEM ERROR!" in e.verbose_message
+    assert e.error_code == "SYSTEM:Unknown"
     assert e.kind == _error_models.ContainerError.Kind.RECOVERABLE
 
 
@@ -72,6 +74,7 @@ def test_intercepted_scope_flyte_user_exception():
     assert e.value == assertion_error
     assert "Bad assert" in e.verbose_message
     assert "User error." in e.verbose_message
+    assert e.error_code == "USER:AssertionError"
     assert e.kind == _error_models.ContainerError.Kind.NON_RECOVERABLE
 
     with pytest.raises(scopes.FlyteScopedUserException) as e:
@@ -81,6 +84,7 @@ def test_intercepted_scope_flyte_user_exception():
     assert e.value == assertion_error
     assert "Bad assert" in e.verbose_message
     assert "User error." in e.verbose_message
+    assert e.error_code == "USER:AssertionError"
     assert e.kind == _error_models.ContainerError.Kind.NON_RECOVERABLE
 
 
@@ -95,6 +99,7 @@ def test_intercepted_scope_flyte_system_exception():
     assert "Bad assert" in e.verbose_message
     assert "SYSTEM ERROR!" in e.verbose_message
     assert e.kind == _error_models.ContainerError.Kind.RECOVERABLE
+    assert e.error_code == "SYSTEM:AssertionError"
 
     with pytest.raises(scopes.FlyteScopedSystemException) as e:
         _system_func(assertion_error)
@@ -103,4 +108,5 @@ def test_intercepted_scope_flyte_system_exception():
     assert e.value == assertion_error
     assert "Bad assert" in e.verbose_message
     assert "SYSTEM ERROR!" in e.verbose_message
+    assert e.error_code == "SYSTEM:AssertionError"
     assert e.kind == _error_models.ContainerError.Kind.RECOVERABLE

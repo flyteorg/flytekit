@@ -29,7 +29,8 @@ class UnitTestEngineFactory(_common_engine.BaseExecutionEngineFactory):
         """
         if sdk_task.type in {
             _sdk_constants.SdkTaskType.PYTHON_TASK,
-            _sdk_constants.SdkTaskType.SPARK_TASK
+            _sdk_constants.SdkTaskType.SPARK_TASK,
+            _sdk_constants.SdkTaskType.SENSOR_TASK,
         }:
             return ReturnOutputsTask(sdk_task)
         elif sdk_task.type in {
@@ -67,6 +68,9 @@ class UnitTestEngineFactory(_common_engine.BaseExecutionEngineFactory):
 
     def fetch_task(self, _):
         raise _user_exceptions.FlyteAssertion("Unit testing does not fetch real tasks.")
+
+    def fetch_latest_task(self, named_task):
+        raise _user_exceptions.FlyteAssertion("Unit testing does not fetch the real latest task.")
 
     def fetch_launch_plan(self, _):
         raise _user_exceptions.FlyteAssertion("Unit testing does not fetch real launch plans.")

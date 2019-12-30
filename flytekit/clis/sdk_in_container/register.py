@@ -20,8 +20,12 @@ def register_all(project, domain, pkgs, test, version):
 
     for m, k, o in iterate_registerable_entities_in_order(pkgs):
         name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
-        click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), name))
-        o.register(project, domain, name, version)
+
+        if test:
+            click.echo("Would register {:20} {}".format("{}:".format(o.entity_type_text), name))
+        else:
+            click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), name))
+            o.register(project, domain, name, version)
 
 
 def register_tasks_only(project, domain, pkgs, test, version):
@@ -33,23 +37,30 @@ def register_tasks_only(project, domain, pkgs, test, version):
 
     # Discover all tasks by loading the module
     for m, k, t in iterate_registerable_entities_in_order(pkgs, include_entities={_task.SdkTask}):
-        t.register(project, domain, _utils.fqdn(m.__name__, k, entity_type=t.resource_type), version)
+        name = _utils.fqdn(m.__name__, k, entity_type=t.resource_type)
 
+        if test:
+            click.echo("Would register task {:20} {}".format("{}:".format(o.entity_type_text), name))
+        else:
+            click.echo("Registering task {:20} {}".format("{}:".format(o.entity_type_text), name))
+            t.register(project, domain, name, version)
 
 @click.group('register')
-@click.option('--pkgs', multiple=True, help='Comma separated list of dot separated python packages to operate on')
+# --pkgs on the register group is DEPRECATED, use same arg on pyflyte.main instead
+@click.option('--pkgs', multiple=True, help="DEPRECATED. This arg can only be used before the 'register' keyword")
+@click.option('--test', is_flag=True, help='Dry run, do not actually register with Admin')
 @click.pass_context
-def register(ctx, pkgs=None):
+def register(ctx, pkgs=None, test=None):
     """
-    Run registration steps for the workflow package location defined in this container.  Run with the --test switch
-    for a dry run to see what will be registered.  A default launch plan will also be created, if a role can be found
-    in the environment variables.
-    """
-    pkgs = pkgs or []
-    if len(pkgs) == 0:
-        pkgs = _WORKFLOW_PACKAGES.get()
+    Run registration steps for the workflows in this container.
 
-    ctx.obj[CTX_PACKAGES] = pkgs
+    Run with the --test switch for a dry run to see what will be registered.  A default launch plan will also be
+    created, if a role can be found in the environment variables.
+    """
+    if pkgs:
+        raise click.UsageError("--pkgs must now be specified before the 'register' keyword on the command line")
+
+    ctx.obj[CTX_TEST] = test
 
 
 @click.command('tasks')

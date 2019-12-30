@@ -30,7 +30,7 @@ class LaunchPlanAbstractGroup(click.Group):
         pkgs = ctx.obj[_constants.CTX_PACKAGES]
         # Discover all launch plans by loading the modules
         for m, k, lp in iterate_registerable_entities_in_order(
-                pkgs, include_entities={_executable_mixins.ExecutableEntity}):
+                pkgs, include_entities={_executable_mixins.ExecutableEntity}, detect_unreferenced_entities=False):
             safe_name = _utils.fqdn(m.__name__, k, entity_type=lp.resource_type)
             commands.append(safe_name)
             lps[safe_name] = lp
@@ -51,7 +51,7 @@ class LaunchPlanAbstractGroup(click.Group):
             launch_plan = ctx.obj['lps'][lp_argument]
         else:
             for m, k, lp in iterate_registerable_entities_in_order(
-                    pkgs, include_entities={_executable_mixins.ExecutableEntity}):
+                    pkgs, include_entities={_executable_mixins.ExecutableEntity}, detect_unreferenced_entities=False):
                 safe_name = _utils.fqdn(m.__name__, k, entity_type=lp.resource_type)
                 if lp_argument == safe_name:
                     launch_plan = lp
@@ -154,12 +154,14 @@ def execute_launch_plan(ctx):
     pass
 
 
-def activate_all_impl(project, domain, version, pkgs):
+def activate_all_impl(project, domain, version, pkgs, ignore_schedules=False):
     # TODO: This should be a transaction to ensure all or none are updated
     # TODO: We should optionally allow deactivation of missing launch plans
 
     # Discover all launch plans by loading the modules
-    for m, k, lp in iterate_registerable_entities_in_order(pkgs, include_entities={_SdkLaunchPlan}):
+    for m, k, lp in iterate_registerable_entities_in_order(
+        pkgs, include_entities={_SdkLaunchPlan}, detect_unreferenced_entities=False
+    ):
         lp._id = _identifier.Identifier(
             _identifier.ResourceType.LAUNCH_PLAN,
             project,
@@ -167,7 +169,8 @@ def activate_all_impl(project, domain, version, pkgs):
             _utils.fqdn(m.__name__, k, entity_type=lp.resource_type),
             version
         )
-        lp.update(_launch_plan_model.LaunchPlanState.ACTIVE)
+        if not (lp.is_scheduled and ignore_schedules):
+            lp.update(_launch_plan_model.LaunchPlanState.ACTIVE)
 
 
 @click.command('activate-all-schedules')
@@ -180,7 +183,7 @@ def activate_all_schedules(ctx, version=None):
 
     The behavior of this command is identical to activate-all.
     """
-    click.secho("activate-all-schedules is deprecated, please used activate-all instead.", color="yellow")
+    click.secho("activate-all-schedules is deprecated, please use activate-all instead.", color="yellow")
     project = ctx.obj[_constants.CTX_PROJECT]
     domain = ctx.obj[_constants.CTX_DOMAIN]
     pkgs = ctx.obj[_constants.CTX_PACKAGES]
@@ -191,8 +194,9 @@ def activate_all_schedules(ctx, version=None):
 @click.command('activate-all')
 @click.option('-v', '--version', type=str, help='Version to register tasks with. This is normally parsed from the'
                                                 'image, but you can override here.')
+@click.option("--ignore-schedules", is_flag=True, help='Activate all except for launch plans with schedules.')
 @click.pass_context
-def activate_all(ctx, version=None):
+def activate_all(ctx, version=None, ignore_schedules=False):
     """
     This command will activate all found launch plans at the given version.  If there are existing
     active launch plans that collide on project, domain, and name, but differ on version, those will be
@@ -210,8 +214,9 @@ def activate_all(ctx, version=None):
     domain = ctx.obj[_constants.CTX_DOMAIN]
     pkgs = ctx.obj[_constants.CTX_PACKAGES]
     version = version or ctx.obj[_constants.CTX_VERSION] or _look_up_version_from_image_tag(_IMAGE.get())
-    activate_all_impl(project, domain, version, pkgs)
+    activate_all_impl(project, domain, version, pkgs, ignore_schedules=ignore_schedules)
 
 
 launch_plans.add_command(execute_launch_plan)
 launch_plans.add_command(activate_all_schedules)
+launch_plans.add_command(activate_all)
