@@ -254,6 +254,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashO
                 "workflow already?".format(id, self)
             )
         self._id = _dnsify(id) if id else None
+        self._metadata._name = id
         return self
 
     def with_overrides(self, *args, **kwargs):

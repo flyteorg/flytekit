@@ -41,7 +41,6 @@ def serialize_workflows(pkgs):
             if n.task_node is not None:
                 task_templates.append(tmap[n.task_node.reference_id])
 
-
         # The SDK today creates a default workflow ID that is a uuid. We replace that with the name of the module
         # TODO determine if we could just replace the name rather than a UUID?
         w._id = _identifier.Identifier(
