@@ -8,7 +8,7 @@ from six.moves import queue as _queue
 from flytekit.common import interface as _interface, nodes as _nodes, sdk_bases as _sdk_bases, \
     launch_plan as _launch_plan, promise as _promise
 from flytekit.common.core import identifier as _identifier
-from flytekit.common.tasks.task import SdkTask as _SdkTask
+from flytekit.common.tasks import task as _task
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin
 from flytekit.common.types import helpers as _type_helpers
@@ -181,13 +181,15 @@ class SdkWorkflow(
         :param flytekit.models.core.workflow.WorkflowTemplate base_model:
         :rtype: SdkWorkflow
         """
+        # TODO: To save on task fetches (for workflows with a lot of repeated tasks), we should cache the results of
+        #  the fetch, just in-process
         node_map = {
             n.id: _nodes.SdkNode(
                 n.id,
                 [],
                 n.inputs,
                 n.metadata,
-                sdk_task=_SdkTask.fetch(n.task_node.reference_id.project, n.task_node.reference_id.domain,
+                sdk_task=_task.SdkTask.fetch(n.task_node.reference_id.project, n.task_node.reference_id.domain,
                                         n.task_node.reference_id.name, n.task_node.reference_id.version),
                 sdk_workflow=None,
                 sdk_branch=None  # TODO: Hydrate these objects by reference from the engine.
