@@ -188,14 +188,15 @@ class SdkWorkflow(
             )
             for n in base_model.nodes
         }
+        node_map_2 = {n.id: _nodes.SdkNode.promote_from_model(n) for n in base_model.nodes}
 
-        for v in _six.itervalues(node_map):
-            v.upstream_nodes[:] = [node_map[k] for k in v.upstream_node_ids]
+        for v in _six.itervalues(node_map_2):
+            v.upstream_nodes[:] = [node_map_2[k] for k in v.upstream_node_ids]
 
         return cls(
             metadata=base_model.metadata,
             interface=_interface.TypedInterface.promote_from_model(base_model.interface),
-            nodes=list(node_map.values()),
+            nodes=list(node_map_2.values()),
             outputs=base_model.outputs,
             failure_node=None  # TODO: Implement failure node
         )

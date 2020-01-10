@@ -7,7 +7,8 @@ from sortedcontainers import SortedDict as _SortedDict
 from flytekit.common import sdk_bases as _sdk_bases, promise as _promise
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin, artifact as _artifact_mixin
-from flytekit.common.tasks import executions as _task_executions
+from flytekit.common.tasks import executions as _task_executions, task as _task
+from flytekit.common import workflow as _workflow, launch_plan as _launch_plan
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import _dnsify
 from flytekit.engines import loader as _engine_loader
@@ -110,17 +111,35 @@ class SdkTaskNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_mode
         """
         return self._sdk_task.id
 
+    @property
+    def sdk_task(self):
+        """
+        :rtype: flytekit.common.tasks.task.SdkTask
+        """
+        return self._sdk_task
+
     @classmethod
     def promote_from_model(cls, base_model):
-        # TODO: Hydrate using identifier and querying the engine
-        pass
+        """
+        Takes the idl wrapper for a TaskNode and returns the hydrated Flytekit object for it by fetching it from the
+        engine.
+
+        :param flytekit.models.core.workflow.TaskNode base_model:
+        :rtype: SdkTaskNode
+        """
+        project = base_model.reference_id.project
+        domain = base_model.reference_id.domain
+        name = base_model.reference_id.name
+        version = base_model.reference_id.version
+        sdk_task = _task.SdkTask.fetch(project, domain, name, version)
+        return cls(sdk_task)
 
 
 class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_model.WorkflowNode)):
     def __init__(self, sdk_workflow=None, sdk_launch_plan=None):
         """
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
-        :param flytekit.common.launch_plan.SdkRunnableLaunchPlan sdk_launch_plan:
+        :param flytekit.common.launch_plan.SdkLaunchPlan sdk_launch_plan:
         """
         self._sdk_workflow = sdk_workflow
         self._sdk_launch_plan = sdk_launch_plan
@@ -142,10 +161,38 @@ class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_
         """
         return self._sdk_workflow.id if self._sdk_workflow else None
 
+    @property
+    def sdk_launch_plan(self):
+        """
+        :rtype: flytekit.common.launch_plan.SdkLaunchPlan
+        """
+        return self._sdk_launch_plan
+
+    @property
+    def sdk_workflow(self):
+        """
+        :rtype: flytekit.common.workflow.SdkWorkflow
+        """
+        return self._sdk_workflow
+
     @classmethod
     def promote_from_model(cls, base_model):
-        # TODO: Hydrate using identifier and querying the engine
-        pass
+        """
+        :param flytekit.models.core.workflow.WorkflowNode base_model:
+        :rtype: SdkWorkflowNode
+        """
+        project = base_model.reference.project
+        domain = base_model.reference.domain
+        name = base_model.reference.name
+        version = base_model.reference.version
+        if base_model.launchplan_ref is not None:
+            sdk_launch_plan = _launch_plan.SdkLaunchPlan.fetch(project, domain, name, version)
+            return cls(sdk_launch_plan=sdk_launch_plan)
+        elif base_model.sub_workflow_ref is not None:
+            sdk_workflow = _workflow.SdkWorkflow.fetch(project, domain, name, version)
+            return cls(sdk_workflow=sdk_workflow)
+        else:
+            raise Exception("Bad workflow node model")
 
 
 class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashOnReferenceMixin, _workflow_model.Node)):
@@ -173,6 +220,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashO
         :param flytekit.common.tasks.task.SdkTask sdk_task: The task to execute in this
             node.
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow: The workflow to execute in this node.
+        Question: does this really need to be the sdkrunnable launch plan?
         :param flytekit.common.launch_plan.SdkRunnableLaunchPlan sdk_launch_plan: The launch plan to execute in this
         node.
         :param TODO sdk_branch: TODO
@@ -219,8 +267,44 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashO
         :param flytekit.models.core.workflow.Node model:
         :rtype: SdkNode
         """
-        raise _user_exceptions.FlyteAssertion("An SDK node cannot be instantiated merely from a data model object "
-                                              "because it must be contextualized within a workflow.")
+        id = model.id
+        sdk_task_node, sdk_workflow_node = None, None
+        if model.task_node is not None:
+            sdk_task_node = SdkTaskNode.promote_from_model(model.task_node)
+        elif model.workflow_node is not None:
+            sdk_workflow_node = SdkWorkflowNode.promote_from_model(model.workflow_node)
+        else:
+            raise Exception("bad Node model")
+
+        if sdk_task_node is not None:
+            return cls(
+                id=id,
+                upstream_nodes=[],  # set downstream, model doesn't contain this information
+                bindings=model.inputs,
+                metadata=model.metadata,
+                sdk_task=sdk_task_node.sdk_task,
+            )
+        elif sdk_workflow_node is not None:
+            if sdk_workflow_node.sdk_workflow is not None:
+                return cls(
+                    id=id,
+                    upstream_nodes=[],  # set downstream, model doesn't contain this information
+                    bindings=model.inputs,
+                    metadata=model.metadata,
+                    sdk_workflow=sdk_workflow_node.sdk_workflow,
+                )
+            elif sdk_workflow_node.sdk_launch_plan is not None:
+                return cls(
+                    id=id,
+                    upstream_nodes=[],  # set downstream, model doesn't contain this information
+                    bindings=model.inputs,
+                    metadata=model.metadata,
+                    sdk_launch_plan=sdk_workflow_node.sdk_launch_plan,
+                )
+            else:
+                raise Exception("Bad SdkWorkflowNode model - both lp and workflow are None")
+        else:
+            raise Exception("Bad SdkNode model - both task and workflow nodes are empty")
 
     @property
     def upstream_nodes(self):
@@ -254,6 +338,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashO
                 "workflow already?".format(id, self)
             )
         self._id = _dnsify(id) if id else None
+        self._metadata._name = id
         return self
 
     def with_overrides(self, *args, **kwargs):

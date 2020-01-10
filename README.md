@@ -81,3 +81,15 @@ source ~/.virtualenvs/flytekit/bin/activate
 python -m pytest tests/flytekit/unit
 shellcheck **/*.sh
 ```
+
+
+
+flyte-cli -h localhost:30081 -p flytetester -d development -i list-workflow-versions -n cookbook.sample_workflows.formula_1.outer.StaticLaunchPlanCaller
+
+wf:flytetester:development:cookbook.sample_workflows.formula_1.outer.StaticLaunchPlanCaller:7be6342b4d5d95f5e31e6ad89636ad48925643ab
+
+from flytekit.clis.flyte_cli import main
+from flytekit.common.workflow import SdkWorkflow
+SdkWorkflow.fetch('flytetester', 'development', 'cookbook.sample_workflows.formula_1.outer.StaticLaunchPlanCaller', '7be6342b4d5d95f5e31e6ad89636ad48925643ab')
+
+
