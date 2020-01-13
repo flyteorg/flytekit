@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import abc as _abc
 import six as _six
+import logging as _logging
 from sortedcontainers import SortedDict as _SortedDict
 
 from flytekit.common import sdk_bases as _sdk_bases, promise as _promise
@@ -181,15 +182,19 @@ class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_
         :param flytekit.models.core.workflow.WorkflowNode base_model:
         :rtype: SdkWorkflowNode
         """
+
         project = base_model.reference.project
         domain = base_model.reference.domain
         name = base_model.reference.name
         version = base_model.reference.version
+        print('1. Project {} domain {} name {}'.format(project, domain, name))
         if base_model.launchplan_ref is not None:
             sdk_launch_plan = _launch_plan.SdkLaunchPlan.fetch(project, domain, name, version)
+            print('fetched LP {}'.format(sdk_launch_plan))
             return cls(sdk_launch_plan=sdk_launch_plan)
         elif base_model.sub_workflow_ref is not None:
             sdk_workflow = _workflow.SdkWorkflow.fetch(project, domain, name, version)
+            print('fetched wf {}'.format(sdk_workflow))
             return cls(sdk_workflow=sdk_workflow)
         else:
             raise Exception("Bad workflow node model")
@@ -268,6 +273,11 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashO
         :rtype: SdkNode
         """
         id = model.id
+        # This should never be called
+        if id == "start-node" or id == "end-node":
+            _logging.warning("Should not call promote from model on a start node or end node {}".format(model))
+            return None
+
         sdk_task_node, sdk_workflow_node = None, None
         if model.task_node is not None:
             sdk_task_node = SdkTaskNode.promote_from_model(model.task_node)

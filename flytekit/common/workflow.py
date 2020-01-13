@@ -166,6 +166,7 @@ class SdkWorkflow(
         version = version or _internal_config.VERSION.get()
         workflow_id = _identifier.Identifier(_identifier_model.ResourceType.WORKFLOW, project, domain, name, version)
         admin_workflow = _engine_loader.get_engine().fetch_workflow(workflow_id)
+        print('2. here {}'.format(admin_workflow.closure.compiled_workflow.primary.template))
         sdk_workflow = cls.promote_from_model(admin_workflow.closure.compiled_workflow.primary.template)
         sdk_workflow._id = workflow_id
         return sdk_workflow
@@ -188,6 +189,7 @@ class SdkWorkflow(
             )
             for n in base_model.nodes
         }
+        print('3. here {}'.format(node_map))
         node_map_2 = {n.id: _nodes.SdkNode.promote_from_model(n) for n in base_model.nodes}
 
         for v in _six.itervalues(node_map_2):
