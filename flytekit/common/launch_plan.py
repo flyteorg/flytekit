@@ -6,6 +6,7 @@ from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
 
 from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, executable as _executable_mixin
+from flytekit.common import workflow as _workflow
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import sdk as _sdk_config, internal as _internal_config, auth as _auth_config
 from flytekit.engines import loader as _engine_loader
@@ -28,6 +29,9 @@ class SdkLaunchPlan(
     def __init__(self, *args, **kwargs):
         super(SdkLaunchPlan, self).__init__(*args, **kwargs)
         self._id = None
+
+        # The interface is not set explicitly unless fetched in an engine context
+        self._interface = None
 
     @classmethod
     def promote_from_model(cls, model):
@@ -68,6 +72,10 @@ class SdkLaunchPlan(
         lp = _engine_loader.get_engine().fetch_launch_plan(launch_plan_id)
         sdk_lp = cls.promote_from_model(lp.spec)
         sdk_lp._id = lp.id
+
+        wf_id = sdk_lp.workflow_id
+        lp_wf = _workflow.SdkWorkflow.fetch(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
+        sdk_lp._interface = lp_wf.interface
         return sdk_lp
 
     @_exception_scopes.system_entry_point

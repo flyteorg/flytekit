@@ -177,29 +177,51 @@ class SdkWorkflow(
         :param flytekit.models.core.workflow.WorkflowTemplate base_model:
         :rtype: SdkWorkflow
         """
-        node_map = {
-            n.id: _nodes.SdkNode(
-                n.id,
-                [],
-                n.inputs,
-                n.metadata,
-                sdk_task=None,
-                sdk_workflow=None,
-                sdk_branch=None  # TODO: Hydrate these objects by reference from the engine.
-            )
-            for n in base_model.nodes
-        }
-        print('3. here {}'.format(node_map))
-        node_map_2 = {n.id: _nodes.SdkNode.promote_from_model(n) for n in base_model.nodes}
+        # node_map = {
+        #     n.id: _nodes.SdkNode(
+        #         n.id,
+        #         [],
+        #         n.inputs,
+        #         n.metadata,
+        #         sdk_task=None,
+        #         sdk_workflow=None,
+        #         sdk_branch=None  # TODO: Hydrate these objects by reference from the engine.
+        #     )
+        #     for n in base_model.nodes
+        # }
+        print('======================= Base Model Nodes =========')
+        print(base_model.nodes)
+        print('======================= Promote from model =========')
+        node_map_2 = {}
+        for n in base_model.nodes:
+            if n.id == 'start-node':
+                print('Start node: {}'.format(n))
+                print('Start node end ---')
+            elif n.id == "end-node":
+                print('End node: {}'.format(n))
+                print('End node end ---')
+            else:
+                print('3. here {}'.format(n))
+                node_map_2[n.id] = _nodes.SdkNode.promote_from_model(n)
+                print('ID: {}'.format(n.id))
 
-        for v in _six.itervalues(node_map_2):
-            v.upstream_nodes[:] = [node_map_2[k] for k in v.upstream_node_ids]
+        # outputs list[flytekit.models.literals.Binding]
 
+        print('4. here {}'.format(node_map_2))
+        # raise Exception('fjdskafjdkls')
+
+        # Set upstream nodes for each node
+        for n in base_model.nodes:
+            if n.id == 'start-node' or n.id == 'end-node':
+                continue
+            child_node = node_map_2[n.id]
+            child_node.upstream_nodes[:] = [node_map_2[upstream_id] for upstream_id in n.upstream_node_ids]
+
+        # No inputs/outputs specified.
         return cls(
             metadata=base_model.metadata,
             interface=_interface.TypedInterface.promote_from_model(base_model.interface),
             nodes=list(node_map_2.values()),
-            outputs=base_model.outputs,
             failure_node=None  # TODO: Implement failure node
         )
 

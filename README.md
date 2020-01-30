@@ -90,6 +90,6 @@ wf:flytetester:development:cookbook.sample_workflows.formula_1.outer.StaticLaunc
 
 from flytekit.clis.flyte_cli import main
 from flytekit.common.workflow import SdkWorkflow
-SdkWorkflow.fetch('flytetester', 'development', 'cookbook.sample_workflows.formula_1.outer.StaticLaunchPlanCaller', '7be6342b4d5d95f5e31e6ad89636ad48925643ab')
+s = SdkWorkflow.fetch('flytetester', 'development', 'cookbook.sample_workflows.formula_1.outer.StaticLaunchPlanCaller', '7be6342b4d5d95f5e31e6ad89636ad48925643ab')
 
 
