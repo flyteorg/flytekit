@@ -46,6 +46,7 @@ _tt = _six.text_type
 _default_config_file_dir = ".flyte"
 _default_config_file_name = "config"
 
+
 def _welcome_message():
     _click.secho("Welcome to Flyte CLI! Version: {}".format(_tt(__version__)), bold=True)
 
