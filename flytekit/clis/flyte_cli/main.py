@@ -43,7 +43,8 @@ _tt = _six.text_type
 # Similar to how kubectl has a config file in the users home directory, this Flyte CLI will also look for one.
 # The format of this config file is the same as a workflow's config file, except that the relevant fields are different.
 # Please see the example.config file
-_default_config_file_path = ".flyte/config"
+_default_config_file_dir = ".flyte"
+_default_config_file_name = "config"
 
 
 def _welcome_message():
@@ -55,7 +56,7 @@ def _get_user_filepath_home():
 
 def _get_config_file_path():
     home = _get_user_filepath_home()
-    return _os.path.join(home, _default_config_file_path)
+    return _os.path.join(home, _default_config_file_dir, _default_config_file_name)
 
 def _detect_default_config_file():
     config_file = _get_config_file_path()
@@ -1515,6 +1516,12 @@ def setup_config(host, insecure):
     if _get_user_filepath_home() and _os.path.exists(config_file):
         _click.secho("Config file already exists at {}".format(_tt(config_file)), fg='blue')
         return
+
+    # Before creating check that the directory exists and create if not
+    config_dir = _os.path.join(_get_user_filepath_home(), _default_config_file_dir)
+    if not _os.path.isdir(config_dir):
+        _click.secho("Creating default Flyte configuration directory at ".format(_tt(config_dir)), fg='blue')
+        _os.mkdir(config_dir)
 
     full_host = "http://{}".format(host) if insecure else "https://{}".format(host)
     config_url = _urlparse.urljoin(full_host, "config/v1/flyte_client")
