@@ -364,7 +364,7 @@ class SdkRunnableLaunchPlan(
         """
         if len(args) > 0:
             raise _user_exceptions.FlyteAssertion(
-                "When adding a task as a node in a workflow, all inputs must be specified with kwargs only.  We "
+                "When adding a launchplan as a node in a workflow, all inputs must be specified with kwargs only.  We "
                 "detected {} positional args.".format(self, len(args))
             )
 

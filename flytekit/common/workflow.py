@@ -4,6 +4,7 @@ import uuid as _uuid
 
 import six as _six
 from six.moves import queue as _queue
+import datetime as _datetime
 
 from flytekit.common import interface as _interface, nodes as _nodes, sdk_bases as _sdk_bases, \
     launch_plan as _launch_plan, promise as _promise
@@ -221,8 +222,6 @@ class SdkWorkflow(
             child_node.upstream_nodes[:] = [node_map[upstream_id] for upstream_id in n.upstream_node_ids]
 
         print('4. Nodes for {} ==== {}'.format(base_model.id, node_map))
-        # raise Exception('fjdskafjdkls')
-
         # No inputs/outputs specified, see the constructor for more information on the overrides.
         return cls(
             inputs=None, outputs=None, nodes=list(node_map.values()),
@@ -318,10 +317,25 @@ class SdkWorkflow(
         )
 
     @_exception_scopes.system_entry_point
-    def __call__(self, *args, **kwargs):
-        # TODO: Create a workflow node
-        raise NotImplementedError("Embedding a workflow as a node is not supported currently.  Please use launch "
-                                  "plans.")
+    def __call__(self, *args, **input_map):
+        if len(args) > 0:
+            raise _user_exceptions.FlyteAssertion(
+                "When adding a workflow as a node in a workflow, all inputs must be specified with kwargs only.  We "
+                "detected {} positional args.".format(len(args))
+            )
+
+        bindings, upstream_nodes = self.interface.create_bindings_for_inputs(input_map)
+
+        node = _nodes.SdkNode(
+            id=None,
+            metadata=_workflow_models.NodeMetadata("placeholder", _datetime.timedelta(), _literal_models.RetryStrategy(0)),
+            upstream_nodes=upstream_nodes,
+            bindings=sorted(bindings, key=lambda b: b.var),
+            sdk_workflow=self
+        )
+        import ipdb;
+        # ipdb.set_trace()
+        return node
 
 
 def _assign_indexed_attribute_name(attribute_name, index):

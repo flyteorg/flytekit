@@ -200,7 +200,7 @@ class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_
             raise Exception("Bad workflow node model")
 
 
-class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashOnReferenceMixin, _workflow_model.Node)):
+class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOnReferenceMixin, _workflow_model.Node)):
 
     def __init__(
             self,
@@ -225,8 +225,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashO
         :param flytekit.common.tasks.task.SdkTask sdk_task: The task to execute in this
             node.
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow: The workflow to execute in this node.
-        Question: does this really need to be the sdkrunnable launch plan?
-        :param flytekit.common.launch_plan.SdkRunnableLaunchPlan sdk_launch_plan: The launch plan to execute in this
+        :param flytekit.common.launch_plan.SdkLaunchPlan sdk_launch_plan: The launch plan to execute in this
         node.
         :param TODO sdk_branch: TODO
         """
