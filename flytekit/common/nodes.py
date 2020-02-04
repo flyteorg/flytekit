@@ -346,6 +346,9 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
                 "Error assigning ID: {} because {} is already assigned.  Has this node been assigned to another "
                 "workflow already?".format(id, self)
             )
+        print("Assigning ID to node {}".format(id))
+        # if id == "identity_wf_execution":
+        #     import ipdb; ipdb.set_trace()
         self._id = _dnsify(id) if id else None
         self._metadata._name = id
         return self
