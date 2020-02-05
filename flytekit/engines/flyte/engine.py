@@ -232,9 +232,17 @@ class FlyteWorkflow(_common_engine.BaseWorkflowExecutor):
     def register(self, identifier):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
         try:
+            # import ipdb; ipdb.set_trace()
+            sub_workflows = self.sdk_workflow.get_sub_workflows()
+            print("--------------- Main Workflows ---------------")
+            print(self.sdk_workflow)
+            print("--------------- Subworkflows ---------------")
+            print(sub_workflows)
             return client.create_workflow(
                 identifier,
-                _workflow_model.WorkflowSpec(self.sdk_workflow)
+                _workflow_model.WorkflowSpec(
+                    self.sdk_workflow,
+                )
             )
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             pass

@@ -173,6 +173,24 @@ class SdkWorkflow(
         """
         return self._user_inputs
 
+    def get_sub_workflows(self):
+        """
+        what should the return type of this be?
+        :rtype: list[]
+        """
+        result = []
+        for n in self.nodes:
+            if n.workflow_node is not None and n.workflow_node.sub_workflow_ref is not None:
+                if n.executable_sdk_object is not None and n.executable_sdk_object.entity_type_text == 'Workflow':
+                    import ipdb; ipdb.set_trace()
+                    result.append(n.executable_sdk_object)
+                    result.extend(n.executable_sdk_object.get_sub_workflows())
+                else:
+                    print("workflow node with subworkflow found but bad executable object {}".format)
+            # Ignore other node types (branch, task)
+
+        return result
+
     @classmethod
     @_exception_scopes.system_entry_point
     def fetch(cls, project, domain, name, version=None):

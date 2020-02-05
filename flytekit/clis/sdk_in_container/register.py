@@ -27,13 +27,13 @@ def register_all(project, domain, pkgs, test, version):
         if test:
             click.echo("Would register {:20} {}".format("{}:".format(o.entity_type_text), name))
             if name == 'cookbook.sample_workflows.formula_1.outer.StaticSubWorkflowCaller':
-                # import ipdb; ipdb.set_trace()
+                import ipdb; ipdb.set_trace()
                 pass
 
         else:
             click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), name))
             if name == 'cookbook.sample_workflows.formula_1.outer.StaticSubWorkflowCaller':
-                # import ipdb; ipdb.set_trace()
+                import ipdb; ipdb.set_trace()
                 pass
 
             o.register(project, domain, name, version)
