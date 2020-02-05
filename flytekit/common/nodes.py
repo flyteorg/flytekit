@@ -58,7 +58,7 @@ class ParameterMapper(_six.with_metaclass(_common_models.FlyteABCMeta, _SortedDi
         self._initialized = True
 
     def __getattr__(self, key):
-	if key == 'iteritems' and hasattr(super(ParameterMapper, self), 'items'):
+        if key == 'iteritems' and hasattr(super(ParameterMapper, self), 'items'):
            return super(ParameterMapper, self).items
         if hasattr(super(ParameterMapper, self), key):
             return getattr(super(ParameterMapper, self), key)
