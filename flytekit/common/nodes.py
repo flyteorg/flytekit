@@ -58,8 +58,10 @@ class ParameterMapper(_six.with_metaclass(_common_models.FlyteABCMeta, _SortedDi
         self._initialized = True
 
     def __getattr__(self, key):
+	if key == 'iteritems' and hasattr(super(ParameterMapper, self), 'items'):
+           return super(ParameterMapper, self).items
         if hasattr(super(ParameterMapper, self), key):
-            return super(ParameterMapper, self).__getattr_(key)
+            return getattr(super(ParameterMapper, self), key)
         if key not in self:
             raise _user_exceptions.FlyteAssertion("{} doesn't exist.".format(key))
         return self[key]
