@@ -25,7 +25,6 @@ from flytekit.models.core import errors as _error_models, identifier as _identif
 
 
 class _FlyteClientManager(object):
-
     _CLIENT = None
 
     def __init__(self, *args, **kwargs):
@@ -242,6 +241,7 @@ class FlyteWorkflow(_common_engine.BaseWorkflowExecutor):
                 identifier,
                 _workflow_model.WorkflowSpec(
                     self.sdk_workflow,
+                    sub_workflows,
                 )
             )
         except _user_exceptions.FlyteEntityAlreadyExistsException:
