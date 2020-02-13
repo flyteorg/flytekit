@@ -268,3 +268,11 @@ def test_workflow_node():
     assert n.outputs['nested_out'].var == 'nested_out'
     assert n.outputs['nested_out'].node_id == 'node-id'
     """
+
+# Things to test
+
+# SdkWorkflow.promote_from_model for both basic workflows and sub workflows and launchplan nodes
+# Launchplans now have an interface representing the underlying workflow when fetched from an engine context
+# SdkNode promote from model can handle launch plan nodes
+# Workflows with two layers of subworkflows return them correctly.
+# Call on a workflow produces a correct SdkNode
