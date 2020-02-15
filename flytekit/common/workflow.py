@@ -342,7 +342,14 @@ class SdkWorkflow(
                 "detected {} positional args.".format(len(args))
             )
 
-        bindings, upstream_nodes = self.interface.create_bindings_for_inputs(input_map)
+        # Take the default values from the Inputs
+        compiled_inputs = {
+            v.name: v.sdk_default
+            for v in self.user_inputs if not v.sdk_required
+        }
+        compiled_inputs.update(input_map)
+
+        bindings, upstream_nodes = self.interface.create_bindings_for_inputs(compiled_inputs)
 
         node = _nodes.SdkNode(
             id=None,

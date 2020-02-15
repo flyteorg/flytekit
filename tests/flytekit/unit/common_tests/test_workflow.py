@@ -1,9 +1,10 @@
 from __future__ import absolute_import
 
 from flytekit.common import workflow, constants, promise
-from flytekit.common.types import primitives
+from flytekit.common.types import primitives, containers
 from flytekit.models.core import workflow as _workflow_models, identifier as _identifier
 from flytekit.sdk.tasks import python_task, inputs, outputs
+from flytekit.common.exceptions import user as _user_exceptions
 
 import pytest as _pytest
 
@@ -217,11 +218,6 @@ def test_workflow_node():
 
     w = workflow.SdkWorkflow(inputs=input_list, outputs=wf_out, nodes=nodes)
 
-    with _pytest.raises(NotImplementedError):
-        w()
-
-    # TODO: Uncomment when sub-workflows are supported.
-    """
     # Test that required input isn't set
     with _pytest.raises(_user_exceptions.FlyteAssertion):
         w()
@@ -252,13 +248,13 @@ def test_workflow_node():
     assert n.inputs[1].var == 'required'
     assert n.inputs[1].binding.scalar.primitive.integer == 10
 
-    # Test that launch plan ID ref is flexible
+    # Test that workflow is saved in the node
     w._id = 'fake'
     assert n.workflow_node.sub_workflow_ref == 'fake'
     w._id = None
 
     # Test that outputs are promised
-    n.assign_id_and_return('node-id')
+    n.assign_id_and_return('node-id*')  # dns'ified
     assert n.outputs['scalar_out'].sdk_type.to_flyte_literal_type() == primitives.Integer.to_flyte_literal_type()
     assert n.outputs['scalar_out'].var == 'scalar_out'
     assert n.outputs['scalar_out'].node_id == 'node-id'
@@ -267,7 +263,6 @@ def test_workflow_node():
         containers.List(containers.List(primitives.Integer)).to_flyte_literal_type()
     assert n.outputs['nested_out'].var == 'nested_out'
     assert n.outputs['nested_out'].node_id == 'node-id'
-    """
 
 # Things to test
 
@@ -275,4 +270,3 @@ def test_workflow_node():
 # Launchplans now have an interface representing the underlying workflow when fetched from an engine context
 # SdkNode promote from model can handle launch plan nodes
 # Workflows with two layers of subworkflows return them correctly.
-# Call on a workflow produces a correct SdkNode
