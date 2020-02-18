@@ -12,6 +12,7 @@ from flytekit.common.tasks import executions as _task_executions, task as _task
 from flytekit.common import workflow as _workflow, launch_plan as _launch_plan
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import _dnsify
+from flytekit.common import constants as _constants
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import common as _common_models, node_execution as _node_execution_models
 from flytekit.models.core import workflow as _workflow_model, execution as _execution_models
@@ -284,6 +285,12 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
             sdk_workflow_node = SdkWorkflowNode.promote_from_model(model.workflow_node)
         else:
             raise Exception("bad Node model")
+
+        # When WorkflowTemplate models (containing node models) are returned by Admin, they've been compiled with a
+        # start node.  In order to make the promoted SdkWorkflow look the same, we strip the start-node text back out.
+        for input in model.inputs:
+            if input.binding.promise is not None and input.binding.promise.node_id == "start-node":
+                input.binding.promise._node_id = _constants.GLOBAL_INPUT_NODE_ID
 
         if sdk_task_node is not None:
             return cls(

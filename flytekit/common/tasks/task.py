@@ -91,6 +91,10 @@ class SdkTask(
             custom=base_model.custom,
             container=base_model.container
         )
+        # Override the newly generated name if one exists in the base model
+        if base_model.id:
+            t._id = _identifier.Identifier.promote_from_model(base_model.id)
+
         return t
 
     def assign_custom_and_return(self, custom):

@@ -216,21 +216,14 @@ class SdkWorkflow(
         :param flytekit.models.core.workflow.WorkflowTemplate base_model:
         :rtype: SdkWorkflow
         """
-        print('======================= Base Model Nodes =========')
-        print(base_model.nodes)
-        print('======================= Promote from model =========')
         node_map = {}
         for n in base_model.nodes:
-            if n.id == 'start-node':
-                print('Start node: {}'.format(n))
-                print('Start node end ---')
-            elif n.id == "end-node":
-                print('End node: {}'.format(n))
-                print('End node end ---')
+            if n.id == 'start-node' or n.id == "end-node":
+                # The workflow compilation process done by Admin/Propeller will add a fake start-node to the graph
+                # so we need to strip them back out here.
+                continue
             else:
-                print('3. here {}'.format(n))
                 node_map[n.id] = _nodes.SdkNode.promote_from_model(n)
-                print('ID: {}'.format(n.id))
 
         # Set upstream nodes for each node
         for n in base_model.nodes:

@@ -73,6 +73,7 @@ class SdkLaunchPlan(
         sdk_lp = cls.promote_from_model(lp.spec)
         sdk_lp._id = lp.id
 
+        # TODO: Add a test for this, and this function as a whole
         wf_id = sdk_lp.workflow_id
         lp_wf = _workflow.SdkWorkflow.fetch(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
         sdk_lp._interface = lp_wf.interface

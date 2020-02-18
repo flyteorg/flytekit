@@ -25,7 +25,7 @@ def test_workflow():
     def my_task(wf_params, a, b):
         b.set(a + 1)
 
-    my_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, 'propject', 'domain', 'my_task', 'version')
+    my_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, 'project', 'domain', 'my_task', 'version')
 
     @inputs(a=[primitives.Integer])
     @outputs(b=[primitives.Integer])
@@ -33,7 +33,7 @@ def test_workflow():
     def my_list_task(wf_params, a, b):
         b.set([v + 1 for v in a])
 
-    my_list_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, 'propject', 'domain', 'my_list_task',
+    my_list_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, 'project', 'domain', 'my_list_task',
                                               'version')
 
     input_list = [
@@ -263,10 +263,3 @@ def test_workflow_node():
         containers.List(containers.List(primitives.Integer)).to_flyte_literal_type()
     assert n.outputs['nested_out'].var == 'nested_out'
     assert n.outputs['nested_out'].node_id == 'node-id'
-
-# Things to test
-
-# SdkWorkflow.promote_from_model for both basic workflows and sub workflows and launchplan nodes
-# Launchplans now have an interface representing the underlying workflow when fetched from an engine context
-# SdkNode promote from model can handle launch plan nodes
-# Workflows with two layers of subworkflows return them correctly.
