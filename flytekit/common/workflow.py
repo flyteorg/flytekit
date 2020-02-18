@@ -182,11 +182,10 @@ class SdkWorkflow(
         for n in self.nodes:
             if n.workflow_node is not None and n.workflow_node.sub_workflow_ref is not None:
                 if n.executable_sdk_object is not None and n.executable_sdk_object.entity_type_text == 'Workflow':
-                    import ipdb; ipdb.set_trace()
                     result.append(n.executable_sdk_object)
                     result.extend(n.executable_sdk_object.get_sub_workflows())
                 else:
-                    print("workflow node with subworkflow found but bad executable object {}".format)
+                    raise Exception("workflow node with subworkflow found but bad executable object {}".format)
             # Ignore other node types (branch, task)
 
         return result
@@ -205,7 +204,6 @@ class SdkWorkflow(
         version = version or _internal_config.VERSION.get()
         workflow_id = _identifier.Identifier(_identifier_model.ResourceType.WORKFLOW, project, domain, name, version)
         admin_workflow = _engine_loader.get_engine().fetch_workflow(workflow_id)
-        print('2. here {}'.format(admin_workflow.closure.compiled_workflow.primary.template))
         sdk_workflow = cls.promote_from_model(admin_workflow.closure.compiled_workflow.primary.template)
         sdk_workflow._id = workflow_id
         return sdk_workflow
@@ -232,7 +230,6 @@ class SdkWorkflow(
             child_node = node_map[n.id]
             child_node.upstream_nodes[:] = [node_map[upstream_id] for upstream_id in n.upstream_node_ids]
 
-        print('4. Nodes for {} ==== {}'.format(base_model.id, node_map))
         # No inputs/outputs specified, see the constructor for more information on the overrides.
         return cls(
             inputs=None, outputs=None, nodes=list(node_map.values()),

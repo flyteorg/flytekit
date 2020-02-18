@@ -188,14 +188,11 @@ class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_
         domain = base_model.reference.domain
         name = base_model.reference.name
         version = base_model.reference.version
-        print('1. Project {} domain {} name {}'.format(project, domain, name))
         if base_model.launchplan_ref is not None:
             sdk_launch_plan = _launch_plan.SdkLaunchPlan.fetch(project, domain, name, version)
-            print('fetched LP {}'.format(sdk_launch_plan))
             return cls(sdk_launch_plan=sdk_launch_plan)
         elif base_model.sub_workflow_ref is not None:
             sdk_workflow = _workflow.SdkWorkflow.fetch(project, domain, name, version)
-            print('fetched wf {}'.format(sdk_workflow))
             return cls(sdk_workflow=sdk_workflow)
         else:
             raise Exception("Bad workflow node model")
@@ -353,9 +350,6 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
                 "Error assigning ID: {} because {} is already assigned.  Has this node been assigned to another "
                 "workflow already?".format(id, self)
             )
-        print("Assigning ID to node {}".format(id))
-        # if id == "identity_wf_execution":
-        #     import ipdb; ipdb.set_trace()
         self._id = _dnsify(id) if id else None
         self._metadata._name = id
         return self
