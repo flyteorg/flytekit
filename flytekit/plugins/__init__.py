@@ -33,7 +33,7 @@ _lazy_loader.LazyLoadPlugin(
     "schema",
     [
         "numpy>=1.14.0,<2.0.0",
-        "pandas>=0.22.0,<1.0.0",
+        "pandas>=0.22.0,<2.0.0",
         "pyarrow>=0.11.0,<1.0.0",
     ],
     [numpy, pandas]
