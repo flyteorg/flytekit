@@ -14,9 +14,10 @@ from flytekit.common.mixins import registerable as _registerable, hash as _hash_
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
-from flytekit.models import interface as _interface_models, literals as _literal_models,\
+from flytekit.models import interface as _interface_models, literals as _literal_models, \
     launch_plan as _launch_plan_models
 from flytekit.models.core import workflow as _workflow_models, identifier as _identifier_model
+from flytekit.common.exceptions import system as _system_exceptions
 
 
 class Output(object):
@@ -110,18 +111,18 @@ class SdkWorkflow(
 
         # Allow overrides if specified for all the arguments to the parent class constructor
         id = id if id is not None else _identifier.Identifier(
-                _identifier_model.ResourceType.WORKFLOW,
-                _internal_config.PROJECT.get(),
-                _internal_config.DOMAIN.get(),
-                _uuid.uuid4().hex,
-                _internal_config.VERSION.get()
-            )
+            _identifier_model.ResourceType.WORKFLOW,
+            _internal_config.PROJECT.get(),
+            _internal_config.DOMAIN.get(),
+            _uuid.uuid4().hex,
+            _internal_config.VERSION.get()
+        )
         metadata = metadata if metadata is not None else _workflow_models.WorkflowMetadata()
 
         interface = interface if interface is not None else _interface.TypedInterface(
-                {v.name: v.var for v in inputs},
-                {v.name: v.var for v in outputs}
-            )
+            {v.name: v.var for v in inputs},
+            {v.name: v.var for v in outputs}
+        )
 
         output_bindings = output_bindings if output_bindings is not None else \
             [_literal_models.Binding(v.name, v.binding_data) for v in outputs]
@@ -185,7 +186,9 @@ class SdkWorkflow(
                     result.append(n.executable_sdk_object)
                     result.extend(n.executable_sdk_object.get_sub_workflows())
                 else:
-                    raise Exception("workflow node with subworkflow found but bad executable object {}".format)
+                    raise _system_exceptions.FlyteSystemException(
+                        "workflow node with subworkflow found but bad executable "
+                        "object {}".format(n.executable_sdk_object))
             # Ignore other node types (branch, task)
 
         return result
@@ -343,7 +346,8 @@ class SdkWorkflow(
 
         node = _nodes.SdkNode(
             id=None,
-            metadata=_workflow_models.NodeMetadata("placeholder", _datetime.timedelta(), _literal_models.RetryStrategy(0)),
+            metadata=_workflow_models.NodeMetadata("placeholder", _datetime.timedelta(),
+                                                   _literal_models.RetryStrategy(0)),
             upstream_nodes=upstream_nodes,
             bindings=sorted(bindings, key=lambda b: b.var),
             sdk_workflow=self

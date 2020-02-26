@@ -16,6 +16,7 @@ from flytekit.common import constants as _constants
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import common as _common_models, node_execution as _node_execution_models
 from flytekit.models.core import workflow as _workflow_model, execution as _execution_models
+from flytekit.common.exceptions import system as _system_exceptions
 
 
 class ParameterMapper(_six.with_metaclass(_common_models.FlyteABCMeta, _SortedDict)):
@@ -87,6 +88,7 @@ class OutputParameterMapper(ParameterMapper):
     """
     This subclass of ParameterMapper is used to represent outputs for a given node.
     """
+
     def _return_mapping_object(self, sdk_node, sdk_type, name):
         """
         :param flytekit.common.nodes.Node sdk_node:
@@ -195,7 +197,8 @@ class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_
             sdk_workflow = _workflow.SdkWorkflow.fetch(project, domain, name, version)
             return cls(sdk_workflow=sdk_workflow)
         else:
-            raise Exception("Bad workflow node model")
+            raise _system_exceptions.FlyteSystemException("Bad workflow node model, neither subworkflow nor "
+                                                          "launchplan specified.")
 
 
 class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOnReferenceMixin, _workflow_model.Node)):
@@ -210,7 +213,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
             sdk_workflow=None,
             sdk_launch_plan=None,
             sdk_branch=None
-            ):
+    ):
         """
         :param Text id: A workflow-level unique identifier that identifies this node in the workflow. "inputs" and
             "outputs" are reserved node ids that cannot be used by other nodes.
@@ -281,13 +284,13 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
         elif model.workflow_node is not None:
             sdk_workflow_node = SdkWorkflowNode.promote_from_model(model.workflow_node)
         else:
-            raise Exception("bad Node model")
+            raise _system_exceptions.FlyteSystemException("Bad Node model, neither task nor workflow detected")
 
         # When WorkflowTemplate models (containing node models) are returned by Admin, they've been compiled with a
         # start node.  In order to make the promoted SdkWorkflow look the same, we strip the start-node text back out.
-        for input in model.inputs:
-            if input.binding.promise is not None and input.binding.promise.node_id == "start-node":
-                input.binding.promise._node_id = _constants.GLOBAL_INPUT_NODE_ID
+        for i in model.inputs:
+            if i.binding.promise is not None and i.binding.promise.node_id == "start-node":
+                i.binding.promise._node_id = _constants.GLOBAL_INPUT_NODE_ID
 
         if sdk_task_node is not None:
             return cls(
@@ -315,9 +318,10 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
                     sdk_launch_plan=sdk_workflow_node.sdk_launch_plan,
                 )
             else:
-                raise Exception("Bad SdkWorkflowNode model - both lp and workflow are None")
+                raise _system_exceptions.FlyteSystemException(
+                    "Bad SdkWorkflowNode model, both lp and workflow are None")
         else:
-            raise Exception("Bad SdkNode model - both task and workflow nodes are empty")
+            raise _system_exceptions.FlyteSystemException("Bad SdkNode model, both task and workflow nodes are empty")
 
     @property
     def upstream_nodes(self):
