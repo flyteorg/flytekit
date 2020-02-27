@@ -353,8 +353,6 @@ class SdkWorkflow(
             bindings=sorted(bindings, key=lambda b: b.var),
             sdk_workflow=self
         )
-        import ipdb;
-        # ipdb.set_trace()
         return node
 
 
