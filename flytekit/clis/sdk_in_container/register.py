@@ -42,9 +42,9 @@ def register_tasks_only(project, domain, pkgs, test, version):
         name = _utils.fqdn(m.__name__, k, entity_type=t.resource_type)
 
         if test:
-            click.echo("Would register task {:20} {}".format("{}:".format(o.entity_type_text), name))
+            click.echo("Would register task {:20} {}".format("{}:".format(t.entity_type_text), name))
         else:
-            click.echo("Registering task {:20} {}".format("{}:".format(o.entity_type_text), name))
+            click.echo("Registering task {:20} {}".format("{}:".format(t.entity_type_text), name))
             t.register(project, domain, name, version)
 
 @click.group('register')
