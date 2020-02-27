@@ -20,6 +20,7 @@ class SdkTaskType(object):
     HIVE_JOB = "hive"
     SIDECAR_TASK = "sidecar"
     SENSOR_TASK = "sensor-task"
+    PRESTO_TASK = "presto"
 
 
 GLOBAL_INPUT_NODE_ID = ''
