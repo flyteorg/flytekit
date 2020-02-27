@@ -274,7 +274,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
         """
         id = model.id
         # This should never be called
-        if id == "start-node" or id == "end-node":
+        if id == _constants.START_NODE_ID or id == _constants.END_NODE_ID:
             _logging.warning("Should not call promote from model on a start node or end node {}".format(model))
             return None
 
@@ -289,7 +289,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
         # When WorkflowTemplate models (containing node models) are returned by Admin, they've been compiled with a
         # start node.  In order to make the promoted SdkWorkflow look the same, we strip the start-node text back out.
         for i in model.inputs:
-            if i.binding.promise is not None and i.binding.promise.node_id == "start-node":
+            if i.binding.promise is not None and i.binding.promise.node_id == _constants.START_NODE_ID:
                 i.binding.promise._node_id = _constants.GLOBAL_INPUT_NODE_ID
 
         if sdk_task_node is not None:

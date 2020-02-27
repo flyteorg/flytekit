@@ -18,6 +18,7 @@ from flytekit.models import interface as _interface_models, literals as _literal
     launch_plan as _launch_plan_models
 from flytekit.models.core import workflow as _workflow_models, identifier as _identifier_model
 from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.common import constants as _constants
 
 
 class Output(object):
@@ -219,7 +220,7 @@ class SdkWorkflow(
         """
         node_map = {}
         for n in base_model.nodes:
-            if n.id == 'start-node' or n.id == "end-node":
+            if n.id == _constants.START_NODE_ID or n.id == _constants.END_NODE_ID:
                 # The workflow compilation process done by Admin/Propeller will add a fake start-node to the graph
                 # so we need to strip them back out here.
                 continue
@@ -228,7 +229,7 @@ class SdkWorkflow(
 
         # Set upstream nodes for each node
         for n in base_model.nodes:
-            if n.id == 'start-node' or n.id == 'end-node':
+            if n.id == _constants.START_NODE_ID or n.id == _constants.END_NODE_ID:
                 continue
             child_node = node_map[n.id]
             child_node.upstream_nodes[:] = [node_map[upstream_id] for upstream_id in n.upstream_node_ids]
