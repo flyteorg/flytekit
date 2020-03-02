@@ -193,7 +193,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.NodeMetadata
         """
-        node_metadata = _core_workflow.NodeMetadata(name=self.name, retries=self.retries.to_flyte_idl()) # interruptible=self.interruptible
+        node_metadata = _core_workflow.NodeMetadata(name=self.name, retries=self.retries.to_flyte_idl(), interruptible=self.interruptible)
         node_metadata.timeout.FromTimedelta(self.timeout)
         return node_metadata
 
@@ -202,8 +202,8 @@ class NodeMetadata(_common.FlyteIdlEntity):
         return cls(
             pb2_object.name,
             pb2_object.timeout.ToTimedelta(),
-            _RetryStrategy.from_flyte_idl(pb2_object.retries)
-            #interruptible
+            _RetryStrategy.from_flyte_idl(pb2_object.retries),
+            interruptible
         )
 
 
