@@ -118,7 +118,9 @@ class TypedInterface(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_
         for k in sorted(self.inputs):
             var = self.inputs[k]
             if k not in map_of_bindings:
-                raise _user_exceptions.FlyteAssertion("Input was not specified for: {}".format(var))
+                raise _user_exceptions.FlyteAssertion(
+                    "Input was not specified for: {} of type {}".format(k, var.type)
+                )
 
             binding_data[k] = BindingData.from_python_std(
                 var.type,

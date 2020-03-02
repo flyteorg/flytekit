@@ -498,7 +498,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             if not self._is_argname_in_function_definition(k):
                 raise _user_exceptions.FlyteValidationException(
                     "The output named '{}' was not specified in the task function.  Therefore, this output cannot be "
-                    "provided to the task."
+                    "provided to the task.".format(k)
                 )
             if _type_helpers.get_sdk_type_from_literal_type(v.type) in type(self)._banned_outputs:
                 raise _user_exceptions.FlyteValidationException(

@@ -7,6 +7,7 @@ import stat as _stat
 
 import click as _click
 import six as _six
+
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import __version__
@@ -19,6 +20,7 @@ from flytekit.common.core import identifier as _identifier
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
 from flytekit.configuration import platform as _platform_config
+from flytekit.configuration import set_flyte_config_file
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import common as _common_models, filters as _filters, launch_plan as _launch_plan, literals as \
     _literals
@@ -27,12 +29,47 @@ from flytekit.models.core import execution as _core_execution_models
 from flytekit.models.execution import ExecutionSpec as _ExecutionSpec, ExecutionMetadata as _ExecutionMetadata
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
+from flytekit.common.exceptions.user import FlyteAssertion as _FlyteAssertion
+
+
+import requests as _requests
+try:  # Python 3
+    import urllib.parse as _urlparse
+except ImportError:  # Python 2
+    import urlparse as _urlparse
 
 _tt = _six.text_type
+
+# Similar to how kubectl has a config file in the users home directory, this Flyte CLI will also look for one.
+# The format of this config file is the same as a workflow's config file, except that the relevant fields are different.
+# Please see the example.config file
+_default_config_file_dir = ".flyte"
+_default_config_file_name = "config"
 
 
 def _welcome_message():
     _click.secho("Welcome to Flyte CLI! Version: {}".format(_tt(__version__)), bold=True)
+
+
+def _get_user_filepath_home():
+    return _os.path.expanduser("~")
+
+def _get_config_file_path():
+    home = _get_user_filepath_home()
+    return _os.path.join(home, _default_config_file_dir, _default_config_file_name)
+
+def _detect_default_config_file():
+    config_file = _get_config_file_path()
+    if _get_user_filepath_home() and _os.path.exists(config_file):
+        _click.secho("Using default config file at {}".format(_tt(config_file)), fg='blue')
+        set_flyte_config_file(config_file_path=config_file)
+    else:
+        _click.secho("""Config file not found at default location, relying on environment variables instead.
+                        To setup your config file run 'flyte-cli setup-config'""", fg='blue')
+
+
+# Run this as the module is loading to pick up settings that click can then use when constructing the commands
+_detect_default_config_file()
 
 
 def _get_io_string(literal_map, verbose=False):
@@ -229,8 +266,23 @@ def _render_schedule_expr(lp):
     return "{:30}".format(sched_expr)
 
 
-_HOST_URL_ENV = _os.environ.get(_platform_config.URL.env_var, None)
-_INSECURE_ENV = _os.environ.get(_platform_config.INSECURE.env_var, None)
+# These two flags are special in that they are specifiable in both the user's default ~/.flyte/config file, and in the
+# flyte-cli command itself, both in the parent-command position (flyte-cli) , and in the child-command position
+# (e.g. list-task-names). To get around this, first we read the value of the config object, and store it. Later in the
+# file below are options for each of these options, one for the parent command, and one for the child command. If not
+# set by the parent, and also not set by the child, then the value from the config file is used.
+#
+# For both host and insecure, command line values will override the setting in ~/.flyte/config file.
+#
+# The host url option is a required setting, so if missing it will fail, but it may be set in the click command, so we
+# don't have to check now. It will be checked later.
+_HOST_URL = None
+try:
+    _HOST_URL = _platform_config.URL.get()
+except _FlyteAssertion:
+    pass
+_INSECURE_FLAG = _platform_config.INSECURE.get()
+
 _PROJECT_FLAGS = ["-p", "--project"]
 _DOMAIN_FLAGS = ["-d", "--domain"]
 _NAME_FLAGS = ["-n", "--name"]
@@ -287,14 +339,15 @@ _optional_principal_option = _click.option(
 _insecure_option = _click.option(
     *_INSECURE_FLAGS,
     is_flag=True,
-    required=True,
+    required=False,
+    default=_INSECURE_FLAG,
     help="Do not use SSL"
 )
 _insecure_optional_option = _click.option(
     *_INSECURE_FLAGS,
     is_flag=True,
     required=False,
-    default=False if _INSECURE_ENV is None else _str2bool(_INSECURE_ENV),
+    default=False,
     help="Do not use SSL communication"
 )
 _urn_option = _click.option(
@@ -311,8 +364,8 @@ _optional_urn_option = _click.option(
 
 _host_option = _click.option(
     *_HOST_FLAGS,
-    required=not bool(_HOST_URL_ENV),
-    default=_HOST_URL_ENV,
+    required=not bool(_HOST_URL),
+    default=_HOST_URL,
     help="The URL for the Flyte Admin Service. If you intend for this to be consistent, set the FLYTE_PLATFORM_URL "
          "environment variable to the desired URL and this will not need to be set."
 )
@@ -390,7 +443,7 @@ _optional_urns_only_option = _click.option(
     help="[Optional] Set the flag if you want to list the urns only"
 )
 _project_identifier_option = _click.option(
-    '-i', '--identifier',
+    '--identifier',
     required=True,
     type=str,
     help="Unique identifier for the project."
@@ -401,6 +454,12 @@ _project_name_option = _click.option(
     type=str,
     help="The human-readable name for the project."
 )
+_project_description_option = _click.option(
+    '-d', '--description',
+    required=True,
+    type=str,
+    help="Concise description for the project."
+)
 
 
 class _FlyteSubCommand(_click.Command):
@@ -408,7 +467,7 @@ class _FlyteSubCommand(_click.Command):
         'project': _PROJECT_FLAGS[0],
         'domain': _DOMAIN_FLAGS[0],
         'name': _NAME_FLAGS[0],
-        'host': _HOST_FLAGS[0]
+        'host': _HOST_FLAGS[0],
     }
 
     _PASSABLE_FLAGS = {
@@ -468,7 +527,7 @@ class _FlyteSubCommand(_click.Command):
 @_insecure_optional_option
 @_click.group("flyte-cli")
 @_click.pass_context
-def _flyte_cli(ctx, project, domain, name, host, insecure):
+def _flyte_cli(ctx, host, project, domain, name, insecure):
     """
     Command line tool for interacting with all entities on the Flyte Platform.
     """
@@ -480,6 +539,7 @@ def _flyte_cli(ctx, project, domain, name, host, insecure):
 #  Miscellaneous Commands
 #
 ########################################################################################################################
+
 
 @_flyte_cli.command('parse-proto', cls=_click.Command)
 @_filename_option
@@ -1429,17 +1489,64 @@ def get_child_executions(urn, host, insecure, show_io, verbose):
 @_flyte_cli.command('register-project', cls=_FlyteSubCommand)
 @_project_identifier_option
 @_project_name_option
+@_project_description_option
 @_host_option
 @_insecure_option
-def register_project(identifier, name, host, insecure):
+def register_project(identifier, name, description, host, insecure):
     """
     Register a new project.
 
     """
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
-    client.register_project(_Project(identifier, name))
-    _click.echo("Registered project [id: {}, name: {}]".format(identifier, name))
+    client.register_project(_Project(identifier, name, description))
+    _click.echo("Registered project [id: {}, name: {}, description: {}]".format(identifier, name, description))
+
+
+@_flyte_cli.command('setup-config', cls=_click.Command)
+@_host_option
+@_insecure_option
+def setup_config(host, insecure):
+    """
+    Set-up a default config file.
+
+    """
+    _welcome_message()
+    config_file = _get_config_file_path()
+    if _get_user_filepath_home() and _os.path.exists(config_file):
+        _click.secho("Config file already exists at {}".format(_tt(config_file)), fg='blue')
+        return
+
+    # Before creating check that the directory exists and create if not
+    config_dir = _os.path.join(_get_user_filepath_home(), _default_config_file_dir)
+    if not _os.path.isdir(config_dir):
+        _click.secho("Creating default Flyte configuration directory at {}".format(_tt(config_dir)), fg='blue')
+        _os.mkdir(config_dir)
+
+    full_host = "http://{}".format(host) if insecure else "https://{}".format(host)
+    config_url = _urlparse.urljoin(full_host, "config/v1/flyte_client")
+    response = _requests.get(config_url)
+    data = response.json()
+    with open(config_file, "w+") as f:
+        f.write("[platform]")
+        f.write("\n")
+        f.write("url={}".format(host))
+        f.write("\n")
+        f.write("insecure={}".format(insecure))
+        f.write("\n\n")
+
+        f.write("[credentials]")
+        f.write("\n")
+        f.write("client_id={}".format(data["client_id"]))
+        f.write("\n")
+        f.write("redirect_uri={}".format(data["redirect_uri"]))
+        f.write("\n")
+        f.write("authorization_metadata_key={}".format(data["authorization_metadata_key"]))
+        f.write("\n")
+        f.write("auth_mode=standard")
+        f.write("\n")
+    set_flyte_config_file(config_file_path=config_file)
+    _click.secho("Wrote default config file to {}".format(_tt(config_file)), fg='blue')
 
 
 if __name__ == "__main__":

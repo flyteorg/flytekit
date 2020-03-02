@@ -41,19 +41,12 @@ class HttpFileProxy(_common_data.DataProxy):
         :param Text to_path:
         """
 
-        _CONTENT_TYPE = 'binary/octet-stream'
         rsp = _requests.get(from_path)
         if rsp.status_code != type(self)._HTTP_OK:
             raise _user_exceptions.FlyteValueException(
                 rsp.status_code,
                 "Request for data @ {} failed. Expected status code {}".format(from_path, type(self)._HTTP_OK)
             )
-        if rsp.headers.get('content-type') != _CONTENT_TYPE:
-            raise _user_exceptions.FlyteValueException(
-                rsp.headers['content-type'],
-                "Data from {} expected to be received as '{}'.".format(from_path, _CONTENT_TYPE)
-            )
-
         with open(to_path, 'wb') as writer:
             writer.write(rsp.content)
 

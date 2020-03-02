@@ -40,14 +40,14 @@ def register_tasks_only(project, domain, pkgs, test, version):
         name = _utils.fqdn(m.__name__, k, entity_type=t.resource_type)
 
         if test:
-            click.echo("Would register task {:20} {}".format("{}:".format(o.entity_type_text), name))
+            click.echo("Would register task {:20} {}".format("{}:".format(t.entity_type_text), name))
         else:
-            click.echo("Registering task {:20} {}".format("{}:".format(o.entity_type_text), name))
+            click.echo("Registering task {:20} {}".format("{}:".format(t.entity_type_text), name))
             t.register(project, domain, name, version)
 
 @click.group('register')
 # --pkgs on the register group is DEPRECATED, use same arg on pyflyte.main instead
-@click.option('--pkgs', multiple=True, hidden=True)
+@click.option('--pkgs', multiple=True, help="DEPRECATED. This arg can only be used before the 'register' keyword")
 @click.option('--test', is_flag=True, help='Dry run, do not actually register with Admin')
 @click.pass_context
 def register(ctx, pkgs=None, test=None):

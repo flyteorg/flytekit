@@ -219,3 +219,4 @@ def activate_all(ctx, version=None, ignore_schedules=False):
 
 launch_plans.add_command(execute_launch_plan)
 launch_plans.add_command(activate_all_schedules)
+launch_plans.add_command(activate_all)

@@ -66,9 +66,17 @@ class FlyteEntityAlreadyExistsException(FlyteAssertion):
     _ERROR_CODE = "USER:EntityAlreadyExists"
 
 
+class FlyteEntityNotExistException(FlyteAssertion):
+    _ERROR_CODE = "USER:EntityNotExist"
+
+
 class FlyteTimeout(FlyteAssertion):
     _ERROR_CODE = "USER:Timeout"
 
 
 class FlyteRecoverableException(FlyteUserException, _Recoverable):
     _ERROR_CODE = "USER:Recoverable"
+
+
+class FlyteAuthenticationException(FlyteAssertion):
+    _ERROR_CODE = "USER:AuthenticationError"
