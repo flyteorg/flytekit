@@ -1,22 +1,22 @@
 from __future__ import absolute_import
 
 import abc as _abc
-import six as _six
 import logging as _logging
+
+import six as _six
 from sortedcontainers import SortedDict as _SortedDict
 
-from flytekit.common import sdk_bases as _sdk_bases, promise as _promise
+from flytekit.common import constants as _constants
+from flytekit.common import sdk_bases as _sdk_bases, promise as _promise, component_nodes as _component_nodes
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
+from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.mixins import hash as _hash_mixin, artifact as _artifact_mixin
-from flytekit.common.tasks import executions as _task_executions, task as _task
-from flytekit.common import workflow as _workflow, launch_plan as _launch_plan
+from flytekit.common.tasks import executions as _task_executions
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import _dnsify
-from flytekit.common import constants as _constants
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import common as _common_models, node_execution as _node_execution_models
 from flytekit.models.core import workflow as _workflow_model, execution as _execution_models
-from flytekit.common.exceptions import system as _system_exceptions
 
 
 class ParameterMapper(_six.with_metaclass(_common_models.FlyteABCMeta, _SortedDict)):
@@ -100,109 +100,6 @@ class OutputParameterMapper(ParameterMapper):
         return _promise.NodeOutput(sdk_node, sdk_type, name)
 
 
-class SdkTaskNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_model.TaskNode)):
-
-    def __init__(self, sdk_task):
-        """
-        :param flytekit.common.tasks.task.SdkTask sdk_task:
-        """
-        self._sdk_task = sdk_task
-        super(SdkTaskNode, self).__init__(None)
-
-    @property
-    def reference_id(self):
-        """
-        A globally unique identifier for the task.
-        :rtype: flytekit.models.core.identifier.Identifier
-        """
-        return self._sdk_task.id
-
-    @property
-    def sdk_task(self):
-        """
-        :rtype: flytekit.common.tasks.task.SdkTask
-        """
-        return self._sdk_task
-
-    @classmethod
-    def promote_from_model(cls, base_model):
-        """
-        Takes the idl wrapper for a TaskNode and returns the hydrated Flytekit object for it by fetching it from the
-        engine.
-
-        :param flytekit.models.core.workflow.TaskNode base_model:
-        :rtype: SdkTaskNode
-        """
-        project = base_model.reference_id.project
-        domain = base_model.reference_id.domain
-        name = base_model.reference_id.name
-        version = base_model.reference_id.version
-        sdk_task = _task.SdkTask.fetch(project, domain, name, version)
-        return cls(sdk_task)
-
-
-class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_model.WorkflowNode)):
-    def __init__(self, sdk_workflow=None, sdk_launch_plan=None):
-        """
-        :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
-        :param flytekit.common.launch_plan.SdkLaunchPlan sdk_launch_plan:
-        """
-        self._sdk_workflow = sdk_workflow
-        self._sdk_launch_plan = sdk_launch_plan
-        super(SdkWorkflowNode, self).__init__()
-
-    @property
-    def launchplan_ref(self):
-        """
-        [Optional] A globally unique identifier for the launch plan.  Should map to Admin.
-        :rtype: flytekit.models.core.identifier.Identifier
-        """
-        return self._sdk_launch_plan.id if self._sdk_launch_plan else None
-
-    @property
-    def sub_workflow_ref(self):
-        """
-        [Optional] Reference to a subworkflow, that should be defined with the compiler context.
-        :rtype: flytekit.models.core.identifier.Identifier
-        """
-        return self._sdk_workflow.id if self._sdk_workflow else None
-
-    @property
-    def sdk_launch_plan(self):
-        """
-        :rtype: flytekit.common.launch_plan.SdkLaunchPlan
-        """
-        return self._sdk_launch_plan
-
-    @property
-    def sdk_workflow(self):
-        """
-        :rtype: flytekit.common.workflow.SdkWorkflow
-        """
-        return self._sdk_workflow
-
-    @classmethod
-    def promote_from_model(cls, base_model):
-        """
-        :param flytekit.models.core.workflow.WorkflowNode base_model:
-        :rtype: SdkWorkflowNode
-        """
-
-        project = base_model.reference.project
-        domain = base_model.reference.domain
-        name = base_model.reference.name
-        version = base_model.reference.version
-        if base_model.launchplan_ref is not None:
-            sdk_launch_plan = _launch_plan.SdkLaunchPlan.fetch(project, domain, name, version)
-            return cls(sdk_launch_plan=sdk_launch_plan)
-        elif base_model.sub_workflow_ref is not None:
-            sdk_workflow = _workflow.SdkWorkflow.fetch(project, domain, name, version)
-            return cls(sdk_workflow=sdk_workflow)
-        else:
-            raise _system_exceptions.FlyteSystemException("Bad workflow node model, neither subworkflow nor "
-                                                          "launchplan specified.")
-
-
 class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOnReferenceMixin, _workflow_model.Node)):
 
     def __init__(
@@ -246,9 +143,9 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
 
         workflow_node = None
         if sdk_workflow is not None:
-            workflow_node = SdkWorkflowNode(sdk_workflow=sdk_workflow)
+            workflow_node = _component_nodes.SdkWorkflowNode(sdk_workflow=sdk_workflow)
         elif sdk_launch_plan is not None:
-            workflow_node = SdkWorkflowNode(sdk_launch_plan=sdk_launch_plan)
+            workflow_node = _component_nodes.SdkWorkflowNode(sdk_launch_plan=sdk_launch_plan)
 
         super(SdkNode, self).__init__(
             id=_dnsify(id) if id else None,
@@ -256,7 +153,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
             inputs=bindings,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],  # TODO: Are aliases a thing in SDK nodes
-            task_node=SdkTaskNode(sdk_task) if sdk_task else None,
+            task_node=_component_nodes.SdkTaskNode(sdk_task) if sdk_task else None,
             workflow_node=workflow_node,
             branch_node=sdk_branch.target if sdk_branch else None
         )
@@ -282,9 +179,9 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
 
         sdk_task_node, sdk_workflow_node = None, None
         if model.task_node is not None:
-            sdk_task_node = SdkTaskNode.promote_from_model(model.task_node)
+            sdk_task_node = _component_nodes.SdkTaskNode.promote_from_model(model.task_node)
         elif model.workflow_node is not None:
-            sdk_workflow_node = SdkWorkflowNode.promote_from_model(model.workflow_node)
+            sdk_workflow_node = _component_nodes.SdkWorkflowNode.promote_from_model(model.workflow_node)
         else:
             raise _system_exceptions.FlyteSystemException("Bad Node model, neither task nor workflow detected")
 

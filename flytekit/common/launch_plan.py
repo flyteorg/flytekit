@@ -6,7 +6,6 @@ from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
 
 from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, executable as _executable_mixin
-from flytekit.common import workflow as _workflow
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import sdk as _sdk_config, internal as _internal_config, auth as _auth_config
 from flytekit.engines import loader as _engine_loader
@@ -66,6 +65,7 @@ class SdkLaunchPlan(
             domain, and name.
         :rtype: SdkLaunchPlan
         """
+        from flytekit.common import workflow as _workflow
         launch_plan_id = _identifier.Identifier(
             _identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version
         )
