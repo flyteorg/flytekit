@@ -31,7 +31,7 @@ setup(
         "pip>10.0.0,<19.2.0"
     ],
     install_requires=[
-        "flyteidl>=0.15.0,<1.0.0",
+        "flyteidl>=0.17.6,<1.0.0",
         "click>=7.0,<8.0",
         "configparser>=3.0.0,<4.0.0",
         "croniter>=0.3.20,<4.0.0",

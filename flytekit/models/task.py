@@ -175,7 +175,7 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
 
 class TaskMetadata(_common.FlyteIdlEntity):
 
-    def __init__(self, discoverable, runtime, timeout, retries, discovery_version, deprecated_error_message):
+    def __init__(self, discoverable, runtime, timeout, interruptible, retries, discovery_version, deprecated_error_message):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
         and retries.
@@ -184,6 +184,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         :param RuntimeMetadata runtime: Metadata describing the runtime environment for this task.
         :param datetime.timedelta timeout: The amount of time to wait before timing out.  This includes queuing and
             scheduler latency.
+        :param bool interruptible: Whether or not the task is interruptible.
         :param flytekit.models.literals.RetryStrategy retries: Retry strategy for this task.  0 retries means only
             try once.
         :param Text discovery_version: This is the version used to create a logical version for data in the cache.
@@ -195,6 +196,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         self._discoverable = discoverable
         self._runtime = runtime
         self._timeout = timeout
+        self._interruptible = interruptible
         self._retries = retries
         self._discovery_version = discovery_version
         self._deprecated_error_message = deprecated_error_message
@@ -230,6 +232,14 @@ class TaskMetadata(_common.FlyteIdlEntity):
         :rtype: datetime.timedelta
         """
         return self._timeout
+
+    @property
+    def interruptible(self):
+        """
+        Whether or not the task is interruptible.
+        :rtype: bool
+        """
+        return self._interruptible
 
     @property
     def discovery_version(self):

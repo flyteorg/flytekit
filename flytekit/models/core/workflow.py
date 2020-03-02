@@ -148,7 +148,7 @@ class BranchNode(_common.FlyteIdlEntity):
 
 class NodeMetadata(_common.FlyteIdlEntity):
 
-    def __init__(self, name, timeout, retries):
+    def __init__(self, name, timeout, retries, interruptible):
         """
         Defines extra information about the Node.
 
@@ -159,6 +159,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
         self._name = name
         self._timeout = timeout
         self._retries = retries
+        self._interruptible = interruptible
 
     @property
     def name(self):
@@ -181,11 +182,18 @@ class NodeMetadata(_common.FlyteIdlEntity):
         """
         return self._retries
 
+    @property
+    def interruptible(self):
+        """
+        :rtype: flytekit.models.
+        """
+        return self._interruptible
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.workflow_pb2.NodeMetadata
         """
-        node_metadata = _core_workflow.NodeMetadata(name=self.name, retries=self.retries.to_flyte_idl())
+        node_metadata = _core_workflow.NodeMetadata(name=self.name, retries=self.retries.to_flyte_idl()) # interruptible=self.interruptible
         node_metadata.timeout.FromTimedelta(self.timeout)
         return node_metadata
 
@@ -195,6 +203,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
             pb2_object.name,
             pb2_object.timeout.ToTimedelta(),
             _RetryStrategy.from_flyte_idl(pb2_object.retries)
+            #interruptible
         )
 
 

@@ -119,7 +119,7 @@ class SdkTask(
         # TODO: Remove DEADBEEF
         return _nodes.SdkNode(
             id=None,
-            metadata=_workflow_model.NodeMetadata("DEADBEEF", self.metadata.timeout, self.metadata.retries),
+            metadata=_workflow_model.NodeMetadata("DEADBEEF", self.metadata.timeout, self.metadata.retries, self.metadata.interruptible),
             bindings=sorted(bindings, key=lambda b: b.var),
             upstream_nodes=upstream_nodes,
             sdk_task=self
