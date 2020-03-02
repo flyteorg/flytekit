@@ -8,11 +8,17 @@ from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
 
 
 @_pytest.fixture
+def mock_update_cmd_config_and_execute():
+    p = _mock.patch("flytekit.interfaces.data.gcs.gcs_proxy._update_cmd_config_and_execute")
+    yield p.start()
+    p.stop()
+
+
+@_pytest.fixture
 def gcs_proxy():
     return _gcs_proxy.GCSProxy()
 
 
-@_mock.patch("flytekit.interfaces.data.gcs.gcs_proxy._update_cmd_config_and_execute")
 def test_upload_directory(mock_update_cmd_config_and_execute, gcs_proxy):
     local_path, remote_path = "/foo/*", "gs://bar/0/"
     gcs_proxy.upload_directory(local_path, remote_path)
@@ -21,7 +27,6 @@ def test_upload_directory(mock_update_cmd_config_and_execute, gcs_proxy):
     )
 
 
-@_mock.patch("flytekit.interfaces.data.gcs.gcs_proxy._update_cmd_config_and_execute")
 def test_upload_directory_padding_wildcard_for_local_path(
     mock_update_cmd_config_and_execute, gcs_proxy
 ):
@@ -32,7 +37,6 @@ def test_upload_directory_padding_wildcard_for_local_path(
     )
 
 
-@_mock.patch("flytekit.interfaces.data.gcs.gcs_proxy._update_cmd_config_and_execute")
 def test_upload_directory_padding_slash_for_remote_path(
     mock_update_cmd_config_and_execute, gcs_proxy
 ):
