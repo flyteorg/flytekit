@@ -307,10 +307,7 @@ class RawSynchronousFlyteClient(object):
         :rtype: flyteidl.admin.workflow_pb2.Workflow
         :raises: TODO
         """
-        adminwf = self._stub.GetWorkflow(get_object_request, metadata=self._metadata)
-        with open('compiled_workflow_closure.pb', 'wb') as fh:
-            fh.write(adminwf.closure.compiled_workflow.SerializeToString())
-        return adminwf
+        return self._stub.GetWorkflow(get_object_request, metadata=self._metadata)
 
     ####################################################################################################################
     #
