@@ -148,7 +148,7 @@ class BranchNode(_common.FlyteIdlEntity):
 
 class NodeMetadata(_common.FlyteIdlEntity):
 
-    def __init__(self, name, timeout, retries, interruptible):
+    def __init__(self, name, timeout, retries, interruptible=False):
         """
         Defines extra information about the Node.
 
@@ -202,8 +202,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
         return cls(
             pb2_object.name,
             pb2_object.timeout.ToTimedelta(),
-            _RetryStrategy.from_flyte_idl(pb2_object.retries),
-            interruptible
+            _RetryStrategy.from_flyte_idl(pb2_object.retries)
         )
 
 

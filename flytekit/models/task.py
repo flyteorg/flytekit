@@ -175,7 +175,7 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
 
 class TaskMetadata(_common.FlyteIdlEntity):
 
-    def __init__(self, discoverable, runtime, timeout, interruptible, retries, discovery_version, deprecated_error_message):
+    def __init__(self, discoverable, runtime, timeout, retries, discovery_version, deprecated_error_message, interruptible=False):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
         and retries.
