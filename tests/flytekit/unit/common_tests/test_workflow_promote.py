@@ -3,16 +3,22 @@ from __future__ import absolute_import
 from datetime import timedelta
 
 from mock import patch as _patch
+from os import path as _path
 
 from flytekit.common import workflow as _workflow_common
 from flytekit.common.tasks import task as _task
 from flytekit.models import interface as _interface, \
     literals as _literals, types as _types, task as _task_model
-from flytekit.models.core import workflow as _workflow_model, identifier as _identifier
+from flytekit.models.core import workflow as _workflow_model, identifier as _identifier, compiler as _compiler_model
 from flytekit.sdk import tasks as _sdk_tasks
 from flytekit.sdk import workflow as _sdk_workflow
 from flytekit.sdk.types import Types as _Types
-from tests.flytekit.unit.common_tests import test_helpers
+from flyteidl.core import compiler_pb2 as _compiler_pb2, workflow_pb2 as _workflow_pb2
+from flytekit.sdk.types import Types
+from flytekit.sdk.workflow import workflow_class, Input, Output
+from flytekit.sdk.tasks import inputs, outputs, python_task
+from flytekit.sdk.types import Types
+from flytekit.sdk.workflow import workflow_class, Input, Output
 
 
 def get_sample_node_metadata(node_id):
@@ -59,6 +65,52 @@ def get_sample_task_metadata():
     )
 
 
+def get_workflow_template():
+    """
+    This function retrieves a TasKTemplate object from the pb file in the resources directory.
+    It was created by reading from Flyte Admin, the following workflow, after registration.
+
+    from __future__ import absolute_import
+
+    from flytekit.common.types.primitives import Integer
+    from flytekit.sdk.tasks import (
+        python_task,
+        inputs,
+        outputs,
+    )
+    from flytekit.sdk.types import Types
+    from flytekit.sdk.workflow import workflow_class, Input, Output
+
+
+    @inputs(a=Types.Integer)
+    @outputs(b=Types.Integer, c=Types.Integer)
+    @python_task()
+    def demo_task_for_promote(wf_params, a, b, c):
+        b.set(a + 1)
+        c.set(a + 2)
+
+
+    @workflow_class()
+    class OneTaskWFForPromote(object):
+        wf_input = Input(Types.Integer, required=True)
+        my_task_node = demo_task_for_promote(a=wf_input)
+        wf_output_b = Output(my_task_node.outputs.b, sdk_type=Integer)
+        wf_output_c = Output(my_task_node.outputs.c, sdk_type=Integer)
+
+
+    :rtype: flytekit.models.core.workflow.WorkflowTemplate
+    """
+    workflow_template_pb = _workflow_pb2.WorkflowTemplate()
+    # So that tests that use this work when run from any directory
+    basepath = _path.dirname(__file__)
+    filepath = _path.abspath(_path.join(basepath, "resources", "OneTaskWFForPromote.pb"))
+    with open(filepath, "rb") as fh:
+        workflow_template_pb.ParseFromString(fh.read())
+
+    wt = _workflow_model.WorkflowTemplate.from_flyte_idl(workflow_template_pb)
+    return wt
+
+
 @_patch("flytekit.common.tasks.task.SdkTask.fetch")
 def test_basic_workflow_promote(mock_task_fetch):
     # This section defines a sample workflow from a user
@@ -100,8 +152,8 @@ def test_basic_workflow_promote(mock_task_fetch):
     )
     sdk_promoted_task = _task.SdkTask.promote_from_model(task_template)
     mock_task_fetch.return_value = sdk_promoted_task
-    promoted_template = test_helpers.get_workflow_template()
-    promoted_wf = _workflow_common.SdkWorkflow.promote_from_model(promoted_template)
+    workflow_template = get_workflow_template()
+    promoted_wf = _workflow_common.SdkWorkflow.promote_from_model(workflow_template)
 
     assert promoted_wf.interface.inputs["wf_input"] == TestPromoteExampleWf.interface.inputs["wf_input"]
     assert promoted_wf.interface.outputs["wf_output_b"] == TestPromoteExampleWf.interface.outputs["wf_output_b"]
@@ -110,3 +162,52 @@ def test_basic_workflow_promote(mock_task_fetch):
     assert len(promoted_wf.nodes) == 1
     assert len(TestPromoteExampleWf.nodes) == 1
     assert promoted_wf.nodes[0].inputs[0] == TestPromoteExampleWf.nodes[0].inputs[0]
+
+
+def get_compiled_workflow_closure():
+    """
+    :rtype: flytekit.models.core.compiler.CompiledWorkflowClosure
+    """
+    cwc_pb = _compiler_pb2.CompiledWorkflowClosure()
+    # So that tests that use this work when run from any directory
+    basepath = _path.dirname(__file__)
+    filepath = _path.abspath(_path.join(basepath, "resources", "CompiledWorkflowClosure.pb"))
+    with open(filepath, "rb") as fh:
+        cwc_pb.ParseFromString(fh.read())
+
+    return _compiler_model.CompiledWorkflowClosure.from_flyte_idl(cwc_pb)
+
+
+def test_more_promote():
+    cwc = get_compiled_workflow_closure()
+    primary = cwc.primary
+    sub_wf_templates = [s.template for s in cwc.sub_workflows]
+    task_templates = [t.template for t in cwc.tasks]
+    promoted_wf = _workflow_common.SdkWorkflow.promote_from_model(primary.template, sub_wf_templates, task_templates)
+
+    # This file that the promoted_wf reads contains the compiled workflow closure protobuf retrieved from Admin
+    # after registering a workflow that basically looks like the one below.
+
+    @inputs(num=Types.Integer)
+    @outputs(out=Types.Integer)
+    @python_task
+    def inner_task(wf_params, num, out):
+        wf_params.logging.info("Running inner task... setting output to input")
+        out.set(num)
+
+    @workflow_class()
+    class IdentityWorkflow(object):
+        a = Input(Types.Integer, default=5, help="Input for inner workflow")
+        odd_nums_task = inner_task(num=a)
+        task_output = Output(odd_nums_task.outputs.out, sdk_type=Types.Integer)
+
+    @workflow_class()
+    class StaticSubWorkflowCaller(object):
+        outer_a = Input(Types.Integer, default=5, help="Input for inner workflow")
+        identity_wf_execution = IdentityWorkflow(a=outer_a)
+        wf_output = Output(identity_wf_execution.outputs.task_output, sdk_type=Types.Integer)
+
+    assert StaticSubWorkflowCaller.interface == promoted_wf.interface
+    assert StaticSubWorkflowCaller.nodes[0].id == promoted_wf.nodes[0].id
+    assert StaticSubWorkflowCaller.nodes[0].inputs == promoted_wf.nodes[0].inputs
+    assert StaticSubWorkflowCaller.outputs == promoted_wf.outputs

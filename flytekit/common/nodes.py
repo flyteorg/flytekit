@@ -166,9 +166,12 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
         return self._executable_sdk_object
 
     @classmethod
-    def promote_from_model(cls, model):
+    def promote_from_model(cls, model, sub_workflows=None, tasks=None):
         """
         :param flytekit.models.core.workflow.Node model:
+        :param list[flytekit.models.core.workflow.WorkflowTemplate] sub_workflows:
+        :param list[flytekit.models.task.TaskTemplate] tasks: If specified, these task templates will be passed to the
+            SdkTaskNode promote_from_model call, and used instead of fetching from Admin.
         :rtype: SdkNode
         """
         id = model.id
@@ -179,9 +182,10 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
 
         sdk_task_node, sdk_workflow_node = None, None
         if model.task_node is not None:
-            sdk_task_node = _component_nodes.SdkTaskNode.promote_from_model(model.task_node)
+            sdk_task_node = _component_nodes.SdkTaskNode.promote_from_model(model.task_node, tasks)
         elif model.workflow_node is not None:
-            sdk_workflow_node = _component_nodes.SdkWorkflowNode.promote_from_model(model.workflow_node)
+            sdk_workflow_node = _component_nodes.SdkWorkflowNode.promote_from_model(
+                model.workflow_node,sub_workflows, tasks)
         else:
             raise _system_exceptions.FlyteSystemException("Bad Node model, neither task nor workflow detected")
 

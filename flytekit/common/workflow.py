@@ -213,9 +213,14 @@ class SdkWorkflow(
         return sdk_workflow
 
     @classmethod
-    def promote_from_model(cls, base_model):
+    def promote_from_model(cls, base_model, sub_workflows=None, tasks=None):
         """
         :param flytekit.models.core.workflow.WorkflowTemplate base_model:
+        :param list[flytekit.models.core.workflow.WorkflowTemplate] sub_workflows: Provide a list of WorkflowTemplate
+            models (should be returned from Admin as part of the admin CompiledWorkflowClosure. Relevant sub-workflows
+            should always be provided.
+        :param list[flytekit.models.task.TaskTemplate] tasks: Same as above but for tasks. If tasks are not provided
+            relevant TaskTemplates will be fetched from Admin
         :rtype: SdkWorkflow
         """
         node_map = {}
@@ -225,7 +230,7 @@ class SdkWorkflow(
                 # so we need to strip them back out here.
                 continue
             else:
-                node_map[n.id] = _nodes.SdkNode.promote_from_model(n)
+                node_map[n.id] = _nodes.SdkNode.promote_from_model(n, sub_workflows, tasks)
 
         # Set upstream nodes for each node
         for n in base_model.nodes:
