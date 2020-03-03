@@ -127,7 +127,10 @@ class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_
                                                                          tasks=tasks)
                     return cls(sdk_workflow=promoted)
 
-            # if not found for some reason, fetch it from Admin again.
+            # If not found for some reason, fetch it from Admin again.
+            # The reason there is a warning here but not for tasks is because sub-workflows should always be passed
+            # along. Ideally subworkflows are never even registered with Admin, so fetching from Admin ideally doesn't
+            # return anything.
             _logging.warning("Your subworkflow with id {} is not included in the promote call.".format(
                 base_model.reference))
             sdk_workflow = _workflow.SdkWorkflow.fetch(project, domain, name, version)
