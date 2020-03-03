@@ -83,14 +83,3 @@ shellcheck **/*.sh
 ```
 
 
-
-flyte-cli -h localhost:30081 -p flytetester -d development -i list-workflow-versions -n cookbook.sample_workflows.formula_1.outer.StaticLaunchPlanCaller
-
-wf:flytetester:development:cookbook.sample_workflows.formula_1.outer.StaticLaunchPlanCaller:7be6342b4d5d95f5e31e6ad89636ad48925643ab
-
-from flytekit.clis.flyte_cli import main
-from flytekit.common.workflow import SdkWorkflow
-s = SdkWorkflow.fetch('flytetester', 'development', 'cookbook.sample_workflows.formula_1.outer.StaticLaunchPlanCaller', '7be6342b4d5d95f5e31e6ad89636ad48925643ab')
-
-FLYTE_INTERNAL_IMAGE=docker.io/lyft/flyteexamples:c76320408f58d7e0fe12147bc398b7f027bf0a77 FLYTE_PLATFORM_URL=localhost:30081 pyflyte -c /root/local.config -p flytetester -d staging register workflows
-
