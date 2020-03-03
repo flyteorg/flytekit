@@ -105,6 +105,7 @@ class SdkWorkflow(
                 _internal_config.VERSION.get()
             ),
             metadata=_workflow_models.WorkflowMetadata(),
+            metadata_defaults=_workflow_models.WorkflowMetadataDefaults(),
             interface=_interface.TypedInterface(
                 {v.name: v.var for v in inputs},
                 {v.name: v.var for v in outputs}
@@ -194,6 +195,7 @@ class SdkWorkflow(
 
         return cls(
             metadata=base_model.metadata,
+            metadata_defaults=base_model.metadata_defaults,
             interface=_interface.TypedInterface.promote_from_model(base_model.interface),
             nodes=list(node_map.values()),
             outputs=base_model.outputs,
