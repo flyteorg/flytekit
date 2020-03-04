@@ -70,6 +70,7 @@ def test_workflow_closure():
     template = _workflow.WorkflowTemplate(
         id=_identifier.Identifier(_identifier.ResourceType.WORKFLOW, "project", "domain", "name", "version"),
         metadata=_workflow.WorkflowMetadata(),
+        metadata_defaults=_workflow.WorkflowMetadataDefaults(),
         interface=typed_interface,
         nodes=[node],
         outputs=[b1, b2],
