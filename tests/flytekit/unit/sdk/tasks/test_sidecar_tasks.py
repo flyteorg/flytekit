@@ -61,7 +61,7 @@ def test_sidecar_task():
                                          '{{.outputPrefix}}']
     assert primary_container['volumeMounts'] == [{'mountPath': 'some/where', 'name': 'volume mount'}]
     assert {'name': 'foo', 'value': 'bar'} in primary_container['env']
-    assert primary_container['resources'] == {'requests': {'cpu': {'string': '10'}},
-                                              'limits': {'gpu': {'string': '2'}}}
+    assert primary_container['resources'] == {'requests': {'CPU': {'string': '10'}},
+                                              'limits': {'GPU': {'string': '2'}}}
     assert pod_spec['containers'][1]['name'] == 'another container'
     assert simple_sidecar_task.custom['primaryContainerName'] == 'a container'
