@@ -69,8 +69,8 @@ class PrestoQuery(_common.FlyteIdlEntity):
         :return: PrestoQuery
         """
         return cls(
-            query=pb2_object.routing_group,
-            timeout_sec=pb2_object.catalog,
-            retry_count=pb2_object.schema,
+            routing_group=pb2_object.routing_group,
+            catalog=pb2_object.catalog,
+            schema=pb2_object.schema,
             statement=pb2_object.statement
         )
