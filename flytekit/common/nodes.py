@@ -279,6 +279,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
     def __rshift__(self, other):
         """
         Add a node downstream of this node without necessarily mapping outputs -> inputs.
+
         :param Node other: node to place downstream
         """
         if hash(self) not in set(hash(n) for n in other.upstream_nodes):

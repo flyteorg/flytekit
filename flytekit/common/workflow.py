@@ -236,8 +236,11 @@ class SdkWorkflow(
         for n in base_model.nodes:
             if n.id == _constants.START_NODE_ID or n.id == _constants.END_NODE_ID:
                 continue
-            child_node = node_map[n.id]
-            child_node.upstream_nodes[:] = [node_map[upstream_id] for upstream_id in n.upstream_node_ids]
+
+            current = node_map[n.id]
+            for upstream_id in current.upstream_node_ids:
+                upstream_node = node_map[upstream_id]
+                current << upstream_node
 
         # No inputs/outputs specified, see the constructor for more information on the overrides.
         return cls(
