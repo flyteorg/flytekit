@@ -103,7 +103,7 @@ def get_workflow_template():
     workflow_template_pb = _workflow_pb2.WorkflowTemplate()
     # So that tests that use this work when run from any directory
     basepath = _path.dirname(__file__)
-    filepath = _path.abspath(_path.join(basepath, "resources", "OneTaskWFForPromote.pb"))
+    filepath = _path.abspath(_path.join(basepath, "resources/protos", "OneTaskWFForPromote.pb"))
     with open(filepath, "rb") as fh:
         workflow_template_pb.ParseFromString(fh.read())
 
@@ -171,7 +171,7 @@ def get_compiled_workflow_closure():
     cwc_pb = _compiler_pb2.CompiledWorkflowClosure()
     # So that tests that use this work when run from any directory
     basepath = _path.dirname(__file__)
-    filepath = _path.abspath(_path.join(basepath, "resources", "CompiledWorkflowClosure.pb"))
+    filepath = _path.abspath(_path.join(basepath, "resources/protos", "CompiledWorkflowClosure.pb"))
     with open(filepath, "rb") as fh:
         cwc_pb.ParseFromString(fh.read())
 
