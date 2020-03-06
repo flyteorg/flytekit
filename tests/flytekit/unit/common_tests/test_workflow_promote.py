@@ -178,12 +178,12 @@ def get_compiled_workflow_closure():
     return _compiler_model.CompiledWorkflowClosure.from_flyte_idl(cwc_pb)
 
 
-def test_more_promote():
+def test_subworkflow_promote():
     cwc = get_compiled_workflow_closure()
     primary = cwc.primary
-    sub_wf_templates = [s.template for s in cwc.sub_workflows]
-    task_templates = [t.template for t in cwc.tasks]
-    promoted_wf = _workflow_common.SdkWorkflow.promote_from_model(primary.template, sub_wf_templates, task_templates)
+    sub_workflow_map = {sw.template.id: sw.template for sw in cwc.sub_workflows}
+    task_map = {t.template.id: t.template for t in cwc.tasks}
+    promoted_wf = _workflow_common.SdkWorkflow.promote_from_model(primary.template, sub_workflow_map, task_map)
 
     # This file that the promoted_wf reads contains the compiled workflow closure protobuf retrieved from Admin
     # after registering a workflow that basically looks like the one below.

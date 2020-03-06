@@ -209,7 +209,11 @@ class SdkWorkflow(
         version = version or _internal_config.VERSION.get()
         workflow_id = _identifier.Identifier(_identifier_model.ResourceType.WORKFLOW, project, domain, name, version)
         admin_workflow = _engine_loader.get_engine().fetch_workflow(workflow_id)
-        sdk_workflow = cls.promote_from_model(admin_workflow.closure.compiled_workflow.primary.template)
+        cwc = admin_workflow.closure.compiled_workflow
+        primary_template = cwc.primary.template
+        sub_workflow_map = {sw.template.id: sw.template for sw in cwc.sub_workflows}
+        task_map = {t.template.id: t.template for t in cwc.tasks}
+        sdk_workflow = cls.promote_from_model(primary_template, sub_workflow_map, task_map)
         sdk_workflow._id = workflow_id
         return sdk_workflow
 
@@ -225,14 +229,17 @@ class SdkWorkflow(
     def promote_from_model(cls, base_model, sub_workflows=None, tasks=None):
         """
         :param flytekit.models.core.workflow.WorkflowTemplate base_model:
-        :param list[flytekit.models.core.workflow.WorkflowTemplate] sub_workflows: Provide a list of WorkflowTemplate
+        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.core.workflow.WorkflowTemplate]
+            sub_workflows: Provide a list of WorkflowTemplate
             models (should be returned from Admin as part of the admin CompiledWorkflowClosure. Relevant sub-workflows
             should always be provided.
-        :param list[flytekit.models.task.TaskTemplate] tasks: Same as above but for tasks. If tasks are not provided
-            relevant TaskTemplates will be fetched from Admin
+        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.task.TaskTemplate] tasks: Same as above
+            but for tasks. If tasks are not provided relevant TaskTemplates will be fetched from Admin
         :rtype: SdkWorkflow
         """
         base_model_non_system_nodes = cls.get_non_system_nodes(base_model.nodes)
+        sub_workflows = sub_workflows or {}
+        tasks = tasks or {}
         node_map = {n.id: _nodes.SdkNode.promote_from_model(n, sub_workflows, tasks)
                     for n in base_model_non_system_nodes}
 
