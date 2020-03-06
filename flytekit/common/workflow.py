@@ -177,8 +177,9 @@ class SdkWorkflow(
 
     def get_sub_workflows(self):
         """
-        what should the return type of this be?
-        :rtype: list[]
+        Recursive call that returns all subworkflows in the current workflow
+
+        :rtype: list[SdkWorkflow]
         """
         result = []
         for n in self.nodes:
@@ -213,6 +214,14 @@ class SdkWorkflow(
         return sdk_workflow
 
     @classmethod
+    def get_non_system_nodes(cls, nodes):
+        """
+        :param list[flytekit.models.core.workflow.Node] nodes:
+        :rtype: list[flytekit.models.core.workflow.Node]
+        """
+        return [n for n in nodes if n.id not in {_constants.START_NODE_ID, _constants.END_NODE_ID}]
+
+    @classmethod
     def promote_from_model(cls, base_model, sub_workflows=None, tasks=None):
         """
         :param flytekit.models.core.workflow.WorkflowTemplate base_model:
@@ -223,20 +232,12 @@ class SdkWorkflow(
             relevant TaskTemplates will be fetched from Admin
         :rtype: SdkWorkflow
         """
-        node_map = {}
-        for n in base_model.nodes:
-            if n.id == _constants.START_NODE_ID or n.id == _constants.END_NODE_ID:
-                # The workflow compilation process done by Admin/Propeller will add a fake start-node to the graph
-                # so we need to strip them back out here.
-                continue
-            else:
-                node_map[n.id] = _nodes.SdkNode.promote_from_model(n, sub_workflows, tasks)
+        base_model_non_system_nodes = cls.get_non_system_nodes(base_model.nodes)
+        node_map = {n.id: _nodes.SdkNode.promote_from_model(n, sub_workflows, tasks)
+                    for n in base_model_non_system_nodes}
 
         # Set upstream nodes for each node
-        for n in base_model.nodes:
-            if n.id == _constants.START_NODE_ID or n.id == _constants.END_NODE_ID:
-                continue
-
+        for n in base_model_non_system_nodes:
             current = node_map[n.id]
             for upstream_id in current.upstream_node_ids:
                 upstream_node = node_map[upstream_id]
