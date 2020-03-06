@@ -268,6 +268,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             discoverable=self.discoverable,
             runtime=self.runtime.to_flyte_idl(),
             retries=self.retries.to_flyte_idl(),
+            interruptible=self.interruptible,
             discovery_version=self.discovery_version,
             deprecated_error_message=self.deprecated_error_message
         )
@@ -284,6 +285,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             discoverable=pb2_object.discoverable,
             runtime=RuntimeMetadata.from_flyte_idl(pb2_object.runtime),
             timeout=pb2_object.timeout.ToTimedelta(),
+            interruptible=pb2_object.interruptible,
             retries=_literals.RetryStrategy.from_flyte_idl(pb2_object.retries),
             discovery_version=pb2_object.discovery_version,
             deprecated_error_message=pb2_object.deprecated_error_message

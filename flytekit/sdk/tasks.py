@@ -251,6 +251,7 @@ def dynamic_task(
         _task_function=None,
         cache_version='',
         retries=0,
+        interruptible=None,
         deprecated='',
         storage_request=None,
         cpu_request=None,
@@ -313,6 +314,8 @@ def dynamic_task(
             If retries > 0, the task must be able to recover from any remote state created within the user code.  It is
             strongly recommended that tasks are written to be idempotent.
 
+    :param bool interruptible: [optional] boolean describing if the task is interruptible.
+
     :param Text deprecated: [optional] string that should be provided if this task is deprecated.  The string
         will be logged as a warning so it should contain information regarding how to update to a newer task.
     :param Text storage_request: [optional] Kubernetes resource string for lower-bound of disk storage space
@@ -373,6 +376,7 @@ def dynamic_task(
             task_type=_common_constants.SdkTaskType.DYNAMIC_TASK,
             discovery_version=cache_version,
             retries=retries,
+            interruptible=interruptible,
             deprecated=deprecated,
             storage_request=storage_request,
             cpu_request=cpu_request,
@@ -400,6 +404,7 @@ def spark_task(
         _task_function=None,
         cache_version='',
         retries=0,
+        interruptible=None,
         deprecated='',
         cache=False,
         timeout=None,
@@ -467,6 +472,7 @@ def spark_task(
             task_type=_common_constants.SdkTaskType.SPARK_TASK,
             discovery_version=cache_version,
             retries=retries,
+            interruptible=interruptible,
             deprecated=deprecated,
             discoverable=cache,
             timeout=timeout or _datetime.timedelta(seconds=0),
