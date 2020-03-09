@@ -29,7 +29,11 @@ setup(
         ]
     },
     install_requires=[
+<<<<<<< HEAD
         "flyteidl>=0.17.8,<1.0.0",
+=======
+        "flyteidl>=0.17.2,<1.0.0",
+>>>>>>> fd17913534d5a6e6ee16c9c16c51479ff95bacab
         "click>=6.6,<8.0",
         "croniter>=0.3.20,<4.0.0",
         "deprecation>=2.0,<3.0",

@@ -29,6 +29,9 @@ class SdkLaunchPlan(
         super(SdkLaunchPlan, self).__init__(*args, **kwargs)
         self._id = None
 
+        # The interface is not set explicitly unless fetched in an engine context
+        self._interface = None
+
     @classmethod
     def promote_from_model(cls, model):
         """
@@ -62,12 +65,18 @@ class SdkLaunchPlan(
             domain, and name.
         :rtype: SdkLaunchPlan
         """
+        from flytekit.common import workflow as _workflow
         launch_plan_id = _identifier.Identifier(
             _identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version
         )
         lp = _engine_loader.get_engine().fetch_launch_plan(launch_plan_id)
         sdk_lp = cls.promote_from_model(lp.spec)
         sdk_lp._id = lp.id
+
+        # TODO: Add a test for this, and this function as a whole
+        wf_id = sdk_lp.workflow_id
+        lp_wf = _workflow.SdkWorkflow.fetch(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
+        sdk_lp._interface = lp_wf.interface
         return sdk_lp
 
     @_exception_scopes.system_entry_point
@@ -356,7 +365,7 @@ class SdkRunnableLaunchPlan(
         """
         if len(args) > 0:
             raise _user_exceptions.FlyteAssertion(
-                "When adding a task as a node in a workflow, all inputs must be specified with kwargs only.  We "
+                "When adding a launchplan as a node in a workflow, all inputs must be specified with kwargs only.  We "
                 "detected {} positional args.".format(self, len(args))
             )
 

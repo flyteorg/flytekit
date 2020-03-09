@@ -21,7 +21,7 @@ def test_workflow_closure():
         scalar=_literals.Scalar(primitive=_literals.Primitive(integer=5))))
     b1 = _literals.Binding('b', _literals.BindingData(
         promise=_types.OutputReference('my_node', 'b')))
-    b2 = _literals.Binding('b', _literals.BindingData(
+    b2 = _literals.Binding('c', _literals.BindingData(
         promise=_types.OutputReference('my_node', 'c')))
 
     node_metadata = _workflow.NodeMetadata(

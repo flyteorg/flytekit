@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from flytekit.common import nodes as _nodes, interface as _interface
+from flytekit.common import nodes as _nodes, interface as _interface, component_nodes as _component_nodes
 from flytekit.models.core import workflow as _core_workflow_models, identifier as _identifier
 from flytekit.models import literals as _literals
 from flytekit.sdk import tasks as _tasks, types as _types, workflow as _workflow
@@ -181,7 +181,7 @@ def test_sdk_task_node():
         pass
 
     testy_test._id = _identifier.Identifier(_identifier.ResourceType.TASK, 'project', 'domain', 'name', 'version')
-    n = _nodes.SdkTaskNode(testy_test)
+    n = _component_nodes.SdkTaskNode(testy_test)
     assert n.reference_id.project == 'project'
     assert n.reference_id.domain == 'domain'
     assert n.reference_id.name == 'name'
@@ -263,7 +263,7 @@ def test_sdk_launch_plan_node():
     lp = test_workflow.create_launch_plan()
 
     lp._id = _identifier.Identifier(_identifier.ResourceType.TASK, 'project', 'domain', 'name', 'version')
-    n = _nodes.SdkWorkflowNode(sdk_launch_plan=lp)
+    n = _component_nodes.SdkWorkflowNode(sdk_launch_plan=lp)
     assert n.launchplan_ref.project == 'project'
     assert n.launchplan_ref.domain == 'domain'
     assert n.launchplan_ref.name == 'name'
