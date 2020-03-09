@@ -107,6 +107,7 @@ LIST_OF_RETRY_POLICIES = [
 ]
 
 LIST_OF_INTERRUPTIBLE = [
+    None,
     True,
     False
 ]
