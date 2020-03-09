@@ -488,7 +488,7 @@ class WorkflowMetadataDefaults(_common.FlyteIdlEntity):
         :param flyteidl.core.workflow_pb2.WorkflowMetadataDefaults pb2_object:
         :rtype: WorkflowMetadata
         """
-        return cls(interruptible=pb2_object.interruptible if pb2_object.HasField("interruptible") else None)
+        return cls(interruptible=pb2_object.interruptible)
 
 
 class WorkflowTemplate(_common.FlyteIdlEntity):
