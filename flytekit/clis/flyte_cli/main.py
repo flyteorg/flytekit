@@ -54,9 +54,11 @@ def _welcome_message():
 def _get_user_filepath_home():
     return _os.path.expanduser("~")
 
+
 def _get_config_file_path():
     home = _get_user_filepath_home()
     return _os.path.join(home, _default_config_file_dir, _default_config_file_name)
+
 
 def _detect_default_config_file():
     config_file = _get_config_file_path()

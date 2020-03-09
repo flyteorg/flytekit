@@ -1,17 +1,19 @@
 from __future__ import absolute_import
 from flytekit.models import common as _common
-from flytekit.models.core import compiler as _compiler_models, identifier as _identifier
+from flytekit.models.core import compiler as _compiler_models, identifier as _identifier, workflow as _core_workflow
 from flyteidl.admin import workflow_pb2 as _admin_workflow
 
 
 class WorkflowSpec(_common.FlyteIdlEntity):
 
-    def __init__(self, template):
+    def __init__(self, template, sub_workflows):
         """
         This object fully encapsulates the specification of a workflow
         :param flytekit.models.core.workflow.WorkflowTemplate template:
+        :param list[flytekit.models.core.workflow.WorkflowTemplate] sub_workflows:
         """
         self._template = template
+        self._sub_workflows = sub_workflows
 
     @property
     def template(self):
@@ -20,12 +22,20 @@ class WorkflowSpec(_common.FlyteIdlEntity):
         """
         return self._template
 
+    @property
+    def sub_workflows(self):
+        """
+        :rtype: list[flytekit.models.core.workflow.WorkflowTemplate.WorkflowTemplate]
+        """
+        return self._sub_workflows
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.workflow_pb2.WorkflowSpec
         """
         return _admin_workflow.WorkflowSpec(
-            template=self._template.to_flyte_idl()
+            template=self._template.to_flyte_idl(),
+            sub_workflows=[s.to_flyte_idl() for s in self._sub_workflows],
         )
 
     @classmethod
@@ -34,7 +44,8 @@ class WorkflowSpec(_common.FlyteIdlEntity):
         :param pb2_object: flyteidl.admin.workflow_pb2.WorkflowSpec
         :rtype: WorkflowSpec
         """
-        return cls(WorkflowSpec.from_flyte_idl(pb2_object.template))
+        return cls(_core_workflow.WorkflowTemplate.from_flyte_idl(pb2_object.template),
+                   [_core_workflow.WorkflowTemplate.from_flyte_idl(s) for s in pb2_object.sub_workflows])
 
 
 class Workflow(_common.FlyteIdlEntity):

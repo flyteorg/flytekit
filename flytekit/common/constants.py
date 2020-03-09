@@ -24,6 +24,9 @@ class SdkTaskType(object):
 
 GLOBAL_INPUT_NODE_ID = ''
 
+START_NODE_ID = "start-node"
+END_NODE_ID = "end-node"
+
 
 class CloudProvider(object):
     AWS = "aws"
