@@ -110,11 +110,11 @@ class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
                 resource_requirements = _lazy_k8s.io.api.core.v1.generated_pb2.ResourceRequirements()
                 for resource in self._container.resources.limits:
                     resource_requirements.limits[
-                        _core_task.Resources.ResourceName.Name(resource.name)].CopyFrom(
+                        _core_task.Resources.ResourceName.Name(resource.name).lower()].CopyFrom(
                         _lazy_k8s.io.apimachinery.pkg.api.resource.generated_pb2.Quantity(string=resource.value))
                 for resource in self._container.resources.requests:
                     resource_requirements.requests[
-                        _core_task.Resources.ResourceName.Name(resource.name)].CopyFrom(
+                        _core_task.Resources.ResourceName.Name(resource.name).lower()].CopyFrom(
                         _lazy_k8s.io.apimachinery.pkg.api.resource.generated_pb2.Quantity(string=resource.value))
                 if resource_requirements.ByteSize():
                     # Important! Only copy over resource requirements if they are non-empty.
