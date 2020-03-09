@@ -285,7 +285,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             discoverable=pb2_object.discoverable,
             runtime=RuntimeMetadata.from_flyte_idl(pb2_object.runtime),
             timeout=pb2_object.timeout.ToTimedelta(),
-            interruptible=pb2_object.interruptible,
+            interruptible=pb2_object.interruptible if pb2_object.HasField("interruptible") else None,
             retries=_literals.RetryStrategy.from_flyte_idl(pb2_object.retries),
             discovery_version=pb2_object.discovery_version,
             deprecated_error_message=pb2_object.deprecated_error_message

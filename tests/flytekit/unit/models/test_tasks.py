@@ -5,6 +5,7 @@ from datetime import timedelta
 from google.protobuf import text_format
 from itertools import product
 
+from flyteidl.core.tasks_pb2 import TaskMetadata
 from flytekit.models import task, literals
 from flytekit.models.core import identifier
 from k8s.io.api.core.v1 import generated_pb2
@@ -41,6 +42,21 @@ def test_runtime_metadata():
     assert obj != task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.OTHER, "1.0.0", "python")
     assert obj != task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "golang")
 
+def test_task_metadata_interruptible_from_flyte_idl():
+    # Interruptible not set
+    idl = TaskMetadata()
+    obj = task.TaskMetadata.from_flyte_idl(idl)
+    assert obj.interruptible == None
+
+    idl = TaskMetadata()
+    idl.interruptible = True
+    obj = task.TaskMetadata.from_flyte_idl(idl)
+    assert obj.interruptible == True
+
+    idl = TaskMetadata()
+    idl.interruptible = False
+    obj = task.TaskMetadata.from_flyte_idl(idl)
+    assert obj.interruptible == False
 
 def test_task_metadata():
     obj = task.TaskMetadata(
