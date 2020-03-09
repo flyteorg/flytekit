@@ -70,6 +70,10 @@ class FlyteIdlEntity(_six.with_metaclass(FlyteType, object)):
         """
         return self.short_string()
 
+    @property
+    def is_empty(self):
+        return len(self.to_flyte_idl().SerializeToString()) == 0
+
     @_abc.abstractmethod
     def to_flyte_idl(self):
         pass

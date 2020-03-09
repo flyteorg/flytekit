@@ -62,13 +62,6 @@ class Identifier(_common_models.FlyteIdlEntity):
         """
         return self._version
 
-    @property
-    def is_empty(self):
-        if self._resource_type == ResourceType.UNSPECIFIED and self._project == '' and self._domain == '' and \
-                self._name == '' and self._version == '':
-            return True
-        return False
-
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.identifier_pb2.NamedEntityIdentifier
