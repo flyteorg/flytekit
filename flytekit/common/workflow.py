@@ -131,6 +131,7 @@ class SdkWorkflow(
         super(SdkWorkflow, self).__init__(
             id=id,
             metadata=metadata,
+            metadata_defaults=_workflow_models.WorkflowMetadataDefaults(),
             interface=interface,
             nodes=nodes,
             outputs=output_bindings,
@@ -255,6 +256,7 @@ class SdkWorkflow(
             inputs=None, outputs=None, nodes=list(node_map.values()),
             id=_identifier.Identifier.promote_from_model(base_model.id),
             metadata=base_model.metadata,
+            metadata_defaults=base_model.metadata_defaults,
             interface=_interface.TypedInterface.promote_from_model(base_model.interface),
             output_bindings=base_model.outputs,
         )

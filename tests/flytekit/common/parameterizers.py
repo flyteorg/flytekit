@@ -106,6 +106,11 @@ LIST_OF_RETRY_POLICIES = [
     literals.RetryStrategy(retries=i) for i in [0, 1, 3, 100]
 ]
 
+LIST_OF_INTERRUPTIBLE = [
+    None,
+    True,
+    False
+]
 
 LIST_OF_TASK_METADATA = [
     task.TaskMetadata(
@@ -113,14 +118,16 @@ LIST_OF_TASK_METADATA = [
         runtime_metadata,
         timeout,
         retry_strategy,
+        interruptible,
         discovery_version,
         deprecated
     )
-    for discoverable, runtime_metadata, timeout, retry_strategy, discovery_version, deprecated in product(
+    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated in product(
         [True, False],
         LIST_OF_RUNTIME_METADATA,
         [timedelta(days=i) for i in range(3)],
         LIST_OF_RETRY_POLICIES,
+        LIST_OF_INTERRUPTIBLE,
         ["1.0"],
         ["deprecated"]
     )

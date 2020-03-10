@@ -22,6 +22,7 @@ class SensorTask(_sdk_runnable.SdkRunnableTask):
 def sensor_task(
     _task_function=None,
     retries=0,
+    interruptible=None,
     deprecated='',
     storage_request=None,
     cpu_request=None,
@@ -57,6 +58,7 @@ def sensor_task(
         .. note::
             If retries > 0, the task must be able to recover from any remote state created within the user code.  It is
             strongly recommended that tasks are written to be idempotent.
+    :param bool interruptible: Specify whether task is interruptible
     :param Text deprecated: [optional] string that should be provided if this task is deprecated.  The string
         will be logged as a warning so it should contain information regarding how to update to a newer task.
     :param Text storage_request: [optional] Kubernetes resource string for lower-bound of disk storage space
@@ -99,6 +101,7 @@ def sensor_task(
             task_function=fn,
             task_type=_common_constants.SdkTaskType.SENSOR_TASK,
             retries=retries,
+            interruptible=interruptible,
             deprecated=deprecated,
             storage_request=storage_request,
             cpu_request=cpu_request,

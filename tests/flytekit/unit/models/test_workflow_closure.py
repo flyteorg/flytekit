@@ -35,6 +35,7 @@ def test_workflow_closure():
         _task.RuntimeMetadata(_task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
         timedelta(days=1),
         _literals.RetryStrategy(3),
+        True,
         "0.1.1b0",
         "This is deprecated!"
     )
@@ -70,6 +71,7 @@ def test_workflow_closure():
     template = _workflow.WorkflowTemplate(
         id=_identifier.Identifier(_identifier.ResourceType.WORKFLOW, "project", "domain", "name", "version"),
         metadata=_workflow.WorkflowMetadata(),
+        metadata_defaults=_workflow.WorkflowMetadataDefaults(),
         interface=typed_interface,
         nodes=[node],
         outputs=[b1, b2],
