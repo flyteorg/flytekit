@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 
 ## Todo - change this to qubole_presto once Luis's PR get's merged
-from flyteidl.plugins import qubole_presto as _qubole
+# from flyteidl.plugins import qubole_presto as _qubole
+from flyteidl.plugins import presto_pb2 as _presto
 
 from flytekit.models import common as _common
 
@@ -53,9 +54,9 @@ class PrestoQuery(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self):
         """
-        :rtype: _qubole.PrestoQuery (This needs to be updated once Luis PR is merged)
+        :rtype: _presto.PrestoQuery 
         """
-        return _qubole.PrestoQuery(
+        return _presto.PrestoQuery(
             routing_group=self._routing_group,
             catalog=self._catalog,
             schema=self._schema,
@@ -65,7 +66,7 @@ class PrestoQuery(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         """
-        :param _qubole.PrestoQuery pb2_object:
+        :param _presto.PrestoQuery pb2_object:
         :return: PrestoQuery
         """
         return cls(
