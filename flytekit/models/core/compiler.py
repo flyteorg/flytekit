@@ -125,6 +125,7 @@ class CompiledWorkflow(_common.FlyteIdlEntity):
         )
 
 
+# TODO: properly sort out the model code and remove one of these duplicate CompiledTasks
 class CompiledTask(_common.FlyteIdlEntity):
 
     def __init__(self, template):
@@ -207,8 +208,11 @@ class CompiledWorkflowClosure(_common.FlyteIdlEntity):
         :param flyteidl.core.compiler_pb2.CompiledWorkflowClosure p:
         :rtype: CompiledWorkflowClosure
         """
+        # This import is here to prevent a circular dependency issue.
+        # TODO: properly sort out the model code and remove the duplicate CompiledTask
+        from flytekit.models.task import CompiledTask as _CompiledTask
         return cls(
             primary=CompiledWorkflow.from_flyte_idl(p.primary),
             sub_workflows=[CompiledWorkflow.from_flyte_idl(s) for s in p.sub_workflows],
-            tasks=[CompiledTask.from_flyte_idl(t) for t in p.tasks]
+            tasks=[_CompiledTask.from_flyte_idl(t) for t in p.tasks]
         )

@@ -164,6 +164,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             task_type,
             discovery_version,
             retries,
+            interruptible,
             deprecated,
             storage_request,
             cpu_request,
@@ -183,6 +184,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         :param Text task_type: string describing the task type
         :param Text discovery_version: string describing the version for task discovery purposes
         :param int retries: Number of retries to attempt
+        :param bool interruptible: Specify whether task is interruptible
         :param Text deprecated:
         :param Text storage_request:
         :param Text cpu_request:
@@ -210,6 +212,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 ),
                 timeout,
                 _literal_models.RetryStrategy(retries),
+                interruptible,
                 discovery_version,
                 deprecated
             ),

@@ -49,6 +49,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             task_type,
             discovery_version,
             retries,
+            interruptible,
             deprecated,
             storage_request,
             cpu_request,
@@ -70,6 +71,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         :param Text task_type: string describing the task type
         :param Text discovery_version: string describing the version for task discovery purposes
         :param int retries: Number of retries to attempt
+        :param bool interruptible: Whether or not task is interruptible
         :param Text deprecated:
         :param Text storage_request:
         :param Text cpu_request:
@@ -87,7 +89,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         :param dict[Text, T] custom:
         """
         super(SdkDynamicTask, self).__init__(
-            task_function, task_type, discovery_version, retries, deprecated,
+            task_function, task_type, discovery_version, retries, interruptible, deprecated,
             storage_request, cpu_request, gpu_request, memory_request, storage_limit,
             cpu_limit, gpu_limit, memory_limit, discoverable, timeout, environment, custom)
 

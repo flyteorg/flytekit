@@ -35,6 +35,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
             task_type,
             discovery_version,
             retries,
+            interruptible,
             deprecated,
             storage_request,
             cpu_request,
@@ -71,7 +72,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         :param dict[Text, Text] environment:
         """
         self._task_function = task_function
-        super(SdkHiveTask, self).__init__(task_function, task_type, discovery_version, retries, deprecated,
+        super(SdkHiveTask, self).__init__(task_function, task_type, discovery_version, retries, interruptible, deprecated,
                                           storage_request, cpu_request, gpu_request, memory_request, storage_limit,
                                           cpu_limit, gpu_limit, memory_limit, discoverable, timeout, environment, {})
         self._validate_task_parameters(cluster_label, tags)
