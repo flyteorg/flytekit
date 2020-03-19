@@ -27,6 +27,7 @@ class SdkLaunchPlan(
 ):
     def __init__(self, *args, **kwargs):
         super(SdkLaunchPlan, self).__init__(*args, **kwargs)
+        # Question - why do we set this to None?  Basically wipes out the id.
         self._id = None
 
         # The interface is not set explicitly unless fetched in an engine context
@@ -296,6 +297,7 @@ class SdkRunnableLaunchPlan(
             annotations or _common_models.Annotations({}),
             auth,
         )
+        # even right here, self._id is None
         self._interface = _interface.TypedInterface(
             {k: v.var for k, v in _six.iteritems(default_inputs)},
             sdk_workflow.interface.outputs

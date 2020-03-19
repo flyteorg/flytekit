@@ -6,7 +6,8 @@ import itertools as _itertools
 import math
 import six as _six
 
-from flytekit.common import constants as _constants, interface as _interface, sdk_bases as _sdk_bases
+from flytekit.common import constants as _constants, interface as _interface, sdk_bases as _sdk_bases, \
+    launch_plan as _launch_plan, workflow as _workflow
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import output as _task_output, sdk_runnable as _sdk_runnable
 from flytekit.common.types import helpers as _type_helpers
@@ -131,6 +132,8 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             for name, variable in _six.iteritems(self.interface.outputs)
         }
 
+        # Because users declare both inputs and outputs in their functions signatures, merge them together
+        # before calling user code
         inputs_dict.update(outputs_dict)
         yielded_sub_tasks = [sub_task for sub_task in
                              super(SdkDynamicTask, self)._execute_user_code(context, inputs_dict) or []]
@@ -141,6 +144,17 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
                            for name, b in _six.iteritems(outputs_dict)]
         upstream_nodes = set(upstream_nodes)
 
+        """
+        @inputs(num=Types.Integer)
+        @outputs(out=Types.Integer)
+        @dynamic_task
+        def lp_yield_task(wf_params, num, out):
+            wf_params.logging.info("Running inner task... yielding a launchplan")
+            identity_lp_execution = id_lp(a=num)
+            yield identity_lp_execution
+            out.set(identity_lp_execution.outputs.task_output)
+        """
+
         generated_files = {}
         # Keeping future-tasks in original order. We don't use upstream_nodes exclusively because the parent task can
         # yield sub-tasks that it never uses to produce final outputs but they need to execute nevertheless.
@@ -150,9 +164,11 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         visited_nodes = set()
         generated_ids = {}
         effective_failure_ratio = self._allowed_failure_ratio or 0.0
+        # Question: Why are we iterating both upstream_nodes and yielded_sub_tasks?
         for sub_task_node in _itertools.chain(yielded_sub_tasks, upstream_nodes):
             if sub_task_node in visited_nodes:
                 continue
+            import ipdb; ipdb.set_trace()
             visited_nodes.add(sub_task_node)
 
             # Generate an id that's unique in the document (if the same task is used multiple times with
@@ -165,44 +181,63 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
                 new_count = generated_ids[safe_task_id] = 0
             unique_node_id = _dnsify("{}-{}".format(safe_task_id, new_count))
 
-            # If the task can run as an array job, group its instances together. Otherwise, keep each invocation as a
-            # separate node.
-            if SdkDynamicTask._can_run_as_array(sub_task_node.executable_sdk_object.type):
-                if sub_task_node.executable_sdk_object in array_job_index:
-                    array_job, node = array_job_index[sub_task_node.executable_sdk_object]
-                    array_job.size += 1
-                    array_job.min_successes = int(math.ceil((1 - effective_failure_ratio) * array_job.size))
-                else:
-                    array_job = self._create_array_job(inputs_prefix=unique_node_id)
-                    node = sub_task_node.assign_id_and_return(unique_node_id)
-                    array_job_index[sub_task_node.executable_sdk_object] = (array_job, node)
+            # Handling cases where the yielded nodes are launch plan or subworkflow nodes
+            if isinstance(sub_task_node.executable_sdk_object, _launch_plan.SdkLaunchPlan) \
+                    or isinstance(sub_task_node.executable_sdk_object, _workflow.SdkWorkflow):
 
-                node_index = _six.text_type(array_job.size - 1)
-                for k, node_output in _six.iteritems(sub_task_node.outputs):
-                    if not node_output.sdk_node.id:
-                        node_output.sdk_node.assign_id_and_return(node.id)
-                    node_output.var = "[{}].{}".format(node_index, node_output.var)
-
-                # Upload inputs to working directory under /array_job.input_ref/<index>/inputs.pb
-                input_path = _os.path.join(node.id, node_index, _constants.INPUT_FILE_NAME)
-                generated_files[input_path] = _literal_models.LiteralMap(
-                    literals={binding.var: binding.binding.to_literal_model() for binding in
-                              sub_task_node.inputs})
-            else:
                 node = sub_task_node.assign_id_and_return(unique_node_id)
-
-                tasks.append(sub_task_node.executable_sdk_object)
                 nodes.append(node)
-
                 for k, node_output in _six.iteritems(sub_task_node.outputs):
+                    print('K: {} Node output {} type is {}'.format(k, node_output, type(node_output)))
                     if not node_output.sdk_node.id:
                         node_output.sdk_node.assign_id_and_return(node.id)
 
-                # Upload inputs to working directory under /array_job.input_ref/inputs.pb
-                input_path = _os.path.join(node.id, _constants.INPUT_FILE_NAME)
-                generated_files[input_path] = _literal_models.LiteralMap(
-                    literals={binding.var: binding.binding.to_literal_model() for binding in
-                              sub_task_node.inputs})
+                    # Upload inputs to working directory under /array_job.input_ref/inputs.pb
+                    input_path = _os.path.join(node.id, _constants.INPUT_FILE_NAME)
+                    generated_files[input_path] = _literal_models.LiteralMap(
+                        literals={binding.var: binding.binding.to_literal_model() for binding in
+                                  sub_task_node.inputs})
+
+            # Handling tasks
+            else:
+                # If the task can run as an array job, group its instances together. Otherwise, keep each
+                # invocation as a separate node.
+                if SdkDynamicTask._can_run_as_array(sub_task_node.executable_sdk_object.type):
+                    if sub_task_node.executable_sdk_object in array_job_index:
+                        array_job, node = array_job_index[sub_task_node.executable_sdk_object]
+                        array_job.size += 1
+                        array_job.min_successes = int(math.ceil((1 - effective_failure_ratio) * array_job.size))
+                    else:
+                        array_job = self._create_array_job(inputs_prefix=unique_node_id)
+                        node = sub_task_node.assign_id_and_return(unique_node_id)
+                        array_job_index[sub_task_node.executable_sdk_object] = (array_job, node)
+
+                    node_index = _six.text_type(array_job.size - 1)
+                    for k, node_output in _six.iteritems(sub_task_node.outputs):
+                        if not node_output.sdk_node.id:
+                            node_output.sdk_node.assign_id_and_return(node.id)
+                        node_output.var = "[{}].{}".format(node_index, node_output.var)
+
+                    # Upload inputs to working directory under /array_job.input_ref/<index>/inputs.pb
+                    input_path = _os.path.join(node.id, node_index, _constants.INPUT_FILE_NAME)
+                    generated_files[input_path] = _literal_models.LiteralMap(
+                        literals={binding.var: binding.binding.to_literal_model() for binding in
+                                  sub_task_node.inputs})
+                else:
+                    node = sub_task_node.assign_id_and_return(unique_node_id)
+
+                    tasks.append(sub_task_node.executable_sdk_object)
+                    nodes.append(node)
+
+                    for k, node_output in _six.iteritems(sub_task_node.outputs):
+                        if not node_output.sdk_node.id:
+                            node_output.sdk_node.assign_id_and_return(node.id)
+
+                    # Upload inputs to working directory under /array_job.input_ref/inputs.pb
+                    input_path = _os.path.join(node.id, _constants.INPUT_FILE_NAME)
+                    generated_files[input_path] = _literal_models.LiteralMap(
+                        literals={binding.var: binding.binding.to_literal_model() for binding in
+                                  sub_task_node.inputs})
 
         # assign custom field to the ArrayJob properties computed.
         for task, (array_job, _) in _six.iteritems(array_job_index):
@@ -220,6 +255,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             outputs=output_bindings,
             subworkflows=[])
 
+        ipdb.set_trace()
         return dynamic_job_spec, generated_files
 
     @_exception_scopes.system_entry_point
