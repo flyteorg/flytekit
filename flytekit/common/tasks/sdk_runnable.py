@@ -235,6 +235,17 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
     _banned_inputs = {}
     _banned_outputs = {}
 
+    @_exception_scopes.system_entry_point
+    def add_inputs(self, inputs):
+        """
+        Adds the inputs to this task.  This can be called multiple times, but it will fail if an input with a given
+        name is added more than once, a name collides with an output, or if the name doesn't exist as an arg name in
+        the wrapped function.
+        :param dict[Text, flytekit.models.interface.Variable] inputs: names and variables
+        """
+        self._validate_inputs(inputs)
+        self.interface.inputs.update(inputs)
+        
     @classmethod
     def promote_from_model(cls, base_model):
         # TODO: If the task exists in this container, we should be able to retrieve it.

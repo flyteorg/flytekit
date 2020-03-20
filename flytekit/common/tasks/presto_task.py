@@ -15,6 +15,7 @@ import datetime as _datetime
 from flytekit.models import presto as _presto_models
 from flytekit.common.exceptions.user import \
     FlyteValueException as _FlyteValueException
+from flytekit.common.exceptions import scopes as _exception_scopes
 
 
 class SdkPrestoTask(_base_task.SdkTask):
@@ -125,6 +126,17 @@ class SdkPrestoTask(_base_task.SdkTask):
         return super(SdkPrestoTask, self).__call__(
             *args, **kwargs
         )
+
+    @_exception_scopes.system_entry_point
+    def add_inputs(self, inputs):
+        """
+        Adds the inputs to this task.  This can be called multiple times, but it will fail if an input with a given
+        name is added more than once, a name collides with an output, or if the name doesn't exist as an arg name in
+        the wrapped function.
+        :param dict[Text, flytekit.models.interface.Variable] inputs: names and variables
+        """
+        self._validate_inputs(inputs)
+        self.interface.inputs.update(inputs)
 
     @property
     def routing_group(self):

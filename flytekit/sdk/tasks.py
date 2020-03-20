@@ -7,9 +7,9 @@ from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable_tasks, sdk_dynamic as _sdk_dynamic, \
     spark_task as _sdk_spark_tasks, hive_task as _sdk_hive_tasks, sidecar_task as _sdk_sidecar_tasks
+from flytekit.common.tasks import task as _task
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.models import interface as _interface_model
-from flytekit.common.tasks import presto_task
 
 
 def inputs(_task_template=None, **kwargs):
@@ -36,11 +36,7 @@ def inputs(_task_template=None, **kwargs):
     """
 
     def apply_inputs_wrapper(task):
-        # Presto tasks are  not SdkRunnable, they're  just tasks but we still
-        # want to be able to apply  inputs. If there are ever more exceptions
-        # to this, the checking logic should get moved to a separate abstract
-        # base class or something.
-        if not isinstance(task, _sdk_runnable_tasks.SdkRunnableTask) and not isinstance(task, presto_task.SdkPrestoTask):
+        if not isinstance(task, _task.SdkTask):
             additional_msg = \
                 "Inputs can only be applied to a task. Did you forget the task decorator on method '{}.{}'?".format(
                     task.__module__,
