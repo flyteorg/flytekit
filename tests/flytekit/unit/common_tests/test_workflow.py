@@ -1,11 +1,14 @@
 from __future__ import absolute_import
 
-from flytekit.common import workflow, constants, promise
-from flytekit.common.types import primitives
-from flytekit.models.core import workflow as _workflow_models, identifier as _identifier
-from flytekit.sdk.tasks import python_task, inputs, outputs
-
 import pytest as _pytest
+
+from flytekit.common import workflow, constants, promise, nodes, interface
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.types import primitives, containers
+from flytekit.models import literals as _literals
+from flytekit.models.core import workflow as _workflow_models, identifier as _identifier
+from flytekit.sdk import types as _types
+from flytekit.sdk.tasks import python_task, inputs, outputs
 
 
 def test_output():
@@ -17,14 +20,13 @@ def test_output():
 
 
 def test_workflow():
-
     @inputs(a=primitives.Integer)
     @outputs(b=primitives.Integer)
     @python_task()
     def my_task(wf_params, a, b):
         b.set(a + 1)
 
-    my_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, 'propject', 'domain', 'my_task', 'version')
+    my_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, 'project', 'domain', 'my_task', 'version')
 
     @inputs(a=[primitives.Integer])
     @outputs(b=[primitives.Integer])
@@ -32,7 +34,7 @@ def test_workflow():
     def my_list_task(wf_params, a, b):
         b.set([v + 1 for v in a])
 
-    my_list_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, 'propject', 'domain', 'my_list_task',
+    my_list_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, 'project', 'domain', 'my_list_task',
                                               'version')
 
     input_list = [
@@ -217,11 +219,6 @@ def test_workflow_node():
 
     w = workflow.SdkWorkflow(inputs=input_list, outputs=wf_out, nodes=nodes)
 
-    with _pytest.raises(NotImplementedError):
-        w()
-
-    # TODO: Uncomment when sub-workflows are supported.
-    """
     # Test that required input isn't set
     with _pytest.raises(_user_exceptions.FlyteAssertion):
         w()
@@ -252,19 +249,52 @@ def test_workflow_node():
     assert n.inputs[1].var == 'required'
     assert n.inputs[1].binding.scalar.primitive.integer == 10
 
-    # Test that launch plan ID ref is flexible
+    # Test that workflow is saved in the node
     w._id = 'fake'
     assert n.workflow_node.sub_workflow_ref == 'fake'
     w._id = None
 
     # Test that outputs are promised
-    n.assign_id_and_return('node-id')
+    n.assign_id_and_return('node-id*')  # dns'ified
     assert n.outputs['scalar_out'].sdk_type.to_flyte_literal_type() == primitives.Integer.to_flyte_literal_type()
     assert n.outputs['scalar_out'].var == 'scalar_out'
     assert n.outputs['scalar_out'].node_id == 'node-id'
 
     assert n.outputs['nested_out'].sdk_type.to_flyte_literal_type() == \
-        containers.List(containers.List(primitives.Integer)).to_flyte_literal_type()
+           containers.List(containers.List(primitives.Integer)).to_flyte_literal_type()
     assert n.outputs['nested_out'].var == 'nested_out'
     assert n.outputs['nested_out'].node_id == 'node-id'
-    """
+
+
+def test_blah():
+    @inputs(a=primitives.Integer)
+    @outputs(b=primitives.Integer)
+    @python_task()
+    def my_task(wf_params, a, b):
+        b.set(a + 1)
+
+    my_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, 'project', 'domain', 'my_task', 'version')
+
+    required_input = promise.Input('required', primitives.Integer)
+
+    n1 = my_task(a=required_input).assign_id_and_return('n1')
+
+    n_start = nodes.SdkNode(
+        'start-node',
+        [],
+        [
+            _literals.Binding(
+                'a',
+                interface.BindingData.from_python_std(_types.Types.Integer.to_flyte_literal_type(), 3)
+            )
+        ],
+        None,
+        sdk_task=my_task,
+        sdk_workflow=None,
+        sdk_launch_plan=None,
+        sdk_branch=None
+    )
+
+    non_system_nodes = workflow.SdkWorkflow.get_non_system_nodes([n1, n_start])
+    assert len(non_system_nodes) == 1
+    assert non_system_nodes[0].id == 'n1'

@@ -57,6 +57,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
             task_type,
             discovery_version,
             retries,
+            interruptible,
             deprecated,
             discoverable,
             timeout,
@@ -69,6 +70,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
         :param Text task_type: string describing the task type
         :param Text discovery_version: string describing the version for task discovery purposes
         :param int retries: Number of retries to attempt
+        :param bool interruptible: Whether or not task is interruptible
         :param Text deprecated:
         :param bool discoverable:
         :param datetime.timedelta timeout:
@@ -92,6 +94,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
             task_type,
             discovery_version,
             retries,
+            interruptible,
             deprecated,
             "",
             "",

@@ -1,11 +1,15 @@
 from __future__ import absolute_import
 
 import abc as _abc
+import logging as _logging
+
 import six as _six
 from sortedcontainers import SortedDict as _SortedDict
 
-from flytekit.common import sdk_bases as _sdk_bases, promise as _promise
+from flytekit.common import constants as _constants
+from flytekit.common import sdk_bases as _sdk_bases, promise as _promise, component_nodes as _component_nodes
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
+from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.mixins import hash as _hash_mixin, artifact as _artifact_mixin
 from flytekit.common.tasks import executions as _task_executions
 from flytekit.common.types import helpers as _type_helpers
@@ -59,7 +63,7 @@ class ParameterMapper(_six.with_metaclass(_common_models.FlyteABCMeta, _SortedDi
 
     def __getattr__(self, key):
         if key == 'iteritems' and hasattr(super(ParameterMapper, self), 'items'):
-           return super(ParameterMapper, self).items
+            return super(ParameterMapper, self).items
         if hasattr(super(ParameterMapper, self), key):
             return getattr(super(ParameterMapper, self), key)
         if key not in self:
@@ -86,6 +90,7 @@ class OutputParameterMapper(ParameterMapper):
     """
     This subclass of ParameterMapper is used to represent outputs for a given node.
     """
+
     def _return_mapping_object(self, sdk_node, sdk_type, name):
         """
         :param flytekit.common.nodes.Node sdk_node:
@@ -95,62 +100,7 @@ class OutputParameterMapper(ParameterMapper):
         return _promise.NodeOutput(sdk_node, sdk_type, name)
 
 
-class SdkTaskNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_model.TaskNode)):
-
-    def __init__(self, sdk_task):
-        """
-        :param flytekit.common.tasks.task.SdkTask sdk_task:
-        """
-        self._sdk_task = sdk_task
-        super(SdkTaskNode, self).__init__(None)
-
-    @property
-    def reference_id(self):
-        """
-        A globally unique identifier for the task.
-        :rtype: flytekit.models.core.identifier.Identifier
-        """
-        return self._sdk_task.id
-
-    @classmethod
-    def promote_from_model(cls, base_model):
-        # TODO: Hydrate using identifier and querying the engine
-        pass
-
-
-class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_model.WorkflowNode)):
-    def __init__(self, sdk_workflow=None, sdk_launch_plan=None):
-        """
-        :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
-        :param flytekit.common.launch_plan.SdkRunnableLaunchPlan sdk_launch_plan:
-        """
-        self._sdk_workflow = sdk_workflow
-        self._sdk_launch_plan = sdk_launch_plan
-        super(SdkWorkflowNode, self).__init__()
-
-    @property
-    def launchplan_ref(self):
-        """
-        [Optional] A globally unique identifier for the launch plan.  Should map to Admin.
-        :rtype: flytekit.models.core.identifier.Identifier
-        """
-        return self._sdk_launch_plan.id if self._sdk_launch_plan else None
-
-    @property
-    def sub_workflow_ref(self):
-        """
-        [Optional] Reference to a subworkflow, that should be defined with the compiler context.
-        :rtype: flytekit.models.core.identifier.Identifier
-        """
-        return self._sdk_workflow.id if self._sdk_workflow else None
-
-    @classmethod
-    def promote_from_model(cls, base_model):
-        # TODO: Hydrate using identifier and querying the engine
-        pass
-
-
-class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashOnReferenceMixin, _workflow_model.Node)):
+class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOnReferenceMixin, _workflow_model.Node)):
 
     def __init__(
             self,
@@ -162,7 +112,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashO
             sdk_workflow=None,
             sdk_launch_plan=None,
             sdk_branch=None
-            ):
+    ):
         """
         :param Text id: A workflow-level unique identifier that identifies this node in the workflow. "inputs" and
             "outputs" are reserved node ids that cannot be used by other nodes.
@@ -175,7 +125,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashO
         :param flytekit.common.tasks.task.SdkTask sdk_task: The task to execute in this
             node.
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow: The workflow to execute in this node.
-        :param flytekit.common.launch_plan.SdkRunnableLaunchPlan sdk_launch_plan: The launch plan to execute in this
+        :param flytekit.common.launch_plan.SdkLaunchPlan sdk_launch_plan: The launch plan to execute in this
         node.
         :param TODO sdk_branch: TODO
         """
@@ -193,9 +143,9 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashO
 
         workflow_node = None
         if sdk_workflow is not None:
-            workflow_node = SdkWorkflowNode(sdk_workflow=sdk_workflow)
+            workflow_node = _component_nodes.SdkWorkflowNode(sdk_workflow=sdk_workflow)
         elif sdk_launch_plan is not None:
-            workflow_node = SdkWorkflowNode(sdk_launch_plan=sdk_launch_plan)
+            workflow_node = _component_nodes.SdkWorkflowNode(sdk_launch_plan=sdk_launch_plan)
 
         super(SdkNode, self).__init__(
             id=_dnsify(id) if id else None,
@@ -203,7 +153,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashO
             inputs=bindings,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],  # TODO: Are aliases a thing in SDK nodes
-            task_node=SdkTaskNode(sdk_task) if sdk_task else None,
+            task_node=_component_nodes.SdkTaskNode(sdk_task) if sdk_task else None,
             workflow_node=workflow_node,
             branch_node=sdk_branch.target if sdk_branch else None
         )
@@ -216,13 +166,67 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashO
         return self._executable_sdk_object
 
     @classmethod
-    def promote_from_model(cls, model):
+    def promote_from_model(cls, model, sub_workflows, tasks):
         """
         :param flytekit.models.core.workflow.Node model:
+        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.core.workflow.WorkflowTemplate]
+            sub_workflows:
+        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.task.TaskTemplate] tasks: If specified,
+            these task templates will be passed to the SdkTaskNode promote_from_model call, and used
+            instead of fetching from Admin.
         :rtype: SdkNode
         """
-        raise _user_exceptions.FlyteAssertion("An SDK node cannot be instantiated merely from a data model object "
-                                              "because it must be contextualized within a workflow.")
+        id = model.id
+        # This should never be called
+        if id == _constants.START_NODE_ID or id == _constants.END_NODE_ID:
+            _logging.warning("Should not call promote from model on a start node or end node {}".format(model))
+            return None
+
+        sdk_task_node, sdk_workflow_node = None, None
+        if model.task_node is not None:
+            sdk_task_node = _component_nodes.SdkTaskNode.promote_from_model(model.task_node, tasks)
+        elif model.workflow_node is not None:
+            sdk_workflow_node = _component_nodes.SdkWorkflowNode.promote_from_model(
+                model.workflow_node, sub_workflows, tasks)
+        else:
+            raise _system_exceptions.FlyteSystemException("Bad Node model, neither task nor workflow detected")
+
+        # When WorkflowTemplate models (containing node models) are returned by Admin, they've been compiled with a
+        # start node.  In order to make the promoted SdkWorkflow look the same, we strip the start-node text back out.
+        for i in model.inputs:
+            if i.binding.promise is not None and i.binding.promise.node_id == _constants.START_NODE_ID:
+                i.binding.promise._node_id = _constants.GLOBAL_INPUT_NODE_ID
+
+        if sdk_task_node is not None:
+            return cls(
+                id=id,
+                upstream_nodes=[],  # set downstream, model doesn't contain this information
+                bindings=model.inputs,
+                metadata=model.metadata,
+                sdk_task=sdk_task_node.sdk_task,
+            )
+        elif sdk_workflow_node is not None:
+            if sdk_workflow_node.sdk_workflow is not None:
+                return cls(
+                    id=id,
+                    upstream_nodes=[],  # set downstream, model doesn't contain this information
+                    bindings=model.inputs,
+                    metadata=model.metadata,
+                    sdk_workflow=sdk_workflow_node.sdk_workflow,
+                )
+            elif sdk_workflow_node.sdk_launch_plan is not None:
+                return cls(
+                    id=id,
+                    upstream_nodes=[],  # set downstream, model doesn't contain this information
+                    bindings=model.inputs,
+                    metadata=model.metadata,
+                    sdk_launch_plan=sdk_workflow_node.sdk_launch_plan,
+                )
+            else:
+                raise _system_exceptions.FlyteSystemException(
+                    "Bad SdkWorkflowNode model, both lp and workflow are None")
+        else:
+            raise _system_exceptions.FlyteSystemException("Bad SdkNode model, both task and workflow nodes are empty")
 
     @property
     def upstream_nodes(self):
@@ -256,6 +260,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashO
                 "workflow already?".format(id, self)
             )
         self._id = _dnsify(id) if id else None
+        self._metadata._name = id
         return self
 
     def with_overrides(self, *args, **kwargs):
@@ -276,6 +281,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType,  _hash_mixin.HashO
     def __rshift__(self, other):
         """
         Add a node downstream of this node without necessarily mapping outputs -> inputs.
+
         :param Node other: node to place downstream
         """
         if hash(self) not in set(hash(n) for n in other.upstream_nodes):

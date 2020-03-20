@@ -91,6 +91,10 @@ class SdkTask(
             custom=base_model.custom,
             container=base_model.container
         )
+        # Override the newly generated name if one exists in the base model
+        if not base_model.id.is_empty:
+            t._id = _identifier.Identifier.promote_from_model(base_model.id)
+
         return t
 
     def assign_custom_and_return(self, custom):
@@ -119,7 +123,7 @@ class SdkTask(
         # TODO: Remove DEADBEEF
         return _nodes.SdkNode(
             id=None,
-            metadata=_workflow_model.NodeMetadata("DEADBEEF", self.metadata.timeout, self.metadata.retries),
+            metadata=_workflow_model.NodeMetadata("DEADBEEF", self.metadata.timeout, self.metadata.retries, self.metadata.interruptible),
             bindings=sorted(bindings, key=lambda b: b.var),
             upstream_nodes=upstream_nodes,
             sdk_task=self
