@@ -28,6 +28,7 @@ class SdkPrestoTask(_base_task.SdkTask):
             catalog=None,
             schema=None,
             task_inputs=None,
+            interruptible=False,
             discoverable=False,
             discovery_version=None,
             retries=1,
@@ -61,6 +62,7 @@ class SdkPrestoTask(_base_task.SdkTask):
                 "python"),
             timeout or _datetime.timedelta(seconds=0),
             _literals.RetryStrategy(retries),
+            interruptible,
             discovery_version,
             "This is deprecated!"
         )
@@ -76,15 +78,15 @@ class SdkPrestoTask(_base_task.SdkTask):
         # parameters for caching purposes
         i = _interface.TypedInterface(
             {
-                "implicit_routing_group": _interface_model.Variable(
+                "__implicit_routing_group": _interface_model.Variable(
                     type=_types.LiteralType(simple=_types.SimpleType.STRING),
                     description="The routing group set as an implicit input"
                 ),
-                "implicit_catalog": _interface_model.Variable(
+                "__implicit_catalog": _interface_model.Variable(
                     type=_types.LiteralType(simple=_types.SimpleType.STRING),
                     description="The catalog set as an implicit input"
                 ),
-                "implicit_schema": _interface_model.Variable(
+                "__implicit_schema": _interface_model.Variable(
                     type=_types.LiteralType(simple=_types.SimpleType.STRING),
                     description="The schema set as an implicit input"
                 )
@@ -109,9 +111,9 @@ class SdkPrestoTask(_base_task.SdkTask):
 
     # Override method in order to set the implicit inputs
     def __call__(self, *args, **kwargs):
-        kwargs["implicit_routing_group"] = self.routing_group
-        kwargs["implicit_catalog"] = self.catalog
-        kwargs["implicit_schema"] = self.schema
+        kwargs["__implicit_routing_group"] = self.routing_group
+        kwargs["__implicit_catalog"] = self.catalog
+        kwargs["__implicit_schema"] = self.schema
 
         return super(SdkPrestoTask, self).__call__(
             *args, **kwargs
