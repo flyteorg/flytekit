@@ -10,9 +10,9 @@ from flytekit.models import (
 from flytekit.models import literals as _literals, types as _types, \
     task as _task_model
 
-from flytekit.common import interface
+from flytekit.common import interface as _interface
 import datetime as _datetime
-from flytekit.models.presto import PrestoQuery
+from flytekit.models import presto as _presto_models
 
 
 class SdkPrestoTask(_base_task.SdkTask):
@@ -51,6 +51,7 @@ class SdkPrestoTask(_base_task.SdkTask):
         self._routing_group = routing_group or ""
         self._catalog = catalog or ""
         self._schema = schema or ""
+        self._inputs = task_inputs
 
         metadata = _task_model.TaskMetadata(
             discoverable,
@@ -64,7 +65,7 @@ class SdkPrestoTask(_base_task.SdkTask):
             "This is deprecated!"
         )
 
-        presto_query = PrestoQuery(
+        presto_query = _presto_models.PrestoQuery(
             routing_group=routing_group or "",
             catalog=catalog or "",
             schema=schema or "",
@@ -73,7 +74,7 @@ class SdkPrestoTask(_base_task.SdkTask):
 
         # Here we set the routing_group, catalog, and schema as implicit
         # parameters for caching purposes
-        i = interface.TypedInterface(
+        i = _interface.TypedInterface(
             {
                 "implicit_routing_group": _interface_model.Variable(
                     type=_types.LiteralType(simple=_types.SimpleType.STRING),

@@ -36,6 +36,10 @@ def inputs(_task_template=None, **kwargs):
     """
 
     def apply_inputs_wrapper(task):
+        # Presto tasks are  not SdkRunnable, they're  just tasks but we still
+        # want to be able to apply  inputs. If there are ever more exceptions
+        # to this, the checking logic should get moved to a separate abstract
+        # base class or something.
         if not isinstance(task, _sdk_runnable_tasks.SdkRunnableTask) and not isinstance(task, presto_task.SdkPrestoTask):
             additional_msg = \
                 "Inputs can only be applied to a task. Did you forget the task decorator on method '{}.{}'?".format(
