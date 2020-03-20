@@ -164,7 +164,9 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         visited_nodes = set()
         generated_ids = {}
         effective_failure_ratio = self._allowed_failure_ratio or 0.0
-        # Question: Why are we iterating both upstream_nodes and yielded_sub_tasks?
+
+        # The reason we chain these two together is because we allow users to not have to explicitly "yield" the
+        # node. As long as the subtask/lp/subwf has an output that's referenced, it'll get picked up.
         for sub_task_node in _itertools.chain(yielded_sub_tasks, upstream_nodes):
             if sub_task_node in visited_nodes:
                 continue
@@ -255,7 +257,13 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             outputs=output_bindings,
             subworkflows=[])
 
+        djs_idl = dynamic_job_spec.to_flyte_idl()
         ipdb.set_trace()
+
+        with open("dj_spec.pb", "wb") as fh:
+            fh.write(djs_idl.SerializeToString())
+
+
         return dynamic_job_spec, generated_files
 
     @_exception_scopes.system_entry_point

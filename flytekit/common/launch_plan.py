@@ -231,6 +231,12 @@ class SdkLaunchPlan(
             "workflows directly."
         )
 
+    def __repr__(self):
+        """
+        :rtype: Text
+        """
+        return "SdkLaunchPlan(ID: {} Interface: {} WF ID: {})".format(self.id, self.interface, self.workflow_id)
+
 
 class SdkRunnableLaunchPlan(
     _hash_mixin.HashOnReferenceMixin,
@@ -274,13 +280,7 @@ class SdkRunnableLaunchPlan(
             auth = _launch_plan_models.Auth(assumable_iam_role=role)
 
         super(SdkRunnableLaunchPlan, self).__init__(
-            _identifier.Identifier(
-                _identifier_model.ResourceType.WORKFLOW,
-                _internal_config.PROJECT.get(),
-                _internal_config.DOMAIN.get(),
-                _uuid.uuid4().hex,
-                _internal_config.VERSION.get()
-            ),
+            None,
             _launch_plan_models.LaunchPlanMetadata(
                 schedule=schedule or _schedule_model.Schedule(''),
                 notifications=notifications or []
@@ -358,6 +358,15 @@ class SdkRunnableLaunchPlan(
         """
         return self._sdk_workflow.id
 
+    def _set_random_id(self):
+        self._id = _identifier.Identifier(
+            _identifier_model.ResourceType.LAUNCH_PLAN,
+            _internal_config.PROJECT.get(),
+            _internal_config.DOMAIN.get(),
+            _uuid.uuid4().hex,
+            _internal_config.VERSION.get()
+        )
+
     @_exception_scopes.system_entry_point
     def __call__(self, *args, **input_map):
         """
@@ -370,6 +379,11 @@ class SdkRunnableLaunchPlan(
                 "When adding a launchplan as a node in a workflow, all inputs must be specified with kwargs only.  We "
                 "detected {} positional args.".format(self, len(args))
             )
+
+        # In cases where the ID is None, set it to a random thing
+        # TODO: probably can remove this before this pr is merged
+        if self.id is None:
+            self._set_random_id()
 
         # Take the default values from the launch plan
         default_inputs = {
@@ -388,3 +402,9 @@ class SdkRunnableLaunchPlan(
             upstream_nodes=upstream_nodes,
             sdk_launch_plan=self
         )
+
+    def __repr__(self):
+        """
+        :rtype: Text
+        """
+        return "SdkRunnableLaunchPlan(ID: {} Interface: {} WF ID: {})".format(self.id, self.interface, self.workflow_id)

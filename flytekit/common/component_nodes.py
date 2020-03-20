@@ -67,7 +67,14 @@ class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_
         """
         self._sdk_workflow = sdk_workflow
         self._sdk_launch_plan = sdk_launch_plan
-        super(SdkWorkflowNode, self).__init__()
+
+    def __repr__(self):
+        """
+        :rtype: Text
+        """
+        if self.sdk_workflow is not None:
+            return "SdkWorkflowNode with workflow: {}".format(self.sdk_workflow)
+        return "SdkWorkflowNode with launch plan: {}".format(self.sdk_launch_plan)
 
     @property
     def launchplan_ref(self):
