@@ -101,7 +101,7 @@ class SdkPrestoTask(_base_task.SdkTask):
             {
                 # Set the schema for the Presto query as an output
                 "results": _interface_model.Variable(
-                    type=_types.LiteralType(schema=output_schema),
+                    type=_types.LiteralType(schema=output_schema.schema_type),
                     description="The schema for the Presto query"
                 )
             })
