@@ -23,4 +23,4 @@ class PrestoWorkflow(object):
 
     p_task = presto_task(ds=ds, routing_group=routing_group)
 
-    output_a = Output(p_task.outputs.results, sdk_type=Types.Schema())
+    output_a = Output(p_task.outputs.results, sdk_type=schema)

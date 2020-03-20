@@ -13,6 +13,8 @@ from flytekit.models import literals as _literals, types as _types, \
 from flytekit.common import interface as _interface
 import datetime as _datetime
 from flytekit.models import presto as _presto_models
+from flytekit.common.exceptions.user import \
+    FlyteValueException as _FlyteValueException
 
 
 class SdkPrestoTask(_base_task.SdkTask):
@@ -51,7 +53,12 @@ class SdkPrestoTask(_base_task.SdkTask):
         # parameters
         self._routing_group = routing_group or ""
         self._catalog = catalog or ""
-        self._schema = schema or ""
+
+        if schema is None:
+            raise _FlyteValueException(schema, "Schema must be specified")
+        else:
+            self._schema = schema
+
         self._inputs = task_inputs
 
         metadata = _task_model.TaskMetadata(
@@ -70,7 +77,7 @@ class SdkPrestoTask(_base_task.SdkTask):
         presto_query = _presto_models.PrestoQuery(
             routing_group=routing_group or "",
             catalog=catalog or "",
-            schema=schema or "",
+            schema=schema,
             statement=query
         )
 
