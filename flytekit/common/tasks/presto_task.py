@@ -54,13 +54,7 @@ class SdkPrestoTask(_base_task.SdkTask):
         # parameters
         self._routing_group = routing_group or ""
         self._catalog = catalog or ""
-
-        if schema is None:
-            raise _FlyteValueException(schema, "Schema must be specified")
-        else:
-            self._schema = schema
-
-        self._inputs = task_inputs
+        self._schema = schema or ""
 
         metadata = _task_model.TaskMetadata(
             discoverable,
