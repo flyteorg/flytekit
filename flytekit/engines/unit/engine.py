@@ -148,6 +148,16 @@ class ReturnOutputsTask(UnitTestEngineTask):
 
 class DynamicTask(ReturnOutputsTask):
 
+    def __init__(self, *args, **kwargs):
+        self._has_workflow_node = False
+        super(DynamicTask, self).__init__(*args, **kwargs)
+
+    def _transform_for_user_output(self, outputs):
+        if self.has_workflow_node:
+            # If a workflow node has been detected, then we skip any transformation
+            return outputs
+        return super(DynamicTask, self)._transform_for_user_output(outputs)
+
     def _execute_user_code(self, inputs):
         """
         :param flytekit.models.literals.LiteralMap inputs:
@@ -160,6 +170,11 @@ class DynamicTask(ReturnOutputsTask):
             tasks_map = {task.id: task for task in futures.tasks}
 
             for future_node in futures.nodes:
+                if future_node.workflow_node is not None:
+                    # TODO: implement proper unit testing for launchplan and subworkflow nodes somehow
+                    # For now, just return the output of the parent task
+                    self._has_workflow_node = True
+                    return results
                 task = tasks_map[future_node.task_node.reference_id]
                 if task.type == _sdk_constants.SdkTaskType.CONTAINER_ARRAY_TASK:
                     sub_task_output = DynamicTask.execute_array_task(future_node.id, task, results)
@@ -187,6 +202,13 @@ class DynamicTask(ReturnOutputsTask):
                 }
             )
         return results
+
+    @property
+    def has_workflow_node(self):
+        """
+        :rtype: bool
+        """
+        return self._has_workflow_node
 
     @staticmethod
     def execute_array_task(root_input_path, task, array_inputs):

@@ -170,7 +170,6 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         for sub_task_node in _itertools.chain(yielded_sub_tasks, upstream_nodes):
             if sub_task_node in visited_nodes:
                 continue
-            import ipdb; ipdb.set_trace()
             visited_nodes.add(sub_task_node)
 
             # Generate an id that's unique in the document (if the same task is used multiple times with
@@ -256,13 +255,6 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             nodes=nodes,
             outputs=output_bindings,
             subworkflows=[])
-
-        djs_idl = dynamic_job_spec.to_flyte_idl()
-        ipdb.set_trace()
-
-        with open("dj_spec.pb", "wb") as fh:
-            fh.write(djs_idl.SerializeToString())
-
 
         return dynamic_job_spec, generated_files
 
