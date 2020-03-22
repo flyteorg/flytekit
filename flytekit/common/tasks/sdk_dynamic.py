@@ -144,17 +144,6 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
                            for name, b in _six.iteritems(outputs_dict)]
         upstream_nodes = set(upstream_nodes)
 
-        """
-        @inputs(num=Types.Integer)
-        @outputs(out=Types.Integer)
-        @dynamic_task
-        def lp_yield_task(wf_params, num, out):
-            wf_params.logging.info("Running inner task... yielding a launchplan")
-            identity_lp_execution = id_lp(a=num)
-            yield identity_lp_execution
-            out.set(identity_lp_execution.outputs.task_output)
-        """
-
         generated_files = {}
         # Keeping future-tasks in original order. We don't use upstream_nodes exclusively because the parent task can
         # yield sub-tasks that it never uses to produce final outputs but they need to execute nevertheless.
