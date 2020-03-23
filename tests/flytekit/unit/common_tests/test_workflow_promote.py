@@ -181,36 +181,36 @@ def get_compiled_workflow_closure():
     return _compiler_model.CompiledWorkflowClosure.from_flyte_idl(cwc_pb)
 
 
-# def test_subworkflow_promote():
-#     cwc = get_compiled_workflow_closure()
-#     primary = cwc.primary
-#     sub_workflow_map = {sw.template.id: sw.template for sw in cwc.sub_workflows}
-#     task_map = {t.template.id: t.template for t in cwc.tasks}
-#     promoted_wf = _workflow_common.SdkWorkflow.promote_from_model(primary.template, sub_workflow_map, task_map)
+def test_subworkflow_promote():
+    cwc = get_compiled_workflow_closure()
+    primary = cwc.primary
+    sub_workflow_map = {sw.template.id: sw.template for sw in cwc.sub_workflows}
+    task_map = {t.template.id: t.template for t in cwc.tasks}
+    promoted_wf = _workflow_common.SdkWorkflow.promote_from_model(primary.template, sub_workflow_map, task_map)
 
-#     # This file that the promoted_wf reads contains the compiled workflow closure protobuf retrieved from Admin
-#     # after registering a workflow that basically looks like the one below.
+    # This file that the promoted_wf reads contains the compiled workflow closure protobuf retrieved from Admin
+    # after registering a workflow that basically looks like the one below.
 
-#     @inputs(num=Types.Integer)
-#     @outputs(out=Types.Integer)
-#     @python_task
-#     def inner_task(wf_params, num, out):
-#         wf_params.logging.info("Running inner task... setting output to input")
-#         out.set(num)
+    @inputs(num=Types.Integer)
+    @outputs(out=Types.Integer)
+    @python_task
+    def inner_task(wf_params, num, out):
+        wf_params.logging.info("Running inner task... setting output to input")
+        out.set(num)
 
-#     @workflow_class()
-#     class IdentityWorkflow(object):
-#         a = Input(Types.Integer, default=5, help="Input for inner workflow")
-#         odd_nums_task = inner_task(num=a)
-#         task_output = Output(odd_nums_task.outputs.out, sdk_type=Types.Integer)
+    @workflow_class()
+    class IdentityWorkflow(object):
+        a = Input(Types.Integer, default=5, help="Input for inner workflow")
+        odd_nums_task = inner_task(num=a)
+        task_output = Output(odd_nums_task.outputs.out, sdk_type=Types.Integer)
 
-#     @workflow_class()
-#     class StaticSubWorkflowCaller(object):
-#         outer_a = Input(Types.Integer, default=5, help="Input for inner workflow")
-#         identity_wf_execution = IdentityWorkflow(a=outer_a)
-#         wf_output = Output(identity_wf_execution.outputs.task_output, sdk_type=Types.Integer)
+    @workflow_class()
+    class StaticSubWorkflowCaller(object):
+        outer_a = Input(Types.Integer, default=5, help="Input for inner workflow")
+        identity_wf_execution = IdentityWorkflow(a=outer_a)
+        wf_output = Output(identity_wf_execution.outputs.task_output, sdk_type=Types.Integer)
 
-#     assert StaticSubWorkflowCaller.interface == promoted_wf.interface
-#     assert StaticSubWorkflowCaller.nodes[0].id == promoted_wf.nodes[0].id
-#     assert StaticSubWorkflowCaller.nodes[0].inputs == promoted_wf.nodes[0].inputs
-#     assert StaticSubWorkflowCaller.outputs == promoted_wf.outputs
+    assert StaticSubWorkflowCaller.interface == promoted_wf.interface
+    assert StaticSubWorkflowCaller.nodes[0].id == promoted_wf.nodes[0].id
+    assert StaticSubWorkflowCaller.nodes[0].inputs == promoted_wf.nodes[0].inputs
+    assert StaticSubWorkflowCaller.outputs == promoted_wf.outputs
