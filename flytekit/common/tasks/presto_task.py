@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 from google.protobuf.json_format import MessageToDict as _MessageToDict
+from flytekit import __version__
 
 from flytekit.common import constants as _constants
 from flytekit.common.tasks import task as _base_task
@@ -25,7 +26,7 @@ class SdkPrestoTask(_base_task.SdkTask):
 
     def __init__(
             self,
-            query,
+            statement,
             output_schema,
             routing_group=None,
             catalog=None,
@@ -38,7 +39,7 @@ class SdkPrestoTask(_base_task.SdkTask):
             timeout=None,
     ):
         """
-        :param Text query: Presto query specification
+        :param Text statement: Presto query specification
         :param flytekit.common.types.schema.Schema output_schema: Schema that represents that data queried from Presto
         :param Text routing_group: The routing group that a Presto query should be sent to for the given environment
         :param Text catalog: The catalog to set for the given Presto query
@@ -60,7 +61,7 @@ class SdkPrestoTask(_base_task.SdkTask):
             discoverable,
             # This needs to have the proper version reflected in it
             _task_model.RuntimeMetadata(
-                _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0",
+                _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__,
                 "python"),
             timeout or _datetime.timedelta(seconds=0),
             _literals.RetryStrategy(retries),
@@ -72,8 +73,8 @@ class SdkPrestoTask(_base_task.SdkTask):
         presto_query = _presto_models.PrestoQuery(
             routing_group=routing_group or "",
             catalog=catalog or "",
-            schema=schema,
-            statement=query
+            schema=schema or "",
+            statement=statement
         )
 
         # Here we set the routing_group, catalog, and schema as implicit
