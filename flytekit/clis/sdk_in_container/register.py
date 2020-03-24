@@ -3,12 +3,12 @@ from __future__ import absolute_import
 import click
 
 from flytekit.clis.sdk_in_container.constants import CTX_PROJECT, CTX_DOMAIN, CTX_TEST, CTX_PACKAGES, CTX_VERSION
-from flytekit.common import utils as _utils
-from flytekit.common.tasks import task as _task
+from flytekit.common import utils as _utils, workflow as _workflow, launch_plan as _launch_plan
 from flytekit.common.core import identifier as _identifier
+from flytekit.common.tasks import task as _task
 from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag, \
     IMAGE as _IMAGE
-from flytekit.models.core import workflow as _workflow_models, identifier as _identifier_model
+from flytekit.models.core import identifier as _identifier_model
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
 
@@ -40,6 +40,7 @@ def assign_registerable_identifiers(project, domain, pkgs, test, version):
     # k = value of dir(m), type str
     # o = object (e.g. SdkWorkflow)
     idx = 0
+    loaded_entities = []
     for m, k, o in iterate_registerable_entities_in_order(pkgs):
         if not hasattr(o, "_index"):
             o._index = idx
@@ -59,6 +60,14 @@ def assign_registerable_identifiers(project, domain, pkgs, test, version):
             name,
             version
         )
+        loaded_entities.append(o)
+
+    print("==================== Second Pass ====================")
+    for o in loaded_entities:
+        o.register(project, domain, o._id.name, version)
+        print("\no.ID {}\n   Instantiated in {}".format(o._id, o._instantiated_in))
+        if isinstance(o, _launch_plan.SdkLaunchPlan):
+            print("LP: {} workflow_id {}".format(o.id, o.workflow_id))
 
 
 
