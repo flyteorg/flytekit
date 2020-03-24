@@ -114,57 +114,57 @@ def get_workflow_template():
 # Commenting these tests out for now until we can find a way to ensure
 # these tests pass on all flyteidl changes.
 
-# @_patch("flytekit.common.tasks.task.SdkTask.fetch")
-# def test_basic_workflow_promote(mock_task_fetch):
-#     # This section defines a sample workflow from a user
-#     @_sdk_tasks.inputs(a=_Types.Integer)
-#     @_sdk_tasks.outputs(b=_Types.Integer, c=_Types.Integer)
-#     @_sdk_tasks.python_task()
-#     def demo_task_for_promote(wf_params, a, b, c):
-#         b.set(a + 1)
-#         c.set(a + 2)
+@_patch("flytekit.common.tasks.task.SdkTask.fetch")
+def test_basic_workflow_promote(mock_task_fetch):
+    # This section defines a sample workflow from a user
+    @_sdk_tasks.inputs(a=_Types.Integer)
+    @_sdk_tasks.outputs(b=_Types.Integer, c=_Types.Integer)
+    @_sdk_tasks.python_task()
+    def demo_task_for_promote(wf_params, a, b, c):
+        b.set(a + 1)
+        c.set(a + 2)
 
-#     @_sdk_workflow.workflow_class()
-#     class TestPromoteExampleWf(object):
-#         wf_input = _sdk_workflow.Input(_Types.Integer, required=True)
-#         my_task_node = demo_task_for_promote(a=wf_input)
-#         wf_output_b = _sdk_workflow.Output(my_task_node.outputs.b, sdk_type=_Types.Integer)
-#         wf_output_c = _sdk_workflow.Output(my_task_node.outputs.c, sdk_type=_Types.Integer)
+    @_sdk_workflow.workflow_class()
+    class TestPromoteExampleWf(object):
+        wf_input = _sdk_workflow.Input(_Types.Integer, required=True)
+        my_task_node = demo_task_for_promote(a=wf_input)
+        wf_output_b = _sdk_workflow.Output(my_task_node.outputs.b, sdk_type=_Types.Integer)
+        wf_output_c = _sdk_workflow.Output(my_task_node.outputs.c, sdk_type=_Types.Integer)
 
-#     # This section uses the TaskTemplate stored in Admin to promote back to an Sdk Workflow
-#     int_type = _types.LiteralType(_types.SimpleType.INTEGER)
-#     task_interface = _interface.TypedInterface(
-#         # inputs
-#         {'a': _interface.Variable(int_type, "description1")},
-#         # outputs
-#         {
-#             'b': _interface.Variable(int_type, "description2"),
-#             'c': _interface.Variable(int_type, "description3")
-#         }
-#     )
-#     # Since the promotion of a workflow requires retrieving the task from Admin, we mock the SdkTask to return
-#     task_template = _task_model.TaskTemplate(
-#         _identifier.Identifier(_identifier.ResourceType.TASK, "project", "domain",
-#                                "tests.flytekit.unit.common_tests.test_workflow_promote.demo_task_for_promote",
-#                                "version"),
-#         "python_container",
-#         get_sample_task_metadata(),
-#         task_interface,
-#         custom={},
-#         container=get_sample_container()
-#     )
-#     sdk_promoted_task = _task.SdkTask.promote_from_model(task_template)
-#     mock_task_fetch.return_value = sdk_promoted_task
-#     workflow_template = get_workflow_template()
-#     promoted_wf = _workflow_common.SdkWorkflow.promote_from_model(workflow_template)
+    # This section uses the TaskTemplate stored in Admin to promote back to an Sdk Workflow
+    int_type = _types.LiteralType(_types.SimpleType.INTEGER)
+    task_interface = _interface.TypedInterface(
+        # inputs
+        {'a': _interface.Variable(int_type, "description1")},
+        # outputs
+        {
+            'b': _interface.Variable(int_type, "description2"),
+            'c': _interface.Variable(int_type, "description3")
+        }
+    )
+    # Since the promotion of a workflow requires retrieving the task from Admin, we mock the SdkTask to return
+    task_template = _task_model.TaskTemplate(
+        _identifier.Identifier(_identifier.ResourceType.TASK, "project", "domain",
+                               "tests.flytekit.unit.common_tests.test_workflow_promote.demo_task_for_promote",
+                               "version"),
+        "python_container",
+        get_sample_task_metadata(),
+        task_interface,
+        custom={},
+        container=get_sample_container()
+    )
+    sdk_promoted_task = _task.SdkTask.promote_from_model(task_template)
+    mock_task_fetch.return_value = sdk_promoted_task
+    workflow_template = get_workflow_template()
+    promoted_wf = _workflow_common.SdkWorkflow.promote_from_model(workflow_template)
 
-#     assert promoted_wf.interface.inputs["wf_input"] == TestPromoteExampleWf.interface.inputs["wf_input"]
-#     assert promoted_wf.interface.outputs["wf_output_b"] == TestPromoteExampleWf.interface.outputs["wf_output_b"]
-#     assert promoted_wf.interface.outputs["wf_output_c"] == TestPromoteExampleWf.interface.outputs["wf_output_c"]
+    assert promoted_wf.interface.inputs["wf_input"] == TestPromoteExampleWf.interface.inputs["wf_input"]
+    assert promoted_wf.interface.outputs["wf_output_b"] == TestPromoteExampleWf.interface.outputs["wf_output_b"]
+    assert promoted_wf.interface.outputs["wf_output_c"] == TestPromoteExampleWf.interface.outputs["wf_output_c"]
 
-#     assert len(promoted_wf.nodes) == 1
-#     assert len(TestPromoteExampleWf.nodes) == 1
-#     assert promoted_wf.nodes[0].inputs[0] == TestPromoteExampleWf.nodes[0].inputs[0]
+    assert len(promoted_wf.nodes) == 1
+    assert len(TestPromoteExampleWf.nodes) == 1
+    assert promoted_wf.nodes[0].inputs[0] == TestPromoteExampleWf.nodes[0].inputs[0]
 
 
 def get_compiled_workflow_closure():
@@ -181,36 +181,36 @@ def get_compiled_workflow_closure():
     return _compiler_model.CompiledWorkflowClosure.from_flyte_idl(cwc_pb)
 
 
-# def test_subworkflow_promote():
-#     cwc = get_compiled_workflow_closure()
-#     primary = cwc.primary
-#     sub_workflow_map = {sw.template.id: sw.template for sw in cwc.sub_workflows}
-#     task_map = {t.template.id: t.template for t in cwc.tasks}
-#     promoted_wf = _workflow_common.SdkWorkflow.promote_from_model(primary.template, sub_workflow_map, task_map)
+def test_subworkflow_promote():
+    cwc = get_compiled_workflow_closure()
+    primary = cwc.primary
+    sub_workflow_map = {sw.template.id: sw.template for sw in cwc.sub_workflows}
+    task_map = {t.template.id: t.template for t in cwc.tasks}
+    promoted_wf = _workflow_common.SdkWorkflow.promote_from_model(primary.template, sub_workflow_map, task_map)
 
-#     # This file that the promoted_wf reads contains the compiled workflow closure protobuf retrieved from Admin
-#     # after registering a workflow that basically looks like the one below.
+    # This file that the promoted_wf reads contains the compiled workflow closure protobuf retrieved from Admin
+    # after registering a workflow that basically looks like the one below.
 
-#     @inputs(num=Types.Integer)
-#     @outputs(out=Types.Integer)
-#     @python_task
-#     def inner_task(wf_params, num, out):
-#         wf_params.logging.info("Running inner task... setting output to input")
-#         out.set(num)
+    @inputs(num=Types.Integer)
+    @outputs(out=Types.Integer)
+    @python_task
+    def inner_task(wf_params, num, out):
+        wf_params.logging.info("Running inner task... setting output to input")
+        out.set(num)
 
-#     @workflow_class()
-#     class IdentityWorkflow(object):
-#         a = Input(Types.Integer, default=5, help="Input for inner workflow")
-#         odd_nums_task = inner_task(num=a)
-#         task_output = Output(odd_nums_task.outputs.out, sdk_type=Types.Integer)
+    @workflow_class()
+    class IdentityWorkflow(object):
+        a = Input(Types.Integer, default=5, help="Input for inner workflow")
+        odd_nums_task = inner_task(num=a)
+        task_output = Output(odd_nums_task.outputs.out, sdk_type=Types.Integer)
 
-#     @workflow_class()
-#     class StaticSubWorkflowCaller(object):
-#         outer_a = Input(Types.Integer, default=5, help="Input for inner workflow")
-#         identity_wf_execution = IdentityWorkflow(a=outer_a)
-#         wf_output = Output(identity_wf_execution.outputs.task_output, sdk_type=Types.Integer)
+    @workflow_class()
+    class StaticSubWorkflowCaller(object):
+        outer_a = Input(Types.Integer, default=5, help="Input for inner workflow")
+        identity_wf_execution = IdentityWorkflow(a=outer_a)
+        wf_output = Output(identity_wf_execution.outputs.task_output, sdk_type=Types.Integer)
 
-#     assert StaticSubWorkflowCaller.interface == promoted_wf.interface
-#     assert StaticSubWorkflowCaller.nodes[0].id == promoted_wf.nodes[0].id
-#     assert StaticSubWorkflowCaller.nodes[0].inputs == promoted_wf.nodes[0].inputs
-#     assert StaticSubWorkflowCaller.outputs == promoted_wf.outputs
+    assert StaticSubWorkflowCaller.interface == promoted_wf.interface
+    assert StaticSubWorkflowCaller.nodes[0].id == promoted_wf.nodes[0].id
+    assert StaticSubWorkflowCaller.nodes[0].inputs == promoted_wf.nodes[0].inputs
+    assert StaticSubWorkflowCaller.outputs == promoted_wf.outputs
