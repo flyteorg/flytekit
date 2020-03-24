@@ -433,7 +433,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.execution_pb2.WorkflowExecutionGetRequest get_execution_data_request:
         :rtype: flyteidl.admin.execution_pb2.WorkflowExecutionGetDataResponse
         """
-        return self._stub.GetExecutionData(get_execution_data_request)
+        return self._stub.GetExecutionData(get_execution_data_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def list_executions_paginated(self, resource_list_request):
@@ -459,7 +459,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.execution_pb2.ExecutionRelaunchRequest relaunch_execution_request:
         :rtype: flyteidl.admin.execution_pb2.ExecutionCreateResponse
         """
-        return self._stub.RelaunchExecution(relaunch_execution_request)
+        return self._stub.RelaunchExecution(relaunch_execution_request, metadata=self._metadata)
 
     ####################################################################################################################
     #
@@ -483,7 +483,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.node_execution_pb2.NodeExecutionGetDataRequest get_node_execution_data_request:
         :rtype: flyteidl.admin.node_execution_pb2.NodeExecutionGetDataResponse
         """
-        return self._stub.GetNodeExecutionData(get_node_execution_data_request)
+        return self._stub.GetNodeExecutionData(get_node_execution_data_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def list_node_executions_paginated(self, node_execution_list_request):
@@ -523,7 +523,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.task_execution_pb2.TaskExecutionGetDataRequest get_task_execution_data_request:
         :rtype: flyteidl.admin.task_execution_pb2.TaskExecutionGetDataResponse
         """
-        return self._stub.GetTaskExecutionData(get_task_execution_data_request)
+        return self._stub.GetTaskExecutionData(get_task_execution_data_request, metadata=self._metadata)
 
     @_handle_rpc_error
     def list_task_executions_paginated(self, task_execution_list_request):
