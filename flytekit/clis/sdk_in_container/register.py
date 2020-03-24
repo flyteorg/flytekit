@@ -5,8 +5,10 @@ import click
 from flytekit.clis.sdk_in_container.constants import CTX_PROJECT, CTX_DOMAIN, CTX_TEST, CTX_PACKAGES, CTX_VERSION
 from flytekit.common import utils as _utils
 from flytekit.common.tasks import task as _task
+from flytekit.common.core import identifier as _identifier
 from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag, \
     IMAGE as _IMAGE
+from flytekit.models.core import workflow as _workflow_models, identifier as _identifier_model
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
 
@@ -30,6 +32,36 @@ def register_all(project, domain, pkgs, test, version):
             o.register(project, domain, name, version)
 
 
+def assign_registerable_identifiers(project, domain, pkgs, test, version):
+    click.echo('Assigning names for all Flyte entities with project {}, domain {}, version {} in {}'.format(
+        project, domain, version, pkgs))
+
+    # m = module (i.e. python file)
+    # k = value of dir(m), type str
+    # o = object (e.g. SdkWorkflow)
+    idx = 0
+    for m, k, o in iterate_registerable_entities_in_order(pkgs):
+        if not hasattr(o, "_index"):
+            o._index = idx
+        idx += 1
+        name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
+        # import ipdb; ipdb.set_trace()
+        # click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), name))
+        print("\nIdx: {} Module {}\n   K: {} Instantiated in {}".format(o._index, m, k, o._instantiated_in))
+        if o._id is not None:
+            print("   Current id: {}\n   New id: {}".format(o._id, name))
+        else:
+            print("   Current id: None New id: {}".format(name))
+        o._id = _identifier.Identifier(
+            _identifier_model.ResourceType.WORKFLOW,
+            project,
+            domain,
+            name,
+            version
+        )
+
+
+
 def register_tasks_only(project, domain, pkgs, test, version):
     if test:
         click.echo('Test switch enabled, not doing anything...')
@@ -46,6 +78,7 @@ def register_tasks_only(project, domain, pkgs, test, version):
         else:
             click.echo("Registering task {:20} {}".format("{}:".format(t.entity_type_text), name))
             t.register(project, domain, name, version)
+
 
 @click.group('register')
 # --pkgs on the register group is DEPRECATED, use same arg on pyflyte.main instead
@@ -96,7 +129,7 @@ def workflows(ctx, version=None):
     pkgs = ctx.obj[CTX_PACKAGES]
 
     version = version or ctx.obj[CTX_VERSION] or _look_up_version_from_image_tag(_IMAGE.get())
-    register_all(project, domain, pkgs, test, version)
+    assign_registerable_identifiers(project, domain, pkgs, test, version)
 
 
 register.add_command(tasks)

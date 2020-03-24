@@ -27,7 +27,7 @@ class SdkLaunchPlan(
 ):
     def __init__(self, *args, **kwargs):
         super(SdkLaunchPlan, self).__init__(*args, **kwargs)
-        # Question - why do we set this to None?  Basically wipes out the id.
+        # Why do we set this to None?
         self._id = None
 
         # The interface is not set explicitly unless fetched in an engine context
@@ -238,6 +238,8 @@ class SdkLaunchPlan(
         return "SdkLaunchPlan(ID: {} Interface: {} WF ID: {})".format(self.id, self.interface, self.workflow_id)
 
 
+# The difference between this and the SdkLaunchPlan class is that this runnable class is supposed to only be used for
+# launch plans loaded alongside the current Python interpreter.
 class SdkRunnableLaunchPlan(
     _hash_mixin.HashOnReferenceMixin,
     SdkLaunchPlan,
