@@ -50,11 +50,13 @@ def _map_job_index_to_child_index(local_input_dir, datadir, index):
 
 @_scopes.system_entry_point
 def _execute_task(task_module, task_name, inputs, output_prefix, test):
+    print('=========================== here 1 ======')
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with _utils.AutoDeletingTempDir('input_dir') as input_dir:
+            print('=========================== here 2 ======')
             # Load user code
-            task_module = _importlib.import_module(task_module)
-            task_def = getattr(task_module, task_name)
+            # task_module = _importlib.import_module(task_module)
+            # task_def2 = getattr(task_module, task_name)
 
             if not test:
                 local_inputs_file = input_dir.get_named_tempfile('inputs.pb')
@@ -82,6 +84,11 @@ def _execute_task(task_module, task_name, inputs, output_prefix, test):
 
                 _data_proxy.Data.get_data(inputs, local_inputs_file)
                 input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+                task_def = _engine_loader.get_engine().get_loaded_entity(_identifier_model.ResourceType.TASK,
+                                                                         task_module, task_name)
+                print('===============================')
+                print(_engine_loader.get_engine()._loaded_flyte_entities)
+                print('(((((((((((((((((((((((((((((((')
                 _engine_loader.get_engine().get_task(task_def).execute(
                     _literal_models.LiteralMap.from_flyte_idl(input_proto),
                     context={'output_prefix': output_prefix}
