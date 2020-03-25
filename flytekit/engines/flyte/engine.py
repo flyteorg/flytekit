@@ -22,6 +22,9 @@ from flytekit.models import task as _task_models, execution as _execution_models
     literals as _literals, common as _common_models
 from flytekit.models.admin import common as _common, workflow as _workflow_model
 from flytekit.models.core import errors as _error_models, identifier as _identifier
+from flytekit.tools.module_loader import find_and_assign_ids_to_registerable_entities
+from flytekit.models.core import identifier as _identifier_model
+from flytekit.common import utils as _utils
 
 
 class _FlyteClientManager(object):
@@ -43,6 +46,39 @@ class _FlyteClientManager(object):
 
 
 class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
+
+    def __init__(self):
+
+        self._loaded_flyte_entities = []
+        super(FlyteEngineFactory, self).__init__()
+
+    def load_entities(self):
+        if self._loaded_flyte_entities:
+            return self._loaded_flyte_entities
+        project = _internal_config.TASK_PROJECT.get() or _internal_config.PROJECT.get()
+        domain = _internal_config.TASK_DOMAIN.get() or _internal_config.DOMAIN.get()
+        version = _internal_config.TASK_VERSION.get() or _internal_config.VERSION.get()
+        pkgs = _sdk_config.WORKFLOW_PACKAGES.get()
+        self._loaded_flyte_entities = find_and_assign_ids_to_registerable_entities(project, domain, pkgs, version)
+
+    def get_loaded_entity(self, resource_type, module, name):
+        """
+        :param int resource_type: enum from flytekit.models.core.identifier.ResourceType
+        :param Text module:
+        :param Text name:
+        :rtype: flytekit.common.mixins.registerable.RegisterableEntity
+        """
+        if not self._loaded_flyte_entities:
+            self.load_entities()
+
+        target_name = _utils.fqdn(module, name, entity_type=resource_type)
+        for e in self._loaded_flyte_entities:
+            if e.resource_type == resource_type and e._id and e._id.name == target_name:
+                _logging.debug("Found resource type {} with name {}".format(resource_type, target_name))
+                return e
+
+        _logging.debug("Could not find resource type {} with name {}".format(resource_type, target_name))
+        return None
 
     def get_workflow(self, sdk_workflow):
         """

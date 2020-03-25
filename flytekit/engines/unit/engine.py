@@ -78,6 +78,9 @@ class UnitTestEngineFactory(_common_engine.BaseExecutionEngineFactory):
     def fetch_workflow(self, _):
         raise _user_exceptions.FlyteAssertion("Unit testing does not fetch real workflows.")
 
+    def get_loaded_entity(self, resource_type, module, name):
+        raise _user_exceptions.FlyteAssertion("Unit testing does not support generic loading of Flyte entities")
+
 
 class UnitTestEngineTask(_common_engine.BaseTaskExecutor):
     def execute(self, inputs, context=None):

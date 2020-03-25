@@ -54,7 +54,7 @@ def assign_registerable_identifiers(project, domain, pkgs, test, version):
         else:
             print("   Current id: None New id: {}".format(name))
         o._id = _identifier.Identifier(
-            _identifier_model.ResourceType.WORKFLOW,
+            o.resource_type,
             project,
             domain,
             name,
@@ -68,7 +68,6 @@ def assign_registerable_identifiers(project, domain, pkgs, test, version):
         print("\no.ID {}\n   Instantiated in {}".format(o._id, o._instantiated_in))
         if isinstance(o, _launch_plan.SdkLaunchPlan):
             print("LP: {} workflow_id {}".format(o.id, o.workflow_id))
-
 
 
 def register_tasks_only(project, domain, pkgs, test, version):

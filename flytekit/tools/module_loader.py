@@ -2,10 +2,16 @@ from __future__ import absolute_import
 
 import importlib
 import pkgutil
+import logging as _logging
+
 import six
+
+from flytekit.common import utils as _utils
+from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
+from flytekit.models.core import identifier as _identifier_model
 
 
 def iterate_modules(pkgs):
@@ -137,3 +143,38 @@ def iterate_registerable_entities_in_order(
                         detect_unreferenced_entities=detect_unreferenced_entities
                     ):
                 yield m, k, o2
+
+
+def find_and_assign_ids_to_registerable_entities(project, domain, pkgs, version):
+    """
+
+    :param Text project:
+    :param Text domain:
+    :param List[Text] pkgs:
+    :param Text version:
+    :rtype: List[flytekit.common.mixins.registerable.RegisterableEntity]
+    """
+
+    # m = module (i.e. python file)
+    # k = value of dir(m), type str
+    # o = object (e.g. SdkWorkflow)
+    _logging.debug("Searching {} packages for Flyte entities and assiging IDs with {}, {}, {}".format(
+        pkgs, project, domain, version
+    ))
+    loaded_entities = []
+    for m, k, o in iterate_registerable_entities_in_order(pkgs):
+        name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
+        # import ipdb; ipdb.set_trace()
+        # click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), name))
+        print("\nModule {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
+        o._id = _identifier.Identifier(
+            o.resource_type,
+            project,
+            domain,
+            name,
+            version
+        )
+        print("   New id: {}".format(o._id))
+        loaded_entities.append(o)
+
+    return loaded_entities
