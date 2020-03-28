@@ -197,7 +197,6 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
                 node = sub_task_node.assign_id_and_return(unique_node_id)
                 nodes.append(node)
                 for k, node_output in _six.iteritems(sub_task_node.outputs):
-                    print('K: {} Node output {} type is {}'.format(k, node_output, type(node_output)))
                     if not node_output.sdk_node.id:
                         node_output.sdk_node.assign_id_and_return(node.id)
 

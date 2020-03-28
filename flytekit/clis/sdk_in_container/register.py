@@ -46,13 +46,8 @@ def assign_registerable_identifiers(project, domain, pkgs, test, version):
             o._index = idx
         idx += 1
         name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
-        # import ipdb; ipdb.set_trace()
         # click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), name))
         print("\nIdx: {} Module {}\n   K: {} Instantiated in {}".format(o._index, m, k, o._instantiated_in))
-        if o._id is not None:
-            print("   Current id: {}\n   New id: {}".format(o._id, name))
-        else:
-            print("   Current id: None New id: {}".format(name))
         o._id = _identifier.Identifier(
             o.resource_type,
             project,
