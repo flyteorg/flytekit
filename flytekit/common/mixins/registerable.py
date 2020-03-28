@@ -6,7 +6,7 @@ import importlib as _importlib
 import logging as _logging
 
 from flytekit.common import sdk_bases as _sdk_bases
-
+from flytekit.common.exceptions import system as _system_exceptions
 
 class _InstanceTracker(_sdk_bases.ExtendedSdkType):
     """
@@ -100,7 +100,26 @@ class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
         This function is a bit of trickster Python code that goes hand in hand with the _InstanceTracker metaclass
         defined above.
 
-        The issue this solves is
+        For instance, if a user has code that looks like this:
+
+            from some.other.module import wf
+            my_launch_plan = wf.create_launch_plan()
+
+            @dynamic_task
+            def sample_task(wf_params):
+                yield my_launch_plan()
+
+        This code means that we should have a launch plan with a name ending in "my_launch_plan", since that is the
+        name of the variable that the created launch plan gets assigned to. That is also the name that the launch plan
+        would be registered with.
+
+        However, when the create_launch_plan() function runs, the Python interpreter has no idea where the created
+        object will be assigned to. It has no idea that the output of the create_launch_plan call is to be paired up
+        with a variable named "my_launch_plan". This function basically does this after the fact. Leveraging the
+        _instantiated_in field provided by the _InstanceTracker class above, this code will re-import the
+        module (ie Python file) that the object is in. Since it's already loaded, it's just retrieved from memory.
+        It then scans all objects in the module, and when an object match is found, it knows it's found the right
+        variable name.
         """
         _logging.debug("Running name auto assign")
         m = _importlib.import_module(self.instantiated_in)
@@ -111,5 +130,5 @@ class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
                 self._platform_valid_name = "{}.{}".format(self.instantiated_in, k)
                 return
 
-        _logging.warning("Could not auto-assign name")
-        # Maybe raise exception
+        _logging.error("Could not auto-assign name")
+        raise _system_exceptions.FlyteSystemException("Error looking for object while auto-assigning name.")

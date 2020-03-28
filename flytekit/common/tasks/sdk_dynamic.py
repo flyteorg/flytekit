@@ -158,6 +158,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         generated_ids = {}
         effective_failure_ratio = self._allowed_failure_ratio or 0.0
 
+        # TODO: This function needs to be cleaned up.
         # The reason we chain these two together is because we allow users to not have to explicitly "yield" the
         # node. As long as the subtask/lp/subwf has an output that's referenced, it'll get picked up.
         for sub_task_node in _itertools.chain(yielded_sub_tasks, upstream_nodes):
@@ -166,8 +167,8 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             visited_nodes.add(sub_task_node)
             executable = sub_task_node.executable_sdk_object
 
-            # If the executable object that we're dealing with is registerable (ie, either an SdkLaunchPlan or an
-            # SdkWorkflow), then it should have the ability to give itself a name.  After assigning itself the name,
+            # If the executable object that we're dealing with is registerable (ie, either an SdkRunnableLaunchPlan or
+            # an SdkWorkflow), then it should have the ability to give itself a name.  After assigning itself the name,
             # also make sure the id is properly set according to current config values.
             if isinstance(executable, _registerable.RegisterableEntity):
                 executable.auto_assign_name()
