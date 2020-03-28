@@ -15,7 +15,6 @@ from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces import random as _flyte_random
 from flytekit.models import literals as _literal_models
-from flytekit.models.core import identifier as _identifier_model
 
 
 def _compute_array_job_index():

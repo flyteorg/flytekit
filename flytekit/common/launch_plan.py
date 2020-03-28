@@ -389,15 +389,6 @@ class SdkRunnableLaunchPlan(
         """
         return self._sdk_workflow.id
 
-    def _set_random_id(self):
-        self._id = _identifier.Identifier(
-            _identifier_model.ResourceType.LAUNCH_PLAN,
-            _internal_config.PROJECT.get(),
-            _internal_config.DOMAIN.get(),
-            _uuid.uuid4().hex,
-            _internal_config.VERSION.get()
-        )
-
     def __repr__(self):
         """
         :rtype: Text
