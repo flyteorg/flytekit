@@ -268,16 +268,6 @@ class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta
     """
 
     @_abc.abstractmethod
-    def get_loaded_entity(self, resource_type, module, name):
-        """
-        :param flytekit.models.core.identifier.ResourceType resource_type:
-        :param Text task_module:
-        :param Text task_name:
-        :rtype: flytekit.common.mixins.registerable.RegisterableEntity
-        """
-        pass
-
-    @_abc.abstractmethod
     def get_workflow(self, sdk_workflow):
         """
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
