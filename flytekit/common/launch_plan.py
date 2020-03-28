@@ -281,6 +281,12 @@ class SdkRunnableLaunchPlan(
         if role:
             auth = _launch_plan_models.Auth(assumable_iam_role=role)
 
+        # The constructor for SdkLaunchPlan sets the id to None anyways so we don't bother passing in an ID. The ID
+        # should be set in one of three places,
+        #   1) When the object is registered (in the code above)
+        #   2) By the dynamic task code after this runnable object has already been __call__'ed. The SdkNode produced
+        #      maintains a link to this object and will set the ID according to the configuration variables present.
+        #   3) When SdkLaunchPlan.fetch() is run
         super(SdkRunnableLaunchPlan, self).__init__(
             None,
             _launch_plan_models.LaunchPlanMetadata(
@@ -299,7 +305,6 @@ class SdkRunnableLaunchPlan(
             annotations or _common_models.Annotations({}),
             auth,
         )
-        # even right here, self._id is None
         self._interface = _interface.TypedInterface(
             {k: v.var for k, v in _six.iteritems(default_inputs)},
             sdk_workflow.interface.outputs
@@ -381,11 +386,6 @@ class SdkRunnableLaunchPlan(
                 "When adding a launchplan as a node in a workflow, all inputs must be specified with kwargs only.  We "
                 "detected {} positional args.".format(self, len(args))
             )
-
-        # In cases where the ID is None, set it to a random thing
-        # TODO: probably can remove this before this pr is merged
-        if self.id is None:
-            self._set_random_id()
 
         # Take the default values from the launch plan
         default_inputs = {

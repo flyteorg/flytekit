@@ -8,11 +8,15 @@ import six as _six
 
 from flytekit.common import constants as _constants, interface as _interface, sdk_bases as _sdk_bases, \
     launch_plan as _launch_plan, workflow as _workflow
+from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import output as _task_output, sdk_runnable as _sdk_runnable
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import _dnsify
 from flytekit.models import literals as _literal_models, dynamic_job as _dynamic_job, array_job as _array_job
+from flytekit.models.core import identifier as _identifier_model
+from flytekit.common.mixins import registerable as _registerable
+from flytekit.configuration import platform as _platform_config, internal as _internal_config
 
 
 class PromiseOutputReference(_task_output.OutputReference):
@@ -160,6 +164,20 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             if sub_task_node in visited_nodes:
                 continue
             visited_nodes.add(sub_task_node)
+            executable = sub_task_node.executable_sdk_object
+
+            # If the executable object that we're dealing with is registerable (ie, either an SdkLaunchPlan or an
+            # SdkWorkflow), then it should have the ability to give itself a name.  After assigning itself the name,
+            # also make sure the id is properly set according to current config values.
+            if isinstance(executable, _registerable.RegisterableEntity):
+                executable.auto_assign_name()
+                executable._id = _identifier.Identifier(
+                    _identifier_model.ResourceType.LAUNCH_PLAN,
+                    _internal_config.TASK_PROJECT.get() or _internal_config.PROJECT.get(),
+                    _internal_config.TASK_DOMAIN.get() or _internal_config.DOMAIN.get(),
+                    executable.platform_valid_name,
+                    _internal_config.TASK_VERSION.get() or _internal_config.VERSION.get()
+                )
 
             # Generate an id that's unique in the document (if the same task is used multiple times with
             # different resources, executable_sdk_object.id will be the same but generated node_ids should not
@@ -175,6 +193,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             if isinstance(sub_task_node.executable_sdk_object, _launch_plan.SdkLaunchPlan) \
                     or isinstance(sub_task_node.executable_sdk_object, _workflow.SdkWorkflow):
 
+                sub_task_node.executable_sdk_object.auto_assign_name()  # add project, domain, version
                 node = sub_task_node.assign_id_and_return(unique_node_id)
                 nodes.append(node)
                 for k, node_output in _six.iteritems(sub_task_node.outputs):

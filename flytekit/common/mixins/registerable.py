@@ -2,6 +2,9 @@ from __future__ import absolute_import
 import abc as _abc
 import inspect as _inspect
 import six as _six
+import importlib as _importlib
+import logging as _logging
+
 from flytekit.common import sdk_bases as _sdk_bases
 
 
@@ -32,6 +35,10 @@ class _InstanceTracker(_sdk_bases.ExtendedSdkType):
 
 
 class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
+
+    def __init__(self, *args, **kwargs):
+        self._platform_valid_name = None
+        super(RegisterableEntity, self).__init__(*args, **kwargs)
 
     @_abc.abstractmethod
     def register(self, project, domain, name, version):
@@ -73,3 +80,36 @@ class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
         :rtype: Optional[Text]
         """
         return self._instantiated_in
+
+    @property
+    def has_valid_name(self):
+        """
+        :rtype: bool
+        """
+        return self._platform_valid_name is not None and self._platform_valid_name != ""
+
+    @property
+    def platform_valid_name(self):
+        """
+        :rtype: Text
+        """
+        return self._platform_valid_name
+
+    def auto_assign_name(self):
+        """
+        This function is a bit of trickster Python code that goes hand in hand with the _InstanceTracker metaclass
+        defined above.
+
+        The issue this solves is
+        """
+        _logging.debug("Running name auto assign")
+        m = _importlib.import_module(self.instantiated_in)
+
+        for k in dir(m):
+            if getattr(m, k) == self:
+                _logging.debug("Auto-assigning name to {}".format(k))
+                self._platform_valid_name = "{}.{}".format(self.instantiated_in, k)
+                return
+
+        _logging.warning("Could not auto-assign name")
+        # Maybe raise exception
