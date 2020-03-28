@@ -98,7 +98,7 @@ class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
     def auto_assign_name(self):
         """
         This function is a bit of trickster Python code that goes hand in hand with the _InstanceTracker metaclass
-        defined above.
+        defined above. Thanks @matthewphsmith for this bit of ingenuity.
 
         For instance, if a user has code that looks like this:
 
