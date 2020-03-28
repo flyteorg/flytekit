@@ -37,9 +37,9 @@ def register_all(project, domain, pkgs, test, version):
 
     for o in loaded_entities:
         if test:
-            click.echo("Would register {:20} {}".format("{}:".format(o.entity_type_text), name))
+            click.echo("Would register {:20} {}".format("{}:".format(o.entity_type_text), o.id.name))
         else:
-            click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), name))
+            click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), o.id.name))
             o.register(project, domain, o._id.name, version)
 
 
