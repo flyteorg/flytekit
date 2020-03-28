@@ -193,7 +193,6 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             if isinstance(sub_task_node.executable_sdk_object, _launch_plan.SdkLaunchPlan) \
                     or isinstance(sub_task_node.executable_sdk_object, _workflow.SdkWorkflow):
 
-                sub_task_node.executable_sdk_object.auto_assign_name()  # add project, domain, version
                 node = sub_task_node.assign_id_and_return(unique_node_id)
                 nodes.append(node)
                 for k, node_output in _six.iteritems(sub_task_node.outputs):
