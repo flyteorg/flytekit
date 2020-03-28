@@ -84,7 +84,7 @@ class SdkWorkflow(
     )
 ):
 
-    def __init__(self, inputs, outputs, nodes, id=None, metadata=None, interface=None, output_bindings=None):
+    def __init__(self, inputs, outputs, nodes, id=None, metadata=None, metadata_defaults=None, interface=None, output_bindings=None):
         """
         :param list[flytekit.common.promise.Input] inputs:
         :param list[Output] outputs:

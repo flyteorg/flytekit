@@ -6,12 +6,13 @@ import six as _six
 
 from flytekit.common import interface as _interfaces, nodes as _nodes, sdk_bases as _sdk_bases
 from flytekit.common.core import identifier as _identifier
-from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
+from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import common as _common_model, task as _task_model
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
+from flytekit.common.exceptions import user as _user_exceptions
 
 
 class SdkTask(
@@ -189,14 +190,7 @@ class SdkTask(
 
     @_exception_scopes.system_entry_point
     def add_inputs(self, inputs):
-        """
-        Adds the inputs to this task.  This can be called multiple times, but it will fail if an input with a given
-        name is added more than once, a name collides with an output, or if the name doesn't exist as an arg name in
-        the wrapped function.
-        :param dict[Text, flytekit.models.interface.Variable] inputs: names and variables
-        """
-        self._validate_inputs(inputs)
-        self.interface.inputs.update(inputs)
+        raise _user_exceptions.FlyteUserException("You can not add inputs to this task")
 
     @_exception_scopes.system_entry_point
     def add_outputs(self, outputs):
