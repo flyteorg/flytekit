@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import click
+import logging as _logging
 
 from flytekit.clis.sdk_in_container.constants import CTX_PROJECT, CTX_DOMAIN, CTX_TEST, CTX_PACKAGES, CTX_VERSION
 from flytekit.common import utils as _utils, workflow as _workflow, launch_plan as _launch_plan
@@ -15,39 +16,16 @@ from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 def register_all(project, domain, pkgs, test, version):
     if test:
         click.echo('Test switch enabled, not doing anything...')
-
     click.echo('Running task, workflow, and launch plan registration for {}, {}, {} with version {}'.format(
         project, domain, pkgs, version))
 
     # m = module (i.e. python file)
     # k = value of dir(m), type str
     # o = object (e.g. SdkWorkflow)
-    for m, k, o in iterate_registerable_entities_in_order(pkgs):
-        name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
-
-        if test:
-            click.echo("Would register {:20} {}".format("{}:".format(o.entity_type_text), name))
-        else:
-            click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), name))
-            o.register(project, domain, name, version)
-
-
-def assign_registerable_identifiers(project, domain, pkgs, test, version):
-    click.echo('Assigning names for all Flyte entities with project {}, domain {}, version {} in {}'.format(
-        project, domain, version, pkgs))
-
-    # m = module (i.e. python file)
-    # k = value of dir(m), type str
-    # o = object (e.g. SdkWorkflow)
-    idx = 0
     loaded_entities = []
     for m, k, o in iterate_registerable_entities_in_order(pkgs):
-        if not hasattr(o, "_index"):
-            o._index = idx
-        idx += 1
         name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
-        # click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), name))
-        print("\nIdx: {} Module {}\n   K: {} Instantiated in {}".format(o._index, m, k, o._instantiated_in))
+        _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
         o._id = _identifier.Identifier(
             o.resource_type,
             project,
@@ -57,12 +35,12 @@ def assign_registerable_identifiers(project, domain, pkgs, test, version):
         )
         loaded_entities.append(o)
 
-    print("==================== Second Pass ====================")
     for o in loaded_entities:
-        o.register(project, domain, o._id.name, version)
-        print("\no.ID {}\n   Instantiated in {}".format(o._id, o._instantiated_in))
-        if isinstance(o, _launch_plan.SdkLaunchPlan):
-            print("LP: {} workflow_id {}".format(o.id, o.workflow_id))
+        if test:
+            click.echo("Would register {:20} {}".format("{}:".format(o.entity_type_text), name))
+        else:
+            click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), name))
+            o.register(project, domain, o._id.name, version)
 
 
 def register_tasks_only(project, domain, pkgs, test, version):
@@ -132,7 +110,7 @@ def workflows(ctx, version=None):
     pkgs = ctx.obj[CTX_PACKAGES]
 
     version = version or ctx.obj[CTX_VERSION] or _look_up_version_from_image_tag(_IMAGE.get())
-    assign_registerable_identifiers(project, domain, pkgs, test, version)
+    register_all(project, domain, pkgs, test, version)
 
 
 register.add_command(tasks)
