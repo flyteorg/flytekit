@@ -44,7 +44,7 @@ def test_dynamic_launch_plan_yielding():
 
     launch_plan_node = dj_spec.nodes[0]
     node_id = launch_plan_node.id
-    assert node_id.startswith("lp")
+    assert "models-test-dynamic-wfs-id-lp" in node_id
     assert node_id.endswith("-0")
 
     # Assert that the output of the dynamic job spec is bound to the single node in the spec, the workflow node
