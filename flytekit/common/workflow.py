@@ -441,7 +441,7 @@ def _discover_workflow_components(workflow_class):
     return inputs, outputs, nodes
 
 
-def build_sdk_workflow_from_metaclass(metaclass, cls=None):
+def build_sdk_workflow_from_metaclass(metaclass, queuing_budget=None, cls=None):
     """
     :param T metaclass:
     :param cls: This is the class that will be instantiated from the inputs, outputs, and nodes.  This will be used
@@ -449,9 +449,10 @@ def build_sdk_workflow_from_metaclass(metaclass, cls=None):
     :rtype: SdkWorkflow
     """
     inputs, outputs, nodes = _discover_workflow_components(metaclass)
-
+    metadata = _workflow_models.WorkflowMetadata(queuing_budget) if queuing_budget else None
     return (cls or SdkWorkflow)(
         inputs=[i for i in sorted(inputs, key=lambda x: x.name)],
         outputs=[o for o in sorted(outputs, key=lambda x: x.name)],
-        nodes=[n for n in sorted(nodes, key=lambda x: x.id)]
+        nodes=[n for n in sorted(nodes, key=lambda x: x.id)],
+        metadata=metadata
     )

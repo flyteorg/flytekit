@@ -446,7 +446,7 @@ class WorkflowNode(_common.FlyteIdlEntity):
 
 class WorkflowMetadata(_common.FlyteIdlEntity):
 
-    def __init__(self, queuing_budget):
+    def __init__(self, queuing_budget=None):
         """
         Metadata for the workflow.
         """
@@ -464,7 +464,8 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.workflow_pb2.WorkflowMetadata
         """
         workflow_metadata = _core_workflow.WorkflowMetadata()
-        workflow_metadata.queuing_budget.FromTimedelta(self.queuing_budget)
+        if self._queuing_budget:
+            workflow_metadata.queuing_budget.FromTimedelta(self.queuing_budget)
         return workflow_metadata
 
     @classmethod
