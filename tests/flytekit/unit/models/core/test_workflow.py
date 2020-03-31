@@ -29,7 +29,7 @@ def test_alias():
 
 
 def test_workflow_metadata():
-    obj = _workflow.WorkflowMetadata()
+    obj = _workflow.WorkflowMetadata(queuing_budget=timedelta(seconds=10))
     obj2 = _workflow.WorkflowMetadata.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
 
