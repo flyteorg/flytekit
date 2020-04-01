@@ -191,9 +191,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             unique_node_id = _dnsify("{}-{}".format(safe_task_id, new_count))
 
             # Handling cases where the yielded nodes are launch plan or subworkflow nodes
-            if isinstance(sub_task_node.executable_sdk_object, _launch_plan.SdkLaunchPlan) \
-                    or isinstance(sub_task_node.executable_sdk_object, _workflow.SdkWorkflow):
-
+            if isinstance(sub_task_node.executable_sdk_object, (_launch_plan.SdkLaunchPlan, _workflow.SdkWorkflow)):
                 node = sub_task_node.assign_id_and_return(unique_node_id)
                 nodes.append(node)
                 for k, node_output in _six.iteritems(sub_task_node.outputs):
