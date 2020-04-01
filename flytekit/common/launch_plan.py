@@ -27,7 +27,7 @@ class SdkLaunchPlan(
 ):
     def __init__(self, *args, **kwargs):
         super(SdkLaunchPlan, self).__init__(*args, **kwargs)
-        # Why do we set this to None?
+        # Set all the attributes we expect this class to have
         self._id = None
 
         # The interface is not set explicitly unless fetched in an engine context
@@ -226,10 +226,9 @@ class SdkLaunchPlan(
 
         bindings, upstream_nodes = self.interface.create_bindings_for_inputs(default_inputs)
 
-        # TODO: Remove DEADBEEF
         return _nodes.SdkNode(
             id=None,
-            metadata=_workflow_models.NodeMetadata("DEADBEEF", _datetime.timedelta(), _literal_models.RetryStrategy(0)),
+            metadata=_workflow_models.NodeMetadata("", _datetime.timedelta(), _literal_models.RetryStrategy(0)),
             bindings=sorted(bindings, key=lambda b: b.var),
             upstream_nodes=upstream_nodes,
             sdk_launch_plan=self

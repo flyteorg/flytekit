@@ -2,16 +2,12 @@ from __future__ import absolute_import
 
 import importlib
 import pkgutil
-import logging as _logging
 
 import six
 
-from flytekit.common import utils as _utils
-from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
-from flytekit.models.core import identifier as _identifier_model
 
 
 def iterate_modules(pkgs):

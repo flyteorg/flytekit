@@ -167,16 +167,16 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             visited_nodes.add(sub_task_node)
             executable = sub_task_node.executable_sdk_object
 
-            # If the executable object that we're dealing with is registerable (ie, either an SdkRunnableLaunchPlan or
-            # an SdkWorkflow), then it should have the ability to give itself a name.  After assigning itself the name,
-            # also make sure the id is properly set according to current config values.
+            # If the executable object that we're dealing with is registerable (ie, SdkRunnableLaunchPlan, SdkWorkflow
+            # SdkTask, or SdkRunnableTask), then it should have the ability to give itself a name. After assigning
+            # itself the name, also make sure the id is properly set according to current config values.
             if isinstance(executable, _registerable.RegisterableEntity):
                 executable.auto_assign_name()
                 executable._id = _identifier.Identifier(
-                    _identifier_model.ResourceType.LAUNCH_PLAN,
+                    executable.resource_type,
                     _internal_config.TASK_PROJECT.get() or _internal_config.PROJECT.get(),
                     _internal_config.TASK_DOMAIN.get() or _internal_config.DOMAIN.get(),
-                    executable.platform_valid_name,
+                    executable._platform_valid_name,
                     _internal_config.TASK_VERSION.get() or _internal_config.VERSION.get()
                 )
 

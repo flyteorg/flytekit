@@ -88,13 +88,6 @@ class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
         """
         return self._platform_valid_name is not None and self._platform_valid_name != ""
 
-    @property
-    def platform_valid_name(self):
-        """
-        :rtype: Text
-        """
-        return self._platform_valid_name
-
     def auto_assign_name(self):
         """
         This function is a bit of trickster Python code that goes hand in hand with the _InstanceTracker metaclass
@@ -120,6 +113,18 @@ class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
         module (ie Python file) that the object is in. Since it's already loaded, it's just retrieved from memory.
         It then scans all objects in the module, and when an object match is found, it knows it's found the right
         variable name.
+
+        Just to drive the point home, this function is mostly needed for Launch Plans. Assuming that user code has:
+
+            @python_task
+            def some_task()
+
+        When Flytekit calls the module loader and loads the task, the name of the task is the name of the function
+        itself.  It's known at time of creation. In contrast, when
+
+            xyz = SomeWorflow.create_launch_plan()
+
+        is called, the name of the launch plan isn't known until after creation, it's not "SomeWorkflow", it's "xyz"
         """
         _logging.debug("Running name auto assign")
         m = _importlib.import_module(self.instantiated_in)
