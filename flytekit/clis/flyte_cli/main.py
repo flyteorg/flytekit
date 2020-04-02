@@ -792,7 +792,8 @@ def update_workflow(state, urn, host, insecure):
     """
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
-    _click.echo(client.update_workflow(_identifier.Identifier.from_python_std(urn), state))
+    client.update_workflow(_identifier.Identifier.from_python_std(urn), state)
+    _click.echo("Successfully updated {}".format(_tt(urn)))
 
 
 
