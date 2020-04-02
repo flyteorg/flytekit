@@ -7,6 +7,8 @@ import logging as _logging
 
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.common import utils as _utils
+
 
 class _InstanceTracker(_sdk_bases.ExtendedSdkType):
     """
@@ -131,8 +133,8 @@ class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
 
         for k in dir(m):
             if getattr(m, k) == self:
-                _logging.debug("Auto-assigning name to {}".format(k))
-                self._platform_valid_name = "{}.{}".format(self.instantiated_in, k)
+                self._platform_valid_name = _utils.fqdn(m.__name__, k, entity_type=self.resource_type)
+                _logging.debug("Auto-assigning name to {}".format(self._platform_valid_name))
                 return
 
         _logging.error("Could not auto-assign name")
