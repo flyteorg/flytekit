@@ -155,6 +155,9 @@ class DynamicTask(ReturnOutputsTask):
     def _transform_for_user_output(self, outputs):
         if self.has_workflow_node:
             # If a workflow node has been detected, then we skip any transformation
+            # This is to support the early termination behavior of the unit test engine when it comes to dynamic tasks
+            # that produce launch plan or subworkflow nodes.
+            # See the warning message in the code below for additional information
             return outputs
         return super(DynamicTask, self)._transform_for_user_output(outputs)
 
@@ -172,6 +175,10 @@ class DynamicTask(ReturnOutputsTask):
             for future_node in futures.nodes:
                 if future_node.workflow_node is not None:
                     # TODO: implement proper unit testing for launchplan and subworkflow nodes somehow
+                    _logging.warning("A workflow node has been detected in the output of the dynamic task. The "
+                                     "Flytekit unit test engine is incomplete for dynamic tasks that return launch "
+                                     "plans or subworkflows. The generated dynamic job spec will be returned but "
+                                     "they will not be run.")
                     # For now, just return the output of the parent task
                     self._has_workflow_node = True
                     return results
