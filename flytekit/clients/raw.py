@@ -251,16 +251,6 @@ class RawSynchronousFlyteClient(object):
         return self._stub.CreateWorkflow(workflow_create_request, metadata=self._metadata)
 
     @_handle_rpc_error
-    def update_workflow(self, update_request):
-        """
-        Allows updates to a workflow for a given identifier.  Currently, only the workflow state can updated for
-        ACTIVE and ARCHIVED values.
-        :param flyteidl.admin.workflow_pb2.WorkflowUpdateRequest update_request:
-        :rtype: flyteidl.admin.workflow_pb2.WorkflowPlanUpdateResponse
-        """
-        return self._stub.UpdateWorkflow(update_request, metadata=self._metadata)
-
-    @_handle_rpc_error
     def list_workflow_ids_paginated(self, identifier_list_request):
         """
         This returns a page of identifiers for the workflows for a given project and domain. Filters can also be

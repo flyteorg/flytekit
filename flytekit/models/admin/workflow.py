@@ -129,21 +129,3 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         return cls(
             compiled_workflow=_compiler_models.CompiledWorkflowClosure.from_flyte_idl(p.compiled_workflow)
         )
-
-
-class WorkflowState(object):
-    ACTIVE = _admin_workflow.WORKFLOW_ACTIVE
-    ARCHIVED = _admin_workflow.WORKFLOW_ARCHIVED
-
-    @classmethod
-    def enum_to_string(cls, val):
-        """
-        :param int val:
-        :rtype: Text
-        """
-        if val == cls.ACTIVE:
-            return "WORKFLOW_ACTIVE"
-        elif val == cls.ARCHIVED:
-            return "WORKFLOW_ARCHIVED"
-        else:
-            return "<UNKNOWN>"
