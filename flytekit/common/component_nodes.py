@@ -67,10 +67,9 @@ class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_
         """
         self._sdk_workflow = sdk_workflow
         self._sdk_launch_plan = sdk_launch_plan
-        if sdk_workflow:
-            super(SdkWorkflowNode, self).__init__(sub_workflow_ref=sdk_workflow.id)
-        elif sdk_launch_plan:
-            super(SdkWorkflowNode, self).__init__(launchplan_ref=sdk_launch_plan.id)
+        sdk_wf_id = sdk_workflow.id if sdk_workflow else None
+        sdk_lp_id = sdk_launch_plan.id if sdk_launch_plan else None
+        super(SdkWorkflowNode, self).__init__(launchplan_ref=sdk_lp_id, sub_workflow_ref=sdk_wf_id)
 
     def __repr__(self):
         """

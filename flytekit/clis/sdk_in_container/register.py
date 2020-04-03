@@ -1,12 +1,9 @@
 from __future__ import absolute_import
 
-import logging as _logging
-
 import click
 
 from flytekit.clis.sdk_in_container.constants import CTX_PROJECT, CTX_DOMAIN, CTX_TEST, CTX_PACKAGES, CTX_VERSION
 from flytekit.common import utils as _utils
-from flytekit.common.core import identifier as _identifier
 from flytekit.common.tasks import task as _task
 from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag, \
     IMAGE as _IMAGE
@@ -16,31 +13,21 @@ from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 def register_all(project, domain, pkgs, test, version):
     if test:
         click.echo('Test switch enabled, not doing anything...')
+
     click.echo('Running task, workflow, and launch plan registration for {}, {}, {} with version {}'.format(
         project, domain, pkgs, version))
 
     # m = module (i.e. python file)
     # k = value of dir(m), type str
     # o = object (e.g. SdkWorkflow)
-    loaded_entities = []
     for m, k, o in iterate_registerable_entities_in_order(pkgs):
         name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
-        _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
-        o._id = _identifier.Identifier(
-            o.resource_type,
-            project,
-            domain,
-            name,
-            version
-        )
-        loaded_entities.append(o)
 
-    for o in loaded_entities:
         if test:
-            click.echo("Would register {:20} {}".format("{}:".format(o.entity_type_text), o.id.name))
+            click.echo("Would register {:20} {}".format("{}:".format(o.entity_type_text), name))
         else:
-            click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), o.id.name))
-            o.register(project, domain, o.id.name, version)
+            click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), name))
+            o.register(project, domain, name, version)
 
 
 def register_tasks_only(project, domain, pkgs, test, version):
@@ -59,7 +46,6 @@ def register_tasks_only(project, domain, pkgs, test, version):
         else:
             click.echo("Registering task {:20} {}".format("{}:".format(t.entity_type_text), name))
             t.register(project, domain, name, version)
-
 
 @click.group('register')
 # --pkgs on the register group is DEPRECATED, use same arg on pyflyte.main instead
