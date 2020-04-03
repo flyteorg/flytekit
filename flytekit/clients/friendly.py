@@ -329,7 +329,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             state = _workflow.WorkflowState.ACTIVE
         else:
             state = _workflow.WorkflowState.ARCHIVED
-        return super(SynchronousFlyteClient, self).update_workflow(
+        super(SynchronousFlyteClient, self).update_workflow(
             _workflow_pb2.WorkflowUpdateRequest(
                 id=id.to_flyte_idl(),
                 state=state,

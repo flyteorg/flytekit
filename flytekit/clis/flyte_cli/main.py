@@ -407,7 +407,7 @@ _workflow_state_choice = _click.option(
     "--state",
     type=_click.Choice(["active", "archived"]),
     required=True,
-    help="Whether or not to set a workflow as actively visible in the UI."
+    help="Whether or not to set a workflow as visible in the UI."
 )
 _sort_by_option = _click.option(
     "--sort-by",
