@@ -403,12 +403,6 @@ _state_choice = _click.option(
     required=True,
     help="Whether or not to set schedule as active."
 )
-_workflow_state_choice = _click.option(
-    "--state",
-    type=_click.Choice(["active", "archived"]),
-    required=True,
-    help="Whether or not to set a workflow as visible in the UI."
-)
 _sort_by_option = _click.option(
     "--sort-by",
     required=False,
@@ -778,23 +772,6 @@ def get_workflow(urn, host, insecure):
     _click.echo(client.get_workflow(_identifier.Identifier.from_python_std(urn)))
     # TODO: Print workflow pretty
     _click.echo("")
-
-
-@_flyte_cli.command('update-workflow', cls=_FlyteSubCommand)
-@_workflow_state_choice
-@_urn_option
-@_host_option
-@_insecure_option
-def update_workflow(state, urn, host, insecure):
-    """
-    Update the state of a certain version of a workflow identified by the URN in the form of
-    ``wf:<project>:<domain>:<workflow_name>:<version>``
-    """
-    _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
-    client.update_workflow(_identifier.Identifier.from_python_std(urn), state)
-    _click.echo("Successfully updated {}".format(_tt(urn)))
-
 
 
 ########################################################################################################################
