@@ -176,7 +176,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
                     executable.resource_type,
                     _internal_config.TASK_PROJECT.get() or _internal_config.PROJECT.get(),
                     _internal_config.TASK_DOMAIN.get() or _internal_config.DOMAIN.get(),
-                    executable._platform_valid_name,
+                    executable.platform_valid_name,
                     _internal_config.TASK_VERSION.get() or _internal_config.VERSION.get()
                 )
 

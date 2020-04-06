@@ -90,6 +90,13 @@ class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
         """
         return self._platform_valid_name is not None and self._platform_valid_name != ""
 
+    @property
+    def platform_valid_name(self):
+        """
+        :rtype: Text
+        """
+        return self._platform_valid_name
+
     def auto_assign_name(self):
         """
         This function is a bit of trickster Python code that goes hand in hand with the _InstanceTracker metaclass
