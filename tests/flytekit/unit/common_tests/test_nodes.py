@@ -3,11 +3,13 @@ from flytekit.common import nodes as _nodes, interface as _interface, component_
 from flytekit.models.core import workflow as _core_workflow_models, identifier as _identifier
 from flytekit.models import literals as _literals
 from flytekit.sdk import tasks as _tasks, types as _types, workflow as _workflow
+from flytekit.common.exceptions import system as _system_exceptions
+
 import datetime as _datetime
+import pytest as _pytest
 
 
 def test_sdk_node_from_task():
-
     @_tasks.inputs(a=_types.Types.Integer)
     @_tasks.outputs(b=_types.Types.Integer)
     @_tasks.python_task()
@@ -173,7 +175,6 @@ def test_sdk_node_from_task():
 
 
 def test_sdk_task_node():
-
     @_tasks.inputs(a=_types.Types.Integer)
     @_tasks.outputs(b=_types.Types.Integer)
     @_tasks.python_task()
@@ -247,7 +248,6 @@ def test_sdk_node_from_lp():
 
 
 def test_sdk_launch_plan_node():
-
     @_tasks.inputs(a=_types.Types.Integer)
     @_tasks.outputs(b=_types.Types.Integer)
     @_tasks.python_task()
@@ -281,3 +281,7 @@ def test_sdk_launch_plan_node():
     assert n.launchplan_ref.domain == 'new_domain'
     assert n.launchplan_ref.name == 'new_name'
     assert n.launchplan_ref.version == 'new_version'
+
+    # If you specify both, you should get an exception
+    with _pytest.raises(_system_exceptions.FlyteSystemException):
+        _component_nodes.SdkWorkflowNode(sdk_workflow=test_workflow, sdk_launch_plan=lp)

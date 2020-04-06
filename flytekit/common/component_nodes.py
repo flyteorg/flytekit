@@ -65,6 +65,11 @@ class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
         :param flytekit.common.launch_plan.SdkLaunchPlan sdk_launch_plan:
         """
+        if sdk_workflow and sdk_launch_plan:
+            raise _system_exceptions.FlyteSystemException("SdkWorkflowNode cannot be called with both a workflow and "
+                                                          "a launchplan specified, please pick one. WF: {} LP: {}",
+                                                          sdk_workflow, sdk_launch_plan)
+
         self._sdk_workflow = sdk_workflow
         self._sdk_launch_plan = sdk_launch_plan
         sdk_wf_id = sdk_workflow.id if sdk_workflow else None
