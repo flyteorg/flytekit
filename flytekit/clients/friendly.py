@@ -303,13 +303,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
     def get_workflow(self, id):
         """
-        This returns a single workflow for a given ID.
+        This returns a single task for a given ID.
 
         :param flytekit.models.core.identifier.Identifier id: The ID representing a given task.
         :raises: TODO
         :rtype: flytekit.models.admin.workflow.Workflow
         """
-
         return _workflow.Workflow.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_workflow(
                 _common_pb2.ObjectGetRequest(
@@ -317,25 +316,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 )
             )
         )
-
-    def update_workflow(self, id, state):
-        """
-        This updates the state of the workflow specified by the ID.
-        :param id: flytekit.models.core.identifier.Identifier id: The ID representing a given task.
-        :param int state: Enum value from flytekit.models.workflow.WorkflowState
-        :return:
-        """
-        if state == "active":
-            state = _workflow.WorkflowState.ACTIVE
-        else:
-            state = _workflow.WorkflowState.ARCHIVED
-        super(SynchronousFlyteClient, self).update_workflow(
-            _workflow_pb2.WorkflowUpdateRequest(
-                id=id.to_flyte_idl(),
-                state=state,
-            )
-        )
-
 
     ####################################################################################################################
     #
