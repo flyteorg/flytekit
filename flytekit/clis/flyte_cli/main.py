@@ -1525,7 +1525,7 @@ def register_project(identifier, name, description, host, insecure):
 @_project_option
 @_domain_option
 @_optional_name_option
-def update_workflow(description, state, host, insecure, project, domain, name):
+def update_workflow_meta(description, state, host, insecure, project, domain, name):
     """
     Updates a workflow entity under the scope specified by {project, domain, name} across versions.
     """
@@ -1549,7 +1549,7 @@ def update_workflow(description, state, host, insecure, project, domain, name):
 @_project_option
 @_domain_option
 @_optional_name_option
-def update_task(description, host, insecure, project, domain, name):
+def update_task_meta(description, host, insecure, project, domain, name):
     """
     Updates a task entity under the scope specified by {project, domain, name} across versions.
     """
@@ -1569,7 +1569,7 @@ def update_task(description, host, insecure, project, domain, name):
 @_project_option
 @_domain_option
 @_optional_name_option
-def update_launch_plan(description, host, insecure, project, domain, name):
+def update_launch_plan_meta(description, host, insecure, project, domain, name):
     """
     Updates a launch plan entity under the scope specified by {project, domain, name} across versions.
     """
