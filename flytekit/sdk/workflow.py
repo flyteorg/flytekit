@@ -62,6 +62,7 @@ def workflow_class(_workflow_metaclass=None, cls=None, queuing_budget=None):
     :param cls: This is the class that will be instantiated from the inputs, outputs, and nodes. This will be used
         by users extending the base Flyte programming model. If set, it must be a subclass of
         :py:class:`flytekit.common.workflow.SdkWorkflow`.
+    :param queuing_budget datetime.timedelta: [Optional] Budget that specifies the amount of time a workflow can be queued up for execution.
     :rtype: flytekit.common.workflow.SdkWorkflow
     """
 
@@ -107,6 +108,7 @@ def workflow(nodes, inputs=None, outputs=None, cls=None, queuing_budget=None):
     :param T cls: This is the class that will be instantiated from the inputs, outputs, and nodes. This will be used
         by users extending the base Flyte programming model. If set, it must be a subclass of
         :py:class:`flytekit.common.workflow.SdkWorkflow`.
+    :param queuing_budget datetime.timedelta: [Optional] Budget that specifies the amount of time a workflow can be queued up for execution.
     :rtype: flytekit.common.workflow.SdkWorkflow
     """
     wf = (cls or _common_workflow.SdkWorkflow)(

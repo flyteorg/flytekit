@@ -446,6 +446,7 @@ def build_sdk_workflow_from_metaclass(metaclass, queuing_budget=None, cls=None):
     :param T metaclass:
     :param cls: This is the class that will be instantiated from the inputs, outputs, and nodes.  This will be used
         by users extending the base Flyte programming model. If set, it must be a subclass of SdkWorkflow.
+    :param queuing_budget datetime.timedelta: [Optional] Budget that specifies the amount of time a workflow can be queued up for execution.
     :rtype: SdkWorkflow
     """
     inputs, outputs, nodes = _discover_workflow_components(metaclass)

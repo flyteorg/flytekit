@@ -449,6 +449,8 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
     def __init__(self, queuing_budget=None):
         """
         Metadata for the workflow.
+        
+        :param queuing_budget datetime.timedelta: [Optional] Budget that specifies the amount of time a workflow can be queued up for execution.
         """
         self._queuing_budget = queuing_budget
 
