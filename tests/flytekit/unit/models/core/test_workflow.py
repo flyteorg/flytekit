@@ -28,11 +28,15 @@ def test_alias():
     assert obj2.var == 'myvar'
 
 
-def test_workflow_metadata():
+def test_workflow_metadata_queuing_budget():
     obj = _workflow.WorkflowMetadata(queuing_budget=timedelta(seconds=10))
     obj2 = _workflow.WorkflowMetadata.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
 
+def test_workflow_metadata():
+    obj = _workflow.WorkflowMetadata()
+    obj2 = _workflow.WorkflowMetadata.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == obj2
 
 def test_task_node():
     obj = _workflow.TaskNode(reference_id=_generic_id)
