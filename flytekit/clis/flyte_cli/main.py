@@ -1517,7 +1517,7 @@ def register_project(identifier, name, description, host, insecure):
     _click.echo("Registered project [id: {}, name: {}, description: {}]".format(identifier, name, description))
 
 
-@_flyte_cli.command('update-workflow', cls=_FlyteSubCommand)
+@_flyte_cli.command('update-workflow-meta', cls=_FlyteSubCommand)
 @_named_entity_description_option
 @_named_entity_state_choice
 @_host_option
@@ -1542,7 +1542,7 @@ def update_workflow(description, state, host, insecure, project, domain, name):
     _click.echo("Successfully updated workflow")
 
 
-@_flyte_cli.command('update-task', cls=_FlyteSubCommand)
+@_flyte_cli.command('update-task-meta', cls=_FlyteSubCommand)
 @_named_entity_description_option
 @_host_option
 @_insecure_option
@@ -1562,7 +1562,7 @@ def update_task(description, host, insecure, project, domain, name):
     _click.echo("Successfully updated task")
 
 
-@_flyte_cli.command('update-launch-plan', cls=_FlyteSubCommand)
+@_flyte_cli.command('update-launch-plan-meta', cls=_FlyteSubCommand)
 @_named_entity_description_option
 @_host_option
 @_insecure_option
