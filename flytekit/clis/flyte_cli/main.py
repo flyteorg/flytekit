@@ -407,7 +407,7 @@ _named_entity_state_choice = _click.option(
     "--state",
     type=_click.Choice(["active", "archived"]),
     required=True,
-    help="Whether or not to set as active."
+    help="The state change to apply to a named entity"
 )
 _named_entity_description_option = _click.option(
     "--description",
@@ -1527,7 +1527,7 @@ def register_project(identifier, name, description, host, insecure):
 @_optional_name_option
 def update_workflow(description, state, host, insecure, project, domain, name):
     """
-    Updates a workflow entity under the scope specified by {project, domain, name}.
+    Updates a workflow entity under the scope specified by {project, domain, name} across versions.
     """
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
@@ -1539,7 +1539,47 @@ def update_workflow(description, state, host, insecure, project, domain, name):
         _core_identifier.ResourceType.WORKFLOW,
         _named_entity.NamedEntityIdentifier(project, domain, name),
         _named_entity.NamedEntityMetadata(description, state))
-    _click.echo("Successfully updated")
+    _click.echo("Successfully updated workflow")
+
+
+@_flyte_cli.command('update-task', cls=_FlyteSubCommand)
+@_named_entity_description_option
+@_host_option
+@_insecure_option
+@_project_option
+@_domain_option
+@_optional_name_option
+def update_task(description, host, insecure, project, domain, name):
+    """
+    Updates a task entity under the scope specified by {project, domain, name} across versions.
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client.update_named_entity(
+        _core_identifier.ResourceType.TASK,
+        _named_entity.NamedEntityIdentifier(project, domain, name),
+        _named_entity.NamedEntityMetadata(description, _named_entity.NamedEntityState.ACTIVE))
+    _click.echo("Successfully updated task")
+
+
+@_flyte_cli.command('update-launch-plan', cls=_FlyteSubCommand)
+@_named_entity_description_option
+@_host_option
+@_insecure_option
+@_project_option
+@_domain_option
+@_optional_name_option
+def update_launch_plan(description, host, insecure, project, domain, name):
+    """
+    Updates a launch plan entity under the scope specified by {project, domain, name} across versions.
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client.update_named_entity(
+        _core_identifier.ResourceType.LAUNCH_PLAN,
+        _named_entity.NamedEntityIdentifier(project, domain, name),
+        _named_entity.NamedEntityMetadata(description, _named_entity.NamedEntityState.ACTIVE))
+    _click.echo("Successfully updated launch plan")
 
 
 @_flyte_cli.command('setup-config', cls=_click.Command)

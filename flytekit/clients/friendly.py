@@ -559,10 +559,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
     def update_named_entity(self, resource_type, id, metadata):
         """
-        Updates a launch plan.  Currently, this can only be used to update a given launch plan's state (ACTIVE v.
-        INACTIVE) for schedules.  If a launch plan with a given project, domain, and name is set to ACTIVE,
-        then any other launch plan with the same project, domain, and name that was set to ACTIVE will be switched to
-        INACTIVE in one transaction.
+        Updates the metadata associated with a named entity.  A named entity is designated a resource, e.g. a workflow,
+        task or launch plan specified by {project, domain, name} across all versions of the resource.
 
         :param int resource_type: Enum value from flytekit.models.identifier.ResourceType
         :param flytekit.models.admin.named_entity.NamedEntityIdentifier id: identifier for named entity to update
