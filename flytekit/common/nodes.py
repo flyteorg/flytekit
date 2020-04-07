@@ -292,7 +292,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
         """
         :rtype: Text
         """
-        return "Node({})".format(self._executable_sdk_object)
+        return "Node(ID: {} Executable: {})".format(self.id, self._executable_sdk_object)
 
 
 class SdkNodeExecution(
