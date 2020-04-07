@@ -154,6 +154,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         array_job_index = {}
         tasks = []
         nodes = []
+        sub_wfs = []
         visited_nodes = set()
         generated_ids = {}
         effective_failure_ratio = self._allowed_failure_ratio or 0.0
@@ -203,6 +204,9 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
                     generated_files[input_path] = _literal_models.LiteralMap(
                         literals={binding.var: binding.binding.to_literal_model() for binding in
                                   sub_task_node.inputs})
+
+                if isinstance(sub_task_node.executable_sdk_object, _workflow.SdkWorkflow):
+                    sub_wfs.append(sub_task_node.executable_sdk_object)
 
             # Handling tasks
             else:
@@ -259,7 +263,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             tasks=tasks,
             nodes=nodes,
             outputs=output_bindings,
-            subworkflows=[])
+            subworkflows=sub_wfs)
 
         return dynamic_job_spec, generated_files
 
