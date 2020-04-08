@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import pytest
+import datetime
 
 from flytekit.common import constants
 from flytekit.common.exceptions import user as _user_exceptions
@@ -155,3 +156,16 @@ def test_workflow_metaclass_no_node_dependencies_or_outputs():
     assert _get_node_by_id(sup, 'b').inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
     assert _get_node_by_id(sup, 'b').inputs[0].binding.promise.var == 'input_2'
     assert _get_node_by_id(sup, 'c').inputs[0].binding.scalar.primitive.integer == 100
+
+def test_workflow_queuing_budget():
+    @inputs(a=Types.Integer)
+    @outputs(b=Types.Integer)
+    @python_task
+    def my_task(wf_params, a, b):
+        b.set(a + 1)
+
+    @workflow_class(queuing_budget=datetime.timedelta(seconds=10))
+    class my_workflow(object):
+        b = my_task(a=100)
+
+    assert my_workflow.metadata.queuing_budget == datetime.timedelta(seconds=10)
