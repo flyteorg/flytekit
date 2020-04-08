@@ -27,7 +27,7 @@ def test_alias():
     assert obj2.alias == 'myalias'
     assert obj2.var == 'myvar'
 
-def test_workflow():
+def test_workflow_template():
     task = _workflow.TaskNode(reference_id=_generic_id)
     nm = _get_sample_node_metadata()
     int_type = _types.LiteralType(_types.SimpleType.INTEGER)
@@ -58,7 +58,7 @@ def test_workflow():
     obj2 = _workflow.WorkflowTemplate.from_flyte_idl(obj.to_flyte_idl())
     assert obj2 == obj
 
-def test_workflow_with_queuing_budget():
+def test_workflow_template_with_queuing_budget():
     task = _workflow.TaskNode(reference_id=_generic_id)
     nm = _get_sample_node_metadata()
     int_type = _types.LiteralType(_types.SimpleType.INTEGER)
