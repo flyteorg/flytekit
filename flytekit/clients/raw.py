@@ -402,6 +402,20 @@ class RawSynchronousFlyteClient(object):
 
     ####################################################################################################################
     #
+    #  Named Entity Endpoints
+    #
+    ####################################################################################################################
+
+    @_handle_rpc_error
+    def update_named_entity(self, update_named_entity_request):
+        """
+        :param flyteidl.admin.common_pb2.NamedEntityUpdateRequest update_named_entity_request:
+        :rtype: flyteidl.admin.common_pb2.NamedEntityUpdateResponse
+        """
+        return self._stub.UpdateNamedEntity(update_named_entity_request, metadata=self._metadata)
+
+    ####################################################################################################################
+    #
     #  Workflow Execution Endpoints
     #
     ####################################################################################################################

@@ -14,7 +14,7 @@ from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
 from flytekit.clis.helpers import construct_literal_map_from_variable_map as _construct_literal_map_from_variable_map, \
     construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map, \
-    parse_args_into_dict as _parse_args_into_dict, str2bool as _str2bool
+    parse_args_into_dict as _parse_args_into_dict
 from flytekit.common import utils as _utils, launch_plan as _launch_plan_common
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.types import helpers as _type_helpers
@@ -23,9 +23,9 @@ from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import set_flyte_config_file
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import common as _common_models, filters as _filters, launch_plan as _launch_plan, literals as \
-    _literals
+    _literals, named_entity as _named_entity
 from flytekit.models.admin import common as _admin_common
-from flytekit.models.core import execution as _core_execution_models
+from flytekit.models.core import execution as _core_execution_models, identifier as _core_identifier
 from flytekit.models.execution import ExecutionSpec as _ExecutionSpec, ExecutionMetadata as _ExecutionMetadata
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
@@ -402,6 +402,18 @@ _state_choice = _click.option(
     type=_click.Choice(["active", "inactive"]),
     required=True,
     help="Whether or not to set schedule as active."
+)
+_named_entity_state_choice = _click.option(
+    "--state",
+    type=_click.Choice(["active", "archived"]),
+    required=True,
+    help="The state change to apply to a named entity"
+)
+_named_entity_description_option = _click.option(
+    "--description",
+    required=False,
+    type=str,
+    help="Concise description for the entity."
 )
 _sort_by_option = _click.option(
     "--sort-by",
@@ -1503,6 +1515,71 @@ def register_project(identifier, name, description, host, insecure):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     client.register_project(_Project(identifier, name, description))
     _click.echo("Registered project [id: {}, name: {}, description: {}]".format(identifier, name, description))
+
+
+@_flyte_cli.command('update-workflow-meta', cls=_FlyteSubCommand)
+@_named_entity_description_option
+@_named_entity_state_choice
+@_host_option
+@_insecure_option
+@_project_option
+@_domain_option
+@_optional_name_option
+def update_workflow_meta(description, state, host, insecure, project, domain, name):
+    """
+    Updates a workflow entity under the scope specified by {project, domain, name} across versions.
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    if state == "active":
+        state = _named_entity.NamedEntityState.ACTIVE
+    elif state == "archived":
+        state = _named_entity.NamedEntityState.ARCHIVED
+    client.update_named_entity(
+        _core_identifier.ResourceType.WORKFLOW,
+        _named_entity.NamedEntityIdentifier(project, domain, name),
+        _named_entity.NamedEntityMetadata(description, state))
+    _click.echo("Successfully updated workflow")
+
+
+@_flyte_cli.command('update-task-meta', cls=_FlyteSubCommand)
+@_named_entity_description_option
+@_host_option
+@_insecure_option
+@_project_option
+@_domain_option
+@_optional_name_option
+def update_task_meta(description, host, insecure, project, domain, name):
+    """
+    Updates a task entity under the scope specified by {project, domain, name} across versions.
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client.update_named_entity(
+        _core_identifier.ResourceType.TASK,
+        _named_entity.NamedEntityIdentifier(project, domain, name),
+        _named_entity.NamedEntityMetadata(description, _named_entity.NamedEntityState.ACTIVE))
+    _click.echo("Successfully updated task")
+
+
+@_flyte_cli.command('update-launch-plan-meta', cls=_FlyteSubCommand)
+@_named_entity_description_option
+@_host_option
+@_insecure_option
+@_project_option
+@_domain_option
+@_optional_name_option
+def update_launch_plan_meta(description, host, insecure, project, domain, name):
+    """
+    Updates a launch plan entity under the scope specified by {project, domain, name} across versions.
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client.update_named_entity(
+        _core_identifier.ResourceType.LAUNCH_PLAN,
+        _named_entity.NamedEntityIdentifier(project, domain, name),
+        _named_entity.NamedEntityMetadata(description, _named_entity.NamedEntityState.ACTIVE))
+    _click.echo("Successfully updated launch plan")
 
 
 @_flyte_cli.command('setup-config', cls=_click.Command)

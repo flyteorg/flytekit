@@ -553,6 +553,29 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
     ####################################################################################################################
     #
+    #  Named Entity Endpoints
+    #
+    ####################################################################################################################
+
+    def update_named_entity(self, resource_type, id, metadata):
+        """
+        Updates the metadata associated with a named entity.  A named entity is designated a resource, e.g. a workflow,
+        task or launch plan specified by {project, domain, name} across all versions of the resource.
+
+        :param int resource_type: Enum value from flytekit.models.identifier.ResourceType
+        :param flytekit.models.admin.named_entity.NamedEntityIdentifier id: identifier for named entity to update
+        :param flytekit.models.admin.named_entity.NamedEntityIdentifierMetadata metadata:
+        """
+        super(SynchronousFlyteClient, self).update_named_entity(
+            _common_pb2.NamedEntityUpdateRequest(
+                resource_type=resource_type,
+                id=id.to_flyte_idl(),
+                metadata=metadata.to_flyte_idl(),
+            )
+        )
+
+    ####################################################################################################################
+    #
     #  Execution Endpoints
     #
     ####################################################################################################################
