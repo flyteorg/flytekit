@@ -6,7 +6,7 @@ import six as _six
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable_tasks, sdk_dynamic as _sdk_dynamic, \
-    spark_task as _sdk_spark_tasks, hive_task as _sdk_hive_tasks, sidecar_task as _sdk_sidecar_tasks
+    spark_task as _sdk_spark_tasks, generic_spark_task as _sdk_generic_spark_task, hive_task as _sdk_hive_tasks, sidecar_task as _sdk_sidecar_tasks
 from flytekit.common.tasks import task as _task
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.models import interface as _interface_model
@@ -406,12 +406,16 @@ def spark_task(
         cache_version='',
         retries=0,
         interruptible=None,
+        inputs=None,
         deprecated='',
         cache=False,
         timeout=None,
         spark_conf=None,
         hadoop_conf=None,
         environment=None,
+        spark_type=None,
+        main_class=None,
+        main_application_file=None,
         cls=None
 ):
     """
@@ -485,7 +489,25 @@ def spark_task(
     if _task_function:
         return wrapper(_task_function)
     else:
-        return wrapper
+        if spark_type is None or spark_type == "PYTHON":
+            return wrapper
+        else:
+            return _sdk_generic_spark_task.SdkGenericSparkTask(
+                task_type=_common_constants.SdkTaskType.SPARK_TASK,
+                discovery_version=cache_version,
+                retries=retries,
+                interruptible=interruptible,
+                deprecated=deprecated,
+                discoverable=cache,
+                timeout=timeout or _datetime.timedelta(seconds=0),
+                spark_type = spark_type,
+                task_inputs= inputs or {},
+                main_class = main_class or "",
+                main_application_file = main_application_file or "",
+                spark_conf=spark_conf or {},
+                hadoop_conf=hadoop_conf or {},
+                environment=environment or {},
+        )
 
 
 def qubole_spark_task(*args, **kwargs):

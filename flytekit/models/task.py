@@ -541,10 +541,9 @@ class CompiledTask(_common.FlyteIdlEntity):
             template=TaskTemplate.from_flyte_idl(pb2_object.template)
         )
 
-
 class SparkJob(_common.FlyteIdlEntity):
 
-    def __init__(self, application_file, spark_conf, hadoop_conf, executor_path):
+    def __init__(self, type, application_file, main_class, spark_conf, hadoop_conf, executor_path):
         """
         This defines a SparkJob target.  It will execute the appropriate SparkJob.
 
@@ -553,9 +552,27 @@ class SparkJob(_common.FlyteIdlEntity):
         :param dict[Text, Text] hadoop_conf: A definition of key-value pairs for hadoop config for the job.
         """
         self._application_file = application_file
+        self._type = type
+        self._main_class = main_class
         self._executor_path = executor_path
         self._spark_conf = spark_conf
         self._hadoop_conf = hadoop_conf
+
+    @property
+    def main_class(self):
+        """
+        The main class to execute
+        :rtype: Text
+        """
+        return self._main_class
+
+    @property
+    def type(self):
+        """
+        Spark Job Type
+        :rtype: Text
+        """
+        return self._type
 
     @property
     def application_file(self):
@@ -593,8 +610,20 @@ class SparkJob(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.plugins.spark_pb2.SparkJob
         """
+
+        # Default to Python
+        application_type = _spark_task.SparkApplication.PYTHON
+        if self.type == "SCALA":
+            application_type = _spark_task.SparkApplication.SCALA
+        elif self.type == "JAVA":
+            application_type =  _spark_task.SparkApplication.JAVA
+        elif self.type == "R":
+            application_type = _spark_task.SparkApplication.R
+
         return _spark_task.SparkJob(
+            applicationType=application_type,
             mainApplicationFile=self.application_file,
+            mainClass=self.main_class,
             executorPath=self.executor_path,
             sparkConf=self.spark_conf,
             hadoopConf=self.hadoop_conf,
@@ -606,9 +635,20 @@ class SparkJob(_common.FlyteIdlEntity):
         :param flyteidl.plugins.spark_pb2.SparkJob pb2_object:
         :rtype: SparkJob
         """
+        # Default to Python
+        type = "PYTHON"
+        if pb2_object.applicationType == _spark_task.SparkApplication.SCALA:
+            type = "SCALA"
+        elif pb2_object.applicationType == _spark_task.SparkApplication.JAVA:
+            type = "JAVA"
+        elif pb2_object.applicationType == _spark_task.SparkApplication.R:
+            type = "R"
+
         return cls(
+            type=type,
             spark_conf=pb2_object.sparkConf,
             application_file=pb2_object.mainApplicationFile,
+            main_class=pb2_object.mainClass,
             hadoop_conf=pb2_object.hadoopConf,
             executor_path=pb2_object.executorPath,
         )
