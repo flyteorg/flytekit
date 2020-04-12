@@ -13,7 +13,7 @@ from flytekit.models import literals as _literal_models, task as _task_models
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 from flytekit.common import interface as _interface
 from flytekit.models import interface as _interface_model
-
+from flytekit.configuration import internal as _internal_config
 
 class SdkGenericSparkTask( _base_tasks.SdkTask):
     """
@@ -100,10 +100,10 @@ class SdkGenericSparkTask( _base_tasks.SdkTask):
         args = []
         for k, v in _six.iteritems(task_inputs):
             args.append("--{}".format(k))
-            args.append("{{{{.input.{}}}}}".format(k))
+            args.append("{{{{.Inputs.{}}}}}".format(k))
 
         return _task_models.Container(
-            image="",
+            image= _internal_config.IMAGE.get(),
             command=[],
             args=args,
             resources=_task_models.Resources([], []),
