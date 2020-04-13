@@ -57,5 +57,15 @@ setup(
         'scripts/flytekit_venv'
     ],
     license="apache2",
-    python_requires=">=2.7"
+    python_requires=">=2.7",
+    classifiers=[
+        "Intended Audience :: Developers",
+        "Intended Audience :: System Administrators",
+        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Topic :: Software Development :: Libraries",
+    ],
 )
