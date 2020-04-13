@@ -1,7 +1,14 @@
 from __future__ import absolute_import
 from flytekit.common.types import primitives as _primitives, blobs as _blobs, schema as _schema, helpers as _helpers, \
     proto as _proto, containers as _containers
+import enum
 
+
+class SparkType(enum.Enum):
+    PYTHON = 1
+    SCALA = 2
+    JAVA = 3
+    R = 4
 
 class Types(object):
     Integer = _helpers.get_sdk_type_from_literal_type(_primitives.Integer.to_flyte_literal_type())

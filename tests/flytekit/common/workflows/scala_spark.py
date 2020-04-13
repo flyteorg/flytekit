@@ -3,12 +3,12 @@ from __future__ import division
 from __future__ import print_function
 
 from flytekit.sdk.tasks import spark_task, inputs, python_task
-from flytekit.sdk.types import Types
+from flytekit.sdk.types import Types, SparkType
 from flytekit.sdk.workflow import workflow_class, Input
 
 
-scala_spark = spark_task(spark_type="SCALA",
-                         inputs={"partitions": Types.Integer},
+scala_spark = spark_task(spark_type=SparkType.SCALA,
+                         inputs=inputs(partitions=Types.Integer),
                          main_class="org.apache.spark.examples.SparkPi",
                          main_application_file="local:///opt/spark/examples/jars/spark-examples.jar",
                          spark_conf={

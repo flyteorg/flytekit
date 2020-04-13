@@ -9,11 +9,24 @@ from flytekit import __version__
 import sys as _sys
 import six as _six
 from flytekit.common.tasks import task as _base_tasks
+from flytekit.common.types import helpers as _helpers, primitives as _primitives
+
 from flytekit.models import literals as _literal_models, task as _task_models
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 from flytekit.common import interface as _interface
-from flytekit.models import interface as _interface_model
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.exceptions import scopes as _exception_scopes
+
 from flytekit.configuration import internal as _internal_config
+
+input_types_supported = { _primitives.Integer,
+                          _primitives.Boolean,
+                          _primitives.Float,
+                          _primitives.String,
+                          _primitives.Datetime,
+                          _primitives.Timedelta,
+                        }
+
 
 class SdkGenericSparkTask( _base_tasks.SdkTask):
     """
@@ -56,14 +69,11 @@ class SdkGenericSparkTask( _base_tasks.SdkTask):
         spark_job = _task_models.SparkJob(
             spark_conf=spark_conf,
             hadoop_conf=hadoop_conf,
-            type = spark_type,
+            spark_type = spark_type,
             application_file=main_application_file,
             main_class=main_class,
             executor_path=_sys.executable,
         ).to_flyte_idl()
-
-        # No output support
-        input_variables = {k: _interface_model.Variable(v.to_flyte_literal_type(), k) for k, v in _six.iteritems(task_inputs)}
 
         super(SdkGenericSparkTask, self).__init__(
             task_type,
@@ -80,17 +90,45 @@ class SdkGenericSparkTask( _base_tasks.SdkTask):
                 discovery_version,
                 deprecated
             ),
-            _interface.TypedInterface(input_variables, {}),
+            _interface.TypedInterface({}, {}),
             _MessageToDict(spark_job),
-            container=self._get_container_definition(
-                task_inputs= task_inputs,
+        )
+
+        # Add Inputs
+        if task_inputs is not None:
+            task_inputs(self)
+
+        # Container after the Inputs have been updated.
+        self._container = self._get_container_definition(
                 environment=environment
             )
-        )
+
+    def _validate_inputs(self, inputs):
+        """
+        :param dict[Text, flytekit.models.interface.Variable] inputs:  Input variables to validate
+        :raises: flytekit.common.exceptions.user.FlyteValidationException
+        """
+        for k, v in _six.iteritems(inputs):
+            sdk_type =_helpers.get_sdk_type_from_literal_type(v.type)
+            if sdk_type not in input_types_supported:
+                raise _user_exceptions.FlyteValidationException(
+                    "Input Type '{}' not supported.  Only Primitives are supported for Scala/Java Spark.".format(sdk_type)
+                )
+        super(SdkGenericSparkTask, self)._validate_inputs(inputs)
+
+    @_exception_scopes.system_entry_point
+    def add_inputs(self, inputs):
+        """
+        Adds the inputs to this task.  This can be called multiple times, but it will fail if an input with a given
+        name is added more than once, a name collides with an output, or if the name doesn't exist as an arg name in
+        the wrapped function.
+        :param dict[Text, flytekit.models.interface.Variable] inputs: names and variables
+        """
+        self._validate_inputs(inputs)
+        self.interface.inputs.update(inputs)
 
     def _get_container_definition(
             self,
-            task_inputs=None,
             environment=None,
     ):
         """
@@ -98,7 +136,7 @@ class SdkGenericSparkTask( _base_tasks.SdkTask):
         """
 
         args = []
-        for k, v in _six.iteritems(task_inputs):
+        for k, v in _six.iteritems(self.interface.inputs):
             args.append("--{}".format(k))
             args.append("{{{{.Inputs.{}}}}}".format(k))
 

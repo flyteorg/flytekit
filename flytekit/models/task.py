@@ -8,9 +8,10 @@ from flyteidl.core import tasks_pb2 as _core_task, literals_pb2 as _literals_pb2
 from flyteidl.plugins import spark_pb2 as _spark_task
 from flytekit.plugins import flyteidl as _lazy_flyteidl
 from google.protobuf import json_format as _json_format, struct_pb2 as _struct
-
+from flytekit.sdk.types import SparkType as _spark_type
 from flytekit.models import common as _common, literals as _literals, interface as _interface
 from flytekit.models.core import identifier as _identifier
+from flytekit.common.exceptions import user as _user_exceptions
 
 
 class Resources(_common.FlyteIdlEntity):
@@ -541,9 +542,10 @@ class CompiledTask(_common.FlyteIdlEntity):
             template=TaskTemplate.from_flyte_idl(pb2_object.template)
         )
 
+
 class SparkJob(_common.FlyteIdlEntity):
 
-    def __init__(self, type, application_file, main_class, spark_conf, hadoop_conf, executor_path):
+    def __init__(self, spark_type, application_file, main_class, spark_conf, hadoop_conf, executor_path):
         """
         This defines a SparkJob target.  It will execute the appropriate SparkJob.
 
@@ -552,7 +554,7 @@ class SparkJob(_common.FlyteIdlEntity):
         :param dict[Text, Text] hadoop_conf: A definition of key-value pairs for hadoop config for the job.
         """
         self._application_file = application_file
-        self._type = type
+        self._spark_type = spark_type
         self._main_class = main_class
         self._executor_path = executor_path
         self._spark_conf = spark_conf
@@ -567,12 +569,12 @@ class SparkJob(_common.FlyteIdlEntity):
         return self._main_class
 
     @property
-    def type(self):
+    def spark_type(self):
         """
         Spark Job Type
         :rtype: Text
         """
-        return self._type
+        return self._spark_type
 
     @property
     def application_file(self):
@@ -611,14 +613,16 @@ class SparkJob(_common.FlyteIdlEntity):
         :rtype: flyteidl.plugins.spark_pb2.SparkJob
         """
 
-        # Default to Python
-        application_type = _spark_task.SparkApplication.PYTHON
-        if self.type == "SCALA":
+        if self.spark_type == _spark_type.PYTHON:
+            application_type = _spark_task.SparkApplication.PYTHON
+        elif self.spark_type == _spark_type.JAVA:
+            application_type = _spark_task.SparkApplication.JAVA
+        elif self.spark_type == _spark_type.SCALA:
             application_type = _spark_task.SparkApplication.SCALA
-        elif self.type == "JAVA":
-            application_type =  _spark_task.SparkApplication.JAVA
-        elif self.type == "R":
+        elif self.spark_type == _spark_type.R:
             application_type = _spark_task.SparkApplication.R
+        else:
+            raise _user_exceptions.FlyteValidationException("Invalid Spark Application Type Specified")
 
         return _spark_task.SparkJob(
             applicationType=application_type,
@@ -635,17 +639,17 @@ class SparkJob(_common.FlyteIdlEntity):
         :param flyteidl.plugins.spark_pb2.SparkJob pb2_object:
         :rtype: SparkJob
         """
-        # Default to Python
-        type = "PYTHON"
-        if pb2_object.applicationType == _spark_task.SparkApplication.SCALA:
-            type = "SCALA"
-        elif pb2_object.applicationType == _spark_task.SparkApplication.JAVA:
-            type = "JAVA"
-        elif pb2_object.applicationType == _spark_task.SparkApplication.R:
-            type = "R"
+
+        application_type = _spark_type.PYTHON
+        if pb2_object.type == _spark_task.SparkApplication.JAVA:
+            application_type = _spark_type.JAVA
+        elif pb2_object.type == _spark_task.SparkApplication.SCALA:
+            application_type = _spark_type.SCALA
+        elif pb2_object.type == _spark_task.SparkApplication.R:
+            application_type = _spark_type.R
 
         return cls(
-            type=type,
+            type= application_type,
             spark_conf=pb2_object.sparkConf,
             application_file=pb2_object.mainApplicationFile,
             main_class=pb2_object.mainClass,

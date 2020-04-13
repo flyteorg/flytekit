@@ -9,6 +9,7 @@ from flytekit.common.tasks import sdk_runnable as _sdk_runnable_tasks, sdk_dynam
     spark_task as _sdk_spark_tasks, generic_spark_task as _sdk_generic_spark_task, hive_task as _sdk_hive_tasks, sidecar_task as _sdk_sidecar_tasks
 from flytekit.common.tasks import task as _task
 from flytekit.common.types import helpers as _type_helpers
+from flytekit.sdk.types import  SparkType as _spark_type
 from flytekit.models import interface as _interface_model
 
 
@@ -413,7 +414,7 @@ def spark_task(
         spark_conf=None,
         hadoop_conf=None,
         environment=None,
-        spark_type=None,
+        spark_type=_spark_type.PYTHON,
         main_class=None,
         main_application_file=None,
         cls=None
@@ -481,6 +482,7 @@ def spark_task(
             deprecated=deprecated,
             discoverable=cache,
             timeout=timeout or _datetime.timedelta(seconds=0),
+            spark_type=spark_type,
             spark_conf=spark_conf or {},
             hadoop_conf=hadoop_conf or {},
             environment=environment or {},
@@ -488,11 +490,10 @@ def spark_task(
 
     if _task_function:
         return wrapper(_task_function)
+    elif spark_type == _spark_type.PYTHON:
+        return wrapper
     else:
-        if spark_type is None or spark_type == "PYTHON":
-            return wrapper
-        else:
-            return _sdk_generic_spark_task.SdkGenericSparkTask(
+        return _sdk_generic_spark_task.SdkGenericSparkTask(
                 task_type=_common_constants.SdkTaskType.SPARK_TASK,
                 discovery_version=cache_version,
                 retries=retries,
@@ -501,7 +502,7 @@ def spark_task(
                 discoverable=cache,
                 timeout=timeout or _datetime.timedelta(seconds=0),
                 spark_type = spark_type,
-                task_inputs= inputs or {},
+                task_inputs= inputs,
                 main_class = main_class or "",
                 main_application_file = main_application_file or "",
                 spark_conf=spark_conf or {},
