@@ -21,6 +21,7 @@ setup(
     url='https://github.com/lyft/flytekit',
     description='Flyte SDK for Python',
     long_description=open('README.md').read(),
+    long_description_content_type="text/markdown",
     entry_points={
         'console_scripts': [
             'pyflyte-execute=flytekit.bin.entrypoint:execute_task_cmd',
