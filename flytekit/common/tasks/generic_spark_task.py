@@ -141,7 +141,7 @@ class SdkGenericSparkTask( _base_tasks.SdkTask):
             args.append("{{{{.Inputs.{}}}}}".format(k))
 
         return _task_models.Container(
-            image= _internal_config.IMAGE.get(),
+            image=_internal_config.IMAGE.get(),
             command=[],
             args=args,
             resources=_task_models.Resources([], []),

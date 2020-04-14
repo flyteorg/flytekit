@@ -407,16 +407,12 @@ def spark_task(
         cache_version='',
         retries=0,
         interruptible=None,
-        inputs=None,
         deprecated='',
         cache=False,
         timeout=None,
         spark_conf=None,
         hadoop_conf=None,
         environment=None,
-        spark_type=_spark_type.PYTHON,
-        main_class=None,
-        main_application_file=None,
         cls=None
 ):
     """
@@ -479,10 +475,10 @@ def spark_task(
             discovery_version=cache_version,
             retries=retries,
             interruptible=interruptible,
+            spark_type= _spark_type.PYTHON,
             deprecated=deprecated,
             discoverable=cache,
             timeout=timeout or _datetime.timedelta(seconds=0),
-            spark_type=spark_type,
             spark_conf=spark_conf or {},
             hadoop_conf=hadoop_conf or {},
             environment=environment or {},
@@ -490,24 +486,46 @@ def spark_task(
 
     if _task_function:
         return wrapper(_task_function)
-    elif spark_type == _spark_type.PYTHON:
-        return wrapper
     else:
-        return _sdk_generic_spark_task.SdkGenericSparkTask(
-                task_type=_common_constants.SdkTaskType.SPARK_TASK,
-                discovery_version=cache_version,
-                retries=retries,
-                interruptible=interruptible,
-                deprecated=deprecated,
-                discoverable=cache,
-                timeout=timeout or _datetime.timedelta(seconds=0),
-                spark_type = spark_type,
-                task_inputs= inputs,
-                main_class = main_class or "",
-                main_application_file = main_application_file or "",
-                spark_conf=spark_conf or {},
-                hadoop_conf=hadoop_conf or {},
-                environment=environment or {},
+        return wrapper
+
+
+def generic_spark_task(
+        spark_type,
+        main_class,
+        main_application_file,
+        cache_version='',
+        retries=0,
+        interruptible=None,
+        inputs=None,
+        deprecated='',
+        cache=False,
+        timeout=None,
+        spark_conf=None,
+        hadoop_conf=None,
+        environment=None,
+):
+    """
+    Create a generic spark task. This task will connect to a Spark cluster, configure the environment,
+    and then execute the mainClass code as the Spark driver program.
+
+    """
+
+    return _sdk_generic_spark_task.SdkGenericSparkTask(
+            task_type=_common_constants.SdkTaskType.SPARK_TASK,
+            discovery_version=cache_version,
+            retries=retries,
+            interruptible=interruptible,
+            deprecated=deprecated,
+            discoverable=cache,
+            timeout=timeout or _datetime.timedelta(seconds=0),
+            spark_type = spark_type,
+            task_inputs= inputs,
+            main_class = main_class or "",
+            main_application_file = main_application_file or "",
+            spark_conf=spark_conf or {},
+            hadoop_conf=hadoop_conf or {},
+            environment=environment or {},
         )
 
 
