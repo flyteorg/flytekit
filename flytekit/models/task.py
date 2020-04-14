@@ -8,7 +8,7 @@ from flyteidl.core import tasks_pb2 as _core_task, literals_pb2 as _literals_pb2
 from flyteidl.plugins import spark_pb2 as _spark_task
 from flytekit.plugins import flyteidl as _lazy_flyteidl
 from google.protobuf import json_format as _json_format, struct_pb2 as _struct
-from flytekit.sdk.types import SparkType as _spark_type
+from flytekit.sdk.spark_types import SparkType as _spark_type
 from flytekit.models import common as _common, literals as _literals, interface as _interface
 from flytekit.models.core import identifier as _identifier
 from flytekit.common.exceptions import user as _user_exceptions

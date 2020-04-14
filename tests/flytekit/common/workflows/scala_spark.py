@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 from flytekit.sdk.tasks import spark_task, inputs, python_task
-from flytekit.sdk.types import Types, SparkType
+from flytekit.sdk.spark_types import Types, SparkType
 from flytekit.sdk.workflow import workflow_class, Input
 
 
@@ -34,7 +34,3 @@ class SparkTasksWorkflow(object):
     sparkTask = scala_spark(partitions=partitions)
     print_always = print_every_time(
         date_triggered=triggered_date)
-
-
-if __name__ == '__main__':
-    print(scala_spark)

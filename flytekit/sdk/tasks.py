@@ -9,7 +9,7 @@ from flytekit.common.tasks import sdk_runnable as _sdk_runnable_tasks, sdk_dynam
     spark_task as _sdk_spark_tasks, generic_spark_task as _sdk_generic_spark_task, hive_task as _sdk_hive_tasks, sidecar_task as _sdk_sidecar_tasks
 from flytekit.common.tasks import task as _task
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.sdk.types import  SparkType as _spark_type
+from flytekit.sdk.spark_types import  SparkType as _spark_type
 from flytekit.models import interface as _interface_model
 
 
