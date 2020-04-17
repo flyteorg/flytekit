@@ -27,6 +27,7 @@ class SdkLaunchPlan(
 ):
     def __init__(self, *args, **kwargs):
         super(SdkLaunchPlan, self).__init__(*args, **kwargs)
+        # Set all the attributes we expect this class to have
         self._id = None
 
         # The interface is not set explicitly unless fetched in an engine context
@@ -78,26 +79,6 @@ class SdkLaunchPlan(
         lp_wf = _workflow.SdkWorkflow.fetch(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
         sdk_lp._interface = lp_wf.interface
         return sdk_lp
-
-    @_exception_scopes.system_entry_point
-    def register(self, project, domain, name, version):
-        """
-        :param Text project:
-        :param Text domain:
-        :param Text name:
-        :param Text version:
-        """
-        self.validate()
-        id_to_register = _identifier.Identifier(
-            _identifier_model.ResourceType.LAUNCH_PLAN,
-            project,
-            domain,
-            name,
-            version
-        )
-        _engine_loader.get_engine().get_launch_plan(self).register(id_to_register)
-        self._id = id_to_register
-        return _six.text_type(self.id)
 
     @property
     def id(self):
@@ -225,12 +206,43 @@ class SdkLaunchPlan(
 
     @_exception_scopes.system_entry_point
     def __call__(self, *args, **input_map):
-        raise _user_exceptions.FlyteAssertion(
-            "TODO: Implement adding of remote launch plans to workflows. Current workaround is to add remote "
-            "workflows directly."
+        """
+        :param list[T] args: Do not specify.  Kwargs only are supported for this function.
+        :param dict[Text,T] input_map: Map of inputs.  Can be statically defined or OutputReference links.
+        :rtype: flytekit.common.nodes.SdkNode
+        """
+        if len(args) > 0:
+            raise _user_exceptions.FlyteAssertion(
+                "When adding a launchplan as a node in a workflow, all inputs must be specified with kwargs only.  We "
+                "detected {} positional args.".format(self, len(args))
+            )
+
+        # Take the default values from the launch plan
+        default_inputs = {
+            k: v.sdk_default
+            for k, v in _six.iteritems(self.default_inputs.parameters) if not v.required
+        }
+        default_inputs.update(input_map)
+
+        bindings, upstream_nodes = self.interface.create_bindings_for_inputs(default_inputs)
+
+        return _nodes.SdkNode(
+            id=None,
+            metadata=_workflow_models.NodeMetadata("", _datetime.timedelta(), _literal_models.RetryStrategy(0)),
+            bindings=sorted(bindings, key=lambda b: b.var),
+            upstream_nodes=upstream_nodes,
+            sdk_launch_plan=self
         )
 
+    def __repr__(self):
+        """
+        :rtype: Text
+        """
+        return "SdkLaunchPlan(ID: {} Interface: {} WF ID: {})".format(self.id, self.interface, self.workflow_id)
 
+
+# The difference between this and the SdkLaunchPlan class is that this runnable class is supposed to only be used for
+# launch plans loaded alongside the current Python interpreter.
 class SdkRunnableLaunchPlan(
     _hash_mixin.HashOnReferenceMixin,
     SdkLaunchPlan,
@@ -272,14 +284,14 @@ class SdkRunnableLaunchPlan(
         if role:
             auth = _launch_plan_models.Auth(assumable_iam_role=role)
 
+        # The constructor for SdkLaunchPlan sets the id to None anyways so we don't bother passing in an ID. The ID
+        # should be set in one of three places,
+        #   1) When the object is registered (in the code above)
+        #   2) By the dynamic task code after this runnable object has already been __call__'ed. The SdkNode produced
+        #      maintains a link to this object and will set the ID according to the configuration variables present.
+        #   3) When SdkLaunchPlan.fetch() is run
         super(SdkRunnableLaunchPlan, self).__init__(
-            _identifier.Identifier(
-                _identifier_model.ResourceType.WORKFLOW,
-                _internal_config.PROJECT.get(),
-                _internal_config.DOMAIN.get(),
-                _uuid.uuid4().hex,
-                _internal_config.VERSION.get()
-            ),
+            None,
             _launch_plan_models.LaunchPlanMetadata(
                 schedule=schedule or _schedule_model.Schedule(''),
                 notifications=notifications or []
@@ -302,6 +314,26 @@ class SdkRunnableLaunchPlan(
         )
         self._upstream_entities = {sdk_workflow}
         self._sdk_workflow = sdk_workflow
+
+    @_exception_scopes.system_entry_point
+    def register(self, project, domain, name, version):
+        """
+        :param Text project:
+        :param Text domain:
+        :param Text name:
+        :param Text version:
+        """
+        self.validate()
+        id_to_register = _identifier.Identifier(
+            _identifier_model.ResourceType.LAUNCH_PLAN,
+            project,
+            domain,
+            name,
+            version
+        )
+        _engine_loader.get_engine().get_launch_plan(self).register(id_to_register)
+        self._id = id_to_register
+        return _six.text_type(self.id)
 
     @classmethod
     def from_flyte_idl(cls, _):
@@ -356,33 +388,8 @@ class SdkRunnableLaunchPlan(
         """
         return self._sdk_workflow.id
 
-    @_exception_scopes.system_entry_point
-    def __call__(self, *args, **input_map):
+    def __repr__(self):
         """
-        :param list[T] args: Do not specify.  Kwargs only are supported for this function.
-        :param dict[Text,T] input_map: Map of inputs.  Can be statically defined or OutputReference links.
-        :rtype: flytekit.common.nodes.SdkNode
+        :rtype: Text
         """
-        if len(args) > 0:
-            raise _user_exceptions.FlyteAssertion(
-                "When adding a launchplan as a node in a workflow, all inputs must be specified with kwargs only.  We "
-                "detected {} positional args.".format(self, len(args))
-            )
-
-        # Take the default values from the launch plan
-        default_inputs = {
-            k: v.sdk_default
-            for k, v in _six.iteritems(self.default_inputs.parameters) if not v.required
-        }
-        default_inputs.update(input_map)
-
-        bindings, upstream_nodes = self.interface.create_bindings_for_inputs(default_inputs)
-
-        # TODO: Remove DEADBEEF
-        return _nodes.SdkNode(
-            id=None,
-            metadata=_workflow_models.NodeMetadata("DEADBEEF", _datetime.timedelta(), _literal_models.RetryStrategy(0)),
-            bindings=sorted(bindings, key=lambda b: b.var),
-            upstream_nodes=upstream_nodes,
-            sdk_launch_plan=self
-        )
+        return "SdkRunnableLaunchPlan(ID: {} Interface: {} WF ID: {})".format(self.id, self.interface, self.workflow_id)

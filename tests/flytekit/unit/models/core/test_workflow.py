@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 from datetime import timedelta
 
-from flytekit.models import literals as _literals
+from flytekit.models import literals as _literals, types as _types, interface as _interface
 from flytekit.models.core import workflow as _workflow, identifier as _identifier, condition as _condition
 
 _generic_id = _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "project", "domain", "name", "version")
@@ -27,12 +27,77 @@ def test_alias():
     assert obj2.alias == 'myalias'
     assert obj2.var == 'myvar'
 
+def test_workflow_template():
+    task = _workflow.TaskNode(reference_id=_generic_id)
+    nm = _get_sample_node_metadata()
+    int_type = _types.LiteralType(_types.SimpleType.INTEGER)
+    wf_metadata = _workflow.WorkflowMetadata()
+    wf_metadata_defaults = _workflow.WorkflowMetadataDefaults()
+    typed_interface = _interface.TypedInterface(
+        {'a': _interface.Variable(int_type, "description1")},
+        {
+            'b': _interface.Variable(int_type, "description2"),
+            'c': _interface.Variable(int_type, "description3")
+        }
+    )
+    wf_node = _workflow.Node(
+        id='some:node:id',
+        metadata=nm,
+        inputs=[],
+        upstream_node_ids=[],
+        output_aliases=[],
+        task_node=task
+    )
+    obj = _workflow.WorkflowTemplate(
+        id=_generic_id,
+        metadata=wf_metadata, 
+        metadata_defaults=wf_metadata_defaults,
+        interface=typed_interface,
+        nodes=[wf_node],
+        outputs=[])
+    obj2 = _workflow.WorkflowTemplate.from_flyte_idl(obj.to_flyte_idl())
+    assert obj2 == obj
+
+def test_workflow_template_with_queuing_budget():
+    task = _workflow.TaskNode(reference_id=_generic_id)
+    nm = _get_sample_node_metadata()
+    int_type = _types.LiteralType(_types.SimpleType.INTEGER)
+    wf_metadata = _workflow.WorkflowMetadata(queuing_budget=timedelta(seconds=10))
+    wf_metadata_defaults = _workflow.WorkflowMetadataDefaults()
+    typed_interface = _interface.TypedInterface(
+        {'a': _interface.Variable(int_type, "description1")},
+        {
+            'b': _interface.Variable(int_type, "description2"),
+            'c': _interface.Variable(int_type, "description3")
+        }
+    )
+    wf_node = _workflow.Node(
+        id='some:node:id',
+        metadata=nm,
+        inputs=[],
+        upstream_node_ids=[],
+        output_aliases=[],
+        task_node=task
+    )
+    obj = _workflow.WorkflowTemplate(
+        id=_generic_id,
+        metadata=wf_metadata, 
+        metadata_defaults=wf_metadata_defaults,
+        interface=typed_interface,
+        nodes=[wf_node],
+        outputs=[])
+    obj2 = _workflow.WorkflowTemplate.from_flyte_idl(obj.to_flyte_idl())
+    assert obj2 == obj
+
+def test_workflow_metadata_queuing_budget():
+    obj = _workflow.WorkflowMetadata(queuing_budget=timedelta(seconds=10))
+    obj2 = _workflow.WorkflowMetadata.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == obj2
 
 def test_workflow_metadata():
     obj = _workflow.WorkflowMetadata()
     obj2 = _workflow.WorkflowMetadata.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
-
 
 def test_task_node():
     obj = _workflow.TaskNode(reference_id=_generic_id)

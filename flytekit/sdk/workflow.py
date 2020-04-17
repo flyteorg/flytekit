@@ -42,7 +42,7 @@ class Output(_common_workflow.Output):
         )
 
 
-def workflow_class(_workflow_metaclass=None, cls=None):
+def workflow_class(_workflow_metaclass=None, cls=None, queuing_budget=None):
     """
     This is a decorator for wrapping class definitions into workflows.
 
@@ -62,11 +62,12 @@ def workflow_class(_workflow_metaclass=None, cls=None):
     :param cls: This is the class that will be instantiated from the inputs, outputs, and nodes. This will be used
         by users extending the base Flyte programming model. If set, it must be a subclass of
         :py:class:`flytekit.common.workflow.SdkWorkflow`.
+    :param queuing_budget datetime.timedelta: [Optional] Budget that specifies the amount of time a workflow can be queued up for execution.
     :rtype: flytekit.common.workflow.SdkWorkflow
     """
 
     def wrapper(metaclass):
-        wf = _common_workflow.build_sdk_workflow_from_metaclass(metaclass, cls=cls)
+        wf = _common_workflow.build_sdk_workflow_from_metaclass(metaclass, cls=cls, queuing_budget=queuing_budget)
         return wf
 
     if _workflow_metaclass is not None:
@@ -74,7 +75,7 @@ def workflow_class(_workflow_metaclass=None, cls=None):
     return wrapper
 
 
-def workflow(nodes, inputs=None, outputs=None, cls=None):
+def workflow(nodes, inputs=None, outputs=None, cls=None, queuing_budget=None):
     """
     This function provides a user-friendly interface for authoring workflows.
 
@@ -107,11 +108,13 @@ def workflow(nodes, inputs=None, outputs=None, cls=None):
     :param T cls: This is the class that will be instantiated from the inputs, outputs, and nodes. This will be used
         by users extending the base Flyte programming model. If set, it must be a subclass of
         :py:class:`flytekit.common.workflow.SdkWorkflow`.
+    :param queuing_budget datetime.timedelta: [Optional] Budget that specifies the amount of time a workflow can be queued up for execution.
     :rtype: flytekit.common.workflow.SdkWorkflow
     """
     wf = (cls or _common_workflow.SdkWorkflow)(
         inputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(inputs or {}))],
         outputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(outputs or {}))],
-        nodes=[v.assign_id_and_return(k) for k, v in sorted(_six.iteritems(nodes))]
+        nodes=[v.assign_id_and_return(k) for k, v in sorted(_six.iteritems(nodes))],
+        metadata=_common_workflow._workflow_models.WorkflowMetadata(queuing_budget=queuing_budget) if queuing_budget else None
     )
     return wf

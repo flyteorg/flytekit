@@ -446,17 +446,29 @@ class WorkflowNode(_common.FlyteIdlEntity):
 
 class WorkflowMetadata(_common.FlyteIdlEntity):
 
-    def __init__(self):
+    def __init__(self, queuing_budget=None):
         """
         Metadata for the workflow.
+        
+        :param queuing_budget datetime.timedelta: [Optional] Budget that specifies the amount of time a workflow can be queued up for execution.
         """
-        pass
+        self._queuing_budget = queuing_budget
+
+    @property
+    def queuing_budget(self):
+        """
+        :rtype: datetime.timedelta
+        """
+        return self._queuing_budget
 
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.workflow_pb2.WorkflowMetadata
         """
-        return _core_workflow.WorkflowMetadata()
+        workflow_metadata = _core_workflow.WorkflowMetadata()
+        if self._queuing_budget:
+            workflow_metadata.queuing_budget.FromTimedelta(self.queuing_budget)
+        return workflow_metadata
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -464,7 +476,7 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
         :param flyteidl.core.workflow_pb2.WorkflowMetadata pb2_object:
         :rtype: WorkflowMetadata
         """
-        return cls()
+        return cls(queuing_budget=pb2_object.queuing_budget.ToTimedelta())
 
 class WorkflowMetadataDefaults(_common.FlyteIdlEntity):
 
