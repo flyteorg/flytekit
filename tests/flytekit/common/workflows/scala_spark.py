@@ -33,6 +33,6 @@ def print_every_time(workflow_parameters, date_triggered):
 class SparkTasksWorkflow(object):
     triggered_date = Input(Types.Datetime)
     partitions = Input(Types.Integer)
-    sparkTask = scala_spark(partitions=partitions)
+    spark_task = scala_spark(partitions=partitions)
     print_always = print_every_time(
         date_triggered=triggered_date)
