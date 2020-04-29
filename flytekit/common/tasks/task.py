@@ -149,6 +149,13 @@ class SdkTask(
             self._id = old_id
             raise
 
+    @_exception_scopes.system_entry_point
+    def serialize(self):
+        """
+        :rtype: flyteidl.admin.tasks_pb2.TaskSpec
+        """
+        return _task_model.TaskSpec(self).to_flyte_idl()
+
     @classmethod
     @_exception_scopes.system_entry_point
     def fetch(cls, project, domain, name, version):

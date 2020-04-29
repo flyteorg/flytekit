@@ -335,6 +335,14 @@ class SdkRunnableLaunchPlan(
         self._id = id_to_register
         return _six.text_type(self.id)
 
+    @_exception_scopes.system_entry_point
+    def serialize(self):
+        """
+        Unlike the SdkWorkflow serialize call, nothing special needs to be done here.
+        :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
+        """
+        return self.to_flyte_idl()
+
     @classmethod
     def from_flyte_idl(cls, _):
         raise _user_exceptions.FlyteAssertion(

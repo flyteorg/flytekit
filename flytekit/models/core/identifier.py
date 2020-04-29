@@ -64,7 +64,7 @@ class Identifier(_common_models.FlyteIdlEntity):
 
     def to_flyte_idl(self):
         """
-        :rtype: flyteidl.core.identifier_pb2.NamedEntityIdentifier
+        :rtype: flyteidl.core.identifier_pb2.Identifier
         """
         return _identifier_pb2.Identifier(
             resource_type=self.resource_type,
@@ -77,7 +77,7 @@ class Identifier(_common_models.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, p):
         """
-        :param flyteidl.core.identifier_pb2.NamedEntityIdentifier p:
+        :param flyteidl.core.identifier_pb2.Identifier p:
         :rtype: Identifier
         """
         return cls(
