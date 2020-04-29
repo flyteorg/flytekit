@@ -20,35 +20,36 @@ from flytekit.models.core import identifier as _identifier_model
 
 
 @system_entry_point
-def serialize_tasks(pkgs):
-    # Serialize all tasks
-    for m, k, t in iterate_registerable_entities_in_order(pkgs, include_entities={_sdk_task.SdkTask}):
-        fname = '{}.pb'.format(_utils.fqdn(m.__name__, k, entity_type=t.resource_type))
-        click.echo('Writing task {} to {}'.format(t.id, fname))
-        pb = t.to_flyte_idl()
-        _write_proto_to_file(pb, fname)
+def serialize_tasks_only(project, domain, pkgs, version):
+    # m = module (i.e. python file)
+    # k = value of dir(m), type str
+    # o = object (e.g. SdkWorkflow)
+    loaded_entities = []
+    for m, k, o in iterate_registerable_entities_in_order(pkgs, include_entities={_sdk_task.SdkTask}):
+        name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
+        _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
+        o._id = _identifier.Identifier(
+            o.resource_type,
+            project,
+            domain,
+            name,
+            version
+        )
+        loaded_entities.append(o)
 
+    i = 0
+    zero_padded_length = _determine_text_chars(len(loaded_entities))
+    for entity in loaded_entities:
+        serialized = entity.serialize()
+        fname_index = str(i).zfill(zero_padded_length)
+        fname = '{}_{}.pb'.format(fname_index, entity._id.name)
+        click.echo('  Writing {} to\n    {}'.format(entity._id, fname))
+        _write_proto_to_file(serialized, fname)
 
-@system_entry_point
-def serialize_workflows(pkgs):
-    # Create map to look up tasks by their unique identifier.  This is so we can compile them into the workflow closure.
-    tmap = {}
-    for _, _, t in iterate_registerable_entities_in_order(pkgs, include_entities={_sdk_task.SdkTask}):
-        tmap[t.id] = t
+        identifier_fname = '{}_{}.identifier.pb'.format(fname_index, entity._id.name)
+        _write_proto_to_file(entity._id.to_flyte_idl(), identifier_fname)
 
-    for m, k, w in iterate_registerable_entities_in_order(pkgs, include_entities={_workflow.SdkWorkflow}):
-        click.echo('Serializing {}'.format(_utils.fqdn(m.__name__, k, entity_type=w.resource_type)))
-        task_templates = []
-        for n in w.nodes:
-            if n.task_node is not None:
-                task_templates.append(tmap[n.task_node.reference_id])
-
-        wc = _WorkflowClosure(workflow=w, tasks=task_templates)
-        wc_pb = wc.to_flyte_idl()
-
-        fname = '{}.pb'.format(_utils.fqdn(m.__name__, k, entity_type=w.resource_type))
-        click.echo('  Writing workflow closure {}'.format(fname))
-        _write_proto_to_file(wc_pb, fname)
+        i += 1
 
 
 @system_entry_point
@@ -90,14 +91,9 @@ def serialize_all(project, domain, pkgs, version):
     zero_padded_length = _determine_text_chars(len(loaded_entities))
     for entity in loaded_entities:
         serialized = entity.serialize()
-        print("Original type: {} Type: {}, ID: {}".format(type(entity), type(serialized), entity._id))
-        print("--------------------------------")
-        print(serialized)
-        print("<<---------------------------->>")
-
         fname_index = str(i).zfill(zero_padded_length)
         fname = '{}_{}.pb'.format(fname_index, entity._id.name)
-        click.echo('  Writing workflow closure {}'.format(fname))
+        click.echo('  Writing {} to\n    {}'.format(entity._id, fname))
         _write_proto_to_file(serialized, fname)
 
         # Not everything serialized will necessarily have an identifier field in it, even though some do (like the
@@ -136,18 +132,32 @@ def serialize(ctx):
 
 
 @click.command('tasks')
+@click.option('-v', '--version', type=str, help='Version to serialize tasks with. This is normally parsed from the'
+                                                'image, but you can override here.')
 @click.pass_context
-def tasks(ctx):
+def tasks(ctx, version=None):
+    project = ctx.obj[CTX_PROJECT]
+    domain = ctx.obj[CTX_DOMAIN]
     pkgs = ctx.obj[CTX_PACKAGES]
+
+    version = version or ctx.obj[CTX_VERSION] or _internal_configuration.look_up_version_from_image_tag(
+        _internal_configuration.IMAGE.get())
+
     internal_settings = {
-        'project': ctx.obj[CTX_PROJECT],
-        'domain': ctx.obj[CTX_DOMAIN],
-        'version': ctx.obj[CTX_VERSION]
+        'project': project,
+        'domain': domain,
+        'version': version,
     }
     # Populate internal settings for project/domain/version from the environment so that the file names are resolved
-    # with the correct strings.  The file itself doesn't need to change though.
+    # with the correct strings. The file itself doesn't need to change though.
     with TemporaryConfiguration(_internal_configuration.CONFIGURATION_PATH.get(), internal_settings):
-        serialize_tasks(pkgs)
+        _logging.debug("Serializing with settings\n"
+                       "\n  Project: {}"
+                       "\n  Domain: {}"
+                       "\n  Version: {}"
+                       "\n\nover the following packages {}".format(project, domain, version, pkgs)
+                       )
+        serialize_tasks_only(project, domain, pkgs, version)
 
 
 @click.command('workflows')
@@ -170,7 +180,7 @@ def workflows(ctx, version=None):
         'version': version,
     }
     # Populate internal settings for project/domain/version from the environment so that the file names are resolved
-    # with the correct strings.  The file itself doesn't need to change though.
+    # with the correct strings. The file itself doesn't need to change though.
     with TemporaryConfiguration(_internal_configuration.CONFIGURATION_PATH.get(), internal_settings):
         _logging.debug("Serializing with settings\n"
                        "\n  Project: {}"
@@ -178,11 +188,6 @@ def workflows(ctx, version=None):
                        "\n  Version: {}"
                        "\n\nover the following packages {}".format(project, domain, version, pkgs)
                        )
-
-        print(_internal_configuration.PROJECT.get())
-        print(_internal_configuration.DOMAIN.get())
-        print(_internal_configuration.VERSION.get())
-        print(_internal_configuration.CONFIGURATION_PATH.get())
         serialize_all(project, domain, pkgs, version)
 
 
