@@ -1,8 +1,10 @@
 from __future__ import absolute_import
 
 import pytest as _pytest
+import os as _os
 from mock import patch as _patch, MagicMock as _MagicMock
 
+from flytekit.configuration import TemporaryConfiguration
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import task as _task
 from flytekit.common.types import primitives
@@ -50,9 +52,19 @@ def get_sample_task():
 
     return my_task
 
+
 def test_task_serialization():
     t = get_sample_task()
-    s = t.serialize()
+    with TemporaryConfiguration(
+            _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), '../../../common/configs/local.config'),
+            internal_overrides={
+                'image': 'myflyteimage:v123',
+                'project': 'myflyteproject',
+                'domain': 'development'
+            }
+    ):
+        s = t.serialize()
 
     assert isinstance(s, _admin_task_pb2.TaskSpec)
-    
+    assert s.template.id.name == 'tests.flytekit.unit.common_tests.tasks.test_task.my_task'
+    assert s.template.container.image == 'myflyteimage:v123'
