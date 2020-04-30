@@ -152,7 +152,7 @@ class SdkTask(
     @_exception_scopes.system_entry_point
     def serialize(self):
         """
-        :rtype: flyteidl.admin.tasks_pb2.TaskSpec
+        :rtype: flyteidl.admin.task_pb2.TaskSpec
         """
         return _task_model.TaskSpec(self).to_flyte_idl()
 

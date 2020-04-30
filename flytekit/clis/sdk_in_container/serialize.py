@@ -58,7 +58,7 @@ def serialize_all(project, domain, pkgs, version):
     In order to register, we have to comply with Admin's endpoints. Those endpoints take the following object. These
     flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
     flyteidl.admin.workflow_pb2.WorkflowSpec
-    flyteidl.admin.tasks_pb2.TaskSpec
+    flyteidl.admin.task_pb2.TaskSpec
 
     However, if we were to merely call .to_flyte_idl() on all the discovered entities, what we would get are:
     flyteidl.admin.launch_plan_pb2.LaunchPlanSpec

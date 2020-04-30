@@ -111,8 +111,6 @@ def get_workflow_template():
     wt = _workflow_model.WorkflowTemplate.from_flyte_idl(workflow_template_pb)
     return wt
 
-# Commenting these tests out for now until we can find a way to ensure
-# these tests pass on all flyteidl changes.
 
 @_patch("flytekit.common.tasks.task.SdkTask.fetch")
 def test_basic_workflow_promote(mock_task_fetch):
