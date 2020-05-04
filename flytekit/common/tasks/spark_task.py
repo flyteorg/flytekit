@@ -61,6 +61,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
             deprecated,
             discoverable,
             timeout,
+            spark_type,
             spark_conf,
             hadoop_conf,
             environment,
@@ -88,6 +89,8 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
             hadoop_conf=hadoop_conf,
             application_file="local://" + spark_exec_path,
             executor_path=_sys.executable,
+            main_class="",
+            spark_type=spark_type,
         ).to_flyte_idl()
         super(SdkSparkTask, self).__init__(
             task_function,

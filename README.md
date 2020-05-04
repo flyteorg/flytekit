@@ -1,6 +1,16 @@
 # Flytekit
 
-Library for easily authoring, testing, deploying, and interacting with Flyte tasks, workflows, and launch plans.
+[![PyPI version fury.io](https://badge.fury.io/py/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
+[![PyPI download day](https://img.shields.io/pypi/dd/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
+[![PyPI download month](https://img.shields.io/pypi/dm/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
+[![PyPI format](https://img.shields.io/pypi/format/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
+[![PyPI implementation](https://img.shields.io/pypi/implementation/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
+![Codecov](https://img.shields.io/codecov/c/github/lyft/flytekit?style=plastic)
+
+
+Python Library for easily authoring, testing, deploying, and interacting with Flyte tasks, workflows, and launch plans. To understand more about flyte refer to,
+ - [Flyte homepage](https://flyte.org)
+ - [Flyte master repository](https://github.com/lyft/flyte)
 
 ## Installation
 
@@ -23,7 +33,8 @@ Tools include:
 pip install flytekit
 ```
 
-### Spark Plugin Installation
+### Plugin Installation
+#### Spark
 
 If `@spark_task` is to be used, one should install the `spark` plugin.
 
@@ -31,7 +42,7 @@ If `@spark_task` is to be used, one should install the `spark` plugin.
 pip install flytekit[spark]
 ```
 
-### Schema Plugin Installation
+#### Schema 
 
 If `Types.Schema()` is to be used for computations involving large dataframes, one should install the `schema` extension.
 
@@ -39,7 +50,7 @@ If `Types.Schema()` is to be used for computations involving large dataframes, o
 pip install flytekit[schema]
 ```
 
-### Sidecar Plugin Installation
+#### Sidecar
 
 If `@sidecar_task` is to be used, one should install the `sidecar` plugin.
 
