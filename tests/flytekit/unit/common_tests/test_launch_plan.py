@@ -290,6 +290,34 @@ def test_annotations():
     assert lp.annotations.values == {"my": "annotation"}
 
 
+def test_serialize():
+    workflow_to_test = _workflow.workflow(
+        {},
+        inputs={
+            'required_input': _workflow.Input(_types.Types.Integer),
+            'default_input': _workflow.Input(_types.Types.Integer, default=5)
+        }
+    )
+    workflow_to_test._id = _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "p", "d", "n", "v")
+    lp = workflow_to_test.create_launch_plan(
+        fixed_inputs={'required_input': 5},
+        role='iam_role',
+    )
+    with _configuration.TemporaryConfiguration(
+            _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), '../../common/configs/local.config'),
+            internal_overrides={
+                'image': 'myflyteimage:v123',
+                'project': 'myflyteproject',
+                'domain': 'development'
+            }
+    ):
+        s = lp.serialize()
+
+    assert s.workflow_id == _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "p", "d", "n", "v").to_flyte_idl()
+    assert s.auth.assumable_iam_role == 'iam_role'
+    assert s.default_inputs.parameters['default_input'].default.scalar.primitive.integer == 5
+
+
 def test_promote_from_model():
     workflow_to_test = _workflow.workflow(
         {},

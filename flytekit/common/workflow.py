@@ -19,6 +19,7 @@ from flytekit.models import interface as _interface_models, literals as _literal
 from flytekit.models.core import workflow as _workflow_models, identifier as _identifier_model
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common import constants as _constants
+from flytekit.models.admin import workflow as _admin_workflow_model
 
 
 class Output(object):
@@ -285,6 +286,20 @@ class SdkWorkflow(
         except:
             self._id = old_id
             raise
+
+    @_exception_scopes.system_entry_point
+    def serialize(self):
+        """
+        Serializing a workflow should produce an object similar to what the registration step produces, in preparation
+        for actual registration to Admin.
+
+        :rtype: flyteidl.admin.workflow_pb2.WorkflowSpec
+        """
+        sub_workflows = self.get_sub_workflows()
+        return _admin_workflow_model.WorkflowSpec(
+            self,
+            sub_workflows,
+        ).to_flyte_idl()
 
     @_exception_scopes.system_entry_point
     def validate(self):

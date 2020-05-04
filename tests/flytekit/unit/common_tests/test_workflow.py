@@ -9,6 +9,7 @@ from flytekit.models import literals as _literals
 from flytekit.models.core import workflow as _workflow_models, identifier as _identifier
 from flytekit.sdk import types as _types
 from flytekit.sdk.tasks import python_task, inputs, outputs
+from flyteidl.admin import workflow_pb2 as _workflow_pb2
 
 
 def test_output():
@@ -266,7 +267,7 @@ def test_workflow_node():
     assert n.outputs['nested_out'].node_id == 'node-id'
 
 
-def test_blah():
+def test_non_system_nodes():
     @inputs(a=primitives.Integer)
     @outputs(b=primitives.Integer)
     @python_task()
@@ -298,3 +299,52 @@ def test_blah():
     non_system_nodes = workflow.SdkWorkflow.get_non_system_nodes([n1, n_start])
     assert len(non_system_nodes) == 1
     assert non_system_nodes[0].id == 'n1'
+
+
+def test_workflow_serialization():
+    @inputs(a=primitives.Integer)
+    @outputs(b=primitives.Integer)
+    @python_task()
+    def my_task(wf_params, a, b):
+        b.set(a + 1)
+
+    my_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, 'project', 'domain', 'my_task', 'version')
+
+    @inputs(a=[primitives.Integer])
+    @outputs(b=[primitives.Integer])
+    @python_task
+    def my_list_task(wf_params, a, b):
+        b.set([v + 1 for v in a])
+
+    my_list_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, 'project', 'domain', 'my_list_task',
+                                              'version')
+
+    input_list = [
+        promise.Input('required', primitives.Integer),
+        promise.Input('not_required', primitives.Integer, default=5, help='Not required.')
+    ]
+
+    n1 = my_task(a=input_list[0]).assign_id_and_return('n1')
+    n2 = my_task(a=input_list[1]).assign_id_and_return('n2')
+    n3 = my_task(a=100).assign_id_and_return('n3')
+    n4 = my_task(a=n1.outputs.b).assign_id_and_return('n4')
+    n5 = my_list_task(a=[input_list[0], input_list[1], n3.outputs.b, 100]).assign_id_and_return('n5')
+    n6 = my_list_task(a=n5.outputs.b)
+
+    nodes = [n1, n2, n3, n4, n5, n6]
+
+    wf_out = [
+        workflow.Output(
+            'nested_out',
+            [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]],
+            sdk_type=[[primitives.Integer]]
+        ),
+        workflow.Output('scalar_out', n1.outputs.b, sdk_type=primitives.Integer)
+    ]
+
+    w = workflow.SdkWorkflow(inputs=input_list, outputs=wf_out, nodes=nodes)
+    serialized = w.serialize()
+    assert isinstance(serialized, _workflow_pb2.WorkflowSpec)
+    assert len(serialized.template.nodes) == 6
+    assert len(serialized.template.interface.inputs.variables.keys()) == 2
+    assert len(serialized.template.interface.outputs.variables.keys()) == 2
