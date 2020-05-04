@@ -87,9 +87,8 @@ def serialize_all(project, domain, pkgs, version):
         )
         loaded_entities.append(o)
 
-    i = 0
     zero_padded_length = _determine_text_chars(len(loaded_entities))
-    for entity in loaded_entities:
+    for i, entity in enumerate(loaded_entities):
         serialized = entity.serialize()
         fname_index = str(i).zfill(zero_padded_length)
         fname = '{}_{}.pb'.format(fname_index, entity._id.name)
@@ -103,8 +102,6 @@ def serialize_all(project, domain, pkgs, version):
         # and the registered entity.
         identifier_fname = '{}_{}.identifier.pb'.format(fname_index, entity._id.name)
         _write_proto_to_file(entity._id.to_flyte_idl(), identifier_fname)
-
-        i += 1
 
 
 def _determine_text_chars(length):

@@ -52,6 +52,20 @@ class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
         """
         pass
 
+    @_abc.abstractmethod
+    def serialize(self, project, domain, name, version):
+        """
+        Registerable entities also are required to be serialized. This allows flytekit to separate serialization from
+        the network call to Admin (mostly at least, if a Launch Plan is fetched for instance as part of another
+        workflow, it will still hit Admin.
+
+        :param Text project: The project in which to serialize this task.
+        :param Text domain: The domain in which to serialize this task.
+        :param Text name: The name to give this task.
+        :param Text version: The version in which to serialize this task.
+        """
+        pass
+
     @_abc.abstractproperty
     def resource_type(self):
         """
