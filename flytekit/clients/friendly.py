@@ -5,15 +5,40 @@ import six as _six
 from flyteidl.admin import task_pb2 as _task_pb2, common_pb2 as _common_pb2, workflow_pb2 as _workflow_pb2, \
     launch_plan_pb2 as _launch_plan_pb2, execution_pb2 as _execution_pb2, node_execution_pb2 as _node_execution_pb2, \
     task_execution_pb2 as _task_execution_pb2, project_pb2 as _project_pb2
+from flyteidl.core import identifier_pb2 as _identifier_pb2
 
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
 from flytekit.models import filters as _filters, common as _common, launch_plan as _launch_plan, task as _task, \
     execution as _execution, node_execution as _node_execution
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.admin import workflow as _workflow, task_execution as _task_execution
+from flytekit.common.exceptions.user import FlyteAssertion as _FlyteAssertion
 
 
 class SynchronousFlyteClient(_RawSynchronousFlyteClient):
+
+    def register_entities(self, id_entity_list):
+        """
+
+        :param List[(flyteidl.core.identifier_pb2.Identifier, T)] id_entity_list: List of launch plans, tasks, and
+            workflow objects, each with an identifier, that you want to register.
+        :raises flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException: If an identical version of the
+            entity is found, this exception is raised.  The client might choose to ignore this exception because the
+            identical task is already registered.
+        :raises flytekit.common.exceptions.userFlyteAssertion: If the ID given has a resource type that is not a task,
+            a launch plan, or a workflow, this exception will be raised.
+        """
+        for id, flyte_entity in id_entity_list:
+            if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
+                self._create_launch_plan_raw(id, flyte_entity)
+            elif id.resource_type == _identifier_pb2.TASK:
+                self._create_task_raw(id, flyte_entity)
+            elif id.resource_type == _identifier_pb2.WORKFLOW:
+                self._create_workflow_raw(id, flyte_entity)
+            else:
+                raise _FlyteAssertion(f"Only tasks, launch plans, and workflows can be called with this function, "
+                                      f"resource type {id.resource_type} was passed")
+
 
     ####################################################################################################################
     #
@@ -48,6 +73,35 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             _task_pb2.TaskCreateRequest(
                 id=task_identifer.to_flyte_idl(),
                 spec=task_spec.to_flyte_idl()
+            )
+        )
+
+    def _create_task_raw(
+            self,
+            task_identifier,
+            task_spec
+    ):
+        """
+        This is the raw version of the create method above. Used in situations where you already have an IDL object.
+
+        .. note ::
+
+            Overwrites are not supported so any request for a given project, domain, name, and version that exists in
+            the database must match the existing definition exactly. Furthermore, as long as the request
+            remains identical, calling this method multiple times will result in success.
+
+        :param flyteidl.core.identifier_pb2.Identifier task_identifier: The identifier for this task.
+        :param flyteidl.admin.task_pb2.TaskSpec task_spec: This is the actual definition of the task that
+            should be created.
+        :raises flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException: If an identical version of the
+            task is found, this exception is raised.  The client might choose to ignore this exception because the
+            identical task is already registered.
+        :raises grpc.RpcError:
+        """
+        super(SynchronousFlyteClient, self).create_task(
+            _task_pb2.TaskCreateRequest(
+                id=task_identifier,
+                spec=task_spec
             )
         )
 
@@ -186,9 +240,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             remains identical, calling this method multiple times will result in success.
 
         :param: flytekit.models.core.identifier.Identifier workflow_identifier: The identifier for this workflow.
-        :param: Text version: The version identifier of this workflow. Used to distinguish between different iterations
-            of tasks with the same name. If any aspect of the underlying workflow definition changes, then the version
-            must also change to be accepted by the Flyte Admin Service.
         :param: flytekit.models.admin.workflow.WorkflowSpec workflow_spec: This is the actual definition of the workflow
             that should be created.
         :raises flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException: If an identical version of the
@@ -200,6 +251,29 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             _workflow_pb2.WorkflowCreateRequest(
                 id=workflow_identifier.to_flyte_idl(),
                 spec=workflow_spec.to_flyte_idl()
+            )
+        )
+
+    def _create_workflow_raw(
+            self,
+            workflow_identifier,
+            workflow_spec
+    ):
+        """
+        This is just an internal method used for situations when you already have an IDL object, mirroring the above
+
+        :param: flyteidl.core.identifier_pb2.Identifier workflow_identifier: The identifier for this workflow.
+        :param: flyteidl.admin.workflow_pb2.WorkflowSpec workflow_spec: This is the actual definition of the workflow
+            that should be created.
+        :raises flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException: If an identical version of the
+            workflow is found, this exception is raised.  The client might choose to ignore this exception because the
+            identical workflow is already registered.
+        :raises grpc.RpcError:
+        """
+        super(SynchronousFlyteClient, self).create_workflow(
+            _workflow_pb2.WorkflowCreateRequest(
+                id=workflow_identifier,
+                spec=workflow_spec
             )
         )
 
@@ -339,9 +413,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             remains identical, calling this method multiple times will result in success.
 
         :param: flytekit.models.core.identifier.Identifier launch_plan_identifer: The identifier for this launch plan.
-        :param: Text version: The version identifier of this launch plan. Used to distinguish between different
-            iterations of tasks with the same name. If any aspect of the underlying launch plan definition changes,
-            then the version must also change to be accepted by the Flyte Admin Service.
         :param: flytekit.models.launch_plan.LaunchPlanSpec launch_plan_spec: This is the actual definition of the
             launch plan that should be created.
         :raises flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException: If an identical version of the
@@ -353,6 +424,29 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             _launch_plan_pb2.LaunchPlanCreateRequest(
                 id=launch_plan_identifer.to_flyte_idl(),
                 spec=launch_plan_spec.to_flyte_idl()
+            )
+        )
+
+    def _create_launch_plan_raw(
+            self,
+            launch_plan_identifier,
+            launch_plan_spec
+    ):
+        """
+        This is the private raw version of the function above, used for cases when you already have an idl object.
+
+        :param: flyteidl.core.identifier_pb2.Identifier launch_plan_identifier: The identifier for this launch plan.
+        :param: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec launch_plan_spec: This is the actual definition of the
+            launch plan that should be created.
+        :raises flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException: If an identical version of the
+            launch plan is found, this exception is raised.  The client might choose to ignore this exception because
+            the identical launch plan is already registered.
+        :raises grpc.RpcError:
+        """
+        super(SynchronousFlyteClient, self).create_launch_plan(
+            _launch_plan_pb2.LaunchPlanCreateRequest(
+                id=launch_plan_identifier,
+                spec=launch_plan_spec
             )
         )
 

@@ -1525,7 +1525,6 @@ def _extract_pair(identifier_file, object_file):
     :param object_file:
     :return:
     """
-    print(identifier_file, object_file)
     resource_map = {
         _identifier_pb2.LAUNCH_PLAN: _launch_plan_pb2.LaunchPlanSpec,
         _identifier_pb2.WORKFLOW: _workflow_pb2.WorkflowSpec,
@@ -1595,9 +1594,9 @@ def register_files(host, insecure, files):
     for f in files:
         _click.echo(f"  {f}")
 
-    object_list = _extract_files(files)
-
-    client.register_objects(object_list)
+    flyte_entities_list = _extract_files(files)
+    client.register_entities(flyte_entities_list)
+    _click.echo("Done with shit")
 
 
 @_flyte_cli.command('update-workflow-meta', cls=_FlyteSubCommand)
