@@ -51,6 +51,8 @@ def serialize_tasks_only(project, domain, pkgs, version, folder=None):
         fname_index = str(i).zfill(zero_padded_length)
         fname = '{}_{}.pb'.format(fname_index, entity._id.name)
         click.echo('  Writing {} to\n    {}'.format(entity._id, fname))
+        if folder:
+            fname = _os.path.join(folder, fname)
         _write_proto_to_file(serialized, fname)
 
         identifier_fname = '{}_{}.identifier.pb'.format(fname_index, entity._id.name)
@@ -62,7 +64,7 @@ def serialize_tasks_only(project, domain, pkgs, version, folder=None):
 @system_entry_point
 def serialize_all(project, domain, pkgs, version, folder=None):
     """
-    In order to register, we have to comply with Admin's endpoints. Those endpoints take the following object. These
+    In order to register, we have to comply with Admin's endpoints. Those endpoints take the following objects. These
     flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
     flyteidl.admin.workflow_pb2.WorkflowSpec
     flyteidl.admin.task_pb2.TaskSpec
@@ -105,6 +107,8 @@ def serialize_all(project, domain, pkgs, version, folder=None):
         fname_index = str(i).zfill(zero_padded_length)
         fname = '{}_{}.pb'.format(fname_index, entity._id.name)
         click.echo('  Writing {} to\n    {}'.format(entity._id, fname))
+        if folder:
+            fname = _os.path.join(folder, fname)
         _write_proto_to_file(serialized, fname)
 
         # Not everything serialized will necessarily have an identifier field in it, even though some do (like the
