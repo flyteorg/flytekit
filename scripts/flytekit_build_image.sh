@@ -61,8 +61,11 @@ if [ -n "$REGISTRY" ]; then
   if [[ "${REGISTRY}" == "docker.io"*  && -z "${NOPUSH}" ]]; then
     docker login --username="${DOCKERHUB_USERNAME}" --password="${DOCKERHUB_PASSWORD}"
   fi
-  docker push "${FLYTE_INTERNAL_IMAGE}"
-  echo "${FLYTE_INTERNAL_IMAGE} pushed to remote"
+
+  if [[ -z "${NOPUSH}" ]]; then
+    docker push "${FLYTE_INTERNAL_IMAGE}"
+    echo "${FLYTE_INTERNAL_IMAGE} pushed to remote"
+  fi
 fi
 
 popd
