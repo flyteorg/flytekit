@@ -1,5 +1,5 @@
-from common.tasks.raw_container import SdkRawContainerTask
-from sdk.types import Types
+from flytekit.common.tasks.raw_container import SdkRawContainerTask
+from flytekit.sdk.types import Types
 
 
 def test_raw_container_task_definition():
@@ -14,3 +14,13 @@ def test_raw_container_task_definition():
     assert not tk.serialize() is None
 
 
+
+def test_raw_container_task_definition_no_outputs():
+    tk = SdkRawContainerTask(
+        inputs={"x": Types.Integer},
+        image="my-image",
+        command=["echo", "hello, world!"],
+        gpu_limit="1",
+        gpu_request="1",
+    )
+    assert not tk.serialize() is None

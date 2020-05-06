@@ -16,8 +16,9 @@ from flytekit.models.interface import Variable
 
 def types_to_variable(t: Dict[str, FlyteSdkType]) -> Dict[str, Variable]:
     var = {}
-    for k, v in t.items():
-        var[k] = Variable(v.to_flyte_literal_type(), "")
+    if t:
+        for k, v in t.items():
+            var[k] = Variable(v.to_flyte_literal_type(), "")
     return var
 
 
@@ -130,8 +131,8 @@ class SdkRawContainerTask(_base_task.SdkTask):
     def __init__(
             self,
             inputs: Dict[str, FlyteSdkType],
-            outputs: Dict[str, FlyteSdkType],
             image: str,
+            outputs: Dict[str, FlyteSdkType]=None,
             input_data_dir: str = None,
             output_data_dir: str = None,
             metadata_format: str = METADATA_FORMAT_JSON,
