@@ -30,7 +30,7 @@ from flytekit.models.core import execution as _core_execution_models, identifier
 from flytekit.models.execution import ExecutionSpec as _ExecutionSpec, ExecutionMetadata as _ExecutionMetadata
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
-from flytekit.common.exceptions.user import FlyteAssertion as _FlyteAssertion
+from flytekit.common.exceptions import user as _user_exceptions
 
 
 import requests as _requests
@@ -282,7 +282,7 @@ def _render_schedule_expr(lp):
 _HOST_URL = None
 try:
     _HOST_URL = _platform_config.URL.get()
-except _FlyteAssertion:
+except _user_exceptions.FlyteAssertion:
     pass
 _INSECURE_FLAG = _platform_config.INSECURE.get()
 
@@ -1531,7 +1531,7 @@ def _extract_pair(identifier_file, object_file):
     }
     id = _load_proto_from_file(_identifier_pb2.Identifier, identifier_file)
     if not id.resource_type in resource_map:
-        raise _FlyteAssertion(f"Resource type found in identifier {id.resource_type} invalid, must be launch plan, "
+        raise _user_exceptions.FlyteAssertion(f"Resource type found in identifier {id.resource_type} invalid, must be launch plan, "
                               f"task, or workflow")
     entity = _load_proto_from_file(resource_map[id.resource_type], object_file)
     return id, entity
@@ -1551,7 +1551,6 @@ def _extract_files(file_paths):
     for identifier_file in filename_iterator:
         object_file = next(filename_iterator)
         id, entity = _extract_pair(identifier_file, object_file)
-        print(f'Id: {id} Entity: {entity}')
         results.append((id, entity))
 
     return results
@@ -1588,23 +1587,27 @@ def register_files(host, insecure, files):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     files = list(files)
     files.sort()
-    _click.secho("Parsing files...", color='green', bold=True)
+    _click.secho("Parsing files...", fg='green', bold=True)
     for f in files:
         _click.echo(f"  {f}")
 
     flyte_entities_list = _extract_files(files)
     for id, flyte_entity in flyte_entities_list:
-        if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
-            client.create_launch_plan_raw(id, flyte_entity)
-        elif id.resource_type == _identifier_pb2.TASK:
-            client.create_task_raw(id, flyte_entity)
-        elif id.resource_type == _identifier_pb2.WORKFLOW:
-            client.create_workflow_raw(id, flyte_entity)
-        else:
-            raise _FlyteAssertion(f"Only tasks, launch plans, and workflows can be called with this function, "
-                                  f"resource type {id.resource_type} was passed")
+        try:
+            if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
+                client.create_launch_plan_raw(id, flyte_entity)
+            elif id.resource_type == _identifier_pb2.TASK:
+                client.create_task_raw(id, flyte_entity)
+            elif id.resource_type == _identifier_pb2.WORKFLOW:
+                client.create_workflow_raw(id, flyte_entity)
+            else:
+                raise _user_exceptions.FlyteAssertion(f"Only tasks, launch plans, and workflows can be called with this function, "
+                                      f"resource type {id.resource_type} was passed")
+            _click.secho(f"Registered {id}", fg='green')
+        except _user_exceptions.FlyteEntityAlreadyExistsException:
+            _click.secho(f"Skipping because already registered {id}", fg='cyan')
 
-    _click.echo(f"Finished registering {len(flyte_entities_list)} files")
+    _click.echo(f"Finished scanning {len(flyte_entities_list)} files")
 
 
 @_flyte_cli.command('update-workflow-meta', cls=_FlyteSubCommand)
