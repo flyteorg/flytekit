@@ -122,11 +122,19 @@ class SdkRawContainerTask(_base_task.SdkTask):
     This class includes the logic for building a task that executes as a Presto task.
     """
 
+    METADATA_FORMAT_PROTO = "pb"
+    METADATA_FORMAT_JSON = "json"
+    METADATA_FORMAT_YAML = "yaml"
+    _METADATA_FORMAT = frozenset([METADATA_FORMAT_JSON, METADATA_FORMAT_PROTO, METADATA_FORMAT_YAML])
+
     def __init__(
             self,
             inputs: Dict[str, FlyteSdkType],
             outputs: Dict[str, FlyteSdkType],
             image: str,
+            input_data_dir: str = None,
+            output_data_dir: str = None,
+            metadata_format: str = METADATA_FORMAT_JSON,
             command: List[str] = None,
             args: List[str] = None,
             storage_request: str = None,
@@ -164,11 +172,18 @@ class SdkRawContainerTask(_base_task.SdkTask):
         :param discovery_version:
         :param retries:
         :param timeout:
+        :param input_data_dir: This is the directory where data will be downloaded to
+        :param output_data_dir: This is the directory where data will be uploaded from
+        :param metadata_format: Format in which the metadata will be available for the script
         """
 
         # Set as class fields which are used down below to configure implicit
         # parameters
-        self._command = command
+        self.input_data_dir = input_data_dir
+        self.output_data_dir = output_data_dir
+        self.metadata_format = metadata_format
+        if metadata_format not in self._METADATA_FORMAT:
+            raise Exception("{} Illegal metadata format, only [{}] metadata formats are supported".format(metadata_format, ",".join(self._METADATA_FORMAT)))
 
         metadata = _task_models.TaskMetadata(
             discoverable,
@@ -186,6 +201,8 @@ class SdkRawContainerTask(_base_task.SdkTask):
         # Here we set the routing_group, catalog, and schema as implicit
         # parameters for caching purposes
         i = _interface.TypedInterface(inputs=types_to_variable(inputs), outputs=types_to_variable(outputs))
+
+        # TODO create custom proto to store data dir and other things
 
         super(SdkRawContainerTask, self).__init__(
             _constants.SdkTaskType.RAW_CONTAINER_TASK,
