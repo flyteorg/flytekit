@@ -8,7 +8,7 @@ square = SdkRawContainerTask(
     inputs={"val": Types.Integer},
     outputs={"out": Types.Integer},
     image="alpine",
-    command=["bash", "-c", "cd /var/flyte/data; mkdir outputs; paste ./inputs/val | awk '{print ($1 + $1)}' > ./outputs/out"],
+    command=["sh", "-c", "cd /var/flyte/data; mkdir outputs; paste ./inputs/val | awk '{print ($1 * $1)}' > ./outputs/out"],
 )
 
 echo = SdkRawContainerTask(
