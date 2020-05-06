@@ -14,33 +14,27 @@ from flytekit.models import literals as _literals, task as _task_models
 from flytekit.models.interface import Variable
 
 
+def types_to_variable(t: Dict[str, FlyteSdkType]) -> Dict[str, Variable]:
+    var = {}
+    for k, v in t.items():
+        var[k] = Variable(v.to_flyte_literal_type(), "")
+    return var
+
+
 def _get_container_definition(
-        image,
-        command,
-        args,
-        storage_request=None,
-        cpu_request=None,
-        gpu_request=None,
-        memory_request=None,
-        storage_limit=None,
-        cpu_limit=None,
-        gpu_limit=None,
-        memory_limit=None,
-        environment=None,
-):
-    """
-    :param Text storage_request:
-    :param Text cpu_request:
-    :param Text gpu_request:
-    :param Text memory_request:
-    :param Text storage_limit:
-    :param Text cpu_limit:
-    :param Text gpu_limit:
-    :param Text memory_limit:
-    :param dict[Text,Text] environment:
-    :param cls Optional[type]: Type of container to instantiate. Generally should subclass SdkRunnableContainer.
-    :rtype: flytekit.models.task.Container
-    """
+        image: str,
+        command: List[str],
+        args: List[str],
+        storage_request: str = None,
+        cpu_request: str = None,
+        gpu_request: str = None,
+        memory_request: str = None,
+        storage_limit: str = None,
+        cpu_limit: str = None,
+        gpu_limit: str = None,
+        memory_limit: str = None,
+        environment: Dict[str, str] = None,
+) -> _task_models.Container:
     storage_limit = storage_limit or _resource_config.DEFAULT_STORAGE_LIMIT.get()
     storage_request = storage_request or _resource_config.DEFAULT_STORAGE_REQUEST.get()
     cpu_limit = cpu_limit or _resource_config.DEFAULT_CPU_LIMIT.get()
@@ -109,6 +103,9 @@ def _get_container_definition(
                 memory_limit
             )
         )
+
+    if environment is None:
+        environment = {}
 
     return _task_models.Container(
         image=image,
@@ -188,10 +185,10 @@ class SdkRawContainerTask(_base_task.SdkTask):
 
         # Here we set the routing_group, catalog, and schema as implicit
         # parameters for caching purposes
-        i = _interface.TypedInterface()
+        i = _interface.TypedInterface(inputs=types_to_variable(inputs), outputs=types_to_variable(outputs))
 
         super(SdkRawContainerTask, self).__init__(
-            _constants.SdkTaskType.PRESTO_TASK,
+            _constants.SdkTaskType.RAW_CONTAINER_TASK,
             metadata,
             i,
             None,
@@ -210,10 +207,6 @@ class SdkRawContainerTask(_base_task.SdkTask):
                 environment=environment,
             )
         )
-
-        # Set user provided inputs
-        self.add_inputs(inputs)
-        self.add_outputs(outputs)
 
     # Override method in order to set the implicit inputs
     def __call__(self, *args, **kwargs):

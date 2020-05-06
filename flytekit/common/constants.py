@@ -21,6 +21,7 @@ class SdkTaskType(object):
     SIDECAR_TASK = "sidecar"
     SENSOR_TASK = "sensor-task"
     PRESTO_TASK = "presto"
+    RAW_CONTAINER_TASK = "raw_container"
 
 GLOBAL_INPUT_NODE_ID = ''
 
