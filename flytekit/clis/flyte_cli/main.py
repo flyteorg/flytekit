@@ -1520,10 +1520,9 @@ def register_project(identifier, name, description, host, insecure):
 
 def _extract_pair(identifier_file, object_file):
     """
-
-    :param identifier_file:
-    :param object_file:
-    :return:
+    :param Text identifier_file:
+    :param Text object_file:
+    :rtype: (flyteidl.core.identifier_pb2.Identifier, T)
     """
     resource_map = {
         _identifier_pb2.LAUNCH_PLAN: _launch_plan_pb2.LaunchPlanSpec,
@@ -1552,7 +1551,6 @@ def _extract_files(file_paths):
     for identifier_file in filename_iterator:
         object_file = next(filename_iterator)
         id, entity = _extract_pair(identifier_file, object_file)
-        # make click output.
         print(f'Id: {id} Entity: {entity}')
         results.append((id, entity))
 
@@ -1606,7 +1604,7 @@ def register_files(host, insecure, files):
             raise _FlyteAssertion(f"Only tasks, launch plans, and workflows can be called with this function, "
                                   f"resource type {id.resource_type} was passed")
 
-    _click.echo("Done with shit")
+    _click.echo(f"Finished registering {len(flyte_entities_list)} files")
 
 
 @_flyte_cli.command('update-workflow-meta', cls=_FlyteSubCommand)
