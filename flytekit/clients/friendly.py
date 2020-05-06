@@ -17,29 +17,6 @@ from flytekit.common.exceptions.user import FlyteAssertion as _FlyteAssertion
 
 class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
-    def register_entities(self, id_entity_list):
-        """
-
-        :param List[(flyteidl.core.identifier_pb2.Identifier, T)] id_entity_list: List of launch plans, tasks, and
-            workflow objects, each with an identifier, that you want to register.
-        :raises flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException: If an identical version of the
-            entity is found, this exception is raised.  The client might choose to ignore this exception because the
-            identical task is already registered.
-        :raises flytekit.common.exceptions.userFlyteAssertion: If the ID given has a resource type that is not a task,
-            a launch plan, or a workflow, this exception will be raised.
-        """
-        for id, flyte_entity in id_entity_list:
-            if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
-                self._create_launch_plan_raw(id, flyte_entity)
-            elif id.resource_type == _identifier_pb2.TASK:
-                self._create_task_raw(id, flyte_entity)
-            elif id.resource_type == _identifier_pb2.WORKFLOW:
-                self._create_workflow_raw(id, flyte_entity)
-            else:
-                raise _FlyteAssertion(f"Only tasks, launch plans, and workflows can be called with this function, "
-                                      f"resource type {id.resource_type} was passed")
-
-
     ####################################################################################################################
     #
     #  Task Endpoints
@@ -76,7 +53,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def _create_task_raw(
+    def create_task_raw(
             self,
             task_identifier,
             task_spec
@@ -254,7 +231,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def _create_workflow_raw(
+    def create_workflow_raw(
             self,
             workflow_identifier,
             workflow_spec
@@ -427,7 +404,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def _create_launch_plan_raw(
+    def create_launch_plan_raw(
             self,
             launch_plan_identifier,
             launch_plan_spec
