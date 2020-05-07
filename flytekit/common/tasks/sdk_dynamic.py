@@ -280,7 +280,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         spec, generated_files = self._produce_dynamic_job_spec(context, inputs)
 
         # If no sub-tasks are requested to run, just produce an outputs file like any other single-step tasks.
-        if len(generated_files) == 0:
+        if len(generated_files) == 0 and len(spec.nodes) == 0:
             return {
                 _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
                     literals={binding.var: binding.binding.to_literal_model() for binding in spec.outputs})
