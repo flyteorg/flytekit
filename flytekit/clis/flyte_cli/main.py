@@ -1595,11 +1595,11 @@ def register_files(host, insecure, files):
     for id, flyte_entity in flyte_entities_list:
         try:
             if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
-                client.create_launch_plan_raw(id, flyte_entity)
+                client.raw.create_launch_plan(_launch_plan_pb2.LaunchPlanCreateRequest(id=id, spec=flyte_entity))
             elif id.resource_type == _identifier_pb2.TASK:
-                client.create_task_raw(id, flyte_entity)
+                client.raw.create_task(_task_pb2.TaskCreateRequest(id=id, spec=flyte_entity))
             elif id.resource_type == _identifier_pb2.WORKFLOW:
-                client.create_workflow_raw(id, flyte_entity)
+                client.raw.create_workflow(_workflow_pb2.WorkflowCreateRequest(id=id, spec=flyte_entity))
             else:
                 raise _user_exceptions.FlyteAssertion(f"Only tasks, launch plans, and workflows can be called with this function, "
                                       f"resource type {id.resource_type} was passed")

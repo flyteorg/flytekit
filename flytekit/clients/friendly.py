@@ -17,6 +17,14 @@ from flytekit.common.exceptions.user import FlyteAssertion as _FlyteAssertion
 
 class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
+    @property
+    def raw(self):
+        """
+        Gives access to the raw client
+        :rtype: flytekit.clients.raw.RawSynchronousFlyteClient
+        """
+        return super(SynchronousFlyteClient, self)
+
     ####################################################################################################################
     #
     #  Task Endpoints
@@ -50,35 +58,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             _task_pb2.TaskCreateRequest(
                 id=task_identifer.to_flyte_idl(),
                 spec=task_spec.to_flyte_idl()
-            )
-        )
-
-    def create_task_raw(
-            self,
-            task_identifier,
-            task_spec
-    ):
-        """
-        This is the raw version of the create method above. Used in situations where you already have an IDL object.
-
-        .. note ::
-
-            Overwrites are not supported so any request for a given project, domain, name, and version that exists in
-            the database must match the existing definition exactly. Furthermore, as long as the request
-            remains identical, calling this method multiple times will result in success.
-
-        :param flyteidl.core.identifier_pb2.Identifier task_identifier: The identifier for this task.
-        :param flyteidl.admin.task_pb2.TaskSpec task_spec: This is the actual definition of the task that
-            should be created.
-        :raises flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException: If an identical version of the
-            task is found, this exception is raised.  The client might choose to ignore this exception because the
-            identical task is already registered.
-        :raises grpc.RpcError:
-        """
-        super(SynchronousFlyteClient, self).create_task(
-            _task_pb2.TaskCreateRequest(
-                id=task_identifier,
-                spec=task_spec
             )
         )
 
@@ -231,29 +210,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def create_workflow_raw(
-            self,
-            workflow_identifier,
-            workflow_spec
-    ):
-        """
-        This is just an internal method used for situations when you already have an IDL object, mirroring the above
-
-        :param: flyteidl.core.identifier_pb2.Identifier workflow_identifier: The identifier for this workflow.
-        :param: flyteidl.admin.workflow_pb2.WorkflowSpec workflow_spec: This is the actual definition of the workflow
-            that should be created.
-        :raises flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException: If an identical version of the
-            workflow is found, this exception is raised.  The client might choose to ignore this exception because the
-            identical workflow is already registered.
-        :raises grpc.RpcError:
-        """
-        super(SynchronousFlyteClient, self).create_workflow(
-            _workflow_pb2.WorkflowCreateRequest(
-                id=workflow_identifier,
-                spec=workflow_spec
-            )
-        )
-
     def list_workflow_ids_paginated(
             self,
             project,
@@ -401,29 +357,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             _launch_plan_pb2.LaunchPlanCreateRequest(
                 id=launch_plan_identifer.to_flyte_idl(),
                 spec=launch_plan_spec.to_flyte_idl()
-            )
-        )
-
-    def create_launch_plan_raw(
-            self,
-            launch_plan_identifier,
-            launch_plan_spec
-    ):
-        """
-        This is the private raw version of the function above, used for cases when you already have an idl object.
-
-        :param: flyteidl.core.identifier_pb2.Identifier launch_plan_identifier: The identifier for this launch plan.
-        :param: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec launch_plan_spec: This is the actual definition of the
-            launch plan that should be created.
-        :raises flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException: If an identical version of the
-            launch plan is found, this exception is raised.  The client might choose to ignore this exception because
-            the identical launch plan is already registered.
-        :raises grpc.RpcError:
-        """
-        super(SynchronousFlyteClient, self).create_launch_plan(
-            _launch_plan_pb2.LaunchPlanCreateRequest(
-                id=launch_plan_identifier,
-                spec=launch_plan_spec
             )
         )
 
