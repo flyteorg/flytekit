@@ -198,6 +198,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
                     if not node_output.sdk_node.id:
                         node_output.sdk_node.assign_id_and_return(node.id)
 
+                if len(sub_task_node.inputs) > 0:
                     # Upload inputs to working directory under /array_job.input_ref/inputs.pb
                     input_path = _os.path.join(node.id, _constants.INPUT_FILE_NAME)
                     generated_files[input_path] = _literal_models.LiteralMap(
