@@ -8,7 +8,8 @@ import stat as _stat
 import click as _click
 import six as _six
 
-from flyteidl.core import literals_pb2 as _literals_pb2
+from flyteidl.core import literals_pb2 as _literals_pb2, identifier_pb2 as _identifier_pb2
+from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2, workflow_pb2 as _workflow_pb2, task_pb2 as _task_pb2
 
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
@@ -29,7 +30,7 @@ from flytekit.models.core import execution as _core_execution_models, identifier
 from flytekit.models.execution import ExecutionSpec as _ExecutionSpec, ExecutionMetadata as _ExecutionMetadata
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
-from flytekit.common.exceptions.user import FlyteAssertion as _FlyteAssertion
+from flytekit.common.exceptions import user as _user_exceptions
 
 
 import requests as _requests
@@ -281,7 +282,7 @@ def _render_schedule_expr(lp):
 _HOST_URL = None
 try:
     _HOST_URL = _platform_config.URL.get()
-except _FlyteAssertion:
+except _user_exceptions.FlyteAssertion:
     pass
 _INSECURE_FLAG = _platform_config.INSECURE.get()
 
@@ -1515,6 +1516,98 @@ def register_project(identifier, name, description, host, insecure):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     client.register_project(_Project(identifier, name, description))
     _click.echo("Registered project [id: {}, name: {}, description: {}]".format(identifier, name, description))
+
+
+def _extract_pair(identifier_file, object_file):
+    """
+    :param Text identifier_file:
+    :param Text object_file:
+    :rtype: (flyteidl.core.identifier_pb2.Identifier, T)
+    """
+    resource_map = {
+        _identifier_pb2.LAUNCH_PLAN: _launch_plan_pb2.LaunchPlanSpec,
+        _identifier_pb2.WORKFLOW: _workflow_pb2.WorkflowSpec,
+        _identifier_pb2.TASK: _task_pb2.TaskSpec
+    }
+    id = _load_proto_from_file(_identifier_pb2.Identifier, identifier_file)
+    if not id.resource_type in resource_map:
+        raise _user_exceptions.FlyteAssertion(f"Resource type found in identifier {id.resource_type} invalid, must be launch plan, "
+                              f"task, or workflow")
+    entity = _load_proto_from_file(resource_map[id.resource_type], object_file)
+    return id, entity
+
+
+def _extract_files(file_paths):
+    """
+    :param file_paths:
+    :rtype: List[(flyteidl.core.identifier_pb2.Identifier, T)]
+    """
+    # Get a manual iterator because we're going to grab files two at a time.
+    # The identifier file will always come first because the names are always the same and .identifier.pb sorts before
+    # .pb
+
+    results = []
+    filename_iterator = iter(file_paths)
+    for identifier_file in filename_iterator:
+        object_file = next(filename_iterator)
+        id, entity = _extract_pair(identifier_file, object_file)
+        results.append((id, entity))
+
+    return results
+
+
+@_flyte_cli.command('register-files', cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+@_click.argument(
+    'files',
+    type=_click.Path(exists=True),
+    nargs=-1,
+)
+def register_files(host, insecure, files):
+    """
+    Given a list of files, this will (after sorting the input list), attempt to register them against Flyte Admin.
+    This command expects the files to be the output of the pyflyte serialize command.  See the code there for more
+    information. Valid files need to be:
+        * Ordered in the order that you want registration to happen. pyflyte should have done the topological sort
+          for you and produced file that have a prefix that sets the correct order.
+        * Of the correct type. That is, they should be the serialized form of one of these Flyte IDL objects
+          (or an identifier object).
+          - flyteidl.admin.launch_plan_pb2.LaunchPlanSpec for launch plans
+          - flyteidl.admin.workflow_pb2.WorkflowSpec for workflows
+          - flyteidl.admin.task_pb2.TaskSpec for tasks
+        * Each file needs to be accompanied by an identifier file. We can relax this constraint in the future.
+
+    :param host:
+    :param insecure:
+    :param files:
+    :return:
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    files = list(files)
+    files.sort()
+    _click.secho("Parsing files...", fg='green', bold=True)
+    for f in files:
+        _click.echo(f"  {f}")
+
+    flyte_entities_list = _extract_files(files)
+    for id, flyte_entity in flyte_entities_list:
+        try:
+            if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
+                client.raw.create_launch_plan(_launch_plan_pb2.LaunchPlanCreateRequest(id=id, spec=flyte_entity))
+            elif id.resource_type == _identifier_pb2.TASK:
+                client.raw.create_task(_task_pb2.TaskCreateRequest(id=id, spec=flyte_entity))
+            elif id.resource_type == _identifier_pb2.WORKFLOW:
+                client.raw.create_workflow(_workflow_pb2.WorkflowCreateRequest(id=id, spec=flyte_entity))
+            else:
+                raise _user_exceptions.FlyteAssertion(f"Only tasks, launch plans, and workflows can be called with this function, "
+                                      f"resource type {id.resource_type} was passed")
+            _click.secho(f"Registered {id}", fg='green')
+        except _user_exceptions.FlyteEntityAlreadyExistsException:
+            _click.secho(f"Skipping because already registered {id}", fg='cyan')
+
+    _click.echo(f"Finished scanning {len(flyte_entities_list)} files")
 
 
 @_flyte_cli.command('update-workflow-meta', cls=_FlyteSubCommand)
