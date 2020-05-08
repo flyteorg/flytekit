@@ -85,7 +85,7 @@ def test_dynamic_launch_plan_yielding_of_constant_workflow():
     assert len(dj_spec.nodes) == 1
     assert len(dj_spec.outputs) == 1
     assert dj_spec.outputs[0].var == "out"
-    assert len(outputs.keys()) == 1
+    assert len(outputs.keys()) == 2
 
 
 @_tasks.inputs(num=_Types.Integer)
