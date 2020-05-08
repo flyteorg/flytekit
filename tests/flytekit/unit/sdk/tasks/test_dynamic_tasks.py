@@ -6,6 +6,7 @@ from six import moves as _six_moves
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable, sdk_dynamic as _sdk_dynamic
 from flytekit.sdk.tasks import inputs, outputs, dynamic_task, python_task
 from flytekit.sdk.types import Types
+from flytekit.sdk.workflow import Input, workflow, Output
 
 
 @inputs(in1=Types.Integer)
@@ -109,6 +110,39 @@ def no_future_batch_task(wf_params, in1, out_str):
     out_str.set(["res1", "res2"])
 
 
+def manual_assign_name():
+    pass
+
+
+@inputs(task_input_num=Types.Integer)
+@outputs(out=Types.Integer)
+@dynamic_task
+def dynamic_wf_task(wf_params, task_input_num, out):
+    wf_params.logging.info("Running inner task... yielding a code generated sub workflow")
+
+    input_a = Input(Types.Integer, help="Tell me something")
+    node1 = sq_sub_task(in1=input_a)
+
+    MyUnregisteredWorkflow = workflow(
+        inputs={
+            'a': input_a,
+        },
+        outputs={
+            'ooo': Output(node1.outputs.out1, sdk_type=Types.Integer,
+                          help='This is an integer output')
+        },
+        nodes={
+            'node_one': node1,
+        }
+    )
+
+    setattr(MyUnregisteredWorkflow, 'auto_assign_name', manual_assign_name)
+    MyUnregisteredWorkflow._platform_valid_name = 'unregistered'
+
+    unregistered_workflow_execution = MyUnregisteredWorkflow(a=task_input_num)
+    out.set(unregistered_workflow_execution.outputs.ooo)
+
+
 def test_batch_task():
     assert isinstance(sample_batch_task, _sdk_runnable.SdkRunnableTask)
     assert isinstance(sample_batch_task, _sdk_dynamic.SdkDynamicTask)
@@ -131,3 +165,69 @@ def test_no_future_batch_task():
 
     res = no_future_batch_task.unit_test(in1=3)
     assert expected == res
+
+
+def test_dynamic_workflow():
+    res = dynamic_wf_task.unit_test(task_input_num=2)
+    dynamic_spec = res["futures.pb"]
+    assert len(dynamic_spec.nodes) == 1
+    assert len(dynamic_spec.subworkflows) == 1
+    assert len(dynamic_spec.tasks) == 1
+
+
+@inputs(task_input_num=Types.Integer)
+@outputs(out=Types.Integer)
+@dynamic_task
+def nested_dynamic_wf_task(wf_params, task_input_num, out):
+    wf_params.logging.info("Running inner task... yielding a code generated sub workflow")
+
+    # Inner workflow
+    input_a = Input(Types.Integer, help="Tell me something")
+    node1 = sq_sub_task(in1=input_a)
+
+    MyUnregisteredWorkflowInner = workflow(
+        inputs={
+            'a': input_a,
+        },
+        outputs={
+            'ooo': Output(node1.outputs.out1, sdk_type=Types.Integer,
+                          help='This is an integer output')
+        },
+        nodes={
+            'node_one': node1,
+        }
+    )
+
+    setattr(MyUnregisteredWorkflowInner, 'auto_assign_name', manual_assign_name)
+    MyUnregisteredWorkflowInner._platform_valid_name = 'unregistered'
+
+    # Output workflow
+    input_a = Input(Types.Integer, help="Tell me something")
+    node1 = MyUnregisteredWorkflowInner(a=task_input_num)
+
+    MyUnregisteredWorkflowOuter = workflow(
+        inputs={
+            'a': input_a,
+        },
+        outputs={
+            'ooo': Output(node1.outputs.ooo, sdk_type=Types.Integer,
+                          help='This is an integer output')
+        },
+        nodes={
+            'node_one': node1,
+        }
+    )
+
+    setattr(MyUnregisteredWorkflowOuter, 'auto_assign_name', manual_assign_name)
+    MyUnregisteredWorkflowOuter._platform_valid_name = 'unregistered'
+
+    unregistered_workflow_execution = MyUnregisteredWorkflowOuter(a=task_input_num)
+    out.set(unregistered_workflow_execution.outputs.ooo)
+
+
+def test_nested_dynamic_workflow():
+    res = nested_dynamic_wf_task.unit_test(task_input_num=2)
+    dynamic_spec = res["futures.pb"]
+    assert len(dynamic_spec.nodes) == 1
+    assert len(dynamic_spec.subworkflows) == 2
+    assert len(dynamic_spec.tasks) == 1
