@@ -198,6 +198,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
                     if not node_output.sdk_node.id:
                         node_output.sdk_node.assign_id_and_return(node.id)
 
+                if len(sub_task_node.inputs) > 0:
                     # Upload inputs to working directory under /array_job.input_ref/inputs.pb
                     input_path = _os.path.join(node.id, _constants.INPUT_FILE_NAME)
                     generated_files[input_path] = _literal_models.LiteralMap(
@@ -280,7 +281,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         spec, generated_files = self._produce_dynamic_job_spec(context, inputs)
 
         # If no sub-tasks are requested to run, just produce an outputs file like any other single-step tasks.
-        if len(generated_files) == 0:
+        if len(generated_files) == 0 and len(spec.nodes) == 0:
             return {
                 _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
                     literals={binding.var: binding.binding.to_literal_model() for binding in spec.outputs})
