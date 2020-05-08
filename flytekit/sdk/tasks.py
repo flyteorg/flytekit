@@ -6,7 +6,8 @@ import six as _six
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable_tasks, sdk_dynamic as _sdk_dynamic, \
-    spark_task as _sdk_spark_tasks, generic_spark_task as _sdk_generic_spark_task, hive_task as _sdk_hive_tasks, sidecar_task as _sdk_sidecar_tasks
+    spark_task as _sdk_spark_tasks, generic_spark_task as _sdk_generic_spark_task, hive_task as _sdk_hive_tasks, \
+    sidecar_task as _sdk_sidecar_tasks, pytorch_task as _sdk_pytorch_tasks
 from flytekit.common.tasks import task as _task
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.sdk.spark_types import  SparkType as _spark_type
@@ -994,6 +995,159 @@ def sidecar_task(
             environment=environment,
             pod_spec=pod_spec,
             primary_container_name=primary_container_name,
+        )
+
+    if _task_function:
+        return wrapper(_task_function)
+    else:
+        return wrapper
+
+
+def pytorch_task(
+        _task_function=None,
+        cache_version='',
+        retries=0,
+        interruptible=True,
+        deprecated='',
+        cache=False,
+        timeout=None,
+        workers_count=1,
+        instance_storage_request="",
+        instance_cpu_request="",
+        instance_gpu_request="",
+        instance_memory_request="",
+        instance_storage_limit="",
+        instance_cpu_limit="",
+        instance_gpu_limit="",
+        instance_memory_limit="",
+        environment=None,
+        cls=None
+):
+    """
+    Decorator to create a Pytorch Task definition. This task will submit PyTorchJob (see https://github.com/kubeflow/pytorch-operator)
+        defined by the code within the _task_function to k8s cluster.
+
+    .. code-block:: python
+
+        @inputs(int_list=[Types.Integer])
+        @outputs(result=Types.Integer
+        @pytorch_task(
+            workers_count=2,
+            instance_cpu_request="500m",
+            instance_memory_request="4Gi",
+            instance_memory_limit="8Gi",
+            instance_gpu_limit="1",
+        )
+        def my_pytorch_job(wf_params, int_list, result):
+            pass
+
+    :param _task_function: this is the decorated method and shouldn't be declared explicitly.  The function must
+        take a first argument, and then named arguments matching those defined in @inputs and @outputs.  No keyword
+        arguments are allowed for wrapped task functions.
+
+    :param Text cache_version: [optional] string representing logical version for discovery.  This field should be
+        updated whenever the underlying algorithm changes.
+
+        .. note::
+
+            This argument is required to be a non-empty string if `cache` is True.
+
+    :param int retries: [optional] integer determining number of times task can be retried on
+        :py:exc:`flytekit.sdk.exceptions.RecoverableException` or transient platform failures.  Defaults
+        to 0.
+
+        .. note::
+
+            If retries > 0, the task must be able to recover from any remote state created within the user code.  It is
+            strongly recommended that tasks are written to be idempotent.
+
+    :param bool interruptible: [optional] boolean describing if the task is interruptible.
+
+    :param Text deprecated: [optional] string that should be provided if this task is deprecated.  The string
+        will be logged as a warning so it should contain information regarding how to update to a newer task.
+
+    :param bool cache: [optional] boolean describing if the outputs of this task should be cached and
+        re-usable.
+
+    :param datetime.timedelta timeout: [optional] describes how long the task should be allowed to
+        run at max before triggering a retry (if retries are enabled).  By default, tasks are allowed to run
+        indefinitely.  If a null timedelta is passed (i.e. timedelta(seconds=0)), the task will not timeout.
+
+    :param int workers_count: integer determining the number of worker replicas spawned in the cluster for this job.
+
+    :param Text instance_storage_request: [optional] Kubernetes resource string for lower-bound of disk storage space
+        for each instance spawned for this job (i.e. both for master and workers).  Default is set by platform-level configuration.
+
+        .. note::
+
+            This is currently not supported by the platform.
+
+    :param Text instance_cpu_request: [optional] Kubernetes resource string for lower-bound of cores for each instance
+        spawned for this job (i.e. both for master and workers).
+        This can be set to a fractional portion of a CPU. Default is set by platform-level configuration.
+
+        TODO: Add links to resource string documentation for Kubernetes
+
+    :param Text instance_gpu_request: [optional] Kubernetes resource string for lower-bound of desired GPUs for each
+        instance spawned for this job (i.e. both for master and workers).
+        Default is set by platform-level configuration.
+
+        TODO: Add links to resource string documentation for Kubernetes
+
+    :param Text instance_memory_request: [optional]  Kubernetes resource string for lower-bound of physical memory
+        necessary for each instance spawned for this job (i.e. both for master and workers).  Default is set by platform-level configuration.
+
+        TODO: Add links to resource string documentation for Kubernetes
+
+    :param Text instance_storage_limit: [optional] Kubernetes resource string for upper-bound of disk storage space
+        for each instance spawned for this job (i.e. both for master and workers).
+        This amount is not guaranteed!  If not specified, it is set equal to storage_request.
+
+        .. note::
+
+            This is currently not supported by the platform.
+
+    :param Text instance_cpu_limit: [optional] Kubernetes resource string for upper-bound of cores for each instance
+        spawned for this job (i.e. both for master and workers).
+        This can be set to a fractional portion of a CPU. This amount is not guaranteed!  If not specified,
+        it is set equal to cpu_request.
+
+    :param Text instance_gpu_limit: [optional] Kubernetes resource string for upper-bound of desired GPUs for each
+        instance spawned for this job (i.e. both for master and workers).
+        This amount is not guaranteed!  If not specified, it is set equal to gpu_request.
+
+    :param Text instance_memory_limit: [optional]  Kubernetes resource string for upper-bound of physical memory
+        necessary for each instance spawned for this job (i.e. both for master and workers).
+        This amount is not guaranteed!  If not specified, it is set equal to memory_request.
+
+    :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
+
+    :param cls: This can be used to override the task implementation with a user-defined extension. The class
+        provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  A user can use this to
+        inject bespoke logic into the base Flyte programming model.
+
+    :rtype: flytekit.common.tasks.sdk_runnable.SdkRunnableTask
+    """
+    def wrapper(fn):
+        return (cls or _sdk_pytorch_tasks.SdkPyTorchTask)(
+            task_function=fn,
+            task_type=_common_constants.SdkTaskType.PYTORCH_TASK,
+            discovery_version=cache_version,
+            retries=retries,
+            interruptible=interruptible,
+            deprecated=deprecated,
+            discoverable=cache,
+            timeout=timeout or _datetime.timedelta(seconds=0),
+            workers_count=workers_count,
+            instance_storage_request=instance_storage_request,
+            instance_cpu_request=instance_cpu_request,
+            instance_gpu_request=instance_gpu_request,
+            instance_memory_request=instance_memory_request,
+            instance_storage_limit=instance_storage_limit,
+            instance_cpu_limit=instance_cpu_limit,
+            instance_gpu_limit=instance_gpu_limit,
+            instance_memory_limit=instance_memory_limit,
+            environment=environment or {}
         )
 
     if _task_function:

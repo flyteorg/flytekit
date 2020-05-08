@@ -6,6 +6,7 @@ import six as _six
 from flyteidl.admin import task_pb2 as _admin_task
 from flyteidl.core import tasks_pb2 as _core_task, literals_pb2 as _literals_pb2, compiler_pb2 as _compiler
 from flyteidl.plugins import spark_pb2 as _spark_task
+from flyteidl.plugins import pytorch_pb2 as _pytorch_task
 from flytekit.plugins import flyteidl as _lazy_flyteidl
 from google.protobuf import json_format as _json_format, struct_pb2 as _struct
 from flytekit.sdk.spark_types import SparkType as _spark_type
@@ -803,4 +804,25 @@ class SidecarJob(_common.FlyteIdlEntity):
         return cls(
             pod_spec=pb2_object.pod_spec,
             primary_container_name=pb2_object.primary_container_name,
+        )
+
+
+class PyTorchJob(_common.FlyteIdlEntity):
+
+    def __init__(self, workers_count):
+        self._workers_count = workers_count
+
+    @property
+    def workers_count(self):
+        return self._workers_count
+
+    def to_flyte_idl(self):
+        return _pytorch_task.PyTorchOperatorTask(
+            workers=self.workers_count,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        return cls(
+            workers_count=pb2_object.workers,
         )
