@@ -231,3 +231,36 @@ def test_nested_dynamic_workflow():
     assert len(dynamic_spec.nodes) == 1
     assert len(dynamic_spec.subworkflows) == 2
     assert len(dynamic_spec.tasks) == 1
+
+
+@inputs(task_input_num=Types.Integer)
+@dynamic_task
+def dynamic_wf_no_outputs_task(wf_params, task_input_num):
+    wf_params.logging.info("Running inner task... yielding a code generated sub workflow")
+
+    input_a = Input(Types.Integer, help="Tell me something")
+    node1 = sq_sub_task(in1=input_a)
+
+    MyUnregisteredWorkflow = workflow(
+        inputs={
+            'a': input_a,
+        },
+        outputs={},
+        nodes={
+            'node_one': node1,
+        }
+    )
+
+    setattr(MyUnregisteredWorkflow, 'auto_assign_name', manual_assign_name)
+    MyUnregisteredWorkflow._platform_valid_name = 'unregistered'
+
+    unregistered_workflow_execution = MyUnregisteredWorkflow(a=task_input_num)
+    yield unregistered_workflow_execution
+
+
+def test_dynamic_workflow_no_outputs():
+    res = dynamic_wf_no_outputs_task.unit_test(task_input_num=2)
+    dynamic_spec = res["futures.pb"]
+    assert len(dynamic_spec.nodes) == 1
+    assert len(dynamic_spec.subworkflows) == 1
+    assert len(dynamic_spec.tasks) == 1
