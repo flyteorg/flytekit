@@ -6,12 +6,12 @@ from flytekit.models import common as _common
 
 
 class CoPilot(_common.FlyteIdlEntity):
-    METADATA_FORMAT_PROTO = _raw.CoPilot.METADATA_FORMAT_PROTO
-    METADATA_FORMAT_JSON = _raw.CoPilot.METADATA_FORMAT_JSON
-    METADATA_FORMAT_YAML = _raw.CoPilot.METADATA_FORMAT_YAML
+    METADATA_FORMAT_PROTO = _raw.CoPilot.PROTO
+    METADATA_FORMAT_JSON = _raw.CoPilot.JSON
+    METADATA_FORMAT_YAML = _raw.CoPilot.YAML
     _METADATA_FORMATS = frozenset([METADATA_FORMAT_JSON, METADATA_FORMAT_PROTO, METADATA_FORMAT_YAML])
 
-    def __init__(self, input_path: str, output_path: str, metadata_format: str):
+    def __init__(self, input_path: str, output_path: str, metadata_format: int):
         if metadata_format not in self._METADATA_FORMATS:
             raise ValueError("Metadata format {} not supported. Should be one of {}".format(metadata_format, self._METADATA_FORMATS))
         self._input_path = input_path
@@ -27,14 +27,14 @@ class CoPilot(_common.FlyteIdlEntity):
         return self._output_path
 
     @property
-    def metadata_format(self) -> str:
+    def metadata_format(self) -> int:
         return self._metadata_format
 
     def to_flyte_idl(self) -> _raw.CoPilot:
         return _raw.CoPilot(
             input_path=self._input_path,
             output_path=self._output_path,
-            metadata_format=self._metadata_format,
+            format=self._metadata_format,
         )
 
     @classmethod
@@ -46,5 +46,5 @@ class CoPilot(_common.FlyteIdlEntity):
         return cls(
             input_path=pb2_object.input_path,
             output_path=pb2_object.output_path,
-            metadata_format=pb2_object.metadata_format,
+            metadata_format=pb2_object.format,
         )

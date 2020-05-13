@@ -124,7 +124,7 @@ class SdkRawContainerTask(_base_task.SdkTask):
     """
     This class includes the logic for building a task that executes as a Presto task.
     """
-    METADATA_FORMAT_JSON = _copilot.CoPilot.METADATA_FORMAT_JSON,
+    METADATA_FORMAT_JSON = _copilot.CoPilot.METADATA_FORMAT_JSON
     METADATA_FORMAT_YAML = _copilot.CoPilot.METADATA_FORMAT_YAML
     METADATA_FORMAT_PROTO = _copilot.CoPilot.METADATA_FORMAT_PROTO
 
@@ -135,7 +135,7 @@ class SdkRawContainerTask(_base_task.SdkTask):
             outputs: Dict[str, FlyteSdkType]=None,
             input_data_dir: str = None,
             output_data_dir: str = None,
-            metadata_format: str = METADATA_FORMAT_JSON,
+            metadata_format: int = METADATA_FORMAT_JSON,
             command: List[str] = None,
             args: List[str] = None,
             storage_request: str = None,
