@@ -5,16 +5,19 @@ from flytekit.sdk.types import Types
 from flytekit.sdk.workflow import workflow_class, Input
 
 square = SdkRawContainerTask(
+    input_data_dir="/var/inputs",
+    output_data_dir="/var/outputs",
     inputs={"val": Types.Integer},
     outputs={"out": Types.Integer},
     image="alpine",
-    command=["sh", "-c", "cd /var/flyte/data; mkdir outputs; paste ./inputs/val | awk '{print ($1 * $1)}' > ./outputs/out"],
+    command=["sh", "-c", "cd /var/flyte/; paste ./inputs/val | awk '{print ($1 * $1)}' > ./outputs/out"],
 )
 
 echo = SdkRawContainerTask(
+    input_data_dir="/var/flyte/inputs",
     inputs={"x": Types.Integer},
     image="alpine",
-    command=["echo", "{{.inputs.x}}"],
+    command=["cat", "/var/flyte/inputs.json"],
 )
 
 

@@ -3,6 +3,8 @@ from __future__ import absolute_import
 import datetime as _datetime
 from typing import Dict, List
 
+from google.protobuf.json_format import MessageToDict as _MessageToDict
+
 from flytekit import __version__
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
@@ -10,7 +12,7 @@ from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import task as _base_task
 from flytekit.common.types.base_sdk_types import FlyteSdkType
 from flytekit.configuration import resources as _resource_config
-from flytekit.models import literals as _literals, task as _task_models
+from flytekit.models import literals as _literals, task as _task_models, copilot as _copilot
 from flytekit.models.interface import Variable
 
 
@@ -122,11 +124,9 @@ class SdkRawContainerTask(_base_task.SdkTask):
     """
     This class includes the logic for building a task that executes as a Presto task.
     """
-
-    METADATA_FORMAT_PROTO = "pb"
-    METADATA_FORMAT_JSON = "json"
-    METADATA_FORMAT_YAML = "yaml"
-    _METADATA_FORMAT = frozenset([METADATA_FORMAT_JSON, METADATA_FORMAT_PROTO, METADATA_FORMAT_YAML])
+    METADATA_FORMAT_JSON = _copilot.CoPilot.METADATA_FORMAT_JSON,
+    METADATA_FORMAT_YAML = _copilot.CoPilot.METADATA_FORMAT_YAML
+    METADATA_FORMAT_PROTO = _copilot.CoPilot.METADATA_FORMAT_PROTO
 
     def __init__(
             self,
@@ -183,8 +183,6 @@ class SdkRawContainerTask(_base_task.SdkTask):
         self.input_data_dir = input_data_dir
         self.output_data_dir = output_data_dir
         self.metadata_format = metadata_format
-        if metadata_format not in self._METADATA_FORMAT:
-            raise Exception("{} Illegal metadata format, only [{}] metadata formats are supported".format(metadata_format, ",".join(self._METADATA_FORMAT)))
 
         metadata = _task_models.TaskMetadata(
             discoverable,
@@ -203,13 +201,13 @@ class SdkRawContainerTask(_base_task.SdkTask):
         # parameters for caching purposes
         i = _interface.TypedInterface(inputs=types_to_variable(inputs), outputs=types_to_variable(outputs))
 
-        # TODO create custom proto to store data dir and other things
+        info = _copilot.CoPilot(input_path=input_data_dir, output_path=output_data_dir, metadata_format=metadata_format)
 
         super(SdkRawContainerTask, self).__init__(
             _constants.SdkTaskType.RAW_CONTAINER_TASK,
             metadata,
             i,
-            None,
+            _MessageToDict(info.to_flyte_idl()),
             container=_get_container_definition(
                 image=image,
                 args=args,
