@@ -10,14 +10,14 @@ square = SdkRawContainerTask(
     inputs={"val": Types.Integer},
     outputs={"out": Types.Integer},
     image="alpine",
-    command=["sh", "-c", "cd /var/flyte/; paste ./inputs/val | awk '{print ($1 * $1)}' > ./outputs/out"],
+    command=["sh", "-c", "cd /var/; paste ./inputs/val | awk '{print ($1 * $1)}' > ./outputs/out"],
 )
 
 echo = SdkRawContainerTask(
     input_data_dir="/var/flyte/inputs",
     inputs={"x": Types.Integer},
     image="alpine",
-    command=["cat", "/var/flyte/inputs.json"],
+    command=["sh" "-c", "ls /var/flyte/inputs; cat /var/flyte/inputs/inputs.json"],
 )
 
 
