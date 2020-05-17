@@ -15,7 +15,6 @@ from flytekit.common.exceptions import user as _user_exceptions
 
 
 class Resources(_common.FlyteIdlEntity):
-
     class ResourceName(object):
         UNKNOWN = _core_task.Resources.UNKNOWN
         CPU = _core_task.Resources.CPU
@@ -111,7 +110,6 @@ class Resources(_common.FlyteIdlEntity):
 
 
 class RuntimeMetadata(_common.FlyteIdlEntity):
-
     class RuntimeType(object):
         OTHER = 0
         FLYTE_SDK = 1
@@ -176,7 +174,8 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
 
 class TaskMetadata(_common.FlyteIdlEntity):
 
-    def __init__(self, discoverable, runtime, timeout, retries, interruptible, discovery_version, deprecated_error_message):
+    def __init__(self, discoverable, runtime, timeout, retries, interruptible, discovery_version,
+                 deprecated_error_message):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
         and retries.
@@ -649,7 +648,7 @@ class SparkJob(_common.FlyteIdlEntity):
             application_type = _spark_type.R
 
         return cls(
-            type= application_type,
+            type=application_type,
             spark_conf=pb2_object.sparkConf,
             application_file=pb2_object.mainApplicationFile,
             main_class=pb2_object.mainClass,
@@ -658,26 +657,66 @@ class SparkJob(_common.FlyteIdlEntity):
         )
 
 
+class DataLoadingConfig(_common.FlyteIdlEntity):
+    METADATA_FORMAT_PROTO = _core_task.DataLoadingConfig.PROTO
+    METADATA_FORMAT_JSON = _core_task.DataLoadingConfig.JSON
+    METADATA_FORMAT_YAML = _core_task.DataLoadingConfig.YAML
+    _METADATA_FORMATS = frozenset([METADATA_FORMAT_JSON, METADATA_FORMAT_PROTO, METADATA_FORMAT_YAML])
+
+    def __init__(self, input_path: str, output_path: str, enabled: bool = True,
+                 format: _core_task.DataLoadingConfig.MetadataFormat = METADATA_FORMAT_PROTO):
+        if format not in self._METADATA_FORMATS:
+            raise ValueError(
+                "Metadata format {} not supported. Should be one of {}".format(format, self._METADATA_FORMATS))
+        self._input_path = input_path
+        self._output_path = output_path
+        self._enabled = enabled
+        self._format = format
+
+    def to_flyte_idl(self) -> _core_task.DataLoadingConfig:
+        return _core_task.DataLoadingConfig(
+            input_path=self._input_path,
+            output_path=self._output_path,
+            format=self._format,
+            enabled=self._enabled,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_task.DataLoadingConfig):
+        # TODO use python 3.7+ only and then https://stackoverflow.com/questions/33533148/how-do-i-specify-that-the-return-type-of-a-method-is-the-same-as-the-class-itsel -> DataLoadingConfig:
+        if pb2_object is None:
+            return None
+        return cls(
+            input_path=pb2_object.input_path,
+            output_path=pb2_object.output_path,
+            enabled=pb2_object.enabled,
+            format=pb2_object.format,
+        )
+
+
 class Container(_common.FlyteIdlEntity):
 
-    def __init__(self, image, command, args, resources, env, config):
+    def __init__(self, image, command, args, resources, env, config, data_loading_config=None):
         """
-        This defines a container target.  It will execute the appropriate command line on the appropriate image with
-        the given configurations.
+           This defines a container target.  It will execute the appropriate command line on the appropriate image with
+           the given configurations.
 
-        :param Text image: The fully-qualified identifier for the image.
-        :param list[Text] command: A list of 'words' for the command.  i.e. ['aws', 's3', 'ls']
-        :param list[Text] args: A list of arguments for the command.  i.e. ['s3://some/path', '/tmp/local/path']
-        :param Resources resources: A definition of requisite compute resources.
-        :param dict[Text, Text] env: A definition of key-value pairs for environment variables.
-        :param dict[Text, Text] config: A definition of configuration key-value pairs.
-        """
+           :param Text image: The fully-qualified identifier for the image.
+           :param list[Text] command: A list of 'words' for the command.  i.e. ['aws', 's3', 'ls']
+           :param list[Text] args: A list of arguments for the command.  i.e. ['s3://some/path', '/tmp/local/path']
+           :param Resources resources: A definition of requisite compute resources.
+           :param dict[Text, Text] env: A definition of key-value pairs for environment variables.
+           :param dict[Text, Text] config: A definition of configuration key-value pairs.
+           :type DataLoadingConfig data_loading_config: object
+           """
+        self._data_loading_config = data_loading_config
         self._image = image
         self._command = command
         self._args = args
         self._resources = resources
         self._env = env
         self._config = config
+
 
     @property
     def image(self):
@@ -687,6 +726,7 @@ class Container(_common.FlyteIdlEntity):
         """
         return self._image
 
+
     @property
     def command(self):
         """
@@ -694,6 +734,7 @@ class Container(_common.FlyteIdlEntity):
         :rtype: list[Text]
         """
         return self._command
+
 
     @property
     def args(self):
@@ -703,6 +744,7 @@ class Container(_common.FlyteIdlEntity):
         """
         return self._args
 
+
     @property
     def resources(self):
         """
@@ -710,6 +752,7 @@ class Container(_common.FlyteIdlEntity):
         :rtype: Resources
         """
         return self._resources
+
 
     @property
     def env(self):
@@ -720,6 +763,7 @@ class Container(_common.FlyteIdlEntity):
         """
         return self._env
 
+
     @property
     def config(self):
         """
@@ -728,6 +772,15 @@ class Container(_common.FlyteIdlEntity):
         :rtype: dict[Text, Text]
         """
         return self._config
+
+
+    @property
+    def data_loading_config(self):
+        """
+        :rtype: DataLoadingConfig
+        """
+        return self._data_loading_config
+
 
     def to_flyte_idl(self):
         """
@@ -739,8 +792,10 @@ class Container(_common.FlyteIdlEntity):
             args=self.args,
             resources=self.resources.to_flyte_idl(),
             env=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in _six.iteritems(self.env)],
-            config=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in _six.iteritems(self.config)]
+            config=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in _six.iteritems(self.config)],
+            data_config=self._data_loading_config.to_flyte_idl() if self._data_loading_config else None,
         )
+
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -754,7 +809,8 @@ class Container(_common.FlyteIdlEntity):
             args=pb2_object.args,
             resources=Resources.from_flyte_idl(pb2_object.resources),
             env={kv.key: kv.value for kv in pb2_object.env},
-            config={kv.key: kv.value for kv in pb2_object.config}
+            config={kv.key: kv.value for kv in pb2_object.config},
+            data_loading_config=DataLoadingConfig.from_flyte_idl(pb2_object.data_config),
         )
 
 

@@ -17,7 +17,7 @@ echo = SdkRawContainerTask(
     input_data_dir="/var/flyte/inputs",
     inputs={"x": Types.Integer},
     image="alpine",
-    command=["sh" "-c", "ls /var/flyte/inputs; cat /var/flyte/inputs/inputs.json"],
+    command=["sh", "-c", "ls /var/flyte/inputs; cat /var/flyte/inputs/inputs"],
 )
 
 
