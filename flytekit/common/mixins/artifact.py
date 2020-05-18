@@ -51,6 +51,14 @@ class ExecutionArtifact(_six.with_metaclass(_common_models.FlyteABCMeta, object)
         """
         pass
 
+    @_abc.abstractmethod
+    def _sync_closure(self):
+        """
+        Syncs the closure of the underlying execution artifact with the state observed by the platform.
+        :rtype: None
+        """
+        pass
+
     def wait_for_completion(self, timeout=None, poll_interval=None):
         """
         :param datetime.timedelta timeout: Amount of time to wait until the execution has completed before timing
@@ -64,10 +72,11 @@ class ExecutionArtifact(_six.with_metaclass(_common_models.FlyteABCMeta, object)
         else:
             time_to_give_up = _datetime.datetime.utcnow() + timeout
 
-        self.sync()
+        self._sync_closure()
         while _datetime.datetime.utcnow() < time_to_give_up:
             if self.is_complete:
+                self.sync()
                 return
             _time.sleep(poll_interval.total_seconds())
-            self.sync()
+            self._sync_closure()
         raise _user_exceptions.FlyteTimeout("Execution {} did not complete before timeout.".format(self))

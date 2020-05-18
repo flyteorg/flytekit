@@ -25,7 +25,7 @@ _lazy_loader.LazyLoadPlugin(
 
 _lazy_loader.LazyLoadPlugin(
     "sidecar",
-    ["k8s-proto>=0.0.2,<1.0.0"],
+    ["k8s-proto>=0.0.3,<1.0.0"],
     [k8s, flyteidl]
 )
 
