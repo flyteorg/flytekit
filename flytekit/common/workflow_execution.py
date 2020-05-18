@@ -123,8 +123,16 @@ class SdkWorkflowExecution(
         :rtype: None
         """
         if not self.is_complete or self._node_executions is None:
-            _engine_loader.get_engine().get_workflow_execution(self).sync()
+            self._sync_closure()
             self._node_executions = self.get_node_executions()
+
+    def _sync_closure(self):
+        """
+        Syncs the closure of the underlying execution artifact with the state observed by the platform.
+        :rtype: None
+        """
+        if not self.is_complete:
+            _engine_loader.get_engine().get_workflow_execution(self).sync()
 
     def get_node_executions(self, filters=None):
         """
