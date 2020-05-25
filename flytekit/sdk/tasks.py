@@ -1007,7 +1007,7 @@ def pytorch_task(
         _task_function=None,
         cache_version='',
         retries=0,
-        interruptible=True,
+        interruptible=False,
         deprecated='',
         cache=False,
         timeout=None,

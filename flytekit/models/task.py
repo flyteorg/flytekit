@@ -817,7 +817,7 @@ class PyTorchJob(_common.FlyteIdlEntity):
         return self._workers_count
 
     def to_flyte_idl(self):
-        return _pytorch_task.PyTorchOperatorTask(
+        return _pytorch_task.DistributedPyTorchTrainingTask(
             workers=self.workers_count,
         )
 

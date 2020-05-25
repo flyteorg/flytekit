@@ -14,7 +14,7 @@ from flytekit.models import literals as _literal_models, task as _task_models
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
 
-class SdkRunnablePytorchkContainer(_sdk_runnable.SdkRunnableContainer):
+class SdkRunnablePytorchContainer(_sdk_runnable.SdkRunnableContainer):
 
     @property
     def args(self):
@@ -70,52 +70,11 @@ class SdkPyTorchTask(_sdk_runnable.SdkRunnableTask):
             custom=_MessageToDict(pytorch_job)
         )
 
-    @_exception_scopes.system_entry_point
-    def execute(self, context, inputs):
-        """
-        :param flytekit.models.literals.LiteralMap inputs:
-        :rtype: dict[Text, flytekit.models.common.FlyteIdlEntity]
-        :returns: This function must return a dictionary mapping 'filenames' to Flyte Interface Entities.  These
-            entities will be used by the engine to pass data from node to node, populate metadata, etc. etc..  Each
-            engine will have different behavior.  For instance, the Flyte engine will upload the entities to a remote
-            working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
-            workflow.  Where as local engine will merely feed the outputs directly into the next node.
-        """
-        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(inputs, {
-            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)
-        })
-        outputs_dict = {
-            name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
-            for name, variable in _six.iteritems(self.interface.outputs)
-        }
-
-        inputs_dict.update(outputs_dict)
-
-        _exception_scopes.user_entry_point(self.task_function)(
-            _sdk_runnable.ExecutionParameters(
-                execution_date=context.execution_date,
-                execution_id=context.execution_id,
-                stats=context.stats,
-                logging=context.logging,
-                tmp_dir=context.working_directory
-            ),
-            **inputs_dict
-        )
-        return {
-            _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
-                literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
-            )
-        }
-
     def _get_container_definition(
             self,
             **kwargs
     ):
         """
-        :rtype: SdkRunnableSparkContainer
+        :rtype: SdkRunnablePytorchContainer
         """
-        return super(SdkPyTorchTask, self)._get_container_definition(cls=SdkRunnablePytorchkContainer, **kwargs)
-
-    def _get_kwarg_inputs(self):
-        # Trim off first parameter as it is reserved for workflow_parameters
-        return set(_getargspec(self.task_function).args[1:])
+        return super(SdkPyTorchTask, self)._get_container_definition(cls=SdkRunnablePytorchContainer, **kwargs)

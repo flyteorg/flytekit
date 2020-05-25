@@ -58,6 +58,14 @@ If `@sidecar_task` is to be used, one should install the `sidecar` plugin.
 pip install flytekit[sidecar]
 ```
 
+### Pytorch
+
+If `@pytorch_task` is to be used, one should install the `pytorch` plugin.
+
+```bash
+pip install flytekit[pytorch]
+```
+
 ### Full Installation
 
 To install all or multiple available plugins, one can specify them individually:
