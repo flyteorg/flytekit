@@ -657,21 +657,56 @@ class SparkJob(_common.FlyteIdlEntity):
         )
 
 
+class IOStrategy(_common.FlyteIdlEntity):
+    """
+    Provides methods to manage data in and out of the Raw container using Download Modes. This can only be used if DataLoadingConfig is enabled.
+    """
+    DOWNLOAD_MODE_EAGER = _core_task.IOStrategy.DOWNLOAD_EAGER
+    DOWNLOAD_MODE_STREAM = _core_task.IOStrategy.DOWNLOAD_STREAM
+    DOWNLOAD_MODE_NO_DOWNLOAD = _core_task.IOStrategy.DO_NOT_DOWNLOAD
+
+    UPLOAD_MODE_EAGER = _core_task.IOStrategy.UPLOAD_EAGER
+    UPLOAD_MODE_ON_EXIT = _core_task.IOStrategy.UPLOAD_ON_EXIT
+    UPLOAD_MODE_NO_UPLOAD = _core_task.IOStrategy.DO_NOT_UPLOAD
+
+    def __init__(self,
+                 download_mode: _core_task.IOStrategy.DownloadMode=DOWNLOAD_MODE_EAGER,
+                 upload_mode: _core_task.IOStrategy.UploadMode=UPLOAD_MODE_ON_EXIT):
+        self._download_mode = download_mode
+        self._upload_mode = upload_mode
+
+    def to_flyte_idl(self) -> _core_task.IOStrategy:
+        return _core_task.IOStrategy(
+            download_mode=self._download_mode,
+            upload_mode=self._upload_mode
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_task.IOStrategy):
+        if pb2_object is None:
+            return None
+        return cls(
+            download_mode=pb2_object.download_mode,
+            upload_mode=pb2_object.upload_mode,
+        )
+
+
 class DataLoadingConfig(_common.FlyteIdlEntity):
-    METADATA_FORMAT_PROTO = _core_task.DataLoadingConfig.PROTO
-    METADATA_FORMAT_JSON = _core_task.DataLoadingConfig.JSON
-    METADATA_FORMAT_YAML = _core_task.DataLoadingConfig.YAML
-    _METADATA_FORMATS = frozenset([METADATA_FORMAT_JSON, METADATA_FORMAT_PROTO, METADATA_FORMAT_YAML])
+    LITERALMAP_FORMAT_PROTO = _core_task.DataLoadingConfig.PROTO
+    LITERALMAP_FORMAT_JSON = _core_task.DataLoadingConfig.JSON
+    LITERALMAP_FORMAT_YAML = _core_task.DataLoadingConfig.YAML
+    _LITERALMAP_FORMATS = frozenset([LITERALMAP_FORMAT_JSON, LITERALMAP_FORMAT_PROTO, LITERALMAP_FORMAT_YAML])
 
     def __init__(self, input_path: str, output_path: str, enabled: bool = True,
-                 format: _core_task.DataLoadingConfig.MetadataFormat = METADATA_FORMAT_PROTO):
-        if format not in self._METADATA_FORMATS:
+                 format: _core_task.DataLoadingConfig.LiteralMapFormat = LITERALMAP_FORMAT_PROTO, io_strategy: IOStrategy=None):
+        if format not in self._LITERALMAP_FORMATS:
             raise ValueError(
-                "Metadata format {} not supported. Should be one of {}".format(format, self._METADATA_FORMATS))
+                "Metadata format {} not supported. Should be one of {}".format(format, self._LITERALMAP_FORMATS))
         self._input_path = input_path
         self._output_path = output_path
         self._enabled = enabled
         self._format = format
+        self._io_strategy = io_strategy
 
     def to_flyte_idl(self) -> _core_task.DataLoadingConfig:
         return _core_task.DataLoadingConfig(
@@ -679,6 +714,7 @@ class DataLoadingConfig(_common.FlyteIdlEntity):
             output_path=self._output_path,
             format=self._format,
             enabled=self._enabled,
+            io_strategy=self._io_strategy.to_flyte_idl() if self._io_strategy is not None else None,
         )
 
     @classmethod
@@ -691,6 +727,7 @@ class DataLoadingConfig(_common.FlyteIdlEntity):
             output_path=pb2_object.output_path,
             enabled=pb2_object.enabled,
             format=pb2_object.format,
+            io_strategy=IOStrategy.from_flyte_idl(pb2_object.io_strategy),
         )
 
 

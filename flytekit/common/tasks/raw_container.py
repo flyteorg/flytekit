@@ -124,9 +124,9 @@ class SdkRawContainerTask(_base_task.SdkTask):
     """
     This class includes the logic for building a task that executes as a Presto task.
     """
-    METADATA_FORMAT_JSON = _task_models.DataLoadingConfig.METADATA_FORMAT_JSON
-    METADATA_FORMAT_YAML = _task_models.DataLoadingConfig.METADATA_FORMAT_YAML
-    METADATA_FORMAT_PROTO = _task_models.DataLoadingConfig.METADATA_FORMAT_PROTO
+    METADATA_FORMAT_JSON = _task_models.DataLoadingConfig.LITERALMAP_FORMAT_JSON
+    METADATA_FORMAT_YAML = _task_models.DataLoadingConfig.LITERALMAP_FORMAT_YAML
+    METADATA_FORMAT_PROTO = _task_models.DataLoadingConfig.LITERALMAP_FORMAT_PROTO
 
     def __init__(
             self,
@@ -136,6 +136,7 @@ class SdkRawContainerTask(_base_task.SdkTask):
             input_data_dir: str = None,
             output_data_dir: str = None,
             metadata_format: int = METADATA_FORMAT_JSON,
+            io_strategy: _task_models.IOStrategy=None,
             command: List[str] = None,
             args: List[str] = None,
             storage_request: str = None,
@@ -185,6 +186,7 @@ class SdkRawContainerTask(_base_task.SdkTask):
             output_path=output_data_dir,
             format=metadata_format,
             enabled=True,
+            io_strategy=io_strategy,
         )
 
         metadata = _task_models.TaskMetadata(
