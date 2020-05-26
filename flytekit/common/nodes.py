@@ -302,8 +302,8 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
     def execute_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
                               label_overrides=None, annotation_overrides=None):
         """
-        Executes the launch plan and returns the execution identifier.  This version of execution is meant for when
-        you already have a LiteralMap of inputs.
+        Executes the node as a single task executionand returns the execution identifier.
+        This version of execution is meant for when you already have a LiteralMap of inputs.
 
         :param Text project:
         :param Text domain:
