@@ -38,6 +38,8 @@ def test_simple_pytorch_task():
     assert len(simple_pytorch_task.container.resources.limits) == 0
     assert len(simple_pytorch_task.container.resources.requests) == 0
     assert simple_pytorch_task.custom['workers'] == 1
+    # Should strip out the venv component of the args.
+    assert simple_pytorch_task._get_container_definition().args[0] == 'pyflyte-execute'
 
     pb2 = simple_pytorch_task.to_flyte_idl()
     assert pb2.custom['workers'] == 1
