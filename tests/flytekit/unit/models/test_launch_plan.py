@@ -33,17 +33,3 @@ def test_lp_closure():
     assert obj == obj2
     assert obj2.expected_inputs == parameter_map
     assert obj2.expected_outputs == variable_map
-
-
-def test_auth():
-    obj = launch_plan.Auth(assumable_iam_role="rollie-pollie")
-    assert obj.assumable_iam_role == "rollie-pollie"
-    assert not obj.kubernetes_service_account
-    obj2 = launch_plan.Auth.from_flyte_idl(obj.to_flyte_idl())
-    assert obj == obj2
-
-    obj = launch_plan.Auth(kubernetes_service_account="service-account-name")
-    assert obj.kubernetes_service_account == "service-account-name"
-    assert not obj.assumable_iam_role
-    obj2 = launch_plan.Auth.from_flyte_idl(obj.to_flyte_idl())
-    assert obj == obj2

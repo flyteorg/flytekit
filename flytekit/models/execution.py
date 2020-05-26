@@ -76,7 +76,7 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
 class ExecutionSpec(_common_models.FlyteIdlEntity):
 
     def __init__(self, launch_plan, metadata, notifications=None, disable_all=None, labels=None,
-                 annotations=None):
+                 annotations=None, auth_role=None):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
         :param ExecutionMetadata metadata: The metadata to be associated with this execution
@@ -84,6 +84,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         :param bool disable_all: If true, all notifications should be disabled.
         :param flytekit.models.common.Labels labels: Labels to apply to the execution.
         :param flytekit.models.common.Annotations annotations: Annotations to apply to the execution
+        :param flytekit.models.common.AuthRole auth_role: The authorization method with which to execute the workflow.
 
         """
         self._launch_plan = launch_plan
@@ -92,6 +93,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._disable_all = disable_all
         self._labels = labels or _common_models.Labels({})
         self._annotations = annotations or _common_models.Annotations({})
+        self._auth_role = auth_role
 
     @property
     def launch_plan(self):
@@ -136,6 +138,13 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         """
         return self._annotations
 
+    @property
+    def auth_role(self):
+        """
+        :rtype: flytekit.models.common.AuthRole
+        """
+        return self._auth_role
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionSpec
@@ -147,6 +156,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             disable_all=self.disable_all,
             labels=self.labels.to_flyte_idl(),
             annotations=self.annotations.to_flyte_idl(),
+            auth_role=self._auth_role.to_flyte_idl() if self.auth_role else None,
         )
 
     @classmethod
@@ -162,6 +172,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             disable_all=p.disable_all if p.HasField("disable_all") else None,
             labels=_common_models.Labels.from_flyte_idl(p.labels),
             annotations=_common_models.Annotations.from_flyte_idl(p.annotations),
+            auth_role=_common_models.AuthRole.from_flyte_idl(p.auth_role),
         )
 
 

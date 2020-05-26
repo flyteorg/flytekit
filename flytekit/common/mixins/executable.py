@@ -56,6 +56,6 @@ class ExecutableEntity(_six.with_metaclass(_abc.ABCMeta, object)):
             notifications.
         :param flytekit.models.common.Labels label_overrides:
         :param flytekit.models.common.Annotations annotation_overrides:
-        :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier
+        :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier:
         """
         pass

@@ -7,7 +7,7 @@ from flytekit.common.exceptions import scopes as _exception_scopes, user as _use
 
 from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, executable as _executable_mixin
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import sdk as _sdk_config, internal as _internal_config, auth as _auth_config
+from flytekit.configuration import sdk as _sdk_config, auth as _auth_config
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import launch_plan as _launch_plan_models, schedule as _schedule_model, interface as \
     _interface_models, literals as _literal_models, common as _common_models
@@ -102,7 +102,7 @@ class SdkLaunchPlan(
     @property
     def auth(self):
         """
-        :rtype: flytekit.models.LaunchPlan.Auth
+        :rtype: flytekit.models.common.AuthRole
         """
         fixed_auth = super(SdkLaunchPlan, self).auth
         if fixed_auth is not None and\
@@ -116,8 +116,8 @@ class SdkLaunchPlan(
             _logging.warning("Using deprecated `role` from config. "
                              "Please update your config to use `assumable_iam_role` instead")
             assumable_iam_role = _sdk_config.ROLE.get()
-        return _launch_plan_models.Auth(assumable_iam_role=assumable_iam_role,
-                                        kubernetes_service_account=kubernetes_service_account)
+        return _common_models.AuthRole(assumable_iam_role=assumable_iam_role,
+                                       kubernetes_service_account=kubernetes_service_account)
 
     @property
     def interface(self):
