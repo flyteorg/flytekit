@@ -33,8 +33,6 @@ from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
 from flytekit.common.exceptions import user as _user_exceptions
 
-from flytekit.common.types.helpers import get_sdk_type_from_literal_type as _get_sdk_type_from_literal_type
-
 
 import requests as _requests
 try:  # Python 3
@@ -714,7 +712,7 @@ def execute_task(project, domain, name, host, insecure, urn, task_args):
         text_args = _parse_args_into_dict(task_args)
         inputs = {}
         for var_name, variable in _six.iteritems(task.interface.inputs):
-            sdk_type = _get_sdk_type_from_literal_type(variable.type)
+            sdk_type = _type_helpers.get_sdk_type_from_literal_type(variable.type)
             if var_name in text_args and text_args[var_name] is not None:
                 inputs[var_name] = sdk_type.from_string(text_args[var_name]).to_python_std()
 

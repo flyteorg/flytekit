@@ -387,7 +387,7 @@ class FlyteNode(_common_engine.BaseNodeExecutor):
                                                 kubernetes_service_account=kubernetes_service_account)
 
         try:
-            # TODO katrina uhhh check that the underlying task is registered first
+            # TODO(katrogan): Add handling to register the underlying task if it's not already.
             client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
             exec_id = client.create_execution(
                 project,
