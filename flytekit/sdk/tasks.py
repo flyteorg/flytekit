@@ -1012,14 +1012,14 @@ def pytorch_task(
         cache=False,
         timeout=None,
         workers_count=1,
-        instance_storage_request="",
-        instance_cpu_request="",
-        instance_gpu_request="",
-        instance_memory_request="",
-        instance_storage_limit="",
-        instance_cpu_limit="",
-        instance_gpu_limit="",
-        instance_memory_limit="",
+        per_replica_storage_request="",
+        per_replica_cpu_request="",
+        per_replica_gpu_request="",
+        per_replica_memory_request="",
+        per_replica_storage_limit="",
+        per_replica_cpu_limit="",
+        per_replica_gpu_limit="",
+        per_replica_memory_limit="",
         environment=None,
         cls=None
 ):
@@ -1033,10 +1033,10 @@ def pytorch_task(
         @outputs(result=Types.Integer
         @pytorch_task(
             workers_count=2,
-            instance_cpu_request="500m",
-            instance_memory_request="4Gi",
-            instance_memory_limit="8Gi",
-            instance_gpu_limit="1",
+            per_replica_cpu_request="500m",
+            per_replica_memory_request="4Gi",
+            per_replica_memory_limit="8Gi",
+            per_replica_gpu_limit="1",
         )
         def my_pytorch_job(wf_params, int_list, result):
             pass
@@ -1073,51 +1073,52 @@ def pytorch_task(
         run at max before triggering a retry (if retries are enabled).  By default, tasks are allowed to run
         indefinitely.  If a null timedelta is passed (i.e. timedelta(seconds=0)), the task will not timeout.
 
-    :param int workers_count: integer determining the number of worker replicas spawned in the cluster for this job.
+    :param int workers_count: integer determining the number of worker replicas spawned in the cluster for this job
+        (in addition to 1 master).
 
-    :param Text instance_storage_request: [optional] Kubernetes resource string for lower-bound of disk storage space
-        for each instance spawned for this job (i.e. both for master and workers).  Default is set by platform-level configuration.
+    :param Text per_replica_storage_request: [optional] Kubernetes resource string for lower-bound of disk storage space
+        for each replica spawned for this job (i.e. both for master and workers).  Default is set by platform-level configuration.
 
         .. note::
 
             This is currently not supported by the platform.
 
-    :param Text instance_cpu_request: [optional] Kubernetes resource string for lower-bound of cores for each instance
+    :param Text per_replica_cpu_request: [optional] Kubernetes resource string for lower-bound of cores for each replica
         spawned for this job (i.e. both for master and workers).
         This can be set to a fractional portion of a CPU. Default is set by platform-level configuration.
 
         TODO: Add links to resource string documentation for Kubernetes
 
-    :param Text instance_gpu_request: [optional] Kubernetes resource string for lower-bound of desired GPUs for each
-        instance spawned for this job (i.e. both for master and workers).
+    :param Text per_replica_gpu_request: [optional] Kubernetes resource string for lower-bound of desired GPUs for each
+        replica spawned for this job (i.e. both for master and workers).
         Default is set by platform-level configuration.
 
         TODO: Add links to resource string documentation for Kubernetes
 
-    :param Text instance_memory_request: [optional]  Kubernetes resource string for lower-bound of physical memory
-        necessary for each instance spawned for this job (i.e. both for master and workers).  Default is set by platform-level configuration.
+    :param Text per_replica_memory_request: [optional]  Kubernetes resource string for lower-bound of physical memory
+        necessary for each replica spawned for this job (i.e. both for master and workers).  Default is set by platform-level configuration.
 
         TODO: Add links to resource string documentation for Kubernetes
 
-    :param Text instance_storage_limit: [optional] Kubernetes resource string for upper-bound of disk storage space
-        for each instance spawned for this job (i.e. both for master and workers).
+    :param Text per_replica_storage_limit: [optional] Kubernetes resource string for upper-bound of disk storage space
+        for each replica spawned for this job (i.e. both for master and workers).
         This amount is not guaranteed!  If not specified, it is set equal to storage_request.
 
         .. note::
 
             This is currently not supported by the platform.
 
-    :param Text instance_cpu_limit: [optional] Kubernetes resource string for upper-bound of cores for each instance
+    :param Text per_replica_cpu_limit: [optional] Kubernetes resource string for upper-bound of cores for each replica
         spawned for this job (i.e. both for master and workers).
         This can be set to a fractional portion of a CPU. This amount is not guaranteed!  If not specified,
         it is set equal to cpu_request.
 
-    :param Text instance_gpu_limit: [optional] Kubernetes resource string for upper-bound of desired GPUs for each
-        instance spawned for this job (i.e. both for master and workers).
+    :param Text per_replica_gpu_limit: [optional] Kubernetes resource string for upper-bound of desired GPUs for each
+        replica spawned for this job (i.e. both for master and workers).
         This amount is not guaranteed!  If not specified, it is set equal to gpu_request.
 
-    :param Text instance_memory_limit: [optional]  Kubernetes resource string for upper-bound of physical memory
-        necessary for each instance spawned for this job (i.e. both for master and workers).
+    :param Text per_replica_memory_limit: [optional]  Kubernetes resource string for upper-bound of physical memory
+        necessary for each replica spawned for this job (i.e. both for master and workers).
         This amount is not guaranteed!  If not specified, it is set equal to memory_request.
 
     :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
@@ -1139,14 +1140,14 @@ def pytorch_task(
             discoverable=cache,
             timeout=timeout or _datetime.timedelta(seconds=0),
             workers_count=workers_count,
-            instance_storage_request=instance_storage_request,
-            instance_cpu_request=instance_cpu_request,
-            instance_gpu_request=instance_gpu_request,
-            instance_memory_request=instance_memory_request,
-            instance_storage_limit=instance_storage_limit,
-            instance_cpu_limit=instance_cpu_limit,
-            instance_gpu_limit=instance_gpu_limit,
-            instance_memory_limit=instance_memory_limit,
+            per_replica_storage_request=per_replica_storage_request,
+            per_replica_cpu_request=per_replica_cpu_request,
+            per_replica_gpu_request=per_replica_gpu_request,
+            per_replica_memory_request=per_replica_memory_request,
+            per_replica_storage_limit=per_replica_storage_limit,
+            per_replica_cpu_limit=per_replica_cpu_limit,
+            per_replica_gpu_limit=per_replica_gpu_limit,
+            per_replica_memory_limit=per_replica_memory_limit,
             environment=environment or {}
         )
 
