@@ -320,7 +320,15 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
 
         execution_project = project if project else self.id.project
         execution_domain = domain if domain else self.id.domain
-        inputs = literal_inputs if literal_inputs else _literals.LiteralMap(literals=None)
+        if not literal_inputs.is_empty:
+            raise _user_exceptions.FlyteAssertion(
+                "Currently dynamic inputs are not supported for single task execution nodes. "
+                "Please assign inputs when you call an instance of a task.")
+        inputs = _literals.LiteralMap(
+            literals={
+                binding.var: binding.binding.to_literal_model() for binding in self.inputs
+            }
+        )
 
         execution = _engine_loader.get_engine().get_node(self).execute(
             execution_project,
@@ -335,15 +343,13 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
 
     def _python_std_input_map_to_literal_map(self, inputs):
         """
+        N.B. Dynamic inputs are not supported for single task execution nodes. Inputs are bound when creating a node
+        by calling a task.
         :param dict[Text,Any] inputs: A dictionary of Python standard inputs that will be type-checked and compiled
             to a LiteralMap
         :rtype: flytekit.models.literals.LiteralMap
         """
-        return _literals.LiteralMap(
-            literals={
-                binding.var: binding.binding.to_literal_model() for binding in self.inputs
-            }
-        )
+        return _literals.LiteralMap(literals={})
 
 
 class SdkNodeExecution(
