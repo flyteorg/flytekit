@@ -10,7 +10,7 @@ square = SdkRawContainerTask(
     inputs={"val": Types.Integer},
     outputs={"out": Types.Integer},
     image="alpine",
-    command=["sh", "-c", "cd /var/; echo $(( ${{ .Inputs.val }} * ${{ .Inputs.val}} )) > ./outputs/out"],
+    command=["sh", "-c", "echo $(( {{.Inputs.val}} * {{.Inputs.val}} )) | tee /var/outputs/out"],
 )
 
 echo = SdkRawContainerTask(
