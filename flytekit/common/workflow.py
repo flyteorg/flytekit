@@ -14,8 +14,7 @@ from flytekit.common.mixins import registerable as _registerable, hash as _hash_
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
-from flytekit.models import interface as _interface_models, literals as _literal_models, \
-    launch_plan as _launch_plan_models
+from flytekit.models import interface as _interface_models, literals as _literal_models, common as _common_models
 from flytekit.models.core import workflow as _workflow_models, identifier as _identifier_model
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common import constants as _constants
@@ -344,8 +343,8 @@ class SdkWorkflow(
 
         if role:
             assumable_iam_role = role
-        auth = _launch_plan_models.Auth(assumable_iam_role=assumable_iam_role,
-                                        kubernetes_service_account=kubernetes_service_account)
+        auth_role = _common_models.AuthRole(assumable_iam_role=assumable_iam_role,
+                                            kubernetes_service_account=kubernetes_service_account)
 
         return (cls or _launch_plan.SdkRunnableLaunchPlan)(
             sdk_workflow=self,
@@ -358,7 +357,7 @@ class SdkWorkflow(
             notifications=notifications,
             labels=labels,
             annotations=annotations,
-            auth=auth,
+            auth_role=auth_role,
         )
 
     @_exception_scopes.system_entry_point

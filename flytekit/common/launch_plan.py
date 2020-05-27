@@ -51,7 +51,7 @@ class SdkLaunchPlan(
             entity_metadata=model.entity_metadata,
             labels=model.labels,
             annotations=model.annotations,
-            auth=model.auth,
+            auth_role=model.auth_role,
         )
 
     @classmethod
@@ -100,11 +100,11 @@ class SdkLaunchPlan(
             return False
 
     @property
-    def auth(self):
+    def auth_role(self):
         """
         :rtype: flytekit.models.common.AuthRole
         """
-        fixed_auth = super(SdkLaunchPlan, self).auth
+        fixed_auth = super(SdkLaunchPlan, self).auth_role
         if fixed_auth is not None and\
                 (fixed_auth.assumable_iam_role is not None or fixed_auth.kubernetes_service_account is not None):
                 return fixed_auth
@@ -258,7 +258,7 @@ class SdkRunnableLaunchPlan(
             notifications=None,
             labels=None,
             annotations=None,
-            auth=None,
+            auth_role=None,
     ):
         """
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
@@ -273,16 +273,16 @@ class SdkRunnableLaunchPlan(
         :param flytekit.models.common.Annotations annotations: Any custom kubernetes annotations to apply to workflows
             executed by this launch plan.
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
-        :param flytekit.models.launch_plan.Auth auth: The auth method with which to execute the workflow.
+        :param flytekit.models.common.Authrole auth_role: The auth method with which to execute the workflow.
         """
-        if role and auth:
+        if role and auth_role:
             raise ValueError("Cannot set both role and auth. Role is deprecated, use auth instead.")
 
         fixed_inputs = fixed_inputs or {}
         default_inputs = default_inputs or {}
 
         if role:
-            auth = _launch_plan_models.Auth(assumable_iam_role=role)
+            auth_role = _common_models.AuthRole(assumable_iam_role=role)
 
         # The constructor for SdkLaunchPlan sets the id to None anyways so we don't bother passing in an ID. The ID
         # should be set in one of three places,
@@ -306,7 +306,7 @@ class SdkRunnableLaunchPlan(
             ),
             labels or _common_models.Labels({}),
             annotations or _common_models.Annotations({}),
-            auth,
+            auth_role,
         )
         self._interface = _interface.TypedInterface(
             {k: v.var for k, v in _six.iteritems(default_inputs)},

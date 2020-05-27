@@ -121,7 +121,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             Any custom kubernetes labels to apply to workflows executed by this launch plan.
         :param flyteidl.admin.common_pb2.Annotations annotations:
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
-        :param flytekit.models.launch_plan.Auth auth_role: The auth method with which to execute the workflow.
+        :param flytekit.models.common.Auth auth_role: The auth method with which to execute the workflow.
         """
         self._workflow_id = workflow_id
         self._entity_metadata = entity_metadata
@@ -179,12 +179,12 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         return self._annotations
 
     @property
-    def auth(self):
+    def auth_role(self):
         """
         The authorization method with which to execute the workflow.
-        :return: flytekit.models.launch_plan.Auth
+        :return: flytekit.models.common.Auth
         """
-        return self._auth
+        return self._auth_role
 
     def to_flyte_idl(self):
         """
@@ -197,7 +197,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             fixed_inputs=self.fixed_inputs.to_flyte_idl(),
             labels=self.labels.to_flyte_idl(),
             annotations=self.annotations.to_flyte_idl(),
-            auth_role=self.auth.to_flyte_idl(),
+            auth_role=self.auth_role.to_flyte_idl(),
         )
 
     @classmethod
@@ -213,7 +213,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             fixed_inputs=_literals.LiteralMap.from_flyte_idl(pb2_object.fixed_inputs),
             labels=_common.Labels.from_flyte_idl(pb2_object.labels),
             annotations=_common.Annotations.from_flyte_idl(pb2_object.annotations),
-            auth_role=_common.AuthRole.from_flyte_idl(pb2_object.auth),
+            auth_role=_common.AuthRole.from_flyte_idl(pb2_object.auth_role),
         )
 
 
