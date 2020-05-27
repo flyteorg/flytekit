@@ -93,7 +93,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._disable_all = disable_all
         self._labels = labels or _common_models.Labels({})
         self._annotations = annotations or _common_models.Annotations({})
-        self._auth_role = auth_role
+        self._auth_role = auth_role or _common_models.AuthRole()
 
     @property
     def launch_plan(self):
