@@ -682,14 +682,11 @@ def get_task(urn, host, insecure):
 
 
 @_flyte_cli.command('execute-task', cls=_FlyteSubCommand)
-@_project_option
-@_domain_option
-@_optional_name_option
 @_host_option
 @_insecure_option
 @_urn_option
 @_click.argument('task_args', nargs=-1, type=_click.UNPROCESSED)
-def execute_task(project, domain, name, host, insecure, urn, task_args):
+def execute_task(host, insecure, urn, task_args):
     """
     Kick off a single task execution. Note that the {project, domain, name} specified in the command line
     will be for the execution.  The project/domain for the task are specified in the urn.
@@ -719,7 +716,7 @@ def execute_task(project, domain, name, host, insecure, urn, task_args):
         # TODO: Implement notification overrides
         # TODO: Implement label overrides
         # TODO: Implement annotation overrides
-        execution = task(**inputs).execute(project, domain, name=name)
+        execution = task.launch(**inputs)
         _click.secho("Launched execution: {}".format(_tt(execution.id)), fg='blue')
         _click.echo("")
 

@@ -348,17 +348,14 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                                 )
                             _data_proxy.Data.put_data(temp_dir.name, context['output_prefix'], is_multipart=True)
 
-
-class FlyteNode(_common_engine.BaseNodeExecutor):
-
-    def execute(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
-                annotation_overrides=None, auth_role=None):
+    def launch(self, project, domain, name=None, inputs=None, notification_overrides=None, label_overrides=None,
+               annotation_overrides=None, auth_role=None):
         """
-        Executes the node encompassing a single task.
+        Executes the task as a single task execution and returns the identifier.
         :param Text project:
         :param Text domain:
         :param Text name:
-        :param flytekit.models.literals.LiteralMap inputs:
+        :param flytekit.models.literals.LiteralMap inputs: The inputs to pass
         :param list[flytekit.models.common.Notification] notification_overrides: If specified, override the
             notifications.
         :param flytekit.models.common.Labels label_overrides:
@@ -394,7 +391,7 @@ class FlyteNode(_common_engine.BaseNodeExecutor):
                 domain,
                 name,
                 _execution_models.ExecutionSpec(
-                    self.sdk_node.executable_sdk_object.id,
+                    self.sdk_task.id,
                     _execution_models.ExecutionMetadata(
                         _execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
                         'sdk',  # TODO: get principle

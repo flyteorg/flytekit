@@ -6,19 +6,16 @@ import logging as _logging
 import six as _six
 from sortedcontainers import SortedDict as _SortedDict
 
-from flytekit.common import constants as _constants, workflow_execution as _workflow_execution
+from flytekit.common import constants as _constants
 from flytekit.common import sdk_bases as _sdk_bases, promise as _promise, component_nodes as _component_nodes
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.common.mixins import hash as _hash_mixin, artifact as _artifact_mixin, executable as _executable_mixin
+from flytekit.common.mixins import hash as _hash_mixin, artifact as _artifact_mixin
 from flytekit.common.tasks import executions as _task_executions
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import _dnsify
 from flytekit.engines import loader as _engine_loader
-from flytekit.models import (
-    common as _common_models, node_execution as _node_execution_models, execution as _execution_models,
-    literals as _literals,
-)
+from flytekit.models import common as _common_models, node_execution as _node_execution_models
 from flytekit.models.core import workflow as _workflow_model, execution as _execution_models
 
 
@@ -103,8 +100,7 @@ class OutputParameterMapper(ParameterMapper):
         return _promise.NodeOutput(sdk_node, sdk_type, name)
 
 
-class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOnReferenceMixin, _workflow_model.Node,
-                                  _executable_mixin.ExecutableEntity)):
+class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOnReferenceMixin, _workflow_model.Node)):
 
     def __init__(
             self,
@@ -297,59 +293,6 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
         :rtype: Text
         """
         return "Node(ID: {} Executable: {})".format(self.id, self._executable_sdk_object)
-
-    @_exception_scopes.system_entry_point
-    def execute_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
-                              label_overrides=None, annotation_overrides=None):
-        """
-        Executes the node as a single task executionand returns the execution identifier.
-        This version of execution is meant for when you already have a LiteralMap of inputs.
-
-        :param Text project:
-        :param Text domain:
-        :param flytekit.models.literals.LiteralMap literal_inputs: Inputs to the execution.
-        :param Text name: [Optional] If specified, an execution will be created with this name.  Note: the name must
-            be unique within the context of the project and domain.
-        :param list[flytekit.common.notifications.Notification] notification_overrides: [Optional] If specified, these
-            are the notifications that will be honored for this execution.  An empty list signals to disable all
-            notifications.
-        :param flytekit.models.common.Labels label_overrides:
-        :param flytekit.models.common.Annotations annotation_overrides:
-        :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
-        """
-
-        execution_project = project if project else self.id.project
-        execution_domain = domain if domain else self.id.domain
-        if not literal_inputs.is_empty:
-            raise _user_exceptions.FlyteAssertion(
-                "Currently dynamic inputs are not supported for single task execution nodes. "
-                "Please assign inputs when you call an instance of a task.")
-        inputs = _literals.LiteralMap(
-            literals={
-                binding.var: binding.binding.to_literal_model() for binding in self.inputs
-            }
-        )
-
-        execution = _engine_loader.get_engine().get_node(self).execute(
-            execution_project,
-            execution_domain,
-            name,
-            inputs,
-            notification_overrides=notification_overrides,
-            label_overrides=label_overrides,
-            annotation_overrides=annotation_overrides,
-        )
-        return _workflow_execution.SdkWorkflowExecution.promote_from_model(execution)
-
-    def _python_std_input_map_to_literal_map(self, inputs):
-        """
-        N.B. Dynamic inputs are not supported for single task execution nodes. Inputs are bound when creating a node
-        by calling a task.
-        :param dict[Text,Any] inputs: A dictionary of Python standard inputs that will be type-checked and compiled
-            to a LiteralMap
-        :rtype: flytekit.models.literals.LiteralMap
-        """
-        return _literals.LiteralMap(literals={})
 
 
 class SdkNodeExecution(

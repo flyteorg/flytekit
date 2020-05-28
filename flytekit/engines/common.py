@@ -261,27 +261,11 @@ class BaseTaskExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, object))
         """
         pass
 
-
-class BaseNodeExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
-
-    def __init__(self, sdk_node):
-        """
-        :param flytekit.common.nodes.SdkNode sdk_node:
-        """
-        self._sdk_node = sdk_node
-
-    @property
-    def sdk_node(self):
-        """
-        :rtype flytekit.common.nodes.SdkNode sdk_node:
-        """
-        return self._sdk_node
-
     @_abc.abstractmethod
-    def execute(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
-                annotation_overrides=None, auth_role=None):
+    def launch(self, project, domain, name=None, inputs=None, notification_overrides=None,
+               label_overrides=None, annotation_overrides=None, auth_role=None):
         """
-        Executes the node as a single task execution and returns the identifier.
+        Executes the task as a single task execution and returns the identifier.
         :param Text project:
         :param Text domain:
         :param Text name:
@@ -322,14 +306,6 @@ class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta
         """
         :param flytekit.common.launch_plan.SdkLaunchPlan sdk_launch_plan:
         :rtype: BaseLaunchPlanExecutor
-        """
-        pass
-
-    @_abc.abstractmethod
-    def get_node(self, sdk_node):
-        """
-        :param flytekit.common.nodes.SdkNode sdk_node:
-        :rtype: BaseNodeExecutor
         """
         pass
 

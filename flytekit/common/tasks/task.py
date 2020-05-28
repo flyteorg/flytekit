@@ -4,15 +4,18 @@ import uuid as _uuid
 
 import six as _six
 
-from flytekit.common import interface as _interfaces, nodes as _nodes, sdk_bases as _sdk_bases
+from flytekit.common import (
+    interface as _interfaces, nodes as _nodes, sdk_bases as _sdk_bases, workflow_execution as _workflow_execution
+)
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin
+from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, executable as _executable_mixin
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
-from flytekit.models import common as _common_model, task as _task_model
+from flytekit.models import common as _common_model, task as _task_model, literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.types import helpers as _type_helpers
 
 
 class SdkTask(
@@ -252,3 +255,28 @@ class SdkTask(
             task_type=self.type,
             interface=self.interface
         )
+
+    @_exception_scopes.system_entry_point
+    def launch(self, **input_map):
+        """
+        Executes the task as a single task execution and returns the execution identifier.
+        :param dict[Text, T] input_map: Python Std input from users.  We will cast these to the appropriate Flyte
+            literals.
+        :returns: Depends on the behavior of the specific task in the unit engine.
+        """
+        inputs = \
+            _type_helpers.pack_python_std_map_to_literal_map(input_map, {
+                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
+                for k, v in _six.iteritems(self.interface.inputs)
+            })
+
+        execution = _engine_loader.get_engine().get_task(self).launch(
+            self.id.project,
+            self.id.domain,
+            name=None,
+            inputs=inputs,
+            notification_overrides=None,
+            label_overrides=None,
+            annotation_overrides=None,
+        )
+        return _workflow_execution.SdkWorkflowExecution.promote_from_model(execution)
