@@ -54,9 +54,6 @@ class UnitTestEngineFactory(_common_engine.BaseExecutionEngineFactory):
     def get_launch_plan(self, _):
         raise _user_exceptions.FlyteAssertion("Unit testing of launch plans is not currently supported")
 
-    def get_node(self, _):
-        raise _user_exceptions.FlyteAssertion("Unit testing of nodes is not currently supported")
-
     def get_task_execution(self, _):
         raise _user_exceptions.FlyteAssertion("Unit testing does not return execution handles.")
 
