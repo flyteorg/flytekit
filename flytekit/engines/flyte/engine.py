@@ -67,13 +67,6 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         """
         return FlyteLaunchPlan(sdk_launch_plan)
 
-    def get_node(self, sdk_node):
-        """
-        :param flytekit.common.nodes.SdkNode sdk_node:
-        :rtype: FlyteNode
-        """
-        return FlyteNode(sdk_node)
-
     def get_task_execution(self, task_exec):
         """
         :param flytekit.common.tasks.executions.SdkTaskExecution task_exec:
