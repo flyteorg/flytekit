@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import click
 import six as _six
+import logging as _logging
 
 from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map
 from flytekit.clis.sdk_in_container import constants as _constants
@@ -159,6 +160,7 @@ def activate_all_impl(project, domain, version, pkgs, ignore_schedules=False):
     # TODO: We should optionally allow deactivation of missing launch plans
 
     # Discover all launch plans by loading the modules
+    _logging.info(f"Setting this version's {version} launch plans active in {project} {domain}")
     for m, k, lp in iterate_registerable_entities_in_order(
         pkgs, include_entities={_SdkLaunchPlan}, detect_unreferenced_entities=False
     ):
@@ -170,6 +172,7 @@ def activate_all_impl(project, domain, version, pkgs, ignore_schedules=False):
             version
         )
         if not (lp.is_scheduled and ignore_schedules):
+            _logging.info(f"Setting active {_utils.fqdn(m.__name__, k, entity_type=lp.resource_type)}")
             lp.update(_launch_plan_model.LaunchPlanState.ACTIVE)
 
 
