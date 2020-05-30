@@ -15,7 +15,7 @@ from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.serialize import serialize
 from flytekit.clis.sdk_in_container.constants import CTX_PROJECT, CTX_DOMAIN, CTX_VERSION
 from flytekit.clis.sdk_in_container.launch_plan import launch_plans
-from flytekit.configuration import internal as _internal_config, platform as _platform_config
+from flytekit.configuration import internal as _internal_config, platform as _platform_config, sdk as _sdk_config
 
 from flytekit.configuration.internal import CONFIGURATION_PATH
 from flytekit.configuration.platform import URL as _URL
@@ -44,7 +44,7 @@ def main(ctx, project, domain, config=None, pkgs=None, version=None, insecure=No
     update_configuration_file(config)
 
     # Update the logger if it's set
-    log_level = _internal_config.LOGGING_LEVEL.get()
+    log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
     if log_level is not None:
         _logging.getLogger().setLevel(log_level)
 
