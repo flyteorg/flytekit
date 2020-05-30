@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import os as _os
-
+import logging as _logging
 import click
 
 try:
@@ -42,6 +42,11 @@ def main(ctx, project, domain, config=None, pkgs=None, version=None, insecure=No
     Entrypoint for all the user commands.
     """
     update_configuration_file(config)
+
+    # Update the logger if it's set
+    log_level = _internal_config.LOGGING_LEVEL.get()
+    if log_level is not None:
+        _logging.getLogger().setLevel(log_level)
 
     ctx.obj = dict()
     ctx.obj[CTX_PROJECT] = project
