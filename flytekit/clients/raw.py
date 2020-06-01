@@ -573,6 +573,30 @@ class RawSynchronousFlyteClient(object):
 
     ####################################################################################################################
     #
+    #  Matching Attributes Endpoints
+    #
+    ####################################################################################################################
+    @_handle_rpc_error
+    def update_project_domain_attributes(self, project_domain_attributes_update_request):
+        """
+        This updates the attributes for a project and domain registered with the Flyte Admin Service
+        :param flyteidl.admin..ProjectDomainAttributesUpdateRequest project_domain_attributes_update_request:
+        :rtype: flyteidl.admin..ProjectDomainAttributesUpdateResponse
+        """
+        return self._stub.UpdateProjectDomainAttributes(project_domain_attributes_update_request,
+                                                        metadata=self._metadata)
+
+    @_handle_rpc_error
+    def update_workflow_attributes(self, workflow_attributes_update_request):
+        """
+        This updates the attributes for a project, domain, and workflow registered with the Flyte Admin Service
+        :param flyteidl.admin..UpdateWorkflowAttributes workflow_attributes_update_request:
+        :rtype: flyteidl.admin..workflow_attributes_update_requestResponse
+        """
+        return self._stub.UpdateWorkflowAttributes(workflow_attributes_update_request, metadata=self._metadata)
+
+    ####################################################################################################################
+    #
     #  Event Endpoints
     #
     ####################################################################################################################

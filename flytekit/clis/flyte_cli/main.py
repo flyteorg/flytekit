@@ -28,6 +28,8 @@ from flytekit.models import common as _common_models, filters as _filters, launc
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import execution as _core_execution_models, identifier as _core_identifier
 from flytekit.models.execution import ExecutionSpec as _ExecutionSpec, ExecutionMetadata as _ExecutionMetadata
+from flytekit.models.matchable_resource import ClusterResourceAttributes as _ClusterResourceAttributes,\
+    ExecutionQueueAttributes as _ExecutionQueueAttributes, MatchingAttributes as _MatchingAttributes
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
 from flytekit.common.exceptions import user as _user_exceptions
@@ -1673,6 +1675,76 @@ def update_launch_plan_meta(description, host, insecure, project, domain, name):
         _named_entity.NamedEntityIdentifier(project, domain, name),
         _named_entity.NamedEntityMetadata(description, _named_entity.NamedEntityState.ACTIVE))
     _click.echo("Successfully updated launch plan")
+
+
+@_flyte_cli.command('update-cluster-resource-attributes', cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+@_project_option
+@_domain_option
+@_optional_name_option
+@_click.argument('attributes', nargs=-1, type=_click.UNPROCESSED)
+def update_cluster_resource_attributes(host, insecure, project, domain, name, attributes):
+    """
+    Sets matchable cluster resource attributes for a project, domain and optionally, workflow name.
+
+    Use a -- to separate arguments to this cli, and attributes used for cluster resource configuration.
+    e.g.
+        $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-cluster-resource-attributes -- cpu=1 \
+        memory=500M
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    cluster_resource_attributes = _ClusterResourceAttributes(_parse_args_into_dict(attributes))
+    matching_attributes = _MatchingAttributes(cluster_resource_attributes=cluster_resource_attributes)
+
+    if name is not None:
+        client.update_workflow_attributes(
+            project, domain, name, matching_attributes
+        )
+        _click.echo("Successfully updated cluster resource attributes for project: {}, domain: {}, and workflow: {}".
+                    format(project, domain, name))
+    else:
+        client.update_project_domain_attributes(
+            project, domain, matching_attributes
+        )
+        _click.echo("Successfully updated cluster resource attributes for project: {} and domain: {}".
+                    format(project, domain))
+
+
+@_flyte_cli.command('update-execution-queue-attributes', cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+@_project_option
+@_domain_option
+@_optional_name_option
+@_click.argument('tags', nargs=-1, type=_click.UNPROCESSED)
+def update_execution_queue_attributes(host, insecure, project, domain, name, tags):
+    """
+    Tags used for assigning execution queues for tasks belonging to a project, domain and optionally, workflow name.
+
+    Use a -- to separate arguments to this cli, and attributes used for cluster resource configuration.
+    e.g.
+        $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-cluster-resource-attributes -- critical \
+            production gpu_required
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    execution_queue_attributes = _ExecutionQueueAttributes(list(tags))
+    matching_attributes = _MatchingAttributes(execution_queue_attributes=execution_queue_attributes)
+
+    if name is not None:
+        client.update_workflow_attributes(
+            project, domain, name, matching_attributes
+        )
+        _click.echo("Successfully updated cluster resource attributes for project: {}, domain: {}, and workflow: {}".
+                    format(project, domain, name))
+    else:
+        client.update_project_domain_attributes(
+            project, domain, matching_attributes
+        )
+        _click.echo("Successfully updated cluster resource attributes for project: {} and domain: {}".
+                    format(project, domain))
 
 
 @_flyte_cli.command('setup-config', cls=_click.Command)
