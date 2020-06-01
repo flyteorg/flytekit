@@ -1737,13 +1737,13 @@ def update_execution_queue_attributes(host, insecure, project, domain, name, tag
         client.update_workflow_attributes(
             project, domain, name, matching_attributes
         )
-        _click.echo("Successfully updated cluster resource attributes for project: {}, domain: {}, and workflow: {}".
+        _click.echo("Successfully updated execution queue attributes for project: {}, domain: {}, and workflow: {}".
                     format(project, domain, name))
     else:
         client.update_project_domain_attributes(
             project, domain, matching_attributes
         )
-        _click.echo("Successfully updated cluster resource attributes for project: {} and domain: {}".
+        _click.echo("Successfully updated execution queue attributes for project: {} and domain: {}".
                     format(project, domain))
 
 

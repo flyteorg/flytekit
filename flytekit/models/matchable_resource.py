@@ -2,34 +2,6 @@ from flyteidl.admin import matchable_resource_pb2 as _matchable_resource
 from flytekit.models import common as _common
 
 
-class MatchableResource(object):
-    # Applies to customizable task resource requests and limits.
-    TASK_RESOURCE = _matchable_resource.TASK_RESOURCE
-    # Applies to configuring templated kubernetes cluster resources.
-    CLUSTER_RESOURCE = _matchable_resource.CLUSTER_RESOURCE
-    # Configures task and dynamic task execution queue assignment.
-    EXECUTION_QUEUE = _matchable_resource.EXECUTION_QUEUE
-    # Configures the K8s cluster label to be used for execution to be run
-    EXECUTION_CLUSTER_LABEL = _matchable_resource.EXECUTION_CLUSTER_LABEL
-
-    @classmethod
-    def enum_to_string(cls, val):
-        """
-        :param int val:
-        :rtype: Text
-        """
-        if val == cls.TASK_RESOURCE:
-            return "TASK_RESOURCE"
-        elif val == cls.CLUSTER_RESOURCE:
-            return "CLUSTER_RESOURCE"
-        elif val == cls.EXECUTION_QUEUE:
-            return "EXECUTION_QUEUE"
-        elif val == cls.EXECUTION_CLUSTER_LABEL:
-            return "EXECUTION_CLUSTER_LABEL"
-        else:
-            return "<UNKNOWN>"
-
-
 class ClusterResourceAttributes(_common.FlyteIdlEntity):
 
     def __init__(self, attributes):
@@ -108,8 +80,7 @@ class ExecutionQueueAttributes(_common.FlyteIdlEntity):
 class MatchingAttributes(_common.FlyteIdlEntity):
     def __init__(self, cluster_resource_attributes=None, execution_queue_attributes=None):
         """
-        At most one target from task_resource_attributes, cluster_resource_attributes, execution_queue_attributes or
-            execution_cluster_label can be set.
+        At most one target from cluster_resource_attributes or execution_queue_attributes can be set.
         :param ClusterResourceAttributes cluster_resource_attributes:
         :param ExecutionQueueAttributes execution_queue_attributes:
         """
