@@ -263,11 +263,10 @@ class SdkTask(
             to a LiteralMap
         :rtype: flytekit.models.literals.LiteralMap
         """
-        return \
-            _type_helpers.pack_python_std_map_to_literal_map(inputs, {
-                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
-                for k, v in _six.iteritems(self.interface.inputs)
-            })
+        return _type_helpers.pack_python_std_map_to_literal_map(inputs, {
+            k: _type_helpers.get_sdk_type_from_literal_type(v.type)
+            for k, v in _six.iteritems(self.interface.inputs)
+        })
 
     @_exception_scopes.system_entry_point
     def launch_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,

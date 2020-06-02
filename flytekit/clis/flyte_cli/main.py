@@ -696,7 +696,7 @@ def launch_task(project, domain, name, host, insecure, urn, task_args):
 
     Use a -- to separate arguments to this cli, and arguments to the task.
     e.g.
-        $ flyte-cli -h localhost:30081 -p flyteexamples -d development execute-task \
+        $ flyte-cli -h localhost:30081 -p flyteexamples -d development launch-task \
             -u tsk:flyteexamples:development:some-task:abc123 -- input=hi \
             other-input=123 moreinput=qwerty
 

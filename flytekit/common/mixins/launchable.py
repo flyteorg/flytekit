@@ -8,7 +8,7 @@ class LaunchableEntity(_six.with_metaclass(_abc.ABCMeta, object)):
                annotation_overrides=None):
         """
         Creates a remote execution from the entity and returns the execution identifier.
-        This version of execution is meant for when inputs are specified as Python native types/structures.
+        This version of launch is meant for when inputs are specified as Python native types/structures.
 
         :param Text project:
         :param Text domain:

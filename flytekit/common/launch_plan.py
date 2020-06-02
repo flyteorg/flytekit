@@ -176,7 +176,7 @@ class SdkLaunchPlan(
     def execute_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
                               label_overrides=None, annotation_overrides=None):
         """
-        Deprecated. Use launch with literals instead.
+        Deprecated. Use launch_with_literals instead.
         """
         return self.launch_with_literals(project, domain, literal_inputs, name, notification_overrides, label_overrides,
                                          annotation_overrides)
