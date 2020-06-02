@@ -1683,19 +1683,19 @@ def update_launch_plan_meta(description, host, insecure, project, domain, name):
 @_project_option
 @_domain_option
 @_optional_name_option
-@_click.argument('attributes', nargs=-1, type=_click.UNPROCESSED)
+@_click.option('--attributes', type=(str, str),  multiple=True)
 def update_cluster_resource_attributes(host, insecure, project, domain, name, attributes):
     """
     Sets matchable cluster resource attributes for a project, domain and optionally, workflow name.
 
     Use a -- to separate arguments to this cli, and attributes used for cluster resource configuration.
     e.g.
-        $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-cluster-resource-attributes -- cpu=1 \
-        memory=500M
+        $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-cluster-resource-attributes \
+            --attributes cpu 1 --attributes memory 500M
     """
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
-    cluster_resource_attributes = _ClusterResourceAttributes(_parse_args_into_dict(attributes))
+    cluster_resource_attributes = _ClusterResourceAttributes({attribute[0]: attribute[1] for attribute in attributes})
     matching_attributes = _MatchingAttributes(cluster_resource_attributes=cluster_resource_attributes)
 
     if name is not None:
@@ -1718,15 +1718,15 @@ def update_cluster_resource_attributes(host, insecure, project, domain, name, at
 @_project_option
 @_domain_option
 @_optional_name_option
-@_click.argument('tags', nargs=-1, type=_click.UNPROCESSED)
+@_click.option("--tags", multiple=True, help="Tag(s) to be applied.")
 def update_execution_queue_attributes(host, insecure, project, domain, name, tags):
     """
     Tags used for assigning execution queues for tasks belonging to a project, domain and optionally, workflow name.
 
     Use a -- to separate arguments to this cli, and attributes used for cluster resource configuration.
     e.g.
-        $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-cluster-resource-attributes -- critical \
-            production gpu_required
+        $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-cluster-resource-attributes \
+            --tags critical --tags gpu_intensive
     """
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
