@@ -183,7 +183,7 @@ class BaseTaskExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)
         pass
 
 
-class BaseLaunchPlanExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
+class BaseLaunchPlanLauncher(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
 
     def __init__(self, sdk_launch_plan):
         """
@@ -207,8 +207,8 @@ class BaseLaunchPlanExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, ob
         pass
 
     @_abc.abstractmethod
-    def execute(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
-                annotation_overrides=None):
+    def launch(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
+               annotation_overrides=None):
         """
         Registers the launch plan and returns the identifier.
         :param Text project:
@@ -305,7 +305,7 @@ class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta
     def get_launch_plan(self, sdk_launch_plan):
         """
         :param flytekit.common.launch_plan.SdkLaunchPlan sdk_launch_plan:
-        :rtype: BaseLaunchPlanExecutor
+        :rtype: BaseLaunchPlanLauncher
         """
         pass
 

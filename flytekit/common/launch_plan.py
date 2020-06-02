@@ -5,7 +5,7 @@ from flytekit.common import sdk_bases as _sdk_bases, promise as _promises, inter
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
 
-from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, executable as _executable_mixin
+from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, launchable as _launchable_mixin
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import sdk as _sdk_config, auth as _auth_config
 from flytekit.engines import loader as _engine_loader
@@ -22,7 +22,7 @@ class SdkLaunchPlan(
     _six.with_metaclass(
         _sdk_bases.ExtendedSdkType,
         _launch_plan_models.LaunchPlanSpec,
-        _executable_mixin.ExecutableEntity,
+        _launchable_mixin.LaunchableEntity,
     )
 ):
     def __init__(self, *args, **kwargs):
@@ -176,6 +176,15 @@ class SdkLaunchPlan(
     def execute_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
                               label_overrides=None, annotation_overrides=None):
         """
+        Deprecated. Use launch with literals instead.
+        """
+        return self.launch_with_literals(project, domain, literal_inputs, name, notification_overrides, label_overrides,
+                                         annotation_overrides)
+
+    @_exception_scopes.system_entry_point
+    def launch_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
+                             label_overrides=None, annotation_overrides=None):
+        """
         Executes the launch plan and returns the execution identifier.  This version of execution is meant for when
         you already have a LiteralMap of inputs.
 
@@ -193,7 +202,7 @@ class SdkLaunchPlan(
         """
         # Kubernetes requires names starting with an alphabet for some resources.
         name = name or "f" + _uuid.uuid4().hex[:19]
-        execution = _engine_loader.get_engine().get_launch_plan(self).execute(
+        execution = _engine_loader.get_engine().get_launch_plan(self).launch(
             project,
             domain,
             name,

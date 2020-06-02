@@ -681,12 +681,15 @@ def get_task(urn, host, insecure):
     _click.echo("")
 
 
-@_flyte_cli.command('execute-task', cls=_FlyteSubCommand)
+@_flyte_cli.command('launch-task', cls=_FlyteSubCommand)
+@_project_option
+@_domain_option
+@_optional_name_option
 @_host_option
 @_insecure_option
 @_urn_option
 @_click.argument('task_args', nargs=-1, type=_click.UNPROCESSED)
-def execute_task(host, insecure, urn, task_args):
+def launch_task(project, domain, name, host, insecure, urn, task_args):
     """
     Kick off a single task execution. Note that the {project, domain, name} specified in the command line
     will be for the execution.  The project/domain for the task are specified in the urn.
@@ -716,7 +719,7 @@ def execute_task(host, insecure, urn, task_args):
         # TODO: Implement notification overrides
         # TODO: Implement label overrides
         # TODO: Implement annotation overrides
-        execution = task.launch(**inputs)
+        execution = task.launch(project, domain, inputs=inputs, name=name)
         _click.secho("Launched execution: {}".format(_tt(execution.id)), fg='blue')
         _click.echo("")
 
@@ -1101,7 +1104,7 @@ def execute_launch_plan(project, domain, name, host, insecure, urn, principal, v
         # TODO: Implement notification overrides
         # TODO: Implement label overrides
         # TODO: Implement annotation overrides
-        execution = lp.execute_with_literals(project, domain, inputs, name=name)
+        execution = lp.launch_with_literals(project, domain, inputs, name=name)
         _click.secho("Launched execution: {}".format(_tt(execution.id)), fg='blue')
         _click.echo("")
 

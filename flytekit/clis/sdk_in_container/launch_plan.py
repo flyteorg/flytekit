@@ -8,7 +8,7 @@ from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _c
 from flytekit.clis.sdk_in_container import constants as _constants
 from flytekit.common import utils as _utils
 from flytekit.common.launch_plan import SdkLaunchPlan as _SdkLaunchPlan
-from flytekit.common.mixins import executable as _executable_mixins
+from flytekit.common.mixins import launchable as _launchable_mixins
 from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag, \
     IMAGE as _IMAGE
 from flytekit.models import launch_plan as _launch_plan_model
@@ -31,7 +31,8 @@ class LaunchPlanAbstractGroup(click.Group):
         pkgs = ctx.obj[_constants.CTX_PACKAGES]
         # Discover all launch plans by loading the modules
         for m, k, lp in iterate_registerable_entities_in_order(
-                pkgs, include_entities={_executable_mixins.ExecutableEntity}, detect_unreferenced_entities=False):
+                pkgs, include_entities={_SdkLaunchPlan},
+                detect_unreferenced_entities=False):
             safe_name = _utils.fqdn(m.__name__, k, entity_type=lp.resource_type)
             commands.append(safe_name)
             lps[safe_name] = lp
@@ -52,7 +53,7 @@ class LaunchPlanAbstractGroup(click.Group):
             launch_plan = ctx.obj['lps'][lp_argument]
         else:
             for m, k, lp in iterate_registerable_entities_in_order(
-                    pkgs, include_entities={_executable_mixins.ExecutableEntity}, detect_unreferenced_entities=False):
+                    pkgs, include_entities={_launchable_mixins.LaunchableEntity}, detect_unreferenced_entities=False):
                 safe_name = _utils.fqdn(m.__name__, k, entity_type=lp.resource_type)
                 if lp_argument == safe_name:
                     launch_plan = lp

@@ -158,7 +158,7 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         ).client.get_workflow(workflow_id)
 
 
-class FlyteLaunchPlan(_common_engine.BaseLaunchPlanExecutor):
+class FlyteLaunchPlan(_common_engine.BaseLaunchPlanLauncher):
 
     def register(self, identifier):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
@@ -173,7 +173,14 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanExecutor):
     def execute(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
                 annotation_overrides=None):
         """
-        Executes the launch plan.
+        Deprecated. Use launch instead.
+        """
+        return self.launch(project, domain, name, inputs, notification_overrides, label_overrides, annotation_overrides)
+
+    def launch(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
+               annotation_overrides=None):
+        """
+        Creates a workflow execution using parameters specified in the launch plan.
         :param Text project:
         :param Text domain:
         :param Text name:
