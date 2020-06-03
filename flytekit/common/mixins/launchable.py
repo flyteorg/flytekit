@@ -2,6 +2,8 @@ from __future__ import absolute_import
 import abc as _abc
 import six as _six
 
+from deprecated import deprecated as _deprecated
+
 
 class LaunchableEntity(_six.with_metaclass(_abc.ABCMeta, object)):
     def launch(self, project, domain, inputs=None, name=None, notification_overrides=None, label_overrides=None,
@@ -34,15 +36,16 @@ class LaunchableEntity(_six.with_metaclass(_abc.ABCMeta, object)):
             annotation_overrides=annotation_overrides,
         )
 
+    @_deprecated(reason="Use launch instead", version='0.8.3')
     def execute(self, project, domain, inputs=None, name=None, notification_overrides=None, label_overrides=None,
                 annotation_overrides=None):
         """
-        Deprecated. Use launch instead.
+        Deprecated.
         """
-        return self.launch_with_literals(
+        return self.launch(
             project,
             domain,
-            self._python_std_input_map_to_literal_map(inputs or {}),
+            inputs=inputs,
             name=name,
             notification_overrides=notification_overrides,
             label_overrides=label_overrides,
@@ -74,18 +77,11 @@ class LaunchableEntity(_six.with_metaclass(_abc.ABCMeta, object)):
         """
         pass
 
+    @_deprecated(reason="Use launch_with_literals instead", version='0.8.3')
     def execute_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
                               label_overrides=None, annotation_overrides=None):
         """
-        Deprecated, use launch_with_literals instead
-        :param project:
-        :param domain:
-        :param literal_inputs:
-        :param name:
-        :param notification_overrides:
-        :param label_overrides:
-        :param annotation_overrides:
-        :return:
+        Deprecated.
         """
         return self.launch_with_literals(project, domain, literal_inputs, name, notification_overrides, label_overrides,
                                          annotation_overrides)

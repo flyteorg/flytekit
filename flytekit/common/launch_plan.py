@@ -13,6 +13,7 @@ from flytekit.models import launch_plan as _launch_plan_models, schedule as _sch
     _interface_models, literals as _literal_models, common as _common_models
 from flytekit.models.core import identifier as _identifier_model, workflow as _workflow_models
 import datetime as _datetime
+from deprecated import deprecated as _deprecated
 import logging as _logging
 import six as _six
 import uuid as _uuid
@@ -172,11 +173,11 @@ class SdkLaunchPlan(
             }
         )
 
-    @_exception_scopes.system_entry_point
+    @_deprecated(reason="Use launch_with_literals instead", version='0.8.3')
     def execute_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
                               label_overrides=None, annotation_overrides=None):
         """
-        Deprecated. Use launch_with_literals instead.
+        Deprecated.
         """
         return self.launch_with_literals(project, domain, literal_inputs, name, notification_overrides, label_overrides,
                                          annotation_overrides)

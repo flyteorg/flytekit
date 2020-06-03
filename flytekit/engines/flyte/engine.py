@@ -4,6 +4,7 @@ import logging as _logging
 import os as _os
 import traceback as _traceback
 from datetime import datetime as _datetime
+from deprecated import deprecated as _deprecated
 
 import six as _six
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -170,6 +171,7 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanLauncher):
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             pass
 
+    @_deprecated(reason="Use launch instead", version='0.8.3')
     def execute(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
                 annotation_overrides=None):
         """
