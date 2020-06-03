@@ -171,7 +171,7 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanLauncher):
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             pass
 
-    @_deprecated(reason="Use launch instead", version='0.8.3')
+    @_deprecated(reason="Use launch instead", version='0.9.0')
     def execute(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
                 annotation_overrides=None):
         """

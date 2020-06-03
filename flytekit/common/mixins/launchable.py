@@ -36,7 +36,7 @@ class LaunchableEntity(_six.with_metaclass(_abc.ABCMeta, object)):
             annotation_overrides=annotation_overrides,
         )
 
-    @_deprecated(reason="Use launch instead", version='0.8.3')
+    @_deprecated(reason="Use launch instead", version='0.9.0')
     def execute(self, project, domain, inputs=None, name=None, notification_overrides=None, label_overrides=None,
                 annotation_overrides=None):
         """
@@ -77,7 +77,7 @@ class LaunchableEntity(_six.with_metaclass(_abc.ABCMeta, object)):
         """
         pass
 
-    @_deprecated(reason="Use launch_with_literals instead", version='0.8.3')
+    @_deprecated(reason="Use launch_with_literals instead", version='0.9.0')
     def execute_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
                               label_overrides=None, annotation_overrides=None):
         """
