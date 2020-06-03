@@ -42,7 +42,7 @@ def _refresh_credentials_basic(flyte_client):
     auth_endpoints = _credentials_access.get_authorization_endpoints()
     token_endpoint = auth_endpoints.token_endpoint
     client_secret = _basic_auth.get_secret()
-    _logging.debug('Basic authorization flow with client id {} scope {}', _CLIENT_ID.get(), _SCOPE.get())
+    _logging.debug('Basic authorization flow with client id {} scope {}'.format(_CLIENT_ID.get(), _SCOPE.get()))
     authorization_header = _basic_auth.get_basic_authorization_header(_CLIENT_ID.get(), client_secret)
     token, expires_in = _basic_auth.get_token(token_endpoint, authorization_header, _SCOPE.get())
     _logging.info('Retrieved new token, expires in {}'.format(expires_in))
