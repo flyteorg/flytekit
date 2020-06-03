@@ -21,7 +21,7 @@ def test_default_assumable_iam_role():
             }
         )
         lp = workflow_to_test.create_launch_plan()
-        assert lp.auth.assumable_iam_role == 'arn:aws:iam::ABC123:role/my-flyte-role'
+        assert lp.auth_role.assumable_iam_role == 'arn:aws:iam::ABC123:role/my-flyte-role'
 
 
 def test_hard_coded_assumable_iam_role():
@@ -33,7 +33,7 @@ def test_hard_coded_assumable_iam_role():
         }
     )
     lp = workflow_to_test.create_launch_plan(assumable_iam_role='override')
-    assert lp.auth.assumable_iam_role == 'override'
+    assert lp.auth_role.assumable_iam_role == 'override'
 
 
 def test_default_deprecated_role():
@@ -48,7 +48,7 @@ def test_default_deprecated_role():
             }
         )
         lp = workflow_to_test.create_launch_plan()
-        assert lp.auth.assumable_iam_role == 'arn:aws:iam::ABC123:role/my-flyte-role'
+        assert lp.auth_role.assumable_iam_role == 'arn:aws:iam::ABC123:role/my-flyte-role'
 
 
 def test_hard_coded_deprecated_role():
@@ -60,7 +60,7 @@ def test_hard_coded_deprecated_role():
         }
     )
     lp = workflow_to_test.create_launch_plan(role='override')
-    assert lp.auth.assumable_iam_role == 'override'
+    assert lp.auth_role.assumable_iam_role == 'override'
 
 
 def test_kubernetes_service_account():
@@ -72,7 +72,7 @@ def test_kubernetes_service_account():
         }
     )
     lp = workflow_to_test.create_launch_plan(kubernetes_service_account='kube-service-acct')
-    assert lp.auth.kubernetes_service_account == 'kube-service-acct'
+    assert lp.auth_role.kubernetes_service_account == 'kube-service-acct'
 
 
 def test_fixed_inputs():
@@ -314,7 +314,7 @@ def test_serialize():
         s = lp.serialize()
 
     assert s.workflow_id == _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "p", "d", "n", "v").to_flyte_idl()
-    assert s.auth.assumable_iam_role == 'iam_role'
+    assert s.auth_role.assumable_iam_role == 'iam_role'
     assert s.default_inputs.parameters['default_input'].default.scalar.primitive.integer == 5
 
 
