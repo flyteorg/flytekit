@@ -4,6 +4,7 @@ import logging as _logging
 import os as _os
 import traceback as _traceback
 from datetime import datetime as _datetime
+from deprecated import deprecated as _deprecated
 
 import six as _six
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -14,7 +15,9 @@ from flytekit.clients.helpers import iterate_node_executions as _iterate_node_ex
     _iterate_task_executions
 from flytekit.common import utils as _common_utils, constants as _constants
 from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
-from flytekit.configuration import platform as _platform_config, internal as _internal_config, sdk as _sdk_config
+from flytekit.configuration import (
+    platform as _platform_config, internal as _internal_config, sdk as _sdk_config, auth as _auth_config,
+)
 from flytekit.engines import common as _common_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
@@ -156,7 +159,7 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         ).client.get_workflow(workflow_id)
 
 
-class FlyteLaunchPlan(_common_engine.BaseLaunchPlanExecutor):
+class FlyteLaunchPlan(_common_engine.BaseLaunchPlanLauncher):
 
     def register(self, identifier):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
@@ -168,10 +171,18 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanExecutor):
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             pass
 
+    @_deprecated(reason="Use launch instead", version='0.9.0')
     def execute(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
                 annotation_overrides=None):
         """
-        Executes the launch plan.
+        Deprecated. Use launch instead.
+        """
+        return self.launch(project, domain, name, inputs, notification_overrides, label_overrides, annotation_overrides)
+
+    def launch(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
+               annotation_overrides=None):
+        """
+        Creates a workflow execution using parameters specified in the launch plan.
         :param Text project:
         :param Text domain:
         :param Text name:
@@ -338,6 +349,67 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                                     _os.path.join(temp_dir.name, k)
                                 )
                             _data_proxy.Data.put_data(temp_dir.name, context['output_prefix'], is_multipart=True)
+
+    def launch(self, project, domain, name=None, inputs=None, notification_overrides=None, label_overrides=None,
+               annotation_overrides=None, auth_role=None):
+        """
+        Executes the task as a single task execution and returns the identifier.
+        :param Text project:
+        :param Text domain:
+        :param Text name:
+        :param flytekit.models.literals.LiteralMap inputs: The inputs to pass
+        :param list[flytekit.models.common.Notification] notification_overrides: If specified, override the
+            notifications.
+        :param flytekit.models.common.Labels label_overrides:
+        :param flytekit.models.common.Annotations annotation_overrides:
+        :param flytekit.models.common.AuthRole auth_role:
+        :rtype: flytekit.models.execution.Execution
+        """
+        disable_all = (notification_overrides == [])
+        if disable_all:
+            notification_overrides = None
+        else:
+            notification_overrides = _execution_models.NotificationList(
+                notification_overrides or []
+            )
+            disable_all = None
+
+        if not auth_role:
+            assumable_iam_role = _auth_config.ASSUMABLE_IAM_ROLE.get()
+            kubernetes_service_account = _auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
+
+            if not (assumable_iam_role or kubernetes_service_account):
+                _logging.warning("Using deprecated `role` from config. "
+                                 "Please update your config to use `assumable_iam_role` instead")
+                assumable_iam_role = _sdk_config.ROLE.get()
+            auth_role = _common_models.AuthRole(assumable_iam_role=assumable_iam_role,
+                                                kubernetes_service_account=kubernetes_service_account)
+
+        try:
+            # TODO(katrogan): Add handling to register the underlying task if it's not already.
+            client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
+            exec_id = client.create_execution(
+                project,
+                domain,
+                name,
+                _execution_models.ExecutionSpec(
+                    self.sdk_task.id,
+                    _execution_models.ExecutionMetadata(
+                        _execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
+                        'sdk',  # TODO: get principle
+                        0  # TODO: Detect nesting
+                    ),
+                    notifications=notification_overrides,
+                    disable_all=disable_all,
+                    labels=label_overrides,
+                    annotations=annotation_overrides,
+                    auth_role=auth_role,
+                ),
+                inputs,
+            )
+        except _user_exceptions.FlyteEntityAlreadyExistsException:
+            exec_id = _identifier.WorkflowExecutionIdentifier(project, domain, name)
+        return client.get_execution(exec_id)
 
 
 class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):

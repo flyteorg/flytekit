@@ -18,6 +18,7 @@ from flytekit.clis.helpers import construct_literal_map_from_variable_map as _co
     parse_args_into_dict as _parse_args_into_dict
 from flytekit.common import utils as _utils, launch_plan as _launch_plan_common
 from flytekit.common.core import identifier as _identifier
+from flytekit.common.tasks import task as _tasks_common
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
 from flytekit.configuration import platform as _platform_config
@@ -682,6 +683,49 @@ def get_task(urn, host, insecure):
     _click.echo("")
 
 
+@_flyte_cli.command('launch-task', cls=_FlyteSubCommand)
+@_project_option
+@_domain_option
+@_optional_name_option
+@_host_option
+@_insecure_option
+@_urn_option
+@_click.argument('task_args', nargs=-1, type=_click.UNPROCESSED)
+def launch_task(project, domain, name, host, insecure, urn, task_args):
+    """
+    Kick off a single task execution. Note that the {project, domain, name} specified in the command line
+    will be for the execution.  The project/domain for the task are specified in the urn.
+
+    Use a -- to separate arguments to this cli, and arguments to the task.
+    e.g.
+        $ flyte-cli -h localhost:30081 -p flyteexamples -d development launch-task \
+            -u tsk:flyteexamples:development:some-task:abc123 -- input=hi \
+            other-input=123 moreinput=qwerty
+
+    These arguments are then collected, and passed into the `task_args` variable as a Tuple[Text].
+    Users should use the get-task command to ascertain the names of inputs to use.
+    """
+    _welcome_message()
+
+    with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
+        task_id = _identifier.Identifier.from_python_std(urn)
+        task = _tasks_common.SdkTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
+
+        text_args = _parse_args_into_dict(task_args)
+        inputs = {}
+        for var_name, variable in _six.iteritems(task.interface.inputs):
+            sdk_type = _type_helpers.get_sdk_type_from_literal_type(variable.type)
+            if var_name in text_args and text_args[var_name] is not None:
+                inputs[var_name] = sdk_type.from_string(text_args[var_name]).to_python_std()
+
+        # TODO: Implement notification overrides
+        # TODO: Implement label overrides
+        # TODO: Implement annotation overrides
+        execution = task.launch(project, domain, inputs=inputs, name=name)
+        _click.secho("Launched execution: {}".format(_tt(execution.id)), fg='blue')
+        _click.echo("")
+
+
 ########################################################################################################################
 #
 #  Workflow Commands
@@ -1062,7 +1106,7 @@ def execute_launch_plan(project, domain, name, host, insecure, urn, principal, v
         # TODO: Implement notification overrides
         # TODO: Implement label overrides
         # TODO: Implement annotation overrides
-        execution = lp.execute_with_literals(project, domain, inputs, name=name)
+        execution = lp.launch_with_literals(project, domain, inputs, name=name)
         _click.secho("Launched execution: {}".format(_tt(execution.id)), fg='blue')
         _click.echo("")
 

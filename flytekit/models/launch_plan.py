@@ -58,6 +58,7 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
 class Auth(_common.FlyteIdlEntity):
     def __init__(self, assumable_iam_role=None, kubernetes_service_account=None):
         """
+        DEPRECATED. Do not use. Use flytekit.models.common.AuthRole instead
         At most one of assumable_iam_role or kubernetes_service_account can be set.
         :param Text assumable_iam_role: IAM identity with set permissions policies.
         :param Text kubernetes_service_account: Provides an identity for workflow execution resources. Flyte deployment
@@ -108,7 +109,7 @@ class Auth(_common.FlyteIdlEntity):
 
 class LaunchPlanSpec(_common.FlyteIdlEntity):
 
-    def __init__(self, workflow_id, entity_metadata, default_inputs, fixed_inputs, labels, annotations, auth):
+    def __init__(self, workflow_id, entity_metadata, default_inputs, fixed_inputs, labels, annotations, auth_role):
         """
         The spec for a Launch Plan.
 
@@ -120,7 +121,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             Any custom kubernetes labels to apply to workflows executed by this launch plan.
         :param flyteidl.admin.common_pb2.Annotations annotations:
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
-        :param flytekit.models.launch_plan.Auth auth: The auth method with which to execute the workflow.
+        :param flytekit.models.common.Auth auth_role: The auth method with which to execute the workflow.
         """
         self._workflow_id = workflow_id
         self._entity_metadata = entity_metadata
@@ -128,7 +129,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         self._fixed_inputs = fixed_inputs
         self._labels = labels
         self._annotations = annotations
-        self._auth = auth
+        self._auth_role = auth_role
 
     @property
     def workflow_id(self):
@@ -178,12 +179,12 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         return self._annotations
 
     @property
-    def auth(self):
+    def auth_role(self):
         """
         The authorization method with which to execute the workflow.
-        :return: flytekit.models.launch_plan.Auth
+        :return: flytekit.models.common.Auth
         """
-        return self._auth
+        return self._auth_role
 
     def to_flyte_idl(self):
         """
@@ -196,7 +197,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             fixed_inputs=self.fixed_inputs.to_flyte_idl(),
             labels=self.labels.to_flyte_idl(),
             annotations=self.annotations.to_flyte_idl(),
-            auth=self.auth.to_flyte_idl(),
+            auth_role=self.auth_role.to_flyte_idl(),
         )
 
     @classmethod
@@ -212,7 +213,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             fixed_inputs=_literals.LiteralMap.from_flyte_idl(pb2_object.fixed_inputs),
             labels=_common.Labels.from_flyte_idl(pb2_object.labels),
             annotations=_common.Annotations.from_flyte_idl(pb2_object.annotations),
-            auth=Auth.from_flyte_idl(pb2_object.auth),
+            auth_role=_common.AuthRole.from_flyte_idl(pb2_object.auth_role),
         )
 
 
