@@ -1,6 +1,9 @@
 from __future__ import absolute_import
 
 import six as _six
+import logging as _logging
+import grpc as _grpc
+from google.protobuf.json_format import MessageToJson as _MessageToJson
 
 from flyteidl.admin import task_pb2 as _task_pb2, common_pb2 as _common_pb2, workflow_pb2 as _workflow_pb2, \
     launch_plan_pb2 as _launch_plan_pb2, execution_pb2 as _execution_pb2, node_execution_pb2 as _node_execution_pb2, \
@@ -54,12 +57,19 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             identical task is already registered.
         :raises grpc.RpcError:
         """
-        super(SynchronousFlyteClient, self).create_task(
-            _task_pb2.TaskCreateRequest(
-                id=task_identifer.to_flyte_idl(),
-                spec=task_spec.to_flyte_idl()
-            )
+        create_request = _task_pb2.TaskCreateRequest(
+            id=task_identifer.to_flyte_idl(),
+            spec=task_spec.to_flyte_idl()
         )
+        try:
+            super(SynchronousFlyteClient, self).create_task(create_request)
+        except _grpc.RpcError as e:
+            # When Admin detects a conflicting entry or otherwise invalid request during registration, it returns an
+            # invalid argument code. We should print out the thing we were trying to create in these cases.
+            if e.code() == _grpc.StatusCode.INVALID_ARGUMENT:
+                _logging.error("Error creating task because of invalid argument. This was the create request...")
+                _logging.error(_MessageToJson(create_request))
+            raise e
 
     def list_task_ids_paginated(
             self,
@@ -203,12 +213,19 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             identical workflow is already registered.
         :raises grpc.RpcError:
         """
-        super(SynchronousFlyteClient, self).create_workflow(
-            _workflow_pb2.WorkflowCreateRequest(
-                id=workflow_identifier.to_flyte_idl(),
-                spec=workflow_spec.to_flyte_idl()
-            )
+        create_request = _workflow_pb2.WorkflowCreateRequest(
+            id=workflow_identifier.to_flyte_idl(),
+            spec=workflow_spec.to_flyte_idl()
         )
+        try:
+            super(SynchronousFlyteClient, self).create_workflow(create_request)
+        except _grpc.RpcError as e:
+            # When Admin detects a conflicting entry or otherwise invalid request during registration, it returns an
+            # invalid argument code. We should print out the thing we were trying to create in these cases.
+            if e.code() == _grpc.StatusCode.INVALID_ARGUMENT:
+                _logging.error("Error creating workflow because of invalid argument. This was the create request...")
+                _logging.error(_MessageToJson(create_request))
+            raise e
 
     def list_workflow_ids_paginated(
             self,
@@ -306,7 +323,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         for pb in wf_list.workflows:
             pb.id.resource_type = _identifier.ResourceType.WORKFLOW
         return [_workflow.Workflow.from_flyte_idl(wf_pb2) for wf_pb2 in wf_list.workflows], \
-            _six.text_type(wf_list.token)
+               _six.text_type(wf_list.token)
 
     def get_workflow(self, id):
         """
@@ -353,12 +370,19 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             the identical launch plan is already registered.
         :raises grpc.RpcError:
         """
-        super(SynchronousFlyteClient, self).create_launch_plan(
-            _launch_plan_pb2.LaunchPlanCreateRequest(
-                id=launch_plan_identifer.to_flyte_idl(),
-                spec=launch_plan_spec.to_flyte_idl()
-            )
+        create_request = _launch_plan_pb2.LaunchPlanCreateRequest(
+            id=launch_plan_identifer.to_flyte_idl(),
+            spec=launch_plan_spec.to_flyte_idl()
         )
+        try:
+            super(SynchronousFlyteClient, self).create_launch_plan(create_request)
+        except _grpc.RpcError as e:
+            # When Admin detects a conflicting entry or otherwise invalid request during registration, it returns an
+            # invalid argument code. We should print out the thing we were trying to create in these cases.
+            if e.code() == _grpc.StatusCode.INVALID_ARGUMENT:
+                _logging.error("Error creating launch plan because of invalid argument. This was the create request...")
+                _logging.error(_MessageToJson(create_request))
+                raise e
 
     def get_launch_plan(self, id):
         """
@@ -435,9 +459,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
         return [
-            _common.NamedEntityIdentifier.from_flyte_idl(identifier_pb)
-            for identifier_pb in identifier_list.entities
-        ], _six.text_type(identifier_list.token)
+                   _common.NamedEntityIdentifier.from_flyte_idl(identifier_pb)
+                   for identifier_pb in identifier_list.entities
+               ], _six.text_type(identifier_list.token)
 
     def list_launch_plans_paginated(
             self,
@@ -487,7 +511,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         for pb in lp_list.launch_plans:
             pb.id.resource_type = _identifier.ResourceType.LAUNCH_PLAN
         return [_launch_plan.LaunchPlan.from_flyte_idl(pb) for pb in lp_list.launch_plans], \
-            _six.text_type(lp_list.token)
+               _six.text_type(lp_list.token)
 
     def list_active_launch_plans_paginated(
             self,
@@ -536,7 +560,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         for pb in lp_list.launch_plans:
             pb.id.resource_type = _identifier.ResourceType.LAUNCH_PLAN
         return [_launch_plan.LaunchPlan.from_flyte_idl(pb) for pb in lp_list.launch_plans], \
-            _six.text_type(lp_list.token)
+               _six.text_type(lp_list.token)
 
     def update_launch_plan(self, id, state):
         """
@@ -777,7 +801,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
         return [_node_execution.NodeExecution.from_flyte_idl(e) for e in exec_list.node_executions], \
-            _six.text_type(exec_list.token)
+               _six.text_type(exec_list.token)
 
     def list_node_executions_for_task_paginated(
             self,
@@ -808,7 +832,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
         return [_node_execution.NodeExecution.from_flyte_idl(e) for e in exec_list.node_executions], \
-            _six.text_type(exec_list.token)
+               _six.text_type(exec_list.token)
 
     ####################################################################################################################
     #
@@ -866,7 +890,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
         return [_task_execution.TaskExecution.from_flyte_idl(e) for e in exec_list.task_executions], \
-            _six.text_type(exec_list.token)
+               _six.text_type(exec_list.token)
 
     ####################################################################################################################
     #
