@@ -30,7 +30,8 @@ from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import execution as _core_execution_models, identifier as _core_identifier
 from flytekit.models.execution import ExecutionSpec as _ExecutionSpec, ExecutionMetadata as _ExecutionMetadata
 from flytekit.models.matchable_resource import ClusterResourceAttributes as _ClusterResourceAttributes,\
-    ExecutionQueueAttributes as _ExecutionQueueAttributes, MatchingAttributes as _MatchingAttributes
+    ExecutionQueueAttributes as _ExecutionQueueAttributes, ExecutionClusterLabel as _ExecutionClusterLabel,\
+    MatchingAttributes as _MatchingAttributes
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
 from flytekit.common.exceptions import user as _user_exceptions
@@ -1732,7 +1733,6 @@ def update_cluster_resource_attributes(host, insecure, project, domain, name, at
     """
     Sets matchable cluster resource attributes for a project, domain and optionally, workflow name.
 
-    Use a -- to separate arguments to this cli, and attributes used for cluster resource configuration.
     e.g.
         $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-cluster-resource-attributes \
             --attributes cpu 1 --attributes memory 500M
@@ -1767,9 +1767,8 @@ def update_execution_queue_attributes(host, insecure, project, domain, name, tag
     """
     Tags used for assigning execution queues for tasks belonging to a project, domain and optionally, workflow name.
 
-    Use a -- to separate arguments to this cli, and attributes used for cluster resource configuration.
     e.g.
-        $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-cluster-resource-attributes \
+        $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-execution-queue-attributes \
             --tags critical --tags gpu_intensive
     """
     _welcome_message()
@@ -1788,6 +1787,40 @@ def update_execution_queue_attributes(host, insecure, project, domain, name, tag
             project, domain, matching_attributes
         )
         _click.echo("Successfully updated execution queue attributes for project: {} and domain: {}".
+                    format(project, domain))
+
+
+@_flyte_cli.command('update-execution-cluster-label', cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+@_project_option
+@_domain_option
+@_optional_name_option
+@_click.option("--value",  help="Cluster label for which to schedule matching executions")
+def update_execution_cluster_label(host, insecure, project, domain, name, value):
+    """
+    Label value to determine where an execution's task will be run for tasks belonging to a project, domain and
+        optionally, workflow name.
+
+    e.g.
+        $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-execution-cluster-label --value foo
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    execution_cluster_label = _ExecutionClusterLabel(value)
+    matching_attributes = _MatchingAttributes(execution_cluster_label=execution_cluster_label)
+
+    if name is not None:
+        client.update_workflow_attributes(
+            project, domain, name, matching_attributes
+        )
+        _click.echo("Successfully updated execution cluster label for project: {}, domain: {}, and workflow: {}".
+                    format(project, domain, name))
+    else:
+        client.update_project_domain_attributes(
+            project, domain, matching_attributes
+        )
+        _click.echo("Successfully updated execution cluster label for project: {} and domain: {}".
                     format(project, domain))
 
 

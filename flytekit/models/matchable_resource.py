@@ -77,17 +77,60 @@ class ExecutionQueueAttributes(_common.FlyteIdlEntity):
         )
 
 
-class MatchingAttributes(_common.FlyteIdlEntity):
-    def __init__(self, cluster_resource_attributes=None, execution_queue_attributes=None):
+class ExecutionClusterLabel(_common.FlyteIdlEntity):
+
+    def __init__(self, value):
         """
-        At most one target from cluster_resource_attributes or execution_queue_attributes can be set.
+        Label value to determine where the execution will be run
+
+        :param Text value:
+        """
+        self._value = value
+
+    @property
+    def value(self):
+        """
+        :rtype: Text
+        """
+        return self._value
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin.matchable_resource_pb2.ExecutionClusterLabel
+        """
+        return _matchable_resource.ExecutionClusterLabel(
+            value=self.value,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.admin.matchable_resource_pb2.ExecutionClusterLabel pb2_object:
+        :rtype: ExecutionClusterLabel
+        """
+        return cls(
+            value=pb2_object.value,
+        )
+
+
+class MatchingAttributes(_common.FlyteIdlEntity):
+    def __init__(self, cluster_resource_attributes=None, execution_queue_attributes=None, execution_cluster_label=None):
+        """
+        At most one target from cluster_resource_attributes, execution_queue_attributes or execution_cluster_label
+            can be set.
         :param ClusterResourceAttributes cluster_resource_attributes:
         :param ExecutionQueueAttributes execution_queue_attributes:
+        :param ExecutionClusterLabel execution_cluster_label:
         """
-        if cluster_resource_attributes and execution_queue_attributes:
-            raise ValueError("Only one of cluster_resource_attributes or execution_queue_attributes can be set")
+        if cluster_resource_attributes:
+            if execution_queue_attributes or execution_cluster_label:
+                raise ValueError("Only one target can be set")
+        elif execution_queue_attributes and execution_cluster_label:
+            raise ValueError("Only one target can be set")
+
         self._cluster_resource_attributes = cluster_resource_attributes
         self._execution_queue_attributes = execution_queue_attributes
+        self._execution_cluster_label = execution_cluster_label
 
     @property
     def cluster_resource_attributes(self):
@@ -105,6 +148,14 @@ class MatchingAttributes(_common.FlyteIdlEntity):
         """
         return self._execution_queue_attributes
 
+    @property
+    def execution_cluster_label(self):
+        """
+        Label value to determine where the execution will be run.
+        :rtype: ExecutionClusterLabel
+        """
+        return self._execution_cluster_label
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.matchable_resource_pb2.MatchingAttributes
@@ -113,6 +164,8 @@ class MatchingAttributes(_common.FlyteIdlEntity):
             cluster_resource_attributes=self.cluster_resource_attributes.to_flyte_idl() if
             self.cluster_resource_attributes else None,
             execution_queue_attributes=self.execution_queue_attributes.to_flyte_idl() if self.execution_queue_attributes
+            else None,
+            execution_cluster_label=self.execution_cluster_label.to_flyte_idl() if self.execution_cluster_label
             else None,
         )
 
@@ -127,4 +180,6 @@ class MatchingAttributes(_common.FlyteIdlEntity):
                 pb2_object.cluster_resource_attributes) if pb2_object.HasField("cluster_resource_attributes") else None,
             execution_queue_attributes=ExecutionQueueAttributes.from_flyte_idl(pb2_object.execution_queue_attributes) if
             pb2_object.HasField("execution_queue_attributes") else None,
+            execution_cluster_label=ExecutionClusterLabel.from_flyte_idl(pb2_object.execution_cluster_label) if
+            pb2_object.HasField("execution_cluster_label") else None,
         )
