@@ -25,7 +25,6 @@ class TrainingJob(_common.FlyteIdlEntity):
         self._vpc_config = vpc_config
         self._enable_spot_training = enable_spot_training
 
-
     @property
     def region(self):
         """
