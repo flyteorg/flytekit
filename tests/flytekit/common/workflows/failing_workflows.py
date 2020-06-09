@@ -12,6 +12,11 @@ def div_zero(wf_params):
     return 5 / 0
 
 
+@python_task
+def log_something(wf_params):
+    wf_params.logging.warn("Hello world")
+
+
 @workflow_class(on_failure=WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE)
 class FailingWorkflowWithRunToCompletion(object):
     """
@@ -19,7 +24,7 @@ class FailingWorkflowWithRunToCompletion(object):
             \\_  [first_layer_2]                      _/
     """
 
-    first_layer = div_zero()
+    first_layer = log_something()
     first_layer_2 = div_zero()
     second_layer = div_zero()
 
