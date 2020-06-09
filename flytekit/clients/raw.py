@@ -100,7 +100,7 @@ def _handle_invalid_create_request(fn):
             fn(self, create_request)
         except _RpcError as e:
             if e.code() == _GrpcStatusCode.INVALID_ARGUMENT:
-                _logging.error("Error creating task because of invalid argument. This was the create request...")
+                _logging.error("Error creating Flyte entity because of invalid arguments. Create request: ")
                 _logging.error(_MessageToJson(create_request))
 
             # In any case, re-raise since we're not truly handling the error here
