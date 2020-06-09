@@ -132,7 +132,7 @@ def test_workflow_decorator():
         n1 >> n6
         a = workflow.Output('a', n1.outputs.b, sdk_type=primitives.Integer)
 
-    w = workflow.build_sdk_workflow_from_metaclass(my_workflow)
+    w = workflow.build_sdk_workflow_from_metaclass(my_workflow, on_failure=_workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE)
 
     assert w.interface.inputs['input_1'].type == primitives.Integer.to_flyte_literal_type()
     assert w.interface.inputs['input_2'].type == primitives.Integer.to_flyte_literal_type()
