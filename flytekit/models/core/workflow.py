@@ -455,10 +455,6 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
                                                     workflow. It'll automatically abort all currently running nodes and
                                                     clean up resources before finally marking the workflow executions as failed.
 
-            FAIL_AFTER_RUNNING_NODES_COMPLETE       Instructs the system not to schedule new nodes to run but to wait for
-                                                    all currently running nodes to finish executing before cleaning up
-                                                    resources and marking the workflow execution as failed.
-
             FAIL_AFTER_EXECUTABLE_NODES_COMPLETE    Instructs the system to make as much progress as it can. The system
                                                     will not alter the dependencies of the execution graph so any node 
                                                     that depend on the failed node will not be run. Other nodes that will
@@ -467,7 +463,6 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
         """
 
         FAIL_IMMEDIATELY = _core_workflow.WorkflowMetadata.FAIL_IMMEDIATELY        
-        FAIL_AFTER_RUNNING_NODES_COMPLETE = _core_workflow.WorkflowMetadata.FAIL_AFTER_RUNNING_NODES_COMPLETE
         FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = _core_workflow.WorkflowMetadata.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
 
     def __init__(self, queuing_budget=None, on_failure=None):
