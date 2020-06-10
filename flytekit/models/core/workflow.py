@@ -447,7 +447,26 @@ class WorkflowNode(_common.FlyteIdlEntity):
 class WorkflowMetadata(_common.FlyteIdlEntity):
 
     class OnFailurePolicy(object):
-        FAIL_IMMEDIATELY = _core_workflow.WorkflowMetadata.FAIL_IMMEDIATELY
+        """
+        Defines the execution behavior of the workflow when a failure is detected.
+
+        Attributes:
+            FAIL_IMMEDIATELY                        Instructs the system to fail as soon as a node fails in the
+                                                    workflow. It'll automatically abort all currently running nodes and
+                                                    clean up resources before finally marking the workflow executions as failed.
+
+            FAIL_AFTER_RUNNING_NODES_COMPLETE       Instructs the system not to schedule new nodes to run but to wait for
+                                                    all currently running nodes to finish executing before cleaning up
+                                                    resources and marking the workflow execution as failed.
+
+            FAIL_AFTER_EXECUTABLE_NODES_COMPLETE    Instructs the system to make as much progress as it can. The system
+                                                    will not alter the dependencies of the execution graph so any node 
+                                                    that depend on the failed node will not be run. Other nodes that will
+                                                    be executed to completion before cleaning up resources and marking
+                                                    the workflow execution as failed.
+        """
+
+        FAIL_IMMEDIATELY = _core_workflow.WorkflowMetadata.FAIL_IMMEDIATELY        
         FAIL_AFTER_RUNNING_NODES_COMPLETE = _core_workflow.WorkflowMetadata.FAIL_AFTER_RUNNING_NODES_COMPLETE
         FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = _core_workflow.WorkflowMetadata.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
 
@@ -456,7 +475,7 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
         Metadata for the workflow.
         
         :param queuing_budget datetime.timedelta: [Optional] Budget that specifies the amount of time a workflow can be queued up for execution.
-        :param on_fialure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
+        :param on_failure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
         """
         self._queuing_budget = queuing_budget
         self._on_failure = on_failure
