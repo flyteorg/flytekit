@@ -174,6 +174,7 @@ def test_workflow_decorator():
     assert w.outputs[0].var == 'a'
     assert w.outputs[0].binding.promise.var == 'b'
     assert w.outputs[0].binding.promise.node_id == 'n1'
+    assert w.metadata.on_failure == _workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
     # TODO: Test promotion of w -> SdkWorkflow
 
 

@@ -63,7 +63,7 @@ def workflow_class(_workflow_metaclass=None, cls=None, queuing_budget=None, on_f
         by users extending the base Flyte programming model. If set, it must be a subclass of
         :py:class:`flytekit.common.workflow.SdkWorkflow`.
     :param queuing_budget datetime.timedelta: [Optional] Budget that specifies the amount of time a workflow can be queued up for execution.
-    :param on_fialure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
+    :param on_failure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
     :rtype: flytekit.common.workflow.SdkWorkflow
     """
 
@@ -110,7 +110,7 @@ def workflow(nodes, inputs=None, outputs=None, cls=None, queuing_budget=None, on
         by users extending the base Flyte programming model. If set, it must be a subclass of
         :py:class:`flytekit.common.workflow.SdkWorkflow`.
     :param queuing_budget datetime.timedelta: [Optional] Budget that specifies the amount of time a workflow can be queued up for execution.
-    :param on_fialure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
+    :param on_failure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
     :rtype: flytekit.common.workflow.SdkWorkflow
     """
     wf = (cls or _common_workflow.SdkWorkflow)(

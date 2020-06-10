@@ -465,7 +465,7 @@ def build_sdk_workflow_from_metaclass(metaclass, queuing_budget=None, on_failure
     :rtype: SdkWorkflow
     """
     inputs, outputs, nodes = _discover_workflow_components(metaclass)
-    metadata = _workflow_models.WorkflowMetadata(queuing_budget=queuing_budget, on_failure=on_failure) if queuing_budget else None
+    metadata = _workflow_models.WorkflowMetadata(queuing_budget=queuing_budget if queuing_budget else None, on_failure=on_failure if on_failure else None)
     return (cls or SdkWorkflow)(
         inputs=[i for i in sorted(inputs, key=lambda x: x.name)],
         outputs=[o for o in sorted(outputs, key=lambda x: x.name)],
