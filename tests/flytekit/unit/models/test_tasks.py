@@ -42,6 +42,7 @@ def test_runtime_metadata():
     assert obj != task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.OTHER, "1.0.0", "python")
     assert obj != task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "golang")
 
+
 def test_task_metadata_interruptible_from_flyte_idl():
     # Interruptible not set
     idl = TaskMetadata()
@@ -165,3 +166,20 @@ def test_sidecar_task():
 
     obj2 = task.SidecarJob.from_flyte_idl(obj.to_flyte_idl())
     assert obj2 == obj
+
+
+def test_dataloadingconfig():
+    dlc = task.DataLoadingConfig("s3://input/path", "s3://output/path", True,
+                                 task.DataLoadingConfig.LITERALMAP_FORMAT_YAML)
+    dlc2 = task.DataLoadingConfig.from_flyte_idl(dlc.to_flyte_idl())
+    assert dlc2 == dlc
+
+    dlc = task.DataLoadingConfig("s3://input/path", "s3://output/path", True,
+                                 task.DataLoadingConfig.LITERALMAP_FORMAT_YAML, io_strategy=task.IOStrategy())
+    dlc2 = task.DataLoadingConfig.from_flyte_idl(dlc.to_flyte_idl())
+    assert dlc2 == dlc
+
+
+def test_ioconfig():
+    io = task.IOStrategy(task.IOStrategy.DOWNLOAD_MODE_NO_DOWNLOAD, task.IOStrategy.UPLOAD_MODE_NO_UPLOAD)
+    assert io == task.IOStrategy.from_flyte_idl(io.to_flyte_idl())

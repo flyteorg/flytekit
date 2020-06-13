@@ -718,16 +718,16 @@ class DataLoadingConfig(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _core_task.DataLoadingConfig):
+    def from_flyte_idl(cls, pb2: _core_task.DataLoadingConfig):
         # TODO use python 3.7+ only and then https://stackoverflow.com/questions/33533148/how-do-i-specify-that-the-return-type-of-a-method-is-the-same-as-the-class-itsel -> DataLoadingConfig:
-        if pb2_object is None:
+        if pb2 is None:
             return None
         return cls(
-            input_path=pb2_object.input_path,
-            output_path=pb2_object.output_path,
-            enabled=pb2_object.enabled,
-            format=pb2_object.format,
-            io_strategy=IOStrategy.from_flyte_idl(pb2_object.io_strategy),
+            input_path=pb2.input_path,
+            output_path=pb2.output_path,
+            enabled=pb2.enabled,
+            format=pb2.format,
+            io_strategy=IOStrategy.from_flyte_idl(pb2.io_strategy) if pb2.HasField("io_strategy") else None,
         )
 
 
@@ -754,7 +754,6 @@ class Container(_common.FlyteIdlEntity):
         self._env = env
         self._config = config
 
-
     @property
     def image(self):
         """
@@ -762,7 +761,6 @@ class Container(_common.FlyteIdlEntity):
         :rtype: Text
         """
         return self._image
-
 
     @property
     def command(self):
@@ -772,7 +770,6 @@ class Container(_common.FlyteIdlEntity):
         """
         return self._command
 
-
     @property
     def args(self):
         """
@@ -781,7 +778,6 @@ class Container(_common.FlyteIdlEntity):
         """
         return self._args
 
-
     @property
     def resources(self):
         """
@@ -789,7 +785,6 @@ class Container(_common.FlyteIdlEntity):
         :rtype: Resources
         """
         return self._resources
-
 
     @property
     def env(self):
@@ -800,7 +795,6 @@ class Container(_common.FlyteIdlEntity):
         """
         return self._env
 
-
     @property
     def config(self):
         """
@@ -810,14 +804,12 @@ class Container(_common.FlyteIdlEntity):
         """
         return self._config
 
-
     @property
     def data_loading_config(self):
         """
         :rtype: DataLoadingConfig
         """
         return self._data_loading_config
-
 
     def to_flyte_idl(self):
         """
@@ -832,7 +824,6 @@ class Container(_common.FlyteIdlEntity):
             config=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in _six.iteritems(self.config)],
             data_config=self._data_loading_config.to_flyte_idl() if self._data_loading_config else None,
         )
-
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
