@@ -13,7 +13,7 @@ from flytekit.sdk.tasks.sagemaker.parameter_range import IntegerParameterRange, 
 from flytekit.sdk.tasks.sagemaker import trainingjob_task
 from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class, Input
+from flytekit.sdk.workflow import workflow_class, Input, Output
 import xgboost as xgb
 
 example_hyperparams = {
@@ -155,7 +155,7 @@ class SageMakerSimpleWorkflow(object):
     )
 
     my_simple_hpojob_task = simple_hpojob_task(
-        trainingjob_task = my_simple_xgboost_trainingjob_task,
+        trainingjob_task=my_simple_xgboost_trainingjob_task,  # TODO: this doesn't seem totally reasonable
         hyperparameter_ranges={   # hyperparameters included here will automatically override the static counterpart
             # https://docs.aws.amazon.com/sagemaker/latest/dg/xgboost_hyperparameters.html
             "num_rounds": IntegerParameterRange(min_value="1", max_value="100", scaling_type="LOGARITHMIC"),
@@ -176,12 +176,17 @@ class SageMakerSimpleWorkflow(object):
         static_hyperparameters=example_hyperparams,
     )
 
-    my_hpojob_task_with_custom_trainingjob_task = simple_hpojob_task(
-        trainingjob_task=my_custom_trainingjob_task,
+    my_custom_task = simple_hpojob_task(
+        trainingjob_task=my_custom_trainingjob_task,  # TODO: this doesn't seem totally reasonable
         hyperparameter_ranges={  # hyperparameters included here will automatically override the static counterpart
+            # TODO: Need to figure out how to do decide precedence
+            #       In this case, both the user code and the hpo job tries to override the hyperparameter
             "num_rounds": IntegerParameterRange(min_value="1", max_value="100", scaling_type="LOGARITHMIC"),
         },
         hyperparameter_tuning_strategy=HPOJobTuningStrategy.BAYESIAN,
         hyperparameter_tuning_objective=HPOJobObjective(type="MINIMIZE", metric_name="validation:error"),
         trainingjob_early_stopping_type="AUTO",
     )
+
+    simple_model = Output(my_simple_hpojob_task.outputs.model, sdk_type=Types.Blob)
+    custom_model = Output(my_custom_task.outputs.model, sdk_type=Types.Blob)
