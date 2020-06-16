@@ -82,7 +82,23 @@ def test_task_produce_deterministic_version():
         output_schema=schema,
         routing_group="{{ .Inputs.rg }}",
     )
-    assert containerless_task._produce_deterministic_version() == "85f3a50006dd09e0f9cdb05f3fc8d477"
+    identical_containerless_task = SdkPrestoTask(
+        task_inputs=inputs(ds=Types.String, rg=Types.String),
+        statement="SELECT * FROM flyte.widgets WHERE ds = '{{ .Inputs.ds}}' LIMIT 10",
+        output_schema=schema,
+        routing_group="{{ .Inputs.rg }}",
+    )
+    different_containerless_task = SdkPrestoTask(
+        task_inputs=inputs(ds=Types.String, rg=Types.String),
+        statement="SELECT * FROM flyte.widgets WHERE ds = '{{ .Inputs.ds}}' LIMIT 100000",
+        output_schema=schema,
+        routing_group="{{ .Inputs.rg }}",
+    )
+    assert containerless_task._produce_deterministic_version() ==\
+           identical_containerless_task._produce_deterministic_version()
+
+    assert containerless_task._produce_deterministic_version() !=\
+           different_containerless_task._produce_deterministic_version()
 
     with _pytest.raises(Exception):
         get_sample_task()._produce_deterministic_version()
