@@ -43,6 +43,17 @@ example_hyperparams = {
 }
 
 simple_xgboost_trainingjob_task = SdkSimpleTrainingJobTask(
+    # The problem is that SageMaker currently doesn't support fractional resources
+    # (that is, you have to be billed for the entire instance even though your program
+    # uses only a part of it).
+    #
+    # This aforementioned billing policy of SageMaker conflicts with the current semantic
+    # in flytekit around resources. So If we allow users to specify cpu_limit and memory_
+    # limit for SageMaker tasks, users might be misled and found that they are "overcharged"
+    # for the resource they didn't claim.
+    #
+    # Exposing InstanceType and InstanceCount to the users seems to be the most viable workaround
+    # I can think of at the moment to address the above issue.
     trainingjob_conf={
         "InstanceType": "ml.m4.xlarge",
         "InstanceCount": 1,
