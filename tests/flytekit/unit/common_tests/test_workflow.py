@@ -132,7 +132,7 @@ def test_workflow_decorator():
         n1 >> n6
         a = workflow.Output('a', n1.outputs.b, sdk_type=primitives.Integer)
 
-    w = workflow.build_sdk_workflow_from_metaclass(my_workflow)
+    w = workflow.build_sdk_workflow_from_metaclass(my_workflow, on_failure=_workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE)
 
     assert w.interface.inputs['input_1'].type == primitives.Integer.to_flyte_literal_type()
     assert w.interface.inputs['input_2'].type == primitives.Integer.to_flyte_literal_type()
@@ -174,6 +174,7 @@ def test_workflow_decorator():
     assert w.outputs[0].var == 'a'
     assert w.outputs[0].binding.promise.var == 'b'
     assert w.outputs[0].binding.promise.node_id == 'n1'
+    assert w.metadata.on_failure == _workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
     # TODO: Test promotion of w -> SdkWorkflow
 
 

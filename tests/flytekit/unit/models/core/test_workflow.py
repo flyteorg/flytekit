@@ -94,6 +94,13 @@ def test_workflow_metadata_queuing_budget():
     obj2 = _workflow.WorkflowMetadata.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
 
+def test_workflow_metadata_failure_policy():
+    obj = _workflow.WorkflowMetadata(on_failure=_workflow.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE)
+    obj2 = _workflow.WorkflowMetadata.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == obj2
+    assert obj.on_failure == _workflow.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
+    assert obj2.on_failure == _workflow.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
+
 def test_workflow_metadata():
     obj = _workflow.WorkflowMetadata()
     obj2 = _workflow.WorkflowMetadata.from_flyte_idl(obj.to_flyte_idl())
