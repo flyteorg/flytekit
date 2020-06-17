@@ -153,11 +153,18 @@ class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
         m = _importlib.import_module(self.instantiated_in)
 
         for k in dir(m):
-            print("calling getattr({}, {})".format(m, k)
-            if getattr(m, k) == self:
-                self._platform_valid_name = _utils.fqdn(m.__name__, k, entity_type=self.resource_type)
-                _logging.debug("Auto-assigning name to {}".format(self._platform_valid_name))
-                return
+            try:
+                if getattr(m, k) == self:
+                    self._platform_valid_name = _utils.fqdn(m.__name__, k, entity_type=self.resource_type)
+                    _logging.debug("Auto-assigning name to {}".format(self._platform_valid_name))
+                    return
+            except ValueError:
+                # Empty pandas dataframes behave weirdly here such that calling `m.df` raises:
+                # ValueError: The truth value of a {type(self).__name__} is ambiguous. Use a.empty, a.bool(), a.item(),
+                #   a.any() or a.all()
+                # Since dataframes aren't registrable entities to begin with we swallow any errors they raise and
+                # continue looping through m.
+                pass
 
         _logging.error("Could not auto-assign name")
         raise _system_exceptions.FlyteSystemException("Error looking for object while auto-assigning name.")
