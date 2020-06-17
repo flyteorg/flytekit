@@ -153,6 +153,7 @@ class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
         m = _importlib.import_module(self.instantiated_in)
 
         for k in dir(m):
+            print("calling getattr({}, {})".format(m, k)
             if getattr(m, k) == self:
                 self._platform_valid_name = _utils.fqdn(m.__name__, k, entity_type=self.resource_type)
                 _logging.debug("Auto-assigning name to {}".format(self._platform_valid_name))
