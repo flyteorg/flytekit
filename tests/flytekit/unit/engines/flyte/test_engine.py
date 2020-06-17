@@ -115,7 +115,7 @@ def test_execution_notification_overrides(mock_client_factory):
         )
     )
 
-    engine.FlyteLaunchPlan(m).execute(
+    engine.FlyteLaunchPlan(m).launch(
         'xp', 'xd', 'xn', literals.LiteralMap({}), notification_overrides=[]
     )
 
@@ -161,7 +161,7 @@ def test_execution_notification_soft_overrides(mock_client_factory):
 
     notification = _common_models.Notification([0, 1, 2], email=_common_models.EmailNotification(["me@place.com"]))
 
-    engine.FlyteLaunchPlan(m).execute(
+    engine.FlyteLaunchPlan(m).launch(
         'xp', 'xd', 'xn', literals.LiteralMap({}), notification_overrides=[notification]
     )
 
@@ -252,7 +252,7 @@ def test_execution_annotation_overrides(mock_client_factory):
     )
 
     annotations = _common_models.Annotations({"my": "annotation"})
-    engine.FlyteLaunchPlan(m).execute(
+    engine.FlyteLaunchPlan(m).launch(
         'xp', 'xd', 'xn', literals.LiteralMap({}), notification_overrides=[], annotation_overrides=annotations
     )
 

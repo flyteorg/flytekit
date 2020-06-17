@@ -414,3 +414,11 @@ class SdkNodeExecution(
                 _task_executions.SdkTaskExecution.promote_from_model(te) for te in ne.get_task_executions()
             ]
             # TODO: Sub-workflows too once implemented
+
+    def _sync_closure(self):
+        """
+        Syncs the closure of the underlying execution artifact with the state observed by the platform.
+        :rtype: None
+        """
+        ne = _engine_loader.get_engine().get_node_execution(self)
+        ne.sync()

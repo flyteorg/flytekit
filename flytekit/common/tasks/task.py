@@ -4,15 +4,18 @@ import uuid as _uuid
 
 import six as _six
 
-from flytekit.common import interface as _interfaces, nodes as _nodes, sdk_bases as _sdk_bases
+from flytekit.common import (
+    interface as _interfaces, nodes as _nodes, sdk_bases as _sdk_bases, workflow_execution as _workflow_execution
+)
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin
+from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, launchable as _launchable_mixin
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import common as _common_model, task as _task_model
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.types import helpers as _type_helpers
 
 
 class SdkTask(
@@ -21,6 +24,7 @@ class SdkTask(
         _hash_mixin.HashOnReferenceMixin,
         _task_model.TaskTemplate,
         _registerable.RegisterableEntity,
+        _launchable_mixin.LaunchableEntity,
     )
 ):
 
@@ -252,3 +256,42 @@ class SdkTask(
             task_type=self.type,
             interface=self.interface
         )
+
+    def _python_std_input_map_to_literal_map(self, inputs):
+        """
+        :param dict[Text,Any] inputs: A dictionary of Python standard inputs that will be type-checked and compiled
+            to a LiteralMap
+        :rtype: flytekit.models.literals.LiteralMap
+        """
+        return _type_helpers.pack_python_std_map_to_literal_map(inputs, {
+            k: _type_helpers.get_sdk_type_from_literal_type(v.type)
+            for k, v in _six.iteritems(self.interface.inputs)
+        })
+
+    @_exception_scopes.system_entry_point
+    def launch_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
+                             label_overrides=None, annotation_overrides=None):
+        """
+        Launches a single task execution and returns the execution identifier.
+        :param Text project:
+        :param Text domain:
+        :param flytekit.models.literals.LiteralMap literal_inputs: Inputs to the execution.
+        :param Text name: [Optional] If specified, an execution will be created with this name.  Note: the name must
+            be unique within the context of the project and domain.
+        :param list[flytekit.common.notifications.Notification] notification_overrides: [Optional] If specified, these
+            are the notifications that will be honored for this execution.  An empty list signals to disable all
+            notifications.
+        :param flytekit.models.common.Labels label_overrides:
+        :param flytekit.models.common.Annotations annotation_overrides:
+        :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
+        """
+        execution = _engine_loader.get_engine().get_task(self).launch(
+            project,
+            domain,
+            name=name,
+            inputs=literal_inputs,
+            notification_overrides=notification_overrides,
+            label_overrides=label_overrides,
+            annotation_overrides=annotation_overrides,
+        )
+        return _workflow_execution.SdkWorkflowExecution.promote_from_model(execution)

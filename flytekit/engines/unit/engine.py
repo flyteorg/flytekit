@@ -128,6 +128,10 @@ class UnitTestEngineTask(_common_engine.BaseTaskExecutor):
     def register(self, identifier, version):
         raise _user_exceptions.FlyteAssertion("You cannot register unit test tasks.")
 
+    def launch(self, project, domain, name=None, inputs=None, notification_overrides=None, label_overrides=None,
+               annotation_overrides=None, auth_role=None):
+        raise _user_exceptions.FlyteAssertion("You cannot launch unit test tasks.")
+
 
 class ReturnOutputsTask(UnitTestEngineTask):
     def _transform_for_user_output(self, outputs):
