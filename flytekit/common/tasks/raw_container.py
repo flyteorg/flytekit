@@ -122,7 +122,8 @@ def _get_container_definition(
 
 class SdkRawContainerTask(_base_task.SdkTask):
     """
-    This class includes the logic for building a task that executes as a Presto task.
+    Use this task when you want to run an arbitrary container as a task (e.g. external tools, binaries compiled
+    separately as a container completely separate from the container where your Flyte workflow is defined.
     """
     METADATA_FORMAT_JSON = _task_models.DataLoadingConfig.LITERALMAP_FORMAT_JSON
     METADATA_FORMAT_YAML = _task_models.DataLoadingConfig.LITERALMAP_FORMAT_YAML
@@ -199,11 +200,9 @@ class SdkRawContainerTask(_base_task.SdkTask):
             _literals.RetryStrategy(retries),
             interruptible,
             discovery_version,
-            "This is deprecated!"
+            None
         )
 
-        # Here we set the routing_group, catalog, and schema as implicit
-        # parameters for caching purposes
         i = _interface.TypedInterface(inputs=types_to_variable(inputs), outputs=types_to_variable(outputs))
 
         super(SdkRawContainerTask, self).__init__(
@@ -228,11 +227,6 @@ class SdkRawContainerTask(_base_task.SdkTask):
             )
         )
 
-    # Override method in order to set the implicit inputs
-    def __call__(self, *args, **kwargs):
-        return super(SdkRawContainerTask, self).__call__(
-            *args, **kwargs
-        )
 
     @_exception_scopes.system_entry_point
     def add_inputs(self, inputs: Dict[str, Variable]):

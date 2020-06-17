@@ -14,7 +14,6 @@ def test_raw_container_task_definition():
     assert not tk.serialize() is None
 
 
-
 def test_raw_container_task_definition_no_outputs():
     tk = SdkRawContainerTask(
         inputs={"x": Types.Integer},
@@ -24,3 +23,5 @@ def test_raw_container_task_definition_no_outputs():
         gpu_request="1",
     )
     assert not tk.serialize() is None
+    task_instance = tk(x=3)
+    assert task_instance.inputs[0].binding.scalar.primitive.integer == 3
