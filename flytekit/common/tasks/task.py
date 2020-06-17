@@ -279,7 +279,7 @@ class SdkTask(
         :return Text:
         """
 
-        if self.container is not None:
+        if self.container is not None and self.container.data_config is None:
             raise ValueError("Client-side task versions can only be used for containerless tasks")
         if version is not None:
             return version
@@ -300,9 +300,10 @@ class SdkTask(
         :param Text domain: The domain in which to register and launch this task.
         :param Text name: The name to give this task.
         :param Text version: The version in which to register this task
-
         :param dict[Text, Any] inputs: A dictionary of Python standard inputs that will be type-checked, then compiled
             to a LiteralMap.
+
+        :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
         """
         self.validate()
         version = self._produce_deterministic_version(version)

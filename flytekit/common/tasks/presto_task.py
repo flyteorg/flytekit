@@ -117,11 +117,20 @@ class SdkPrestoTask(_base_task.SdkTask):
         # Set user provided inputs
         task_inputs(self)
 
+    def _add_implicit_inputs(self, inputs):
+        """
+        :param dict[Text,Any] inputs:
+        :param inputs:
+        :return:
+        """
+        inputs["__implicit_routing_group"] = self.routing_group
+        inputs["__implicit_catalog"] = self.catalog
+        inputs["__implicit_schema"] = self.schema
+        return inputs
+
     # Override method in order to set the implicit inputs
     def __call__(self, *args, **kwargs):
-        kwargs["__implicit_routing_group"] = self.routing_group
-        kwargs["__implicit_catalog"] = self.catalog
-        kwargs["__implicit_schema"] = self.schema
+        kwargs = self._add_implicit_inputs(kwargs)
 
         return super(SdkPrestoTask, self).__call__(
             *args, **kwargs
@@ -134,9 +143,7 @@ class SdkPrestoTask(_base_task.SdkTask):
             to a LiteralMap
         :rtype: flytekit.models.literals.LiteralMap
         """
-        inputs["__implicit_routing_group"] = self.routing_group
-        inputs["__implicit_catalog"] = self.catalog
-        inputs["__implicit_schema"] = self.schema
+        inputs = self._add_implicit_inputs(inputs)
         return _type_helpers.pack_python_std_map_to_literal_map(inputs, {
             k: _type_helpers.get_sdk_type_from_literal_type(v.type)
             for k, v in _six.iteritems(self.interface.inputs)
