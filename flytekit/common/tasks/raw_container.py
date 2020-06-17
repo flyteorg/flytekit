@@ -203,8 +203,10 @@ class SdkRawContainerTask(_base_task.SdkTask):
             None
         )
 
+        # The interface is defined using the inputs and outputs
         i = _interface.TypedInterface(inputs=types_to_variable(inputs), outputs=types_to_variable(outputs))
 
+        # This sets the base SDKTask with container etc
         super(SdkRawContainerTask, self).__init__(
             _constants.SdkTaskType.RAW_CONTAINER_TASK,
             metadata,
