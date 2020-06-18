@@ -7,8 +7,8 @@ from operator import add
 
 from six.moves import range
 
-from flytekit.sdk.tasks.sagemaker.trainingjob import SdkSimpleTrainingJobTask, DataChannel
-from flytekit.sdk.tasks.sagemaker.hpojob import SdkSimpleHPOJobTask, HPOJobTuningStrategy, HPOJobObjective
+from flytekit.sdk.tasks.sagemaker.trainingjob import SdkSimpleTrainingJobTask, DataChannel, TrainingJobInputMode, TrainingJobAlgorithmName
+from flytekit.sdk.tasks.sagemaker.hpojob import SdkSimpleHPOJobTask, HPOJobTuningStrategy, HPOJobConfig, HPOJobObjective
 from flytekit.sdk.tasks.sagemaker.parameter_range import IntegerParameterRange, ContinuousParameterRange, CategoricalParameterRange
 from flytekit.sdk.tasks.sagemaker import trainingjob_task
 from flytekit.sdk.tasks import inputs, outputs, python_task
@@ -59,20 +59,17 @@ simple_xgboost_trainingjob_task = SdkSimpleTrainingJobTask(
         "InstanceCount": 1,
         "VolumeSizeInGB": 25,
     },
-    stopping_condition={
-        "MaxRuntimeInSeconds": 43200,
-        "MaxWaitTimeInSeconds": 43200
-    },
     algorithm_specification={
-        "TrainingInputMode": "File",
-        "AlgorithmName": "xgboost",
+        "TrainingInputMode": TrainingJobInputMode.FILE,
+        "AlgorithmName": TrainingJobAlgorithmName.XGBOOST,
         "Version": "0.72",
     },
     cache_version='1',
     cachable=True,
 )
 
-simple_hpojob_task = SdkSimpleHPOJobTask(
+simple_hpojob_wrapping_around_simple_xgboost_trainingjob_task = SdkSimpleHPOJobTask(
+    trainingjob_task=simple_xgboost_trainingjob_task,
     max_number_of_training_jobs=10,
     max_parallel_training_jobs=5,
     cache_version='1',
@@ -96,11 +93,11 @@ def sample_eval_function(y_predicted, y_true):
 
 
 @inputs(
-    extra_input1=Types.Integer,
-    extra_input2=Types.Integer,
+    custom_input1=Types.Integer,
+    custom_input2=Types.Integer,
 )
 @outputs(
-    extra_output1=Types.Blob,
+    custom_output1=Types.Blob,
 )
 @trainingjob_task(
     trainingjob_conf={
@@ -108,14 +105,9 @@ def sample_eval_function(y_predicted, y_true):
         "InstanceCount": 1,
         "VolumeSizeInGB": 25,
     },
-    stopping_condition={
-        "MaxRuntimeInSeconds": 43200,
-        "MaxWaitTimeInSeconds": 43200
-    },
     algorithm_specification={
-        "TrainingInputMode": "File",
-        "AlgorithmName": "xgboost",
-        "Version": "0.72",
+        "TrainingInputMode": TrainingJobInputMode.FILE,
+        "AlgorithmName": TrainingJobAlgorithmName.CUSTOM,
     },
     cache_version='1',
     retries=2,
@@ -126,10 +118,11 @@ def custom_trainingjob_task(
         train,
         validation,
         static_hyperparameters,
-        extra_input1,
-        extra_input2,
+        stopping_condition,
+        custom_input1,
+        custom_input2,
         model,
-        extra_output1,
+        custom_output1,
     ):
 
     with train as reader:
@@ -141,8 +134,6 @@ def custom_trainingjob_task(
         dvalidation_x = xgb.DMatrix(validation_df[:-1])
         dvalidation_y = xgb.DMatrix(validation_df[-1])
 
-    static_hyperparameters["num_round"] = extra_input1 + extra_input2
-
     my_model = xgb.XGBModel(**static_hyperparameters)
 
     my_model.fit(dtrain_x,
@@ -151,52 +142,87 @@ def custom_trainingjob_task(
                  eval_metric=sample_eval_function)
 
     model.set(my_model)
-    extra_output1.set(my_model.evals_result())
+    custom_output1.set(my_model.evals_result())
+
+
+simple_hpojob_wrapping_around_custom_xgboost_trainingjob_task = SdkSimpleHPOJobTask(
+    trainingjob_task=custom_trainingjob_task,
+    max_number_of_training_jobs=10,
+    max_parallel_training_jobs=5,
+    cache_version='1',
+    retries=2,
+    cachable=True,
+)
 
 
 @workflow_class
 class SageMakerSimpleWorkflow(object):
     a = Input(Types.Integer, required=True, help="Test integer with no default")
     b = Input(Types.Integer, required=False, default="1", help="Test integer with default")
+    custom_hpojob_config = Input(Types.Generic, required=True, help="Allowing specifying hpojob config at launchtime")
 
     my_simple_xgboost_trainingjob_task = simple_xgboost_trainingjob_task(
         train='s3://my-bucket/training.csv',
         validation='s3://my-bucket/validation.csv',
         static_hyperparameters=example_hyperparams,
+        stopping_condition={
+            "MaxRuntimeInSeconds": 43200,
+            "MaxWaitTimeInSeconds": 43200
+        },
     )
 
-    my_simple_hpojob_task = simple_hpojob_task(
-        trainingjob_task=my_simple_xgboost_trainingjob_task,  # TODO: this doesn't seem totally reasonable
-        hyperparameter_ranges={   # hyperparameters included here will automatically override the static counterpart
-            # https://docs.aws.amazon.com/sagemaker/latest/dg/xgboost_hyperparameters.html
-            "num_rounds": IntegerParameterRange(min_value="1", max_value="100", scaling_type="LOGARITHMIC"),
-            "max_leaves": IntegerParameterRange(min_value="0", max_value="5", scaling_type="LINEAR"),
-            "sketch_eps": ContinuousParameterRange(min_value="0.01", max_value="0.05", scaling_type="AUTO"),
-            "tree_method": CategoricalParameterRange(values=["hist", "exact"]) # TODO: sagemaker doesn't accept gpu_hist. Figure out how to do gpu_hist
+    # Note that both this task wraps around the simple_xgboost_trainingjob_task as well
+    my_simple_hpojob_task = simple_hpojob_wrapping_around_simple_xgboost_trainingjob_task(
+        # This input comes from simple_xgboost_trainingjob_task
+        train='s3://my-bucket/training.csv',
+        # This input comes from simple_xgboost_trainingjob_task
+        validation='s3://my-bucket/validation.csv',
+        # This input comes from simple_xgboost_trainingjob_task
+        static_hyperparameters=example_hyperparams,
+        # This input comes from simple_xgboost_trainingjob_task
+        stopping_condition={
+            "MaxRuntimeInSeconds": 43200,
+            "MaxWaitTimeInSeconds": 43200
         },
-        hyperparameter_tuning_strategy=HPOJobTuningStrategy.BAYESIAN,
-        hyperparameter_tuning_objective=HPOJobObjective(type="MINIMIZE", metric_name="validation:error"),
-        trainingjob_early_stopping_type="AUTO",
+
+        # This is the extra input needed by this hpojob wrapper
+        hpojob_config=HPOJobConfig(
+            hyperparameter_ranges={   # hyperparameters included here will automatically override the static counterpart
+                # https://docs.aws.amazon.com/sagemaker/latest/dg/xgboost_hyperparameters.html
+                "num_rounds": IntegerParameterRange(min_value="1", max_value="100", scaling_type="LOGARITHMIC"),
+                "max_leaves": IntegerParameterRange(min_value="0", max_value="5", scaling_type="LINEAR"),
+                "sketch_eps": ContinuousParameterRange(min_value="0.01", max_value="0.05", scaling_type="AUTO"),
+                "tree_method": CategoricalParameterRange(values=["hist", "exact"]) # TODO: sagemaker doesn't accept gpu_hist. Figure out how to do gpu_hist
+            },
+            hyperparameter_tuning_strategy=HPOJobTuningStrategy.BAYESIAN,
+            hyperparameter_tuning_objective=HPOJobObjective(type="MINIMIZE", metric_name="validation:error"),
+            trainingjob_early_stopping_type="AUTO",
+        ),
     )
 
     my_custom_trainingjob_task = custom_trainingjob_task(
-        extra_input1=a,
-        extra_input2=b,
+        custom_input1=a,
+        custom_input2=b,
         train='s3://my-bucket/training.csv',
         validation='s3://my-bucket/validation.csv',
         static_hyperparameters=example_hyperparams,
     )
 
-    my_custom_task = simple_hpojob_task(
-        trainingjob_task=my_custom_trainingjob_task,  # TODO: this doesn't seem totally reasonable
-        hyperparameter_ranges={  # hyperparameters included here will automatically override the static counterpart
-            # TODO: Need to figure out how to do decide precedence
-            #       In this case, both the user code and the hpo job tries to override the hyperparameter
-            "num_rounds": IntegerParameterRange(min_value="1", max_value="100", scaling_type="LOGARITHMIC"),
-        },
-        hyperparameter_tuning_strategy=HPOJobTuningStrategy.BAYESIAN,
-        hyperparameter_tuning_objective=HPOJobObjective(type="MINIMIZE", metric_name="validation:error"),
-        trainingjob_early_stopping_type="AUTO",
+    # Note that this job wraps around custom_trainingjob_task
+    my_custom_task = simple_hpojob_wrapping_around_custom_xgboost_trainingjob_task(
+        # This input comes from custom_trainingjob_task
+        custom_input1=a,
+        # This input comes from custom_trainingjob_task
+        custom_input2=b,
+        # This input comes from custom_trainingjob_task
+        train='s3://my-bucket/training.csv',
+        # This input comes from custom_trainingjob_task
+        validation='s3://my-bucket/validation.csv',
+        # This input comes from custom_trainingjob_task
+        static_hyperparameters=example_hyperparams,
+
+        # This is an extra output needed by the hpojob wrapper
+        hpojob_config=custom_hpojob_config
     )
 
     simple_model = Output(my_simple_hpojob_task.outputs.model, sdk_type=Types.Blob)
