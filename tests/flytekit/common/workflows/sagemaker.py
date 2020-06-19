@@ -11,6 +11,7 @@ from flytekit.sdk.tasks.sagemaker.trainingjob import SdkSimpleTrainingJobTask, D
 from flytekit.sdk.tasks.sagemaker.hpojob import SdkSimpleHPOJobTask, HPOJobTuningStrategy, HPOJobConfig, HPOJobObjective
 from flytekit.sdk.tasks.sagemaker.parameter_range import IntegerParameterRange, ContinuousParameterRange, CategoricalParameterRange
 from flytekit.sdk.tasks.sagemaker import trainingjob_task
+from flytekit.sdk.tasks.sagemaker.instances import Instance
 from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.types import Types
 from flytekit.sdk.workflow import workflow_class, Input, Output
@@ -55,7 +56,7 @@ simple_xgboost_trainingjob_task = SdkSimpleTrainingJobTask(
     # Exposing InstanceType and InstanceCount to the users seems to be the most viable workaround
     # I can think of at the moment to address the above issue.
     trainingjob_conf={
-        "InstanceType": "ml.m4.xlarge",
+        "InstanceType": InstanceType.ML_M4_XLARGE,
         "InstanceCount": 1,
         "VolumeSizeInGB": 25,
     },
