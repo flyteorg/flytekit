@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit import __version__
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.sdk import types as _sdk_types
@@ -25,6 +24,7 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
             cache_version="",
     ):
 
+        # Use the training job model as a measure of type checking
         training_job = _training_job_models.TrainingJob(
             algorithm_specification=algorithm_specification,
             training_job_config=training_job_config,
