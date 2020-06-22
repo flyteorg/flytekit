@@ -7,7 +7,7 @@ from flytekit.models import task as _task_models
 from flytekit.models import interface as _interface_model
 from flytekit.common import interface as _interface
 from flytekit.models.sagemaker import training_job as _training_job_models
-from google.protobuf.json_format import MessageToDict, ParseDict
+from google.protobuf.json_format import MessageToDict
 import datetime as _datetime
 from flytekit.models import literals as _literal_models
 
