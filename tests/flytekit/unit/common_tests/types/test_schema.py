@@ -52,3 +52,20 @@ def test_typed_schema():
         assert len(b.type.columns) == len(_ALL_COLUMN_TYPES)
         assert list(b.type.sdk_columns.items()) == _ALL_COLUMN_TYPES
         assert b.remote_location.startswith(t.name)
+
+
+# Ensures that subclassing types works inside a schema.
+def test_casting():
+    class MyDateTime(primitives.Datetime):
+        ...
+
+    with test_utils.LocalTestFileSystem() as t:
+        test_columns_1 = [('altered', MyDateTime)]
+        test_columns_2 = [('altered', primitives.Datetime)]
+
+        instantiator_1 = schema.schema_instantiator(test_columns_1)
+        a = instantiator_1()
+
+        instantiator_2 = schema.schema_instantiator(test_columns_2)
+
+        a.cast_to(instantiator_2._schema_type)
