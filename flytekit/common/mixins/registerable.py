@@ -158,12 +158,13 @@ class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
                     self._platform_valid_name = _utils.fqdn(m.__name__, k, entity_type=self.resource_type)
                     _logging.debug("Auto-assigning name to {}".format(self._platform_valid_name))
                     return
-            except ValueError:
+            except ValueError as err:
                 # Empty pandas dataframes behave weirdly here such that calling `m.df` raises:
                 # ValueError: The truth value of a {type(self).__name__} is ambiguous. Use a.empty, a.bool(), a.item(),
                 #   a.any() or a.all()
                 # Since dataframes aren't registrable entities to begin with we swallow any errors they raise and
                 # continue looping through m.
+                _logging.warning("Caught ValueError {} while attempting to auto-assign name".format(err))
                 pass
 
         _logging.error("Could not auto-assign name")

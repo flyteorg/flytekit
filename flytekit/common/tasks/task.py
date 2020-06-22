@@ -280,7 +280,9 @@ class SdkTask(
         """
 
         if self.container is not None and self.container.data_config is None:
-            raise ValueError("Client-side task versions can only be used for containerless tasks")
+            # Only in the case of raw container tasks (which are the only valid tasks with container definitions that
+            # can assign a client-side task version) their data config will be None.
+            raise ValueError("Client-side task versions are not supported for {} task type".format(self.type))
         if version is not None:
             return version
         custom = _json_format.Parse(_json.dumps(self.custom, sort_keys=True), _struct.Struct()) if self.custom else None
