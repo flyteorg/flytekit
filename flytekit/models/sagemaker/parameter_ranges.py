@@ -1,8 +1,8 @@
 from __future__ import absolute_import
 
-from flyteidl.plugins.sagemaker import parameterranges_pb2 as _idl_parameterranges
+from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _idl_parameter_ranges
 from flytekit.models import common as _common
-from flytekit.sdk.sagemaker_types import HyperparameterScalingType as _sdk_hyperparameter_scaling_type
+from flytekit.sdk.sagemaker import types as _sdk_sagemaker_types
 from flytekit.common.exceptions import user as _user_exceptions
 
 
@@ -17,7 +17,7 @@ class ContinuousParameterRange(_common.FlyteIdlEntity):
 
         :param float max_value:
         :param float min_value:
-        :param flytekit.sdk.sagemaker_types.HyperparameterScalingType scaling_type:
+        :param _sdk_sagemaker_types.HyperparameterScalingType scaling_type:
         """
         self._max_value = max_value
         self._min_value = min_value
@@ -49,21 +49,21 @@ class ContinuousParameterRange(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self):
         """
-        :return: flyteidl.plugins.sagemaker.ContinuousParameterRange
+        :return: _idl_parameter_ranges.ContinuousParameterRange
         """
 
-        if self.scaling_type == _sdk_hyperparameter_scaling_type.AUTO:
-            scaling_type = _idl_parameterranges.HyperparameterScalingType.AUTO
-        elif self.scaling_type == _sdk_hyperparameter_scaling_type.LINEAR:
-            scaling_type = _idl_parameterranges.HyperparameterScalingType.LINEAR
-        elif self.scaling_type == _sdk_hyperparameter_scaling_type.LOGARITHMIC:
-            scaling_type = _idl_parameterranges.HyperparameterScalingType.LOGARITHMIC
-        elif self.scaling_type == _sdk_hyperparameter_scaling_type.REVERSELOGARITHMIC:
-            scaling_type = _idl_parameterranges.HyperparameterScalingType.REVERSELOGARITHMIC
+        if self.scaling_type == _sdk_sagemaker_types.HyperparameterScalingType.AUTO:
+            scaling_type = _idl_parameter_ranges.HyperparameterScalingType.AUTO
+        elif self.scaling_type == _sdk_sagemaker_types.HyperparameterScalingType.LINEAR:
+            scaling_type = _idl_parameter_ranges.HyperparameterScalingType.LINEAR
+        elif self.scaling_type == _sdk_sagemaker_types.HyperparameterScalingType.LOGARITHMIC:
+            scaling_type = _idl_parameter_ranges.HyperparameterScalingType.LOGARITHMIC
+        elif self.scaling_type == _sdk_sagemaker_types.HyperparameterScalingType.REVERSELOGARITHMIC:
+            scaling_type = _idl_parameter_ranges.HyperparameterScalingType.REVERSELOGARITHMIC
         else:
             raise _user_exceptions.FlyteValidationException("Invalid SageMaker HyperparameterScalingType specified")
 
-        return _idl_parameterranges.ContinuousParameterRange(
+        return _idl_parameter_ranges.ContinuousParameterRange(
             max_value=self._max_value,
             min_value=self._min_value,
             scaling_type=scaling_type,
@@ -72,13 +72,13 @@ class ContinuousParameterRange(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object):
 
-        scaling_type = _sdk_hyperparameter_scaling_type.AUTO
-        if pb2_object.type == _idl_parameterranges.HyperparameterScalingType.LINEAR:
-            scaling_type = _sdk_hyperparameter_scaling_type.LINEAR
-        elif pb2_object.type == _idl_parameterranges.HyperparameterScalingType.LOGARITHMIC:
-            scaling_type = _sdk_hyperparameter_scaling_type.LOGARITHMIC
-        elif pb2_object.type == _idl_parameterranges.HyperparameterScalingType.REVERSELOGARITHMIC:
-            scaling_type = _sdk_hyperparameter_scaling_type.REVERSELOGARITHMIC
+        scaling_type = _sdk_sagemaker_types.HyperparameterScalingType.AUTO
+        if pb2_object.type == _idl_parameter_ranges.HyperparameterScalingType.LINEAR:
+            scaling_type = _sdk_sagemaker_types.HyperparameterScalingType.LINEAR
+        elif pb2_object.type == _idl_parameter_ranges.HyperparameterScalingType.LOGARITHMIC:
+            scaling_type = _sdk_sagemaker_types.HyperparameterScalingType.LOGARITHMIC
+        elif pb2_object.type == _idl_parameter_ranges.HyperparameterScalingType.REVERSELOGARITHMIC:
+            scaling_type = _sdk_sagemaker_types.HyperparameterScalingType.REVERSELOGARITHMIC
 
         return cls(
             max_value=pb2_object.max_value,
@@ -97,7 +97,7 @@ class IntegerParameterRange(_common.FlyteIdlEntity):
         """
         :param int max_value:
         :param int min_value:
-        :param flytekit.sdk.sagemaker_types.HyperparameterScalingType scaling_type:
+        :param _sdk_sagemaker_types.HyperparameterScalingType.HyperparameterScalingType scaling_type:
         """
         self._max_value = max_value
         self._min_value = min_value
@@ -128,21 +128,21 @@ class IntegerParameterRange(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self):
         """
-        :return: flyteidl.plugins.sagemaker.IntegerParameterRange
+        :return: _idl_parameter_ranges.IntegerParameterRange
         """
 
-        if self.scaling_type == _sdk_hyperparameter_scaling_type.AUTO:
-            scaling_type = _idl_parameterranges.HyperparameterScalingType.AUTO
-        elif self.scaling_type == _sdk_hyperparameter_scaling_type.LINEAR:
-            scaling_type = _idl_parameterranges.HyperparameterScalingType.LINEAR
-        elif self.scaling_type == _sdk_hyperparameter_scaling_type.LOGARITHMIC:
-            scaling_type = _idl_parameterranges.HyperparameterScalingType.LOGARITHMIC
-        elif self.scaling_type == _sdk_hyperparameter_scaling_type.REVERSELOGARITHMIC:
-            scaling_type = _idl_parameterranges.HyperparameterScalingType.REVERSELOGARITHMIC
+        if self.scaling_type == _sdk_sagemaker_types.HyperparameterScalingType.AUTO:
+            scaling_type = _idl_parameter_ranges.HyperparameterScalingType.AUTO
+        elif self.scaling_type == _sdk_sagemaker_types.HyperparameterScalingType.LINEAR:
+            scaling_type = _idl_parameter_ranges.HyperparameterScalingType.LINEAR
+        elif self.scaling_type == _sdk_sagemaker_types.HyperparameterScalingType.LOGARITHMIC:
+            scaling_type = _idl_parameter_ranges.HyperparameterScalingType.LOGARITHMIC
+        elif self.scaling_type == _sdk_sagemaker_types.HyperparameterScalingType.REVERSELOGARITHMIC:
+            scaling_type = _idl_parameter_ranges.HyperparameterScalingType.REVERSELOGARITHMIC
         else:
             raise _user_exceptions.FlyteValidationException("Invalid SageMaker HyperparameterScalingType specified")
 
-        return _idl_parameterranges.IntegerParameterRange(
+        return _idl_parameter_ranges.IntegerParameterRange(
             max_value=self._max_value,
             min_value=self._min_value,
             scaling_type=scaling_type,
@@ -151,13 +151,13 @@ class IntegerParameterRange(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object):
 
-        scaling_type = _sdk_hyperparameter_scaling_type.AUTO
-        if pb2_object.type == _idl_parameterranges.HyperparameterScalingType.LINEAR:
-            scaling_type = _sdk_hyperparameter_scaling_type.LINEAR
-        elif pb2_object.type == _idl_parameterranges.HyperparameterScalingType.LOGARITHMIC:
-            scaling_type = _sdk_hyperparameter_scaling_type.LOGARITHMIC
-        elif pb2_object.type == _idl_parameterranges.HyperparameterScalingType.REVERSELOGARITHMIC:
-            scaling_type = _sdk_hyperparameter_scaling_type.REVERSELOGARITHMIC
+        scaling_type = _sdk_sagemaker_types.HyperparameterScalingType.AUTO
+        if pb2_object.type == _idl_parameter_ranges.HyperparameterScalingType.LINEAR:
+            scaling_type = _sdk_sagemaker_types.HyperparameterScalingType.LINEAR
+        elif pb2_object.type == _idl_parameter_ranges.HyperparameterScalingType.LOGARITHMIC:
+            scaling_type = _sdk_sagemaker_types.HyperparameterScalingType.LOGARITHMIC
+        elif pb2_object.type == _idl_parameter_ranges.HyperparameterScalingType.REVERSELOGARITHMIC:
+            scaling_type = _sdk_sagemaker_types.HyperparameterScalingType.REVERSELOGARITHMIC
 
         return cls(
             max_value=pb2_object.max_value,
@@ -186,9 +186,9 @@ class CategoricalParameterRange(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self):
         """
-        :return: flyteidl.plugins.sagemaker.CategoricalParameterRange
+        :return: _idl_parameter_ranges.CategoricalParameterRange
         """
-        return _idl_parameterranges.CategoricalParameterRange(
+        return _idl_parameter_ranges.CategoricalParameterRange(
             values=self._values
         )
 
@@ -206,7 +206,7 @@ class ParameterRanges(_common.FlyteIdlEntity):
         self._parameter_range_map = parameter_range_map
 
     def to_flyte_idl(self):
-        return _idl_parameterranges.ParameterRanges(
+        return _idl_parameter_ranges.ParameterRanges(
             parameter_range_map=self._parameter_range_map,
         )
 
@@ -217,7 +217,7 @@ class ParameterRanges(_common.FlyteIdlEntity):
         )
 
 
-class ParameterRangeOneOf(_common.FluteIdlEntity):
+class ParameterRangeOneOf(_common.FlyteIdlEntity):
     def __init__(
             self,
             continuous_parameter_range=None,
@@ -240,32 +240,30 @@ class ParameterRangeOneOf(_common.FluteIdlEntity):
     @property
     def continuous_parameter_range(self):
         """
-        :return ContinuousParameterRange:
+        :return _idl_parameter_ranges.ContinuousParameterRange:
         """
-
         return self._continuous_parameter_range
 
     @property
     def integer_parameter_range(self):
         """
-        :return IntegerParameterRange:
+        :return _idl_parameter_ranges.IntegerParameterRange:
         """
-
         return self._integer_parameter_range
 
     @property
     def categorical_parameter_range(self):
         """
-        :return CategoricalParameterRange:
+        :return _idl_parameter_ranges.CategoricalParameterRange:
         """
         return self._categorical_parameter_range
 
     def to_flyte_idl(self):
         """
 
-        :return: flyteidl.plugins.sagemaker._parameterranges_pb2.ParameterRangeOneOf
+        :return: _idl_parameter_ranges.ParameterRangeOneOf
         """
-        return _idl_parameterranges.ParameterRangeOneOf(
+        return _idl_parameter_ranges.ParameterRangeOneOf(
             continious_parameter_range=(self.continuous_parameter_range.to_flyte_idl()
                                         if self.continuous_parameter_range else None),
             integer_parameter_range=(self.integer_parameter_range.to_flyte_idl()

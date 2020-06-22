@@ -11,3 +11,13 @@ class HyperparameterScalingType(enum.Enum):
 class HPOJobObjectiveType(enum.Enum):
     MINIMIZE = 0
     MAXIMIZE = 1
+
+
+class InputMode(enum.Enum):
+    FILE = 0
+    PIPE = 1
+
+
+class AlgorithmName(enum.Enum):
+    CUSTOM = 0
+    XGBOOST = 1

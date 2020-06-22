@@ -1,10 +1,10 @@
 from __future__ import absolute_import
 
-from flyteidl.plugins.sagemaker import hpojob_pb2 as _hpojob
+from flyteidl.plugins.sagemaker import hpo_job_pb2 as _hpo_job
 from flytekit.models import common as _common
 
 
-class HPOJobObjective(_common.FlyteIdlEntity):
+class HyperparameterTuningObjective(_common.FlyteIdlEntity):
     def __init__(
             self,
             objective_type,
@@ -16,7 +16,7 @@ class HPOJobObjective(_common.FlyteIdlEntity):
     @property
     def objective_type(self):
         """
-        :return: _hpojob.HPOJobObjective.HPOJobObjectiveType
+        :return: _hpo_job.HyperparameterTuningObjective.HyperparameterTuningObjectiveType
         """
         return self._objective_type
 
@@ -28,7 +28,7 @@ class HPOJobObjective(_common.FlyteIdlEntity):
         return self._metric_name
 
     def to_flyte_idl(self):
-        return _hpojob.HPOJobTypeObjective(
+        return _hpo_job.HyperparameterTuningObjective(
             objective_type=self._objective_type,
             metric_name=self._metric_name,
         )
@@ -38,6 +38,37 @@ class HPOJobObjective(_common.FlyteIdlEntity):
         return cls(
             objective_type=pb2_object.objective_type,
             metric_name=pb2_object.metric_name,
+        )
+
+
+class HPOJobConfig(_common.FlyteIdlEntity):
+    def __init__(
+            self,
+            hyperparameter_ranges,
+            tuning_strategy,
+            tuning_objective,
+            training_job_early_stopping_type
+    ):
+        self._hyperparameter_ranges = hyperparameter_ranges
+        self._tuning_strategy = tuning_strategy
+        self._tuning_objective = tuning_objective
+        self._training_job_early_stopping_type = training_job_early_stopping_type
+
+    def to_flyte_idl(self):
+        return _hpo_job.HPOJobConfig(
+            hyperparameter_ranges=self._hyperparameter_ranges,
+            tuning_strategy=self._tuning_strategy,
+            tuning_objective=self._tuning_objective,
+            training_job_early_stopping_type=self._training_job_early_stopping_type,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        return cls(
+            hyperparameter_ranges=pb2_object.hyperparameter_ranges,
+            tuning_strategy=pb2_object.tuning_strategy,
+            tuning_objective=pb2_object.tuning_objective,
+            training_job_early_stopping_type=pb2_object.training_job_early_stopping_type,
         )
 
 
@@ -62,7 +93,7 @@ class HPOJob(_common.FlyteIdlEntity):
         return self._max_parallel_training_jobs
 
     def to_flyte_idl(self):
-        return _hpojob.HPOJob(
+        return _hpo_job.HPOJob(
             max_number_of_training_jobs=self._max_number_of_training_jobs,
             max_parallel_training_jobs=self._max_parallel_training_jobs,
             training_job=self._training_job,
