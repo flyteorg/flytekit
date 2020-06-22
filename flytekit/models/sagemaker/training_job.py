@@ -6,6 +6,7 @@ from flytekit.models import common as _common
 from flytekit.sdk.sagemaker import types as _sdk_sagemaker_types
 from flytekit.common.exceptions import user as _user_exceptions
 
+
 class TrainingJobConfig(_common.FlyteIdlEntity):
     def __init__(
             self,
@@ -122,7 +123,7 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
 
         if self.input_mode == _sdk_sagemaker_types.InputMode.FILE:
             input_mode = _training_job.InputMode.FILE
-        if self.input_mode == _sdk_sagemaker_types.InputMode.PIPE:
+        elif self.input_mode == _sdk_sagemaker_types.InputMode.PIPE:
             input_mode = _training_job.InputMode.PIPE
         else:
             raise _user_exceptions.FlyteValidationException("Invalid SageMaker Input Mode Specified")
