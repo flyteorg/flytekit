@@ -56,7 +56,7 @@ class FlyteIdlEntity(_six.with_metaclass(FlyteType, object)):
         return self.verbose_string()
 
     def __hash__(self):
-        return hash(self.to_flyte_idl().SerializeToString())
+        return hash(self.to_flyte_idl().SerializeToString(deterministic=True))
 
     def short_string(self):
         """
