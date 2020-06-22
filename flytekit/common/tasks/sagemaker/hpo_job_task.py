@@ -60,7 +60,7 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
                     "hyperparameter_tuning_strategy": _interface_model.Variable(
                         _sdk_types.Types.Generic.to_flyte_literal_type(), ""
                     ),
-                    "hyperparameter_runing_objective": _interface_model.Variable(
+                    "hyperparameter_tuning_objective": _interface_model.Variable(
                         _sdk_types.Types.Generic.to_flyte_literal_type(), ""
                     ),
                     "training_job_early_stopping_type": _interface_model.Variable(
