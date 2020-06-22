@@ -66,10 +66,14 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
                     "training_job_early_stopping_type": _interface_model.Variable(
                         _sdk_types.Types.Generic.to_flyte_literal_type(), ""
                     )
+                },
+                outputs={
+                    "model": _interface_model.Variable(
+                        _sdk_types.Types.Blob.to_flyte_literal_type(), ""
+                    )
                 }
             ),
             custom=MessageToDict(hpo_job),
         )
 
         self.add_inputs(training_job.interface.inputs)
-        self.add_outputs(training_job.interface.outputs)
