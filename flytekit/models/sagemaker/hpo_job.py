@@ -49,7 +49,7 @@ class HyperparameterTuningObjective(_common.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object):
 
         objective_type = _sdk_sagemaker_types.HyperparameterTuningObjectiveType.MINIMIZE
-        if pb2_object.objective_type == _hpo_job.HyperparameterTuningObjective.MAXIMIZE
+        if pb2_object.objective_type == _hpo_job.HyperparameterTuningObjective.MAXIMIZE:
             objective_type = _sdk_sagemaker_types.HyperparameterTuningObjectiveType.MAXIMIZE
 
         return cls(
