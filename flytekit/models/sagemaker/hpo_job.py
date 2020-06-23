@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 from flyteidl.plugins.sagemaker import hpo_job_pb2 as _hpo_job
 from flytekit.models import common as _common
+from flytekit.sdk.sagemaker import types as _sdk_sagemaker_types
+from flytekit.common.exceptions import user as _user_exceptions
 
 
 class HyperparameterTuningObjective(_common.FlyteIdlEntity):
@@ -28,15 +30,30 @@ class HyperparameterTuningObjective(_common.FlyteIdlEntity):
         return self._metric_name
 
     def to_flyte_idl(self):
+
+        if self.objective_type == _sdk_sagemaker_types.HyperparameterTuningObjectiveType.MINIMIZE:
+            objective_type = _hpo_job.HyperparameterTuningObjective.MINIMIZE
+        elif self.objective_type == _sdk_sagemaker_types.HyperparameterTuningObjectiveType.MAXIMIZE:
+            objective_type = _hpo_job.HyperparameterTuningObjective.MAXIMIZE
+        else:
+            raise _user_exceptions.FlyteValidationException(
+                "Invalid SageMaker Hyperparameter Tuning Objective Type Specified"
+            )
+
         return _hpo_job.HyperparameterTuningObjective(
-            objective_type=self._objective_type,
+            objective_type=objective_type,
             metric_name=self._metric_name,
         )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
+
+        objective_type = _sdk_sagemaker_types.HyperparameterTuningObjectiveType.MINIMIZE
+        if pb2_object.objective_type == _hpo_job.HyperparameterTuningObjective.MAXIMIZE
+            objective_type = _sdk_sagemaker_types.HyperparameterTuningObjectiveType.MAXIMIZE
+
         return cls(
-            objective_type=pb2_object.objective_type,
+            objective_type=objective_type,
             metric_name=pb2_object.metric_name,
         )
 

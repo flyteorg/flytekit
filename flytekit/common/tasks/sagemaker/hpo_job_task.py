@@ -33,7 +33,7 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
         ).to_flyte_idl()
 
         # Setting flyte-level timeout to 0, and let SageMaker respect the StoppingCondition of
-        #   the underlying trainingjob
+        #   the underlying training job
         # TODO: Discuss whether this is a viable interface or contract
         timeout = _datetime.timedelta(seconds=0)
 
@@ -55,17 +55,8 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
             interface=_interface.TypedInterface(
                 inputs={
                     "hpo_job_config": _interface_model.Variable(
-                        _sdk_types.Types.Generic.to_flyte_literal_type(), ""
+                        _sdk_types.Types.Proto(_hpo_job_model.HPOJobConfig).to_flyte_literal_type(), ""
                     ),
-                    "hyperparameter_tuning_strategy": _interface_model.Variable(
-                        _sdk_types.Types.Generic.to_flyte_literal_type(), ""
-                    ),
-                    "hyperparameter_tuning_objective": _interface_model.Variable(
-                        _sdk_types.Types.Generic.to_flyte_literal_type(), ""
-                    ),
-                    "training_job_early_stopping_type": _interface_model.Variable(
-                        _sdk_types.Types.Generic.to_flyte_literal_type(), ""
-                    )
                 },
                 outputs={
                     "model": _interface_model.Variable(

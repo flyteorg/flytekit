@@ -8,7 +8,7 @@ class HyperparameterScalingType(enum.Enum):
     REVERSELOGARITHMIC = 3
 
 
-class HPOJobObjectiveType(enum.Enum):
+class HyperparameterTuningObjectiveType(enum.Enum):
     MINIMIZE = 0
     MAXIMIZE = 1
 
