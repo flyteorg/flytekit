@@ -30,7 +30,7 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl @ git+https://github.com/lyft/flyteidl@70a213e49b5671de8afe4366afa68c1cc54f1eed#egg=flyteidl",
+        "flyteidl @ git+https://github.com/lyft/flyteidl@sagemaker-proto#egg=flyteidl",
         "click>=6.6,<8.0",
         "croniter>=0.3.20,<4.0.0",
         "deprecation>=2.0,<3.0",
