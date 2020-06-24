@@ -26,7 +26,7 @@ class LaunchableEntity(_six.with_metaclass(_abc.ABCMeta, object)):
         :rtype: T
 
         """
-        return self.execute_with_literals(
+        return self.launch_with_literals(
             project,
             domain,
             self._python_std_input_map_to_literal_map(inputs or {}),
