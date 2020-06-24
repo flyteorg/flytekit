@@ -7,6 +7,45 @@ from flytekit.sdk.sagemaker import types as _sdk_sagemaker_types
 from flytekit.common.exceptions import user as _user_exceptions
 
 
+class StoppingCondition(_common.FlyteIdlEntity):
+    def __init__(
+            self,
+            max_runtime_in_seconds,
+            max_wait_time_in_seconds,
+    ):
+        self._max_runtime_in_seconds = max_runtime_in_seconds
+        self._max_wait_time_in_seconds = max_wait_time_in_seconds
+
+    @property
+    def max_runtime_in_seconds(self):
+        """
+
+        :return: int
+        """
+        return self.max_runtime_in_seconds
+
+    @property
+    def max_wait_time_in_seconds(self):
+        """
+
+        :return: int
+        """
+        return self.max_wait_time_in_seconds
+
+    def to_flyte_idl(self):
+        return _training_job.StoppingCondition(
+            max_runtime_in_seconds=self.max_runtime_in_seconds,
+            max_wait_time_in_seconds=self.max_wait_time_in_seconds,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        return cls(
+            max_runtime_in_seconds=pb2_object.max_runtime_in_seconds,
+            max_wait_time_in_seconds=pb2_object.max_wait_time_in_seconds,
+        )
+
+
 class TrainingJobConfig(_common.FlyteIdlEntity):
     def __init__(
             self,

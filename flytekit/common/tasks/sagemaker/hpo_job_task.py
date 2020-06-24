@@ -1,30 +1,42 @@
 from __future__ import absolute_import
+import datetime as _datetime
+
+from google.protobuf.json_format import MessageToDict
 
 from flytekit import __version__
 from flytekit.common.tasks import task as _sdk_task
+from flytekit.common import interface as _interface
 from flytekit.sdk import types as _sdk_types
 from flytekit.models import task as _task_models
 from flytekit.models import interface as _interface_model
-from flytekit.common import interface as _interface
 from flytekit.models.sagemaker import hpo_job as _hpo_job_model
-from google.protobuf.json_format import MessageToDict
-import datetime as _datetime
 from flytekit.models import literals as _literal_models
 
 
 class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
+
     def __init__(
             self,
-            task_type,
-            max_number_of_training_jobs,
-            max_parallel_training_jobs,
-            training_job,
-            interruptible=False,
-            retries=0,
-            cacheable=False,
-            cache_version="",
+            task_type: str,
+            max_number_of_training_jobs: int,
+            max_parallel_training_jobs: int,
+            training_job: _sdk_task.SdkTask,
+            interruptible: bool = False,
+            retries: int = 0,
+            cacheable: bool = False,
+            cache_version: str = "",
     ):
+        """
 
+        :param task_type:
+        :param max_number_of_training_jobs:
+        :param max_parallel_training_jobs:
+        :param training_job:
+        :param interruptible:
+        :param retries:
+        :param cacheable:
+        :param cache_version:
+        """
         # Use the training job model as a measure of type checking
         hpo_job = _hpo_job_model.HPOJob(
             max_number_of_training_jobs=max_number_of_training_jobs,
