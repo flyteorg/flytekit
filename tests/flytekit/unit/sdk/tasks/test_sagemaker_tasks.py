@@ -60,7 +60,7 @@ run_train_task = simple_training_job_task(
     stopping_condition=StoppingCondition(
         max_runtime_in_seconds=43200,
         max_wait_time_in_seconds=43200,
-    ),
+    ).to_flyte_idl(),
 )
 
 run_train_task._id = _identifier.Identifier(
