@@ -11,13 +11,17 @@ from flytekit.models import task as _task_models
 from flytekit.models import interface as _interface_model
 from flytekit.models.sagemaker import hpo_job as _hpo_job_model
 from flytekit.models import literals as _literal_models
+from flytekit.common.constants import SdkTaskType
+from flyteidl.plugins.sagemaker import hpo_job_pb2 as _hpo_job_pb2
+from flytekit.models import literals as _literals, types as _idl_types, \
+    task as _task_model
+from flytekit.models.core import types as _core_types
 
 
 class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
 
     def __init__(
             self,
-            task_type: str,
             max_number_of_training_jobs: int,
             max_parallel_training_jobs: int,
             training_job: _sdk_task.SdkTask,
@@ -50,7 +54,7 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
         timeout = _datetime.timedelta(seconds=0)
 
         super(SdkSimpleHPOJobTask, self).__init__(
-            type=task_type,
+            type=SdkTaskType.SAGEMAKER_HPO_JOB_TASK,
             metadata=_task_models.TaskMetadata(
                 runtime=_task_models.RuntimeMetadata(
                     type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
@@ -67,12 +71,18 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
             interface=_interface.TypedInterface(
                 inputs={
                     "hpo_job_config": _interface_model.Variable(
-                        _sdk_types.Types.Proto(_hpo_job_model.HPOJobConfig).to_flyte_literal_type(), ""
+                        _sdk_types.Types.Proto(_hpo_job_pb2.HPOJobConfig).to_flyte_literal_type(), ""
                     ),
                 },
                 outputs={
                     "model": _interface_model.Variable(
-                        _sdk_types.Types.Blob.to_flyte_literal_type(), ""
+                        type=_idl_types.LiteralType(
+                            blob=_core_types.BlobType(
+                                format="",
+                                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                            )
+                        ),
+                        description=""
                     )
                 }
             ),

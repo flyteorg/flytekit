@@ -45,7 +45,6 @@ example_hyperparams = {
 }
 
 simple_training_job_task = SdkSimpleTrainingJobTask(
-    task_type=_common_constants.SdkTaskType.SAGEMAKER_TRAININGJOB_TASK,
     training_job_config=TrainingJobConfig(
         instance_type="ml.m4.xlarge",
         instance_count=1,
@@ -91,7 +90,7 @@ def test_simple_training_job_task():
     assert simple_training_job_task.interface.outputs['model'].description == ''
     assert simple_training_job_task.interface.outputs['model'].type == \
         _sdk_types.Types.Blob.to_flyte_literal_type()
-    assert simple_training_job_task.type == _common_constants.SdkTaskType.SAGEMAKER_TRAININGJOB_TASK
+    assert simple_training_job_task.type == _common_constants.SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK
     assert simple_training_job_task.metadata.timeout == _datetime.timedelta(seconds=0)
     assert simple_training_job_task.metadata.deprecated_error_message == ''
     assert simple_training_job_task.metadata.discoverable is False

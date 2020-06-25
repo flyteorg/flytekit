@@ -16,12 +16,12 @@ from flytekit.models import literals as _literals, types as _idl_types, \
     task as _task_model
 from flytekit.models.core import types as _core_types
 from flytekit.models import literals as _literal_models
+from flytekit.common.constants import SdkTaskType
 
 
 class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
     def __init__(
             self,
-            task_type: str,
             training_job_config: _training_job_models.TrainingJobConfig,
             algorithm_specification: _training_job_models.AlgorithmSpecification,
             interruptible: bool = False,
@@ -31,7 +31,6 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
     ):
         """
 
-        :param task_type:
         :param training_job_config:
         :param algorithm_specification:
         :param interruptible:
@@ -50,7 +49,7 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
         timeout = _datetime.timedelta(seconds=0)
 
         super(SdkSimpleTrainingJobTask, self).__init__(
-            type=task_type,
+            type=SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK,
             metadata=_task_models.TaskMetadata(
                 runtime=_task_models.RuntimeMetadata(
                     type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
@@ -112,7 +111,6 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
     def __init__(
             self,
             task_function: Callable,
-            task_type: str,
             training_job_config: _training_job_models.TrainingJobConfig,
             algorithm_specification: _training_job_models.AlgorithmSpecification,
             cache_version: str,
@@ -125,7 +123,7 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         """
 
         :param task_function:
-        :param task_type:
+
         :param training_job_config:
         :param algorithm_specification:
         :param cache_version:
@@ -147,7 +145,7 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
 
         super(SdkCustomTrainingJobTask, self).__init__(
             task_function=task_function,
-            task_type=task_type,
+            task_type=SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK,
             discovery_version=cache_version,
             retries=retries,
             interruptible=interruptible,
@@ -168,23 +166,42 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         self.add_inputs(
             {
                 "static_hyperparameters": _interface_model.Variable(
-                    _sdk_types.Types.Generic.to_flyte_literal_type(), ""
+                    type=_idl_types.LiteralType(simple=_idl_types.SimpleType.STRUCT),
+                    description="",
                 ),
                 "train": _interface_model.Variable(
-                    _sdk_types.Types.MultiPartCSV.to_flyte_literal_type(), ""
+                    type=_idl_types.LiteralType(
+                        blob=_core_types.BlobType(
+                            format="csv",
+                            dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                        ),
+                    ),
+                    description="",
                 ),
                 "validation": _interface_model.Variable(
-                    _sdk_types.Types.MultiPartCSV.to_flyte_literal_type(), ""
+                    type=_idl_types.LiteralType(
+                        blob=_core_types.BlobType(
+                            format="csv",
+                            dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                        ),
+                    ),
+                    description="",
                 ),
                 "stopping_condition": _interface_model.Variable(
-                    _sdk_types.Types.Proto(_training_job_models.StoppingCondition).to_flyte_literal_type(), ""
+                    _sdk_types.Types.Proto(_training_job_pb2.StoppingCondition).to_flyte_literal_type(), ""
                 )
             },
         )
         self.add_outputs(
             {
                 "model": _interface_model.Variable(
-                    _sdk_types.Types.Blob.to_flyte_literal_type(), ""
+                    type=_idl_types.LiteralType(
+                        blob=_core_types.BlobType(
+                            format="",
+                            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                        )
+                    ),
+                    description=""
                 )
             }
         )
