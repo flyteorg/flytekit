@@ -15,6 +15,7 @@ from flytekit.common.constants import SdkTaskType
 from flyteidl.plugins.sagemaker import hpo_job_pb2 as _hpo_job_pb2
 from flytekit.models import literals as _literals, types as _idl_types, \
     task as _task_model
+from flytekit.common.tasks.sagemaker.training_job_task import SdkSimpleTrainingJobTask
 from flytekit.models.core import types as _core_types
 
 
@@ -24,7 +25,7 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
             self,
             max_number_of_training_jobs: int,
             max_parallel_training_jobs: int,
-            training_job: _sdk_task.SdkTask,
+            training_job: SdkSimpleTrainingJobTask,
             interruptible: bool = False,
             retries: int = 0,
             cacheable: bool = False,
@@ -44,7 +45,7 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
         hpo_job = _hpo_job_model.HPOJob(
             max_number_of_training_jobs=max_number_of_training_jobs,
             max_parallel_training_jobs=max_parallel_training_jobs,
-            training_job=training_job,
+            training_job=training_job.serialize(),
         ).to_flyte_idl()
 
         # Setting flyte-level timeout to 0, and let SageMaker respect the StoppingCondition of

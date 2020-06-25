@@ -142,7 +142,7 @@ class HPOJob(_common.FlyteIdlEntity):
         return _idl_hpo_job.HPOJob(
             max_number_of_training_jobs=self._max_number_of_training_jobs,
             max_parallel_training_jobs=self._max_parallel_training_jobs,
-            training_job=self._training_job,
+            training_job=self._training_job,  # SDK task has already serialized it
         )
 
     @classmethod
