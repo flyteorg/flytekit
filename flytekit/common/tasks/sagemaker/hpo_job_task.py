@@ -45,7 +45,7 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
         hpo_job = _hpo_job_model.HPOJob(
             max_number_of_training_jobs=max_number_of_training_jobs,
             max_parallel_training_jobs=max_parallel_training_jobs,
-            training_job=training_job.serialize(),
+            training_job=training_job.training_job_model,
         ).to_flyte_idl()
 
         # Setting flyte-level timeout to 0, and let SageMaker respect the StoppingCondition of

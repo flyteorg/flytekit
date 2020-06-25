@@ -39,10 +39,10 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
         :param cache_version:
         """
         # Use the training job model as a measure of type checking
-        training_job = _training_job_models.TrainingJob(
+        self._training_job_model = _training_job_models.TrainingJob(
             algorithm_specification=algorithm_specification,
             training_job_config=training_job_config,
-        ).to_flyte_idl()
+        )
 
         # Setting flyte-level timeout to 0, and let SageMaker takes the StoppingCondition and terminate the training
         # job gracefully
@@ -103,8 +103,12 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
                     )
                 }
             ),
-            custom=MessageToDict(training_job),
+            custom=MessageToDict(self._training_job_model.to_flyte_idl()),
         )
+
+    @property
+    def training_job_model(self) -> _training_job_models.TrainingJob:
+        return self._training_job_model
 
 
 class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
