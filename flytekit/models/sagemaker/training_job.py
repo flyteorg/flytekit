@@ -22,7 +22,7 @@ class StoppingCondition(_common.FlyteIdlEntity):
 
         :return: int
         """
-        return self.max_runtime_in_seconds
+        return self._max_runtime_in_seconds
 
     @property
     def max_wait_time_in_seconds(self):
@@ -30,7 +30,7 @@ class StoppingCondition(_common.FlyteIdlEntity):
 
         :return: int
         """
-        return self.max_wait_time_in_seconds
+        return self._max_wait_time_in_seconds
 
     def to_flyte_idl(self):
         return _training_job.StoppingCondition(
@@ -82,7 +82,7 @@ class TrainingJobConfig(_common.FlyteIdlEntity):
         return _training_job.TrainingJobConfig(
             instance_count=self.instance_count,
             instance_type=self.instance_type,
-            volume_size_inb_gb=self.volume_size_in_gb,
+            volume_size_in_gb=self.volume_size_in_gb,
         )
 
     @classmethod
@@ -134,9 +134,9 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
             metric_definitions,
     ):
         self._input_mode = input_mode
-        self._algorithm_name = algorithm_name,
-        self._algorithm_version = algorithm_version,
-        self._metric_definitions = metric_definitions,
+        self._algorithm_name = algorithm_name
+        self._algorithm_version = algorithm_version
+        self._metric_definitions = metric_definitions
 
     @property
     def input_mode(self):
@@ -165,18 +165,19 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
         elif self.input_mode == _sdk_sagemaker_types.InputMode.PIPE:
             input_mode = _training_job.InputMode.PIPE
         else:
-            raise _user_exceptions.FlyteValidationException("Invalid SageMaker Input Mode Specified")
+            raise _user_exceptions.FlyteValidationException("Invalid SageMaker Input Mode Specified: [{}]".format(self.input_mode))
 
+        alg_name = _sdk_sagemaker_types.AlgorithmName.CUSTOM
         if self.algorithm_name == _sdk_sagemaker_types.AlgorithmName.CUSTOM:
-            algorithm_name = _training_job.AlgorithmName.CUSTOM
+            alg_name = _training_job.AlgorithmName.CUSTOM
         elif self.algorithm_name == _sdk_sagemaker_types.AlgorithmName.XGBOOST:
-            algorithm_name = _training_job.AlgorithmName.XGBOOST
+            alg_name = _training_job.AlgorithmName.XGBOOST
         else:
-            raise _user_exceptions.FlyteValidationException("Invalid SageMaker Algorithm Name Specified")
+            raise _user_exceptions.FlyteValidationException("Invalid SageMaker Algorithm Name Specified: [{}]".format(self.algorithm_name))
 
         return _training_job.AlgorithmSpecification(
             input_mode=input_mode,
-            algorithm_name=algorithm_name,
+            algorithm_name=alg_name,
             algorithm_version=self.algorithm_version,
             metric_definitions=[m.to_flyte_idl() for m in self.metric_definitions],
         )

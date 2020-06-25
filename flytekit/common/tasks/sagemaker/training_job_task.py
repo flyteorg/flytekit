@@ -10,6 +10,7 @@ from flytekit.models import task as _task_models
 from flytekit.models import interface as _interface_model
 from flytekit.common import interface as _interface
 from flytekit.models.sagemaker import training_job as _training_job_models
+from flyteidl.plugins.sagemaker.training_job_pb2 import StoppingCondition
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.models import literals as _literal_models
