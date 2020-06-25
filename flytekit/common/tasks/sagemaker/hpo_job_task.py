@@ -32,7 +32,6 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
     ):
         """
 
-        :param task_type:
         :param max_number_of_training_jobs:
         :param max_parallel_training_jobs:
         :param training_job:
