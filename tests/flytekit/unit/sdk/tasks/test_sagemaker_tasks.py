@@ -11,6 +11,12 @@ from flytekit.models.core import identifier as _identifier
 import datetime as _datetime
 from flytekit.models.sagemaker.training_job import TrainingJobConfig, AlgorithmSpecification, MetricDefinition, StoppingCondition
 from flytekit.sdk.sagemaker.types import InputMode, AlgorithmName
+from flytekit.models import literals as _literals, types as _idl_types, \
+    task as _task_model
+from flytekit.models.core import types as _core_types
+from google.protobuf.json_format import ParseDict
+from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobConfig as _pb2_TrainingJobConfig, StoppingCondition as _pb2_StoppingCondition
+from flytekit.sdk import types as _sdk_types
 
 example_hyperparams = {
     "base_score": "0.5",
@@ -39,7 +45,7 @@ example_hyperparams = {
 }
 
 simple_training_job_task = SdkSimpleTrainingJobTask(
-    task_type="sagemaker_trianing_job_task",
+    task_type=_common_constants.SdkTaskType.SAGEMAKER_TRAININGJOB_TASK,
     training_job_config=TrainingJobConfig(
         instance_type="ml.m4.xlarge",
         instance_count=1,
@@ -60,7 +66,7 @@ run_train_task = simple_training_job_task(
     stopping_condition=StoppingCondition(
         max_runtime_in_seconds=43200,
         max_wait_time_in_seconds=43200,
-    ),
+    ).to_flyte_idl(),
 )
 
 run_train_task._id = _identifier.Identifier(
@@ -69,24 +75,29 @@ run_train_task._id = _identifier.Identifier(
 
 def test_simple_training_job_task():
     t = type(run_train_task)
-    # assert isinstance(run_train_task, SdkSimpleTrainingJobTask)
-    assert isinstance(run_train_task, _sdk_task.SdkTask)
-    assert run_train_task.interface.inputs['train'].description == ''
-    assert run_train_task.interface.inputs['train'].type == \
-        _type_models.LiteralType(schema=_type_models.SchemaType())
-#    assert default_trainingjob_task.interface.outputs['model'].description == ''
-#    assert default_trainingjob_task.interface.outputs['model'].type == \
-#        _type_models.LiteralType(blob=_type_models.LiteralType.blob)
-#    assert simple_training_job_task.type == _common_constants.SdkTaskType.SAGEMAKER_TRAININGJOB_TASK
-#    assert simple_training_job_task.metadata.timeout == _datetime.timedelta(seconds=0)
-#    assert simple_training_job_task.metadata.deprecated_error_message == ''
+    assert isinstance(simple_training_job_task, SdkSimpleTrainingJobTask)
+    assert isinstance(simple_training_job_task, _sdk_task.SdkTask)
+    assert simple_training_job_task.interface.inputs['train'].description == ''
+    assert simple_training_job_task.interface.inputs['train'].type == \
+        _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
+    assert simple_training_job_task.interface.inputs['validation'].description == ''
+    assert simple_training_job_task.interface.inputs['validation'].type == \
+        _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
+    assert simple_training_job_task.interface.inputs['static_hyperparameters'].description == ''
+    assert simple_training_job_task.interface.inputs['static_hyperparameters'].type == \
+        _sdk_types.Types.Generic.to_flyte_literal_type()
+    assert simple_training_job_task.interface.inputs['stopping_condition'].type == \
+        _sdk_types.Types.Proto(_pb2_StoppingCondition).to_flyte_literal_type()
+    assert simple_training_job_task.interface.outputs['model'].description == ''
+    assert simple_training_job_task.interface.outputs['model'].type == \
+        _sdk_types.Types.Blob.to_flyte_literal_type()
+    assert simple_training_job_task.type == _common_constants.SdkTaskType.SAGEMAKER_TRAININGJOB_TASK
+    assert simple_training_job_task.metadata.timeout == _datetime.timedelta(seconds=0)
+    assert simple_training_job_task.metadata.deprecated_error_message == ''
     assert simple_training_job_task.metadata.discoverable is False
     assert simple_training_job_task.metadata.discovery_version == ''
     assert simple_training_job_task.metadata.retries.retries == 0
-#    assert len(simple_training_job_task.container.resources.limits) == 0
-#    assert len(simple_training_job_task.container.resources.requests) == 0
-    assert isinstance(simple_training_job_task.custom['training_job_config'], TrainingJobConfig)
-#    assert simple_training_job_task._get_container_definition().args[0] == 'pyflyte-execute'
+    ParseDict(simple_training_job_task.custom['trainingJobConfig'], _pb2_TrainingJobConfig)  # fails the test if it cannot be parsed
 
     pb2 = simple_training_job_task.to_flyte_idl()
     print(pb2)
