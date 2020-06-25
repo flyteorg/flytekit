@@ -10,9 +10,11 @@ from flytekit.models import task as _task_models
 from flytekit.models import interface as _interface_model
 from flytekit.common import interface as _interface
 from flytekit.models.sagemaker import training_job as _training_job_models
-from flyteidl.plugins.sagemaker.training_job_pb2 import StoppingCondition
+from flyteidl.plugins.sagemaker import training_job_pb2 as _training_job_pb2
 from google.protobuf.json_format import MessageToDict
-
+from flytekit.models import literals as _literals, types as _idl_types, \
+    task as _task_model
+from flytekit.models.core import types as _core_types
 from flytekit.models import literals as _literal_models
 
 
@@ -65,21 +67,40 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
             interface=_interface.TypedInterface(
                 inputs={
                     "static_hyperparameters": _interface_model.Variable(
-                        _sdk_types.Types.Generic.to_flyte_literal_type(), ""
+                        type=_idl_types.LiteralType(simple=_idl_types.SimpleType.STRUCT),
+                        description="",
                     ),
                     "train": _interface_model.Variable(
-                        _sdk_types.Types.MultiPartCSV.to_flyte_literal_type(), ""
+                        type=_idl_types.LiteralType(
+                            blob=_core_types.BlobType(
+                                format="csv",
+                                dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                            ),
+                        ),
+                        description="",
                     ),
                     "validation": _interface_model.Variable(
-                        _sdk_types.Types.MultiPartCSV.to_flyte_literal_type(), ""
+                        type=_idl_types.LiteralType(
+                            blob=_core_types.BlobType(
+                                format="csv",
+                                dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                            ),
+                        ),
+                        description="",
                     ),
                     "stopping_condition": _interface_model.Variable(
-                        _sdk_types.Types.Proto(_training_job_models.StoppingCondition).to_flyte_literal_type(), ""
+                        _sdk_types.Types.Proto(_training_job_pb2.StoppingCondition).to_flyte_literal_type(), ""
                     )
                 },
                 outputs={
                     "model": _interface_model.Variable(
-                        _sdk_types.Types.Blob.to_flyte_literal_type(), ""
+                        type=_idl_types.LiteralType(
+                            blob=_core_types.BlobType(
+                                format="",
+                                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                            )
+                        ),
+                        description=""
                     )
                 }
             ),
