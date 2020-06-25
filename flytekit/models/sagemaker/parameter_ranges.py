@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+from typing import Dict
 from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _idl_parameter_ranges
 from flytekit.models import common as _common
 from flytekit.sdk.sagemaker import types as _sdk_sagemaker_types
@@ -202,90 +203,35 @@ class CategoricalParameterRange(_common.FlyteIdlEntity):
 class ParameterRanges(_common.FlyteIdlEntity):
     def __init__(
             self,
-            parameter_range_map,
+            parameter_range_map: Dict[str, _common.FlyteIdlEntity],
     ):
         self._parameter_range_map = parameter_range_map
 
     def to_flyte_idl(self):
+        converted = {}
+        for k, v in self._parameter_range_map.items():
+            if isinstance(v, IntegerParameterRange):
+                converted[k] = _idl_parameter_ranges.ParameterRangeOneOf(integer_parameter_range=v.to_flyte_idl())
+            elif isinstance(v, ContinuousParameterRange):
+                converted[k] = _idl_parameter_ranges.ParameterRangeOneOf(continuous_parameter_range=v.to_flyte_idl())
+            else:
+                converted[k] = _idl_parameter_ranges.ParameterRangeOneOf(categorical_parameter_range=v.to_flyte_idl())
+
         return _idl_parameter_ranges.ParameterRanges(
-            parameter_range_map=self._parameter_range_map,
+            parameter_range_map=converted,
         )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
+        converted = {}
+        for k, v in pb2_object.parameter_range_map.items():
+            if isinstance(v, _idl_parameter_ranges.ContinuousParameterRange):
+                converted[k] = ContinuousParameterRange.from_flyte_idl(v)
+            elif isinstance(v, _idl_parameter_ranges.IntegerParameterRange):
+                converted[k] = IntegerParameterRange.from_flyte_idl(v)
+            else:
+                converted[k] = CategoricalParameterRange.from_flyte_idl(v)
+
         return cls(
-            parameter_range_map=pb2_object.parameter_range_map
-        )
-
-
-class ParameterRangeOneOf(_common.FlyteIdlEntity):
-    def __init__(
-            self,
-            continuous_parameter_range=None,
-            integer_parameter_range=None,
-            categorical_parameter_range=None,
-    ):
-        """
-        Defines a parameter range. It can either be a continuous parameter range
-        or a integer parameter range or a categorical one.
-
-        :param continuous_parameter_range:
-        :param integer_parameter_range:
-        :param categorical_parameter_range:
-        """
-
-        self._continuous_parameter_range = continuous_parameter_range
-        self._integer_parameter_range = integer_parameter_range
-        self._categorical_parameter_range = categorical_parameter_range
-
-    @property
-    def continuous_parameter_range(self):
-        """
-        :return _idl_parameter_ranges.ContinuousParameterRange:
-        """
-        return self._continuous_parameter_range
-
-    @property
-    def integer_parameter_range(self):
-        """
-        :return _idl_parameter_ranges.IntegerParameterRange:
-        """
-        return self._integer_parameter_range
-
-    @property
-    def categorical_parameter_range(self):
-        """
-        :return _idl_parameter_ranges.CategoricalParameterRange:
-        """
-        return self._categorical_parameter_range
-
-    def to_flyte_idl(self):
-        """
-
-        :return: _idl_parameter_ranges.ParameterRangeOneOf
-        """
-        return _idl_parameter_ranges.ParameterRangeOneOf(
-            continious_parameter_range=(self.continuous_parameter_range.to_flyte_idl()
-                                        if self.continuous_parameter_range else None),
-            integer_parameter_range=(self.integer_parameter_range.to_flyte_idl()
-                                     if self.integer_parameter_range else None),
-            categorical_parameter_range=(self.categorical_parameter_range.to_flyte_idl()
-                                         if self.categorical_parameter_range else None),
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        return cls(
-            continuous_parameter_range=(
-                ContinuousParameterRange.from_flyte_idl(pb2_object.continuous_parameter_range)
-                if pb2_object.HasField('continuous_parameter_range') else None
-            ),
-            integer_parameter_range=(
-                IntegerParameterRange.from_flyte_idl(pb2_object.integer_parameter_range)
-                if pb2_object.HasField('integer_parameter_range') else None
-            ),
-            categorical_parameter_range=(
-                CategoricalParameterRange.from_flyte_idl(pb2_object.continuous_parameter_range)
-                if pb2_object.HasField('categorical_parameter_range') else None
-            ),
+            parameter_range_map=converted,
         )

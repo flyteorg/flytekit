@@ -53,6 +53,13 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
         # TODO: Discuss whether this is a viable interface or contract
         timeout = _datetime.timedelta(seconds=0)
 
+        inputs = {
+                     "hpo_job_config": _interface_model.Variable(
+                         _sdk_types.Types.Proto(_hpo_job_pb2.HPOJobConfig).to_flyte_literal_type(), ""
+                     ),
+                 }
+        inputs.update(training_job.interface.inputs)
+
         super(SdkSimpleHPOJobTask, self).__init__(
             type=SdkTaskType.SAGEMAKER_HPO_JOB_TASK,
             metadata=_task_models.TaskMetadata(
@@ -69,11 +76,7 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
                 deprecated_error_message="",
             ),
             interface=_interface.TypedInterface(
-                inputs={
-                    "hpo_job_config": _interface_model.Variable(
-                        _sdk_types.Types.Proto(_hpo_job_pb2.HPOJobConfig).to_flyte_literal_type(), ""
-                    ),
-                },
+                inputs=inputs,
                 outputs={
                     "model": _interface_model.Variable(
                         type=_idl_types.LiteralType(
@@ -89,4 +92,3 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
             custom=MessageToDict(hpo_job),
         )
 
-        self.add_inputs(training_job.interface.inputs)

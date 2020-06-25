@@ -4,7 +4,7 @@ from flyteidl.plugins.sagemaker import hpo_job_pb2 as _idl_hpo_job
 from flytekit.models import common as _common
 from flytekit.sdk.sagemaker import types as _sdk_sagemaker_types
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.models.sagemaker import parameter_ranges as _model_parameter_ranges
+from flytekit.models.sagemaker import parameter_ranges as _model_parameter_ranges, training_job as _training_job
 
 
 class HyperparameterTuningObjective(_common.FlyteIdlEntity):
@@ -124,7 +124,7 @@ class HPOJob(_common.FlyteIdlEntity):
             self,
             max_number_of_training_jobs,
             max_parallel_training_jobs,
-            training_job,
+            training_job: _training_job.TrainingJob,
     ):
         self._max_number_of_training_jobs = max_number_of_training_jobs
         self._max_parallel_training_jobs = max_parallel_training_jobs
@@ -142,7 +142,7 @@ class HPOJob(_common.FlyteIdlEntity):
         return _idl_hpo_job.HPOJob(
             max_number_of_training_jobs=self._max_number_of_training_jobs,
             max_parallel_training_jobs=self._max_parallel_training_jobs,
-            training_job=self._training_job,  # SDK task has already serialized it
+            training_job=self._training_job.to_flyte_idl(),  # SDK task has already serialized it
         )
 
     @classmethod
@@ -150,5 +150,5 @@ class HPOJob(_common.FlyteIdlEntity):
         return cls(
             max_number_of_training_jobs=pb2_object.max_number_of_training_jobs,
             max_parallel_training_jobs=pb2_object.max_parallel_training_jobs,
-            training_job=pb2_object.training_job,
+            training_job=_training_job.TrainingJob.from_flyte_idl(pb2_object.training_job),
         )
