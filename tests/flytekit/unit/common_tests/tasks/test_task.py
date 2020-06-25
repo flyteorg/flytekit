@@ -12,6 +12,8 @@ from flytekit.models import task as _task_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.sdk.tasks import python_task, inputs, outputs
 from flyteidl.admin import task_pb2 as _admin_task_pb2
+from flytekit.common.tasks.presto_task import SdkPrestoTask
+from flytekit.sdk.types import Types
 
 
 @_patch("flytekit.engines.loader.get_engine")
@@ -68,3 +70,35 @@ def test_task_serialization():
     assert isinstance(s, _admin_task_pb2.TaskSpec)
     assert s.template.id.name == 'tests.flytekit.unit.common_tests.tasks.test_task.my_task'
     assert s.template.container.image == 'myflyteimage:v123'
+
+
+schema = Types.Schema([("a", Types.String), ("b", Types.Integer)])
+
+
+def test_task_produce_deterministic_version():
+    containerless_task = SdkPrestoTask(
+        task_inputs=inputs(ds=Types.String, rg=Types.String),
+        statement="SELECT * FROM flyte.widgets WHERE ds = '{{ .Inputs.ds}}' LIMIT 10",
+        output_schema=schema,
+        routing_group="{{ .Inputs.rg }}",
+    )
+    identical_containerless_task = SdkPrestoTask(
+        task_inputs=inputs(ds=Types.String, rg=Types.String),
+        statement="SELECT * FROM flyte.widgets WHERE ds = '{{ .Inputs.ds}}' LIMIT 10",
+        output_schema=schema,
+        routing_group="{{ .Inputs.rg }}",
+    )
+    different_containerless_task = SdkPrestoTask(
+        task_inputs=inputs(ds=Types.String, rg=Types.String),
+        statement="SELECT * FROM flyte.widgets WHERE ds = '{{ .Inputs.ds}}' LIMIT 100000",
+        output_schema=schema,
+        routing_group="{{ .Inputs.rg }}",
+    )
+    assert containerless_task._produce_deterministic_version() ==\
+           identical_containerless_task._produce_deterministic_version()
+
+    assert containerless_task._produce_deterministic_version() !=\
+           different_containerless_task._produce_deterministic_version()
+
+    with _pytest.raises(Exception):
+        get_sample_task()._produce_deterministic_version()

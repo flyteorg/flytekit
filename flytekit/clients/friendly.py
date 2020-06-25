@@ -4,7 +4,8 @@ import six as _six
 
 from flyteidl.admin import task_pb2 as _task_pb2, common_pb2 as _common_pb2, workflow_pb2 as _workflow_pb2, \
     launch_plan_pb2 as _launch_plan_pb2, execution_pb2 as _execution_pb2, node_execution_pb2 as _node_execution_pb2, \
-    task_execution_pb2 as _task_execution_pb2, project_pb2 as _project_pb2
+    task_execution_pb2 as _task_execution_pb2, project_pb2 as _project_pb2, project_domain_attributes_pb2 as \
+    _project_domain_attributes_pb2, workflow_attributes_pb2 as _workflow_attributes_pb2
 from flyteidl.core import identifier_pb2 as _identifier_pb2
 
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
@@ -883,5 +884,49 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         super(SynchronousFlyteClient, self).register_project(
             _project_pb2.ProjectRegisterRequest(
                 project=project.to_flyte_idl(),
+            )
+        )
+
+    ####################################################################################################################
+    #
+    #  Matching Attributes Endpoints
+    #
+    ####################################################################################################################
+
+    def update_project_domain_attributes(self, project, domain, matching_attributes):
+        """
+        Sets custom attributes for a project and domain combination.
+        :param Text project:
+        :param Text domain:
+        :param flytekit.models.MatchingAttributes matching_attributes:
+        :return:
+        """
+        super(SynchronousFlyteClient, self).update_project_domain_attributes(
+            _project_domain_attributes_pb2.ProjectDomainAttributesUpdateRequest(
+                attributes=_project_domain_attributes_pb2.ProjectDomainAttributes(
+                    project=project,
+                    domain=domain,
+                    matching_attributes=matching_attributes.to_flyte_idl(),
+                )
+            )
+        )
+
+    def update_workflow_attributes(self, project, domain, workflow, matching_attributes):
+        """
+        Sets custom attributes for a project, domain, and workflow combination.
+        :param Text project:
+        :param Text domain:
+        :param Text workflow:
+        :param flytekit.models.MatchingAttributes matching_attributes:
+        :return:
+        """
+        super(SynchronousFlyteClient, self).update_workflow_attributes(
+            _workflow_attributes_pb2.WorkflowAttributesUpdateRequest(
+                attributes=_workflow_attributes_pb2.WorkflowAttributes(
+                    project=project,
+                    domain=domain,
+                    workflow=workflow,
+                    matching_attributes=matching_attributes.to_flyte_idl(),
+                )
             )
         )

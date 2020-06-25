@@ -1,5 +1,8 @@
 from __future__ import absolute_import
 
+import six as _six
+
+
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 from flytekit import __version__
 
@@ -14,8 +17,7 @@ from flytekit.models import literals as _literals, types as _types, \
 from flytekit.common import interface as _interface
 import datetime as _datetime
 from flytekit.models import presto as _presto_models
-from flytekit.common.exceptions.user import \
-    FlyteValueException as _FlyteValueException
+from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.exceptions import scopes as _exception_scopes
 
 
@@ -37,6 +39,7 @@ class SdkPrestoTask(_base_task.SdkTask):
             discovery_version=None,
             retries=1,
             timeout=None,
+            deprecated=None
     ):
         """
         :param Text statement: Presto query specification
@@ -49,6 +52,8 @@ class SdkPrestoTask(_base_task.SdkTask):
         :param Text discovery_version: String describing the version for task discovery purposes
         :param int retries: Number of retries to attempt
         :param datetime.timedelta timeout:
+        :param Text deprecated: This string can be used to mark the task as deprecated.  Consumers of the task will
+            receive deprecation warnings.
         """
 
         # Set as class fields which are used down below to configure implicit
@@ -67,7 +72,7 @@ class SdkPrestoTask(_base_task.SdkTask):
             _literals.RetryStrategy(retries),
             interruptible,
             discovery_version,
-            "This is deprecated!"
+            deprecated
         )
 
         presto_query = _presto_models.PrestoQuery(
@@ -112,15 +117,37 @@ class SdkPrestoTask(_base_task.SdkTask):
         # Set user provided inputs
         task_inputs(self)
 
+    def _add_implicit_inputs(self, inputs):
+        """
+        :param dict[Text,Any] inputs:
+        :param inputs:
+        :return:
+        """
+        inputs["__implicit_routing_group"] = self.routing_group
+        inputs["__implicit_catalog"] = self.catalog
+        inputs["__implicit_schema"] = self.schema
+        return inputs
+
     # Override method in order to set the implicit inputs
     def __call__(self, *args, **kwargs):
-        kwargs["__implicit_routing_group"] = self.routing_group
-        kwargs["__implicit_catalog"] = self.catalog
-        kwargs["__implicit_schema"] = self.schema
+        kwargs = self._add_implicit_inputs(kwargs)
 
         return super(SdkPrestoTask, self).__call__(
             *args, **kwargs
         )
+
+    # Override method in order to set the implicit inputs
+    def _python_std_input_map_to_literal_map(self, inputs):
+        """
+        :param dict[Text,Any] inputs: A dictionary of Python standard inputs that will be type-checked and compiled
+            to a LiteralMap
+        :rtype: flytekit.models.literals.LiteralMap
+        """
+        inputs = self._add_implicit_inputs(inputs)
+        return _type_helpers.pack_python_std_map_to_literal_map(inputs, {
+            k: _type_helpers.get_sdk_type_from_literal_type(v.type)
+            for k, v in _six.iteritems(self.interface.inputs)
+        })
 
     @_exception_scopes.system_entry_point
     def add_inputs(self, inputs):

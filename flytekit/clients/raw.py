@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 from grpc import insecure_channel as _insecure_channel, secure_channel as _secure_channel, RpcError as _RpcError, \
     StatusCode as _GrpcStatusCode, ssl_channel_credentials as _ssl_channel_credentials
+from google.protobuf.json_format import MessageToJson as _MessageToJson
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.configuration.platform import AUTH as _AUTH
@@ -93,6 +94,21 @@ def _handle_rpc_error(fn):
     return handler
 
 
+def _handle_invalid_create_request(fn):
+    def handler(self, create_request):
+        try:
+            fn(self, create_request)
+        except _RpcError as e:
+            if e.code() == _GrpcStatusCode.INVALID_ARGUMENT:
+                _logging.error("Error creating Flyte entity because of invalid arguments. Create request: ")
+                _logging.error(_MessageToJson(create_request))
+
+            # In any case, re-raise since we're not truly handling the error here
+            raise e
+
+    return handler
+
+
 class RawSynchronousFlyteClient(object):
     """
     This is a thin synchronous wrapper around the auto-generated GRPC stubs for communicating with the admin service.
@@ -144,6 +160,7 @@ class RawSynchronousFlyteClient(object):
     ####################################################################################################################
 
     @_handle_rpc_error
+    @_handle_invalid_create_request
     def create_task(self, task_create_request):
         """
         This will create a task definition in the Admin database. Once successful, the task object can be
@@ -230,6 +247,7 @@ class RawSynchronousFlyteClient(object):
     ####################################################################################################################
 
     @_handle_rpc_error
+    @_handle_invalid_create_request
     def create_workflow(self, workflow_create_request):
         """
         This will create a workflow definition in the Admin database.  Once successful, the workflow object can be
@@ -316,6 +334,7 @@ class RawSynchronousFlyteClient(object):
     ####################################################################################################################
 
     @_handle_rpc_error
+    @_handle_invalid_create_request
     def create_launch_plan(self, launch_plan_create_request):
         """
         This will create a launch plan definition in the Admin database.  Once successful, the launch plan object can be
@@ -570,6 +589,30 @@ class RawSynchronousFlyteClient(object):
         :rtype: flyteidl.admin.project_pb2.ProjectRegisterResponse
         """
         return self._stub.RegisterProject(project_register_request, metadata=self._metadata)
+
+    ####################################################################################################################
+    #
+    #  Matching Attributes Endpoints
+    #
+    ####################################################################################################################
+    @_handle_rpc_error
+    def update_project_domain_attributes(self, project_domain_attributes_update_request):
+        """
+        This updates the attributes for a project and domain registered with the Flyte Admin Service
+        :param flyteidl.admin..ProjectDomainAttributesUpdateRequest project_domain_attributes_update_request:
+        :rtype: flyteidl.admin..ProjectDomainAttributesUpdateResponse
+        """
+        return self._stub.UpdateProjectDomainAttributes(project_domain_attributes_update_request,
+                                                        metadata=self._metadata)
+
+    @_handle_rpc_error
+    def update_workflow_attributes(self, workflow_attributes_update_request):
+        """
+        This updates the attributes for a project, domain, and workflow registered with the Flyte Admin Service
+        :param flyteidl.admin..UpdateWorkflowAttributes workflow_attributes_update_request:
+        :rtype: flyteidl.admin..workflow_attributes_update_requestResponse
+        """
+        return self._stub.UpdateWorkflowAttributes(workflow_attributes_update_request, metadata=self._metadata)
 
     ####################################################################################################################
     #
