@@ -198,6 +198,7 @@ class CategoricalParameterRange(_common.FlyteIdlEntity):
             values=pb2_object.values
         )
 
+
 class ParameterRanges(_common.FlyteIdlEntity):
     def __init__(
             self,

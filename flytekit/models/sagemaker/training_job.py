@@ -165,15 +165,16 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
         elif self.input_mode == _sdk_sagemaker_types.InputMode.PIPE:
             input_mode = _training_job.InputMode.PIPE
         else:
-            raise _user_exceptions.FlyteValidationException("Invalid SageMaker Input Mode Specified: [{}]".format(self.input_mode))
+            raise _user_exceptions.FlyteValidationException(
+                "Invalid SageMaker Input Mode Specified: [{}]".format(self.input_mode))
 
-        alg_name = _sdk_sagemaker_types.AlgorithmName.CUSTOM
         if self.algorithm_name == _sdk_sagemaker_types.AlgorithmName.CUSTOM:
             alg_name = _training_job.AlgorithmName.CUSTOM
         elif self.algorithm_name == _sdk_sagemaker_types.AlgorithmName.XGBOOST:
             alg_name = _training_job.AlgorithmName.XGBOOST
         else:
-            raise _user_exceptions.FlyteValidationException("Invalid SageMaker Algorithm Name Specified: [{}]".format(self.algorithm_name))
+            raise _user_exceptions.FlyteValidationException(
+                "Invalid SageMaker Algorithm Name Specified: [{}]".format(self.algorithm_name))
 
         return _training_job.AlgorithmSpecification(
             input_mode=input_mode,

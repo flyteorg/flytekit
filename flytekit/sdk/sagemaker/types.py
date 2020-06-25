@@ -8,6 +8,16 @@ class HyperparameterScalingType(enum.Enum):
     REVERSELOGARITHMIC = 3
 
 
+class HyperparameterTuningStrategy(enum.Enum):
+    BAYESIAN = 0
+    RANDOM = 1
+
+
+class TrainingJobEarlyStoppingType(enum.Enum):
+    OFF = 0
+    AUTO = 1
+
+
 class HyperparameterTuningObjectiveType(enum.Enum):
     MINIMIZE = 0
     MAXIMIZE = 1
