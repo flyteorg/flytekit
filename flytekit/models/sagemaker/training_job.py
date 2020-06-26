@@ -11,7 +11,7 @@ class StoppingCondition(_common.FlyteIdlEntity):
     def __init__(
             self,
             max_runtime_in_seconds,
-            max_wait_time_in_seconds,
+            max_wait_time_in_seconds=0,
     ):
         self._max_runtime_in_seconds = max_runtime_in_seconds
         self._max_wait_time_in_seconds = max_wait_time_in_seconds
