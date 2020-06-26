@@ -22,8 +22,8 @@ class SdkTaskType(object):
     SENSOR_TASK = "sensor-task"
     PRESTO_TASK = "presto"
     PYTORCH_TASK = "pytorch"
-    SAGEMAKER_TRAINING_JOB_TASK = "sagemaker-training-job-task"
-    SAGEMAKER_HPO_JOB_TASK = "sagemaker-hpo-job-task"
+    SAGEMAKER_TRAINING_JOB_TASK = "sagemaker_training_job_task"
+    SAGEMAKER_HPO_JOB_TASK = "sagemaker_hpo_job_task"
 
 GLOBAL_INPUT_NODE_ID = ''
 

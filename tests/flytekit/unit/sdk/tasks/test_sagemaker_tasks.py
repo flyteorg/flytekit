@@ -17,6 +17,12 @@ from flytekit.models.core import types as _core_types
 from google.protobuf.json_format import ParseDict
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobConfig as _pb2_TrainingJobConfig, StoppingCondition as _pb2_StoppingCondition
 from flytekit.sdk import types as _sdk_types
+from flytekit.sdk.sagemaker import types as _sdk_sagemaker_types
+from flytekit.common.tasks.sagemaker import hpo_job_task
+
+from flytekit.models.sagemaker.training_job import StoppingCondition
+from flytekit.models.sagemaker.hpo_job import HPOJobConfig, HyperparameterTuningObjective
+from flytekit.models.sagemaker.parameter_ranges import ParameterRanges, CategoricalParameterRange, ContinuousParameterRange, IntegerParameterRange
 
 example_hyperparams = {
     "base_score": "0.5",
@@ -68,6 +74,15 @@ run_train_task = simple_training_job_task(
     ).to_flyte_idl(),
 )
 
+simple_xgboost_hpo_job_task = hpo_job_task.SdkSimpleHPOJobTask(
+    training_job=simple_training_job_task,
+    max_number_of_training_jobs=10,
+    max_parallel_training_jobs=5,
+    cache_version='1',
+    retries=2,
+    cacheable=True,
+)
+
 run_train_task._id = _identifier.Identifier(
     _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version")
 
@@ -100,6 +115,7 @@ def test_simple_training_job_task():
 
     pb2 = simple_training_job_task.to_flyte_idl()
     print(pb2)
+
 
 """
 @inputs(
