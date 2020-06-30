@@ -16,7 +16,6 @@ from flytekit.common.exceptions import user as _user_exceptions
 
 
 class Resources(_common.FlyteIdlEntity):
-
     class ResourceName(object):
         UNKNOWN = _core_task.Resources.UNKNOWN
         CPU = _core_task.Resources.CPU
@@ -112,7 +111,6 @@ class Resources(_common.FlyteIdlEntity):
 
 
 class RuntimeMetadata(_common.FlyteIdlEntity):
-
     class RuntimeType(object):
         OTHER = 0
         FLYTE_SDK = 1
@@ -177,7 +175,8 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
 
 class TaskMetadata(_common.FlyteIdlEntity):
 
-    def __init__(self, discoverable, runtime, timeout, retries, interruptible, discovery_version, deprecated_error_message):
+    def __init__(self, discoverable, runtime, timeout, retries, interruptible, discovery_version,
+                 deprecated_error_message):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
         and retries.
@@ -650,7 +649,7 @@ class SparkJob(_common.FlyteIdlEntity):
             application_type = _spark_type.R
 
         return cls(
-            type= application_type,
+            type=application_type,
             spark_conf=pb2_object.sparkConf,
             application_file=pb2_object.mainApplicationFile,
             main_class=pb2_object.mainClass,
@@ -659,20 +658,96 @@ class SparkJob(_common.FlyteIdlEntity):
         )
 
 
+class IOStrategy(_common.FlyteIdlEntity):
+    """
+    Provides methods to manage data in and out of the Raw container using Download Modes. This can only be used if DataLoadingConfig is enabled.
+    """
+    DOWNLOAD_MODE_EAGER = _core_task.IOStrategy.DOWNLOAD_EAGER
+    DOWNLOAD_MODE_STREAM = _core_task.IOStrategy.DOWNLOAD_STREAM
+    DOWNLOAD_MODE_NO_DOWNLOAD = _core_task.IOStrategy.DO_NOT_DOWNLOAD
+
+    UPLOAD_MODE_EAGER = _core_task.IOStrategy.UPLOAD_EAGER
+    UPLOAD_MODE_ON_EXIT = _core_task.IOStrategy.UPLOAD_ON_EXIT
+    UPLOAD_MODE_NO_UPLOAD = _core_task.IOStrategy.DO_NOT_UPLOAD
+
+    def __init__(self,
+                 download_mode: _core_task.IOStrategy.DownloadMode=DOWNLOAD_MODE_EAGER,
+                 upload_mode: _core_task.IOStrategy.UploadMode=UPLOAD_MODE_ON_EXIT):
+        self._download_mode = download_mode
+        self._upload_mode = upload_mode
+
+    def to_flyte_idl(self) -> _core_task.IOStrategy:
+        return _core_task.IOStrategy(
+            download_mode=self._download_mode,
+            upload_mode=self._upload_mode
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_task.IOStrategy):
+        if pb2_object is None:
+            return None
+        return cls(
+            download_mode=pb2_object.download_mode,
+            upload_mode=pb2_object.upload_mode,
+        )
+
+
+class DataLoadingConfig(_common.FlyteIdlEntity):
+    LITERALMAP_FORMAT_PROTO = _core_task.DataLoadingConfig.PROTO
+    LITERALMAP_FORMAT_JSON = _core_task.DataLoadingConfig.JSON
+    LITERALMAP_FORMAT_YAML = _core_task.DataLoadingConfig.YAML
+    _LITERALMAP_FORMATS = frozenset([LITERALMAP_FORMAT_JSON, LITERALMAP_FORMAT_PROTO, LITERALMAP_FORMAT_YAML])
+
+    def __init__(self, input_path: str, output_path: str, enabled: bool = True,
+                 format: _core_task.DataLoadingConfig.LiteralMapFormat = LITERALMAP_FORMAT_PROTO, io_strategy: IOStrategy=None):
+        if format not in self._LITERALMAP_FORMATS:
+            raise ValueError(
+                "Metadata format {} not supported. Should be one of {}".format(format, self._LITERALMAP_FORMATS))
+        self._input_path = input_path
+        self._output_path = output_path
+        self._enabled = enabled
+        self._format = format
+        self._io_strategy = io_strategy
+
+    def to_flyte_idl(self) -> _core_task.DataLoadingConfig:
+        return _core_task.DataLoadingConfig(
+            input_path=self._input_path,
+            output_path=self._output_path,
+            format=self._format,
+            enabled=self._enabled,
+            io_strategy=self._io_strategy.to_flyte_idl() if self._io_strategy is not None else None,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2: _core_task.DataLoadingConfig):
+        # TODO use python 3.7+ only and then https://stackoverflow.com/questions/33533148/how-do-i-specify-that-the-return-type-of-a-method-is-the-same-as-the-class-itsel -> DataLoadingConfig:
+        if pb2 is None:
+            return None
+        return cls(
+            input_path=pb2.input_path,
+            output_path=pb2.output_path,
+            enabled=pb2.enabled,
+            format=pb2.format,
+            io_strategy=IOStrategy.from_flyte_idl(pb2.io_strategy) if pb2.HasField("io_strategy") else None,
+        )
+
+
 class Container(_common.FlyteIdlEntity):
 
-    def __init__(self, image, command, args, resources, env, config):
+    def __init__(self, image, command, args, resources, env, config, data_loading_config=None):
         """
-        This defines a container target.  It will execute the appropriate command line on the appropriate image with
-        the given configurations.
+           This defines a container target.  It will execute the appropriate command line on the appropriate image with
+           the given configurations.
 
-        :param Text image: The fully-qualified identifier for the image.
-        :param list[Text] command: A list of 'words' for the command.  i.e. ['aws', 's3', 'ls']
-        :param list[Text] args: A list of arguments for the command.  i.e. ['s3://some/path', '/tmp/local/path']
-        :param Resources resources: A definition of requisite compute resources.
-        :param dict[Text, Text] env: A definition of key-value pairs for environment variables.
-        :param dict[Text, Text] config: A definition of configuration key-value pairs.
-        """
+           :param Text image: The fully-qualified identifier for the image.
+           :param list[Text] command: A list of 'words' for the command.  i.e. ['aws', 's3', 'ls']
+           :param list[Text] args: A list of arguments for the command.  i.e. ['s3://some/path', '/tmp/local/path']
+           :param Resources resources: A definition of requisite compute resources.
+           :param dict[Text, Text] env: A definition of key-value pairs for environment variables.
+           :param dict[Text, Text] config: A definition of configuration key-value pairs.
+           :type DataLoadingConfig data_loading_config: object
+           """
+        self._data_loading_config = data_loading_config
         self._image = image
         self._command = command
         self._args = args
@@ -730,6 +805,13 @@ class Container(_common.FlyteIdlEntity):
         """
         return self._config
 
+    @property
+    def data_loading_config(self):
+        """
+        :rtype: DataLoadingConfig
+        """
+        return self._data_loading_config
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.Container
@@ -740,7 +822,8 @@ class Container(_common.FlyteIdlEntity):
             args=self.args,
             resources=self.resources.to_flyte_idl(),
             env=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in _six.iteritems(self.env)],
-            config=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in _six.iteritems(self.config)]
+            config=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in _six.iteritems(self.config)],
+            data_config=self._data_loading_config.to_flyte_idl() if self._data_loading_config else None,
         )
 
     @classmethod
@@ -755,7 +838,9 @@ class Container(_common.FlyteIdlEntity):
             args=pb2_object.args,
             resources=Resources.from_flyte_idl(pb2_object.resources),
             env={kv.key: kv.value for kv in pb2_object.env},
-            config={kv.key: kv.value for kv in pb2_object.config}
+            config={kv.key: kv.value for kv in pb2_object.config},
+            data_loading_config=DataLoadingConfig.from_flyte_idl(pb2_object.data_config)
+                if pb2_object.HasField("data_config") else None,
         )
 
 

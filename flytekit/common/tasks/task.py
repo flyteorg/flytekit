@@ -279,7 +279,7 @@ class SdkTask(
         :return Text:
         """
 
-        if self.container is not None and self.container.data_config is None:
+        if self.container is not None and self.container.data_loading_config is None:
             # Only in the case of raw container tasks (which are the only valid tasks with container definitions that
             # can assign a client-side task version) their data config will be None.
             raise ValueError("Client-side task versions are not supported for {} task type".format(self.type))
