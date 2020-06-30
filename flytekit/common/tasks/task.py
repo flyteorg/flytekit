@@ -4,15 +4,23 @@ import uuid as _uuid
 
 import six as _six
 
-from flytekit.common import interface as _interfaces, nodes as _nodes, sdk_bases as _sdk_bases
+from google.protobuf import json_format as _json_format, struct_pb2 as _struct
+
+import hashlib as _hashlib
+import json as _json
+
+from flytekit.common import (
+    interface as _interfaces, nodes as _nodes, sdk_bases as _sdk_bases, workflow_execution as _workflow_execution
+)
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin
+from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, launchable as _launchable_mixin
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import common as _common_model, task as _task_model
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.exceptions import user as _user_exceptions, system as _system_exceptions
+from flytekit.common.types import helpers as _type_helpers
 
 
 class SdkTask(
@@ -21,6 +29,7 @@ class SdkTask(
         _hash_mixin.HashOnReferenceMixin,
         _task_model.TaskTemplate,
         _registerable.RegisterableEntity,
+        _launchable_mixin.LaunchableEntity,
     )
 ):
 
@@ -252,3 +261,97 @@ class SdkTask(
             task_type=self.type,
             interface=self.interface
         )
+
+    def _python_std_input_map_to_literal_map(self, inputs):
+        """
+        :param dict[Text,Any] inputs: A dictionary of Python standard inputs that will be type-checked and compiled
+            to a LiteralMap
+        :rtype: flytekit.models.literals.LiteralMap
+        """
+        return _type_helpers.pack_python_std_map_to_literal_map(inputs, {
+            k: _type_helpers.get_sdk_type_from_literal_type(v.type)
+            for k, v in _six.iteritems(self.interface.inputs)
+        })
+
+    def _produce_deterministic_version(self, version=None):
+        """
+        :param Text version:
+        :return Text:
+        """
+
+        if self.container is not None and self.container.data_loading_config is None:
+            # Only in the case of raw container tasks (which are the only valid tasks with container definitions that
+            # can assign a client-side task version) their data config will be None.
+            raise ValueError("Client-side task versions are not supported for {} task type".format(self.type))
+        if version is not None:
+            return version
+        custom = _json_format.Parse(_json.dumps(self.custom, sort_keys=True), _struct.Struct()) if self.custom else None
+
+        # The task body is the entirety of the task template MINUS the identifier. The identifier is omitted because
+        # 1) this method is used to compute the version portion of the identifier and
+        # 2 ) the SDK will actually generate a unique name on every task instantiation which is not great for
+        # the reproducibility this method attempts.
+        task_body = (self.type, self.metadata.to_flyte_idl().SerializeToString(deterministic=True),
+                     self.interface.to_flyte_idl().SerializeToString(deterministic=True), custom)
+        return _hashlib.md5(str(task_body).encode('utf-8')).hexdigest()
+
+    @_exception_scopes.system_entry_point
+    def register_and_launch(self, project, domain, name=None, version=None, inputs=None):
+        """
+        :param Text project: The project in which to register and launch this task.
+        :param Text domain: The domain in which to register and launch this task.
+        :param Text name: The name to give this task.
+        :param Text version: The version in which to register this task
+        :param dict[Text, Any] inputs: A dictionary of Python standard inputs that will be type-checked, then compiled
+            to a LiteralMap.
+
+        :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
+        """
+        self.validate()
+        version = self._produce_deterministic_version(version)
+
+        if name is None:
+            try:
+                self.auto_assign_name()
+                generated_name = self._platform_valid_name
+            except _system_exceptions.FlyteSystemException:
+                # If we're not able to assign a platform valid name, use the deterministically-produced version instead.
+                generated_name = version
+        name = name if name else generated_name
+        id_to_register = _identifier.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, version)
+        old_id = self.id
+        try:
+            self._id = id_to_register
+            _engine_loader.get_engine().get_task(self).register(id_to_register)
+        except:
+            self._id = old_id
+            raise
+        return self.launch(project, domain, inputs=inputs)
+
+    @_exception_scopes.system_entry_point
+    def launch_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
+                             label_overrides=None, annotation_overrides=None):
+        """
+        Launches a single task execution and returns the execution identifier.
+        :param Text project:
+        :param Text domain:
+        :param flytekit.models.literals.LiteralMap literal_inputs: Inputs to the execution.
+        :param Text name: [Optional] If specified, an execution will be created with this name.  Note: the name must
+            be unique within the context of the project and domain.
+        :param list[flytekit.common.notifications.Notification] notification_overrides: [Optional] If specified, these
+            are the notifications that will be honored for this execution.  An empty list signals to disable all
+            notifications.
+        :param flytekit.models.common.Labels label_overrides:
+        :param flytekit.models.common.Annotations annotation_overrides:
+        :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
+        """
+        execution = _engine_loader.get_engine().get_task(self).launch(
+            project,
+            domain,
+            name=name,
+            inputs=literal_inputs,
+            notification_overrides=notification_overrides,
+            label_overrides=label_overrides,
+            annotation_overrides=annotation_overrides,
+        )
+        return _workflow_execution.SdkWorkflowExecution.promote_from_model(execution)

@@ -5,14 +5,15 @@ from flytekit.common import sdk_bases as _sdk_bases, promise as _promises, inter
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
 
-from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, executable as _executable_mixin
+from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, launchable as _launchable_mixin
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import sdk as _sdk_config, internal as _internal_config, auth as _auth_config
+from flytekit.configuration import sdk as _sdk_config, auth as _auth_config
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import launch_plan as _launch_plan_models, schedule as _schedule_model, interface as \
     _interface_models, literals as _literal_models, common as _common_models
 from flytekit.models.core import identifier as _identifier_model, workflow as _workflow_models
 import datetime as _datetime
+from deprecated import deprecated as _deprecated
 import logging as _logging
 import six as _six
 import uuid as _uuid
@@ -22,7 +23,7 @@ class SdkLaunchPlan(
     _six.with_metaclass(
         _sdk_bases.ExtendedSdkType,
         _launch_plan_models.LaunchPlanSpec,
-        _executable_mixin.ExecutableEntity,
+        _launchable_mixin.LaunchableEntity,
     )
 ):
     def __init__(self, *args, **kwargs):
@@ -51,7 +52,7 @@ class SdkLaunchPlan(
             entity_metadata=model.entity_metadata,
             labels=model.labels,
             annotations=model.annotations,
-            auth=model.auth,
+            auth_role=model.auth_role,
         )
 
     @classmethod
@@ -100,11 +101,11 @@ class SdkLaunchPlan(
             return False
 
     @property
-    def auth(self):
+    def auth_role(self):
         """
-        :rtype: flytekit.models.LaunchPlan.Auth
+        :rtype: flytekit.models.common.AuthRole
         """
-        fixed_auth = super(SdkLaunchPlan, self).auth
+        fixed_auth = super(SdkLaunchPlan, self).auth_role
         if fixed_auth is not None and\
                 (fixed_auth.assumable_iam_role is not None or fixed_auth.kubernetes_service_account is not None):
                 return fixed_auth
@@ -116,8 +117,8 @@ class SdkLaunchPlan(
             _logging.warning("Using deprecated `role` from config. "
                              "Please update your config to use `assumable_iam_role` instead")
             assumable_iam_role = _sdk_config.ROLE.get()
-        return _launch_plan_models.Auth(assumable_iam_role=assumable_iam_role,
-                                        kubernetes_service_account=kubernetes_service_account)
+        return _common_models.AuthRole(assumable_iam_role=assumable_iam_role,
+                                       kubernetes_service_account=kubernetes_service_account)
 
     @property
     def interface(self):
@@ -172,9 +173,18 @@ class SdkLaunchPlan(
             }
         )
 
-    @_exception_scopes.system_entry_point
+    @_deprecated(reason="Use launch_with_literals instead", version='0.9.0')
     def execute_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
                               label_overrides=None, annotation_overrides=None):
+        """
+        Deprecated.
+        """
+        return self.launch_with_literals(project, domain, literal_inputs, name, notification_overrides, label_overrides,
+                                         annotation_overrides)
+
+    @_exception_scopes.system_entry_point
+    def launch_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
+                             label_overrides=None, annotation_overrides=None):
         """
         Executes the launch plan and returns the execution identifier.  This version of execution is meant for when
         you already have a LiteralMap of inputs.
@@ -193,7 +203,7 @@ class SdkLaunchPlan(
         """
         # Kubernetes requires names starting with an alphabet for some resources.
         name = name or "f" + _uuid.uuid4().hex[:19]
-        execution = _engine_loader.get_engine().get_launch_plan(self).execute(
+        execution = _engine_loader.get_engine().get_launch_plan(self).launch(
             project,
             domain,
             name,
@@ -258,7 +268,7 @@ class SdkRunnableLaunchPlan(
             notifications=None,
             labels=None,
             annotations=None,
-            auth=None,
+            auth_role=None,
     ):
         """
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
@@ -273,16 +283,16 @@ class SdkRunnableLaunchPlan(
         :param flytekit.models.common.Annotations annotations: Any custom kubernetes annotations to apply to workflows
             executed by this launch plan.
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
-        :param flytekit.models.launch_plan.Auth auth: The auth method with which to execute the workflow.
+        :param flytekit.models.common.Authrole auth_role: The auth method with which to execute the workflow.
         """
-        if role and auth:
+        if role and auth_role:
             raise ValueError("Cannot set both role and auth. Role is deprecated, use auth instead.")
 
         fixed_inputs = fixed_inputs or {}
         default_inputs = default_inputs or {}
 
         if role:
-            auth = _launch_plan_models.Auth(assumable_iam_role=role)
+            auth_role = _common_models.AuthRole(assumable_iam_role=role)
 
         # The constructor for SdkLaunchPlan sets the id to None anyways so we don't bother passing in an ID. The ID
         # should be set in one of three places,
@@ -306,7 +316,7 @@ class SdkRunnableLaunchPlan(
             ),
             labels or _common_models.Labels({}),
             annotations or _common_models.Annotations({}),
-            auth,
+            auth_role,
         )
         self._interface = _interface.TypedInterface(
             {k: v.var for k, v in _six.iteritems(default_inputs)},

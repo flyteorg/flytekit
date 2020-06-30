@@ -183,7 +183,7 @@ class BaseTaskExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)
         pass
 
 
-class BaseLaunchPlanExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
+class BaseLaunchPlanLauncher(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
 
     def __init__(self, sdk_launch_plan):
         """
@@ -207,8 +207,8 @@ class BaseLaunchPlanExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, ob
         pass
 
     @_abc.abstractmethod
-    def execute(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
-                annotation_overrides=None):
+    def launch(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
+               annotation_overrides=None):
         """
         Registers the launch plan and returns the identifier.
         :param Text project:
@@ -261,6 +261,24 @@ class BaseTaskExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, object))
         """
         pass
 
+    @_abc.abstractmethod
+    def launch(self, project, domain, name=None, inputs=None, notification_overrides=None,
+               label_overrides=None, annotation_overrides=None, auth_role=None):
+        """
+        Executes the task as a single task execution and returns the identifier.
+        :param Text project:
+        :param Text domain:
+        :param Text name:
+        :param flytekit.models.literals.LiteralMap inputs: The inputs to pass
+        :param list[flytekit.models.common.Notification] notification_overrides: If specified, override the
+            notifications.
+        :param flytekit.models.common.Labels label_overrides:
+        :param flytekit.models.common.Annotations annotation_overrides:
+        :param flytekit.models.common.AuthRole auth_role:
+        :rtype: flytekit.models.execution.Execution
+        """
+        pass
+
 
 class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
     """
@@ -287,7 +305,7 @@ class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta
     def get_launch_plan(self, sdk_launch_plan):
         """
         :param flytekit.common.launch_plan.SdkLaunchPlan sdk_launch_plan:
-        :rtype: BaseLaunchPlanExecutor
+        :rtype: BaseLaunchPlanLauncher
         """
         pass
 

@@ -21,7 +21,9 @@ class SdkTaskType(object):
     SIDECAR_TASK = "sidecar"
     SENSOR_TASK = "sensor-task"
     PRESTO_TASK = "presto"
-    RAW_CONTAINER_TASK = "raw_container"
+    PYTORCH_TASK = "pytorch"
+    # Raw container task is just a name, it defaults to using the regular container task (like python etc), but sets the data_config in the container
+    RAW_CONTAINER_TASK = "raw-container"
 
 GLOBAL_INPUT_NODE_ID = ''
 

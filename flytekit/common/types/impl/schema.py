@@ -947,7 +947,8 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
                         additional_msg="Cannot cast because a required column '{}' was not found.".format(k),
                         received_value=self
                     )
-                if v != self.type.sdk_columns[k]:
+                if not isinstance(v, _base_sdk_types.FlyteSdkType) or \
+                        v.to_flyte_literal_type() != self.type.sdk_columns[k].to_flyte_literal_type():
                     raise _user_exceptions.FlyteTypeException(
                         self.type.sdk_columns[k],
                         v,

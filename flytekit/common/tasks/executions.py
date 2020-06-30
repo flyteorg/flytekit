@@ -106,4 +106,11 @@ class SdkTaskExecution(
         )
 
     def sync(self):
+        self._sync_closure()
+
+    def _sync_closure(self):
+        """
+        Syncs the closure of the underlying execution artifact with the state observed by the platform.
+        :rtype: None
+        """
         _engine_loader.get_engine().get_task_execution(self).sync()

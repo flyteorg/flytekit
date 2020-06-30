@@ -14,8 +14,7 @@ from flytekit.common.mixins import registerable as _registerable, hash as _hash_
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
-from flytekit.models import interface as _interface_models, literals as _literal_models, \
-    launch_plan as _launch_plan_models
+from flytekit.models import interface as _interface_models, literals as _literal_models, common as _common_models
 from flytekit.models.core import workflow as _workflow_models, identifier as _identifier_model
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common import constants as _constants
@@ -344,8 +343,8 @@ class SdkWorkflow(
 
         if role:
             assumable_iam_role = role
-        auth = _launch_plan_models.Auth(assumable_iam_role=assumable_iam_role,
-                                        kubernetes_service_account=kubernetes_service_account)
+        auth_role = _common_models.AuthRole(assumable_iam_role=assumable_iam_role,
+                                            kubernetes_service_account=kubernetes_service_account)
 
         return (cls or _launch_plan.SdkRunnableLaunchPlan)(
             sdk_workflow=self,
@@ -358,7 +357,7 @@ class SdkWorkflow(
             notifications=notifications,
             labels=labels,
             annotations=annotations,
-            auth=auth,
+            auth_role=auth_role,
         )
 
     @_exception_scopes.system_entry_point
@@ -456,16 +455,17 @@ def _discover_workflow_components(workflow_class):
     return inputs, outputs, nodes
 
 
-def build_sdk_workflow_from_metaclass(metaclass, queuing_budget=None, cls=None):
+def build_sdk_workflow_from_metaclass(metaclass, queuing_budget=None, on_failure=None, cls=None):
     """
     :param T metaclass:
     :param cls: This is the class that will be instantiated from the inputs, outputs, and nodes.  This will be used
         by users extending the base Flyte programming model. If set, it must be a subclass of SdkWorkflow.
     :param queuing_budget datetime.timedelta: [Optional] Budget that specifies the amount of time a workflow can be queued up for execution.
+    :param on_failure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
     :rtype: SdkWorkflow
     """
     inputs, outputs, nodes = _discover_workflow_components(metaclass)
-    metadata = _workflow_models.WorkflowMetadata(queuing_budget) if queuing_budget else None
+    metadata = _workflow_models.WorkflowMetadata(queuing_budget=queuing_budget if queuing_budget else None, on_failure=on_failure if on_failure else None)
     return (cls or SdkWorkflow)(
         inputs=[i for i in sorted(inputs, key=lambda x: x.name)],
         outputs=[o for o in sorted(outputs, key=lambda x: x.name)],

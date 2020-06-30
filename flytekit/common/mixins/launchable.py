@@ -2,14 +2,15 @@ from __future__ import absolute_import
 import abc as _abc
 import six as _six
 
+from deprecated import deprecated as _deprecated
 
-class ExecutableEntity(_six.with_metaclass(_abc.ABCMeta, object)):
 
-    def execute(self, project, domain, inputs=None, name=None, notification_overrides=None, label_overrides=None,
-                annotation_overrides=None):
+class LaunchableEntity(_six.with_metaclass(_abc.ABCMeta, object)):
+    def launch(self, project, domain, inputs=None, name=None, notification_overrides=None, label_overrides=None,
+               annotation_overrides=None):
         """
-        Executes the entity and returns the execution identifier.  This version of execution is meant for when
-        inputs are specified as Python native types/structures.
+        Creates a remote execution from the entity and returns the execution identifier.
+        This version of launch is meant for when inputs are specified as Python native types/structures.
 
         :param Text project:
         :param Text domain:
@@ -25,10 +26,26 @@ class ExecutableEntity(_six.with_metaclass(_abc.ABCMeta, object)):
         :rtype: T
 
         """
-        return self.execute_with_literals(
+        return self.launch_with_literals(
             project,
             domain,
             self._python_std_input_map_to_literal_map(inputs or {}),
+            name=name,
+            notification_overrides=notification_overrides,
+            label_overrides=label_overrides,
+            annotation_overrides=annotation_overrides,
+        )
+
+    @_deprecated(reason="Use launch instead", version='0.9.0')
+    def execute(self, project, domain, inputs=None, name=None, notification_overrides=None, label_overrides=None,
+                annotation_overrides=None):
+        """
+        Deprecated.
+        """
+        return self.launch(
+            project,
+            domain,
+            inputs=inputs,
             name=name,
             notification_overrides=notification_overrides,
             label_overrides=label_overrides,
@@ -40,8 +57,8 @@ class ExecutableEntity(_six.with_metaclass(_abc.ABCMeta, object)):
         pass
 
     @_abc.abstractmethod
-    def execute_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
-                              label_overrides=None, annotation_overrides=None):
+    def launch_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
+                             label_overrides=None, annotation_overrides=None):
         """
         Executes the entity and returns the execution identifier.  This version of execution is meant for when
         you already have a LiteralMap of inputs.
@@ -56,6 +73,15 @@ class ExecutableEntity(_six.with_metaclass(_abc.ABCMeta, object)):
             notifications.
         :param flytekit.models.common.Labels label_overrides:
         :param flytekit.models.common.Annotations annotation_overrides:
-        :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier
+        :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier:
         """
         pass
+
+    @_deprecated(reason="Use launch_with_literals instead", version='0.9.0')
+    def execute_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
+                              label_overrides=None, annotation_overrides=None):
+        """
+        Deprecated.
+        """
+        return self.launch_with_literals(project, domain, literal_inputs, name, notification_overrides, label_overrides,
+                                         annotation_overrides)

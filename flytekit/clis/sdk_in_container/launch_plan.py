@@ -2,12 +2,12 @@ from __future__ import absolute_import
 
 import click
 import six as _six
+import logging as _logging
 
 from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map
 from flytekit.clis.sdk_in_container import constants as _constants
 from flytekit.common import utils as _utils
 from flytekit.common.launch_plan import SdkLaunchPlan as _SdkLaunchPlan
-from flytekit.common.mixins import executable as _executable_mixins
 from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag, \
     IMAGE as _IMAGE
 from flytekit.models import launch_plan as _launch_plan_model
@@ -30,7 +30,8 @@ class LaunchPlanAbstractGroup(click.Group):
         pkgs = ctx.obj[_constants.CTX_PACKAGES]
         # Discover all launch plans by loading the modules
         for m, k, lp in iterate_registerable_entities_in_order(
-                pkgs, include_entities={_executable_mixins.ExecutableEntity}, detect_unreferenced_entities=False):
+                pkgs, include_entities={_SdkLaunchPlan},
+                detect_unreferenced_entities=False):
             safe_name = _utils.fqdn(m.__name__, k, entity_type=lp.resource_type)
             commands.append(safe_name)
             lps[safe_name] = lp
@@ -51,7 +52,7 @@ class LaunchPlanAbstractGroup(click.Group):
             launch_plan = ctx.obj['lps'][lp_argument]
         else:
             for m, k, lp in iterate_registerable_entities_in_order(
-                    pkgs, include_entities={_executable_mixins.ExecutableEntity}, detect_unreferenced_entities=False):
+                    pkgs, include_entities={_SdkLaunchPlan}, detect_unreferenced_entities=False):
                 safe_name = _utils.fqdn(m.__name__, k, entity_type=lp.resource_type)
                 if lp_argument == safe_name:
                     launch_plan = lp
@@ -159,6 +160,7 @@ def activate_all_impl(project, domain, version, pkgs, ignore_schedules=False):
     # TODO: We should optionally allow deactivation of missing launch plans
 
     # Discover all launch plans by loading the modules
+    _logging.info(f"Setting this version's {version} launch plans active in {project} {domain}")
     for m, k, lp in iterate_registerable_entities_in_order(
         pkgs, include_entities={_SdkLaunchPlan}, detect_unreferenced_entities=False
     ):
@@ -170,6 +172,7 @@ def activate_all_impl(project, domain, version, pkgs, ignore_schedules=False):
             version
         )
         if not (lp.is_scheduled and ignore_schedules):
+            _logging.info(f"Setting active {_utils.fqdn(m.__name__, k, entity_type=lp.resource_type)}")
             lp.update(_launch_plan_model.LaunchPlanState.ACTIVE)
 
 

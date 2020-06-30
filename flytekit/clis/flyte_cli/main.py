@@ -8,7 +8,8 @@ import stat as _stat
 import click as _click
 import six as _six
 
-from flyteidl.core import literals_pb2 as _literals_pb2
+from flyteidl.core import literals_pb2 as _literals_pb2, identifier_pb2 as _identifier_pb2
+from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2, workflow_pb2 as _workflow_pb2, task_pb2 as _task_pb2
 
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
@@ -17,6 +18,7 @@ from flytekit.clis.helpers import construct_literal_map_from_variable_map as _co
     parse_args_into_dict as _parse_args_into_dict
 from flytekit.common import utils as _utils, launch_plan as _launch_plan_common
 from flytekit.common.core import identifier as _identifier
+from flytekit.common.tasks import task as _tasks_common
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
 from flytekit.configuration import platform as _platform_config
@@ -27,9 +29,12 @@ from flytekit.models import common as _common_models, filters as _filters, launc
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import execution as _core_execution_models, identifier as _core_identifier
 from flytekit.models.execution import ExecutionSpec as _ExecutionSpec, ExecutionMetadata as _ExecutionMetadata
+from flytekit.models.matchable_resource import ClusterResourceAttributes as _ClusterResourceAttributes,\
+    ExecutionQueueAttributes as _ExecutionQueueAttributes, ExecutionClusterLabel as _ExecutionClusterLabel,\
+    MatchingAttributes as _MatchingAttributes
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
-from flytekit.common.exceptions.user import FlyteAssertion as _FlyteAssertion
+from flytekit.common.exceptions import user as _user_exceptions
 
 
 import requests as _requests
@@ -281,7 +286,7 @@ def _render_schedule_expr(lp):
 _HOST_URL = None
 try:
     _HOST_URL = _platform_config.URL.get()
-except _FlyteAssertion:
+except _user_exceptions.FlyteAssertion:
     pass
 _INSECURE_FLAG = _platform_config.INSECURE.get()
 
@@ -679,6 +684,49 @@ def get_task(urn, host, insecure):
     _click.echo("")
 
 
+@_flyte_cli.command('launch-task', cls=_FlyteSubCommand)
+@_project_option
+@_domain_option
+@_optional_name_option
+@_host_option
+@_insecure_option
+@_urn_option
+@_click.argument('task_args', nargs=-1, type=_click.UNPROCESSED)
+def launch_task(project, domain, name, host, insecure, urn, task_args):
+    """
+    Kick off a single task execution. Note that the {project, domain, name} specified in the command line
+    will be for the execution.  The project/domain for the task are specified in the urn.
+
+    Use a -- to separate arguments to this cli, and arguments to the task.
+    e.g.
+        $ flyte-cli -h localhost:30081 -p flyteexamples -d development launch-task \
+            -u tsk:flyteexamples:development:some-task:abc123 -- input=hi \
+            other-input=123 moreinput=qwerty
+
+    These arguments are then collected, and passed into the `task_args` variable as a Tuple[Text].
+    Users should use the get-task command to ascertain the names of inputs to use.
+    """
+    _welcome_message()
+
+    with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
+        task_id = _identifier.Identifier.from_python_std(urn)
+        task = _tasks_common.SdkTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
+
+        text_args = _parse_args_into_dict(task_args)
+        inputs = {}
+        for var_name, variable in _six.iteritems(task.interface.inputs):
+            sdk_type = _type_helpers.get_sdk_type_from_literal_type(variable.type)
+            if var_name in text_args and text_args[var_name] is not None:
+                inputs[var_name] = sdk_type.from_string(text_args[var_name]).to_python_std()
+
+        # TODO: Implement notification overrides
+        # TODO: Implement label overrides
+        # TODO: Implement annotation overrides
+        execution = task.launch(project, domain, inputs=inputs, name=name)
+        _click.secho("Launched execution: {}".format(_tt(execution.id)), fg='blue')
+        _click.echo("")
+
+
 ########################################################################################################################
 #
 #  Workflow Commands
@@ -1059,7 +1107,7 @@ def execute_launch_plan(project, domain, name, host, insecure, urn, principal, v
         # TODO: Implement notification overrides
         # TODO: Implement label overrides
         # TODO: Implement annotation overrides
-        execution = lp.execute_with_literals(project, domain, inputs, name=name)
+        execution = lp.launch_with_literals(project, domain, inputs, name=name)
         _click.secho("Launched execution: {}".format(_tt(execution.id)), fg='blue')
         _click.echo("")
 
@@ -1517,6 +1565,98 @@ def register_project(identifier, name, description, host, insecure):
     _click.echo("Registered project [id: {}, name: {}, description: {}]".format(identifier, name, description))
 
 
+def _extract_pair(identifier_file, object_file):
+    """
+    :param Text identifier_file:
+    :param Text object_file:
+    :rtype: (flyteidl.core.identifier_pb2.Identifier, T)
+    """
+    resource_map = {
+        _identifier_pb2.LAUNCH_PLAN: _launch_plan_pb2.LaunchPlanSpec,
+        _identifier_pb2.WORKFLOW: _workflow_pb2.WorkflowSpec,
+        _identifier_pb2.TASK: _task_pb2.TaskSpec
+    }
+    id = _load_proto_from_file(_identifier_pb2.Identifier, identifier_file)
+    if not id.resource_type in resource_map:
+        raise _user_exceptions.FlyteAssertion(f"Resource type found in identifier {id.resource_type} invalid, must be launch plan, "
+                              f"task, or workflow")
+    entity = _load_proto_from_file(resource_map[id.resource_type], object_file)
+    return id, entity
+
+
+def _extract_files(file_paths):
+    """
+    :param file_paths:
+    :rtype: List[(flyteidl.core.identifier_pb2.Identifier, T)]
+    """
+    # Get a manual iterator because we're going to grab files two at a time.
+    # The identifier file will always come first because the names are always the same and .identifier.pb sorts before
+    # .pb
+
+    results = []
+    filename_iterator = iter(file_paths)
+    for identifier_file in filename_iterator:
+        object_file = next(filename_iterator)
+        id, entity = _extract_pair(identifier_file, object_file)
+        results.append((id, entity))
+
+    return results
+
+
+@_flyte_cli.command('register-files', cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+@_click.argument(
+    'files',
+    type=_click.Path(exists=True),
+    nargs=-1,
+)
+def register_files(host, insecure, files):
+    """
+    Given a list of files, this will (after sorting the input list), attempt to register them against Flyte Admin.
+    This command expects the files to be the output of the pyflyte serialize command.  See the code there for more
+    information. Valid files need to be:
+        * Ordered in the order that you want registration to happen. pyflyte should have done the topological sort
+          for you and produced file that have a prefix that sets the correct order.
+        * Of the correct type. That is, they should be the serialized form of one of these Flyte IDL objects
+          (or an identifier object).
+          - flyteidl.admin.launch_plan_pb2.LaunchPlanSpec for launch plans
+          - flyteidl.admin.workflow_pb2.WorkflowSpec for workflows
+          - flyteidl.admin.task_pb2.TaskSpec for tasks
+        * Each file needs to be accompanied by an identifier file. We can relax this constraint in the future.
+
+    :param host:
+    :param insecure:
+    :param files:
+    :return:
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    files = list(files)
+    files.sort()
+    _click.secho("Parsing files...", fg='green', bold=True)
+    for f in files:
+        _click.echo(f"  {f}")
+
+    flyte_entities_list = _extract_files(files)
+    for id, flyte_entity in flyte_entities_list:
+        try:
+            if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
+                client.raw.create_launch_plan(_launch_plan_pb2.LaunchPlanCreateRequest(id=id, spec=flyte_entity))
+            elif id.resource_type == _identifier_pb2.TASK:
+                client.raw.create_task(_task_pb2.TaskCreateRequest(id=id, spec=flyte_entity))
+            elif id.resource_type == _identifier_pb2.WORKFLOW:
+                client.raw.create_workflow(_workflow_pb2.WorkflowCreateRequest(id=id, spec=flyte_entity))
+            else:
+                raise _user_exceptions.FlyteAssertion(f"Only tasks, launch plans, and workflows can be called with this function, "
+                                      f"resource type {id.resource_type} was passed")
+            _click.secho(f"Registered {id}", fg='green')
+        except _user_exceptions.FlyteEntityAlreadyExistsException:
+            _click.secho(f"Skipping because already registered {id}", fg='cyan')
+
+    _click.echo(f"Finished scanning {len(flyte_entities_list)} files")
+
+
 @_flyte_cli.command('update-workflow-meta', cls=_FlyteSubCommand)
 @_named_entity_description_option
 @_named_entity_state_choice
@@ -1580,6 +1720,108 @@ def update_launch_plan_meta(description, host, insecure, project, domain, name):
         _named_entity.NamedEntityIdentifier(project, domain, name),
         _named_entity.NamedEntityMetadata(description, _named_entity.NamedEntityState.ACTIVE))
     _click.echo("Successfully updated launch plan")
+
+
+@_flyte_cli.command('update-cluster-resource-attributes', cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+@_project_option
+@_domain_option
+@_optional_name_option
+@_click.option('--attributes', type=(str, str),  multiple=True)
+def update_cluster_resource_attributes(host, insecure, project, domain, name, attributes):
+    """
+    Sets matchable cluster resource attributes for a project, domain and optionally, workflow name.
+
+    e.g.
+        $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-cluster-resource-attributes \
+            --attributes cpu 1 --attributes memory 500M
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    cluster_resource_attributes = _ClusterResourceAttributes({attribute[0]: attribute[1] for attribute in attributes})
+    matching_attributes = _MatchingAttributes(cluster_resource_attributes=cluster_resource_attributes)
+
+    if name is not None:
+        client.update_workflow_attributes(
+            project, domain, name, matching_attributes
+        )
+        _click.echo("Successfully updated cluster resource attributes for project: {}, domain: {}, and workflow: {}".
+                    format(project, domain, name))
+    else:
+        client.update_project_domain_attributes(
+            project, domain, matching_attributes
+        )
+        _click.echo("Successfully updated cluster resource attributes for project: {} and domain: {}".
+                    format(project, domain))
+
+
+@_flyte_cli.command('update-execution-queue-attributes', cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+@_project_option
+@_domain_option
+@_optional_name_option
+@_click.option("--tags", multiple=True, help="Tag(s) to be applied.")
+def update_execution_queue_attributes(host, insecure, project, domain, name, tags):
+    """
+    Tags used for assigning execution queues for tasks belonging to a project, domain and optionally, workflow name.
+
+    e.g.
+        $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-execution-queue-attributes \
+            --tags critical --tags gpu_intensive
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    execution_queue_attributes = _ExecutionQueueAttributes(list(tags))
+    matching_attributes = _MatchingAttributes(execution_queue_attributes=execution_queue_attributes)
+
+    if name is not None:
+        client.update_workflow_attributes(
+            project, domain, name, matching_attributes
+        )
+        _click.echo("Successfully updated execution queue attributes for project: {}, domain: {}, and workflow: {}".
+                    format(project, domain, name))
+    else:
+        client.update_project_domain_attributes(
+            project, domain, matching_attributes
+        )
+        _click.echo("Successfully updated execution queue attributes for project: {} and domain: {}".
+                    format(project, domain))
+
+
+@_flyte_cli.command('update-execution-cluster-label', cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+@_project_option
+@_domain_option
+@_optional_name_option
+@_click.option("--value",  help="Cluster label for which to schedule matching executions")
+def update_execution_cluster_label(host, insecure, project, domain, name, value):
+    """
+    Label value to determine where an execution's task will be run for tasks belonging to a project, domain and
+        optionally, workflow name.
+
+    e.g.
+        $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-execution-cluster-label --value foo
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    execution_cluster_label = _ExecutionClusterLabel(value)
+    matching_attributes = _MatchingAttributes(execution_cluster_label=execution_cluster_label)
+
+    if name is not None:
+        client.update_workflow_attributes(
+            project, domain, name, matching_attributes
+        )
+        _click.echo("Successfully updated execution cluster label for project: {}, domain: {}, and workflow: {}".
+                    format(project, domain, name))
+    else:
+        client.update_project_domain_attributes(
+            project, domain, matching_attributes
+        )
+        _click.echo("Successfully updated execution cluster label for project: {} and domain: {}".
+                    format(project, domain))
 
 
 @_flyte_cli.command('setup-config', cls=_click.Command)

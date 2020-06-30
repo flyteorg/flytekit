@@ -58,11 +58,14 @@ if [ -n "$REGISTRY" ]; then
   echo "${IMAGE_NAME}:latest also tagged with ${FLYTE_INTERNAL_IMAGE}"
 
   # Also push if there's a registry to push to
-  if [[ "${REGISTRY}" == "docker.io"* ]]; then
+  if [[ "${REGISTRY}" == "docker.io"*  && -z "${NOPUSH}" ]]; then
     docker login --username="${DOCKERHUB_USERNAME}" --password="${DOCKERHUB_PASSWORD}"
   fi
-  docker push "${FLYTE_INTERNAL_IMAGE}"
-  echo "${FLYTE_INTERNAL_IMAGE} pushed to remote"
+
+  if [[ -z "${NOPUSH}" ]]; then
+    docker push "${FLYTE_INTERNAL_IMAGE}"
+    echo "${FLYTE_INTERNAL_IMAGE} pushed to remote"
+  fi
 fi
 
 popd
