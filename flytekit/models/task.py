@@ -838,7 +838,8 @@ class Container(_common.FlyteIdlEntity):
             resources=Resources.from_flyte_idl(pb2_object.resources),
             env={kv.key: kv.value for kv in pb2_object.env},
             config={kv.key: kv.value for kv in pb2_object.config},
-            data_loading_config=DataLoadingConfig.from_flyte_idl(pb2_object.data_config),
+            data_loading_config=DataLoadingConfig.from_flyte_idl(pb2_object.data_config)
+                if pb2_object.HasField("data_config") else None,
         )
 
 
