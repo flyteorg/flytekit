@@ -297,3 +297,4 @@ class FlyteRequiredStringListConfigurationEntry(_FlyteRequiredConfigurationEntry
 
 
 CONFIGURATION_SINGLETON = FlyteConfigurationFile()
+CONFIGURATION_SINGLETON.x = 0
