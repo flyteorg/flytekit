@@ -1,29 +1,66 @@
 from __future__ import annotations
-from typing import List, Dict, Tuple
+
 import datetime as _datetime
+from typing import List, Dict, Tuple
+
 from flytekit.common import constants as _common_constants
-from flytekit.configuration.common import CONFIGURATION_SINGLETON
 from flytekit.common import interface
 from flytekit.common import (
-    nodes as _nodes, sdk_bases as _sdk_bases, workflow_execution as _workflow_execution
+    nodes as _nodes
 )
-from flytekit.common.types.helpers import python_std_to_sdk_type
-from flytekit.common.core import identifier as _identifier
-from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, launchable as _launchable_mixin
-from flytekit.configuration import internal as _internal_config
-from flytekit.engines import loader as _engine_loader
-from flytekit.models import common as _common_model, task as _task_model, types as _type_models
-from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
-from flytekit.common.exceptions import user as _user_exceptions, system as _system_exceptions
-from flytekit.common.types import helpers as _type_helpers
-import six as _six
-
-from flytekit.common import sdk_bases as _sdk_bases, promise as _promise
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.types import helpers as _type_helpers, containers as _containers, primitives as _primitives
+from flytekit.common.types import primitives as _primitives
+from flytekit.configuration.common import CONFIGURATION_SINGLETON
 from flytekit.models import interface as _interface_models, literals as _literal_models
+from flytekit.models import task as _task_model, types as _type_models
+from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
 
+
+class SdkNodeWrapper(object):
+    def __init__(self, output_name: str, sdk_node: _nodes.SdkNode):
+        self._sdk_node = sdk_node
+        self._output_name = output_name
+
+
+class Workflow(object):
+    """
+    When you assign a name to a node.
+    * Any upstream node that is not assigned, recursively assign
+    * When you get the call to the constructor, keep in mind there may be duplicate nodes, because they all should
+      be wrapper nodes.
+    """
+    def __init__(self, workflow_function):
+        self._workflow_function = workflow_function
+
+    def __call__(self, *args, **kwargs):
+        if CONFIGURATION_SINGLETON.x == 1:
+            if len(kwargs) > 0:
+                raise Exception('not allowed')
+
+            print(f"compilation mode. Args are: {args}")
+            print(f"Locals: {locals()}")
+
+            # Iterate through nodes...
+
+        else:
+            return self._workflow_function(*args, **kwargs)
+
+
+def workflow(
+        _workflow_function=None,
+):
+    def wrapper(fn):
+        interface = get_interface_from_task_info(fn.__annotations__, outputs or [])
+
+        task_instance = PythonTask(fn, interface, metadata, outputs: List[str], task_obj)
+        task_instance.id = _identifier_model.Identifier(_identifier_model.ResourceType.TASK, "proj", "dom", "blah", "1")
+
+        return task_instance
+
+    if _workflow_function:
+        return wrapper(_workflow_function)
+    else:
+        return wrapper
 
 
 # Has Python in the name because this is the least abstract task. It will have access to the loaded Python function
@@ -33,11 +70,12 @@ from flytekit.models import interface as _interface_models, literals as _literal
 class PythonTask(object):
     task_type = _common_constants.SdkTaskType.PYTHON_TASK
 
-    def __init__(self, task_function, interface, metadata: _task_model.TaskMetadata, info):
+    def __init__(self, task_function, interface, metadata: _task_model.TaskMetadata, outputs: List[str], info):
         self._task_function = task_function
         self._interface = interface
         self._metadata = metadata
         self._info = info
+        self._outputs = outputs
 
     def __call__(self, *args, **kwargs):
         if CONFIGURATION_SINGLETON.x == 1:
@@ -52,10 +90,15 @@ class PythonTask(object):
                     "detected {} positional args.".format(len(args))
                 )
 
-            # Move away from this to use basic model classes instead
+            # TODO: Move away from this to use basic model classes instead. Don't like this create_bindings_for_inputs
+            #       function.
             bindings, upstream_nodes = self.interface.create_bindings_for_inputs(kwargs)
 
-            return _nodes.SdkNode(
+            # TODO: Return multiple versions of the _same_ node, but with different output names
+            # TODO: Make the metadata name the name of the (function), there's no reason not to use it for that.
+            # There is no reason to ever assign a random node id (at least in a non-dynamic context), so we leave it
+            # empty for now.
+            sdk_node = _nodes.SdkNode(
                 id=None,
                 metadata=_workflow_model.NodeMetadata("", self.metadata.timeout, self.metadata.retries,
                                                       self.metadata.interruptible),
@@ -63,6 +106,15 @@ class PythonTask(object):
                 upstream_nodes=upstream_nodes,
                 sdk_task=self
             )
+
+            if len(self._outputs > 1):
+                # Why do we need to do this? Just for proper binding downstream, nothing else.
+                wrapped_nodes = [SdkNodeWrapper(output_name=self._outputs[i], sdk_node=sdk_node)
+                                 for i in range(0, len(self._outputs))]
+                return tuple(wrapped_nodes)
+            else:
+                return SdkNodeWrapper(output_name=self._outputs[0], sdk_node=sdk_node)
+
         else:
             return self._task_function(*args, **kwargs)
 
@@ -77,7 +129,7 @@ class PythonTask(object):
 
 def task(
         _task_function=None,
-        outputs=None,
+        outputs: List[str]=None,
         cache_version='',
         retries=0,
         interruptible=None,
@@ -94,16 +146,10 @@ def task(
         timeout=None,
         environment=None,
 ):
-    print('======================(((((((((((((((((((((9')
-
     def wrapper(fn):
-
         task_obj = {}
         task_obj['task_type'] = _common_constants.SdkTaskType.PYTHON_TASK,
-        task_obj['discovery_version'] = cache_version,
         task_obj['retries'] = retries,
-        task_obj['interruptible'] = interruptible,
-        task_obj['deprecated'] = deprecated,
         task_obj['storage_request'] = storage_request,
         task_obj['cpu_request'] = cpu_request,
         task_obj['gpu_request'] = gpu_request,
@@ -112,8 +158,6 @@ def task(
         task_obj['cpu_limit'] = cpu_limit,
         task_obj['gpu_limit'] = gpu_limit,
         task_obj['memory_limit'] = memory_limit,
-        task_obj['discoverable'] = cache,
-        task_obj['timeout'] = timeout or _datetime.timedelta(seconds=0),
         task_obj['environment'] = environment,
         task_obj['custom'] = {}
 
@@ -133,7 +177,7 @@ def task(
 
         interface = get_interface_from_task_info(fn.__annotations__, outputs or [])
 
-        task_instance = PythonTask(fn, interface, metadata, task_obj)
+        task_instance = PythonTask(fn, interface, metadata, outputs: List[str], task_obj)
         task_instance.id = _identifier_model.Identifier(_identifier_model.ResourceType.TASK, "proj", "dom", "blah", "1")
 
         return task_instance
@@ -207,43 +251,3 @@ def get_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interface_mode
         res[k] = _interface_models.Variable(type=flyte_literal_type, description=k)
 
     return res
-
-
-# def create_bindings_for_inputs(interface_input, map_of_bindings) -> List[_literal_models.Binding]:
-#     """
-#     :param dict[Text, T] map_of_bindings:  This can be scalar primitives, it can be node output references,
-#         lists, etc..
-#     :rtype: (list[flytekit.models.literals.Binding])
-#     :raises: flytekit.common.exceptions.user.FlyteAssertion
-#     """
-#     binding_data = dict()
-#
-#     for k in sorted(interface_input):
-#         var = interface_input[k]
-#         if k not in map_of_bindings:
-#             raise _user_exceptions.FlyteAssertion(
-#                 f"Input was not specified for: {k} of type {var.type}"
-#             )
-#
-#         binding_data[k] = BindingData.from_python_std(
-#             var.type,
-#             map_of_bindings[k],
-#         )
-#
-#     extra_inputs = set(binding_data.keys()) ^ set(map_of_bindings.keys())
-#     if len(extra_inputs) > 0:
-#         raise _user_exceptions.FlyteAssertion(
-#             "Too many inputs were specified for the interface.  Extra inputs were: {}".format(extra_inputs)
-#         )
-#
-#     seen_nodes = set()
-#     min_upstream = list()
-#     for n in all_upstream_nodes:
-#         if n not in seen_nodes:
-#             seen_nodes.add(n)
-#             min_upstream.append(n)
-#
-#     return [_literal_models.Binding(k, bd) for k, bd in _six.iteritems(binding_data)], min_upstream
-
-
-

@@ -27,6 +27,9 @@ def inverse_fn(x: int) -> int:
 #     b = task2(in2, a)
 #     c = task3(task1(b), a, 'hello')
 #
+#     # This is important - when we're constructing the workflow, we only have access to the things that are passed
+#     # in. Will we ever need access to anything not available in the workflow decorator, or in the workflow const
+#     # What class is this producing vs what the decorator is producing?
 #     return flyte.Workflow(b, c)
 
 
@@ -44,7 +47,8 @@ def inverse_fn(x: int) -> int:
 
 @task(outputs=['s_out'])
 def x(s: int) -> int:
-    return s
+    y=3
+    return s, y
 
 
 # @task(outputs=['list_of_ints', 'nested_list_of_strings'])
@@ -61,3 +65,5 @@ def x(s: int) -> int:
 
 # a, b = y(3)
 # z(a)
+
+
