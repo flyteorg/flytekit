@@ -178,8 +178,8 @@ class SdkNotebookTask(
                     'python-notebook'
                 ),
                 timeout,
-                False,
                 _literal_models.RetryStrategy(retries),
+                False,
                 discovery_version,
                 deprecated
             ),
@@ -518,32 +518,6 @@ class SdkNotebookSparkTask(SdkNotebookTask):
             environment,
             _json_format.MessageToDict(spark_job),
         )
-
-    @property
-    def container(self):
-        """
-        If not None, the target of execution should be a container.
-        :rtype: Container
-        """
-
-        # Find task_name
-        task_module = _importlib.import_module(self.instantiated_in)
-        for k in dir(task_module):
-            if getattr(task_module, k) is self:
-                task_name = k
-                break
-
-        self._container._args = [
-                "execute_spark_task",
-                "--task-module",
-                self.instantiated_in,
-                "--task-name",
-                task_name,
-                "--inputs",
-                "{{.input}}",
-                "--output-prefix",
-                "{{.outputPrefix}}"]
-        return self._container
 
     def _get_container_definition(
             self,
