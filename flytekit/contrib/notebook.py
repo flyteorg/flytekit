@@ -11,7 +11,7 @@ from pyspark import SparkConf, SparkContext
 import sys as _sys
 import six as _six
 from flytekit import __version__
-from flytekit.bin import spark_executor
+from flytekit.bin import entrypoint as _entrypoint
 from flytekit.sdk.types import Types as _Types
 from flytekit.common.types import helpers as _type_helpers, primitives as _p
 from flytekit.common import constants as _constants, sdk_bases as _sdk_bases, interface as _interface2
@@ -460,7 +460,7 @@ class SdkNotebookSparkTask(SdkNotebookTask):
             environment=None,
     ):
 
-        spark_exec_path = _os.path.abspath(spark_executor.__file__)
+        spark_exec_path = _os.path.abspath(_entrypoint.__file__)
         if spark_exec_path.endswith('.pyc'):
             spark_exec_path = spark_exec_path[:-1]
 
