@@ -22,6 +22,8 @@ from flytekit.models import literals as _literal_models, task as _task_models, i
 from flytekit.common.types.helpers import pack_python_std_map_to_literal_map as _packer
 from flytekit.engines import loader as _engine_loader
 import inspect as _inspect
+from flytekit.sdk.spark_types import SparkType as _spark_type
+
 
 type_map = {
     int: _p.Integer,
@@ -176,6 +178,7 @@ class SdkNotebookTask(
                     'python-notebook'
                 ),
                 timeout,
+                False,
                 _literal_models.RetryStrategy(retries),
                 discovery_version,
                 deprecated
@@ -487,6 +490,8 @@ class SdkNotebookSparkTask(SdkNotebookTask):
 
             spark_job = _task_models.SparkJob(
                 spark_conf=spark_conf,
+                main_class= "",
+                spark_type= _spark_type.PYTHON,
                 hadoop_conf={},
                 application_file="local://" + spark_exec_path,
                 executor_path=_sys.executable,
