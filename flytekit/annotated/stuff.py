@@ -15,6 +15,10 @@ from flytekit.models import interface as _interface_models, literals as _literal
 from flytekit.models import task as _task_model, types as _type_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
 
+from flytekit import logger
+
+logger.setLevel(10)
+
 
 class SdkNodeWrapper(object):
     def __init__(self, output_name: str, sdk_node: _nodes.SdkNode):
@@ -34,28 +38,64 @@ class Workflow(object):
 
     def __call__(self, *args, **kwargs):
         if CONFIGURATION_SINGLETON.x == 1:
-            if len(kwargs) > 0:
+            if len(args) > 0:
                 raise Exception('not allowed')
 
             print(f"compilation mode. Args are: {args}")
             print(f"Locals: {locals()}")
 
-            # Iterate through nodes...
-
         else:
+            # Can we relax this in the future?  People are used to this right now, so it's okay.
+            if len(args) > 0:
+                raise Exception('When using the workflow decorator, all inputs must be specified with kwargs only')
+
             return self._workflow_function(*args, **kwargs)
+
+
+class WorkflowOutputs(object):
+    def __init__(self, *args, **kwargs):
+        if len(kwargs) > 0:
+            raise Exception("nope, can't do this")
+        self._outputs = args
 
 
 def workflow(
         _workflow_function=None,
+        outputs: List[str]=None
 ):
+    # Unlike for tasks, where we can determine the entire structure of the task by looking at the function's signature,
+    # workflows need to have the body of the function itself run at module-load time. This is because the body of the
+    # workflow is what expresses the workflow structure.
     def wrapper(fn):
-        interface = get_interface_from_task_info(fn.__annotations__, outputs or [])
+        old_setting = CONFIGURATION_SINGLETON.x
+        CONFIGURATION_SINGLETON.x = 1
+        output_names = outputs or []
 
-        task_instance = PythonTask(fn, interface, metadata, outputs: List[str], task_obj)
-        task_instance.id = _identifier_model.Identifier(_identifier_model.ResourceType.TASK, "proj", "dom", "blah", "1")
+        task_annotations = fn.__annotations__
+        inputs = {k: v for k, v in task_annotations.items() if k != 'return'}
 
-        return task_instance
+        # Create inputs, just inputs. Outputs need to come later.
+        inputs_map = get_variable_map(inputs)
+
+        # Create promises out of all the inputs. Check for defaults in the function definition.
+
+
+
+        # Then providing the inputs if any, call the function, which is expected to return a WorkflowOutputs object
+        workflow_outputs: WorkflowOutputs
+
+        # Fill in call args later - for now this only works for workflows with no inputs
+        workflow_outputs = fn()
+
+        # Iterate through nodes returned and assign names.
+        for out in workflow_outputs:
+            logger.debug(f"Got output wrapper: {out}")
+
+        workflow_instance = Workflow(fn)
+        workflow_instance.id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW, "proj", "dom", "moreblah", "1")
+
+        CONFIGURATION_SINGLETON.x = old_setting
+        return workflow_instance
 
     if _workflow_function:
         return wrapper(_workflow_function)
@@ -66,7 +106,7 @@ def workflow(
 # Has Python in the name because this is the least abstract task. It will have access to the loaded Python function
 # itself if run locally, so it will always be a Python task.
 # This is analagous to the current SdkRunnableTask. Need to analyze the benefits of duplicating the class versus
-# adding to it.
+# adding to it. Also thinking that the relationship to SdkTask should be a has one relationship rather than an is one.
 class PythonTask(object):
     task_type = _common_constants.SdkTaskType.PYTHON_TASK
 
@@ -107,7 +147,7 @@ class PythonTask(object):
                 sdk_task=self
             )
 
-            if len(self._outputs > 1):
+            if len(self._outputs) > 1:
                 # Why do we need to do this? Just for proper binding downstream, nothing else.
                 wrapped_nodes = [SdkNodeWrapper(output_name=self._outputs[i], sdk_node=sdk_node)
                                  for i in range(0, len(self._outputs))]
@@ -177,7 +217,7 @@ def task(
 
         interface = get_interface_from_task_info(fn.__annotations__, outputs or [])
 
-        task_instance = PythonTask(fn, interface, metadata, outputs: List[str], task_obj)
+        task_instance = PythonTask(fn, interface, metadata, outputs, task_obj)
         task_instance.id = _identifier_model.Identifier(_identifier_model.ResourceType.TASK, "proj", "dom", "blah", "1")
 
         return task_instance

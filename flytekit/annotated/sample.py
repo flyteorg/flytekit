@@ -1,4 +1,4 @@
-from flytekit.annotated.stuff import task
+from flytekit.annotated.stuff import task, workflow, WorkflowOutputs
 from typing import List
 # from flytekit.annotated.code import *
 #
@@ -22,7 +22,7 @@ def inverse_fn(x: int) -> int:
 
 
 # @workflow
-# def workflow(in1: datetime.datetime, in2: int) -> flyte.Workflow:
+# def workflow(in1: datetime.datetime, in2: int) -> WorkflowOutputs:
 #     a = task1(in1)
 #     b = task2(in2, a)
 #     c = task3(task1(b), a, 'hello')
@@ -30,7 +30,7 @@ def inverse_fn(x: int) -> int:
 #     # This is important - when we're constructing the workflow, we only have access to the things that are passed
 #     # in. Will we ever need access to anything not available in the workflow decorator, or in the workflow const
 #     # What class is this producing vs what the decorator is producing?
-#     return flyte.Workflow(b, c)
+#     return WorkflowOutputs(b, c)
 
 
 # @workflow
@@ -47,8 +47,14 @@ def inverse_fn(x: int) -> int:
 
 @task(outputs=['s_out'])
 def x(s: int) -> int:
-    y=3
-    return s, y
+    return s + 1
+
+
+@workflow
+def my_workflow() -> WorkflowOutputs:
+    a = x(s=3)
+    b = x(s=a)
+    return WorkflowOutputs(b)
 
 
 # @task(outputs=['list_of_ints', 'nested_list_of_strings'])

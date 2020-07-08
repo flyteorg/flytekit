@@ -1,4 +1,4 @@
-from flytekit.annotated.sample import x
+from flytekit.annotated.sample import x, my_workflow
 from flytekit.configuration.common import CONFIGURATION_SINGLETON
 
 
@@ -20,3 +20,6 @@ def test_mcds():
     c = add_one(a=1)
     x = 5
 
+
+def test_www():
+    x = my_workflow()
