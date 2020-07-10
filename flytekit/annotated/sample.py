@@ -35,7 +35,7 @@ def inverse_fn(x: int) -> int:
 
 # @workflow
 # def BranchNodeExample():
-#    ...
+#    ...zz
 #    t1 = task1(x)
 #    t2 = flyte.
 #    if (t1.v == "val1", then=task2(t1.j)).  # v has to be type str.
@@ -50,7 +50,7 @@ def x(s: int) -> int:
     return s + 1
 
 
-@workflow
+@workflow(outputs=["real_b"])
 def my_workflow() -> WorkflowOutputs:
     a = x(s=3)
     b = x(s=a)

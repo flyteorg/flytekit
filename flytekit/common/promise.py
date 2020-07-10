@@ -106,7 +106,7 @@ class Input(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.Pa
     def promote_from_model(cls, model):
         """
         :param flytekit.models.interface.Parameter model:
-        :rtype: Parameter
+        :rtype: Input
         """
         sdk_type = _type_helpers.get_sdk_type_from_literal_type(model.var.type)
 

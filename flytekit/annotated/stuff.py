@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import datetime as _datetime
 from typing import List, Dict, Tuple
 
@@ -14,10 +15,23 @@ from flytekit.configuration.common import CONFIGURATION_SINGLETON
 from flytekit.models import interface as _interface_models, literals as _literal_models
 from flytekit.models import task as _task_model, types as _type_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
+from flytekit.common.promise import Input as _WorkflowInput
+from flytekit.common.workflow import Output as _WorkflowOutput
+from flytekit.common.types import helpers as _type_helpers
 
 from flytekit import logger
 
 logger.setLevel(10)
+
+
+# from google
+def get_default_args(func):
+    signature = inspect.signature(func)
+    return {
+        k: v.default
+        for k, v in signature.parameters.items()
+        if v.default is not inspect.Parameter.empty
+    }
 
 
 class SdkNodeWrapper(object):
@@ -44,6 +58,8 @@ class Workflow(object):
             print(f"compilation mode. Args are: {args}")
             print(f"Locals: {locals()}")
 
+            logger.debug(f"Compiling workflow... ")
+
         else:
             # Can we relax this in the future?  People are used to this right now, so it's okay.
             if len(args) > 0:
@@ -56,7 +72,7 @@ class WorkflowOutputs(object):
     def __init__(self, *args, **kwargs):
         if len(kwargs) > 0:
             raise Exception("nope, can't do this")
-        self._outputs = args
+        self._args = args
 
 
 def workflow(
@@ -69,27 +85,54 @@ def workflow(
     def wrapper(fn):
         old_setting = CONFIGURATION_SINGLETON.x
         CONFIGURATION_SINGLETON.x = 1
-        output_names = outputs or []
 
         task_annotations = fn.__annotations__
         inputs = {k: v for k, v in task_annotations.items() if k != 'return'}
 
         # Create inputs, just inputs. Outputs need to come later.
+        # interface = get_interface_from_task_info(fn.__annotations__, outputs or [])
+        # inputs_map = interface.inputs
         inputs_map = get_variable_map(inputs)
 
         # Create promises out of all the inputs. Check for defaults in the function definition.
-
-
-
-        # Then providing the inputs if any, call the function, which is expected to return a WorkflowOutputs object
-        workflow_outputs: WorkflowOutputs
+        default_inputs = get_default_args(fn)
+        input_parameters = []
+        for input_name, input_variable_obj in inputs_map.items():
+            # _interface_models.Parameter(var=input_variable_obj, default=None, required=required)
+            # This is a bit annoying. I'd like to work directly with the Parameter model like above , but for now
+            # it's easier to use the promise.Input wrapper
+            # This is also annoying... I already have the literal type, but I have to go back to the SDK type (invoking
+            # the type engine)... in the constructor, it again turns it back to the literal type when creating the
+            # Parameter model.
+            sdk_type = _type_helpers.get_sdk_type_from_literal_type(input_variable_obj.type)
+            logger.debug(f"Converting literal type {input_variable_obj.type} to sdk type {sdk_type}")
+            arg_map = {'default': default_inputs[input_name]} if input_name in default_inputs else {}
+            input_parameters.append(_WorkflowInput(name=input_name, type=sdk_type, **arg_map))
 
         # Fill in call args later - for now this only works for workflows with no inputs
         workflow_outputs = fn()
 
+        # Iterate through the workflow outputs and collect two things
+        #  1. Get the outputs and use them to construct the old Output objects
+        #      outputs can be like 5, or 'hi'
+        #      or promise.NodeOutputs (let's just focus on this one first for POC)
+        #      or Input objects from above in the case of a passthrough value.
+        #  2. Iterate through the outputs and collect all the nodes.
+
+        # After collecting all the nodes, go through and name all of them.
+
         # Iterate through nodes returned and assign names.
-        for out in workflow_outputs:
+        # These should line up with the output
+        i = 0
+        logger.debug(f"Workflow outputs: {outputs}")
+        for out in workflow_outputs._args:
             logger.debug(f"Got output wrapper: {out}")
+            # import ipdb; ipdb.set_trace()
+            # Assume out is an promise.NodeOutput
+            # How do you construct common.workflow.Output objects out of promise.NodeOutput objects
+            logger.debug(f"Var name {out.var} wf output name {outputs[i]} type: {out.sdk_type.to_flyte_literal_type()}")
+            # _WorkflowOutput(out.var, out, interface.ou)
+            i += 1
 
         workflow_instance = Workflow(fn)
         workflow_instance.id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW, "proj", "dom", "moreblah", "1")
@@ -105,7 +148,7 @@ def workflow(
 
 # Has Python in the name because this is the least abstract task. It will have access to the loaded Python function
 # itself if run locally, so it will always be a Python task.
-# This is analagous to the current SdkRunnableTask. Need to analyze the benefits of duplicating the class versus
+# This is analogous to the current SdkRunnableTask. Need to analyze the benefits of duplicating the class versus
 # adding to it. Also thinking that the relationship to SdkTask should be a has one relationship rather than an is one.
 class PythonTask(object):
     task_type = _common_constants.SdkTaskType.PYTHON_TASK
@@ -121,8 +164,6 @@ class PythonTask(object):
         if CONFIGURATION_SINGLETON.x == 1:
             # Instead of calling the function, scan the inputs, if any, construct a node of inputs and outputs
             # But what do you call the output references?  How do you refer to the node name?
-            #
-            print('here')
 
             if len(args) > 0:
                 raise _user_exceptions.FlyteAssertion(
@@ -147,13 +188,20 @@ class PythonTask(object):
                 sdk_task=self
             )
 
+            from flytekit.common.nodes import OutputParameterMapper
+
+            ppp = OutputParameterMapper(self.interface.outputs, sdk_node)
+            # Don't print this, it'll crash cuz upstream node ids are all None
+
             if len(self._outputs) > 1:
                 # Why do we need to do this? Just for proper binding downstream, nothing else.
-                wrapped_nodes = [SdkNodeWrapper(output_name=self._outputs[i], sdk_node=sdk_node)
-                                 for i in range(0, len(self._outputs))]
+                # wrapped_nodes = [SdkNodeWrapper(output_name=self._outputs[i], sdk_node=sdk_node)
+                #                  for i in range(0, len(self._outputs))]
+                wrapped_nodes = [ppp[self._outputs[i]] for i in range(0, len(self._outputs))]
                 return tuple(wrapped_nodes)
             else:
-                return SdkNodeWrapper(output_name=self._outputs[0], sdk_node=sdk_node)
+                # return SdkNodeWrapper(output_name=self._outputs[0], sdk_node=sdk_node)
+                return ppp[self._outputs[0]]
 
         else:
             return self._task_function(*args, **kwargs)
@@ -187,6 +235,7 @@ def task(
         environment=None,
 ):
     def wrapper(fn):
+        # Just saving everything as a hash for now, will figure out what to do with this in the future.
         task_obj = {}
         task_obj['task_type'] = _common_constants.SdkTaskType.PYTHON_TASK,
         task_obj['retries'] = retries,
@@ -218,6 +267,9 @@ def task(
         interface = get_interface_from_task_info(fn.__annotations__, outputs or [])
 
         task_instance = PythonTask(fn, interface, metadata, outputs, task_obj)
+        # TODO: One of the things I want to make sure to do is better naming support. At this point, we should already
+        #       be able to determine the name of the task right? Can anyone think of situations where we can't?
+        #       Where does the current instance tracker come into play?
         task_instance.id = _identifier_model.Identifier(_identifier_model.ResourceType.TASK, "proj", "dom", "blah", "1")
 
         return task_instance
@@ -269,6 +321,9 @@ def get_variable_map_from_lists(variable_names: List[str], python_types: Tuple[t
     return get_variable_map(dict(zip(variable_names, python_types)))
 
 
+# One of the things I want to revisit is the concept of SdkTypes. It's an intermediate layer between the IDL types and
+# Python types. I feel like things will be simpler if we just get rid of it. I don't really understand why it's
+# necessary.
 SIMPLE_TYPE_LOOKUP_TABLE: Dict[type, _type_models.LiteralType] = {
     int: _primitives.Integer.to_flyte_literal_type(),
     float: _primitives.Float.to_flyte_literal_type(),
@@ -281,8 +336,6 @@ SIMPLE_TYPE_LOOKUP_TABLE: Dict[type, _type_models.LiteralType] = {
 
 
 def get_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interface_models.Variable]:
-    # print(f"var type map {variable_map}")
-    # print('-------------')
     res = {}
     for k, v in variable_map.items():
         if v not in SIMPLE_TYPE_LOOKUP_TABLE:

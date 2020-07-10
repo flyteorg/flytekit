@@ -147,6 +147,8 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
         elif sdk_launch_plan is not None:
             workflow_node = _component_nodes.SdkWorkflowNode(sdk_launch_plan=sdk_launch_plan)
 
+        # TODO: this calls the constructor which means it will set all the upstream node ids to None if at the time of
+        #       this instantiation, the upstream nodes have not had their nodes assigned yet.
         super(SdkNode, self).__init__(
             id=_dnsify(id) if id else None,
             metadata=metadata,

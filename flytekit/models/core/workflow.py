@@ -234,6 +234,7 @@ class Node(_common.FlyteIdlEntity):
         self._metadata = metadata
         self._inputs = inputs
         self._upstream_node_ids = upstream_node_ids
+        # TODO: For proper graph handling, we need to keep track of the node objects themselves, not just the node IDs
         self._output_aliases = output_aliases
         self._task_node = task_node
         self._workflow_node = workflow_node
@@ -268,7 +269,7 @@ class Node(_common.FlyteIdlEntity):
     @property
     def upstream_node_ids(self):
         """
-        [Optional] Specifies execution depdendency for this node ensuring it will
+        [Optional] Specifies execution dependency for this node ensuring it will
         only get scheduled to run after all its upstream nodes have completed. This node will have
         an implicit dependency on any node that appears in inputs field.
         :rtype: list[Text]
@@ -507,9 +508,12 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
         :rtype: WorkflowMetadata
         """
         return cls(
-            queuing_budget=pb2_object.queuing_budget.ToTimedelta() if pb2_object.queuing_budget else None,
-            on_failure=pb2_object.on_failure if pb2_object.on_failure else WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
+            queuing_budget=pb2_object.queuing_budget.ToTimedelta() if pb2_object.HasAttribute(
+                "queuing_budget") else None,
+            on_failure=pb2_object.on_failure if pb2_object.HasAttribute(
+                "on_failure") else WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
         )
+
 
 class WorkflowMetadataDefaults(_common.FlyteIdlEntity):
 
