@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import logging as _logging
 import os as _os
 import six as _six
 
@@ -16,8 +17,12 @@ def set_flyte_config_file(config_file_path):
     import flytekit.configuration.internal as _internal
     if config_file_path is not None:
         config_file_path = _os.path.abspath(config_file_path)
-        _os.environ[_internal.CONFIGURATION_PATH.env_var] = config_file_path
+        if _pathlib.Path(config_file_path).is_file():
+            _os.environ[_internal.CONFIGURATION_PATH.env_var] = config_file_path
+            return
+        _logging.warning("Invalid flyte config_file_path {} specified.".format(config_file_path))
     elif _internal.CONFIGURATION_PATH.env_var in _os.environ:
+        _logging.debug("Deleting configuration path {} from env".format(_internal.CONFIGURATION_PATH.env_var))
         del _os.environ[_internal.CONFIGURATION_PATH.env_var]
     _common.CONFIGURATION_SINGLETON.reset_config(config_file_path)
 
