@@ -390,7 +390,8 @@ class _SchemaBackingMpBlob(_blob_impl.MultiPartBlob):
                 )
             self._directory = _utils.AutoDeletingTempDir(
                 _uuid.uuid4().hex,
-                tmp_dir=_data_proxy.LocalWorkingDirectoryContext.get().name
+                # tmp_dir=_data_proxy.LocalWorkingDirectoryContext.get().name
+                tmp_dir='/var/tmp',
             )
             self._is_managed = True
             self._directory.__enter__()
