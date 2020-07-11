@@ -1,25 +1,24 @@
 from __future__ import annotations
 
-import inspect
 import datetime as _datetime
+import inspect
 from typing import List, Dict, Tuple
 
+from flytekit import logger
 from flytekit.common import constants as _common_constants
 from flytekit.common import interface
 from flytekit.common import (
     nodes as _nodes
 )
+from flytekit.common.nodes import OutputParameterMapper
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.types import primitives as _primitives
+from flytekit.common.promise import Input as _WorkflowInput, NodeOutput as _NodeOutput
+from flytekit.common.types import primitives as _primitives, helpers as _type_helpers
+from flytekit.common.workflow import Output as _WorkflowOutput
 from flytekit.configuration.common import CONFIGURATION_SINGLETON
 from flytekit.models import interface as _interface_models, literals as _literal_models
 from flytekit.models import task as _task_model, types as _type_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
-from flytekit.common.promise import Input as _WorkflowInput
-from flytekit.common.workflow import Output as _WorkflowOutput
-from flytekit.common.types import helpers as _type_helpers
-
-from flytekit import logger
 
 logger.setLevel(10)
 
@@ -130,8 +129,11 @@ def workflow(
             # import ipdb; ipdb.set_trace()
             # Assume out is an promise.NodeOutput
             # How do you construct common.workflow.Output objects out of promise.NodeOutput objects
+            # After POC see what we can do about this, Output is just a combination of a BindingData, a Variable,
+            # and a name.
             logger.debug(f"Var name {out.var} wf output name {outputs[i]} type: {out.sdk_type.to_flyte_literal_type()}")
-            # _WorkflowOutput(out.var, out, interface.ou)
+            logger.debug(f"Creating wf Output object with name, {out.var} wf output name {outputs[i]} type: {out.sdk_type.to_flyte_literal_type()}")
+            _WorkflowOutput(out.var, out, out.sdk_type)
             i += 1
 
         workflow_instance = Workflow(fn)
@@ -175,28 +177,37 @@ class PythonTask(object):
             #       function.
             bindings, upstream_nodes = self.interface.create_bindings_for_inputs(kwargs)
 
-            # TODO: Return multiple versions of the _same_ node, but with different output names
+            # Set upstream names. So for instance if we have
+            # (in a workflow...)
+            #     a = t1()  # This produces a node
+            #     b = t2(a)  # When we're in b's __call__ we realize that a is an upstream node, so move up the stack
+            #                # to find the name 'a'
+            for n in upstream_nodes:
+                if n._id is None:
+                    logger.debug(f"Upstream node {n} is still missing a text id, moving up the call stack to find")
+                    n._id = get_earliest_promise_name(n)
+
             # TODO: Make the metadata name the name of the (function), there's no reason not to use it for that.
             # There is no reason to ever assign a random node id (at least in a non-dynamic context), so we leave it
             # empty for now.
             sdk_node = _nodes.SdkNode(
                 id=None,
-                metadata=_workflow_model.NodeMetadata("", self.metadata.timeout, self.metadata.retries,
+                metadata=_workflow_model.NodeMetadata(self._task_function.__name__, self.metadata.timeout, self.metadata.retries,
                                                       self.metadata.interruptible),
                 bindings=sorted(bindings, key=lambda b: b.var),
                 upstream_nodes=upstream_nodes,
                 sdk_task=self
             )
 
-            from flytekit.common.nodes import OutputParameterMapper
-
+            # TODO: Return multiple versions of the _same_ node, but with different output names. This is what this
+            #       OutputParameterMapper does for us, but should we try to move away from it?
+            #       wrapped_nodes = [SdkNodeWrapper(output_name=self._outputs[i], sdk_node=sdk_node)
+            #                           for i in range(0, len(self._outputs))]
             ppp = OutputParameterMapper(self.interface.outputs, sdk_node)
             # Don't print this, it'll crash cuz upstream node ids are all None
 
             if len(self._outputs) > 1:
                 # Why do we need to do this? Just for proper binding downstream, nothing else.
-                # wrapped_nodes = [SdkNodeWrapper(output_name=self._outputs[i], sdk_node=sdk_node)
-                #                  for i in range(0, len(self._outputs))]
                 wrapped_nodes = [ppp[self._outputs[i]] for i in range(0, len(self._outputs))]
                 return tuple(wrapped_nodes)
             else:
@@ -344,3 +355,24 @@ def get_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interface_mode
         res[k] = _interface_models.Variable(type=flyte_literal_type, description=k)
 
     return res
+
+
+def get_earliest_promise_name(node_object):
+    frame = inspect.currentframe()
+    var_name = None
+
+    while frame:
+        frame_locals = {k: v for k, v in frame.f_locals.items()}
+        # print('++++++++++++++++===')
+        # print(frame_locals)
+        # print('++++++++++++++++===-----------------')
+        # import ipdb; ipdb.set_trace()
+        for k, v in frame_locals.items():
+            if isinstance(v, _NodeOutput):
+                if v.sdk_node == node_object:
+                    print(f"Got key {k} at {frame.f_lineno}")
+                    var_name = k
+        frame = frame.f_back
+
+    logger.debug(f"For node {node_object} returning text label {var_name}")
+    return var_name
