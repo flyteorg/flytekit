@@ -24,7 +24,7 @@ myuid=$(id -u)
 mygid=$(id -g)
 # turn off -e for getent because it will return error code in anonymous uid case
 set +e
-uidentry=$(getent passwd "$myuid")
+uidentry=$(getent passwd $myuid)
 set -e
 
 # If there is no passwd entry for the container UID, attempt to create one
@@ -88,7 +88,7 @@ case "$SPARK_K8S_CMD" in
       "$SPARK_HOME/bin/spark-submit"
       --conf "spark.driver.bindAddress=$SPARK_DRIVER_BIND_ADDRESS"
       --deploy-mode client
-      "$@" "$PYSPARK_PRIMARY" "$PYSPARK_ARGS"
+      "$@" $PYSPARK_PRIMARY $PYSPARK_ARGS
     )
     ;;
     driver-r)
@@ -96,22 +96,22 @@ case "$SPARK_K8S_CMD" in
       "$SPARK_HOME/bin/spark-submit"
       --conf "spark.driver.bindAddress=$SPARK_DRIVER_BIND_ADDRESS"
       --deploy-mode client
-      "$@" "$R_PRIMARY" "$R_ARGS"
+      "$@" $R_PRIMARY $R_ARGS
     )
     ;;
   executor)
     CMD=(
-      "${JAVA_HOME}"/bin/java
+      ${JAVA_HOME}/bin/java
       "${SPARK_EXECUTOR_JAVA_OPTS[@]}"
-      -Xms"$SPARK_EXECUTOR_MEMORY"
-      -Xmx"$SPARK_EXECUTOR_MEMORY"
+      -Xms$SPARK_EXECUTOR_MEMORY
+      -Xmx$SPARK_EXECUTOR_MEMORY
       -cp "$SPARK_CLASSPATH"
       org.apache.spark.executor.CoarseGrainedExecutorBackend
-      --driver-url "$SPARK_DRIVER_URL"
-      --executor-id "$SPARK_EXECUTOR_ID"
-      --cores "$SPARK_EXECUTOR_CORES"
-      --app-id "$SPARK_APPLICATION_ID"
-      --hostname "$SPARK_EXECUTOR_POD_IP"
+      --driver-url $SPARK_DRIVER_URL
+      --executor-id $SPARK_EXECUTOR_ID
+      --cores $SPARK_EXECUTOR_CORES
+      --app-id $SPARK_APPLICATION_ID
+      --hostname $SPARK_EXECUTOR_POD_IP
     )
     ;;
 
