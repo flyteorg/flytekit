@@ -19,6 +19,9 @@
 # echo commands to the terminal output
 set -ex
 
+
+# DEPRECATED. PLEASE USE /opt/entrypoint.sh installed via flytekit_install_spark.sh
+
 # Check whether there is a passwd entry for the container UID
 myuid=$(id -u)
 mygid=$(id -g)
@@ -120,5 +123,4 @@ case "$SPARK_K8S_CMD" in
     exit 1
 esac
 
-# Execute the container CMD under tini for better hygiene
 exec "${CMD[@]}"
