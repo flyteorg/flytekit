@@ -117,5 +117,5 @@ def workflow(nodes, inputs=None, outputs=None, cls=None, on_failure=None):
         inputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(inputs or {}))],
         outputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(outputs or {}))],
         nodes=[v.assign_id_and_return(k) for k, v in sorted(_six.iteritems(nodes))],
-        metadata=_common_workflow._workflow_models.WorkflowMetadata(on_failure=on_failure)),
+        metadata=_common_workflow._workflow_models.WorkflowMetadata(on_failure=on_failure))
     return wf
