@@ -14,12 +14,13 @@ from flytekit.common.nodes import OutputParameterMapper
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.promise import Input as _WorkflowInput, NodeOutput as _NodeOutput
 from flytekit.common.types import primitives as _primitives, helpers as _type_helpers
-from flytekit.common.workflow import Output as _WorkflowOutput
+from flytekit.common.workflow import Output as _WorkflowOutput, SdkWorkflow as _SdkWorkflow
 from flytekit.configuration.common import CONFIGURATION_SINGLETON
 from flytekit.models import interface as _interface_models, literals as _literal_models
 from flytekit.models import task as _task_model, types as _type_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
 
+# Set this to 11 or higher if you don't want to see debug output
 logger.setLevel(10)
 
 
@@ -73,6 +74,36 @@ class WorkflowOutputs(object):
             raise Exception("nope, can't do this")
         self._args = args
 
+        if CONFIGURATION_SINGLETON.x == 1:
+            # TODO: POC assumes that all args are promise.NodeOutputs - fix this
+            # We need to go through the same exercise as for tasks. In fact, this is the reason why we need to have the
+            # WorkflowOutputs object at all... it's just a way to inject code before the workflow function returns. The
+            # code that we need to inject is this right here. We need to loop through all the nodes to see if any are
+            # not set. For instance, given the same example:
+            # (in a workflow...)
+            #     a = t1()  # This produces a promise.NodeOutput which contains a node
+            #     b = t2(a)
+            #     return WorkflowOutputs(b)
+            # the 'a' node should have it's id already by virtue of being handled in t2's call. However, 'b' itself
+            # isn't assigned yet. This will loop through and make sure that they're all assigned.
+            # Unlike in the task case however, if it doesn't find a node name we will raise an Exception. For now at
+            # least, we're not going to allow people to write
+            #    return WorkflowOutputs(t2())
+            for promise_node_output in args:
+                n = promise_node_output.sdk_node
+                if n.id is None:
+                    # Should we do this?  Or should we just go back one stack frame, and then assume it's always going
+                    # to be the workflow definition function? That way, we can basically do what we do now, which is
+                    # to do a dir() on the workflow class, and detect all the members.
+                    node_id = get_earliest_promise_name(n)
+                    if node_id is None:
+                        raise Exception(f"nope can't be none {n}")
+                    n._id = node_id
+
+                # Now that we have ids for the top level nodes, let's go down and recursively fill in any that are
+                # still missing an id
+                fill_in_upstream_nodes(n)
+
 
 def workflow(
         _workflow_function=None,
@@ -118,23 +149,33 @@ def workflow(
         #      or Input objects from above in the case of a passthrough value.
         #  2. Iterate through the outputs and collect all the nodes.
 
-        # After collecting all the nodes, go through and name all of them.
-
-        # Iterate through nodes returned and assign names.
-        # These should line up with the output
-        i = 0
+        workflow_output_objs = []
+        all_nodes = []
+        # These should line up with the output input argument
         logger.debug(f"Workflow outputs: {outputs}")
-        for out in workflow_outputs._args:
+        for i, out in enumerate(workflow_outputs._args):
             logger.debug(f"Got output wrapper: {out}")
-            # import ipdb; ipdb.set_trace()
-            # Assume out is an promise.NodeOutput
-            # How do you construct common.workflow.Output objects out of promise.NodeOutput objects
+            # Assume out is an promise.NodeOutput (for POC)
+            # Here we construct common.workflow.Output objects out of promise.NodeOutput objects
+            # These Output's are basically what users currently write in their workflow classes
             # After POC see what we can do about this, Output is just a combination of a BindingData, a Variable,
             # and a name.
             logger.debug(f"Var name {out.var} wf output name {outputs[i]} type: {out.sdk_type.to_flyte_literal_type()}")
             logger.debug(f"Creating wf Output object with name, {out.var} wf output name {outputs[i]} type: {out.sdk_type.to_flyte_literal_type()}")
-            _WorkflowOutput(out.var, out, out.sdk_type)
-            i += 1
+            workflow_output_objs.append(_WorkflowOutput(outputs[i], out, out.sdk_type))
+
+            # Recursively discover all nodes. The final WorkflowOutput object may have only been called with one node/
+            # output, but there may be a whole bunch more linked to earlier.
+            all_nodes.extend(get_all_upstream_nodes(out.sdk_node))
+            all_nodes.append(out.sdk_node)
+
+        print("+++++++++++++++++++++++++++++++++++++")
+        print(f"Inputs {input_parameters}")
+        print(f"Output objects {workflow_output_objs}")
+        print(f"Nodes {all_nodes}")
+        sdk_workflow = _SdkWorkflow(inputs=input_parameters, outputs=workflow_output_objs, nodes=all_nodes)
+        print(f"SdkWorkflow {sdk_workflow}")
+        print("+++++++++++++++++++++++++++++++++++++")
 
         workflow_instance = Workflow(fn)
         workflow_instance.id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW, "proj", "dom", "moreblah", "1")
@@ -146,6 +187,24 @@ def workflow(
         return wrapper(_workflow_function)
     else:
         return wrapper
+
+
+def fill_in_upstream_nodes(sdk_node: _nodes.SdkNode):
+    if sdk_node.id is None:
+        raise Exception(f"Can't fill in upstream when node given is itself not ID'ed")
+
+    for upstream in sdk_node.upstream_nodes:
+        if upstream._id is None:
+            upstream._id = sdk_node.id + f"-anon_{upstream.metadata.name}"
+        fill_in_upstream_nodes(upstream)
+
+
+def get_all_upstream_nodes(sdk_node: _nodes.SdkNode):
+    res = []
+    res.extend(sdk_node.upstream_nodes)
+    for n in sdk_node.upstream_nodes:
+        res.extend(get_all_upstream_nodes(n))
+    return res
 
 
 # Has Python in the name because this is the least abstract task. It will have access to the loaded Python function
@@ -179,9 +238,11 @@ class PythonTask(object):
 
             # Set upstream names. So for instance if we have
             # (in a workflow...)
-            #     a = t1()  # This produces a node
+            #     a = t1()  # This produces a promise.NodeOutput which contains a node
             #     b = t2(a)  # When we're in b's __call__ we realize that a is an upstream node, so move up the stack
             #                # to find the name 'a'
+            # Note that these upstream_nodes have been unpacked by the create_bindings_for_inputs function to be nodes
+            # and no longer promise.NodeOutputs
             for n in upstream_nodes:
                 if n._id is None:
                     logger.debug(f"Upstream node {n} is still missing a text id, moving up the call stack to find")
@@ -201,10 +262,8 @@ class PythonTask(object):
 
             # TODO: Return multiple versions of the _same_ node, but with different output names. This is what this
             #       OutputParameterMapper does for us, but should we try to move away from it?
-            #       wrapped_nodes = [SdkNodeWrapper(output_name=self._outputs[i], sdk_node=sdk_node)
-            #                           for i in range(0, len(self._outputs))]
             ppp = OutputParameterMapper(self.interface.outputs, sdk_node)
-            # Don't print this, it'll crash cuz upstream node ids are all None
+            # Don't print this, it'll crash cuz sdk_node._upstream_node_ids can be None
 
             if len(self._outputs) > 1:
                 # Why do we need to do this? Just for proper binding downstream, nothing else.
@@ -363,16 +422,15 @@ def get_earliest_promise_name(node_object):
 
     while frame:
         frame_locals = {k: v for k, v in frame.f_locals.items()}
-        # print('++++++++++++++++===')
-        # print(frame_locals)
-        # print('++++++++++++++++===-----------------')
-        # import ipdb; ipdb.set_trace()
         for k, v in frame_locals.items():
             if isinstance(v, _NodeOutput):
-                if v.sdk_node == node_object:
+                # Use is here instead of == because we're looking for pointer equality, not value, which for IDL
+                # entities compares the to_flyte_idl() output.  For nodes that have upstream nodes that are still
+                # missing ids, calling to_flyte_idl() throws an Exception.
+                if v.sdk_node is node_object:
                     print(f"Got key {k} at {frame.f_lineno}")
                     var_name = k
         frame = frame.f_back
 
-    logger.debug(f"For node {node_object} returning text label {var_name}")
+    logger.debug(f"For node {node_object.id} returning text label {var_name}")
     return var_name

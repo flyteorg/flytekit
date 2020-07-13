@@ -175,4 +175,5 @@ class NodeOutput(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.Ou
         return self._type
 
     def __repr__(self):
+        # TODO: fix this so that if upstream node ids have any None's in it, this still prints instead of erroring.
         return "NodeOutput({}:{})".format(self.sdk_node, self.var)
