@@ -34,12 +34,7 @@ def get_default_args(func):
     }
 
 
-class SdkNodeWrapper(object):
-    def __init__(self, output_name: str, sdk_node: _nodes.SdkNode):
-        self._sdk_node = sdk_node
-        self._output_name = output_name
-
-
+# Please see the comments on the PythonTask class for additional context. This object is just here as a stand-in?
 class Workflow(object):
     """
     When you assign a name to a node.
@@ -152,6 +147,7 @@ def workflow(
         workflow_output_objs = []
         all_nodes = []
         # These should line up with the output input argument
+        # TODO: Add length checks.
         logger.debug(f"Workflow outputs: {outputs}")
         for i, out in enumerate(workflow_outputs._args):
             logger.debug(f"Got output wrapper: {out}")
@@ -173,6 +169,8 @@ def workflow(
         print(f"Inputs {input_parameters}")
         print(f"Output objects {workflow_output_objs}")
         print(f"Nodes {all_nodes}")
+        # Creating one of the current SdkWorkflow objects as an example. This can be a part of this new class, or we
+        # can just use SdkWorkflows and somehow move this logic inside.
         sdk_workflow = _SdkWorkflow(inputs=input_parameters, outputs=workflow_output_objs, nodes=all_nodes)
         print(f"SdkWorkflow {sdk_workflow}")
         print("+++++++++++++++++++++++++++++++++++++")
@@ -190,6 +188,11 @@ def workflow(
 
 
 def fill_in_upstream_nodes(sdk_node: _nodes.SdkNode):
+    """
+    Recursively fill in missing node IDs, depth-first.
+    :param sdk_node:
+    :return:
+    """
     if sdk_node.id is None:
         raise Exception(f"Can't fill in upstream when node given is itself not ID'ed")
 
@@ -200,6 +203,9 @@ def fill_in_upstream_nodes(sdk_node: _nodes.SdkNode):
 
 
 def get_all_upstream_nodes(sdk_node: _nodes.SdkNode):
+    """
+    Recursively get all the upstream nodes for a node, depth-first.
+    """
     res = []
     res.extend(sdk_node.upstream_nodes)
     for n in sdk_node.upstream_nodes:
@@ -211,6 +217,12 @@ def get_all_upstream_nodes(sdk_node: _nodes.SdkNode):
 # itself if run locally, so it will always be a Python task.
 # This is analogous to the current SdkRunnableTask. Need to analyze the benefits of duplicating the class versus
 # adding to it. Also thinking that the relationship to SdkTask should be a has one relationship rather than an is one.
+# I'm not attached to this class at all, it's just here as a stand-in. Everything in this PR is subject to change.
+#
+# I think the class layers are IDL -> Model class -> SdkBlah class. While the model and generated-IDL classes
+# obviously encapsulate the IDL, the SdkTask/Workflow/Launchplan/Node classes should encapsulate the control plane.
+# That is, all the control plane interactions we wish to build should belong there. (I think this is how it's done
+# already.)
 class PythonTask(object):
     task_type = _common_constants.SdkTaskType.PYTHON_TASK
 
@@ -222,10 +234,8 @@ class PythonTask(object):
         self._outputs = outputs
 
     def __call__(self, *args, **kwargs):
+        # Instead of calling the function, scan the inputs, if any, construct a node of inputs and outputs
         if CONFIGURATION_SINGLETON.x == 1:
-            # Instead of calling the function, scan the inputs, if any, construct a node of inputs and outputs
-            # But what do you call the output references?  How do you refer to the node name?
-
             if len(args) > 0:
                 raise _user_exceptions.FlyteAssertion(
                     "When adding a task as a node in a workflow, all inputs must be specified with kwargs only.  We "
@@ -248,9 +258,9 @@ class PythonTask(object):
                     logger.debug(f"Upstream node {n} is still missing a text id, moving up the call stack to find")
                     n._id = get_earliest_promise_name(n)
 
-            # TODO: Make the metadata name the name of the (function), there's no reason not to use it for that.
-            # There is no reason to ever assign a random node id (at least in a non-dynamic context), so we leave it
-            # empty for now.
+            # TODO: Make the metadata name the full name of the (function)?
+            # There should be no reason to ever assign a random node id (at least in a non-dynamic context), so we
+            # leave it empty for now.
             sdk_node = _nodes.SdkNode(
                 id=None,
                 metadata=_workflow_model.NodeMetadata(self._task_function.__name__, self.metadata.timeout, self.metadata.retries,
@@ -263,14 +273,14 @@ class PythonTask(object):
             # TODO: Return multiple versions of the _same_ node, but with different output names. This is what this
             #       OutputParameterMapper does for us, but should we try to move away from it?
             ppp = OutputParameterMapper(self.interface.outputs, sdk_node)
-            # Don't print this, it'll crash cuz sdk_node._upstream_node_ids can be None
+            # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
             if len(self._outputs) > 1:
-                # Why do we need to do this? Just for proper binding downstream, nothing else.
+                # Why do we need to do this? Just for proper binding downstream, nothing else. This is
+                # basically what happens when you call my_task_node.outputs.foo, but we're doing it for the user.
                 wrapped_nodes = [ppp[self._outputs[i]] for i in range(0, len(self._outputs))]
                 return tuple(wrapped_nodes)
             else:
-                # return SdkNodeWrapper(output_name=self._outputs[0], sdk_node=sdk_node)
                 return ppp[self._outputs[0]]
 
         else:
@@ -379,8 +389,8 @@ def get_interface_from_task_info(task_annotations: Dict[str, type], output_names
 
     inputs_map = get_variable_map(inputs)
     outputs_map = get_variable_map_from_lists(output_names, return_types)
-    print(f"Inputs map is {inputs_map}")
-    print(f"Outputs map is {outputs_map}")
+    # print(f"Inputs map is {inputs_map}")
+    # print(f"Outputs map is {outputs_map}")
     interface_model = _interface_models.TypedInterface(inputs_map, outputs_map)
 
     # Maybe in the future we can just use the model
@@ -417,10 +427,15 @@ def get_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interface_mode
 
 
 def get_earliest_promise_name(node_object):
+    """
+    This is the hackiest bit of this whole file. We walk up the stack, looking at the local variables defined at each
+    layer, in order to detect what variable an object was assigned to. See the call-site for more comments.
+    """
     frame = inspect.currentframe()
     var_name = None
 
     while frame:
+        # Have to make a copy because otherwise you get a iteration size changed in place error.
         frame_locals = {k: v for k, v in frame.f_locals.items()}
         for k, v in frame_locals.items():
             if isinstance(v, _NodeOutput):
