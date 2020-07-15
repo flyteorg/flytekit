@@ -31,5 +31,7 @@ def test_refresh_credentials_basic(mock_credentials_access, mock_requests):
     os.environ[_CREDENTIALS_SECRET.env_var] = "asdf12345"
 
     mock_client = mock.MagicMock()
+    mock_client.url.return_value = 'flyte.corp.net'
     _refresh_credentials_basic(mock_client)
     mock_client.set_access_token.assert_called_with('abc')
+    mock_credentials_access.get_authorization_endpoints.assert_called_with(mock_client.url)
