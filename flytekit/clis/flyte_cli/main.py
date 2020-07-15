@@ -346,16 +346,8 @@ _optional_principal_option = _click.option(
 _insecure_option = _click.option(
     *_INSECURE_FLAGS,
     is_flag=True,
-    required=False,
-    default=_INSECURE_FLAG,
+    required=True,
     help="Do not use SSL"
-)
-_insecure_optional_option = _click.option(
-    *_INSECURE_FLAGS,
-    is_flag=True,
-    required=False,
-    default=False,
-    help="Do not use SSL communication"
 )
 _urn_option = _click.option(
     "-u", "--urn",
@@ -507,6 +499,13 @@ class _FlyteSubCommand(_click.Command):
                     parent.params[param.name]:
                 prefix_args.append(type(self)._PASSABLE_FLAGS[param.name])
 
+        # This is where we handle the value read from the flyte-cli config file, if any, for the insecure flag.
+        # Previously we tried putting it into the default into the declaration of the option itself, but in click, it
+        # appears that flags operate like toggles. If both the default is true and the flag is passed in the command,
+        # they negate each other and it's as if it's not passed. Here we rectify that.
+        if _INSECURE_FLAG and _INSECURE_FLAGS[0] not in prefix_args:
+            prefix_args.append(_INSECURE_FLAGS[0])
+
         ctx = super(_FlyteSubCommand, self).make_context(cmd_name, prefix_args + args, parent=parent)
         return ctx
 
@@ -543,7 +542,7 @@ class _FlyteSubCommand(_click.Command):
     help="[Optional] The name to pass to the sub-command (if applicable)  If set again in the sub-command, "
          "the sub-command's parameter takes precedence."
 )
-@_insecure_optional_option
+@_insecure_option
 @_click.group("flyte-cli")
 @_click.pass_context
 def _flyte_cli(ctx, host, project, domain, name, insecure):
