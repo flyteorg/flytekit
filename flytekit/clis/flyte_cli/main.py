@@ -455,7 +455,7 @@ _optional_urns_only_option = _click.option(
     help="[Optional] Set the flag if you want to output the urn(s) only. Setting this will override the verbose flag"
 )
 _project_identifier_option = _click.option(
-    '--identifier',
+    '-p', '--identifier',
     required=True,
     type=str,
     help="Unique identifier for the project."
