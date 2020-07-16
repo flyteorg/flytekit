@@ -1087,9 +1087,8 @@ def update_launch_plan(state, host, insecure, urn=None):
 @_principal_option
 @_verbose_option
 @_watch_option
-@_optional_urns_only_option
 @_click.argument('lp_args', nargs=-1, type=_click.UNPROCESSED)
-def execute_launch_plan(project, domain, name, host, insecure, urn, principal, verbose, watch, urns_only, lp_args):
+def execute_launch_plan(project, domain, name, host, insecure, urn, principal, verbose, watch, lp_args):
     """
     Kick off a launch plan. Note that the {project, domain, name} specified in the command line
     will be for the execution.  The project/domain for the launch plan are specified in the urn.
@@ -1104,10 +1103,7 @@ def execute_launch_plan(project, domain, name, host, insecure, urn, principal, v
     These arguments are then collected, and passed into the `lp_args` variable as a Tuple[Text].
     Users should use the get-launch-plan command to ascertain the names of inputs to use.
     """
-    if not urns_only:
-        _welcome_message()
-    else:
-        verbose = False
+    _welcome_message()
 
     with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
         lp_id = _identifier.Identifier.from_python_std(urn)
@@ -1118,15 +1114,10 @@ def execute_launch_plan(project, domain, name, host, insecure, urn, principal, v
         # TODO: Implement label overrides
         # TODO: Implement annotation overrides
         execution = lp.launch_with_literals(project, domain, inputs, name=name)
-        if not urns_only:
-            _click.secho("Launched execution: {}".format(_tt(execution.id)), fg='blue')
-            _click.echo("")
-        else:
-            _click.secho("{}".format(_tt(execution.id)))
+        _click.secho("Launched execution: {}".format(_tt(execution.id)), fg='blue')
+        _click.echo("")
 
         if watch is True:
-            if not urns_only:
-                _click.echo("Watching the execution {} until completion ...".format(_tt(execution.id)))
             execution.wait_for_completion()
 
 
