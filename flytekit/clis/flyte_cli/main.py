@@ -16,7 +16,8 @@ from flytekit.clients import friendly as _friendly_client
 from flytekit.clis.helpers import construct_literal_map_from_variable_map as _construct_literal_map_from_variable_map, \
     construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map, \
     parse_args_into_dict as _parse_args_into_dict
-from flytekit.common import utils as _utils, launch_plan as _launch_plan_common
+from flytekit.common import utils as _utils, launch_plan as _launch_plan_common, \
+    workflow_execution as _workflow_execution_common
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.tasks import task as _tasks_common
 from flytekit.common.types import helpers as _type_helpers
@@ -451,7 +452,7 @@ _optional_urns_only_option = _click.option(
     is_flag=True,
     default=False,
     required=False,
-    help="[Optional] Set the flag if you want to list the urns only"
+    help="[Optional] Set the flag if you want to output the urn(s) only. Setting this will override the verbose flag"
 )
 _project_identifier_option = _click.option(
     '-p', '--identifier',
@@ -470,6 +471,12 @@ _project_description_option = _click.option(
     required=True,
     type=str,
     help="Concise description for the project."
+)
+_watch_option = _click.option(
+    '-w', '--watch',
+    is_flag=True,
+    default=False,
+    help="Set the flag if you want the command to keep watching the execution until its completion"
 )
 
 
@@ -1070,7 +1077,6 @@ def update_launch_plan(state, host, insecure, urn=None):
     else:
         _update_one_launch_plan(urn=urn, host=host, insecure=insecure, state=state)
 
-
 @_flyte_cli.command('execute-launch-plan', cls=_FlyteSubCommand)
 @_project_option
 @_domain_option
@@ -1080,8 +1086,9 @@ def update_launch_plan(state, host, insecure, urn=None):
 @_urn_option
 @_principal_option
 @_verbose_option
+@_watch_option
 @_click.argument('lp_args', nargs=-1, type=_click.UNPROCESSED)
-def execute_launch_plan(project, domain, name, host, insecure, urn, principal, verbose, lp_args):
+def execute_launch_plan(project, domain, name, host, insecure, urn, principal, verbose, watch, lp_args):
     """
     Kick off a launch plan. Note that the {project, domain, name} specified in the command line
     will be for the execution.  The project/domain for the launch plan are specified in the urn.
@@ -1110,12 +1117,38 @@ def execute_launch_plan(project, domain, name, host, insecure, urn, principal, v
         _click.secho("Launched execution: {}".format(_tt(execution.id)), fg='blue')
         _click.echo("")
 
+        if watch is True:
+            execution.wait_for_completion()
+
 
 ########################################################################################################################
 #
 #  Execution Commands
 #
 ########################################################################################################################
+
+
+@_flyte_cli.command('watch-execution', cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+@_urn_option
+def watch_execution(host, insecure, urn):
+    """
+    Wait for an execution to complete.
+
+    e.g.
+        $ flyte-cli -h localhost:30081 watch-execution -u ex:flyteexamples:development:abc123
+    """
+    _welcome_message()
+
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    ex_id = _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
+
+    execution = _workflow_execution_common.SdkWorkflowExecution.promote_from_model(client.get_execution(ex_id))
+
+    _click.echo("Waiting for the execution {} to complete ...".format(_tt(execution.id)))
+    execution.wait_for_completion()
+
 
 @_flyte_cli.command('relaunch-execution', cls=_FlyteSubCommand)
 @_optional_project_option
