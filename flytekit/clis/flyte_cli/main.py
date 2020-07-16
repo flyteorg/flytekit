@@ -1071,6 +1071,18 @@ def update_launch_plan(state, host, insecure, urn=None):
         _update_one_launch_plan(urn=urn, host=host, insecure=insecure, state=state)
 
 
+def _execute_launch_plan(project, domain, name, host, insecure, urn, principal, verbose, lp_args):
+    with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
+        lp_id = _identifier.Identifier.from_python_std(urn)
+        lp = _launch_plan_common.SdkLaunchPlan.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+
+        inputs = _construct_literal_map_from_parameter_map(lp.default_inputs, _parse_args_into_dict(lp_args))
+        # TODO: Implement notification overrides
+        # TODO: Implement label overrides
+        # TODO: Implement annotation overrides
+        return lp.launch_with_literals(project, domain, inputs, name=name)
+
+
 @_flyte_cli.command('execute-launch-plan', cls=_FlyteSubCommand)
 @_project_option
 @_domain_option
@@ -1098,17 +1110,42 @@ def execute_launch_plan(project, domain, name, host, insecure, urn, principal, v
     """
     _welcome_message()
 
-    with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
-        lp_id = _identifier.Identifier.from_python_std(urn)
-        lp = _launch_plan_common.SdkLaunchPlan.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+    execution = _execute_launch_plan(project, domain, name, host, insecure, urn, principal, verbose, lp_args)
+    _click.secho("Launched execution: {}".format(_tt(execution.id)), fg='blue')
+    _click.echo("")
 
-        inputs = _construct_literal_map_from_parameter_map(lp.default_inputs, _parse_args_into_dict(lp_args))
-        # TODO: Implement notification overrides
-        # TODO: Implement label overrides
-        # TODO: Implement annotation overrides
-        execution = lp.launch_with_literals(project, domain, inputs, name=name)
-        _click.secho("Launched execution: {}".format(_tt(execution.id)), fg='blue')
-        _click.echo("")
+
+@_flyte_cli.command('execute-launch-plan-and-wait', cls=_FlyteSubCommand)
+@_project_option
+@_domain_option
+@_optional_name_option
+@_host_option
+@_insecure_option
+@_urn_option
+@_principal_option
+@_verbose_option
+@_click.argument('lp_args', nargs=-1, type=_click.UNPROCESSED)
+def execute_launch_plan_and_wait(project, domain, name, host, insecure, urn, principal, verbose, lp_args):
+    """
+    Kick off a launch plan and wait for the execution to complete. Note that the {project, domain, name} specified
+    in the command line will be for the execution. The project/domain for the launch plan are specified in the urn.
+
+    Use a -- to separate arguments to this cli, and arguments to the launch plan.
+    e.g.
+        $ flyte-cli -h localhost:30081 -p flyteexamples -d development execute-launch-plan-and-wait \
+            --verbose --principal=sdk-demo
+            -u lp:flyteexamples:development:some-workflow:abc123 -- input=hi \
+            other-input=123 moreinput=qwerty
+
+    These arguments are then collected, and passed into the `lp_args` variable as a Tuple[Text].
+    Users should use the get-launch-plan command to ascertain the names of inputs to use.
+    """
+    _welcome_message()
+
+    execution = _execute_launch_plan(project, domain, name, host, insecure, urn, principal, verbose, lp_args)
+    _click.secho("Launched execution: {}".format(_tt(execution.id)), fg='blue')
+    _click.echo("Waiting for the execution to complete ...")
+    execution.wait_for_completion()
 
 
 ########################################################################################################################
