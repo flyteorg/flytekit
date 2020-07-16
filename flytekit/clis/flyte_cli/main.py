@@ -1146,7 +1146,7 @@ def watch_execution(host, insecure, urn):
     Wait for an execution to complete.
 
     e.g.
-        $ flyte-cli -h localhost:30081 wait-for-completion -u ex:flyteexamples:development:abc123
+        $ flyte-cli -h localhost:30081 watch-execution -u ex:flyteexamples:development:abc123
     """
     _welcome_message()
 
