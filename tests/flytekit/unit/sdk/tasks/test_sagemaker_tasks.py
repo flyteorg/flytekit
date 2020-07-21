@@ -1,6 +1,9 @@
 from __future__ import absolute_import
+import json
 from flytekit.sdk.tasks import inputs, outputs
 from flytekit.common.tasks.sagemaker.training_job_task import SdkSimpleTrainingJobTask
+from flytekit.common.tasks.sagemaker.hpo_job_task import SdkSimpleHPOJobTask
+from flytekit.common.tasks.sdk_runnable import SdkRunnableTask
 from flytekit.sdk.types import Types
 from flytekit.common import constants as _common_constants
 # from flytekit.common.tasks import sdk_runnable as _sdk_runnable
@@ -16,6 +19,8 @@ from flytekit.models import literals as _literals, types as _idl_types, \
 from flytekit.models.core import types as _core_types
 from google.protobuf.json_format import ParseDict
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobConfig as _pb2_TrainingJobConfig, StoppingCondition as _pb2_StoppingCondition
+from flyteidl.plugins.sagemaker.parameter_ranges_pb2 import ParameterRanges as _pb2_ParameterRanges
+from flyteidl.plugins.sagemaker.hpo_job_pb2 import HPOJobConfig as _pb2_HPOJobConfig
 from flytekit.sdk import types as _sdk_types
 from flytekit.sdk.sagemaker import types as _sdk_sagemaker_types
 from flytekit.common.tasks.sagemaker import hpo_job_task
@@ -64,7 +69,7 @@ simple_training_job_task = SdkSimpleTrainingJobTask(
     ),
 )
 
-run_train_task = simple_training_job_task(
+train_task_exec = simple_training_job_task(
     train='s3://my-bucket/training.csv',
     validation='s3://my-bucket/validation.csv',
     static_hyperparameters=example_hyperparams,
@@ -74,21 +79,11 @@ run_train_task = simple_training_job_task(
     ).to_flyte_idl(),
 )
 
-simple_xgboost_hpo_job_task = hpo_job_task.SdkSimpleHPOJobTask(
-    training_job=simple_training_job_task,
-    max_number_of_training_jobs=10,
-    max_parallel_training_jobs=5,
-    cache_version='1',
-    retries=2,
-    cacheable=True,
-)
-
-run_train_task._id = _identifier.Identifier(
+train_task_exec._id = _identifier.Identifier(
     _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version")
 
 
 def test_simple_training_job_task():
-    t = type(run_train_task)
     assert isinstance(simple_training_job_task, SdkSimpleTrainingJobTask)
     assert isinstance(simple_training_job_task, _sdk_task.SdkTask)
     assert simple_training_job_task.interface.inputs['train'].description == ''
@@ -117,44 +112,80 @@ def test_simple_training_job_task():
     print(pb2)
 
 
-"""
-@inputs(
-    hyperparameter_ranges=Types.Generic,
+simple_xgboost_hpo_job_task = hpo_job_task.SdkSimpleHPOJobTask(
+    training_job=simple_training_job_task,
+    max_number_of_training_jobs=10,
+    max_parallel_training_jobs=5,
+    cache_version='1',
+    retries=2,
+    cacheable=True,
 )
-@outputs(
-    model=Types.Blob
+
+hpo_task_exec = simple_xgboost_hpo_job_task(
+    train='s3://my-bucket/hpo.csv',
+    validation='s3://my-bucket/hpo.csv',
+    static_hyperparameters=example_hyperparams,
+    stopping_condition=StoppingCondition(
+        max_runtime_in_seconds=43200,
+        max_wait_time_in_seconds=43200,
+    ).to_flyte_idl(),
+    hpo_job_config=HPOJobConfig(
+        hyperparameter_ranges=ParameterRanges(
+            parameter_range_map={
+                "max_depth": IntegerParameterRange(min_value=5, max_value=7,
+                                                   scaling_type=_sdk_sagemaker_types.HyperparameterScalingType.LINEAR),
+            }
+        ),
+        tuning_strategy=_sdk_sagemaker_types.HyperparameterTuningStrategy.BAYESIAN,
+        tuning_objective=HyperparameterTuningObjective(
+            objective_type=_sdk_sagemaker_types.HyperparameterTuningObjectiveType.MINIMIZE,
+            metric_name="validation:error",
+        ),
+        training_job_early_stopping_type=_sdk_sagemaker_types.TrainingJobEarlyStoppingType.AUTO
+    ).to_flyte_idl(),
 )
-@hpojob_task(hpojob_conf={'C': 'D'})
-def default_hpojob_task(wf_params, hjconf, hyperparameter_ranges, model):
-    pass
 
-
-default_hpojob_task._id = _identifier.Identifier(
+simple_xgboost_hpo_job_task._id = _identifier.Identifier(
     _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version")
 
+def test_simple_hpo_job_task():
+    assert isinstance(simple_xgboost_hpo_job_task, SdkSimpleHPOJobTask)
+    assert isinstance(simple_xgboost_hpo_job_task, _sdk_task.SdkTask)
+    # Checking if the input of the underlying SdkTrainingJobTask has been embedded
+    assert simple_training_job_task.interface.inputs['train'].description == ''
+    assert simple_training_job_task.interface.inputs['train'].type == \
+        _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
+    assert simple_training_job_task.interface.inputs['validation'].description == ''
+    assert simple_training_job_task.interface.inputs['validation'].type == \
+        _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
+    assert simple_training_job_task.interface.inputs['static_hyperparameters'].description == ''
+    assert simple_training_job_task.interface.inputs['static_hyperparameters'].type == \
+        _sdk_types.Types.Generic.to_flyte_literal_type()
+    assert simple_training_job_task.interface.inputs['stopping_condition'].type == \
+        _sdk_types.Types.Proto(_pb2_StoppingCondition).to_flyte_literal_type()
 
-def test_simple_training_job_task():
-    assert isinstance(default_hpojob_task, _sagemaker_task.SdkHPOJobTask)
-    assert isinstance(default_hpojob_task, _sdk_runnable.SdkRunnableTask)
-    assert default_hpojob_task.interface.inputs['hyperparameter_ranges'].description == ''
-    assert default_hpojob_task.interface.inputs['hyperparameter_ranges'].type == \
-           _type_models.LiteralType(schema=_type_models.SchemaType)
-    assert default_hpojob_task.interface.outputs['model'].description == ''
-    assert default_hpojob_task.interface.outputs['model'].type == \
-           _type_models.LiteralType(blob=_type_models.LiteralType.blob)
-    assert default_hpojob_task.type == _common_constants.SdkTaskType.SAGEMAKER_HPOJOB_TASK
-    assert default_hpojob_task.task_function_name == 'default_hpojob_task'
-    assert default_hpojob_task.task_module == __name__
-    assert default_hpojob_task.metadata.timeout == _datetime.timedelta(seconds=0)
-    assert default_hpojob_task.metadata.deprecated_error_message == ''
-    assert default_hpojob_task.metadata.discoverable is False
-    assert default_hpojob_task.metadata.discovery_version == ''
-    assert default_hpojob_task.metadata.retries.retries == 0
-    assert len(default_hpojob_task.container.resources.limits) == 0
-    assert len(default_hpojob_task.container.resources.requests) == 0
-    assert default_hpojob_task.custom['hpojobConf']['C'] == 'D'
-    assert default_hpojob_task._get_container_definition().args[0] == 'pyflyte-execute'
+    # Checking if the hpo-specific input is defined
+    assert simple_xgboost_hpo_job_task.interface.inputs['hpo_job_config'].description == ''
+    assert simple_xgboost_hpo_job_task.interface.inputs['hpo_job_config'].type == \
+           _sdk_types.Types.Proto(_pb2_HPOJobConfig).to_flyte_literal_type()
+    assert simple_xgboost_hpo_job_task.interface.outputs['model'].description == ''
+    assert simple_xgboost_hpo_job_task.interface.outputs['model'].type == \
+           _sdk_types.Types.Blob.to_flyte_literal_type()
+    assert simple_xgboost_hpo_job_task.type == _common_constants.SdkTaskType.SAGEMAKER_HPO_JOB_TASK
 
-    pb2 = default_hpojob_task.to_flyte_idl()
+    # Checking if the spec of the TrainingJob is embedded into the custom field of this SdkSimpleHPOJobTask
+    assert simple_xgboost_hpo_job_task.to_flyte_idl().custom["trainingJob"] == \
+           simple_training_job_task.to_flyte_idl().custom
+
+    assert simple_xgboost_hpo_job_task.metadata.timeout == _datetime.timedelta(seconds=0)
+    assert simple_xgboost_hpo_job_task.metadata.discoverable is True
+    assert simple_xgboost_hpo_job_task.metadata.discovery_version == '1'
+    assert simple_xgboost_hpo_job_task.metadata.retries.retries == 2
+    """
+    assert simple_xgboost_hpo_job_task.task_module == __name__
+    assert simple_xgboost_hpo_job_task.metadata.deprecated_error_message == ''
+    assert simple_xgboost_hpo_job_task._get_container_definition().args[0] == 'pyflyte-execute'
+
+    pb2 = simple_xgboost_hpo_job_task.to_flyte_idl()
     assert pb2.custom['hpojobConf']['C'] == 'D'
-"""
+    """
