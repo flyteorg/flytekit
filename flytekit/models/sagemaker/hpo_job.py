@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 from flyteidl.plugins.sagemaker import hpo_job_pb2 as _idl_hpo_job
 from flytekit.models import common as _common
+from flytekit.models import task as _task_model
 from flytekit.sdk.sagemaker import types as _sdk_sagemaker_types
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models.sagemaker import parameter_ranges as _model_parameter_ranges, training_job as _training_job
@@ -119,7 +120,6 @@ class HPOJobConfig(_common.FlyteIdlEntity):
 
 
 class HPOJob(_common.FlyteIdlEntity):
-
     def __init__(
             self,
             max_number_of_training_jobs,
@@ -151,4 +151,35 @@ class HPOJob(_common.FlyteIdlEntity):
             max_number_of_training_jobs=pb2_object.max_number_of_training_jobs,
             max_parallel_training_jobs=pb2_object.max_parallel_training_jobs,
             training_job=_training_job.TrainingJob.from_flyte_idl(pb2_object.training_job),
+        )
+
+
+class HPOJobCustom(_common.FlyteIdlEntity):
+    def __init__(
+            self,
+            hpo_job_core: HPOJob,
+            training_job_task_template: _task_model.TaskTemplate,
+    ):
+        self._hpo_job_core = hpo_job_core
+        self._training_job_task_template = training_job_task_template
+
+    @property
+    def hpo_job_core(self):
+        return self._hpo_job_core
+
+    @property
+    def training_job_task_template(self):
+        return self._training_job_task_template
+
+    def to_flyte_idl(self):
+        return _idl_hpo_job.HPOJobCustom(
+            hpo_job_core=self._hpo_job_core.to_flyte_idl(),
+            training_job_task_template=self._training_job_task_template.to_flyte_idl()
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        return cls(
+            hpo_job_core=HPOJob.from_flyte_idl(pb2_object.hpo_job_core),
+            training_job_task_template=_task_model.TaskTemplate.from_flyte_idl(pb2_object.training_job_task_template)
         )

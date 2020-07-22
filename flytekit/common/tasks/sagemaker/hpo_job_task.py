@@ -42,10 +42,21 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
         :param cache_version:
         """
         # Use the training job model as a measure of type checking
-        hpo_job = _hpo_job_model.HPOJob(
-            max_number_of_training_jobs=max_number_of_training_jobs,
-            max_parallel_training_jobs=max_parallel_training_jobs,
-            training_job=training_job.training_job_model,
+
+        hpo_job_custom = _hpo_job_model.HPOJobCustom(
+            hpo_job_core=_hpo_job_model.HPOJob(
+                max_number_of_training_jobs=max_number_of_training_jobs,
+                max_parallel_training_jobs=max_parallel_training_jobs,
+                training_job=training_job.training_job_model,
+            ),
+            training_job_task_template=_task_models.TaskTemplate(
+                id=training_job.id,
+                type=training_job.type,
+                metadata=training_job.metadata,
+                interface=training_job.interface,
+                custom=training_job.custom,
+                container=training_job.container,
+            ),
         ).to_flyte_idl()
 
         # Setting flyte-level timeout to 0, and let SageMaker respect the StoppingCondition of
@@ -89,6 +100,6 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
                     )
                 }
             ),
-            custom=MessageToDict(hpo_job),
+            custom=MessageToDict(hpo_job_custom),
         )
 
