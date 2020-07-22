@@ -38,7 +38,7 @@ class GCSProxy(_common_data.DataProxy):
             raise _FlyteUserException('gsutil (gcloud cli) not found! Please install.')
 
     @staticmethod
-    def _maybe_with_gsutil_parallelism(self, *gsutil_args):
+    def _maybe_with_gsutil_parallelism(*gsutil_args):
         """
         Check if we should run `gsutil` with the `-m` flag that enables
         parallelism via multiple threads/processes. Additional tweaking of
