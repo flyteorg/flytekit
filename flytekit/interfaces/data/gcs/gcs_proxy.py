@@ -35,7 +35,7 @@ class GCSProxy(_common_data.DataProxy):
         Make sure that the `gsutil` cli is present
         """
         if not _which(GCSProxy._GS_UTIL_CLI):
-            raise _FlyteUserException('gsutil (gcloud cli) not found! Please install.')
+            raise _FlyteUserException("gsutil (gcloud cli) not found! Please install.")
 
     @staticmethod
     def _maybe_with_gsutil_parallelism(*gsutil_args):
