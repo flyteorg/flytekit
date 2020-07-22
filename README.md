@@ -67,6 +67,14 @@ If `@pytorch_task` is to be used, one should install the `pytorch` plugin.
 pip install "flytekit[pytorch]"
 ```
 
+### TensorFlow
+
+If `@tensorflow_task` is to be used, one should install the `tensorflow` plugin.
+
+```bash
+pip install flytekit[tensorflow]
+```
+
 ### Full Installation
 
 To install all or multiple available plugins, one can specify them individually:

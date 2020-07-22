@@ -19,7 +19,7 @@ type(hmsclient).add_sub_module("genthrift.hive_metastore.ttypes")
 
 torch = _lazy_loader.lazy_load_module("torch")  # type: _lazy_loader._LazyLoadModule
 
-_lazy_loader.LazyLoadPlugin("spark", ["pyspark>=2.4.0,<3.0.0"], [pyspark])
+tensorflow = _lazy_loader.lazy_load_module("tensorflow")  # type: types.ModuleType
 
 _lazy_loader.LazyLoadPlugin("spark3", ["pyspark>=3.0.0"], [pyspark])
 

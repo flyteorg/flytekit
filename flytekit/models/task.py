@@ -17,6 +17,7 @@ from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models.core import identifier as _identifier
+from flyteidl.plugins import tensorflow_pb2 as _tensorflow_task
 from flytekit.plugins import flyteidl as _lazy_flyteidl
 from flytekit.sdk.spark_types import SparkType as _spark_type
 
@@ -883,4 +884,40 @@ class PyTorchJob(_common.FlyteIdlEntity):
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
-        return cls(workers_count=pb2_object.workers,)
+        return cls(
+            workers_count=pb2_object.workers,
+        )
+
+class TensorFlowJob(_common.FlyteIdlEntity):
+
+    def __init__(self, workers_count, ps_replicas_count, chief_replicas_count):
+        self._workers_count = workers_count
+        self._ps_replicas_count = ps_replicas_count
+        self._chief_replicas_count = chief_replicas_count
+
+    @property
+    def workers_count(self):
+        return self._workers_count
+
+    @property
+    def ps_replicas_count(self):
+        return self._ps_replicas_count
+
+    @property
+    def chief_replicas_count(self):
+        return self._chief_replicas_count
+
+    def to_flyte_idl(self):
+        return _tensorflow_task.DistributedTensorflowTrainingTask(
+            workers=self.workers_count,
+            ps_replicas=self.ps_replicas_count,
+            chief_replicas=self.chief_replicas_count
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        return cls(
+            workers_count=pb2_object.workers,
+            ps_replicas_count=pb2_object.ps_replicas,
+            chief_replicas_count=pb2_object.chief_replicas
+        )
