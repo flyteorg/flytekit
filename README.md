@@ -39,7 +39,8 @@ pip install flytekit
 If `@spark_task` is to be used, one should install the `spark` plugin.
 
 ```bash
-pip install flytekit[spark]
+pip install flytekit[spark] for Spark 2.4.x
+pip install flytekit[spark3] for Spark 3.x
 ```
 
 #### Schema 
