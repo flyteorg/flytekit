@@ -54,6 +54,18 @@ def test_upload_directory_padding_slash_for_remote_path(
     )
 
 
+def test_maybe_with_gsutil_parallelism_disabled(gcs_proxy):
+    local_path, remote_path = "foo", "gs://bar/0/"
+    cmd = gcs_proxy._maybe_with_gsutil_parallelism("cp", local_path, remote_path)
+    assert cmd == ["gsutil", "cp", local_path, remote_path]
+
+
+def test_maybe_with_gsutil_parallelism_enabled(gsutil_parallelism, gcs_proxy):
+    local_path, remote_path = "foo", "gs://bar/0/"
+    cmd = gcs_proxy._maybe_with_gsutil_parallelism("cp", "-r", local_path, remote_path)
+    assert cmd == ["gsutil", "-m", "cp", "-r", local_path, remote_path]
+
+
 def test_download_with_parallelism(
     mock_update_cmd_config_and_execute, gsutil_parallelism, gcs_proxy
 ):
