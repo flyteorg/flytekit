@@ -46,7 +46,7 @@ class GCSProxy(_common_data.DataProxy):
         https://cloud.google.com/storage/docs/boto-gsutil
         """
         cmd = [GCSProxy._GS_UTIL_CLI]
-        if _gcp_config.GSUTIL_PARALLELISM:
+        if _gcp_config.GSUTIL_PARALLELISM.get():
             cmd.append("-m")
         cmd.extend(gsutil_args)
 
