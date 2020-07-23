@@ -1,25 +1,14 @@
 from __future__ import absolute_import
-import json
-from flytekit.sdk.tasks import inputs, outputs
 from flytekit.common.tasks.sagemaker.training_job_task import SdkSimpleTrainingJobTask
 from flytekit.common.tasks.sagemaker.hpo_job_task import SdkSimpleHPOJobTask
-from flytekit.common.tasks.sdk_runnable import SdkRunnableTask
-from flytekit.sdk.types import Types
 from flytekit.common import constants as _common_constants
-# from flytekit.common.tasks import sdk_runnable as _sdk_runnable
-# from flytekit.common.tasks import sagemaker_task as _sagemaker_task
 from flytekit.common.tasks import task as _sdk_task
-from flytekit.models import types as _type_models
 from flytekit.models.core import identifier as _identifier
 import datetime as _datetime
 from flytekit.models.sagemaker.training_job import TrainingJobConfig, AlgorithmSpecification, MetricDefinition, StoppingCondition
 from flytekit.sdk.sagemaker.types import InputMode, AlgorithmName
-from flytekit.models import literals as _literals, types as _idl_types, \
-    task as _task_model
-from flytekit.models.core import types as _core_types
 from google.protobuf.json_format import ParseDict
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobConfig as _pb2_TrainingJobConfig, StoppingCondition as _pb2_StoppingCondition
-from flyteidl.plugins.sagemaker.parameter_ranges_pb2 import ParameterRanges as _pb2_ParameterRanges
 from flyteidl.plugins.sagemaker.hpo_job_pb2 import HPOJobConfig as _pb2_HPOJobConfig
 from flytekit.sdk import types as _sdk_types
 from flytekit.sdk.sagemaker import types as _sdk_sagemaker_types
@@ -27,7 +16,7 @@ from flytekit.common.tasks.sagemaker import hpo_job_task
 
 from flytekit.models.sagemaker.training_job import StoppingCondition
 from flytekit.models.sagemaker.hpo_job import HPOJobConfig, HyperparameterTuningObjective
-from flytekit.models.sagemaker.parameter_ranges import ParameterRanges, CategoricalParameterRange, ContinuousParameterRange, IntegerParameterRange
+from flytekit.models.sagemaker.parameter_ranges import ParameterRanges, IntegerParameterRange
 
 example_hyperparams = {
     "base_score": "0.5",
@@ -106,10 +95,8 @@ def test_simple_training_job_task():
     assert simple_training_job_task.metadata.discoverable is False
     assert simple_training_job_task.metadata.discovery_version == ''
     assert simple_training_job_task.metadata.retries.retries == 0
-    ParseDict(simple_training_job_task.custom['trainingJobConfig'], _pb2_TrainingJobConfig)  # fails the test if it cannot be parsed
-
-    pb2 = simple_training_job_task.to_flyte_idl()
-    print(pb2)
+    ParseDict(simple_training_job_task.custom['trainingJobConfig'],
+              _pb2_TrainingJobConfig)  # fails the test if it cannot be parsed
 
 
 simple_xgboost_hpo_job_task = hpo_job_task.SdkSimpleHPOJobTask(
@@ -148,6 +135,7 @@ hpo_task_exec = simple_xgboost_hpo_job_task(
 simple_xgboost_hpo_job_task._id = _identifier.Identifier(
     _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version")
 
+
 def test_simple_hpo_job_task():
     assert isinstance(simple_xgboost_hpo_job_task, SdkSimpleHPOJobTask)
     assert isinstance(simple_xgboost_hpo_job_task, _sdk_task.SdkTask)
@@ -181,11 +169,9 @@ def test_simple_hpo_job_task():
     assert simple_xgboost_hpo_job_task.metadata.discoverable is True
     assert simple_xgboost_hpo_job_task.metadata.discovery_version == '1'
     assert simple_xgboost_hpo_job_task.metadata.retries.retries == 2
-    """
-    assert simple_xgboost_hpo_job_task.task_module == __name__
-    assert simple_xgboost_hpo_job_task.metadata.deprecated_error_message == ''
-    assert simple_xgboost_hpo_job_task._get_container_definition().args[0] == 'pyflyte-execute'
 
-    pb2 = simple_xgboost_hpo_job_task.to_flyte_idl()
-    assert pb2.custom['hpojobConf']['C'] == 'D'
+    assert simple_xgboost_hpo_job_task.metadata.deprecated_error_message == ''
+    """ These are attributes for SdkRunnable. We will need these when supporting CustomTrainingJobTask and CustomHPOJobTask 
+    assert simple_xgboost_hpo_job_task.task_module == __name__
+    assert simple_xgboost_hpo_job_task._get_container_definition().args[0] == 'pyflyte-execute'
     """
