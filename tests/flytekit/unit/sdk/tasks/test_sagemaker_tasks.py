@@ -1,7 +1,5 @@
 from __future__ import absolute_import
 import json
-import os as _os
-
 from flytekit.sdk.tasks import inputs, outputs
 from flytekit.common.tasks.sagemaker.training_job_task import SdkSimpleTrainingJobTask
 from flytekit.common.tasks.sagemaker.hpo_job_task import SdkSimpleHPOJobTask
@@ -26,7 +24,7 @@ from flyteidl.plugins.sagemaker.hpo_job_pb2 import HPOJobConfig as _pb2_HPOJobCo
 from flytekit.sdk import types as _sdk_types
 from flytekit.sdk.sagemaker import types as _sdk_sagemaker_types
 from flytekit.common.tasks.sagemaker import hpo_job_task
-from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
+
 from flytekit.models.sagemaker.training_job import StoppingCondition
 from flytekit.models.sagemaker.hpo_job import HPOJobConfig, HyperparameterTuningObjective
 from flytekit.models.sagemaker.parameter_ranges import ParameterRanges, CategoricalParameterRange, ContinuousParameterRange, IntegerParameterRange
@@ -71,28 +69,21 @@ simple_training_job_task = SdkSimpleTrainingJobTask(
     ),
 )
 
+train_task_exec = simple_training_job_task(
+    train='s3://my-bucket/training.csv',
+    validation='s3://my-bucket/validation.csv',
+    static_hyperparameters=example_hyperparams,
+    stopping_condition=StoppingCondition(
+        max_runtime_in_seconds=43200,
+        max_wait_time_in_seconds=43200,
+    ).to_flyte_idl(),
+)
 
+train_task_exec._id = _identifier.Identifier(
+    _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version")
 
 
 def test_simple_training_job_task():
-    with _TemporaryConfiguration(
-            _os.path.join(_os.path.dirname(__file__), 'unit.config'),
-            internal_overrides={'image': 'unit_image'}
-    ):
-        train_task_exec = simple_training_job_task(
-            train='s3://my-bucket/training.csv',
-            validation='s3://my-bucket/validation.csv',
-            static_hyperparameters=example_hyperparams,
-            stopping_condition=StoppingCondition(
-                max_runtime_in_seconds=43200,
-                max_wait_time_in_seconds=43200,
-            ).to_flyte_idl(),
-        )
-    # verify the custom field doesn't change
-
-    train_task_exec._id = _identifier.Identifier(
-        _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version")
-
     assert isinstance(simple_training_job_task, SdkSimpleTrainingJobTask)
     assert isinstance(simple_training_job_task, _sdk_task.SdkTask)
     assert simple_training_job_task.interface.inputs['train'].description == ''

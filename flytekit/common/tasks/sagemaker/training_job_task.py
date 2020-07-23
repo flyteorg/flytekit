@@ -139,10 +139,6 @@ class SdkTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             }
         )
 
-    @property
-    def training_job_model(self) -> _training_job_models.TrainingJob:
-        return self._training_job_model
-
     def _get_container_definition(
             self,
             **kwargs
@@ -176,7 +172,9 @@ class SdkSimpleTrainingJobTask(SdkTrainingJobTask):
             environment=None,
         )
 
-
+    @property
+    def training_job_model(self) -> _training_job_models.TrainingJob:
+        return self._training_job_model
 
 
 class SdkSimpleTrainingJobTask2(_sdk_task.SdkTask):
