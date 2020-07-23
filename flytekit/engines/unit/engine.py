@@ -33,6 +33,8 @@ class UnitTestEngineFactory(_common_engine.BaseExecutionEngineFactory):
             _sdk_constants.SdkTaskType.SENSOR_TASK,
         }:
             return ReturnOutputsTask(sdk_task)
+        elif sdk_task.type == "sagemaker_hpo_job_task":
+            return RunFunctionTask(sdk_task)
         elif sdk_task.type in {
             _sdk_constants.SdkTaskType.DYNAMIC_TASK,
         }:
@@ -132,6 +134,8 @@ class UnitTestEngineTask(_common_engine.BaseTaskExecutor):
                annotation_overrides=None, auth_role=None):
         raise _user_exceptions.FlyteAssertion("You cannot launch unit test tasks.")
 
+class RunFunctionTask(UnitTestEngineTask):
+    def _transform_for_user_output(self):
 
 class ReturnOutputsTask(UnitTestEngineTask):
     def _transform_for_user_output(self, outputs):

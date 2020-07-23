@@ -42,7 +42,7 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
         :param cache_version:
         """
         # Use the training job model as a measure of type checking
-
+        self._fn = training_job
         hpo_job_custom = _hpo_job_model.HPOJobCustom(
             hpo_job_core=_hpo_job_model.HPOJob(
                 max_number_of_training_jobs=max_number_of_training_jobs,
@@ -57,7 +57,17 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
                 custom=training_job.custom,
                 container=training_job.container,
             ),
-        ).to_flyte_idl()
+        )
+
+        """
+        class Blah:
+            def __init__(self):
+               pass
+
+            def __repr__(self):
+                from flytekit.configuration.internal import IMAGE
+                return IMAGE.get()
+        """
 
         # Setting flyte-level timeout to 0, and let SageMaker respect the StoppingCondition of
         #   the underlying training job
@@ -100,6 +110,6 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
                     )
                 }
             ),
-            custom=MessageToDict(hpo_job_custom),
+            custom=MessageToDict(hpo_job_custom.to_flyte_idl()),
         )
 
