@@ -38,8 +38,9 @@ def test_simple_tensorflow_task():
     assert len(simple_tensorflow_task.container.resources.limits) == 0
     assert len(simple_tensorflow_task.container.resources.requests) == 0
     assert simple_tensorflow_task.custom['workers'] == 2
-    assert simple_tensorflow_task.custom['ps_replicas'] == 1
-    assert simple_tensorflow_task.custom['chief_replicas'] == 1
+    print(simple_tensorflow_task.custom)
+    assert simple_tensorflow_task.custom['psReplicas'] == 1
+    assert simple_tensorflow_task.custom['chiefReplicas'] == 1
     
     
 
@@ -48,5 +49,5 @@ def test_simple_tensorflow_task():
 
     pb2 = simple_tensorflow_task.to_flyte_idl()
     assert pb2.custom['workers'] == 2
-    assert pb2.custom['ps_replicas'] == 1
-    assert pb2.custom['chief_replicas'] == 1
+    assert pb2.custom['psReplicas'] == 1
+    assert pb2.custom['chiefReplicas'] == 1
