@@ -15,7 +15,7 @@ from flytekit.common.constants import SdkTaskType
 from flyteidl.plugins.sagemaker import hpo_job_pb2 as _hpo_job_pb2
 from flytekit.models import literals as _literals, types as _idl_types, \
     task as _task_model
-from flytekit.common.tasks.sagemaker.training_job_task import SdkTrainingJobTask, SdkSimpleTrainingJobTask
+from flytekit.common.tasks.sagemaker.training_job_task import SdkSimpleTrainingJobTask
 from flytekit.models.core import types as _core_types
 
 
@@ -25,7 +25,7 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
             self,
             max_number_of_training_jobs: int,
             max_parallel_training_jobs: int,
-            training_job: SdkTrainingJobTask,
+            training_job: SdkSimpleTrainingJobTask,
             interruptible: bool = False,
             retries: int = 0,
             cacheable: bool = False,

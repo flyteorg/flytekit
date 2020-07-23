@@ -40,7 +40,7 @@ class SdkRunnableTrainingJobContainer(_sdk_runnable.SdkRunnableContainer):
         return self._args
 
 
-class SdkTrainingJobTask(_sdk_runnable.SdkRunnableTask):
+class _SdkTrainingJobTask(_sdk_runnable.SdkRunnableTask):
     def __init__(
             self,
             task_function: Callable,
@@ -75,7 +75,7 @@ class SdkTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         # job gracefully
         timeout = _datetime.timedelta(seconds=0)
 
-        super(SdkTrainingJobTask, self).__init__(
+        super(_SdkTrainingJobTask, self).__init__(
             task_function=task_function,
             task_type=SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK,
             discovery_version=cache_version,
@@ -146,10 +146,10 @@ class SdkTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         """
         :rtype: SdkRunnableTrainingJobContainer
         """
-        return super(SdkTrainingJobTask, self)._get_container_definition(cls=SdkRunnableTrainingJobContainer, **kwargs)
+        return super(_SdkTrainingJobTask, self)._get_container_definition(cls=SdkRunnableTrainingJobContainer, **kwargs)
 
 
-class SdkSimpleTrainingJobTask(SdkTrainingJobTask):
+class SdkSimpleTrainingJobTask(_SdkTrainingJobTask):
     def __init__(
             self,
             training_job_config: _training_job_models.TrainingJobConfig,
