@@ -27,6 +27,7 @@ def test_alias():
     assert obj2.alias == 'myalias'
     assert obj2.var == 'myvar'
 
+
 def test_workflow_template():
     task = _workflow.TaskNode(reference_id=_generic_id)
     nm = _get_sample_node_metadata()
@@ -50,7 +51,7 @@ def test_workflow_template():
     )
     obj = _workflow.WorkflowTemplate(
         id=_generic_id,
-        metadata=wf_metadata, 
+        metadata=wf_metadata,
         metadata_defaults=wf_metadata_defaults,
         interface=typed_interface,
         nodes=[wf_node],
@@ -58,53 +59,21 @@ def test_workflow_template():
     obj2 = _workflow.WorkflowTemplate.from_flyte_idl(obj.to_flyte_idl())
     assert obj2 == obj
 
-def test_workflow_template_with_queuing_budget():
-    task = _workflow.TaskNode(reference_id=_generic_id)
-    nm = _get_sample_node_metadata()
-    int_type = _types.LiteralType(_types.SimpleType.INTEGER)
-    wf_metadata = _workflow.WorkflowMetadata(queuing_budget=timedelta(seconds=10))
-    wf_metadata_defaults = _workflow.WorkflowMetadataDefaults()
-    typed_interface = _interface.TypedInterface(
-        {'a': _interface.Variable(int_type, "description1")},
-        {
-            'b': _interface.Variable(int_type, "description2"),
-            'c': _interface.Variable(int_type, "description3")
-        }
-    )
-    wf_node = _workflow.Node(
-        id='some:node:id',
-        metadata=nm,
-        inputs=[],
-        upstream_node_ids=[],
-        output_aliases=[],
-        task_node=task
-    )
-    obj = _workflow.WorkflowTemplate(
-        id=_generic_id,
-        metadata=wf_metadata, 
-        metadata_defaults=wf_metadata_defaults,
-        interface=typed_interface,
-        nodes=[wf_node],
-        outputs=[])
-    obj2 = _workflow.WorkflowTemplate.from_flyte_idl(obj.to_flyte_idl())
-    assert obj2 == obj
-
-def test_workflow_metadata_queuing_budget():
-    obj = _workflow.WorkflowMetadata(queuing_budget=timedelta(seconds=10))
-    obj2 = _workflow.WorkflowMetadata.from_flyte_idl(obj.to_flyte_idl())
-    assert obj == obj2
 
 def test_workflow_metadata_failure_policy():
-    obj = _workflow.WorkflowMetadata(on_failure=_workflow.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE)
+    obj = _workflow.WorkflowMetadata(
+        on_failure=_workflow.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE)
     obj2 = _workflow.WorkflowMetadata.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
     assert obj.on_failure == _workflow.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
     assert obj2.on_failure == _workflow.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
 
+
 def test_workflow_metadata():
     obj = _workflow.WorkflowMetadata()
     obj2 = _workflow.WorkflowMetadata.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
+
 
 def test_task_node():
     obj = _workflow.TaskNode(reference_id=_generic_id)

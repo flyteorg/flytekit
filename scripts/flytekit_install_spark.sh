@@ -34,6 +34,9 @@ cp -rf spark-dist/python /opt/spark/python
 cp -rf spark-dist/bin /opt/spark/bin
 cp -rf spark-dist/sbin /opt/spark/sbin
 cp -rf spark-dist/data /opt/spark/data
+# Entrypoint for Driver/Executor pods
+cp spark-dist/kubernetes/dockerfiles/spark/entrypoint.sh /opt/entrypoint.sh
+chmod +x /opt/entrypoint.sh
 
 rm -rf spark-dist.tgz
 rm -rf spark-dist

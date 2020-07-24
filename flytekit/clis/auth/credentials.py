@@ -11,10 +11,8 @@ from flytekit.configuration.creds import (
 )
 from flytekit.configuration.platform import URL as _URL, INSECURE as _INSECURE, HTTP_URL as _HTTP_URL
 
-try:  # Python 3
-    import urllib.parse as _urlparse
-except ImportError:  # Python 2
-    import urlparse as _urlparse
+
+import urllib.parse as _urlparse
 
 # Default, well known-URI string used for fetching JSON metadata. See https://tools.ietf.org/html/rfc8414#section-3.
 discovery_endpoint_path = "./.well-known/oauth-authorization-server"
@@ -43,11 +41,11 @@ def _get_discovery_endpoint(http_config_val, platform_url_val, insecure_val):
 _authorization_client = None
 
 
-def get_client():
+def get_client(flyte_client_url):
     global _authorization_client
     if _authorization_client is not None and not _authorization_client.expired:
         return _authorization_client
-    authorization_endpoints = get_authorization_endpoints()
+    authorization_endpoints = get_authorization_endpoints(flyte_client_url)
 
     _authorization_client =\
         _AuthorizationClient(redirect_uri=_REDIRECT_URI.get(), client_id=_CLIENT_ID.get(),
@@ -56,7 +54,7 @@ def get_client():
     return _authorization_client
 
 
-def get_authorization_endpoints():
-    discovery_endpoint = _get_discovery_endpoint(_HTTP_URL.get(), _URL.get(), _INSECURE.get())
+def get_authorization_endpoints(flyte_client_url):
+    discovery_endpoint = _get_discovery_endpoint(_HTTP_URL.get(), flyte_client_url or _URL.get(), _INSECURE.get())
     discovery_client = _DiscoveryClient(discovery_url=discovery_endpoint)
     return discovery_client.get_authorization_endpoints()
