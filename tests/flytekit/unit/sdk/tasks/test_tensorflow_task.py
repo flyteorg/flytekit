@@ -38,12 +38,10 @@ def test_simple_tensorflow_task():
     assert len(simple_tensorflow_task.container.resources.limits) == 0
     assert len(simple_tensorflow_task.container.resources.requests) == 0
     assert simple_tensorflow_task.custom['workers'] == 2
-    print(simple_tensorflow_task.custom)
     assert simple_tensorflow_task.custom['psReplicas'] == 1
     assert simple_tensorflow_task.custom['chiefReplicas'] == 1
     
     
-
     # Should strip out the venv component of the args.
     assert simple_tensorflow_task._get_container_definition().args[0] == 'pyflyte-execute'
 

@@ -884,9 +884,8 @@ class PyTorchJob(_common.FlyteIdlEntity):
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
-        return cls(
-            workers_count=pb2_object.workers,
-        )
+        return cls(workers_count=pb2_object.workers,)
+
 
 class TensorFlowJob(_common.FlyteIdlEntity):
 

@@ -21,6 +21,8 @@ torch = _lazy_loader.lazy_load_module("torch")  # type: _lazy_loader._LazyLoadMo
 
 tensorflow = _lazy_loader.lazy_load_module("tensorflow")  # type: types.ModuleType
 
+_lazy_loader.LazyLoadPlugin("spark", ["pyspark>=2.4.0,<3.0.0"], [pyspark])
+
 _lazy_loader.LazyLoadPlugin("spark3", ["pyspark>=3.0.0"], [pyspark])
 
 _lazy_loader.LazyLoadPlugin("sidecar", ["k8s-proto>=0.0.3,<1.0.0"], [k8s, flyteidl])
