@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from typing import Dict
+from typing import Dict, List
 from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _idl_parameter_ranges
 from flytekit.models import common as _common
 from flytekit.sdk.sagemaker import types as _sdk_sagemaker_types
@@ -10,9 +10,9 @@ from flytekit.common.exceptions import user as _user_exceptions
 class ContinuousParameterRange(_common.FlyteIdlEntity):
     def __init__(
             self,
-            max_value,
-            min_value,
-            scaling_type
+            max_value: float,
+            min_value: float,
+            scaling_type: _sdk_sagemaker_types.HyperparameterScalingType,
     ):
         """
 
@@ -91,14 +91,14 @@ class ContinuousParameterRange(_common.FlyteIdlEntity):
 class IntegerParameterRange(_common.FlyteIdlEntity):
     def __init__(
             self,
-            max_value,
-            min_value,
-            scaling_type
+            max_value: int,
+            min_value: int,
+            scaling_type: _sdk_sagemaker_types.HyperparameterScalingType,
     ):
         """
         :param int max_value:
         :param int min_value:
-        :param _sdk_sagemaker_types.HyperparameterScalingType.HyperparameterScalingType scaling_type:
+        :param _sdk_sagemaker_types.HyperparameterScalingType scaling_type:
         """
         self._max_value = max_value
         self._min_value = min_value
@@ -170,11 +170,11 @@ class IntegerParameterRange(_common.FlyteIdlEntity):
 class CategoricalParameterRange(_common.FlyteIdlEntity):
     def __init__(
             self,
-            values,
+            values: List[str],
     ):
         """
 
-        :param list[string] values: list of strings representing categorical values
+        :param List[str] values: list of strings representing categorical values
         """
         self._values = values
 

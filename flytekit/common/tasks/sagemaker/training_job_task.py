@@ -24,19 +24,18 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
             self,
             training_job_config: _training_job_models.TrainingJobConfig,
             algorithm_specification: _training_job_models.AlgorithmSpecification,
-            interruptible: bool = False,
+            # interruptible: bool = False,
             retries: int = 0,
             cacheable: bool = False,
             cache_version: str = "",
     ):
         """
 
-        :param training_job_config:
-        :param algorithm_specification:
-        :param interruptible:
-        :param retries:
-        :param cacheable:
-        :param cache_version:
+        :param training_job_config: The options to configure the training job
+        :param algorithm_specification: The options to configure the target algorithm of the training
+        :param retries: Number of retries to attempt
+        :param cacheable: The flag to set if the user wants the output of the task execution to be cached
+        :param cache_version: String describing the caching version for task discovery purposes
         """
         # Use the training job model as a measure of type checking
         self._training_job_model = _training_job_models.TrainingJob(
@@ -59,7 +58,7 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
                 discoverable=cacheable,
                 timeout=timeout,
                 retries=_literal_models.RetryStrategy(retries=retries),
-                interruptible=interruptible,
+                interruptible=False,
                 discovery_version=cache_version,
                 deprecated_error_message="",
             ),
@@ -119,23 +118,22 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             algorithm_specification: _training_job_models.AlgorithmSpecification,
             cache_version: str,
             retries: int = 0,
-            interruptible: bool = False,
+            # interruptible: bool = False,
             deprecated: bool = False,
             cacheable: bool = False,
-            environment: Dict[str, str] = None,
+            # environment: Dict[str, str] = None,
     ):
         """
 
         :param task_function:
 
-        :param training_job_config:
-        :param algorithm_specification:
-        :param cache_version:
-        :param retries:
-        :param interruptible:
-        :param deprecated:
-        :param cacheable:
-        :param environment:
+        :param training_job_config: The options to configure the training job
+        :param algorithm_specification: The options to configure the target algorithm of the training
+        :param cache_version: String describing the caching version for task discovery purposes
+        :param retries: Number of retries to attempt
+        :param deprecated: This string can be used to mark the task as deprecated.  Consumers of the task will
+            receive deprecation warnings.
+        :param cacheable: The flag to set if the user wants the output of the task execution to be cached
         """
         # Use the training job model as a measure of type checking
         training_job = _training_job_models.TrainingJob(
@@ -152,7 +150,7 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             task_type=SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK,
             discovery_version=cache_version,
             retries=retries,
-            interruptible=interruptible,
+            interruptible=False,
             deprecated=deprecated,
             storage_request="",
             cpu_request="",
@@ -164,7 +162,7 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             memory_limit="",
             discoverable=cacheable,
             timeout=timeout,
-            environment=environment,
+            environment={},
             custom=MessageToDict(training_job),
         ),
         self.add_inputs(

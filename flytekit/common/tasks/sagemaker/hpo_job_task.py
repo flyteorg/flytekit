@@ -3,23 +3,22 @@ import datetime as _datetime
 
 from google.protobuf.json_format import MessageToDict
 
+from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
 from flytekit import __version__
+from flytekit.common.constants import SdkTaskType
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.common import interface as _interface
-from flytekit.sdk import types as _sdk_types
+from flytekit.common.tasks.sagemaker.training_job_task import SdkSimpleTrainingJobTask
 from flytekit.models import task as _task_models
 from flytekit.models import interface as _interface_model
 from flytekit.models.sagemaker import hpo_job as _hpo_job_model
 from flytekit.models import literals as _literal_models
-from flytekit.common.constants import SdkTaskType
-from flyteidl.plugins.sagemaker import hpo_job_pb2 as _hpo_job_pb2
-from flytekit.models import literals as _literals, types as _idl_types, \
-    task as _task_model
-from flytekit.common.tasks.sagemaker.training_job_task import SdkSimpleTrainingJobTask
+from flytekit.models import types as _types_models
 from flytekit.models.core import types as _core_types
+from flytekit.sdk import types as _sdk_types
 
 
-class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
+class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
 
     def __init__(
             self,
@@ -42,7 +41,7 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
         :param cache_version:
         """
         # Use the training job model as a measure of type checking
-        hpo_job = _hpo_job_model.HPOJob(
+        hpo_job = _hpo_job_model.HyperparameterTuningJob(
             max_number_of_training_jobs=max_number_of_training_jobs,
             max_parallel_training_jobs=max_parallel_training_jobs,
             training_job=training_job.training_job_model,
@@ -54,13 +53,14 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
         timeout = _datetime.timedelta(seconds=0)
 
         inputs = {
-                     "hpo_job_config": _interface_model.Variable(
-                         _sdk_types.Types.Proto(_hpo_job_pb2.HPOJobConfig).to_flyte_literal_type(), ""
+                     "hyperparameter_tuning_specification": _interface_model.Variable(
+                         _sdk_types.Types.Proto(
+                             _pb2_hpo_job.HyperparameterTuningSpecification).to_flyte_literal_type(), ""
                      ),
                  }
         inputs.update(training_job.interface.inputs)
 
-        super(SdkSimpleHPOJobTask, self).__init__(
+        super(SdkSimpleHyperparameterTuningJobTask, self).__init__(
             type=SdkTaskType.SAGEMAKER_HPO_JOB_TASK,
             metadata=_task_models.TaskMetadata(
                 runtime=_task_models.RuntimeMetadata(
@@ -79,7 +79,7 @@ class SdkSimpleHPOJobTask(_sdk_task.SdkTask):
                 inputs=inputs,
                 outputs={
                     "model": _interface_model.Variable(
-                        type=_idl_types.LiteralType(
+                        type=_types_models.LiteralType(
                             blob=_core_types.BlobType(
                                 format="",
                                 dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE

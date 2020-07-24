@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
+from typing import List
 from flyteidl.plugins.sagemaker import training_job_pb2 as _training_job
-
 from flytekit.models import common as _common
 from flytekit.sdk.sagemaker import types as _sdk_sagemaker_types
 from flytekit.common.exceptions import user as _user_exceptions
@@ -10,8 +10,8 @@ from flytekit.common.exceptions import user as _user_exceptions
 class StoppingCondition(_common.FlyteIdlEntity):
     def __init__(
             self,
-            max_runtime_in_seconds,
-            max_wait_time_in_seconds=0,
+            max_runtime_in_seconds: int,
+            max_wait_time_in_seconds: int=0,
     ):
         self._max_runtime_in_seconds = max_runtime_in_seconds
         self._max_wait_time_in_seconds = max_wait_time_in_seconds
@@ -49,9 +49,9 @@ class StoppingCondition(_common.FlyteIdlEntity):
 class TrainingJobConfig(_common.FlyteIdlEntity):
     def __init__(
             self,
-            instance_count,
-            instance_type,
-            volume_size_in_gb,
+            instance_count: int,
+            instance_type: str,
+            volume_size_in_gb: int,
     ):
         self._instance_count = instance_count
         self._instance_type = instance_type
@@ -97,8 +97,8 @@ class TrainingJobConfig(_common.FlyteIdlEntity):
 class MetricDefinition(_common.FlyteIdlEntity):
     def __init__(
             self,
-            name,
-            regex,
+            name: str,
+            regex: str,
     ):
         self._name = name
         self._regex = regex
@@ -128,10 +128,10 @@ class MetricDefinition(_common.FlyteIdlEntity):
 class AlgorithmSpecification(_common.FlyteIdlEntity):
     def __init__(
             self,
-            input_mode,
-            algorithm_name,
-            algorithm_version,
-            metric_definitions,
+            input_mode: _sdk_sagemaker_types.InputMode,
+            algorithm_name: _sdk_sagemaker_types.AlgorithmName,
+            algorithm_version: str,
+            metric_definitions: List[MetricDefinition],
     ):
         self._input_mode = input_mode
         self._algorithm_name = algorithm_name
@@ -205,8 +205,8 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
 class TrainingJob(_common.FlyteIdlEntity):
     def __init__(
             self,
-            algorithm_specification,
-            training_job_config,
+            algorithm_specification: AlgorithmSpecification,
+            training_job_config: TrainingJobConfig,
     ):
         self._algorithm_specification = algorithm_specification
         self._training_job_config = training_job_config

@@ -1,22 +1,17 @@
 from __future__ import absolute_import
 from flytekit.common.tasks.sagemaker.training_job_task import SdkSimpleTrainingJobTask
-from flytekit.common.tasks.sagemaker.hpo_job_task import SdkSimpleHPOJobTask
+from flytekit.common.tasks.sagemaker.hpo_job_task import SdkSimpleHyperparameterTuningJobTask
 from flytekit.common import constants as _common_constants
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.models.core import identifier as _identifier
 import datetime as _datetime
-from flytekit.models.sagemaker.training_job import TrainingJobConfig, AlgorithmSpecification, MetricDefinition, StoppingCondition
+from flytekit.models.sagemaker.training_job import TrainingJobConfig, AlgorithmSpecification, MetricDefinition
 from flytekit.sdk.sagemaker.types import InputMode, AlgorithmName
 from google.protobuf.json_format import ParseDict
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobConfig as _pb2_TrainingJobConfig, StoppingCondition as _pb2_StoppingCondition
-from flyteidl.plugins.sagemaker.hpo_job_pb2 import HPOJobConfig as _pb2_HPOJobConfig
+from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import HyperparameterTuningSpecification as _pb2_HPOSpec
 from flytekit.sdk import types as _sdk_types
-from flytekit.sdk.sagemaker import types as _sdk_sagemaker_types
 from flytekit.common.tasks.sagemaker import hpo_job_task
-
-from flytekit.models.sagemaker.training_job import StoppingCondition
-from flytekit.models.sagemaker.hpo_job import HPOJobConfig, HyperparameterTuningObjective
-from flytekit.models.sagemaker.parameter_ranges import ParameterRanges, IntegerParameterRange
 
 example_hyperparams = {
     "base_score": "0.5",
@@ -58,17 +53,7 @@ simple_training_job_task = SdkSimpleTrainingJobTask(
     ),
 )
 
-train_task_exec = simple_training_job_task(
-    train='s3://my-bucket/training.csv',
-    validation='s3://my-bucket/validation.csv',
-    static_hyperparameters=example_hyperparams,
-    stopping_condition=StoppingCondition(
-        max_runtime_in_seconds=43200,
-        max_wait_time_in_seconds=43200,
-    ).to_flyte_idl(),
-)
-
-train_task_exec._id = _identifier.Identifier(
+simple_training_job_task._id = _identifier.Identifier(
     _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version")
 
 
@@ -99,7 +84,7 @@ def test_simple_training_job_task():
               _pb2_TrainingJobConfig)  # fails the test if it cannot be parsed
 
 
-simple_xgboost_hpo_job_task = hpo_job_task.SdkSimpleHPOJobTask(
+simple_xgboost_hpo_job_task = hpo_job_task.SdkSimpleHyperparameterTuningJobTask(
     training_job=simple_training_job_task,
     max_number_of_training_jobs=10,
     max_parallel_training_jobs=5,
@@ -108,36 +93,12 @@ simple_xgboost_hpo_job_task = hpo_job_task.SdkSimpleHPOJobTask(
     cacheable=True,
 )
 
-hpo_task_exec = simple_xgboost_hpo_job_task(
-    train='s3://my-bucket/hpo.csv',
-    validation='s3://my-bucket/hpo.csv',
-    static_hyperparameters=example_hyperparams,
-    stopping_condition=StoppingCondition(
-        max_runtime_in_seconds=43200,
-        max_wait_time_in_seconds=43200,
-    ).to_flyte_idl(),
-    hpo_job_config=HPOJobConfig(
-        hyperparameter_ranges=ParameterRanges(
-            parameter_range_map={
-                "max_depth": IntegerParameterRange(min_value=5, max_value=7,
-                                                   scaling_type=_sdk_sagemaker_types.HyperparameterScalingType.LINEAR),
-            }
-        ),
-        tuning_strategy=_sdk_sagemaker_types.HyperparameterTuningStrategy.BAYESIAN,
-        tuning_objective=HyperparameterTuningObjective(
-            objective_type=_sdk_sagemaker_types.HyperparameterTuningObjectiveType.MINIMIZE,
-            metric_name="validation:error",
-        ),
-        training_job_early_stopping_type=_sdk_sagemaker_types.TrainingJobEarlyStoppingType.AUTO
-    ).to_flyte_idl(),
-)
-
 simple_xgboost_hpo_job_task._id = _identifier.Identifier(
     _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version")
 
 
 def test_simple_hpo_job_task():
-    assert isinstance(simple_xgboost_hpo_job_task, SdkSimpleHPOJobTask)
+    assert isinstance(simple_xgboost_hpo_job_task, SdkSimpleHyperparameterTuningJobTask)
     assert isinstance(simple_xgboost_hpo_job_task, _sdk_task.SdkTask)
     # Checking if the input of the underlying SdkTrainingJobTask has been embedded
     assert simple_training_job_task.interface.inputs['train'].description == ''
@@ -153,17 +114,18 @@ def test_simple_hpo_job_task():
         _sdk_types.Types.Proto(_pb2_StoppingCondition).to_flyte_literal_type()
 
     # Checking if the hpo-specific input is defined
-    assert simple_xgboost_hpo_job_task.interface.inputs['hpo_job_config'].description == ''
-    assert simple_xgboost_hpo_job_task.interface.inputs['hpo_job_config'].type == \
-           _sdk_types.Types.Proto(_pb2_HPOJobConfig).to_flyte_literal_type()
+    assert simple_xgboost_hpo_job_task.interface.inputs['hyperparameter_tuning_specification'].description == ''
+    assert simple_xgboost_hpo_job_task.interface.inputs['hyperparameter_tuning_specification'].type == \
+           _sdk_types.Types.Proto(_pb2_HPOSpec).to_flyte_literal_type()
     assert simple_xgboost_hpo_job_task.interface.outputs['model'].description == ''
     assert simple_xgboost_hpo_job_task.interface.outputs['model'].type == \
            _sdk_types.Types.Blob.to_flyte_literal_type()
     assert simple_xgboost_hpo_job_task.type == _common_constants.SdkTaskType.SAGEMAKER_HPO_JOB_TASK
 
-    # Checking if the spec of the TrainingJob is embedded into the custom field of this SdkSimpleHPOJobTask
-    assert simple_xgboost_hpo_job_task.to_flyte_idl().custom["trainingJob"] == \
-           simple_training_job_task.to_flyte_idl().custom
+    # Checking if the spec of the TrainingJob is embedded into the custom field
+    # of this SdkSimpleHyperparameterTuningJobTask
+    assert simple_xgboost_hpo_job_task.to_flyte_idl().custom["trainingJob"] == (
+        simple_training_job_task.to_flyte_idl().custom)
 
     assert simple_xgboost_hpo_job_task.metadata.timeout == _datetime.timedelta(seconds=0)
     assert simple_xgboost_hpo_job_task.metadata.discoverable is True
@@ -171,6 +133,7 @@ def test_simple_hpo_job_task():
     assert simple_xgboost_hpo_job_task.metadata.retries.retries == 2
 
     assert simple_xgboost_hpo_job_task.metadata.deprecated_error_message == ''
+
     """ These are attributes for SdkRunnable. We will need these when supporting CustomTrainingJobTask and CustomHPOJobTask 
     assert simple_xgboost_hpo_job_task.task_module == __name__
     assert simple_xgboost_hpo_job_task._get_container_definition().args[0] == 'pyflyte-execute'
