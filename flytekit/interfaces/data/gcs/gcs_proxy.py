@@ -32,10 +32,25 @@ class GCSProxy(_common_data.DataProxy):
     @staticmethod
     def _check_binary():
         """
-        Make sure that the AWS cli is present
+        Make sure that the `gsutil` cli is present
         """
         if not _which(GCSProxy._GS_UTIL_CLI):
-            raise _FlyteUserException('gsutil (gcloud cli) not found at Please install.')
+            raise _FlyteUserException("gsutil (gcloud cli) not found! Please install.")
+
+    @staticmethod
+    def _maybe_with_gsutil_parallelism(*gsutil_args):
+        """
+        Check if we should run `gsutil` with the `-m` flag that enables
+        parallelism via multiple threads/processes. Additional tweaking of
+        this behavior can be achieved via the .boto configuration file. See:
+        https://cloud.google.com/storage/docs/boto-gsutil
+        """
+        cmd = [GCSProxy._GS_UTIL_CLI]
+        if _gcp_config.GSUTIL_PARALLELISM.get():
+            cmd.append("-m")
+        cmd.extend(gsutil_args)
+
+        return cmd
 
     def exists(self, remote_path):
         """
@@ -64,7 +79,7 @@ class GCSProxy(_common_data.DataProxy):
         if not remote_path.startswith("gs://"):
             raise ValueError("Not an GS Key. Please use FQN (GS ARN) of the format gs://...")
 
-        cmd = [GCSProxy._GS_UTIL_CLI, "cp", "-r", _amend_path(remote_path), local_path]
+        cmd = self._maybe_with_gsutil_parallelism("cp", "-r", _amend_path(remote_path), local_path)
         return _update_cmd_config_and_execute(cmd)
 
     def download(self, remote_path, local_path):
@@ -76,7 +91,8 @@ class GCSProxy(_common_data.DataProxy):
             raise ValueError("Not an GS Key. Please use FQN (GS ARN) of the format gs://...")
 
         GCSProxy._check_binary()
-        cmd = [GCSProxy._GS_UTIL_CLI, "cp", remote_path, local_path]
+
+        cmd = self._maybe_with_gsutil_parallelism("cp", remote_path, local_path)
         return _update_cmd_config_and_execute(cmd)
 
     def upload(self, file_path, to_path):
@@ -86,8 +102,7 @@ class GCSProxy(_common_data.DataProxy):
         """
         GCSProxy._check_binary()
 
-        cmd = [GCSProxy._GS_UTIL_CLI, "cp", file_path, to_path]
-
+        cmd = self._maybe_with_gsutil_parallelism("cp", file_path, to_path)
         return _update_cmd_config_and_execute(cmd)
 
     def upload_directory(self, local_path, remote_path):
@@ -100,11 +115,12 @@ class GCSProxy(_common_data.DataProxy):
 
         GCSProxy._check_binary()
 
-        cmd = [GCSProxy._GS_UTIL_CLI,
-               "cp",
-               "-r",
-               _amend_path(local_path),
-               remote_path if remote_path.endswith("/") else remote_path + "/"]
+        cmd = self._maybe_with_gsutil_parallelism(
+           "cp",
+           "-r",
+           _amend_path(local_path),
+           remote_path if remote_path.endswith("/") else remote_path + "/"
+        )
         return _update_cmd_config_and_execute(cmd)
 
     def get_random_path(self):
