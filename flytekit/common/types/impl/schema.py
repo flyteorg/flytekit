@@ -190,8 +190,7 @@ class _SchemaReader(_SchemaIO):
         when using fastparquet as the underlying parquet engine.
 
         When using fastparquet, boolean columns containing None values will be promoted to float16 columns.
-        This behavior is inconsistent with what Pandas and Pyarrow does, which promote such columns
-        to object columns. This becomes problematic when users want to write the dataframe back into parquet
+        This becomes problematic when users want to write the dataframe back into parquet
         file because float16 (halffloat) is not a supported type in parquet spec. In this function, we detect
         such columns and do override the type promotion.
         """

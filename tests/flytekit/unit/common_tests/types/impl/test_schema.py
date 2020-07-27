@@ -526,41 +526,13 @@ def test_normal_schema_read_with_fastparquet():
             _os.environ['PARQUET_ENGINE'] = original_engine
 
 
-def test_type_promoted_schema_read_with_fastparquet():
-    with _test_utils.LocalTestFileSystem():
-        a = _schema_impl.Schema.create_at_any_location(
-            schema_type=_schema_impl.SchemaType([('a', _primitives.Integer), ('b', _primitives.Boolean)])
-        )
-        with a as writer:
-            writer.write(_pd.DataFrame.from_dict({'a': [1, 2, 3, 4], 'b': [None, True, None, False]}))
-
-        import os as _os
-        original_engine = _os.getenv('PARQUET_ENGINE')
-        _os.environ['PARQUET_ENGINE'] = 'fastparquet'
-
-        b = _schema_impl.Schema.fetch(
-            a.remote_prefix,
-            schema_type=_schema_impl.SchemaType([]))
-
-        with b as reader:
-            df = reader.read()
-            assert df['a'].tolist() == [1, 2, 3, 4]
-            assert _pd.api.types.is_object_dtype(df.dtypes['b'])
-            assert df['b'].tolist() == [None, True, None, False]
-
-        if original_engine is None:
-            del _os.environ['PARQUET_ENGINE']
-        else:
-            _os.environ['PARQUET_ENGINE'] = original_engine
-
-
 def test_schema_read_consistency_between_two_engines():
     with _test_utils.LocalTestFileSystem():
         a = _schema_impl.Schema.create_at_any_location(
             schema_type=_schema_impl.SchemaType([('a', _primitives.Integer), ('b', _primitives.Boolean)])
         )
         with a as writer:
-            writer.write(_pd.DataFrame.from_dict({'a': [1, 2, 3, 4], 'b': [None, True, None, False]}))
+            writer.write(_pd.DataFrame.from_dict({'a': [1, 2, 3, 4], 'b': [True, True, True, False]}))
 
         import os as _os
         original_engine = _os.getenv('PARQUET_ENGINE')
