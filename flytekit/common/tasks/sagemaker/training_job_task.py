@@ -22,16 +22,15 @@ from flytekit.common.constants import SdkTaskType
 class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
     def __init__(
             self,
-            training_job_config: _training_job_models.TrainingJobConfig,
+            training_job_resource_config: _training_job_models.TrainingJobResourceConfig,
             algorithm_specification: _training_job_models.AlgorithmSpecification,
-            # interruptible: bool = False,
             retries: int = 0,
             cacheable: bool = False,
             cache_version: str = "",
     ):
         """
 
-        :param training_job_config: The options to configure the training job
+        :param training_job_resource_config: The options to configure the training job
         :param algorithm_specification: The options to configure the target algorithm of the training
         :param retries: Number of retries to attempt
         :param cacheable: The flag to set if the user wants the output of the task execution to be cached
@@ -40,7 +39,7 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
         # Use the training job model as a measure of type checking
         self._training_job_model = _training_job_models.TrainingJob(
             algorithm_specification=algorithm_specification,
-            training_job_config=training_job_config,
+            training_job_resource_config=training_job_resource_config,
         )
 
         # Setting flyte-level timeout to 0, and let SageMaker takes the StoppingCondition and terminate the training
@@ -86,9 +85,6 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
                         ),
                         description="",
                     ),
-                    "stopping_condition": _interface_model.Variable(
-                        _sdk_types.Types.Proto(_training_job_pb2.StoppingCondition).to_flyte_literal_type(), ""
-                    )
                 },
                 outputs={
                     "model": _interface_model.Variable(
@@ -114,7 +110,7 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
     def __init__(
             self,
             task_function: Callable,
-            training_job_config: _training_job_models.TrainingJobConfig,
+            training_job_resource_config: _training_job_models.TrainingJobResourceConfig,
             algorithm_specification: _training_job_models.AlgorithmSpecification,
             cache_version: str,
             retries: int = 0,
@@ -127,7 +123,7 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
 
         :param task_function:
 
-        :param training_job_config: The options to configure the training job
+        :param training_job_resource_config: The options to configure the training job
         :param algorithm_specification: The options to configure the target algorithm of the training
         :param cache_version: String describing the caching version for task discovery purposes
         :param retries: Number of retries to attempt
@@ -138,7 +134,7 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         # Use the training job model as a measure of type checking
         training_job = _training_job_models.TrainingJob(
             algorithm_specification=algorithm_specification,
-            training_job_config=training_job_config,
+            training_job_resource_config=training_job_resource_config,
         ).to_flyte_idl()
 
         # Setting flyte-level timeout to 0, and let SageMaker takes the StoppingCondition and terminate the training
@@ -189,9 +185,6 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
                     ),
                     description="",
                 ),
-                "stopping_condition": _interface_model.Variable(
-                    _sdk_types.Types.Proto(_training_job_pb2.StoppingCondition).to_flyte_literal_type(), ""
-                )
             },
         )
         self.add_outputs(

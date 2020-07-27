@@ -5,11 +5,12 @@ from flytekit.common import constants as _common_constants
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.models.core import identifier as _identifier
 import datetime as _datetime
-from flytekit.models.sagemaker.training_job import TrainingJobConfig, AlgorithmSpecification, MetricDefinition
-from flytekit.sdk.sagemaker.types import InputMode, AlgorithmName
+from flytekit.models.sagemaker.training_job import TrainingJobResourceConfig, AlgorithmSpecification, \
+    MetricDefinition, AlgorithmName, InputMode
+# from flytekit.sdk.sagemaker.types import InputMode, AlgorithmName
 from google.protobuf.json_format import ParseDict
-from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobConfig as _pb2_TrainingJobConfig, StoppingCondition as _pb2_StoppingCondition
-from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import HyperparameterTuningSpecification as _pb2_HPOSpec
+from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
+from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import HyperparameterTuningJobConfig as _pb2_HPOJobConfig
 from flytekit.sdk import types as _sdk_types
 from flytekit.common.tasks.sagemaker import hpo_job_task
 
@@ -40,7 +41,7 @@ example_hyperparams = {
 }
 
 simple_training_job_task = SdkSimpleTrainingJobTask(
-    training_job_config=TrainingJobConfig(
+    training_job_resource_config=TrainingJobResourceConfig(
         instance_type="ml.m4.xlarge",
         instance_count=1,
         volume_size_in_gb=25,
@@ -49,7 +50,7 @@ simple_training_job_task = SdkSimpleTrainingJobTask(
         input_mode=InputMode.FILE,
         algorithm_name=AlgorithmName.XGBOOST,
         algorithm_version="0.72",
-        metric_definitions=[MetricDefinition(name="Minimize", regex="validation:error")]
+        metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")]
     ),
 )
 
@@ -69,8 +70,6 @@ def test_simple_training_job_task():
     assert simple_training_job_task.interface.inputs['static_hyperparameters'].description == ''
     assert simple_training_job_task.interface.inputs['static_hyperparameters'].type == \
         _sdk_types.Types.Generic.to_flyte_literal_type()
-    assert simple_training_job_task.interface.inputs['stopping_condition'].type == \
-        _sdk_types.Types.Proto(_pb2_StoppingCondition).to_flyte_literal_type()
     assert simple_training_job_task.interface.outputs['model'].description == ''
     assert simple_training_job_task.interface.outputs['model'].type == \
         _sdk_types.Types.Blob.to_flyte_literal_type()
@@ -80,8 +79,8 @@ def test_simple_training_job_task():
     assert simple_training_job_task.metadata.discoverable is False
     assert simple_training_job_task.metadata.discovery_version == ''
     assert simple_training_job_task.metadata.retries.retries == 0
-    ParseDict(simple_training_job_task.custom['trainingJobConfig'],
-              _pb2_TrainingJobConfig)  # fails the test if it cannot be parsed
+    ParseDict(simple_training_job_task.custom['trainingJobResourceConfig'],
+              _pb2_TrainingJobResourceConfig)  # fails the test if it cannot be parsed
 
 
 simple_xgboost_hpo_job_task = hpo_job_task.SdkSimpleHyperparameterTuningJobTask(
@@ -110,13 +109,11 @@ def test_simple_hpo_job_task():
     assert simple_training_job_task.interface.inputs['static_hyperparameters'].description == ''
     assert simple_training_job_task.interface.inputs['static_hyperparameters'].type == \
         _sdk_types.Types.Generic.to_flyte_literal_type()
-    assert simple_training_job_task.interface.inputs['stopping_condition'].type == \
-        _sdk_types.Types.Proto(_pb2_StoppingCondition).to_flyte_literal_type()
 
     # Checking if the hpo-specific input is defined
     assert simple_xgboost_hpo_job_task.interface.inputs['hyperparameter_tuning_specification'].description == ''
     assert simple_xgboost_hpo_job_task.interface.inputs['hyperparameter_tuning_specification'].type == \
-           _sdk_types.Types.Proto(_pb2_HPOSpec).to_flyte_literal_type()
+           _sdk_types.Types.Proto(_pb2_HPOJobConfig).to_flyte_literal_type()
     assert simple_xgboost_hpo_job_task.interface.outputs['model'].description == ''
     assert simple_xgboost_hpo_job_task.interface.outputs['model'].type == \
            _sdk_types.Types.Blob.to_flyte_literal_type()
