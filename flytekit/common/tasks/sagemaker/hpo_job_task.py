@@ -25,20 +25,20 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
             max_number_of_training_jobs: int,
             max_parallel_training_jobs: int,
             training_job: SdkSimpleTrainingJobTask,
-            interruptible: bool = False,
             retries: int = 0,
             cacheable: bool = False,
             cache_version: str = "",
     ):
         """
 
-        :param max_number_of_training_jobs:
-        :param max_parallel_training_jobs:
-        :param training_job:
-        :param interruptible:
-        :param retries:
-        :param cacheable:
-        :param cache_version:
+        :param max_number_of_training_jobs: The maximum number of training jobs that can be launched by this
+        hyperparameter tuning job
+        :param max_parallel_training_jobs: The maximum number of training jobs that can launched by this hyperparameter
+        tuning job in parallel
+        :param training_job: The reference to the training job definition
+        :param retries: Number of retries to attempt
+        :param cacheable: The flag to set if the user wants the output of the task execution to be cached
+        :param cache_version: String describing the caching version for task discovery purposes
         """
         # Use the training job model as a measure of type checking
         hpo_job = _hpo_job_model.HyperparameterTuningJob(
@@ -71,7 +71,7 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
                 discoverable=cacheable,
                 timeout=timeout,
                 retries=_literal_models.RetryStrategy(retries=retries),
-                interruptible=interruptible,
+                interruptible=False,
                 discovery_version=cache_version,
                 deprecated_error_message="",
             ),
