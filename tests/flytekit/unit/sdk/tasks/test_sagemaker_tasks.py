@@ -111,8 +111,8 @@ def test_simple_hpo_job_task():
         _sdk_types.Types.Generic.to_flyte_literal_type()
 
     # Checking if the hpo-specific input is defined
-    assert simple_xgboost_hpo_job_task.interface.inputs['hyperparameter_tuning_specification'].description == ''
-    assert simple_xgboost_hpo_job_task.interface.inputs['hyperparameter_tuning_specification'].type == \
+    assert simple_xgboost_hpo_job_task.interface.inputs['hyperparameter_tuning_job_config'].description == ''
+    assert simple_xgboost_hpo_job_task.interface.inputs['hyperparameter_tuning_job_config'].type == \
            _sdk_types.Types.Proto(_pb2_HPOJobConfig).to_flyte_literal_type()
     assert simple_xgboost_hpo_job_task.interface.outputs['model'].description == ''
     assert simple_xgboost_hpo_job_task.interface.outputs['model'].type == \
