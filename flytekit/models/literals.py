@@ -119,7 +119,9 @@ class Primitive(_common.FlyteIdlEntity):
         This returns whichever field is set.
         :rtype: T
         """
-        return self.integer or self.float_value or self.string_value or self.boolean or self.datetime or self.duration
+        for value in [self.integer, self.float_value, self.string_value, self.boolean, self.datetime, self.duration]:
+            if value is not None:
+                return value
 
     def to_flyte_idl(self):
         """

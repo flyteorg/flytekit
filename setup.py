@@ -52,6 +52,7 @@ setup(
     extras_require=extras_require,
     scripts=[
         'scripts/flytekit_install_spark.sh',
+        'scripts/flytekit_install_spark3.sh',
         'scripts/flytekit_build_image.sh',
         'scripts/flytekit_venv'
     ],
