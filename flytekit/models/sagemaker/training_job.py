@@ -1,4 +1,4 @@
-from __future__ import absolute_import, annotations
+from __future__ import absolute_import
 
 from typing import List
 from flyteidl.plugins.sagemaker import training_job_pb2 as _training_job_pb2
@@ -17,27 +17,27 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
         self._volume_size_in_gb = volume_size_in_gb
 
     @property
-    def instance_count(self: TrainingJobResourceConfig) -> int:
+    def instance_count(self) -> int:
         """
         :rtype: int
         """
         return self._instance_count
 
     @property
-    def instance_type(self: TrainingJobResourceConfig) -> str:
+    def instance_type(self) -> str:
         """
         :rtype: str
         """
         return self._instance_type
 
     @property
-    def volume_size_in_gb(self: TrainingJobResourceConfig) -> int:
+    def volume_size_in_gb(self) -> int:
         """
         :rtype: int
         """
         return self._volume_size_in_gb
 
-    def to_flyte_idl(self: TrainingJobResourceConfig) -> _training_job_pb2.TrainingJobResourceConfig:
+    def to_flyte_idl(self) -> _training_job_pb2.TrainingJobResourceConfig:
         """
 
         :rtype: _training_job_pb2.TrainingJobResourceConfig
@@ -49,7 +49,7 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _training_job_pb2.TrainingJobResourceConfig) -> TrainingJobResourceConfig:
+    def from_flyte_idl(cls, pb2_object: _training_job_pb2.TrainingJobResourceConfig):
         """
 
         :param pb2_object:
@@ -64,7 +64,7 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
 
 class MetricDefinition(_common.FlyteIdlEntity):
     def __init__(
-            self: MetricDefinition,
+            self,
             name: str,
             regex: str,
     ):
@@ -72,7 +72,7 @@ class MetricDefinition(_common.FlyteIdlEntity):
         self._regex = regex
 
     @property
-    def name(self: MetricDefinition) -> str:
+    def name(self) -> str:
         """
 
         :rtype: str
@@ -80,14 +80,14 @@ class MetricDefinition(_common.FlyteIdlEntity):
         return self._name
 
     @property
-    def regex(self: MetricDefinition) -> str:
+    def regex(self) -> str:
         """
 
         :rtype: str
         """
         return self._regex
 
-    def to_flyte_idl(self: MetricDefinition) -> _training_job_pb2.MetricDefinition:
+    def to_flyte_idl(self) -> _training_job_pb2.MetricDefinition:
         """
 
         :rtype: _training_job_pb2.MetricDefinition
@@ -98,11 +98,11 @@ class MetricDefinition(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _training_job_pb2.MetricDefinition) -> MetricDefinition:
+    def from_flyte_idl(cls, pb2_object: _training_job_pb2.MetricDefinition):
         """
 
         :param pb2_object: _training_job_pb2.MetricDefinition
-        :return: MetricDefinition
+        :rtype: MetricDefinition
         """
         return cls(
             name=pb2_object.name,
@@ -134,7 +134,7 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
         self._metric_definitions = metric_definitions
 
     @property
-    def input_mode(self: AlgorithmSpecification) -> int:
+    def input_mode(self) -> int:
         """
         enum value from InputMode
         :rtype: int
@@ -142,7 +142,7 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
         return self._input_mode
 
     @property
-    def algorithm_name(self: AlgorithmSpecification) -> int:
+    def algorithm_name(self) -> int:
         """
         enum value from AlgorithmName
         :rtype: int
@@ -150,7 +150,7 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
         return self._algorithm_name
 
     @property
-    def algorithm_version(self: AlgorithmSpecification) -> str:
+    def algorithm_version(self) -> str:
         """
         version of the algorithm (if using built-in algorithm mode)
         :rtype: str
@@ -158,14 +158,14 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
         return self._algorithm_version
 
     @property
-    def metric_definitions(self: AlgorithmSpecification) -> List[MetricDefinition]:
+    def metric_definitions(self) -> List[MetricDefinition]:
         """
 
         :rtype: List[MetricDefinition]
         """
         return self._metric_definitions
 
-    def to_flyte_idl(self: AlgorithmSpecification) -> _training_job_pb2.AlgorithmSpecification:
+    def to_flyte_idl(self) -> _training_job_pb2.AlgorithmSpecification:
 
         return _training_job_pb2.AlgorithmSpecification(
             input_mode=self.input_mode,
@@ -175,7 +175,7 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _training_job_pb2.AlgorithmSpecification) -> AlgorithmSpecification:
+    def from_flyte_idl(cls, pb2_object: _training_job_pb2.AlgorithmSpecification):
 
         return cls(
             input_mode=pb2_object.input_mode,
@@ -195,20 +195,20 @@ class TrainingJob(_common.FlyteIdlEntity):
         self._training_job_resource_config = training_job_resource_config
 
     @property
-    def algorithm_specification(self: TrainingJob) -> AlgorithmSpecification:
+    def algorithm_specification(self) -> AlgorithmSpecification:
         """
         :rtype: AlgorithmSpecification
         """
         return self._algorithm_specification
 
     @property
-    def training_job_resource_config(self: TrainingJob) -> TrainingJobResourceConfig:
+    def training_job_resource_config(self) -> TrainingJobResourceConfig:
         """
         :rtype: TrainingJobResourceConfig
         """
         return self._training_job_resource_config
 
-    def to_flyte_idl(self: TrainingJob) -> _training_job_pb2.TrainingJob:
+    def to_flyte_idl(self) -> _training_job_pb2.TrainingJob:
         """
         :rtype: _training_job_pb2.TrainingJob
         """
@@ -219,7 +219,7 @@ class TrainingJob(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _training_job_pb2.TrainingJob) -> TrainingJob:
+    def from_flyte_idl(cls, pb2_object: _training_job_pb2.TrainingJob):
         """
 
         :param pb2_object:

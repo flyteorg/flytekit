@@ -1,4 +1,4 @@
-from __future__ import absolute_import, annotations
+from __future__ import absolute_import
 
 from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
 from flytekit.models import common as _common
@@ -12,7 +12,7 @@ class HyperparameterTuningObjectiveType(object):
 
 class HyperparameterTuningObjective(_common.FlyteIdlEntity):
     def __init__(
-            self: HyperparameterTuningObjective,
+            self,
             objective_type: int,
             metric_name: str,
     ):
@@ -20,20 +20,20 @@ class HyperparameterTuningObjective(_common.FlyteIdlEntity):
         self._metric_name = metric_name
 
     @property
-    def objective_type(self: HyperparameterTuningObjective) -> int:
+    def objective_type(self) -> int:
         """
         :rtype: int
         """
         return self._objective_type
 
     @property
-    def metric_name(self: HyperparameterTuningObjective) -> str:
+    def metric_name(self) -> str:
         """
         :rtype: str
         """
         return self._metric_name
 
-    def to_flyte_idl(self: HyperparameterTuningObjective) -> _pb2_hpo_job.HyperparameterTuningObjective:
+    def to_flyte_idl(self) -> _pb2_hpo_job.HyperparameterTuningObjective:
 
         return _pb2_hpo_job.HyperparameterTuningObjective(
             objective_type=self.objective_type,
@@ -41,7 +41,7 @@ class HyperparameterTuningObjective(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _pb2_hpo_job.HyperparameterTuningObjective) -> HyperparameterTuningObjective:
+    def from_flyte_idl(cls, pb2_object: _pb2_hpo_job.HyperparameterTuningObjective):
 
         return cls(
             objective_type=pb2_object.objective_type,
@@ -73,11 +73,11 @@ class HyperparameterTuningJobConfig(_common.FlyteIdlEntity):
         self._training_job_early_stopping_type = training_job_early_stopping_type
 
     @property
-    def hyperparameter_ranges(self: HyperparameterTuningJobConfig) -> _parameter_ranges_models.ParameterRanges:
+    def hyperparameter_ranges(self) -> _parameter_ranges_models.ParameterRanges:
         return self._hyperparameter_ranges
 
     @property
-    def tuning_strategy(self: HyperparameterTuningJobConfig) -> int:
+    def tuning_strategy(self) -> int:
         """
         enum value of HyperparameterTuningStrategy
         :rtype: int
@@ -85,18 +85,18 @@ class HyperparameterTuningJobConfig(_common.FlyteIdlEntity):
         return self._tuning_strategy
 
     @property
-    def tuning_objective(self: HyperparameterTuningJobConfig) -> HyperparameterTuningObjective:
+    def tuning_objective(self) -> HyperparameterTuningObjective:
         return self._tuning_objective
 
     @property
-    def training_job_early_stopping_type(self: HyperparameterTuningJobConfig) -> int:
+    def training_job_early_stopping_type(self) -> int:
         """
         enum value of TrainingJobEarlyStoppingType
         :rtype: int
         """
         return self._training_job_early_stopping_type
 
-    def to_flyte_idl(self: HyperparameterTuningJobConfig) -> _pb2_hpo_job.HyperparameterTuningJobConfig:
+    def to_flyte_idl(self) -> _pb2_hpo_job.HyperparameterTuningJobConfig:
 
         return _pb2_hpo_job.HyperparameterTuningJobConfig(
             hyperparameter_ranges=self._hyperparameter_ranges.to_flyte_idl(),
@@ -106,7 +106,7 @@ class HyperparameterTuningJobConfig(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _pb2_hpo_job.HyperparameterTuningJobConfig) -> HyperparameterTuningJobConfig:
+    def from_flyte_idl(cls, pb2_object: _pb2_hpo_job.HyperparameterTuningJobConfig):
 
         return cls(
             hyperparameter_ranges=(
@@ -130,18 +130,18 @@ class HyperparameterTuningJob(_common.FlyteIdlEntity):
         self._training_job = training_job
 
     @property
-    def max_number_of_training_jobs(self: HyperparameterTuningJob) -> int:
+    def max_number_of_training_jobs(self) -> int:
         return self._max_number_of_training_jobs
 
     @property
-    def max_parallel_training_jobs(self: HyperparameterTuningJob) -> int:
+    def max_parallel_training_jobs(self) -> int:
         return self._max_parallel_training_jobs
 
     @property
-    def training_job(self: HyperparameterTuningJob) -> _training_job.TrainingJob:
+    def training_job(self) -> _training_job.TrainingJob:
         return self._training_job
 
-    def to_flyte_idl(self: HyperparameterTuningJob) -> _pb2_hpo_job.HyperparameterTuningJob:
+    def to_flyte_idl(self) -> _pb2_hpo_job.HyperparameterTuningJob:
         return _pb2_hpo_job.HyperparameterTuningJob(
             max_number_of_training_jobs=self._max_number_of_training_jobs,
             max_parallel_training_jobs=self._max_parallel_training_jobs,
@@ -149,7 +149,7 @@ class HyperparameterTuningJob(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _pb2_hpo_job.HyperparameterTuningJob) -> HyperparameterTuningJob:
+    def from_flyte_idl(cls, pb2_object: _pb2_hpo_job.HyperparameterTuningJob):
         return cls(
             max_number_of_training_jobs=pb2_object.max_number_of_training_jobs,
             max_parallel_training_jobs=pb2_object.max_parallel_training_jobs,

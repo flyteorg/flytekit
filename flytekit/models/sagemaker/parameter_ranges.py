@@ -1,4 +1,4 @@
-from __future__ import absolute_import, annotations
+from __future__ import absolute_import
 
 from typing import Dict, List
 from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _idl_parameter_ranges
@@ -14,7 +14,7 @@ class HyperparameterScalingType(object):
 
 class ContinuousParameterRange(_common.FlyteIdlEntity):
     def __init__(
-            self: ContinuousParameterRange,
+            self,
             max_value: float,
             min_value: float,
             scaling_type: int,
@@ -30,7 +30,7 @@ class ContinuousParameterRange(_common.FlyteIdlEntity):
         self._scaling_type = scaling_type
 
     @property
-    def max_value(self: ContinuousParameterRange) -> float:
+    def max_value(self) -> float:
         """
 
         :rtype: float
@@ -38,7 +38,7 @@ class ContinuousParameterRange(_common.FlyteIdlEntity):
         return self._max_value
 
     @property
-    def min_value(self: ContinuousParameterRange) -> float:
+    def min_value(self) -> float:
         """
 
         :rtype: float
@@ -46,14 +46,14 @@ class ContinuousParameterRange(_common.FlyteIdlEntity):
         return self._min_value
 
     @property
-    def scaling_type(self: ContinuousParameterRange) -> int:
+    def scaling_type(self) -> int:
         """
         enum value from HyperparameterScalingType
         :rtype: int
         """
         return self._scaling_type
 
-    def to_flyte_idl(self: ContinuousParameterRange) -> _idl_parameter_ranges.ContinuousParameterRange:
+    def to_flyte_idl(self) -> _idl_parameter_ranges.ContinuousParameterRange:
         """
         :rtype: _idl_parameter_ranges.ContinuousParameterRange
         """
@@ -65,7 +65,7 @@ class ContinuousParameterRange(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _idl_parameter_ranges.ContinuousParameterRange) -> ContinuousParameterRange:
+    def from_flyte_idl(cls, pb2_object: _idl_parameter_ranges.ContinuousParameterRange):
         """
 
         :param pb2_object:
@@ -80,7 +80,7 @@ class ContinuousParameterRange(_common.FlyteIdlEntity):
 
 class IntegerParameterRange(_common.FlyteIdlEntity):
     def __init__(
-            self: IntegerParameterRange,
+            self,
             max_value: int,
             min_value: int,
             scaling_type: int,
@@ -95,14 +95,14 @@ class IntegerParameterRange(_common.FlyteIdlEntity):
         self._scaling_type = scaling_type
 
     @property
-    def max_value(self: IntegerParameterRange) -> int:
+    def max_value(self) -> int:
         """
         :rtype: int
         """
         return self._max_value
 
     @property
-    def min_value(self: IntegerParameterRange) -> int:
+    def min_value(self) -> int:
         """
 
         :rtype: int
@@ -110,14 +110,14 @@ class IntegerParameterRange(_common.FlyteIdlEntity):
         return self._min_value
 
     @property
-    def scaling_type(self: IntegerParameterRange) -> int:
+    def scaling_type(self) -> int:
         """
         enum value from HyperparameterScalingType
         :rtype: int
         """
         return self._scaling_type
 
-    def to_flyte_idl(self: IntegerParameterRange) -> _idl_parameter_ranges.IntegerParameterRange:
+    def to_flyte_idl(self) -> _idl_parameter_ranges.IntegerParameterRange:
         """
         :rtype: _idl_parameter_ranges.IntegerParameterRange
         """
@@ -128,7 +128,7 @@ class IntegerParameterRange(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _idl_parameter_ranges.IntegerParameterRange) -> IntegerParameterRange:
+    def from_flyte_idl(cls, pb2_object: _idl_parameter_ranges.IntegerParameterRange):
         """
 
         :param pb2_object:
@@ -143,7 +143,7 @@ class IntegerParameterRange(_common.FlyteIdlEntity):
 
 class CategoricalParameterRange(_common.FlyteIdlEntity):
     def __init__(
-            self: CategoricalParameterRange,
+            self,
             values: List[str],
     ):
         """
@@ -153,13 +153,13 @@ class CategoricalParameterRange(_common.FlyteIdlEntity):
         self._values = values
 
     @property
-    def values(self: CategoricalParameterRange) -> List[str]:
+    def values(self) -> List[str]:
         """
         :rtype: List[str]
         """
         return self._values
 
-    def to_flyte_idl(self: CategoricalParameterRange) -> _idl_parameter_ranges.CategoricalParameterRange:
+    def to_flyte_idl(self) -> _idl_parameter_ranges.CategoricalParameterRange:
         """
         :rtype: _idl_parameter_ranges.CategoricalParameterRange
         """
@@ -168,7 +168,7 @@ class CategoricalParameterRange(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _idl_parameter_ranges.CategoricalParameterRange) -> CategoricalParameterRange:
+    def from_flyte_idl(cls, pb2_object: _idl_parameter_ranges.CategoricalParameterRange):
         return cls(
             values=pb2_object.values
         )
@@ -176,12 +176,12 @@ class CategoricalParameterRange(_common.FlyteIdlEntity):
 
 class ParameterRanges(_common.FlyteIdlEntity):
     def __init__(
-            self: ParameterRanges,
+            self,
             parameter_range_map: Dict[str, _common.FlyteIdlEntity],
     ):
         self._parameter_range_map = parameter_range_map
 
-    def to_flyte_idl(self: ParameterRanges) -> _idl_parameter_ranges.ParameterRanges:
+    def to_flyte_idl(self) -> _idl_parameter_ranges.ParameterRanges:
         converted = {}
         for k, v in self._parameter_range_map.items():
             if isinstance(v, IntegerParameterRange):
@@ -196,7 +196,7 @@ class ParameterRanges(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _idl_parameter_ranges.ParameterRanges) -> ParameterRanges:
+    def from_flyte_idl(cls, pb2_object: _idl_parameter_ranges.ParameterRanges):
         converted = {}
         for k, v in pb2_object.parameter_range_map.items():
             if isinstance(v, _idl_parameter_ranges.ContinuousParameterRange):
