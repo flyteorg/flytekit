@@ -2,7 +2,6 @@ from __future__ import absolute_import, annotations
 
 from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
 from flytekit.models import common as _common
-from flytekit.sdk.sagemaker import types as _sdk_sagemaker_types
 from flytekit.models.sagemaker import parameter_ranges as _parameter_ranges_models, training_job as _training_job
 
 
@@ -13,7 +12,7 @@ class HyperparameterTuningObjectiveType(object):
 
 class HyperparameterTuningObjective(_common.FlyteIdlEntity):
     def __init__(
-            self,
+            self: HyperparameterTuningObjective,
             objective_type: int,
             metric_name: str,
     ):
@@ -139,7 +138,7 @@ class HyperparameterTuningJob(_common.FlyteIdlEntity):
         return self._max_parallel_training_jobs
 
     @property
-    def training_job(self:HyperparameterTuningJob) -> _training_job.TrainingJob:
+    def training_job(self: HyperparameterTuningJob) -> _training_job.TrainingJob:
         return self._training_job
 
     def to_flyte_idl(self: HyperparameterTuningJob) -> _pb2_hpo_job.HyperparameterTuningJob:

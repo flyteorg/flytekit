@@ -5,15 +5,12 @@ import datetime as _datetime
 
 from flytekit import __version__
 from flytekit.common.tasks import task as _sdk_task, sdk_runnable as _sdk_runnable
-from flytekit.sdk import types as _sdk_types
 from flytekit.models import task as _task_models
 from flytekit.models import interface as _interface_model
 from flytekit.common import interface as _interface
 from flytekit.models.sagemaker import training_job as _training_job_models
-from flyteidl.plugins.sagemaker import training_job_pb2 as _training_job_pb2
 from google.protobuf.json_format import MessageToDict
-from flytekit.models import literals as _literals, types as _idl_types, \
-    task as _task_model
+from flytekit.models import types as _idl_types
 from flytekit.models.core import types as _core_types
 from flytekit.models import literals as _literal_models
 from flytekit.common.constants import SdkTaskType

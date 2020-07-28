@@ -143,7 +143,7 @@ class IntegerParameterRange(_common.FlyteIdlEntity):
 
 class CategoricalParameterRange(_common.FlyteIdlEntity):
     def __init__(
-            self,
+            self: CategoricalParameterRange,
             values: List[str],
     ):
         """
