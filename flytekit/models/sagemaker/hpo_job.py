@@ -64,14 +64,38 @@ class HyperparameterTuningJobConfig(_common.FlyteIdlEntity):
     def __init__(
             self,
             hyperparameter_ranges: _parameter_ranges_models.ParameterRanges,
-            tuning_strategy: _sdk_sagemaker_types.HyperparameterTuningStrategy,
+            tuning_strategy: int,
             tuning_objective: HyperparameterTuningObjective,
-            training_job_early_stopping_type: _sdk_sagemaker_types.TrainingJobEarlyStoppingType,
+            training_job_early_stopping_type: int,
     ):
         self._hyperparameter_ranges = hyperparameter_ranges
         self._tuning_strategy = tuning_strategy
         self._tuning_objective = tuning_objective
         self._training_job_early_stopping_type = training_job_early_stopping_type
+
+    @property
+    def hyperparameter_ranges(self: HyperparameterTuningJobConfig) -> _parameter_ranges_models.ParameterRanges:
+        return self._hyperparameter_ranges
+
+    @property
+    def tuning_strategy(self: HyperparameterTuningJobConfig) -> int:
+        """
+        enum value of HyperparameterTuningStrategy
+        :rtype: int
+        """
+        return self._tuning_strategy
+
+    @property
+    def tuning_objective(self: HyperparameterTuningJobConfig) -> HyperparameterTuningObjective:
+        return self._tuning_objective
+
+    @property
+    def training_job_early_stopping_type(self: HyperparameterTuningJobConfig) -> int:
+        """
+        enum value of TrainingJobEarlyStoppingType
+        :rtype: int
+        """
+        return self._training_job_early_stopping_type
 
     def to_flyte_idl(self: HyperparameterTuningJobConfig) -> _pb2_hpo_job.HyperparameterTuningJobConfig:
 
@@ -113,6 +137,10 @@ class HyperparameterTuningJob(_common.FlyteIdlEntity):
     @property
     def max_parallel_training_jobs(self: HyperparameterTuningJob) -> int:
         return self._max_parallel_training_jobs
+
+    @property
+    def training_job(self:HyperparameterTuningJob) -> _training_job.TrainingJob:
+        return self._training_job
 
     def to_flyte_idl(self: HyperparameterTuningJob) -> _pb2_hpo_job.HyperparameterTuningJob:
         return _pb2_hpo_job.HyperparameterTuningJob(
