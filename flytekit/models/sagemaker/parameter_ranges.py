@@ -5,7 +5,7 @@ from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _idl_parameter_ra
 from flytekit.models import common as _common
 
 
-class HyperParameterScalingType(object):
+class HyperparameterScalingType(object):
     AUTO = _idl_parameter_ranges.HyperparameterScalingType.AUTO
     LINEAR = _idl_parameter_ranges.HyperparameterScalingType.LINEAR
     LOGARITHMIC = _idl_parameter_ranges.HyperparameterScalingType.LOGARITHMIC

@@ -117,7 +117,7 @@ def test_simple_hpo_job_task():
     assert simple_xgboost_hpo_job_task.interface.outputs['model'].description == ''
     assert simple_xgboost_hpo_job_task.interface.outputs['model'].type == \
            _sdk_types.Types.Blob.to_flyte_literal_type()
-    assert simple_xgboost_hpo_job_task.type == _common_constants.SdkTaskType.SAGEMAKER_HPO_JOB_TASK
+    assert simple_xgboost_hpo_job_task.type == _common_constants.SdkTaskType.SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK
 
     # Checking if the spec of the TrainingJob is embedded into the custom field
     # of this SdkSimpleHyperparameterTuningJobTask

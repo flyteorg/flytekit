@@ -53,15 +53,15 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
         timeout = _datetime.timedelta(seconds=0)
 
         inputs = {
-                     "hyperparameter_tuning_specification": _interface_model.Variable(
+                     "hyperparameter_tuning_job_config": _interface_model.Variable(
                          _sdk_types.Types.Proto(
-                             _pb2_hpo_job.HyperparameterTuningSpecification).to_flyte_literal_type(), ""
+                             _pb2_hpo_job.HyperparameterTuningJobConfig).to_flyte_literal_type(), ""
                      ),
                  }
         inputs.update(training_job.interface.inputs)
 
         super(SdkSimpleHyperparameterTuningJobTask, self).__init__(
-            type=SdkTaskType.SAGEMAKER_HPO_JOB_TASK,
+            type=SdkTaskType.SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK,
             metadata=_task_models.TaskMetadata(
                 runtime=_task_models.RuntimeMetadata(
                     type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
@@ -91,4 +91,3 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
             ),
             custom=MessageToDict(hpo_job),
         )
-
