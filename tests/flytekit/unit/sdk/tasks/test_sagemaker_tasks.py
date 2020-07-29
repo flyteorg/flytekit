@@ -6,10 +6,11 @@ from flytekit.common.tasks import task as _sdk_task
 from flytekit.models.core import identifier as _identifier
 import datetime as _datetime
 from flytekit.models.sagemaker.training_job import TrainingJobResourceConfig, AlgorithmSpecification, \
-    MetricDefinition, AlgorithmName, InputMode
+    MetricDefinition, AlgorithmName, InputMode, InputFileType
 # from flytekit.sdk.sagemaker.types import InputMode, AlgorithmName
 from google.protobuf.json_format import ParseDict
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
+from flyteidl.plugins.sagemaker.training_job_pb2 import InputFileType as _InputFileType_pb2
 from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import HyperparameterTuningJobConfig as _pb2_HPOJobConfig
 from flytekit.sdk import types as _sdk_types
 from flytekit.common.tasks.sagemaker import hpo_job_task
@@ -48,6 +49,7 @@ simple_training_job_task = SdkSimpleTrainingJobTask(
     ),
     algorithm_specification=AlgorithmSpecification(
         input_mode=InputMode.FILE,
+        input_file_type=_InputFileType_pb2.TEXT_CSV,
         algorithm_name=AlgorithmName.XGBOOST,
         algorithm_version="0.72",
         metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")]

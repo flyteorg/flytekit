@@ -120,15 +120,22 @@ class AlgorithmName(object):
     XGBOOST = _training_job_pb2.AlgorithmName.XGBOOST
 
 
+class InputFileType(object):
+    TEXT_CSV = _training_job_pb2.InputFileType.TEXT_CSV
+    TEXT_LIBSVM = _training_job_pb2.InputFileType.TEXT_LIBSVM
+
+
 class AlgorithmSpecification(_common.FlyteIdlEntity):
     def __init__(
             self,
-            input_mode: int,
             algorithm_name: int,
             algorithm_version: str,
             metric_definitions: List[MetricDefinition],
+            input_mode: int,
+            input_file_type: int = InputFileType.TEXT_CSV,
     ):
         self._input_mode = input_mode
+        self._input_file_type = input_file_type
         self._algorithm_name = algorithm_name
         self._algorithm_version = algorithm_version
         self._metric_definitions = metric_definitions
@@ -140,6 +147,14 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
         :rtype: int
         """
         return self._input_mode
+
+    @property
+    def input_file_type(self) -> int:
+        """
+        enum value from InputFileType
+        :rtype: int
+        """
+        return self._input_file_type
 
     @property
     def algorithm_name(self) -> int:
@@ -172,6 +187,7 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
             algorithm_name=self.algorithm_name,
             algorithm_version=self.algorithm_version,
             metric_definitions=[m.to_flyte_idl() for m in self.metric_definitions],
+            input_file_type=self.input_file_type,
         )
 
     @classmethod
@@ -182,6 +198,7 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
             algorithm_name=pb2_object.algorithm_name,
             algorithm_version=pb2_object.algorithm_version,
             metric_definitions=[MetricDefinition.from_flyte_idl(m) for m in pb2_object.metric_definitions],
+            input_file_type=pb2_object.input_file_type,
         )
 
 

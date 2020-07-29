@@ -9,6 +9,7 @@ from flytekit.models import task as _task_models
 from flytekit.models import interface as _interface_model
 from flytekit.common import interface as _interface
 from flytekit.models.sagemaker import training_job as _training_job_models
+from flyteidl.plugins.sagemaker import training_job_pb2 as _training_job_pb2
 from google.protobuf.json_format import MessageToDict
 from flytekit.models import types as _idl_types
 from flytekit.models.core import types as _core_types
@@ -67,7 +68,8 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
                     "train": _interface_model.Variable(
                         type=_idl_types.LiteralType(
                             blob=_core_types.BlobType(
-                                format="csv",
+                                format=_training_job_pb2.InputFileType.Value.Name(
+                                    algorithm_specification.input_file_type).lower(),
                                 dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                             ),
                         ),
@@ -76,7 +78,8 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
                     "validation": _interface_model.Variable(
                         type=_idl_types.LiteralType(
                             blob=_core_types.BlobType(
-                                format="csv",
+                                format=_training_job_pb2.InputFileType.Value.Name(
+                                    algorithm_specification.input_file_type).lower(),
                                 dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                             ),
                         ),
@@ -111,10 +114,8 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             algorithm_specification: _training_job_models.AlgorithmSpecification,
             cache_version: str,
             retries: int = 0,
-            # interruptible: bool = False,
             deprecated: bool = False,
             cacheable: bool = False,
-            # environment: Dict[str, str] = None,
     ):
         """
 
