@@ -14,6 +14,8 @@ from flyteidl.plugins.sagemaker.training_job_pb2 import InputFileType as _InputF
 from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import HyperparameterTuningJobConfig as _pb2_HPOJobConfig
 from flytekit.sdk import types as _sdk_types
 from flytekit.common.tasks.sagemaker import hpo_job_task
+from flytekit.models import types as _idl_types
+from flytekit.models.core import types as _core_types
 
 example_hyperparams = {
     "base_score": "0.5",
@@ -65,16 +67,26 @@ def test_simple_training_job_task():
     assert isinstance(simple_training_job_task, _sdk_task.SdkTask)
     assert simple_training_job_task.interface.inputs['train'].description == ''
     assert simple_training_job_task.interface.inputs['train'].type == \
-        _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
+           _idl_types.LiteralType(
+               blob=_core_types.BlobType(
+                   format="TEXT_CSV",
+                   dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+               )
+           )
     assert simple_training_job_task.interface.inputs['validation'].description == ''
     assert simple_training_job_task.interface.inputs['validation'].type == \
-        _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
+           _idl_types.LiteralType(
+               blob=_core_types.BlobType(
+                   format="TEXT_CSV",
+                   dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+               )
+           )
     assert simple_training_job_task.interface.inputs['static_hyperparameters'].description == ''
     assert simple_training_job_task.interface.inputs['static_hyperparameters'].type == \
-        _sdk_types.Types.Generic.to_flyte_literal_type()
+           _sdk_types.Types.Generic.to_flyte_literal_type()
     assert simple_training_job_task.interface.outputs['model'].description == ''
     assert simple_training_job_task.interface.outputs['model'].type == \
-        _sdk_types.Types.Blob.to_flyte_literal_type()
+           _sdk_types.Types.Blob.to_flyte_literal_type()
     assert simple_training_job_task.type == _common_constants.SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK
     assert simple_training_job_task.metadata.timeout == _datetime.timedelta(seconds=0)
     assert simple_training_job_task.metadata.deprecated_error_message == ''
@@ -85,8 +97,23 @@ def test_simple_training_job_task():
               _pb2_TrainingJobResourceConfig)  # fails the test if it cannot be parsed
 
 
+simple_training_job_task2 = SdkSimpleTrainingJobTask(
+    training_job_resource_config=TrainingJobResourceConfig(
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
+        volume_size_in_gb=25,
+    ),
+    algorithm_specification=AlgorithmSpecification(
+        input_mode=InputMode.FILE,
+        input_file_type=_InputFileType_pb2.TEXT_LIBSVM,
+        algorithm_name=AlgorithmName.XGBOOST,
+        algorithm_version="0.72",
+        metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")]
+    ),
+)
+
 simple_xgboost_hpo_job_task = hpo_job_task.SdkSimpleHyperparameterTuningJobTask(
-    training_job=simple_training_job_task,
+    training_job=simple_training_job_task2,
     max_number_of_training_jobs=10,
     max_parallel_training_jobs=5,
     cache_version='1',
@@ -99,18 +126,29 @@ simple_xgboost_hpo_job_task._id = _identifier.Identifier(
 
 
 def test_simple_hpo_job_task():
+    print(simple_xgboost_hpo_job_task.interface.inputs['train'].type)
     assert isinstance(simple_xgboost_hpo_job_task, SdkSimpleHyperparameterTuningJobTask)
     assert isinstance(simple_xgboost_hpo_job_task, _sdk_task.SdkTask)
     # Checking if the input of the underlying SdkTrainingJobTask has been embedded
-    assert simple_training_job_task.interface.inputs['train'].description == ''
-    assert simple_training_job_task.interface.inputs['train'].type == \
-        _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
-    assert simple_training_job_task.interface.inputs['validation'].description == ''
-    assert simple_training_job_task.interface.inputs['validation'].type == \
-        _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
-    assert simple_training_job_task.interface.inputs['static_hyperparameters'].description == ''
-    assert simple_training_job_task.interface.inputs['static_hyperparameters'].type == \
-        _sdk_types.Types.Generic.to_flyte_literal_type()
+    assert simple_xgboost_hpo_job_task.interface.inputs['train'].description == ''
+    assert simple_xgboost_hpo_job_task.interface.inputs['train'].type == \
+           _idl_types.LiteralType(
+               blob=_core_types.BlobType(
+                   format="TEXT_LIBSVM",
+                   dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+               )
+           )
+    assert simple_xgboost_hpo_job_task.interface.inputs['validation'].description == ''
+    assert simple_xgboost_hpo_job_task.interface.inputs['validation'].type == \
+           _idl_types.LiteralType(
+               blob=_core_types.BlobType(
+                   format="TEXT_LIBSVM",
+                   dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+               )
+           )
+    assert simple_xgboost_hpo_job_task.interface.inputs['static_hyperparameters'].description == ''
+    assert simple_xgboost_hpo_job_task.interface.inputs['static_hyperparameters'].type == \
+           _sdk_types.Types.Generic.to_flyte_literal_type()
 
     # Checking if the hpo-specific input is defined
     assert simple_xgboost_hpo_job_task.interface.inputs['hyperparameter_tuning_job_config'].description == ''
@@ -124,7 +162,7 @@ def test_simple_hpo_job_task():
     # Checking if the spec of the TrainingJob is embedded into the custom field
     # of this SdkSimpleHyperparameterTuningJobTask
     assert simple_xgboost_hpo_job_task.to_flyte_idl().custom["trainingJob"] == (
-        simple_training_job_task.to_flyte_idl().custom)
+        simple_training_job_task2.to_flyte_idl().custom)
 
     assert simple_xgboost_hpo_job_task.metadata.timeout == _datetime.timedelta(seconds=0)
     assert simple_xgboost_hpo_job_task.metadata.discoverable is True
