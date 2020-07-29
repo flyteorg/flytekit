@@ -11,6 +11,12 @@ class HyperparameterTuningObjectiveType(object):
 
 
 class HyperparameterTuningObjective(_common.FlyteIdlEntity):
+    """
+    HyperparameterTuningObjective is a data structure that contains the target metric and the
+    objective of the hyperparameter tuning.
+
+    https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-define-metrics.html
+    """
     def __init__(
             self,
             objective_type: int,
@@ -22,6 +28,8 @@ class HyperparameterTuningObjective(_common.FlyteIdlEntity):
     @property
     def objective_type(self) -> int:
         """
+        Enum value of HyperparameterTuningObjectiveType. objective_type determines the direction of the tuning of
+        the Hyperparameter Tuning Job with respect to the specified metric.
         :rtype: int
         """
         return self._objective_type
@@ -29,6 +37,8 @@ class HyperparameterTuningObjective(_common.FlyteIdlEntity):
     @property
     def metric_name(self) -> str:
         """
+        The target metric name, which is the user-defined name of the metric specified in the
+        training job's algorithm specification
         :rtype: str
         """
         return self._metric_name
@@ -60,6 +70,10 @@ class TrainingJobEarlyStoppingType:
 
 
 class HyperparameterTuningJobConfig(_common.FlyteIdlEntity):
+    """
+    The specification of the hyperparameter tuning process
+    https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-ex-tuning-job.html#automatic-model-tuning-ex-low-tuning-config
+    """
     def __init__(
             self,
             hyperparameter_ranges: _parameter_ranges_models.ParameterRanges,
@@ -74,24 +88,37 @@ class HyperparameterTuningJobConfig(_common.FlyteIdlEntity):
 
     @property
     def hyperparameter_ranges(self) -> _parameter_ranges_models.ParameterRanges:
+        """
+        hyperparameter_ranges is a structure containing a map that maps hyperparameter name to the corresponding
+        hyperparameter range object
+        :rtype:  _parameter_ranges_models.ParameterRanges
+        """
         return self._hyperparameter_ranges
 
     @property
     def tuning_strategy(self) -> int:
         """
-        enum value of HyperparameterTuningStrategy
+        Enum value of HyperparameterTuningStrategy. Setting the strategy used when searching in the hyperparameter space
         :rtype: int
         """
         return self._tuning_strategy
 
     @property
     def tuning_objective(self) -> HyperparameterTuningObjective:
+        """
+        The target metric and the objective of the hyperparameter tuning.
+        :rtype: HyperparameterTuningObjective
+        """
         return self._tuning_objective
 
     @property
     def training_job_early_stopping_type(self) -> int:
         """
-        enum value of TrainingJobEarlyStoppingType
+        Enum value of TrainingJobEarlyStoppingType. When the training jobs launched by the hyperparameter tuning job
+        are not improving significantly, a hyperparameter tuning job can be stopping early. This attribute determines
+        how the early stopping is to be done.
+        Note that there's only a subset of built-in algorithms that supports early stopping.
+        see: https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-early-stopping.html
         :rtype: int
         """
         return self._training_job_early_stopping_type
@@ -131,14 +158,28 @@ class HyperparameterTuningJob(_common.FlyteIdlEntity):
 
     @property
     def max_number_of_training_jobs(self) -> int:
+        """
+        The maximum number of training jobs that a hyperparameter tuning job can launch.
+        https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ResourceLimits.html
+        :rtype: int
+        """
         return self._max_number_of_training_jobs
 
     @property
     def max_parallel_training_jobs(self) -> int:
+        """
+        The maximum number of concurrent training job that an hpo job can launch
+        https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ResourceLimits.html
+        :rtype: int
+        """
         return self._max_parallel_training_jobs
 
     @property
     def training_job(self) -> _training_job.TrainingJob:
+        """
+        The reference to the underlying training job that the hyperparameter tuning job will launch during the process
+        :rtype: _training_job.TrainingJob
+        """
         return self._training_job
 
     def to_flyte_idl(self) -> _pb2_hpo_job.HyperparameterTuningJob:

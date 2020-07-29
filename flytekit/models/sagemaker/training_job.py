@@ -6,6 +6,11 @@ from flytekit.models import common as _common
 
 
 class TrainingJobResourceConfig(_common.FlyteIdlEntity):
+    """
+    TrainingJobResourceConfig is a pass-through, specifying the instance type to use for the training job, the
+    number of instances to launch, and the size of the ML storage volume the user wants to provision
+    Refer to SageMaker official doc for more details: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTrainingJob.html
+    """
     def __init__(
             self,
             instance_count: int,
@@ -19,6 +24,7 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
     @property
     def instance_count(self) -> int:
         """
+        The number of ML compute instances to use. For distributed training, provide a value greater than 1.
         :rtype: int
         """
         return self._instance_count
@@ -26,6 +32,7 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
     @property
     def instance_type(self) -> str:
         """
+        The ML compute instance type.
         :rtype: str
         """
         return self._instance_type
@@ -33,6 +40,7 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
     @property
     def volume_size_in_gb(self) -> int:
         """
+        The size of the ML storage volume that you want to provision to store the data and intermediate artifacts, etc.
         :rtype: int
         """
         return self._volume_size_in_gb
@@ -74,7 +82,7 @@ class MetricDefinition(_common.FlyteIdlEntity):
     @property
     def name(self) -> str:
         """
-
+        The user-defined name of the metric
         :rtype: str
         """
         return self._name
@@ -82,7 +90,8 @@ class MetricDefinition(_common.FlyteIdlEntity):
     @property
     def regex(self) -> str:
         """
-
+        SageMaker hyperparameter tuning using this regex to parses your algorithm’s stdout and stderr
+        streams to find the algorithm metrics on which the users want to track
         :rtype: str
         """
         return self._regex
@@ -111,21 +120,46 @@ class MetricDefinition(_common.FlyteIdlEntity):
 
 
 class InputMode(object):
+    """
+    When using FILE input mode, different SageMaker built-in algorithms require different file types of input data
+    See https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
+    https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html
+    """
     PIPE = _training_job_pb2.InputMode.PIPE
     FILE = _training_job_pb2.InputMode.FILE
 
 
 class AlgorithmName(object):
+    """
+    The algorithm name is used for deciding which pre-built image to point to.
+    This is only required for use cases where SageMaker's built-in algorithm mode is used.
+    While we currently only support a subset of the algorithms, more will be added to the list.
+    See: https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html
+    """
     CUSTOM = _training_job_pb2.AlgorithmName.CUSTOM
     XGBOOST = _training_job_pb2.AlgorithmName.XGBOOST
 
 
 class InputFileType(object):
+    """
+    Specifies the type of file for input data. Different SageMaker built-in algorithms require different file types of input data
+    See https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
+    https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html
+    """
     TEXT_CSV = _training_job_pb2.InputFileType.TEXT_CSV
     TEXT_LIBSVM = _training_job_pb2.InputFileType.TEXT_LIBSVM
 
 
 class AlgorithmSpecification(_common.FlyteIdlEntity):
+    """
+    Specifies the training algorithm to be used in the training job
+    This object is mostly a pass-through, with a couple of exceptions include: (1) in Flyte, users don't need to specify
+    TrainingImage; either use the built-in algorithm mode by using Flytekit's Simple Training Job and specifying an algorithm
+    name and an algorithm version or (2) when users want to supply custom algorithms they should set algorithm_name field to
+    CUSTOM. In this case, the value of the algorithm_version field has no effect
+    For pass-through use cases: refer to this AWS official document for more details
+    https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_AlgorithmSpecification.html
+    """
     def __init__(
             self,
             algorithm_name: int,
@@ -143,7 +177,7 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
     @property
     def input_mode(self) -> int:
         """
-        enum value from InputMode
+        enum value from InputMode. The input mode can be either PIPE or FILE
         :rtype: int
         """
         return self._input_mode
@@ -151,7 +185,9 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
     @property
     def input_file_type(self) -> int:
         """
-        enum value from InputFileType
+        enum value from InputFileType. The type of the input files (when using FILE input mode)
+        See https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
+        https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html
         :rtype: int
         """
         return self._input_file_type
@@ -159,7 +195,8 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
     @property
     def algorithm_name(self) -> int:
         """
-        enum value from AlgorithmName
+        The algorithm name is used for deciding which pre-built image to point to.
+        enum value from AlgorithmName.
         :rtype: int
         """
         return self._algorithm_name
@@ -167,7 +204,7 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
     @property
     def algorithm_version(self) -> str:
         """
-        version of the algorithm (if using built-in algorithm mode)
+        version of the algorithm (if using built-in algorithm mode).
         :rtype: str
         """
         return self._algorithm_version
@@ -175,7 +212,9 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
     @property
     def metric_definitions(self) -> List[MetricDefinition]:
         """
-
+        A list of metric definitions for SageMaker to evaluate/track on the progress of the training job
+        See this: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_AlgorithmSpecification.html
+        and this: https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-define-metrics.html
         :rtype: List[MetricDefinition]
         """
         return self._metric_definitions
@@ -214,6 +253,7 @@ class TrainingJob(_common.FlyteIdlEntity):
     @property
     def algorithm_specification(self) -> AlgorithmSpecification:
         """
+        Contains the information related to the algorithm to use in the training job
         :rtype: AlgorithmSpecification
         """
         return self._algorithm_specification
@@ -221,6 +261,7 @@ class TrainingJob(_common.FlyteIdlEntity):
     @property
     def training_job_resource_config(self) -> TrainingJobResourceConfig:
         """
+        Specifies the information around the instances that will be used to run the training job.
         :rtype: TrainingJobResourceConfig
         """
         return self._training_job_resource_config
