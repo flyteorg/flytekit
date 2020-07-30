@@ -72,14 +72,18 @@ def test_simple_training_job_task():
                    dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                )
            )
+    assert simple_training_job_task.interface.inputs['train'].type == \
+           _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
     assert simple_training_job_task.interface.inputs['validation'].description == ''
     assert simple_training_job_task.interface.inputs['validation'].type == \
-           _idl_types.LiteralType(
+           _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
+    assert simple_training_job_task.interface.inputs['train'].type == \
+            _idl_types.LiteralType(
                blob=_core_types.BlobType(
-                   format="TEXT_CSV",
+                   format="csv",
                    dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                )
-           )
+            )
     assert simple_training_job_task.interface.inputs['static_hyperparameters'].description == ''
     assert simple_training_job_task.interface.inputs['static_hyperparameters'].type == \
            _sdk_types.Types.Generic.to_flyte_literal_type()
@@ -125,11 +129,12 @@ simple_xgboost_hpo_job_task._id = _identifier.Identifier(
 
 
 def test_simple_hpo_job_task():
-    print(simple_xgboost_hpo_job_task.interface.inputs['train'].type)
     assert isinstance(simple_xgboost_hpo_job_task, SdkSimpleHyperparameterTuningJobTask)
     assert isinstance(simple_xgboost_hpo_job_task, _sdk_task.SdkTask)
     # Checking if the input of the underlying SdkTrainingJobTask has been embedded
     assert simple_xgboost_hpo_job_task.interface.inputs['train'].description == ''
+    assert simple_xgboost_hpo_job_task.interface.inputs['train'].type == \
+           _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
     assert simple_xgboost_hpo_job_task.interface.inputs['train'].type == \
            _idl_types.LiteralType(
                blob=_core_types.BlobType(
@@ -138,6 +143,8 @@ def test_simple_hpo_job_task():
                )
            )
     assert simple_xgboost_hpo_job_task.interface.inputs['validation'].description == ''
+    assert simple_xgboost_hpo_job_task.interface.inputs['validation'].type == \
+           _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
     assert simple_xgboost_hpo_job_task.interface.inputs['validation'].type == \
            _idl_types.LiteralType(
                blob=_core_types.BlobType(
