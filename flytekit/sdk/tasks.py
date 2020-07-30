@@ -87,7 +87,7 @@ def outputs(_task_template=None, **kwargs):
     :rtype: flytekit.common.tasks.sdk_runnable.SdkRunnableTask
     """
     def apply_outputs_wrapper(task):
-        if not isinstance(task, _sdk_runnable_tasks.SdkRunnableTask):
+        if not isinstance(task, _task.SdkTask):
             additional_msg = \
                 "Outputs can only be applied to a task. Did you forget the task decorator on method '{}.{}'?".format(
                     task.__module__,

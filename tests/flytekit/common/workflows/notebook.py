@@ -3,19 +3,21 @@ from __future__ import division
 from __future__ import print_function
 
 from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class, Input
-from flytekit.contrib.notebook import python_notebook, spark_notebook
+from flytekit.sdk.tasks import inputs, outputs
 
-interactive_python = python_notebook(notebook_path="../../../../notebooks/python-notebook.ipynb",
-                                          inputs={"pi": Types.Float},
-                                          outputs={"out": Types.Float},
+from flytekit.sdk.workflow import workflow_class, Input
+from flytekit.contrib.notebook.tasks import python_notebook, spark_notebook
+
+interactive_python = python_notebook(notebook_path="../../../../notebook-task-examples/python-notebook.ipynb",
+                                          inputs=inputs(pi=Types.Float),
+                                          outputs=outputs(out=Types.Float),
                                           cpu_request="1",
                                           memory_request="1G"
                                         )
 
-interactive_spark = spark_notebook(notebook_path="../../../../notebooks/spark-notebook-pi.ipynb",
-                                          inputs={"partitions": Types.Integer},
-                                          outputs={"pi": Types.Float}
+interactive_spark = spark_notebook(notebook_path="../../../../notebook-task-examples/spark-notebook-pi.ipynb",
+                                          inputs=inputs(partitions=Types.Integer),
+                                          outputs=outputs(pi=Types.Float),
                                         )
 
 @workflow_class
