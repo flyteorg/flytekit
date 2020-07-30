@@ -12,6 +12,7 @@ from flytekit.common.tasks import task as _task
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.sdk.spark_types import  SparkType as _spark_type
 from flytekit.models import interface as _interface_model
+from flytekit.contrib.notebook import  tasks as _nb_tasks
 
 
 def inputs(_task_template=None, **kwargs):
@@ -87,7 +88,7 @@ def outputs(_task_template=None, **kwargs):
     :rtype: flytekit.common.tasks.sdk_runnable.SdkRunnableTask
     """
     def apply_outputs_wrapper(task):
-        if not isinstance(task, _sdk_runnable_tasks.SdkRunnableTask):
+        if not isinstance(task, _sdk_runnable_tasks.SdkRunnableTask) and not isinstance(task, _nb_tasks.SdkNotebookTask):
             additional_msg = \
                 "Outputs can only be applied to a task. Did you forget the task decorator on method '{}.{}'?".format(
                     task.__module__,
