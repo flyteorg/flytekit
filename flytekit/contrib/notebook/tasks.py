@@ -211,6 +211,7 @@ class SdkNotebookTask(_base_tasks.SdkTask):
             literals.
         :returns: Depends on the behavior of the specific task in the unit engine.
         """
+
         return _engine_loader.get_engine('unit').get_task(self).execute(
             _type_helpers.pack_python_std_map_to_literal_map(input_map, {
                 k: _type_helpers.get_sdk_type_from_literal_type(v.type)
@@ -251,7 +252,7 @@ class SdkNotebookTask(_base_tasks.SdkTask):
 
         input_notebook_path = self._notebook_path
         # Execute Notebook via Papermill.
-        output_notebook_path = input_notebook_path + '.out'
+        output_notebook_path = input_notebook_path.split(".ipynb")[0] + '-out.ipynb'
         _pm.execute_notebook(
             input_notebook_path,
             output_notebook_path,
@@ -472,14 +473,6 @@ class SdkNotebookSparkTask(SdkNotebookTask):
         spark_exec_path = _os.path.abspath(_entrypoint.__file__)
         if spark_exec_path.endswith('.pyc'):
             spark_exec_path = spark_exec_path[:-1]
-
-        if _os.path.isabs(notebook_path) is False:
-            # Find absolute path for the notebook.
-            task_module = _importlib.import_module(_find_instance_module())
-            module_path = _os.path.dirname(task_module.__file__)
-            notebook_path = _os.path.normpath(_os.path.join(module_path, notebook_path))
-
-        self._notebook_path = notebook_path
 
         if spark_conf is None:
             # Parse spark_conf from notebook if not set at task_level.
