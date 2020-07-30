@@ -18,4 +18,7 @@ RAW_OUTPUT_DATA_PREFIX = _config_common.FlyteStringConfigurationEntry('auth', 'r
 """
 This is not output metadata but rather where users can specify an S3 or gcs path for offloaded data like blobs
 and schemas.
+
+The reason this setting is in this file is because it's inextricably tied to a workflow's role or service account,
+since that is what ultimately gives the tasks the ability to write to certain buckets.
 """
