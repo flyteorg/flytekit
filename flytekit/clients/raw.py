@@ -26,8 +26,8 @@ def _refresh_credentials_standard(flyte_client):
     :return:
     """
 
-    _credentials_access.get_client().refresh_access_token()
-    flyte_client.set_access_token(_credentials_access.get_client().credentials.access_token)
+    _credentials_access.get_client(flyte_client.url).refresh_access_token()
+    flyte_client.set_access_token(_credentials_access.get_client(flyte_client.url).credentials.access_token)
 
 
 def _refresh_credentials_basic(flyte_client):
@@ -40,7 +40,7 @@ def _refresh_credentials_basic(flyte_client):
     :param flyte_client: RawSynchronousFlyteClient
     :return:
     """
-    auth_endpoints = _credentials_access.get_authorization_endpoints()
+    auth_endpoints = _credentials_access.get_authorization_endpoints(flyte_client.url)
     token_endpoint = auth_endpoints.token_endpoint
     client_secret = _basic_auth.get_secret()
     _logging.debug('Basic authorization flow with client id {} scope {}'.format(_CLIENT_ID.get(), _SCOPE.get()))
@@ -130,6 +130,7 @@ class RawSynchronousFlyteClient(object):
             service-side of the RPC.
         """
         self._channel = None
+        self._url = url
 
         if insecure:
             self._channel = _insecure_channel(url, options=list((options or {}).items()))
@@ -143,6 +144,10 @@ class RawSynchronousFlyteClient(object):
         self._metadata = None
         if _AUTH.get():
             self.force_auth_flow()
+
+    @property
+    def url(self) -> str:
+        return self._url
 
     def set_access_token(self, access_token):
         # Always set the header to lower-case regardless of what the config is. The grpc libraries that Admin uses
