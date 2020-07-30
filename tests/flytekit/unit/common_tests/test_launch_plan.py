@@ -341,3 +341,4 @@ def test_promote_from_model():
     assert not isinstance(lp_from_spec, _launch_plan.SdkRunnableLaunchPlan)
     assert isinstance(lp_from_spec, _launch_plan.SdkLaunchPlan)
     assert lp_from_spec == lp
+    assert lp.raw_output_data_prefix == lp_from_spec.raw_output_data_prefix

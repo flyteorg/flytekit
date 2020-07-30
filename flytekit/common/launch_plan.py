@@ -106,7 +106,7 @@ class SdkLaunchPlan(
         :rtype: flytekit.models.common.AuthRole
         """
         fixed_auth = super(SdkLaunchPlan, self).auth_role
-        if fixed_auth is not None and\
+        if fixed_auth is not None and \
                 (fixed_auth.assumable_iam_role is not None or fixed_auth.kubernetes_service_account is not None):
                 return fixed_auth
 
@@ -141,6 +141,19 @@ class SdkLaunchPlan(
         :rtype: Text
         """
         return "Launch Plan"
+
+    @property
+    def raw_output_data_prefix(self):
+        """
+        :rtype: Text
+        """
+        model_output_prefix = super(SdkLaunchPlan, self).raw_output_data_prefix
+        if model_output_prefix is not None and model_output_prefix != "":
+            return model_output_prefix
+
+        # If it was not set explicitly then let's use the value found in the configuration.
+        return _auth_config.RAW_OUTPUT_DATA_PREFIX.get()
+
 
     @_exception_scopes.system_entry_point
     def validate(self):

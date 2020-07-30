@@ -13,3 +13,9 @@ KUBERNETES_SERVICE_ACCOUNT = _config_common.FlyteStringConfigurationEntry(
 """
 This is the kubernetes service account that will be passed to workflow executions.
 """
+
+RAW_OUTPUT_DATA_PREFIX = _config_common.FlyteStringConfigurationEntry('auth', 'raw_output_data_prefix', default='')
+"""
+This is not output metadata but rather where users can specify an S3 or gcs path for offloaded data like blobs
+and schemas.
+"""
