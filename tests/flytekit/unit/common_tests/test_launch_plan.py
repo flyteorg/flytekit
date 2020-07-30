@@ -356,9 +356,9 @@ def test_raw_data_output_prefix():
         fixed_inputs={'required_input': 5},
         raw_output_data_prefix='s3://bucket-name',
     )
-    assert lp.raw_output_data_prefix == 's3://bucket-name'
+    assert lp.raw_output_data_config.output_location_prefix == 's3://bucket-name'
 
     lp2 = workflow_to_test.create_launch_plan(
         fixed_inputs={'required_input': 5},
     )
-    assert lp2.raw_output_data_prefix == ''
+    assert lp2.raw_output_data_config.output_location_prefix == ''

@@ -474,3 +474,28 @@ class AuthRole(FlyteIdlEntity):
         )
 
 
+class RawOutputDataConfig(FlyteIdlEntity):
+
+    def __init__(self, output_location_prefix):
+        """
+        :param Text output_location_prefix: Location of offloaded data for things like S3, etc.
+        """
+        self._output_location_prefix = output_location_prefix
+
+    @property
+    def output_location_prefix(self):
+        return self._output_location_prefix
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin.common_pb2.Auth
+        """
+        return _common_pb2.RawOutputDataConfig(
+            output_location_prefix=self.output_location_prefix
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2):
+        return cls(
+            output_location_prefix=pb2.output_location_prefix
+        )

@@ -146,15 +146,14 @@ class SdkLaunchPlan(
     @property
     def raw_output_data_prefix(self):
         """
-        :rtype: Text
+        :rtype: flytekit.models.common.RawOutputDataConfig
         """
-        model_output_prefix = super(SdkLaunchPlan, self).raw_output_data_prefix
-        if model_output_prefix is not None and model_output_prefix != "":
-            return model_output_prefix
+        raw_output_data_config = super(SdkLaunchPlan, self).raw_output_data_config
+        if raw_output_data_config is not None and raw_output_data_config.output_location_prefix != '':
+            return raw_output_data_config
 
         # If it was not set explicitly then let's use the value found in the configuration.
-        return _auth_config.RAW_OUTPUT_DATA_PREFIX.get()
-
+        return _common_models.RawOutputDataConfig(_auth_config.RAW_OUTPUT_DATA_PREFIX.get())
 
     @_exception_scopes.system_entry_point
     def validate(self):
@@ -283,7 +282,7 @@ class SdkRunnableLaunchPlan(
             labels=None,
             annotations=None,
             auth_role=None,
-            raw_output_data_prefix=None,
+            raw_output_data_config=None,
     ):
         """
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
@@ -299,6 +298,7 @@ class SdkRunnableLaunchPlan(
             executed by this launch plan.
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
         :param flytekit.models.common.Authrole auth_role: The auth method with which to execute the workflow.
+        :param flytekit.models.common.RawOutputDataConfig raw_output_data_config: Config for offloading data
         """
         if role and auth_role:
             raise ValueError("Cannot set both role and auth. Role is deprecated, use auth instead.")
@@ -332,7 +332,7 @@ class SdkRunnableLaunchPlan(
             labels or _common_models.Labels({}),
             annotations or _common_models.Annotations({}),
             auth_role,
-            raw_output_data_prefix or '',
+            raw_output_data_config or _common_models.RawOutputDataConfig(''),
         )
         self._interface = _interface.TypedInterface(
             {k: v.var for k, v in _six.iteritems(default_inputs)},

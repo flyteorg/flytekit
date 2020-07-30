@@ -56,16 +56,19 @@ def test_launch_plan_spec():
     annotations_model = common.Annotations({"my": "annotation"})
 
     auth_role_model = common.AuthRole(assumable_iam_role='my:iam:role')
+    raw_data_output_config = common.RawOutputDataConfig('s3://bucket')
+    empty_raw_data_output_config = common.RawOutputDataConfig('')
+
     lp_spec_raw_output_prefixed = launch_plan.LaunchPlanSpec(identifier_model, launch_plan_metadata_model,
                                                              parameter_map, fixed_inputs, labels_model,
-                                                             annotations_model, auth_role_model, 's3://fdsa')
+                                                             annotations_model, auth_role_model, raw_data_output_config)
 
     obj2 = launch_plan.LaunchPlanSpec.from_flyte_idl(lp_spec_raw_output_prefixed.to_flyte_idl())
     assert obj2 == lp_spec_raw_output_prefixed
 
     lp_spec_no_prefix = launch_plan.LaunchPlanSpec(identifier_model, launch_plan_metadata_model,
                                                    parameter_map, fixed_inputs, labels_model,
-                                                   annotations_model, auth_role_model, '')
+                                                   annotations_model, auth_role_model, empty_raw_data_output_config)
 
     obj2 = launch_plan.LaunchPlanSpec.from_flyte_idl(lp_spec_no_prefix.to_flyte_idl())
     assert obj2 == lp_spec_no_prefix
