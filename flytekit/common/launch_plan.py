@@ -53,7 +53,7 @@ class SdkLaunchPlan(
             labels=model.labels,
             annotations=model.annotations,
             auth_role=model.auth_role,
-            raw_output_data_prefix=model.raw_output_data_prefix,
+            raw_output_data_config=model.raw_output_data_config,
         )
 
     @classmethod
@@ -144,7 +144,7 @@ class SdkLaunchPlan(
         return "Launch Plan"
 
     @property
-    def raw_output_data_prefix(self):
+    def raw_output_data_config(self):
         """
         :rtype: flytekit.models.common.RawOutputDataConfig
         """
