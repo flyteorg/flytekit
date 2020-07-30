@@ -53,6 +53,7 @@ class SdkLaunchPlan(
             labels=model.labels,
             annotations=model.annotations,
             auth_role=model.auth_role,
+            raw_output_data_prefix=model.raw_output_data_prefix,
         )
 
     @classmethod
@@ -282,6 +283,7 @@ class SdkRunnableLaunchPlan(
             labels=None,
             annotations=None,
             auth_role=None,
+            raw_output_data_prefix=None,
     ):
         """
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
@@ -330,6 +332,7 @@ class SdkRunnableLaunchPlan(
             labels or _common_models.Labels({}),
             annotations or _common_models.Annotations({}),
             auth_role,
+            raw_output_data_prefix or '',
         )
         self._interface = _interface.TypedInterface(
             {k: v.var for k, v in _six.iteritems(default_inputs)},

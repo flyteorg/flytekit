@@ -316,6 +316,7 @@ class SdkWorkflow(
             annotations=None,
             assumable_iam_role=None,
             kubernetes_service_account=None,
+            raw_output_data_prefix=None,
             cls=None
     ):
         """
@@ -358,6 +359,7 @@ class SdkWorkflow(
             labels=labels,
             annotations=annotations,
             auth_role=auth_role,
+            raw_output_data_prefix=raw_output_data_prefix,
         )
 
     @_exception_scopes.system_entry_point
