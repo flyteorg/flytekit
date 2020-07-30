@@ -15,6 +15,14 @@ from flytekit.models import types as _idl_types
 from flytekit.models.core import types as _core_types
 from flytekit.models import literals as _literal_models
 from flytekit.common.constants import SdkTaskType
+from flytekit.common.exceptions import user as _user_exceptions
+
+
+def _content_type_to_blob_format(content_type: _training_job_models) -> str:
+    if content_type == _training_job_models.InputContentType.TEXT_CSV:
+        return "csv"
+    else:
+        raise _user_exceptions.FlyteValueException("Unsupported InputContentType: {}".format(content_type))
 
 
 class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
@@ -68,8 +76,7 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
                     "train": _interface_model.Variable(
                         type=_idl_types.LiteralType(
                             blob=_core_types.BlobType(
-                                format=_training_job_pb2.InputContentType.Value.Name(
-                                    algorithm_specification.input_file_type),
+                                format=_content_type_to_blob_format(algorithm_specification.input_content_type),
                                 dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                             ),
                         ),
@@ -78,8 +85,7 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
                     "validation": _interface_model.Variable(
                         type=_idl_types.LiteralType(
                             blob=_core_types.BlobType(
-                                format=_training_job_pb2.InputContentType.Value.Name(
-                                    algorithm_specification.input_file_type),
+                                format=_content_type_to_blob_format(algorithm_specification.input_content_type),
                                 dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                             ),
                         ),
@@ -168,8 +174,7 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
                 "train": _interface_model.Variable(
                     type=_idl_types.LiteralType(
                         blob=_core_types.BlobType(
-                            format=_training_job_pb2.InputContentType.Value.Name(
-                                    algorithm_specification.input_file_type),
+                            format=_content_type_to_blob_format(algorithm_specification.input_content_type),
                             dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                         ),
                     ),
@@ -178,8 +183,7 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
                 "validation": _interface_model.Variable(
                     type=_idl_types.LiteralType(
                         blob=_core_types.BlobType(
-                            format=_training_job_pb2.InputContentType.Value.Name(
-                                    algorithm_specification.input_file_type),
+                            format=_content_type_to_blob_format(algorithm_specification.input_content_type),
                             dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                         ),
                     ),

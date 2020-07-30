@@ -147,7 +147,6 @@ class InputContentType(object):
     https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html
     """
     TEXT_CSV = _training_job_pb2.InputContentType.TEXT_CSV
-    TEXT_LIBSVM = _training_job_pb2.InputContentType.TEXT_LIBSVM
 
 
 class AlgorithmSpecification(_common.FlyteIdlEntity):
@@ -166,10 +165,10 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
             algorithm_version: str,
             metric_definitions: List[MetricDefinition],
             input_mode: int,
-            input_file_type: int = InputContentType.TEXT_CSV,
+            input_content_type: int = InputContentType.TEXT_CSV,
     ):
         self._input_mode = input_mode
-        self._input_file_type = input_file_type
+        self._input_content_type = input_content_type
         self._algorithm_name = algorithm_name
         self._algorithm_version = algorithm_version
         self._metric_definitions = metric_definitions
@@ -183,14 +182,14 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
         return self._input_mode
 
     @property
-    def input_file_type(self) -> int:
+    def input_content_type(self) -> int:
         """
         enum value from InputContentType. The content type of the input data
         See https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
         https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html
         :rtype: int
         """
-        return self._input_file_type
+        return self._input_content_type
 
     @property
     def algorithm_name(self) -> int:
@@ -226,7 +225,7 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
             algorithm_name=self.algorithm_name,
             algorithm_version=self.algorithm_version,
             metric_definitions=[m.to_flyte_idl() for m in self.metric_definitions],
-            input_file_type=self.input_file_type,
+            input_content_type=self.input_content_type,
         )
 
     @classmethod
@@ -237,7 +236,7 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
             algorithm_name=pb2_object.algorithm_name,
             algorithm_version=pb2_object.algorithm_version,
             metric_definitions=[MetricDefinition.from_flyte_idl(m) for m in pb2_object.metric_definitions],
-            input_file_type=pb2_object.input_file_type,
+            input_content_type=pb2_object.input_content_type,
         )
 
 
