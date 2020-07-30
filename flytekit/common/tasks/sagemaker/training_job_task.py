@@ -68,7 +68,7 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
                     "train": _interface_model.Variable(
                         type=_idl_types.LiteralType(
                             blob=_core_types.BlobType(
-                                format=_training_job_pb2.InputFileType.Value.Name(
+                                format=_training_job_pb2.InputContentType.Value.Name(
                                     algorithm_specification.input_file_type),
                                 dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                             ),
@@ -78,7 +78,7 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
                     "validation": _interface_model.Variable(
                         type=_idl_types.LiteralType(
                             blob=_core_types.BlobType(
-                                format=_training_job_pb2.InputFileType.Value.Name(
+                                format=_training_job_pb2.InputContentType.Value.Name(
                                     algorithm_specification.input_file_type),
                                 dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                             ),
@@ -168,7 +168,7 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
                 "train": _interface_model.Variable(
                     type=_idl_types.LiteralType(
                         blob=_core_types.BlobType(
-                            format=_training_job_pb2.InputFileType.Value.Name(
+                            format=_training_job_pb2.InputContentType.Value.Name(
                                     algorithm_specification.input_file_type),
                             dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                         ),
@@ -178,7 +178,7 @@ class SdkCustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
                 "validation": _interface_model.Variable(
                     type=_idl_types.LiteralType(
                         blob=_core_types.BlobType(
-                            format=_training_job_pb2.InputFileType.Value.Name(
+                            format=_training_job_pb2.InputContentType.Value.Name(
                                     algorithm_specification.input_file_type),
                             dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                         ),

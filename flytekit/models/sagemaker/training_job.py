@@ -140,14 +140,14 @@ class AlgorithmName(object):
     XGBOOST = _training_job_pb2.AlgorithmName.XGBOOST
 
 
-class InputFileType(object):
+class InputContentType(object):
     """
-    Specifies the type of file for input data. Different SageMaker built-in algorithms require different file types of input data
+    Specifies the type of content for input data. Different SageMaker built-in algorithms require different content types of input data
     See https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
     https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html
     """
-    TEXT_CSV = _training_job_pb2.InputFileType.TEXT_CSV
-    TEXT_LIBSVM = _training_job_pb2.InputFileType.TEXT_LIBSVM
+    TEXT_CSV = _training_job_pb2.InputContentType.TEXT_CSV
+    TEXT_LIBSVM = _training_job_pb2.InputContentType.TEXT_LIBSVM
 
 
 class AlgorithmSpecification(_common.FlyteIdlEntity):
@@ -166,7 +166,7 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
             algorithm_version: str,
             metric_definitions: List[MetricDefinition],
             input_mode: int,
-            input_file_type: int = InputFileType.TEXT_CSV,
+            input_file_type: int = InputContentType.TEXT_CSV,
     ):
         self._input_mode = input_mode
         self._input_file_type = input_file_type
@@ -185,7 +185,7 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
     @property
     def input_file_type(self) -> int:
         """
-        enum value from InputFileType. The type of the input files (when using FILE input mode)
+        enum value from InputContentType. The content type of the input data
         See https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
         https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html
         :rtype: int

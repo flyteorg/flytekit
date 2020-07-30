@@ -6,11 +6,11 @@ from flytekit.common.tasks import task as _sdk_task
 from flytekit.models.core import identifier as _identifier
 import datetime as _datetime
 from flytekit.models.sagemaker.training_job import TrainingJobResourceConfig, AlgorithmSpecification, \
-    MetricDefinition, AlgorithmName, InputMode, InputFileType
+    MetricDefinition, AlgorithmName, InputMode, InputContentType
 # from flytekit.sdk.sagemaker.types import InputMode, AlgorithmName
 from google.protobuf.json_format import ParseDict
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
-from flyteidl.plugins.sagemaker.training_job_pb2 import InputFileType as _InputFileType_pb2
+from flyteidl.plugins.sagemaker.training_job_pb2 import InputContentType as _InputContentType_pb2
 from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import HyperparameterTuningJobConfig as _pb2_HPOJobConfig
 from flytekit.sdk import types as _sdk_types
 from flytekit.common.tasks.sagemaker import hpo_job_task
@@ -51,7 +51,7 @@ simple_training_job_task = SdkSimpleTrainingJobTask(
     ),
     algorithm_specification=AlgorithmSpecification(
         input_mode=InputMode.FILE,
-        input_file_type=_InputFileType_pb2.TEXT_CSV,
+        input_file_type=_InputContentType_pb2.TEXT_CSV,
         algorithm_name=AlgorithmName.XGBOOST,
         algorithm_version="0.72",
         metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")]
@@ -63,24 +63,29 @@ simple_training_job_task._id = _identifier.Identifier(
 
 
 def test_simple_training_job_task():
+    print(simple_training_job_task.interface.inputs['train'].type)
+
     assert isinstance(simple_training_job_task, SdkSimpleTrainingJobTask)
     assert isinstance(simple_training_job_task, _sdk_task.SdkTask)
     assert simple_training_job_task.interface.inputs['train'].description == ''
     assert simple_training_job_task.interface.inputs['train'].type == \
-           _idl_types.LiteralType(
-               blob=_core_types.BlobType(
-                   format="TEXT_CSV",
-                   dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
-               )
-           )
+           _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
+    # assert simple_training_job_task.interface.inputs['train'].type == \
+    #        _idl_types.LiteralType(
+    #            blob=_core_types.BlobType(
+    #                format="csv",
+    #                dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+    #            )
+    #        )
     assert simple_training_job_task.interface.inputs['validation'].description == ''
     assert simple_training_job_task.interface.inputs['validation'].type == \
-           _idl_types.LiteralType(
-               blob=_core_types.BlobType(
-                   format="TEXT_CSV",
-                   dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
-               )
-           )
+           _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
+           # _idl_types.LiteralType(
+           #     blob=_core_types.BlobType(
+           #         format="TEXT_CSV",
+           #         dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+           #     )
+           # )
     assert simple_training_job_task.interface.inputs['static_hyperparameters'].description == ''
     assert simple_training_job_task.interface.inputs['static_hyperparameters'].type == \
            _sdk_types.Types.Generic.to_flyte_literal_type()
@@ -105,7 +110,7 @@ simple_training_job_task2 = SdkSimpleTrainingJobTask(
     ),
     algorithm_specification=AlgorithmSpecification(
         input_mode=InputMode.FILE,
-        input_file_type=_InputFileType_pb2.TEXT_LIBSVM,
+        input_file_type=_InputContentType_pb2.TEXT_LIBSVM,
         algorithm_name=AlgorithmName.XGBOOST,
         algorithm_version="0.72",
         metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")]
