@@ -24,6 +24,8 @@ class SdkTaskType(object):
     PYTORCH_TASK = "pytorch"
     # Raw container task is just a name, it defaults to using the regular container task (like python etc), but sets the data_config in the container
     RAW_CONTAINER_TASK = "raw-container"
+    SAGEMAKER_TRAINING_JOB_TASK = "sagemaker_training_job_task"
+    SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK = "sagemaker_hyperparameter_tuning_job_task"
 
 GLOBAL_INPUT_NODE_ID = ''
 
