@@ -130,8 +130,6 @@ simple_xgboost_hpo_job_task._id = _identifier.Identifier(
 
 
 def test_simple_hpo_job_task():
-    print(simple_xgboost_hpo_job_task.custom["trainingJob"])
-
     assert isinstance(simple_xgboost_hpo_job_task, SdkSimpleHyperparameterTuningJobTask)
     assert isinstance(simple_xgboost_hpo_job_task, _sdk_task.SdkTask)
     # Checking if the input of the underlying SdkTrainingJobTask has been embedded
