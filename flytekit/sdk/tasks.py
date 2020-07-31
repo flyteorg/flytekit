@@ -1205,7 +1205,7 @@ def custom_training_job_task(
     """
 
     def wrapper(fn):
-        return (cls or _sdk_sagemaker_training_job_tasks.SdkSimpleTrainingJobTask)(
+        return (cls or _sdk_sagemaker_training_job_tasks.SdkBuiltinAlgorithmTrainingJobTask)(
             task_function=fn,
             task_type=_common_constants.SdkTaskType.PYTORCH_TASK,
             discovery_version=cache_version,

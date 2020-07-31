@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from flytekit.common.tasks.sagemaker.training_job_task import SdkSimpleTrainingJobTask
+from flytekit.common.tasks.sagemaker.training_job_task import SdkBuiltinAlgorithmTrainingJobTask
 from flytekit.common.tasks.sagemaker.hpo_job_task import SdkSimpleHyperparameterTuningJobTask
 from flytekit.common import constants as _common_constants
 from flytekit.common.tasks import task as _sdk_task
@@ -42,7 +42,7 @@ example_hyperparams = {
     "updater": "grow_colmaker,prune",
 }
 
-simple_training_job_task = SdkSimpleTrainingJobTask(
+builtin_algorithm_training_job_task = SdkBuiltinAlgorithmTrainingJobTask(
     training_job_resource_config=TrainingJobResourceConfig(
         instance_type="ml.m4.xlarge",
         instance_count=1,
@@ -56,52 +56,52 @@ simple_training_job_task = SdkSimpleTrainingJobTask(
     ),
 )
 
-simple_training_job_task._id = _identifier.Identifier(
+builtin_algorithm_training_job_task._id = _identifier.Identifier(
     _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version")
 
 
-def test_simple_training_job_task():
-    assert isinstance(simple_training_job_task, SdkSimpleTrainingJobTask)
-    assert isinstance(simple_training_job_task, _sdk_task.SdkTask)
-    assert simple_training_job_task.interface.inputs['train'].description == ''
-    assert simple_training_job_task.interface.inputs['train'].type == \
+def test_builtin_algorithm_training_job_task():
+    assert isinstance(builtin_algorithm_training_job_task, SdkBuiltinAlgorithmTrainingJobTask)
+    assert isinstance(builtin_algorithm_training_job_task, _sdk_task.SdkTask)
+    assert builtin_algorithm_training_job_task.interface.inputs['train'].description == ''
+    assert builtin_algorithm_training_job_task.interface.inputs['train'].type == \
            _idl_types.LiteralType(
                blob=_core_types.BlobType(
                    format="csv",
                    dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                )
            )
-    assert simple_training_job_task.interface.inputs['train'].type == \
+    assert builtin_algorithm_training_job_task.interface.inputs['train'].type == \
            _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
-    assert simple_training_job_task.interface.inputs['validation'].description == ''
-    assert simple_training_job_task.interface.inputs['validation'].type == \
+    assert builtin_algorithm_training_job_task.interface.inputs['validation'].description == ''
+    assert builtin_algorithm_training_job_task.interface.inputs['validation'].type == \
            _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
-    assert simple_training_job_task.interface.inputs['train'].type == \
-            _idl_types.LiteralType(
+    assert builtin_algorithm_training_job_task.interface.inputs['train'].type == \
+           _idl_types.LiteralType(
                blob=_core_types.BlobType(
                    format="csv",
                    dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                )
             )
-    assert simple_training_job_task.interface.inputs['static_hyperparameters'].description == ''
-    assert simple_training_job_task.interface.inputs['static_hyperparameters'].type == \
+    assert builtin_algorithm_training_job_task.interface.inputs['static_hyperparameters'].description == ''
+    assert builtin_algorithm_training_job_task.interface.inputs['static_hyperparameters'].type == \
            _sdk_types.Types.Generic.to_flyte_literal_type()
-    assert simple_training_job_task.interface.outputs['model'].description == ''
-    assert simple_training_job_task.interface.outputs['model'].type == \
+    assert builtin_algorithm_training_job_task.interface.outputs['model'].description == ''
+    assert builtin_algorithm_training_job_task.interface.outputs['model'].type == \
            _sdk_types.Types.Blob.to_flyte_literal_type()
-    assert simple_training_job_task.type == _common_constants.SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK
-    assert simple_training_job_task.metadata.timeout == _datetime.timedelta(seconds=0)
-    assert simple_training_job_task.metadata.deprecated_error_message == ''
-    assert simple_training_job_task.metadata.discoverable is False
-    assert simple_training_job_task.metadata.discovery_version == ''
-    assert simple_training_job_task.metadata.retries.retries == 0
-    assert "metricDefinitions" not in simple_training_job_task.custom["algorithmSpecification"].keys()
+    assert builtin_algorithm_training_job_task.type == _common_constants.SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK
+    assert builtin_algorithm_training_job_task.metadata.timeout == _datetime.timedelta(seconds=0)
+    assert builtin_algorithm_training_job_task.metadata.deprecated_error_message == ''
+    assert builtin_algorithm_training_job_task.metadata.discoverable is False
+    assert builtin_algorithm_training_job_task.metadata.discovery_version == ''
+    assert builtin_algorithm_training_job_task.metadata.retries.retries == 0
+    assert "metricDefinitions" not in builtin_algorithm_training_job_task.custom["algorithmSpecification"].keys()
 
-    ParseDict(simple_training_job_task.custom['trainingJobResourceConfig'],
+    ParseDict(builtin_algorithm_training_job_task.custom['trainingJobResourceConfig'],
               _pb2_TrainingJobResourceConfig)  # fails the test if it cannot be parsed
 
 
-simple_training_job_task2 = SdkSimpleTrainingJobTask(
+builtin_algorithm_training_job_task2 = SdkBuiltinAlgorithmTrainingJobTask(
     training_job_resource_config=TrainingJobResourceConfig(
         instance_type="ml.m4.xlarge",
         instance_count=1,
@@ -117,7 +117,7 @@ simple_training_job_task2 = SdkSimpleTrainingJobTask(
 )
 
 simple_xgboost_hpo_job_task = hpo_job_task.SdkSimpleHyperparameterTuningJobTask(
-    training_job=simple_training_job_task2,
+    training_job=builtin_algorithm_training_job_task2,
     max_number_of_training_jobs=10,
     max_parallel_training_jobs=5,
     cache_version='1',
@@ -169,7 +169,7 @@ def test_simple_hpo_job_task():
     # Checking if the spec of the TrainingJob is embedded into the custom field
     # of this SdkSimpleHyperparameterTuningJobTask
     assert simple_xgboost_hpo_job_task.to_flyte_idl().custom["trainingJob"] == (
-        simple_training_job_task2.to_flyte_idl().custom)
+        builtin_algorithm_training_job_task2.to_flyte_idl().custom)
 
     assert simple_xgboost_hpo_job_task.metadata.timeout == _datetime.timedelta(seconds=0)
     assert simple_xgboost_hpo_job_task.metadata.discoverable is True

@@ -25,7 +25,7 @@ def _content_type_to_blob_format(content_type: _training_job_models) -> str:
         raise _user_exceptions.FlyteValueException("Unsupported InputContentType: {}".format(content_type))
 
 
-class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
+class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
     def __init__(
             self,
             training_job_resource_config: _training_job_models.TrainingJobResourceConfig,
@@ -52,7 +52,7 @@ class SdkSimpleTrainingJobTask(_sdk_task.SdkTask):
         # job gracefully
         timeout = _datetime.timedelta(seconds=0)
 
-        super(SdkSimpleTrainingJobTask, self).__init__(
+        super(SdkBuiltinAlgorithmTrainingJobTask, self).__init__(
             type=SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK,
             metadata=_task_models.TaskMetadata(
                 runtime=_task_models.RuntimeMetadata(

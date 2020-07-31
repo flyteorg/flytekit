@@ -8,7 +8,7 @@ from flytekit import __version__
 from flytekit.common.constants import SdkTaskType
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.common import interface as _interface
-from flytekit.common.tasks.sagemaker.training_job_task import SdkSimpleTrainingJobTask
+from flytekit.common.tasks.sagemaker.training_job_task import SdkBuiltinAlgorithmTrainingJobTask
 from flytekit.models import task as _task_models
 from flytekit.models import interface as _interface_model
 from flytekit.models.sagemaker import hpo_job as _hpo_job_model
@@ -24,7 +24,7 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
             self,
             max_number_of_training_jobs: int,
             max_parallel_training_jobs: int,
-            training_job: SdkSimpleTrainingJobTask,
+            training_job: SdkBuiltinAlgorithmTrainingJobTask,
             retries: int = 0,
             cacheable: bool = False,
             cache_version: str = "",
