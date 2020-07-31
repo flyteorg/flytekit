@@ -53,7 +53,6 @@ simple_training_job_task = SdkSimpleTrainingJobTask(
         input_content_type=InputContentType.TEXT_CSV,
         algorithm_name=AlgorithmName.XGBOOST,
         algorithm_version="0.72",
-        metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")]
     ),
 )
 
@@ -96,6 +95,8 @@ def test_simple_training_job_task():
     assert simple_training_job_task.metadata.discoverable is False
     assert simple_training_job_task.metadata.discovery_version == ''
     assert simple_training_job_task.metadata.retries.retries == 0
+    assert "metricDefinitions" not in simple_training_job_task.custom["algorithmSpecification"].keys()
+
     ParseDict(simple_training_job_task.custom['trainingJobResourceConfig'],
               _pb2_TrainingJobResourceConfig)  # fails the test if it cannot be parsed
 
@@ -129,6 +130,8 @@ simple_xgboost_hpo_job_task._id = _identifier.Identifier(
 
 
 def test_simple_hpo_job_task():
+    print(simple_xgboost_hpo_job_task.custom["trainingJob"])
+
     assert isinstance(simple_xgboost_hpo_job_task, SdkSimpleHyperparameterTuningJobTask)
     assert isinstance(simple_xgboost_hpo_job_task, _sdk_task.SdkTask)
     # Checking if the input of the underlying SdkTrainingJobTask has been embedded
@@ -176,7 +179,8 @@ def test_simple_hpo_job_task():
     assert simple_xgboost_hpo_job_task.metadata.retries.retries == 2
 
     assert simple_xgboost_hpo_job_task.metadata.deprecated_error_message == ''
-
+    assert "metricDefinitions" in simple_xgboost_hpo_job_task.custom["trainingJob"]["algorithmSpecification"].keys()
+    assert len(simple_xgboost_hpo_job_task.custom["trainingJob"]["algorithmSpecification"]["metricDefinitions"]) == 1
     """ These are attributes for SdkRunnable. We will need these when supporting CustomTrainingJobTask and CustomHPOJobTask 
     assert simple_xgboost_hpo_job_task.task_module == __name__
     assert simple_xgboost_hpo_job_task._get_container_definition().args[0] == 'pyflyte-execute'

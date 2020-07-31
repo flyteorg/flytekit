@@ -163,15 +163,15 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
             self,
             algorithm_name: int,
             algorithm_version: str,
-            metric_definitions: List[MetricDefinition],
             input_mode: int,
+            metric_definitions: List[MetricDefinition] = None,
             input_content_type: int = InputContentType.TEXT_CSV,
     ):
         self._input_mode = input_mode
         self._input_content_type = input_content_type
         self._algorithm_name = algorithm_name
         self._algorithm_version = algorithm_version
-        self._metric_definitions = metric_definitions
+        self._metric_definitions = metric_definitions or []
 
     @property
     def input_mode(self) -> int:
@@ -213,7 +213,12 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
         """
         A list of metric definitions for SageMaker to evaluate/track on the progress of the training job
         See this: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_AlgorithmSpecification.html
-        and this: https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-define-metrics.html
+
+        Note that, when you use one of the Amazon SageMaker built-in algorithms, you cannot define custom metrics.
+        If you are doing hyperparameter tuning, built-in algorithms automatically send metrics to hyperparameter tuning.
+        When using hyperparameter tuning, you do need to choose one of the metrics that the built-in algorithm emits as
+        the objective metric for the tuning job.
+        See this: https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-define-metrics.html
         :rtype: List[MetricDefinition]
         """
         return self._metric_definitions
