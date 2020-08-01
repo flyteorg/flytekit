@@ -48,11 +48,12 @@ setup(
         "statsd>=3.0.0,<4.0.0",
         "urllib3>=1.22,<1.25",
         "wrapt>=1.0.0,<2.0.0",
+        "papermill>=1.2.0",
     ],
     extras_require=extras_require,
     scripts=[
         'scripts/flytekit_install_spark.sh',
-        'scripts/flytekit_spark_entrypoint.sh',
+        'scripts/flytekit_install_spark3.sh',
         'scripts/flytekit_build_image.sh',
         'scripts/flytekit_venv'
     ],

@@ -55,6 +55,9 @@ def test_integer_primitive():
     assert obj2 != literals.Primitive(float_value=1.0)
     assert obj2 != literals.Primitive(string_value='abc')
 
+    obj3 = literals.Primitive(integer=0)
+    assert obj3.value == 0
+
     with pytest.raises(Exception):
         literals.Primitive(integer=1.0).to_flyte_idl()
 
@@ -90,6 +93,9 @@ def test_boolean_primitive():
     assert obj2 != literals.Primitive(duration=timedelta(minutes=1))
     assert obj2 != literals.Primitive(float_value=1.0)
     assert obj2 != literals.Primitive(string_value='abc')
+
+    obj3 = literals.Primitive(boolean=False)
+    assert obj3.value is False
 
     with pytest.raises(Exception):
         literals.Primitive(boolean=datetime.now()).to_flyte_idl()
@@ -201,6 +207,9 @@ def test_float_primitive():
     assert obj2 != literals.Primitive(float_value=0.0)
     assert obj2 != literals.Primitive(string_value='abc')
 
+    obj3 = literals.Primitive(float_value=0.0)
+    assert obj3.value == 0.0
+
     with pytest.raises(Exception):
         literals.Primitive(float_value='abc').to_flyte_idl()
 
@@ -236,6 +245,9 @@ def test_string_primitive():
     assert obj2 != literals.Primitive(duration=timedelta(minutes=1))
     assert obj2 != literals.Primitive(float_value=0.0)
     assert obj2 != literals.Primitive(string_value='bca')
+
+    obj3 = literals.Primitive(string_value="")
+    assert obj3.value == ""
 
     with pytest.raises(Exception):
         literals.Primitive(string_value=1.0).to_flyte_idl()

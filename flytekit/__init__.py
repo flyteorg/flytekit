@@ -3,8 +3,7 @@ from __future__ import absolute_import
 import flytekit.plugins
 import logging as _logging
 
-__version__ = '0.10.1'
-
+__version__ = '0.50.0'
 
 logger = _logging.getLogger('flytekit')
 

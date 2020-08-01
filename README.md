@@ -39,7 +39,8 @@ pip install flytekit
 If `@spark_task` is to be used, one should install the `spark` plugin.
 
 ```bash
-pip install flytekit[spark]
+pip install "flytekit[spark]" for Spark 2.4.x
+pip install "flytekit[spark3]" for Spark 3.x
 ```
 
 #### Schema 
@@ -47,7 +48,7 @@ pip install flytekit[spark]
 If `Types.Schema()` is to be used for computations involving large dataframes, one should install the `schema` extension.
 
 ```bash
-pip install flytekit[schema]
+pip install "flytekit[schema]"
 ```
 
 #### Sidecar
@@ -55,7 +56,7 @@ pip install flytekit[schema]
 If `@sidecar_task` is to be used, one should install the `sidecar` plugin.
 
 ```bash
-pip install flytekit[sidecar]
+pip install "flytekit[sidecar]"
 ```
 
 ### Pytorch
@@ -63,7 +64,7 @@ pip install flytekit[sidecar]
 If `@pytorch_task` is to be used, one should install the `pytorch` plugin.
 
 ```bash
-pip install flytekit[pytorch]
+pip install "flytekit[pytorch]"
 ```
 
 ### Full Installation
@@ -71,13 +72,13 @@ pip install flytekit[pytorch]
 To install all or multiple available plugins, one can specify them individually:
 
 ```bash
-pip install flytekit[sidecar,spark,schema]
+pip install "flytekit[sidecar,spark,schema]"
 ```
 
-Or install them with the `all` directive.
+Or install them with the `all` directive. `all` defaults to Spark 2.4.x currently.
 
 ```bash
-pip install flytekit[all]
+pip install "flytekit[all]"
 ```
 
 ## Testing
@@ -91,7 +92,7 @@ Flytekit is Python 2.7+ compatible, so when feasible, it is recommended to test 
 virtualenv ~/.virtualenvs/flytekit
 source ~/.virtualenvs/flytekit/bin/activate
 python -m pip install -r requirements.txt
-python -m pip install -U .[all]
+python -m pip install -U ".[all]"
 ```
 
 #### Execute

@@ -466,22 +466,13 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
         FAIL_IMMEDIATELY = _core_workflow.WorkflowMetadata.FAIL_IMMEDIATELY        
         FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = _core_workflow.WorkflowMetadata.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
 
-    def __init__(self, queuing_budget=None, on_failure=None):
+    def __init__(self, on_failure=None):
         """
         Metadata for the workflow.
         
-        :param queuing_budget datetime.timedelta: [Optional] Budget that specifies the amount of time a workflow can be queued up for execution.
         :param on_failure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
         """
-        self._queuing_budget = queuing_budget
         self._on_failure = on_failure
-
-    @property
-    def queuing_budget(self):
-        """
-        :rtype: datetime.timedelta
-        """
-        return self._queuing_budget
 
     @property
     def on_failure(self):
@@ -495,8 +486,6 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.workflow_pb2.WorkflowMetadata
         """
         workflow_metadata = _core_workflow.WorkflowMetadata()
-        if self._queuing_budget:
-            workflow_metadata.queuing_budget.FromTimedelta(self.queuing_budget)
         if self.on_failure:
             workflow_metadata.on_failure = self.on_failure
         return workflow_metadata
@@ -508,10 +497,7 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
         :rtype: WorkflowMetadata
         """
         return cls(
-            queuing_budget=pb2_object.queuing_budget.ToTimedelta() if pb2_object.HasAttribute(
-                "queuing_budget") else None,
-            on_failure=pb2_object.on_failure if pb2_object.HasAttribute(
-                "on_failure") else WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
+            on_failure=pb2_object.on_failure if pb2_object.on_failure else WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
         )
 
 
