@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import datetime as _datetime
+
 import six as _six
 
 from flytekit.common import constants as _common_constants
@@ -8,15 +9,11 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable_tasks, sdk_dynamic as _sdk_dynamic, \
     spark_task as _sdk_spark_tasks, generic_spark_task as _sdk_generic_spark_task, hive_task as _sdk_hive_tasks, \
     sidecar_task as _sdk_sidecar_tasks, pytorch_task as _sdk_pytorch_tasks
-from flytekit.common.tasks.sagemaker import (
-    training_job_task as _sdk_sagemaker_training_job_tasks,
-    hpo_job_task as _sdk_hpo_job_tasks
-)
 from flytekit.common.tasks import task as _task
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.sdk.spark_types import  SparkType as _spark_type
+from flytekit.contrib.notebook import tasks as _nb_tasks
 from flytekit.models import interface as _interface_model
-from flytekit.contrib.notebook import  tasks as _nb_tasks
+from flytekit.sdk.spark_types import SparkType as _spark_type
 
 
 def inputs(_task_template=None, **kwargs):
