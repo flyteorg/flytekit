@@ -1,7 +1,9 @@
 from __future__ import absolute_import
 
 from typing import List
+
 from flyteidl.plugins.sagemaker import training_job_pb2 as _training_job_pb2
+
 from flytekit.models import common as _common
 
 
