@@ -84,7 +84,8 @@ class SdkWorkflow(
     )
 ):
 
-    def __init__(self, inputs, outputs, nodes, id=None, metadata=None, metadata_defaults=None, interface=None, output_bindings=None):
+    def __init__(self, inputs, outputs, nodes, id=None, metadata=None, metadata_defaults=None,
+                 interface=None, output_bindings=None):
         """
         :param list[flytekit.common.promise.Input] inputs:
         :param list[Output] outputs:
@@ -99,7 +100,6 @@ class SdkWorkflow(
             the interface field must be bound
             in order for the workflow to be validated. A workflow has an implicit dependency on all of its nodes
             to execute successfully in order to bind final outputs.
-
         """
         for n in nodes:
             for upstream in n.upstream_nodes:
