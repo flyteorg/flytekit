@@ -43,6 +43,7 @@ class SdkTask(
         :param Container container: Provides the necessary entrypoint information for execution.  For instance,
             a Container might be specified with the necessary command line arguments.
         """
+        # TODO: Remove the identifier portion and fill in with local values.
         super(SdkTask, self).__init__(
             _identifier.Identifier(
                 _identifier_model.ResourceType.TASK,
@@ -65,6 +66,7 @@ class SdkTask(
         """
         return super(SdkTask, self).interface
 
+    # TODO: Remove this since this is not a Flyte control plane concept
     @property
     def upstream_entities(self):
         """
@@ -115,6 +117,7 @@ class SdkTask(
         self._type = new_type
         return self
 
+    # TODO: Move this to Runnable since this is not a Flyte control plane concept
     @_exception_scopes.system_entry_point
     def __call__(self, *args, **input_map):
         """

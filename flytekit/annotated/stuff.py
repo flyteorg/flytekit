@@ -3,21 +3,24 @@ import inspect
 from typing import List, Dict, Tuple
 
 from flytekit import logger
+from flytekit.annotated.type_engine import SIMPLE_TYPE_LOOKUP_TABLE
 from flytekit.common import constants as _common_constants
 from flytekit.common import interface
 from flytekit.common import (
     nodes as _nodes
 )
-from flytekit.common.nodes import OutputParameterMapper
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.nodes import OutputParameterMapper
 from flytekit.common.promise import Input as _WorkflowInput, NodeOutput as _NodeOutput
-from flytekit.common.types import primitives as _primitives, helpers as _type_helpers
-from flytekit.common.workflow import Output as _WorkflowOutput, SdkWorkflow as _SdkWorkflow
+from flytekit.common.types import helpers as _type_helpers
+from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
+from flytekit.common.tasks import task as _common_task
+from flytekit.configuration import sdk as _sdk_config, resources as _resource_config, internal as _internal_config
 from flytekit.configuration.common import CONFIGURATION_SINGLETON
-from flytekit.models import interface as _interface_models, literals as _literal_models
-from flytekit.models import task as _task_model, types as _type_models
+from flytekit.models import interface as _interface_models
+from flytekit.models import literals as _literal_models, task as _task_models
+from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
-from flytekit.annotated.type_engine import SIMPLE_TYPE_LOOKUP_TABLE
 
 # Set this to 11 or higher if you don't want to see debug output
 logger.setLevel(10)
@@ -35,16 +38,14 @@ def get_default_args(func):
     }
 
 
-# Please see the comments on the PythonTask class for additional context. This object is just here as a stand-in?
 class PythonWorkflow(object):
     """
-    When you assign a name to a node.
-    * Any upstream node that is not assigned, recursively assign
-    * When you get the call to the constructor, keep in mind there may be duplicate nodes, because they all should
-      be wrapper nodes.
+    Wrapper class for locally defined Python workflows
     """
-    def __init__(self, workflow_function):
+
+    def __init__(self, workflow_function, flyte_workflow: _SdkWorkflow):
         self._workflow_function = workflow_function
+        self._flyte_workflow = flyte_workflow
 
     def __call__(self, *args, **kwargs):
         if CONFIGURATION_SINGLETON.x == 1:
@@ -61,7 +62,12 @@ class PythonWorkflow(object):
             if len(args) > 0:
                 raise Exception('When using the workflow decorator, all inputs must be specified with kwargs only')
 
+            # Can we unwrap the WorkflowOutputs object in here too? So that the user gets native Python outputs.
             return self._workflow_function(*args, **kwargs)
+
+    @property
+    def flyte_workflow(self) -> _SdkWorkflow:
+        return self._flyte_workflow
 
 
 class WorkflowOutputs(object):
@@ -124,7 +130,7 @@ class WorkflowOutputs(object):
 
 def workflow(
         _workflow_function=None,
-        outputs: List[str]=None
+        outputs: List[str] = None
 ):
     # Unlike for tasks, where we can determine the entire structure of the task by looking at the function's signature,
     # workflows need to have the body of the function itself run at module-load time. This is because the body of the
@@ -221,7 +227,7 @@ def workflow(
         print(f"SdkWorkflow {sdk_workflow}")
         print("+++++++++++++++++++++++++++++++++++++")
 
-        workflow_instance = PythonWorkflow(fn)
+        workflow_instance = PythonWorkflow(fn, sdk_workflow)
         workflow_instance.id = workflow_id
 
         CONFIGURATION_SINGLETON.x = old_setting
@@ -272,11 +278,12 @@ def get_all_upstream_nodes(sdk_node: _nodes.SdkNode):
 class PythonTask(object):
     task_type = _common_constants.SdkTaskType.PYTHON_TASK
 
-    def __init__(self, task_function, interface, metadata: _task_model.TaskMetadata, outputs: List[str], info):
+    def __init__(self, task_function, interface, metadata: _task_model.TaskMetadata, outputs: List[str],
+                 flyte_task: _common_task.SdkTask):
         self._task_function = task_function
         self._interface = interface
         self._metadata = metadata
-        self._info = info
+        self._flyte_task = flyte_task
         self._outputs = outputs
 
     def __call__(self, *args, **kwargs):
@@ -309,7 +316,8 @@ class PythonTask(object):
             # leave it empty for now.
             sdk_node = _nodes.SdkNode(
                 id=None,
-                metadata=_workflow_model.NodeMetadata(self._task_function.__name__, self.metadata.timeout, self.metadata.retries,
+                metadata=_workflow_model.NodeMetadata(self._task_function.__name__, self.metadata.timeout,
+                                                      self.metadata.retries,
                                                       self.metadata.interruptible),
                 bindings=sorted(bindings, key=lambda b: b.var),
                 upstream_nodes=upstream_nodes,
@@ -340,10 +348,14 @@ class PythonTask(object):
     def metadata(self) -> _task_model.TaskMetadata:
         return self._metadata
 
+    @property
+    def flyte_task(self) -> _common_task.SdkTask:
+        return self._flyte_task
+
 
 def task(
         _task_function=None,
-        outputs: List[str]=None,
+        outputs: List[str] = None,
         cache_version='',
         retries=0,
         interruptible=None,
@@ -361,21 +373,6 @@ def task(
         environment=None,
 ):
     def wrapper(fn):
-        # Just saving everything as a hash for now, will figure out what to do with this in the future.
-        task_obj = {}
-        task_obj['task_type'] = _common_constants.SdkTaskType.PYTHON_TASK,
-        task_obj['retries'] = retries,
-        task_obj['storage_request'] = storage_request,
-        task_obj['cpu_request'] = cpu_request,
-        task_obj['gpu_request'] = gpu_request,
-        task_obj['memory_request'] = memory_request,
-        task_obj['storage_limit'] = storage_limit,
-        task_obj['cpu_limit'] = cpu_limit,
-        task_obj['gpu_limit'] = gpu_limit,
-        task_obj['memory_limit'] = memory_limit,
-        task_obj['environment'] = environment,
-        task_obj['custom'] = {}
-
         metadata = _task_model.TaskMetadata(
             cache,
             _task_model.RuntimeMetadata(
@@ -390,9 +387,27 @@ def task(
             deprecated
         )
 
-        interface = get_interface_from_task_info(fn.__annotations__, outputs or [])
+        task_interface = get_interface_from_task_info(fn.__annotations__, outputs or [])
 
-        task_instance = PythonTask(fn, interface, metadata, outputs, task_obj)
+        flyte_task = _common_task.SdkTask(
+            _common_constants.SdkTaskType.PYTHON_TASK,
+            metadata,
+            task_interface,
+            custom={},
+            container=_get_container_definition(
+                storage_request=storage_request,
+                cpu_request=cpu_request,
+                gpu_request=gpu_request,
+                memory_request=memory_request,
+                storage_limit=storage_limit,
+                cpu_limit=cpu_limit,
+                gpu_limit=gpu_limit,
+                memory_limit=memory_limit,
+                environment=environment
+            )
+        )
+
+        task_instance = PythonTask(fn, task_interface, metadata, outputs, flyte_task)
         # TODO: One of the things I want to make sure to do is better naming support. At this point, we should already
         #       be able to determine the name of the task right? Can anyone think of situations where we can't?
         #       Where does the current instance tracker come into play?
@@ -406,7 +421,8 @@ def task(
         return wrapper
 
 
-def get_interface_from_task_info(task_annotations: Dict[str, type], output_names: List[str]) -> interface.TypedInterface:
+def get_interface_from_task_info(task_annotations: Dict[str, type],
+                                 output_names: List[str]) -> interface.TypedInterface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
     for each output parameter, construct the TypedInterface object
@@ -443,7 +459,8 @@ def get_interface_from_task_info(task_annotations: Dict[str, type], output_names
     return interface.TypedInterface.promote_from_model(interface_model)
 
 
-def get_variable_map_from_lists(variable_names: List[str], python_types: Tuple[type]) -> Dict[str, _interface_models.Variable]:
+def get_variable_map_from_lists(variable_names: List[str], python_types: Tuple[type]) -> Dict[
+    str, _interface_models.Variable]:
     return get_variable_map(dict(zip(variable_names, python_types)))
 
 
@@ -485,3 +502,127 @@ def get_earliest_promise_name(node_object):
 
     logger.debug(f"For node {node_object.id} returning text label {var_name}")
     return var_name
+
+
+# TODO: After naming of tasks is done, we'll need to add in the task module and the task_function_name
+# Should probably also factor out the resources portion of this function, which has been copied all over the place.
+def _get_container_definition(
+        storage_request=None,
+        cpu_request=None,
+        gpu_request=None,
+        memory_request=None,
+        storage_limit=None,
+        cpu_limit=None,
+        gpu_limit=None,
+        memory_limit=None,
+        environment=None,
+):
+    """
+    :param Text storage_request:
+    :param Text cpu_request:
+    :param Text gpu_request:
+    :param Text memory_request:
+    :param Text storage_limit:
+    :param Text cpu_limit:
+    :param Text gpu_limit:
+    :param Text memory_limit:
+    :param dict[Text,Text] environment:
+    :rtype: flytekit.models.task.Container
+    """
+    storage_limit = storage_limit or _resource_config.DEFAULT_STORAGE_LIMIT.get()
+    storage_request = storage_request or _resource_config.DEFAULT_STORAGE_REQUEST.get()
+    cpu_limit = cpu_limit or _resource_config.DEFAULT_CPU_LIMIT.get()
+    cpu_request = cpu_request or _resource_config.DEFAULT_CPU_REQUEST.get()
+    gpu_limit = gpu_limit or _resource_config.DEFAULT_GPU_LIMIT.get()
+    gpu_request = gpu_request or _resource_config.DEFAULT_GPU_REQUEST.get()
+    memory_limit = memory_limit or _resource_config.DEFAULT_MEMORY_LIMIT.get()
+    memory_request = memory_request or _resource_config.DEFAULT_MEMORY_REQUEST.get()
+
+    # The environment needs to be updated with some internal settings.
+    # Unclear why the image needs to be set, since it should be baked into the image itself.
+    env = environment.copy()
+    env.update(
+        {
+            _internal_config.CONFIGURATION_PATH.env_var: _internal_config.CONFIGURATION_PATH.get(),
+            _internal_config.IMAGE.env_var: _internal_config.IMAGE.get(),
+        }
+    )
+
+    requests = []
+    if storage_request:
+        requests.append(
+            _task_models.Resources.ResourceEntry(
+                _task_models.Resources.ResourceName.STORAGE,
+                storage_request
+            )
+        )
+    if cpu_request:
+        requests.append(
+            _task_models.Resources.ResourceEntry(
+                _task_models.Resources.ResourceName.CPU,
+                cpu_request
+            )
+        )
+    if gpu_request:
+        requests.append(
+            _task_models.Resources.ResourceEntry(
+                _task_models.Resources.ResourceName.GPU,
+                gpu_request
+            )
+        )
+    if memory_request:
+        requests.append(
+            _task_models.Resources.ResourceEntry(
+                _task_models.Resources.ResourceName.MEMORY,
+                memory_request
+            )
+        )
+
+    limits = []
+    if storage_limit:
+        limits.append(
+            _task_models.Resources.ResourceEntry(
+                _task_models.Resources.ResourceName.STORAGE,
+                storage_limit
+            )
+        )
+    if cpu_limit:
+        limits.append(
+            _task_models.Resources.ResourceEntry(
+                _task_models.Resources.ResourceName.CPU,
+                cpu_limit
+            )
+        )
+    if gpu_limit:
+        limits.append(
+            _task_models.Resources.ResourceEntry(
+                _task_models.Resources.ResourceName.GPU,
+                gpu_limit
+            )
+        )
+    if memory_limit:
+        limits.append(
+            _task_models.Resources.ResourceEntry(
+                _task_models.Resources.ResourceName.MEMORY,
+                memory_limit
+            )
+        )
+
+    return _task_models.Container(
+        command=[],
+        args=[
+            _sdk_config.SDK_PYTHON_VENV.get(),
+            "pyflyte-execute",
+            "--task-module",
+            "self.task_module",
+            "--task-name",
+            "self.task_function_name",
+            "--inputs",
+            "{{.input}}",
+            "--output-prefix",
+            "{{.outputPrefix}}"
+        ],
+        resources=_task_models.Resources(limits=limits, requests=requests),
+        env=environment,
+        config={}
+    )
