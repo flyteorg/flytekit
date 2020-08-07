@@ -82,7 +82,7 @@ def test_builtin_algorithm_training_job_task():
                    format="csv",
                    dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                )
-            )
+           )
     assert builtin_algorithm_training_job_task.interface.inputs['static_hyperparameters'].description == ''
     assert builtin_algorithm_training_job_task.interface.inputs['static_hyperparameters'].type == \
            _sdk_types.Types.Generic.to_flyte_literal_type()

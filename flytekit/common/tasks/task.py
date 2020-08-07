@@ -14,7 +14,8 @@ from flytekit.common import (
 )
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, launchable as _launchable_mixin
+from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, \
+    launchable as _launchable_mixin, self_naming as _self_naming
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import common as _common_model, task as _task_model
@@ -30,6 +31,7 @@ class SdkTask(
         _task_model.TaskTemplate,
         _registerable.RegisterableEntity,
         _launchable_mixin.LaunchableEntity,
+        _self_naming.SelfNaming,
     )
 ):
 

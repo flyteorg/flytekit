@@ -10,7 +10,7 @@ from flytekit.common import interface as _interface, nodes as _nodes, sdk_bases 
     launch_plan as _launch_plan, promise as _promise
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
-from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin
+from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, self_naming as _self_naming
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
@@ -81,6 +81,7 @@ class SdkWorkflow(
         _hash_mixin.HashOnReferenceMixin,
         _workflow_models.WorkflowTemplate,
         _registerable.RegisterableEntity,
+        _self_naming.SelfNaming,
     )
 ):
 

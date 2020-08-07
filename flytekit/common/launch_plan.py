@@ -5,7 +5,8 @@ from flytekit.common import sdk_bases as _sdk_bases, promise as _promises, inter
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
 
-from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, launchable as _launchable_mixin
+from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, \
+    launchable as _launchable_mixin, self_naming as _self_naming
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import sdk as _sdk_config, auth as _auth_config
 from flytekit.engines import loader as _engine_loader
@@ -257,6 +258,7 @@ class SdkRunnableLaunchPlan(
     _hash_mixin.HashOnReferenceMixin,
     SdkLaunchPlan,
     _registerable.RegisterableEntity,
+    _self_naming.SelfNaming,
 ):
     def __init__(
             self,

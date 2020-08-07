@@ -26,6 +26,25 @@ from flytekit.models.core import workflow as _workflow_model, identifier as _ide
 logger.setLevel(10)
 
 
+
+"""
+Add the concept of a client to SdkTask
+  - should directly use the Flyte client manager.
+All SdkTask functions that rely on the code being present should be copied to Runnable, and the new PythonTask class
+  - Break out the auto name assignment function into a new interface that Runnable and all plugin tasks inherit from.
+  - Go through all the plugin tasks to see what SdkTask functions are used.
+
+Workflows should be able to call a fetched 
+
+The current FlyteTask defined in the engine conflates control plane access (like register and launch), with execution
+time semantics. At execution time, we should only be concerned with setting up the proper environment, and handing IO.
+There is no need to involve the control plane. In the future, we could possibly even remove the notion of a task entity
+altogether, since all you need to know is which function to call, and the interface for handling IO.
+
+"""
+
+
+
 def get_default_args(func):
     """
     Returns the default arguments to a function as a dict. Will be empty if there are none.
