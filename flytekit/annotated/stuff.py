@@ -4,28 +4,26 @@ from typing import List, Dict, Tuple
 
 from flytekit import logger
 from flytekit.annotated.type_engine import SIMPLE_TYPE_LOOKUP_TABLE
-from flytekit.common import constants as _common_constants
-from flytekit.common import interface
 from flytekit.common import (
-    nodes as _nodes
+    nodes as _nodes,
+    interface as _interface,
+    constants as _common_constants,
+    workflow as _common_workflow,
 )
+from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.nodes import OutputParameterMapper
 from flytekit.common.promise import Input as _WorkflowInput, NodeOutput as _NodeOutput
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
 from flytekit.common.tasks import task as _common_task
 from flytekit.configuration import sdk as _sdk_config, resources as _resource_config, internal as _internal_config
 from flytekit.configuration.common import CONFIGURATION_SINGLETON
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models, task as _task_models
 from flytekit.models import task as _task_model
-from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
+from flytekit.models.core import workflow as _workflow_models, identifier as _identifier_model
 
 # Set this to 11 or higher if you don't want to see debug output
 logger.setLevel(10)
-
-
 
 """
 Add the concept of a client to SdkTask
@@ -44,7 +42,6 @@ altogether, since all you need to know is which function to call, and the interf
 """
 
 
-
 def get_default_args(func):
     """
     Returns the default arguments to a function as a dict. Will be empty if there are none.
@@ -57,36 +54,7 @@ def get_default_args(func):
     }
 
 
-class PythonWorkflow(object):
-    """
-    Wrapper class for locally defined Python workflows
-    """
 
-    def __init__(self, workflow_function, flyte_workflow: _SdkWorkflow):
-        self._workflow_function = workflow_function
-        self._flyte_workflow = flyte_workflow
-
-    def __call__(self, *args, **kwargs):
-        if CONFIGURATION_SINGLETON.x == 1:
-            if len(args) > 0:
-                raise Exception('not allowed')
-
-            print(f"compilation mode. Args are: {args}")
-            print(f"Locals: {locals()}")
-
-            logger.debug(f"Compiling workflow... ")
-
-        else:
-            # Can we relax this in the future?  People are used to this right now, so it's okay.
-            if len(args) > 0:
-                raise Exception('When using the workflow decorator, all inputs must be specified with kwargs only')
-
-            # Can we unwrap the WorkflowOutputs object in here too? So that the user gets native Python outputs.
-            return self._workflow_function(*args, **kwargs)
-
-    @property
-    def flyte_workflow(self) -> _SdkWorkflow:
-        return self._flyte_workflow
 
 
 class WorkflowOutputs(object):
@@ -241,12 +209,13 @@ def workflow(
         # Create a FlyteWorkflow object. We call this like how promote_from_model would call this, by ignoring the
         # fancy arguments and supplying just the raw elements manually. Alternatively we can construct the
         # WorkflowTemplate object, and then call promote_from_model.
-        sdk_workflow = _SdkWorkflow(inputs=None, outputs=None, nodes=all_nodes, id=workflow_id, metadata=None,
+        sdk_workflow = _common_workflow.SdkWorkflow(inputs=None, outputs=None, nodes=all_nodes, id=workflow_id, metadata=None,
                                     metadata_defaults=None, interface=interface_model, output_bindings=bindings)
         print(f"SdkWorkflow {sdk_workflow}")
         print("+++++++++++++++++++++++++++++++++++++")
 
-        workflow_instance = PythonWorkflow(fn, sdk_workflow)
+        # TODO: Support workflow inputs
+        workflow_instance = PythonWorkflow(fn, sdk_workflow, inputs=None, nodes=all_nodes)
         workflow_instance.id = workflow_id
 
         CONFIGURATION_SINGLETON.x = old_setting
@@ -335,17 +304,17 @@ class PythonTask(object):
             # leave it empty for now.
             sdk_node = _nodes.SdkNode(
                 id=None,
-                metadata=_workflow_model.NodeMetadata(self._task_function.__name__, self.metadata.timeout,
-                                                      self.metadata.retries,
-                                                      self.metadata.interruptible),
+                metadata=_workflow_models.NodeMetadata(self._task_function.__name__, self.metadata.timeout,
+                                                       self.metadata.retries,
+                                                       self.metadata.interruptible),
                 bindings=sorted(bindings, key=lambda b: b.var),
                 upstream_nodes=upstream_nodes,
                 sdk_task=self
             )
 
             # TODO: Return multiple versions of the _same_ node, but with different output names. This is what this
-            #       OutputParameterMapper does for us, but should we try to move away from it?
-            ppp = OutputParameterMapper(self.interface.outputs, sdk_node)
+            #       _nodes.OutputParameterMapper does for us, but should we try to move away from it?
+            ppp = _nodes.OutputParameterMapper(self.interface.outputs, sdk_node)
             # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
             if len(self._outputs) > 1:
@@ -360,7 +329,7 @@ class PythonTask(object):
             return self._task_function(*args, **kwargs)
 
     @property
-    def interface(self) -> interface.TypedInterface:
+    def interface(self) -> _interface.TypedInterface:
         return self._interface
 
     @property
@@ -441,7 +410,7 @@ def task(
 
 
 def get_interface_from_task_info(task_annotations: Dict[str, type],
-                                 output_names: List[str]) -> interface.TypedInterface:
+                                 output_names: List[str]) -> _interface.TypedInterface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
     for each output parameter, construct the TypedInterface object
@@ -475,7 +444,7 @@ def get_interface_from_task_info(task_annotations: Dict[str, type],
     interface_model = _interface_models.TypedInterface(inputs_map, outputs_map)
 
     # Maybe in the future we can just use the model
-    return interface.TypedInterface.promote_from_model(interface_model)
+    return _interface.TypedInterface.promote_from_model(interface_model)
 
 
 def get_variable_map_from_lists(variable_names: List[str], python_types: Tuple[type]) -> Dict[

@@ -64,7 +64,7 @@ class SelfNaming(_six.with_metaclass(_InstanceTracker, object)):
         When Flytekit calls the module loader and loads the task, the name of the task is the name of the function
         itself.  It's known at time of creation. In contrast, when
 
-            xyz = SomeWorflow.create_launch_plan()
+            xyz = SomeWorkflow.create_launch_plan()
 
         is called, the name of the launch plan isn't known until after creation, it's not "SomeWorkflow", it's "xyz"
         """

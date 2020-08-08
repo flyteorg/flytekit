@@ -327,6 +327,7 @@ class SdkRunnableLaunchPlan(
         self._upstream_entities = {sdk_workflow}
         self._sdk_workflow = sdk_workflow
 
+    # TODO: Move up to parent class
     @_exception_scopes.system_entry_point
     def register(self, project, domain, name, version):
         """
@@ -347,6 +348,7 @@ class SdkRunnableLaunchPlan(
         self._id = id_to_register
         return _six.text_type(self.id)
 
+    # TODO: Move up to parent class
     @_exception_scopes.system_entry_point
     def serialize(self):
         """
@@ -363,14 +365,11 @@ class SdkRunnableLaunchPlan(
 
     @classmethod
     def promote_from_model(cls, model):
-        """
-        :param flytekit.models.launch_plan.LaunchPlanSpec model:
-        :rtype: SdkRunnableLaunchPlan
-        """
         raise _user_exceptions.FlyteAssertion(
             "An SdkRunnableLaunchPlan must be created from a reference to local Python code only."
         )
 
+    # TODO: Move up to parent class
     @classmethod
     @_exception_scopes.system_entry_point
     def fetch(cls, project, domain, name, version=None):

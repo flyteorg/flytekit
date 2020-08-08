@@ -1,8 +1,7 @@
-from __future__ import absolute_import
-
+from typing import Dict
 import six as _six
 
-from flytekit.common import workflow as _common_workflow, promise as _promise
+from flytekit.common import workflow as _common_workflow, promise as _promise, nodes as _nodes
 from flytekit.common.types import helpers as _type_helpers
 
 
@@ -44,7 +43,7 @@ class Output(_common_workflow.Output):
         )
 
 
-def workflow_class(_workflow_metaclass=None, cls=None, on_failure=None):
+def workflow_class(_workflow_metaclass=None, on_failure=None):
     """
     This is a decorator for wrapping class definitions into workflows.
 
@@ -61,15 +60,12 @@ def workflow_class(_workflow_metaclass=None, cls=None, on_failure=None):
 
     :param T _workflow_metaclass:  Do NOT specify this parameter directly.  This is the class that is being
         wrapped by this decorator.
-    :param cls: This is the class that will be instantiated from the inputs, outputs, and nodes. This will be used
-        by users extending the base Flyte programming model. If set, it must be a subclass of
-        :py:class:`flytekit.common.workflow.SdkWorkflow`.
     :param on_failure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
     :rtype: flytekit.common.workflow.SdkWorkflow
     """
 
     def wrapper(metaclass):
-        wf = _common_workflow.build_sdk_workflow_from_metaclass(metaclass, cls=cls, on_failure=on_failure)
+        wf = _common_workflow.build_sdk_workflow_from_metaclass(metaclass, on_failure=on_failure)
         return wf
 
     if _workflow_metaclass is not None:
@@ -77,7 +73,7 @@ def workflow_class(_workflow_metaclass=None, cls=None, on_failure=None):
     return wrapper
 
 
-def workflow(nodes, inputs=None, outputs=None, cls=None, on_failure=None):
+def workflow(nodes: Dict[str, _nodes.SdkNode], inputs=None, outputs=None, on_failure=None):
     """
     This function provides a user-friendly interface for authoring workflows.
 
@@ -113,7 +109,9 @@ def workflow(nodes, inputs=None, outputs=None, cls=None, on_failure=None):
     :param flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy on_failure: [Optional] The execution policy when the workflow detects a failure.
     :rtype: flytekit.common.workflow.SdkWorkflow
     """
-    wf = (cls or _common_workflow.SdkWorkflow)(
+    # TODO: Why does Pycharm complain about nodes?
+    # import ipdb; ipdb.set_trace()
+    wf = _common_workflow.PythonWorkflow.construct_from_class_definition(
         inputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(inputs or {}))],
         outputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(outputs or {}))],
         nodes=[v.assign_id_and_return(k) for k, v in sorted(_six.iteritems(nodes))],
