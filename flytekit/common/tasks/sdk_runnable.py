@@ -16,7 +16,7 @@ from flytekit.configuration import sdk as _sdk_config, internal as _internal_con
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import literals as _literal_models, task as _task_models
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
-
+from flytekit.common.mixins import registerable as _registerable
 
 class ExecutionParameters(object):
 
@@ -149,7 +149,8 @@ class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task
         return env
 
 
-class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task.SdkTask)):
+class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task.SdkTask,
+                                          _registerable.LocallyDefined)):
     """
     This class includes the additional logic for building a task that executes in Python code.  It has even more
     validation checks to ensure proper behavior than it's superclasses.
