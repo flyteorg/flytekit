@@ -1005,6 +1005,60 @@ def sidecar_task(
         return wrapper
 
 
+def dynamic_sidecar_task(
+        _task_function=None,
+        cache_version="",
+        retries=0,
+        interruptible=None,
+        deprecated="",
+        storage_request=None,
+        cpu_request=None,
+        gpu_request=None,
+        memory_request=None,
+        storage_limit=None,
+        cpu_limit=None,
+        gpu_limit=None,
+        memory_limit=None,
+        cache=False,
+        timeout=None,
+        allowed_failure_ratio=None,
+        max_concurrency=None,
+        environment=None,
+        pod_spec=None,
+        primary_container_name=None,
+        cls=None,
+):
+    def wrapper(fn):
+        return (cls or _sdk_sidecar_tasks.SdkDynamicSidecarTask)(
+            task_function=fn,
+            task_type=_common_constants.SdkTaskType.SIDECAR_TASK,
+            discovery_version=cache_version,
+            retries=retries,
+            interruptible=interruptible,
+            deprecated=deprecated,
+            storage_request=storage_request,
+            cpu_request=cpu_request,
+            gpu_request=gpu_request,
+            memory_request=memory_request,
+            storage_limit=storage_limit,
+            cpu_limit=cpu_limit,
+            gpu_limit=gpu_limit,
+            memory_limit=memory_limit,
+            discoverable=cache,
+            timeout=timeout or _datetime.timedelta(seconds=0),
+            allowed_failure_ratio=allowed_failure_ratio,
+            max_concurrency=max_concurrency,
+            environment=environment,
+            pod_spec=pod_spec,
+            primary_container_name=primary_container_name,
+        )
+
+    if _task_function:
+        return wrapper(_task_function)
+    else:
+        return wrapper
+
+
 def pytorch_task(
         _task_function=None,
         cache_version='',

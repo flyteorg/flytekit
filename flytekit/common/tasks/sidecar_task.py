@@ -5,6 +5,7 @@ import six as _six
 from flyteidl.core import tasks_pb2 as _core_task
 
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.tasks import sdk_dynamic as _sdk_dynamic
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common import sdk_bases as _sdk_bases
 
@@ -138,3 +139,67 @@ class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         ).to_flyte_idl()
 
         self.assign_custom_and_return(_MessageToDict(sidecar_job_plugin))
+
+
+class SdkDynamicSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_dynamic.SdkDynamicTaskMixin, _sdk_runnable.SdkRunnableTask)):
+
+    """
+    This class includes the additional logic for building a task that executes as a Sidecar Job.
+
+    """
+
+    def __init__(self,
+                 task_function,
+                 task_type,
+                 discovery_version,
+                 retries,
+                 interruptible,
+                 deprecated,
+                 storage_request,
+                 cpu_request,
+                 gpu_request,
+                 memory_request,
+                 storage_limit,
+                 cpu_limit,
+                 gpu_limit,
+                 memory_limit,
+                 discoverable,
+                 timeout,
+                 allowed_failure_ratio,
+                 max_concurrency,
+                 environment,
+                 pod_spec=None,
+                 primary_container_name=None):
+        """
+        :param _sdk_runnable.SdkRunnableTask sdk_runnable_task:
+        :param generated_pb2.PodSpec pod_spec:
+        :param Text primary_container_name:
+        :raises: flytekit.common.exceptions.user.FlyteValidationException
+        """
+        if not pod_spec:
+            raise _user_exceptions.FlyteValidationException("A pod spec cannot be undefined")
+        if not primary_container_name:
+            raise _user_exceptions.FlyteValidationException("A primary container name cannot be undefined")
+
+        SdkSidecarTask.__init__(
+            self,
+            task_function,
+            task_type,
+            discovery_version,
+            retries,
+            interruptible,
+            deprecated,
+            storage_request,
+            cpu_request,
+            gpu_request,
+            memory_request,
+            storage_limit,
+            cpu_limit,
+            gpu_limit,
+            memory_limit,
+            discoverable,
+            timeout,
+            environment
+        )
+
+        _sdk_dynamic.SdkDynamicTaskMixin.__init__(self, allowed_failure_ratio, max_concurrency)
