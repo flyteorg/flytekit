@@ -142,12 +142,6 @@ class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
 
 
 class SdkDynamicSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_dynamic.SdkDynamicTaskMixin, SdkSidecarTask)):
-
-    """
-    This class includes the additional logic for building a task that executes as a Sidecar Job.
-
-    """
-
     def __init__(self,
                  task_function,
                  task_type,

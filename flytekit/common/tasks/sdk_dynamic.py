@@ -109,7 +109,7 @@ class SdkDynamicTaskMixin:
         # before calling user code
         inputs_dict.update(outputs_dict)
         yielded_sub_tasks = [sub_task for sub_task in
-                             super(SdkDynamicTask, self)._execute_user_code(context, inputs_dict) or []]
+                             self._execute_user_code(context, inputs_dict) or []]
 
         upstream_nodes = list()
         output_bindings = [_literal_models.Binding(var=name, binding=_interface.BindingData.from_python_std(
