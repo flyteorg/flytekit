@@ -5,7 +5,7 @@ import six as _six
 from deprecated import deprecated as _deprecated
 
 
-class LaunchableEntity(_six.with_metaclass(_abc.ABCMeta, object)):
+class LaunchableEntity(object, metaclass=_abc.ABCMeta):
     def launch(self, project, domain, inputs=None, name=None, notification_overrides=None, label_overrides=None,
                annotation_overrides=None):
         """

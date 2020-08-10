@@ -98,32 +98,6 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
             insecure=_platform_config.INSECURE.get()
         ).client.get_execution(wf_exec_id)
 
-    def fetch_task(self, task_id):
-        """
-        Queries Admin for an existing Admin task
-        :param flytekit.models.core.identifier.Identifier task_id:
-        :rtype: flytekit.models.task.Task
-        """
-        return _FlyteClientManager(
-            _platform_config.URL.get(),
-            insecure=_platform_config.INSECURE.get()
-        ).client.get_task(task_id)
-
-    def fetch_latest_task(self, named_task):
-        """
-        Fetches the latest task
-        :param flytekit.models.common.NamedEntityIdentifier named_task: NamedEntityIdentifier to fetch
-        :rtype: flytekit.models.task.Task
-        """
-        task_list, _ = _FlyteClientManager(
-            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client.list_tasks_paginated(
-            named_task,
-            limit=1,
-            sort_by=_common.Sort("created_at", _common.Sort.Direction.DESCENDING),
-        )
-        return task_list[0] if task_list else None
-
     def fetch_launch_plan(self, launch_plan_id):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan_id: This identifier should have a resource
@@ -255,18 +229,6 @@ class FlyteWorkflow(_common_engine.BaseWorkflowExecutor):
 
 class FlyteTask(_common_engine.BaseTaskExecutor):
 
-    def register(self, identifier):
-        client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
-        try:
-            client.create_task(
-                identifier,
-                _task_models.TaskSpec(
-                    self.sdk_task
-                )
-            )
-        except _user_exceptions.FlyteEntityAlreadyExistsException:
-            pass
-
     def execute(self, inputs, context=None):
         """
         Just execute the task and write the outputs to where they belong
@@ -348,67 +310,6 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                                     _os.path.join(temp_dir.name, k)
                                 )
                             _data_proxy.Data.put_data(temp_dir.name, context['output_prefix'], is_multipart=True)
-
-    def launch(self, project, domain, name=None, inputs=None, notification_overrides=None, label_overrides=None,
-               annotation_overrides=None, auth_role=None):
-        """
-        Executes the task as a single task execution and returns the identifier.
-        :param Text project:
-        :param Text domain:
-        :param Text name:
-        :param flytekit.models.literals.LiteralMap inputs: The inputs to pass
-        :param list[flytekit.models.common.Notification] notification_overrides: If specified, override the
-            notifications.
-        :param flytekit.models.common.Labels label_overrides:
-        :param flytekit.models.common.Annotations annotation_overrides:
-        :param flytekit.models.common.AuthRole auth_role:
-        :rtype: flytekit.models.execution.Execution
-        """
-        disable_all = (notification_overrides == [])
-        if disable_all:
-            notification_overrides = None
-        else:
-            notification_overrides = _execution_models.NotificationList(
-                notification_overrides or []
-            )
-            disable_all = None
-
-        if not auth_role:
-            assumable_iam_role = _auth_config.ASSUMABLE_IAM_ROLE.get()
-            kubernetes_service_account = _auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
-
-            if not (assumable_iam_role or kubernetes_service_account):
-                _logging.warning("Using deprecated `role` from config. "
-                                 "Please update your config to use `assumable_iam_role` instead")
-                assumable_iam_role = _sdk_config.ROLE.get()
-            auth_role = _common_models.AuthRole(assumable_iam_role=assumable_iam_role,
-                                                kubernetes_service_account=kubernetes_service_account)
-
-        try:
-            # TODO(katrogan): Add handling to register the underlying task if it's not already.
-            client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
-            exec_id = client.create_execution(
-                project,
-                domain,
-                name,
-                _execution_models.ExecutionSpec(
-                    self.sdk_task.id,
-                    _execution_models.ExecutionMetadata(
-                        _execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
-                        'sdk',  # TODO: get principle
-                        0  # TODO: Detect nesting
-                    ),
-                    notifications=notification_overrides,
-                    disable_all=disable_all,
-                    labels=label_overrides,
-                    annotations=annotation_overrides,
-                    auth_role=auth_role,
-                ),
-                inputs,
-            )
-        except _user_exceptions.FlyteEntityAlreadyExistsException:
-            exec_id = _identifier.WorkflowExecutionIdentifier(project, domain, name)
-        return client.get_execution(exec_id)
 
 
 class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
