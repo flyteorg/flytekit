@@ -170,17 +170,6 @@ class SdkDynamicSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk
                  environment,
                  pod_spec=None,
                  primary_container_name=None):
-        """
-        :param _sdk_runnable.SdkRunnableTask sdk_runnable_task:
-        :param generated_pb2.PodSpec pod_spec:
-        :param Text primary_container_name:
-        :raises: flytekit.common.exceptions.user.FlyteValidationException
-        """
-        if not pod_spec:
-            raise _user_exceptions.FlyteValidationException("A pod spec cannot be undefined")
-        if not primary_container_name:
-            raise _user_exceptions.FlyteValidationException("A primary container name cannot be undefined")
-
         SdkSidecarTask.__init__(
             self,
             task_function,
@@ -199,7 +188,9 @@ class SdkDynamicSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk
             memory_limit,
             discoverable,
             timeout,
-            environment
+            environment,
+            pod_spec=pod_spec,
+            primary_container_name=primary_container_name
         )
 
         _sdk_dynamic.SdkDynamicTaskMixin.__init__(self, allowed_failure_ratio, max_concurrency)
