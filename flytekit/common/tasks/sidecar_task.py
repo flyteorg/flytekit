@@ -141,7 +141,7 @@ class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         self.assign_custom_and_return(_MessageToDict(sidecar_job_plugin))
 
 
-class SdkDynamicSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_dynamic.SdkDynamicTaskMixin, _sdk_runnable.SdkRunnableTask)):
+class SdkDynamicSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_dynamic.SdkDynamicTaskMixin, SdkSidecarTask)):
 
     """
     This class includes the additional logic for building a task that executes as a Sidecar Job.
