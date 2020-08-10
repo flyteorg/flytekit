@@ -601,6 +601,21 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
     @_handle_rpc_error
+    def list_project_owners(self, project_ownesr_request):
+        """
+        This function will list all project owners that are known the Flyte. The function is intended to be
+        used for attribution.
+        :param flyteidl.admin.project_pb2.ProjectOwnersRequest project_owner_request
+        :rtype: flyteidl.admin.project_pb2.ProjectOwnersResponse
+        """
+        return []
+
+    ####################################################################################################################
+    #
+    #  Matching Attributes Endpoints
+    #
+    ####################################################################################################################
+    @_handle_rpc_error
     def update_project_domain_attributes(self, project_domain_attributes_update_request):
         """
         This updates the attributes for a project and domain registered with the Flyte Admin Service
