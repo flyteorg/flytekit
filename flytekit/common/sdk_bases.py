@@ -4,7 +4,7 @@ import abc as _abc
 import six as _six
 
 
-class ExtendedSdkType(_six.with_metaclass(_common.FlyteABCMeta, _common.FlyteType)):
+class ExtendedSdkType(_common.FlyteType, metaclass=_common.FlyteABCMeta):
     """
     Abstract class that all SDK objects must inherit from.  This provides the ability to promote a data model object
     into an actionable object.

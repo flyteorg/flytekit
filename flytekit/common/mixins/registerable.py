@@ -3,8 +3,6 @@ import importlib as _importlib
 import inspect as _inspect
 import logging as _logging
 
-import six as _six
-
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _utils
 from flytekit.common.exceptions import system as _system_exceptions
@@ -37,7 +35,7 @@ class _InstanceTracker(_sdk_bases.ExtendedSdkType):
         return o
 
 
-class RegisterableEntity(_sdk_bases.ExtendedSdkType):
+class RegisterableEntity(object, metaclass=_sdk_bases.ExtendedSdkType):
 
     def __init__(self, *args, **kwargs):
         super(RegisterableEntity, self).__init__(*args, **kwargs)
@@ -82,7 +80,7 @@ class RegisterableEntity(_sdk_bases.ExtendedSdkType):
         pass
 
 
-class LocallyDefined(_six.with_metaclass(_InstanceTracker, object)):
+class LocallyDefined(object, metaclass=_InstanceTracker):
 
     def __init__(self, *args, **kwargs):
         self._platform_valid_name = None
