@@ -35,6 +35,7 @@ class _InstanceTracker(_sdk_bases.ExtendedSdkType):
         return o
 
 
+# Think of Registerable more as a "Control Plane" entity, as opposed to the "LocallyDefined" one below.
 class RegisterableEntity(object, metaclass=_sdk_bases.ExtendedSdkType):
 
     def __init__(self, *args, **kwargs):

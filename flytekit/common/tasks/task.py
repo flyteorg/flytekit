@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import uuid as _uuid
 
 import six as _six
@@ -25,13 +23,11 @@ from flytekit.common.types import helpers as _type_helpers
 
 
 class SdkTask(
-    _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType,
-        _hash_mixin.HashOnReferenceMixin,
-        _task_model.TaskTemplate,
-        _registerable.RegisterableEntity,
-        _launchable_mixin.LaunchableEntity,
-    )
+    _hash_mixin.HashOnReferenceMixin,
+    _task_model.TaskTemplate,
+    _registerable.RegisterableEntity,
+    _launchable_mixin.LaunchableEntity,
+    metaclass=_sdk_bases.ExtendedSdkType,
 ):
 
     def __init__(self, type, metadata, interface, custom, container=None):
@@ -137,7 +133,8 @@ class SdkTask(
         # TODO: Remove DEADBEEF
         return _nodes.SdkNode(
             id=None,
-            metadata=_workflow_model.NodeMetadata("DEADBEEF", self.metadata.timeout, self.metadata.retries, self.metadata.interruptible),
+            metadata=_workflow_model.NodeMetadata("DEADBEEF", self.metadata.timeout, self.metadata.retries,
+                                                  self.metadata.interruptible),
             bindings=sorted(bindings, key=lambda b: b.var),
             upstream_nodes=upstream_nodes,
             sdk_task=self

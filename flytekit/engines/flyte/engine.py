@@ -31,8 +31,7 @@ class _FlyteClientManager(object):
     _CLIENT = None
 
     def __init__(self, *args, **kwargs):
-        # TODO: React to changing configs.  For now this is frozen for the lifetime of the process, which covers most
-        # TODO: use cases.
+        # In the future, can react to changing configs.  For now this is frozen for the lifetime of the process.
         if type(self)._CLIENT is None:
             c = _SynchronousFlyteClient(*args, **kwargs)
             type(self)._CLIENT = c
