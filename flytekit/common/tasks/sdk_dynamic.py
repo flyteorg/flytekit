@@ -51,7 +51,7 @@ def _append_node(generated_files, node, nodes, sub_task_node):
                   sub_task_node.inputs})
 
 
-class SdkDynamicTaskMixin:
+class SdkDynamicTaskMixin(object):
     def __init__(self, allowed_failure_ratio, max_concurrency):
         # These will only appear in the generated futures
         self._allowed_failure_ratio = allowed_failure_ratio
@@ -250,7 +250,7 @@ class SdkDynamicTaskMixin:
             return generated_files
 
 
-class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, SdkDynamicTaskMixin, _sdk_runnable.SdkRunnableTask)):
+class SdkDynamicTask(SdkDynamicTaskMixin, _sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.ExtendedSdkType):
     """
     This class includes the additional logic for building a task that executes parent-child tasks in Python code.  It
     has even more validation checks to ensure proper behavior than it's superclasses.

@@ -15,7 +15,7 @@ from google.protobuf.json_format import MessageToDict as _MessageToDict
 from flytekit.plugins import k8s as _lazy_k8s
 
 
-class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnable.SdkRunnableTask)):
+class SdkSidecarTask(_sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.ExtendedSdkType):
 
     """
     This class includes the additional logic for building a task that executes as a Sidecar Job.
@@ -141,7 +141,7 @@ class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         self.assign_custom_and_return(_MessageToDict(sidecar_job_plugin))
 
 
-class SdkDynamicSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_dynamic.SdkDynamicTaskMixin, SdkSidecarTask)):
+class SdkDynamicSidecarTask(_sdk_dynamic.SdkDynamicTaskMixin, SdkSidecarTask, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(self,
                  task_function,
                  task_type,
