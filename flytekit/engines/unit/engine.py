@@ -91,9 +91,15 @@ class UnitTestEngineTask(_common_engine.BaseTaskExecutor):
             _os.path.join(_os.path.dirname(__file__), 'unit.config'),
             internal_overrides={'image': 'unit_image'}
         ):
+            from flytekit.configuration.common import CONFIGURATION_SINGLETON
+            old = CONFIGURATION_SINGLETON.x
+            CONFIGURATION_SINGLETON.x = 2
             with _common_utils.AutoDeletingTempDir("unit_test_dir") as working_directory:
                 with _data_proxy.LocalWorkingDirectoryContext(working_directory):
-                    return self._transform_for_user_output(self._execute_user_code(inputs))
+                    x = self._transform_for_user_output(self._execute_user_code(inputs))
+
+            CONFIGURATION_SINGLETON.x = old
+            return x
 
     def _execute_user_code(self, inputs):
         """

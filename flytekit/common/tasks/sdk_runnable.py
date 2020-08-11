@@ -1,10 +1,4 @@
-from __future__ import absolute_import
-
-try:
-    from inspect import getfullargspec as _getargspec
-except ImportError:
-    from inspect import getargspec as _getargspec
-
+from inspect import getfullargspec as _getargspec
 import six as _six
 
 from flytekit import __version__
@@ -17,6 +11,7 @@ from flytekit.engines import loader as _engine_loader
 from flytekit.models import literals as _literal_models, task as _task_models
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
 from flytekit.common.mixins import registerable as _registerable
+
 
 class ExecutionParameters(object):
 

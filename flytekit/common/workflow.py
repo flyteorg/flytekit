@@ -180,13 +180,6 @@ class SdkWorkflow(
         """
         return _identifier_model.ResourceType.WORKFLOW
 
-    @property
-    def user_inputs(self):
-        """
-        :rtype: list[flytekit.common.promise.Input]
-        """
-        return self._user_inputs
-
     def get_sub_workflows(self):
         """
         Recursive call that returns all subworkflows in the current workflow
@@ -373,14 +366,7 @@ class SdkWorkflow(
                 "detected {} positional args.".format(len(args))
             )
 
-        # Take the default values from the Inputs
-        compiled_inputs = {
-            v.name: v.sdk_default
-            for v in self.user_inputs if not v.sdk_required
-        }
-        compiled_inputs.update(input_map)
-
-        bindings, upstream_nodes = self.interface.create_bindings_for_inputs(compiled_inputs)
+        bindings, upstream_nodes = self.interface.create_bindings_for_inputs(input_map)
 
         node = _nodes.SdkNode(
             id=None,
@@ -472,24 +458,17 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocallyDefi
         self._flyte_workflow = flyte_workflow
         self._workflow_inputs = inputs
         self._nodes = nodes
+        self._user_inputs = inputs
 
-    def __call__(self, *args, **kwargs):
-        if CONFIGURATION_SINGLETON.x == 1:
-            if len(args) > 0:
-                raise Exception('not allowed')
+    def __call__(self, *args, **input_map):
+        # Take the default values from the Inputs
+        compiled_inputs = {
+            v.name: v.sdk_default
+            for v in self.user_inputs if not v.sdk_required
+        }
+        compiled_inputs.update(input_map)
 
-            print(f"compilation mode. Args are: {args}")
-            print(f"Locals: {locals()}")
-
-            logger.debug(f"Compiling workflow... ")
-
-        else:
-            # Can we relax this in the future? People are used to this right now, so it's okay.
-            if len(args) > 0:
-                raise Exception('When using the workflow decorator, all inputs must be specified with kwargs only')
-
-            # Can we unwrap the WorkflowOutputs object in here too? So that the user gets native Python outputs.
-            return self._workflow_function(*args, **kwargs)
+        return self.flyte_workflow.__call__(*args, **input_map)
 
     @property
     def flyte_workflow(self) -> SdkWorkflow:
@@ -558,6 +537,13 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocallyDefi
     @property
     def interface(self):
         return self.flyte_workflow.interface
+
+    @property
+    def user_inputs(self) -> List[_promise.Input]:
+        """
+        :rtype: list[flytekit.common.promise.Input]
+        """
+        return self._user_inputs
 
     def create_launch_plan(
             self,

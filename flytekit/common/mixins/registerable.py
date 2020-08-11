@@ -35,8 +35,27 @@ class _InstanceTracker(_sdk_bases.ExtendedSdkType):
         return o
 
 
+class FlyteEntity(object, metaclass=_sdk_bases.ExtendedSdkType):
+    @property
+    @_abc.abstractmethod
+    def resource_type(self):
+        """
+        Integer from _identifier.ResourceType enum
+        :rtype: int
+        """
+        pass
+
+    @property
+    @_abc.abstractmethod
+    def entity_type_text(self):
+        """
+        :rtype: Text
+        """
+        pass
+
+
 # Think of Registerable more as a "Control Plane" entity, as opposed to the "LocallyDefined" one below.
-class RegisterableEntity(object, metaclass=_sdk_bases.ExtendedSdkType):
+class RegisterableEntity(FlyteEntity):
 
     def __init__(self, *args, **kwargs):
         super(RegisterableEntity, self).__init__(*args, **kwargs)
@@ -65,33 +84,19 @@ class RegisterableEntity(object, metaclass=_sdk_bases.ExtendedSdkType):
         """
         pass
 
-    @_abc.abstractproperty
-    def resource_type(self):
-        """
-        Integer from _identifier.ResourceType enum
-        :rtype: int
-        """
-        pass
 
-    @_abc.abstractproperty
-    def entity_type_text(self):
-        """
-        :rtype: Text
-        """
-        pass
-
-
-class LocallyDefined(object, metaclass=_InstanceTracker):
+class LocallyDefined(FlyteEntity, metaclass=_InstanceTracker):
 
     def __init__(self, *args, **kwargs):
         self._platform_valid_name = None
+        self._upstream_entities = set()
         super(LocallyDefined, self).__init__(*args, **kwargs)
 
     @property
     def upstream_entities(self):
         """
         Task, workflow, and launch plan that need to be registered in advance of this workflow.
-        :rtype: set[RegisterableEntity]
+        :rtype: set[LocallyDefined]
         """
         return self._upstream_entities
 
@@ -160,7 +165,7 @@ class LocallyDefined(object, metaclass=_InstanceTracker):
 
         for k in dir(m):
             try:
-                if getattr(m, k) == self:
+                if getattr(m, k) is self:
                     self._platform_valid_name = _utils.fqdn(m.__name__, k, entity_type=self.resource_type)
                     _logging.debug("Auto-assigning name to {}".format(self._platform_valid_name))
                     return
