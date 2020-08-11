@@ -52,6 +52,13 @@ def _append_node(generated_files, node, nodes, sub_task_node):
 
 
 class SdkDynamicTaskMixin(object):
+
+    """
+    This mixin implements logic for building a task that executes
+    parent-child tasks in Python code.
+
+    """
+
     def __init__(self, allowed_failure_ratio, max_concurrency):
         # These will only appear in the generated futures
         self._allowed_failure_ratio = allowed_failure_ratio
@@ -251,12 +258,11 @@ class SdkDynamicTaskMixin(object):
 
 
 class SdkDynamicTask(SdkDynamicTaskMixin, _sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.ExtendedSdkType):
-    """
-    This class includes the additional logic for building a task that executes parent-child tasks in Python code.  It
-    has even more validation checks to ensure proper behavior than it's superclasses.
 
-    Since an SdkDynamicTask is assumed to run by hooking into Python code, we will provide additional shortcuts and
-    methods on this object.
+    """
+    This class includes the additional logic for building a task that executes
+    parent-child tasks in Python code.
+
     """
 
     def __init__(
