@@ -9,10 +9,9 @@ from flytekit.common.mixins import registerable as _registerable, hash as _hash_
     launchable as _launchable_mixin
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import sdk as _sdk_config, auth as _auth_config, platform as _platform_config
-from flytekit.engines import loader as _engine_loader
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import launch_plan as _launch_plan_models, schedule as _schedule_model, interface as \
-    _interface_models, literals as _literal_models, common as _common_models
+    _interface_models, literals as _literal_models, common as _common_models, execution as _execution_models
 from flytekit.models.core import identifier as _identifier_model, workflow as _workflow_models
 import datetime as _datetime
 from deprecated import deprecated as _deprecated
@@ -57,6 +56,35 @@ class SdkLaunchPlan(
             auth_role=model.auth_role,
         )
 
+    @_exception_scopes.system_entry_point
+    def register(self, project, domain, name, version):
+        """
+        :param Text project:
+        :param Text domain:
+        :param Text name:
+        :param Text version:
+        """
+        self.validate()
+        id_to_register = _identifier.Identifier(
+            _identifier_model.ResourceType.LAUNCH_PLAN,
+            project,
+            domain,
+            name,
+            version
+        )
+        client = _flyte_engine._FlyteClientManager(_platform_config.URL.get(),
+                                                   insecure=_platform_config.INSECURE.get()).client
+        try:
+            client.create_launch_plan(
+                id_to_register,
+                self
+            )
+        except _user_exceptions.FlyteEntityAlreadyExistsException:
+            pass
+
+        self._id = id_to_register
+        return str(self.id)
+
     @classmethod
     @_exception_scopes.system_entry_point
     def fetch(cls, project, domain, name, version=None):
@@ -75,7 +103,7 @@ class SdkLaunchPlan(
         )
 
         if launch_plan_id.version:
-            lp =_flyte_engine._FlyteClientManager(
+            lp = _flyte_engine._FlyteClientManager(
                 _platform_config.URL.get(),
                 insecure=_platform_config.INSECURE.get()
             ).client.get_launch_plan(launch_plan_id)
@@ -124,9 +152,9 @@ class SdkLaunchPlan(
         :rtype: flytekit.models.common.AuthRole
         """
         fixed_auth = super(SdkLaunchPlan, self).auth_role
-        if fixed_auth is not None and\
+        if fixed_auth is not None and \
                 (fixed_auth.assumable_iam_role is not None or fixed_auth.kubernetes_service_account is not None):
-                return fixed_auth
+            return fixed_auth
 
         assumable_iam_role = _auth_config.ASSUMABLE_IAM_ROLE.get()
         kubernetes_service_account = _auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
@@ -175,7 +203,10 @@ class SdkLaunchPlan(
                 "Failed to update launch plan because the launch plan's ID is not set. Please call register to fetch "
                 "or register the identifier first"
             )
-        return _engine_loader.get_engine().get_launch_plan(self).update(self.id, state)
+        return _flyte_engine._FlyteClientManager(
+            _platform_config.URL.get(),
+            insecure=_platform_config.INSECURE.get()
+        ).client.update_launch_plan(self.id, state)
 
     def _python_std_input_map_to_literal_map(self, inputs):
         """
@@ -221,15 +252,40 @@ class SdkLaunchPlan(
         """
         # Kubernetes requires names starting with an alphabet for some resources.
         name = name or "f" + _uuid.uuid4().hex[:19]
-        execution = _engine_loader.get_engine().get_launch_plan(self).launch(
-            project,
-            domain,
-            name,
-            literal_inputs,
-            notification_overrides=notification_overrides,
-            label_overrides=label_overrides,
-            annotation_overrides=annotation_overrides,
-        )
+        disable_all = (notification_overrides == [])
+        if disable_all:
+            notification_overrides = None
+        else:
+            notification_overrides = _execution_models.NotificationList(
+                notification_overrides or []
+            )
+            disable_all = None
+
+        client = _flyte_engine._FlyteClientManager(_platform_config.URL.get(),
+                                                   insecure=_platform_config.INSECURE.get()).client
+        try:
+            exec_id = client.create_execution(
+                project,
+                domain,
+                name,
+                _execution_models.ExecutionSpec(
+                    self.id,
+                    _execution_models.ExecutionMetadata(
+                        _execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
+                        'sdk',  # TODO: get principle
+                        0  # TODO: Detect nesting
+                    ),
+                    notifications=notification_overrides,
+                    disable_all=disable_all,
+                    labels=label_overrides,
+                    annotations=annotation_overrides,
+                ),
+                literal_inputs,
+            )
+        except _user_exceptions.FlyteEntityAlreadyExistsException:
+            exec_id = _identifier.WorkflowExecutionIdentifier(project, domain, name)
+        execution = client.get_execution(exec_id)
+
         return _workflow_execution.SdkWorkflowExecution.promote_from_model(execution)
 
     @_exception_scopes.system_entry_point
@@ -361,9 +417,18 @@ class SdkRunnableLaunchPlan(
             name,
             version
         )
-        _engine_loader.get_engine().get_launch_plan(self).register(id_to_register)
+        client = _flyte_engine._FlyteClientManager(_platform_config.URL.get(),
+                                                   insecure=_platform_config.INSECURE.get()).client
+        try:
+            client.create_launch_plan(
+                id_to_register,
+                self
+            )
+        except _user_exceptions.FlyteEntityAlreadyExistsException:
+            pass
+
         self._id = id_to_register
-        return _six.text_type(self.id)
+        return str(self.id)
 
     # TODO: Move up to parent class
     @_exception_scopes.system_entry_point
