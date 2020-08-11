@@ -60,6 +60,11 @@ class SdkDynamicTaskMixin(object):
     """
 
     def __init__(self, allowed_failure_ratio, max_concurrency):
+        """
+        :param float allowed_failure_ratio:
+        :param int max_concurrency:
+        """
+
         # These will only appear in the generated futures
         self._allowed_failure_ratio = allowed_failure_ratio
         self._max_concurrency = max_concurrency
