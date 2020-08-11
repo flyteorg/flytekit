@@ -146,6 +146,7 @@ def dynamic_wf_task(wf_params, task_input_num, out):
 def test_batch_task():
     assert isinstance(sample_batch_task, _sdk_runnable.SdkRunnableTask)
     assert isinstance(sample_batch_task, _sdk_dynamic.SdkDynamicTask)
+    assert isinstance(sample_batch_task, _sdk_dynamic.SdkDynamicTaskMixin)
 
     expected = {
         'out_str': ["I'm the first result", 'hello 0', "I'm after each sub-task result", 'hello 1',
