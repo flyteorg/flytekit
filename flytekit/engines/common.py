@@ -286,14 +286,6 @@ class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta
     """
 
     @_abc.abstractmethod
-    def get_workflow(self, sdk_workflow):
-        """
-        :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
-        :rtype: BaseWorkflowExecutor
-        """
-        pass
-
-    @_abc.abstractmethod
     def get_task(self, sdk_task):
         """
         :param flytekit.common.tasks.task.SdkTask sdk_task:
@@ -356,24 +348,6 @@ class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta
         Fetches the latest task
         :param flytekit.models.common.NamedEntityIdentifier named_task: NamedEntityIdentifier to fetch
         :rtype: flytekit.models.task.Task
-        """
-        pass
-
-    @_abc.abstractmethod
-    def fetch_launch_plan(self, launch_plan_id):
-        """
-        :param flytekit.models.core.identifier.Identifier launch_plan_id: This identifier should have a resource
-            type of kind LaunchPlan.
-        :rtype: flytekit.models.launch_plan.LaunchPlan
-        """
-        pass
-
-    @_abc.abstractmethod
-    def fetch_workflow(self, workflow_id):
-        """
-        :param flytekit.models.core.identifier.Identifier workflow_id: This identifier should have a resource
-            type of kind workflow.
-        :rtype: flytekit.models.admin.workflow.Workflow
         """
         pass
 

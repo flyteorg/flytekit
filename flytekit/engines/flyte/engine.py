@@ -46,13 +46,6 @@ class _FlyteClientManager(object):
 
 class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
 
-    def get_workflow(self, sdk_workflow):
-        """
-        :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
-        :rtype: FlyteWorkflow
-        """
-        return FlyteWorkflow(sdk_workflow)
-
     def get_task(self, sdk_task):
         """
         :param flytekit.common.tasks.task.SdkTask sdk_task:
@@ -97,39 +90,6 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
             _platform_config.URL.get(),
             insecure=_platform_config.INSECURE.get()
         ).client.get_execution(wf_exec_id)
-
-    def fetch_launch_plan(self, launch_plan_id):
-        """
-        :param flytekit.models.core.identifier.Identifier launch_plan_id: This identifier should have a resource
-            type of kind LaunchPlan.
-        :rtype: flytekit.models.launch_plan.LaunchPlan
-        """
-        if launch_plan_id.version:
-            return _FlyteClientManager(
-                _platform_config.URL.get(),
-                insecure=_platform_config.INSECURE.get()
-            ).client.get_launch_plan(launch_plan_id)
-        else:
-            named_entity_id = _common_models.NamedEntityIdentifier(
-                launch_plan_id.project,
-                launch_plan_id.domain,
-                launch_plan_id.name
-            )
-            return _FlyteClientManager(
-                _platform_config.URL.get(),
-                insecure=_platform_config.INSECURE.get()
-            ).client.get_active_launch_plan(named_entity_id)
-
-    def fetch_workflow(self, workflow_id):
-        """
-        :param flytekit.models.core.identifier.Identifier workflow_id: This identifier should have a resource
-            type of kind LaunchPlan.
-        :rtype: flytekit.models.admin.workflow.Workflow
-        """
-        return _FlyteClientManager(
-            _platform_config.URL.get(),
-            insecure=_platform_config.INSECURE.get()
-        ).client.get_workflow(workflow_id)
 
 
 class FlyteLaunchPlan(_common_engine.BaseLaunchPlanLauncher):
@@ -211,20 +171,8 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanLauncher):
 
 
 class FlyteWorkflow(_common_engine.BaseWorkflowExecutor):
-
     def register(self, identifier):
-        client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
-        try:
-            sub_workflows = self.sdk_workflow.get_sub_workflows()
-            return client.create_workflow(
-                identifier,
-                _workflow_model.WorkflowSpec(
-                    self.sdk_workflow,
-                    sub_workflows,
-                )
-            )
-        except _user_exceptions.FlyteEntityAlreadyExistsException:
-            pass
+        ...
 
 
 class FlyteTask(_common_engine.BaseTaskExecutor):

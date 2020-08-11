@@ -1,26 +1,24 @@
-from typing import List, Dict, Tuple, Any
-
+import datetime as _datetime
 import uuid as _uuid
+from typing import List, Dict, Any
+
 import six as _six
 from six.moves import queue as _queue
-import datetime as _datetime
 
-from flytekit import logger
+from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface, nodes as _nodes, sdk_bases as _sdk_bases, \
     launch_plan as _launch_plan, promise as _promise
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
+from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import internal as _internal_config
-from flytekit.engines import loader as _engine_loader
+from flytekit.configuration import internal as _internal_config, platform as _platform_config
+from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import interface as _interface_models, literals as _literal_models, common as _common_models, \
     schedule as _schedule_models, launch_plan as _launch_plan_models
-from flytekit.models.core import workflow as _workflow_models, identifier as _identifier_model
-from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.common import constants as _constants
 from flytekit.models.admin import workflow as _admin_workflow_model
-from flytekit.configuration.common import CONFIGURATION_SINGLETON
+from flytekit.models.core import workflow as _workflow_models, identifier as _identifier_model
 
 
 class Output(object):
@@ -78,12 +76,10 @@ class Output(object):
 
 
 class SdkWorkflow(
-    _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType,
-        _hash_mixin.HashOnReferenceMixin,
-        _workflow_models.WorkflowTemplate,
-        _registerable.RegisterableEntity,
-    )
+    _hash_mixin.HashOnReferenceMixin,
+    _workflow_models.WorkflowTemplate,
+    _registerable.RegisterableEntity,
+    metaclass=_sdk_bases.ExtendedSdkType,
 ):
     """
     Previously this class represented both local and control plane constructs. As of this writing, we are making this class
@@ -151,14 +147,6 @@ class SdkWorkflow(
         self._upstream_entities = set(n.executable_sdk_object for n in nodes)
 
     @property
-    def upstream_entities(self):
-        """
-        Task, workflow, and launch plan that need to be registered in advance of this workflow.
-        :rtype: set[T]
-        """
-        return self._upstream_entities
-
-    @property
     def interface(self):
         """
         :rtype: flytekit.common.interface.TypedInterface
@@ -213,7 +201,10 @@ class SdkWorkflow(
         """
         version = version or _internal_config.VERSION.get()
         workflow_id = _identifier.Identifier(_identifier_model.ResourceType.WORKFLOW, project, domain, name, version)
-        admin_workflow = _engine_loader.get_engine().fetch_workflow(workflow_id)
+        admin_workflow = _flyte_engine._FlyteClientManager(
+            _platform_config.URL.get(),
+            insecure=_platform_config.INSECURE.get()
+        ).client.get_workflow(workflow_id)
         cwc = admin_workflow.closure.compiled_workflow
         primary_template = cwc.primary.template
         sub_workflow_map = {sw.template.id: sw.template for sw in cwc.sub_workflows}
@@ -282,11 +273,22 @@ class SdkWorkflow(
             version
         )
         old_id = self.id
+        self._id = id_to_register
         try:
+            client = _flyte_engine._FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
+            sub_workflows = self.get_sub_workflows()
+            client.create_workflow(
+                id_to_register,
+                _admin_workflow_model.WorkflowSpec(
+                    self,
+                    sub_workflows,
+                )
+            )
             self._id = id_to_register
-            _engine_loader.get_engine().get_workflow(self).register(id_to_register)
-            return _six.text_type(self.id)
-        except:
+            return str(id_to_register)
+        except _user_exceptions.FlyteEntityAlreadyExistsException:
+            pass
+        except Exception:
             self._id = old_id
             raise
 
@@ -544,6 +546,14 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocallyDefi
         :rtype: list[flytekit.common.promise.Input]
         """
         return self._user_inputs
+
+    @property
+    def upstream_entities(self):
+        """
+        Task, workflow, and launch plan that need to be registered in advance of this workflow.
+        :rtype: set[T]
+        """
+        return self._upstream_entities
 
     def create_launch_plan(
             self,

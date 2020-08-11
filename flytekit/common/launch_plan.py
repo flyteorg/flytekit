@@ -8,8 +8,9 @@ from flytekit.common.exceptions import scopes as _exception_scopes, user as _use
 from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, \
     launchable as _launchable_mixin
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import sdk as _sdk_config, auth as _auth_config
+from flytekit.configuration import sdk as _sdk_config, auth as _auth_config, platform as _platform_config
 from flytekit.engines import loader as _engine_loader
+from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import launch_plan as _launch_plan_models, schedule as _schedule_model, interface as \
     _interface_models, literals as _literal_models, common as _common_models
 from flytekit.models.core import identifier as _identifier_model, workflow as _workflow_models
@@ -72,7 +73,23 @@ class SdkLaunchPlan(
         launch_plan_id = _identifier.Identifier(
             _identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version
         )
-        lp = _engine_loader.get_engine().fetch_launch_plan(launch_plan_id)
+
+        if launch_plan_id.version:
+            lp =_flyte_engine._FlyteClientManager(
+                _platform_config.URL.get(),
+                insecure=_platform_config.INSECURE.get()
+            ).client.get_launch_plan(launch_plan_id)
+        else:
+            named_entity_id = _common_models.NamedEntityIdentifier(
+                launch_plan_id.project,
+                launch_plan_id.domain,
+                launch_plan_id.name
+            )
+            lp = _flyte_engine._FlyteClientManager(
+                _platform_config.URL.get(),
+                insecure=_platform_config.INSECURE.get()
+            ).client.get_active_launch_plan(named_entity_id)
+
         sdk_lp = cls.promote_from_model(lp.spec)
         sdk_lp._id = lp.id
 
