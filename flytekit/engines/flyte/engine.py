@@ -543,6 +543,7 @@ class FlyteNodeExecution(_common_engine.BaseNodeExecution):
 
 class FlyteTaskExecution(_common_engine.BaseTaskExecution):
 
+    @_deprecated(reason="Objects should access client directly, will be removed by 1.0", version='0.42.0')
     def get_inputs(self):
         """
         :rtype: flytekit.models.literals.LiteralMap
@@ -558,6 +559,7 @@ class FlyteTaskExecution(_common_engine.BaseTaskExecution):
                 )
         return _literals.LiteralMap({})
 
+    @_deprecated(reason="Objects should access client directly, will be removed by 1.0", version='0.42.0')
     def get_outputs(self):
         """
         :rtype: flytekit.models.literals.LiteralMap
@@ -573,6 +575,7 @@ class FlyteTaskExecution(_common_engine.BaseTaskExecution):
                 )
         return _literals.LiteralMap({})
 
+    @_deprecated(reason="Objects should access client directly, will be removed by 1.0", version='0.42.0')
     def sync(self):
         """
         :rtype: None
@@ -580,6 +583,7 @@ class FlyteTaskExecution(_common_engine.BaseTaskExecution):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
         self.sdk_task_execution._closure = client.get_task_execution(self.sdk_task_execution.id).closure
 
+    @_deprecated(reason="Objects should access client directly, will be removed by 1.0", version='0.42.0')
     def get_child_executions(self, filters=None):
         """
         :param list[flytekit.models.filters.Filter] filters:

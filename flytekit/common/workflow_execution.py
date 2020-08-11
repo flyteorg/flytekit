@@ -1,8 +1,6 @@
-from __future__ import absolute_import
-
 import os as _os
-
 import six as _six
+
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions
@@ -20,11 +18,9 @@ from flytekit.models.core import execution as _core_execution_models
 
 
 class SdkWorkflowExecution(
-    _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType,
-        _execution_models.Execution,
-        _artifact.ExecutionArtifact
-    )
+    _execution_models.Execution,
+    _artifact.ExecutionArtifact,
+    metaclass=_sdk_bases.ExtendedSdkType,
 ):
     def __init__(self, *args, **kwargs):
         super(SdkWorkflowExecution, self).__init__(*args, **kwargs)
