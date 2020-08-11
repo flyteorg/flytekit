@@ -390,7 +390,8 @@ class SdkNodeExecution(
                     output_map = _literal_models.LiteralMap.from_flyte_idl(
                         _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
-            output_map = _literal_models.LiteralMap({})
+            else:
+                output_map = _literal_models.LiteralMap({})
 
             self._outputs = _type_helpers.unpack_literal_map_to_sdk_python_std(output_map)
         return self._outputs

@@ -420,6 +420,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
 
 class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
 
+    @_deprecated(reason="Objects should access client directly, will be removed by 1.0", version='0.42.0')
     def get_node_executions(self, filters=None):
         """
         :param list[flytekit.models.filters.Filter] filters:
@@ -431,6 +432,7 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
             for v in _iterate_node_executions(client, self.sdk_workflow_execution.id, filters=filters)
         }
 
+    @_deprecated(reason="Objects should access client directly, will be removed by 1.0", version='0.42.0')
     def sync(self):
         """
         :rtype: None
@@ -438,6 +440,7 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
         self.sdk_workflow_execution._closure = client.get_execution(self.sdk_workflow_execution.id).closure
 
+    @_deprecated(reason="Objects should access client directly, will be removed by 1.0", version='0.42.0')
     def get_inputs(self):
         """
         :rtype: flytekit.models.literals.LiteralMap
@@ -453,6 +456,7 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
                 )
         return _literals.LiteralMap({})
 
+    @_deprecated(reason="Objects should access client directly, will be removed by 1.0", version='0.42.0')
     def get_outputs(self):
         """
         :rtype: flytekit.models.literals.LiteralMap
@@ -468,6 +472,7 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
                 )
         return _literals.LiteralMap({})
 
+    @_deprecated(reason="Objects should access client directly, will be removed by 1.0", version='0.42.0')
     def terminate(self, cause):
         """
         :param Text cause:
