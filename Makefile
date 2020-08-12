@@ -18,16 +18,16 @@ setup: _install-piptools ## Install requirements
 	pip-sync requirements.txt dev-requirements.txt
 
 .PHONY: fmt
-fmt: setup ## Format code with black and isort
+fmt: ## Format code with black and isort
 	black .
 	isort .
 
 .PHONY: lint
-lint: setup ## Run linters
+lint: ## Run linters
 	flake8 .
 
 .PHONY: test
-test: setup ## Run tests
+test: ## Run tests
 	pytest tests/flytekit/unit
 
 requirements.txt: export CUSTOM_COMPILE_COMMAND := make requirements.txt
