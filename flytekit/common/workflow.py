@@ -82,9 +82,9 @@ class SdkWorkflow(
     metaclass=_sdk_bases.ExtendedSdkType,
 ):
     """
-    Previously this class represented both local and control plane constructs. As of this writing, we are making this class
-    only a control plane class. Workflow constructs that rely on local code being present have been moved to the new
-    PythonWorkflow class.
+    Previously this class represented both local and control plane constructs. As of this writing, we are making this
+    class only a control plane class. Workflow constructs that rely on local code being present have been moved to
+    the new PythonWorkflow class.
     """
 
     def __init__(self, inputs, outputs, nodes, id=None, metadata=None, metadata_defaults=None,
@@ -478,6 +478,10 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
     @property
     def id(self):
         return self.flyte_workflow.id
+
+    @id.setter
+    def id(self, new_id):
+        self._flyte_workflow._id = new_id
 
     def register(self, *args, **kwargs):
         return self.flyte_workflow.register(*args, **kwargs)
