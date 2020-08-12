@@ -1,0 +1,42 @@
+define PIP_COMPILE
+pip-compile $(1) --upgrade --verbose
+endef
+
+.SILENT: help
+.PHONY: help
+help:
+	echo Available recipes:
+	cat $(MAKEFILE_LIST) | grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' | awk 'BEGIN { FS = ":.*?## " } { cnt++; a[cnt] = $$1; b[cnt] = $$2; if (length($$1) > max) max = length($$1) } END { for (i = 1; i <= cnt; i++) printf "  $(shell tput setaf 6)%-*s$(shell tput setaf 0) %s\n", max, a[i], b[i] }'
+	tput sgr0
+
+.PHONY: _install-piptools
+_install-piptools:
+	pip install -U pip-tools
+
+.PHONY: setup
+setup: _install-piptools ## Install requirements
+	pip-sync requirements.txt dev-requirements.txt
+
+.PHONY: fmt
+fmt: setup ## Format code with black and isort
+	black .
+	isort .
+
+.PHONY: lint
+lint: setup ## Run linters
+	flake8 .
+
+.PHONY: test
+test: setup ## Run tests
+	pytest tests/flytekit/unit
+
+requirements.txt: export CUSTOM_COMPILE_COMMAND := make requirements.txt
+requirements.txt: requirements.in _install-piptools
+	$(call PIP_COMPILE,requirements.in)
+
+dev-requirements.txt: export CUSTOM_COMPILE_COMMAND := make dev-requirements.txt
+dev-requirements.txt: dev-requirements.in requirements.txt _install-piptools
+	$(call PIP_COMPILE,dev-requirements.in)
+
+.PHONY: requirements
+requirements: requirements.txt dev-requirements.txt ## Compile requirements

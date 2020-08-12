@@ -1,0 +1,9 @@
+-c requirements.txt
+
+black
+flake8
+flake8-black
+flake8-isort
+isort
+mock
+pytest
