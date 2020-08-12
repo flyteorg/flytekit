@@ -419,7 +419,6 @@ class SdkRunnableLaunchPlan(
         self._upstream_entities = {sdk_workflow}
         self._sdk_workflow = sdk_workflow
 
-
     @classmethod
     def from_flyte_idl(cls, _):
         raise _user_exceptions.FlyteAssertion(

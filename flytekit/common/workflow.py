@@ -334,7 +334,7 @@ class SdkWorkflow(
         :param auth_role: Auth object
         :rtype: flytekit.common.launch_plan.SdkRunnableLaunchPlan
         """
-
+        raise Exception('fds')
         # TODO: Actually ensure the parameters conform.
         # Determine fixed inputs
         fixed_inputs = fixed_inputs or {}
@@ -476,6 +476,13 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
         return self.flyte_workflow.interface
 
     @property
+    def id(self):
+        return self.flyte_workflow.id
+
+    def register(self, *args, **kwargs):
+        return self.flyte_workflow.register(*args, **kwargs)
+
+    @property
     def user_inputs(self) -> List[_promise.Input]:
         """
         :rtype: list[flytekit.common.promise.Input]
@@ -510,6 +517,7 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
         :param Text kubernetes_service_account: The kubernetes service account to execute the workflow with.
         :rtype: flytekit.common.launch_plan.SdkRunnableLaunchPlan
         """
+        import ipdb; ipdb.set_trace()
         # TODO: Actually ensure the parameters conform.
         if role and (assumable_iam_role or kubernetes_service_account):
             raise ValueError("Cannot set both role and auth. Role is deprecated, use auth instead.")
