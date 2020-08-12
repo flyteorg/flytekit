@@ -89,6 +89,7 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         """
         return FlyteWorkflowExecution(wf_exec)
 
+    @_deprecated(reason="Objects should access client directly, will be removed by 1.0", version='0.42.0')
     def fetch_workflow_execution(self, wf_exec_id):
         """
         :param flytekit.models.core.identifier.WorkflowExecutionIdentifier wf_exec_id:
@@ -99,6 +100,7 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
             insecure=_platform_config.INSECURE.get()
         ).client.get_execution(wf_exec_id)
 
+    @_deprecated(reason="Objects should access client directly, will be removed by 1.0", version='0.42.0')
     def fetch_task(self, task_id):
         """
         Queries Admin for an existing Admin task
@@ -110,6 +112,7 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
             insecure=_platform_config.INSECURE.get()
         ).client.get_task(task_id)
 
+    @_deprecated(reason="Objects should access client directly, will be removed by 1.0", version='0.42.0')
     def fetch_latest_task(self, named_task):
         """
         Fetches the latest task
@@ -125,6 +128,7 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         )
         return task_list[0] if task_list else None
 
+    @_deprecated(reason="Objects should access client directly, will be removed by 1.0", version='0.42.0')
     def fetch_launch_plan(self, launch_plan_id):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan_id: This identifier should have a resource
@@ -147,6 +151,7 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
                 insecure=_platform_config.INSECURE.get()
             ).client.get_active_launch_plan(named_entity_id)
 
+    @_deprecated(reason="Objects should access client directly, will be removed by 1.0", version='0.42.0')
     def fetch_workflow(self, workflow_id):
         """
         :param flytekit.models.core.identifier.Identifier workflow_id: This identifier should have a resource

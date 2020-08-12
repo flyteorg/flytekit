@@ -25,6 +25,7 @@ class SdkLaunchPlan(
         _sdk_bases.ExtendedSdkType,
         _launch_plan_models.LaunchPlanSpec,
         _launchable_mixin.LaunchableEntity,
+        _registerable.RegisterableEntity,
     )
 ):
     def __init__(self, *args, **kwargs):
@@ -127,6 +128,14 @@ class SdkLaunchPlan(
         sdk_lp._interface = lp_wf.interface
         return sdk_lp
 
+    @_exception_scopes.system_entry_point
+    def serialize(self):
+        """
+        Unlike the SdkWorkflow serialize call, nothing special needs to be done here.
+        :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
+        """
+        return self.to_flyte_idl()
+
     @property
     def id(self):
         """
@@ -167,8 +176,18 @@ class SdkLaunchPlan(
                                        kubernetes_service_account=kubernetes_service_account)
 
     @property
+    def workflow_id(self):
+        """
+        :rtype: flytekit.common.core.identifier.Identifier
+        """
+        return self._workflow_id
+
+    @property
     def interface(self):
         """
+        The interface is not technically part of the admin.LaunchPlanSpec in the IDL, however the workflow ID is, and
+        from the workflow ID, fetch will fill in the interface. This is nice because then you can __call__ the=
+        object and get a node.
         :rtype: flytekit.common.interface.TypedInterface
         """
         return self._interface
@@ -331,7 +350,7 @@ class SdkRunnableLaunchPlan(
     _hash_mixin.HashOnReferenceMixin,
     SdkLaunchPlan,
     _registerable.RegisterableEntity,
-    _registerable.LocallyDefined,
+    _registerable.LocalEntity,
 ):
     def __init__(
             self,
@@ -400,44 +419,6 @@ class SdkRunnableLaunchPlan(
         self._upstream_entities = {sdk_workflow}
         self._sdk_workflow = sdk_workflow
 
-    # TODO: Move up to parent class
-    @_exception_scopes.system_entry_point
-    def register(self, project, domain, name, version):
-        """
-        :param Text project:
-        :param Text domain:
-        :param Text name:
-        :param Text version:
-        """
-        self.validate()
-        id_to_register = _identifier.Identifier(
-            _identifier_model.ResourceType.LAUNCH_PLAN,
-            project,
-            domain,
-            name,
-            version
-        )
-        client = _flyte_engine._FlyteClientManager(_platform_config.URL.get(),
-                                                   insecure=_platform_config.INSECURE.get()).client
-        try:
-            client.create_launch_plan(
-                id_to_register,
-                self
-            )
-        except _user_exceptions.FlyteEntityAlreadyExistsException:
-            pass
-
-        self._id = id_to_register
-        return str(self.id)
-
-    # TODO: Move up to parent class
-    @_exception_scopes.system_entry_point
-    def serialize(self):
-        """
-        Unlike the SdkWorkflow serialize call, nothing special needs to be done here.
-        :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
-        """
-        return self.to_flyte_idl()
 
     @classmethod
     def from_flyte_idl(cls, _):
@@ -451,7 +432,6 @@ class SdkRunnableLaunchPlan(
             "An SdkRunnableLaunchPlan must be created from a reference to local Python code only."
         )
 
-    # TODO: Move up to parent class
     @classmethod
     @_exception_scopes.system_entry_point
     def fetch(cls, project, domain, name, version=None):
@@ -466,28 +446,6 @@ class SdkRunnableLaunchPlan(
         raise _user_exceptions.FlyteAssertion(
             "An SdkRunnableLaunchPlan must be created from a reference to local Python code only."
         )
-
-    @property
-    def interface(self):
-        """
-        :rtype: flytekit.common.interface.TypedInterface
-        """
-        return self._interface
-
-    @property
-    def upstream_entities(self):
-        """
-        Task, workflow, and launch plan that need to be registered in advance of this workflow.
-        :rtype: set[_registerable.RegisterableEntity]
-        """
-        return self._upstream_entities
-
-    @property
-    def workflow_id(self):
-        """
-        :rtype: flytekit.common.core.identifier.Identifier
-        """
-        return self._sdk_workflow.id
 
     def __repr__(self):
         """

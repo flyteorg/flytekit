@@ -54,7 +54,7 @@ class FlyteEntity(object, metaclass=_sdk_bases.ExtendedSdkType):
         pass
 
 
-# Think of Registerable more as a "Control Plane" entity, as opposed to the "LocallyDefined" one below.
+# Think of Registerable more as a "Control Plane" entity, as opposed to the "LocalEntity" one below.
 class RegisterableEntity(FlyteEntity):
 
     def __init__(self, *args, **kwargs):
@@ -85,18 +85,18 @@ class RegisterableEntity(FlyteEntity):
         pass
 
 
-class LocallyDefined(FlyteEntity, metaclass=_InstanceTracker):
+class LocalEntity(FlyteEntity, metaclass=_InstanceTracker):
 
     def __init__(self, *args, **kwargs):
         self._platform_valid_name = None
         self._upstream_entities = set()
-        super(LocallyDefined, self).__init__(*args, **kwargs)
+        super(LocalEntity, self).__init__(*args, **kwargs)
 
     @property
     def upstream_entities(self):
         """
         Task, workflow, and launch plan that need to be registered in advance of this workflow.
-        :rtype: set[LocallyDefined]
+        :rtype: set[LocalEntity]
         """
         return self._upstream_entities
 

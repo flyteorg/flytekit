@@ -381,74 +381,7 @@ class SdkWorkflow(
         return node
 
 
-def _assign_indexed_attribute_name(attribute_name, index):
-    return "{}[{}]".format(attribute_name, index)
-
-
-def _discover_workflow_components(workflow_class):
-    """
-    This task iterates over the attributes of a user-defined class in order to return a list of inputs, outputs and
-    nodes.
-    :param class workflow_class: User-defined class with task instances as attributes.
-    :rtype: (list[flytekit.common.promise.Input], list[Output], list[flytekit.common.nodes.SdkNode])
-    """
-
-    inputs = []
-    outputs = []
-    nodes = []
-
-    to_visit_objs = _queue.Queue()
-    top_level_attributes = set()
-    for attribute_name in dir(workflow_class):
-        to_visit_objs.put((attribute_name, getattr(workflow_class, attribute_name)))
-        top_level_attributes.add(attribute_name)
-
-    # For all task instances defined within the workflow, bind them to this specific workflow and hook-up to the
-    # engine (when available)
-    visited_obj_ids = set()
-    while not to_visit_objs.empty():
-        attribute_name, current_obj = to_visit_objs.get()
-
-        current_obj_id = id(current_obj)
-        if current_obj_id in visited_obj_ids:
-            continue
-        visited_obj_ids.add(current_obj_id)
-
-        if isinstance(current_obj, _nodes.SdkNode):
-            # TODO: If an attribute name is on the form node_name[index], the resulting
-            # node name might not be correct.
-            nodes.append(current_obj.assign_id_and_return(attribute_name))
-        elif isinstance(current_obj, _promise.Input):
-            if attribute_name is None or attribute_name not in top_level_attributes:
-                raise _user_exceptions.FlyteValueException(
-                    attribute_name,
-                    "Detected workflow input specified outside of top level."
-                )
-            inputs.append(current_obj.rename_and_return_reference(attribute_name))
-        elif isinstance(current_obj, Output):
-            if attribute_name is None or attribute_name not in top_level_attributes:
-                raise _user_exceptions.FlyteValueException(
-                    attribute_name,
-                    "Detected workflow output specified outside of top level."
-                )
-            outputs.append(current_obj.rename_and_return_reference(attribute_name))
-        elif isinstance(current_obj, list) or isinstance(current_obj, set) or isinstance(current_obj, tuple):
-            for idx, value in enumerate(current_obj):
-                to_visit_objs.put(
-                    (_assign_indexed_attribute_name(attribute_name, idx), value))
-        elif isinstance(current_obj, dict):
-            # Visit dictionary keys.
-            for key in current_obj.keys():
-                to_visit_objs.put(
-                    (_assign_indexed_attribute_name(attribute_name, key), key))
-            # Visit dictionary values.
-            for key, value in _six.iteritems(current_obj):
-                to_visit_objs.put(
-                    (_assign_indexed_attribute_name(attribute_name, key), value))
-    return inputs, outputs, nodes
-
-
-class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocallyDefined, _registerable.RegisterableEntity):
+class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity, _registerable.RegisterableEntity):
     """
     Wrapper class for locally defined Python workflows
     """
@@ -625,3 +558,70 @@ def build_sdk_workflow_from_metaclass(metaclass, on_failure=None):
         nodes=[n for n in sorted(nodes, key=lambda x: x.id)],
         metadata=metadata,
     )
+
+
+def _assign_indexed_attribute_name(attribute_name, index):
+    return "{}[{}]".format(attribute_name, index)
+
+
+def _discover_workflow_components(workflow_class):
+    """
+    This task iterates over the attributes of a user-defined class in order to return a list of inputs, outputs and
+    nodes.
+    :param class workflow_class: User-defined class with task instances as attributes.
+    :rtype: (list[flytekit.common.promise.Input], list[Output], list[flytekit.common.nodes.SdkNode])
+    """
+
+    inputs = []
+    outputs = []
+    nodes = []
+
+    to_visit_objs = _queue.Queue()
+    top_level_attributes = set()
+    for attribute_name in dir(workflow_class):
+        to_visit_objs.put((attribute_name, getattr(workflow_class, attribute_name)))
+        top_level_attributes.add(attribute_name)
+
+    # For all task instances defined within the workflow, bind them to this specific workflow and hook-up to the
+    # engine (when available)
+    visited_obj_ids = set()
+    while not to_visit_objs.empty():
+        attribute_name, current_obj = to_visit_objs.get()
+
+        current_obj_id = id(current_obj)
+        if current_obj_id in visited_obj_ids:
+            continue
+        visited_obj_ids.add(current_obj_id)
+
+        if isinstance(current_obj, _nodes.SdkNode):
+            # TODO: If an attribute name is on the form node_name[index], the resulting
+            # node name might not be correct.
+            nodes.append(current_obj.assign_id_and_return(attribute_name))
+        elif isinstance(current_obj, _promise.Input):
+            if attribute_name is None or attribute_name not in top_level_attributes:
+                raise _user_exceptions.FlyteValueException(
+                    attribute_name,
+                    "Detected workflow input specified outside of top level."
+                )
+            inputs.append(current_obj.rename_and_return_reference(attribute_name))
+        elif isinstance(current_obj, Output):
+            if attribute_name is None or attribute_name not in top_level_attributes:
+                raise _user_exceptions.FlyteValueException(
+                    attribute_name,
+                    "Detected workflow output specified outside of top level."
+                )
+            outputs.append(current_obj.rename_and_return_reference(attribute_name))
+        elif isinstance(current_obj, list) or isinstance(current_obj, set) or isinstance(current_obj, tuple):
+            for idx, value in enumerate(current_obj):
+                to_visit_objs.put(
+                    (_assign_indexed_attribute_name(attribute_name, idx), value))
+        elif isinstance(current_obj, dict):
+            # Visit dictionary keys.
+            for key in current_obj.keys():
+                to_visit_objs.put(
+                    (_assign_indexed_attribute_name(attribute_name, key), key))
+            # Visit dictionary values.
+            for key, value in _six.iteritems(current_obj):
+                to_visit_objs.put(
+                    (_assign_indexed_attribute_name(attribute_name, key), value))
+    return inputs, outputs, nodes

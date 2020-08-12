@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import abc as _abc
 import os as _os
 
@@ -297,4 +295,3 @@ class FlyteRequiredStringListConfigurationEntry(_FlyteRequiredConfigurationEntry
 
 
 CONFIGURATION_SINGLETON = FlyteConfigurationFile()
-CONFIGURATION_SINGLETON.x = 0
