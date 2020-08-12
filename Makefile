@@ -29,6 +29,7 @@ lint: ## Run linters
 .PHONY: test
 test: ## Run tests
 	pytest tests/flytekit/unit
+	shellcheck **/*.sh
 
 requirements.txt: export CUSTOM_COMPILE_COMMAND := make requirements.txt
 requirements.txt: requirements.in _install-piptools
