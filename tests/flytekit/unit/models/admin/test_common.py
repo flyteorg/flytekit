@@ -17,8 +17,8 @@ def test_sort():
 
 
 def test_sort_parse():
-    o = _common.Sort.from_python_std(' asc(my"\wackyk3y) ')
-    assert o.key == 'my"\wackyk3y'
+    o = _common.Sort.from_python_std(' asc(my"\wackyk3y) ')  # noqa: W605
+    assert o.key == 'my"\wackyk3y'  # noqa: W605
     assert o.direction == _common.Sort.Direction.ASCENDING
 
     o = _common.Sort.from_python_std("  desc(   mykey   ) ")
