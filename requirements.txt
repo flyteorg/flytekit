@@ -4,7 +4,7 @@
 #
 #    make requirements.txt
 #
--e file:///Users/jeev/Workspace/repos/flytekit  # via -r requirements.in
+-e file:.#egg=flytekit    # via -r requirements.in
 ansiwrap==0.8.4           # via papermill
 appdirs==1.4.4            # via black
 async-generator==1.10     # via nbclient
