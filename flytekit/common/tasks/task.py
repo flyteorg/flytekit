@@ -214,9 +214,10 @@ class SdkTask(
         :rtype: SdkTask
         """
         named_task = _common_model.NamedEntityIdentifier(project, domain, name)
-        task_list, _ = _flyte_engine._FlyteClientManager(
+        client = _flyte_engine._FlyteClientManager(
             _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client.list_tasks_paginated(
+        ).client
+        task_list, _ = client.list_tasks_paginated(
             named_task,
             limit=1,
             sort_by=_admin_common.Sort("created_at", _admin_common.Sort.Direction.DESCENDING),

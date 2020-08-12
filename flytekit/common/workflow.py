@@ -309,6 +309,7 @@ class SdkWorkflow(
     def validate(self):
         pass
 
+    # TODO: Should we just get rid of this function for now and raise an Exception? We probably should.
     @_exception_scopes.system_entry_point
     def create_launch_plan(
             self,
@@ -334,7 +335,6 @@ class SdkWorkflow(
         :param auth_role: Auth object
         :rtype: flytekit.common.launch_plan.SdkRunnableLaunchPlan
         """
-        raise Exception('fds')
         # TODO: Actually ensure the parameters conform.
         # Determine fixed inputs
         fixed_inputs = fixed_inputs or {}

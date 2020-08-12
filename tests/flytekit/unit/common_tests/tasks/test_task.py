@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import pytest as _pytest
 import os as _os
 from mock import patch as _patch, MagicMock as _MagicMock
@@ -31,13 +29,13 @@ def test_fetch_latest(mock_get_engine):
     assert task.id == admin_task.id
 
 
-@_patch("flytekit.engines.loader.get_engine")
-def test_fetch_latest_not_exist(mock_get_engine):
-    mock_engine = _MagicMock()
-    mock_engine.fetch_latest_task = _MagicMock(
-        return_value=None
-    )
-    mock_get_engine.return_value = mock_engine
+@_patch("flytekit.engines.flyte.engine._FlyteClientManager")
+@_patch("flytekit.configuration.platform.URL")
+def test_fetch_latest_not_exist(mock_url, mock_client_manager):
+    mock_client = _MagicMock()
+    mock_client.list_tasks_paginated = _MagicMock(return_value=(None, ""))
+    mock_client_manager.return_value.client = mock_client
+    mock_url.get.return_value = "localhost"
     with _pytest.raises(_user_exceptions.FlyteEntityNotExistException):
         _task.SdkTask.fetch_latest("p1", "d1", "n1")
 
@@ -46,6 +44,7 @@ def get_sample_task():
     """
     :rtype: flytekit.common.tasks.task.SdkTask
     """
+
     @inputs(a=primitives.Integer)
     @outputs(b=primitives.Integer)
     @python_task()
@@ -94,10 +93,10 @@ def test_task_produce_deterministic_version():
         output_schema=schema,
         routing_group="{{ .Inputs.rg }}",
     )
-    assert containerless_task._produce_deterministic_version() ==\
+    assert containerless_task._produce_deterministic_version() == \
            identical_containerless_task._produce_deterministic_version()
 
-    assert containerless_task._produce_deterministic_version() !=\
+    assert containerless_task._produce_deterministic_version() != \
            different_containerless_task._produce_deterministic_version()
 
     with _pytest.raises(Exception):
