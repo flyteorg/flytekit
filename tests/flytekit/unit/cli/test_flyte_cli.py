@@ -44,7 +44,7 @@ def test__extract_files(load_mock):
 
 
 @_mock.patch("flytekit.clis.flyte_cli.main._load_proto_from_file")
-def test__extract_files(load_mock):
+def test__extract_files_with_unspecified_resource_type(load_mock):
     id = _core_identifier.Identifier(
         _core_identifier.ResourceType.UNSPECIFIED, "myproject", "development", "name", "v",
     )
@@ -59,6 +59,6 @@ def _identity_dummy(a, b):
 
 
 @_mock.patch("flytekit.clis.flyte_cli.main._extract_pair", new=_identity_dummy)
-def test__extract_files():
+def test__extract_files_pair_iterator():
     results = _main._extract_files([1, 2, 3, 4])
     assert [(1, 2), (3, 4)] == results

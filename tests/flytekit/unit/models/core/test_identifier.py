@@ -61,7 +61,7 @@ def test_workflow_execution_identifier():
     assert obj2.name == "name"
 
 
-def test_task_execution_identifier():
+def test_identifier_emptiness():
     empty_id = identifier.Identifier(identifier.ResourceType.UNSPECIFIED, "", "", "", "")
     not_empty_id = identifier.Identifier(identifier.ResourceType.UNSPECIFIED, "", "", "", "version")
     assert empty_id.is_empty
