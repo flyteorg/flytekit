@@ -133,6 +133,9 @@ class SdkTask(
         bindings, upstream_nodes = self.interface.create_bindings_for_inputs(input_map)
 
         # TODO: Remove DEADBEEF
+        # One thing to note - this function is not overloaded at the SdkRunnableTask layer, which means 'self' here
+        # will sometimes refer to an object that can be executed locally, and other times will refer to something
+        # that cannot (ie a pure SdkTask object, fetched from Admin for instance).
         return _nodes.SdkNode(
             id=None,
             metadata=_workflow_model.NodeMetadata("DEADBEEF", self.metadata.timeout, self.metadata.retries,

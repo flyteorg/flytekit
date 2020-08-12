@@ -37,7 +37,7 @@ class SdkLaunchPlan(
         self._interface = None
 
     @classmethod
-    def promote_from_model(cls, model):
+    def promote_from_model(cls, model) -> 'SdkLaunchPlan':
         """
         :param flytekit.models.launch_plan.LaunchPlanSpec model:
         :rtype: SdkLaunchPlan

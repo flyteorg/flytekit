@@ -144,7 +144,6 @@ class SdkWorkflow(
             outputs=output_bindings,
         )
         self._user_inputs = inputs
-        self._upstream_entities = set(n.executable_sdk_object for n in nodes)
 
     @property
     def interface(self):
@@ -394,6 +393,7 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
         self._workflow_inputs = inputs
         self._nodes = nodes
         self._user_inputs = inputs
+        self._upstream_entities = set(n.executable_sdk_object for n in nodes)
 
     def __call__(self, *args, **input_map):
         # Take the default values from the Inputs
@@ -467,7 +467,9 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
 
     @property
     def upstream_entities(self):
-        return set(n.executable_sdk_object for n in self.nodes)
+        # TODO: Should we re-evaluate every time?
+        # return set(n.executable_sdk_object for n in self.nodes)
+        return self._upstream_entities
 
     @property
     def interface(self):
@@ -479,14 +481,6 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
         :rtype: list[flytekit.common.promise.Input]
         """
         return self._user_inputs
-
-    @property
-    def upstream_entities(self):
-        """
-        Task, workflow, and launch plan that need to be registered in advance of this workflow.
-        :rtype: set[T]
-        """
-        return self._upstream_entities
 
     def create_launch_plan(
             self,

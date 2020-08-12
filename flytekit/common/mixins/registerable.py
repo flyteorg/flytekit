@@ -49,6 +49,7 @@ class FlyteEntity(object, metaclass=_sdk_bases.ExtendedSdkType):
     @_abc.abstractmethod
     def entity_type_text(self):
         """
+        TODO: Rename to resource type text
         :rtype: Text
         """
         pass
