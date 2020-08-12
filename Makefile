@@ -27,7 +27,7 @@ lint: ## Run linters
 	flake8 .
 
 .PHONY: test
-test: ## Run tests
+test: lint ## Run tests
 	pytest tests/flytekit/unit
 	shellcheck **/*.sh
 
