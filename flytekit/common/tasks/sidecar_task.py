@@ -5,6 +5,7 @@ import six as _six
 from flyteidl.core import tasks_pb2 as _core_task
 
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.tasks import sdk_dynamic as _sdk_dynamic
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common import sdk_bases as _sdk_bases
 
@@ -14,7 +15,7 @@ from google.protobuf.json_format import MessageToDict as _MessageToDict
 from flytekit.plugins import k8s as _lazy_k8s
 
 
-class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnable.SdkRunnableTask)):
+class SdkSidecarTask(_sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.ExtendedSdkType):
 
     """
     This class includes the additional logic for building a task that executes as a Sidecar Job.
@@ -138,3 +139,84 @@ class SdkSidecarTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         ).to_flyte_idl()
 
         self.assign_custom_and_return(_MessageToDict(sidecar_job_plugin))
+
+
+class SdkDynamicSidecarTask(_sdk_dynamic.SdkDynamicTaskMixin, SdkSidecarTask, metaclass=_sdk_bases.ExtendedSdkType):
+
+    """
+    This class includes the additional logic for building a task that runs as
+    a Sidecar Job and executes parent-child tasks.
+
+    """
+
+    def __init__(self,
+                 task_function,
+                 task_type,
+                 discovery_version,
+                 retries,
+                 interruptible,
+                 deprecated,
+                 storage_request,
+                 cpu_request,
+                 gpu_request,
+                 memory_request,
+                 storage_limit,
+                 cpu_limit,
+                 gpu_limit,
+                 memory_limit,
+                 discoverable,
+                 timeout,
+                 allowed_failure_ratio,
+                 max_concurrency,
+                 environment,
+                 pod_spec=None,
+                 primary_container_name=None):
+        """
+        :param task_function: Function container user code.  This will be executed via the SDK's engine.
+        :param Text task_type: string describing the task type
+        :param Text discovery_version: string describing the version for task discovery purposes
+        :param int retries: Number of retries to attempt
+        :param bool interruptible: Whether or not task is interruptible
+        :param Text deprecated:
+        :param Text storage_request:
+        :param Text cpu_request:
+        :param Text gpu_request:
+        :param Text memory_request:
+        :param Text storage_limit:
+        :param Text cpu_limit:
+        :param Text gpu_limit:
+        :param Text memory_limit:
+        :param bool discoverable:
+        :param datetime.timedelta timeout:
+        :param float allowed_failure_ratio:
+        :param int max_concurrency:
+        :param dict[Text, Text] environment:
+        :param generated_pb2.PodSpec pod_spec:
+        :param Text primary_container_name:
+        :raises: flytekit.common.exceptions.user.FlyteValidationException
+        """
+
+        SdkSidecarTask.__init__(
+            self,
+            task_function,
+            task_type,
+            discovery_version,
+            retries,
+            interruptible,
+            deprecated,
+            storage_request,
+            cpu_request,
+            gpu_request,
+            memory_request,
+            storage_limit,
+            cpu_limit,
+            gpu_limit,
+            memory_limit,
+            discoverable,
+            timeout,
+            environment,
+            pod_spec=pod_spec,
+            primary_container_name=primary_container_name
+        )
+
+        _sdk_dynamic.SdkDynamicTaskMixin.__init__(self, allowed_failure_ratio, max_concurrency)

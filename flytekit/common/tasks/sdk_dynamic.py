@@ -51,64 +51,19 @@ def _append_node(generated_files, node, nodes, sub_task_node):
                   sub_task_node.inputs})
 
 
-class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnable.SdkRunnableTask)):
-    """
-    This class includes the additional logic for building a task that executes parent-child tasks in Python code.  It
-    has even more validation checks to ensure proper behavior than it's superclasses.
+class SdkDynamicTaskMixin(object):
 
-    Since an SdkDynamicTask is assumed to run by hooking into Python code, we will provide additional shortcuts and
-    methods on this object.
+    """
+    This mixin implements logic for building a task that executes
+    parent-child tasks in Python code.
+
     """
 
-    def __init__(
-            self,
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            interruptible,
-            deprecated,
-            storage_request,
-            cpu_request,
-            gpu_request,
-            memory_request,
-            storage_limit,
-            cpu_limit,
-            gpu_limit,
-            memory_limit,
-            discoverable,
-            timeout,
-            allowed_failure_ratio,
-            max_concurrency,
-            environment,
-            custom
-    ):
+    def __init__(self, allowed_failure_ratio, max_concurrency):
         """
-        :param task_function: Function container user code.  This will be executed via the SDK's engine.
-        :param Text task_type: string describing the task type
-        :param Text discovery_version: string describing the version for task discovery purposes
-        :param int retries: Number of retries to attempt
-        :param bool interruptible: Whether or not task is interruptible
-        :param Text deprecated:
-        :param Text storage_request:
-        :param Text cpu_request:
-        :param Text gpu_request:
-        :param Text memory_request:
-        :param Text storage_limit:
-        :param Text cpu_limit:
-        :param Text gpu_limit:
-        :param Text memory_limit:
-        :param bool discoverable:
-        :param datetime.timedelta timeout:
         :param float allowed_failure_ratio:
         :param int max_concurrency:
-        :param dict[Text, Text] environment:
-        :param dict[Text, T] custom:
         """
-        super(SdkDynamicTask, self).__init__(
-            task_function, task_type, discovery_version, retries, interruptible, deprecated,
-            storage_request, cpu_request, gpu_request, memory_request, storage_limit,
-            cpu_limit, gpu_limit, memory_limit, discoverable, timeout, environment, custom)
 
         # These will only appear in the generated futures
         self._allowed_failure_ratio = allowed_failure_ratio
@@ -166,7 +121,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         # before calling user code
         inputs_dict.update(outputs_dict)
         yielded_sub_tasks = [sub_task for sub_task in
-                             super(SdkDynamicTask, self)._execute_user_code(context, inputs_dict) or []]
+                             self._execute_user_code(context, inputs_dict) or []]
 
         upstream_nodes = list()
         output_bindings = [_literal_models.Binding(var=name, binding=_interface.BindingData.from_python_std(
@@ -305,3 +260,64 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             })
 
             return generated_files
+
+
+class SdkDynamicTask(SdkDynamicTaskMixin, _sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.ExtendedSdkType):
+
+    """
+    This class includes the additional logic for building a task that executes
+    parent-child tasks in Python code.
+
+    """
+
+    def __init__(
+            self,
+            task_function,
+            task_type,
+            discovery_version,
+            retries,
+            interruptible,
+            deprecated,
+            storage_request,
+            cpu_request,
+            gpu_request,
+            memory_request,
+            storage_limit,
+            cpu_limit,
+            gpu_limit,
+            memory_limit,
+            discoverable,
+            timeout,
+            allowed_failure_ratio,
+            max_concurrency,
+            environment,
+            custom
+    ):
+        """
+        :param task_function: Function container user code.  This will be executed via the SDK's engine.
+        :param Text task_type: string describing the task type
+        :param Text discovery_version: string describing the version for task discovery purposes
+        :param int retries: Number of retries to attempt
+        :param bool interruptible: Whether or not task is interruptible
+        :param Text deprecated:
+        :param Text storage_request:
+        :param Text cpu_request:
+        :param Text gpu_request:
+        :param Text memory_request:
+        :param Text storage_limit:
+        :param Text cpu_limit:
+        :param Text gpu_limit:
+        :param Text memory_limit:
+        :param bool discoverable:
+        :param datetime.timedelta timeout:
+        :param float allowed_failure_ratio:
+        :param int max_concurrency:
+        :param dict[Text, Text] environment:
+        :param dict[Text, T] custom:
+        """
+        _sdk_runnable.SdkRunnableTask.__init__(
+            self, task_function, task_type, discovery_version, retries, interruptible, deprecated,
+            storage_request, cpu_request, gpu_request, memory_request, storage_limit,
+            cpu_limit, gpu_limit, memory_limit, discoverable, timeout, environment, custom)
+
+        SdkDynamicTaskMixin.__init__(self, allowed_failure_ratio, max_concurrency)
