@@ -53,6 +53,7 @@ class SdkLaunchPlan(
             labels=model.labels,
             annotations=model.annotations,
             auth_role=model.auth_role,
+            raw_output_data_config=model.raw_output_data_config,
         )
 
     @classmethod
@@ -106,7 +107,7 @@ class SdkLaunchPlan(
         :rtype: flytekit.models.common.AuthRole
         """
         fixed_auth = super(SdkLaunchPlan, self).auth_role
-        if fixed_auth is not None and\
+        if fixed_auth is not None and \
                 (fixed_auth.assumable_iam_role is not None or fixed_auth.kubernetes_service_account is not None):
                 return fixed_auth
 
@@ -141,6 +142,18 @@ class SdkLaunchPlan(
         :rtype: Text
         """
         return "Launch Plan"
+
+    @property
+    def raw_output_data_config(self):
+        """
+        :rtype: flytekit.models.common.RawOutputDataConfig
+        """
+        raw_output_data_config = super(SdkLaunchPlan, self).raw_output_data_config
+        if raw_output_data_config is not None and raw_output_data_config.output_location_prefix != '':
+            return raw_output_data_config
+
+        # If it was not set explicitly then let's use the value found in the configuration.
+        return _common_models.RawOutputDataConfig(_auth_config.RAW_OUTPUT_DATA_PREFIX.get())
 
     @_exception_scopes.system_entry_point
     def validate(self):
@@ -269,6 +282,7 @@ class SdkRunnableLaunchPlan(
             labels=None,
             annotations=None,
             auth_role=None,
+            raw_output_data_config=None,
     ):
         """
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
@@ -284,6 +298,7 @@ class SdkRunnableLaunchPlan(
             executed by this launch plan.
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
         :param flytekit.models.common.Authrole auth_role: The auth method with which to execute the workflow.
+        :param flytekit.models.common.RawOutputDataConfig raw_output_data_config: Config for offloading data
         """
         if role and auth_role:
             raise ValueError("Cannot set both role and auth. Role is deprecated, use auth instead.")
@@ -317,6 +332,7 @@ class SdkRunnableLaunchPlan(
             labels or _common_models.Labels({}),
             annotations or _common_models.Annotations({}),
             auth_role,
+            raw_output_data_config or _common_models.RawOutputDataConfig(''),
         )
         self._interface = _interface.TypedInterface(
             {k: v.var for k, v in _six.iteritems(default_inputs)},

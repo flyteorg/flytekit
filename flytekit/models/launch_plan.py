@@ -109,7 +109,8 @@ class Auth(_common.FlyteIdlEntity):
 
 class LaunchPlanSpec(_common.FlyteIdlEntity):
 
-    def __init__(self, workflow_id, entity_metadata, default_inputs, fixed_inputs, labels, annotations, auth_role):
+    def __init__(self, workflow_id, entity_metadata, default_inputs, fixed_inputs, labels, annotations, auth_role,
+                 raw_output_data_config):
         """
         The spec for a Launch Plan.
 
@@ -122,6 +123,8 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         :param flyteidl.admin.common_pb2.Annotations annotations:
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
         :param flytekit.models.common.Auth auth_role: The auth method with which to execute the workflow.
+        :param flytekit.models.common.RawOutputDataConfig raw_output_data_config: Value for where to store offloaded
+            data like Blobs and Schemas.
         """
         self._workflow_id = workflow_id
         self._entity_metadata = entity_metadata
@@ -130,6 +133,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         self._labels = labels
         self._annotations = annotations
         self._auth_role = auth_role
+        self._raw_output_data_config = raw_output_data_config
 
     @property
     def workflow_id(self):
@@ -182,9 +186,17 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
     def auth_role(self):
         """
         The authorization method with which to execute the workflow.
-        :return: flytekit.models.common.Auth
+        :rtype: flytekit.models.common.Auth
         """
         return self._auth_role
+
+    @property
+    def raw_output_data_config(self):
+        """
+        Where to store offloaded data like Blobs and Schemas
+        :rtype: flytekit.models.common.RawOutputDataConfig
+        """
+        return self._raw_output_data_config
 
     def to_flyte_idl(self):
         """
@@ -198,22 +210,24 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             labels=self.labels.to_flyte_idl(),
             annotations=self.annotations.to_flyte_idl(),
             auth_role=self.auth_role.to_flyte_idl(),
+            raw_output_data_config=self.raw_output_data_config.to_flyte_idl(),
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object):
+    def from_flyte_idl(cls, pb2):
         """
-        :param flyteidl.admin.launch_plan_pb2.LaunchPlanSpec pb2_object:
+        :param flyteidl.admin.launch_plan_pb2.LaunchPlanSpec pb2:
         :rtype: LaunchPlanSpec
         """
         return cls(
-            workflow_id=_identifier.Identifier.from_flyte_idl(pb2_object.workflow_id),
-            entity_metadata=LaunchPlanMetadata.from_flyte_idl(pb2_object.entity_metadata),
-            default_inputs=_interface.ParameterMap.from_flyte_idl(pb2_object.default_inputs),
-            fixed_inputs=_literals.LiteralMap.from_flyte_idl(pb2_object.fixed_inputs),
-            labels=_common.Labels.from_flyte_idl(pb2_object.labels),
-            annotations=_common.Annotations.from_flyte_idl(pb2_object.annotations),
-            auth_role=_common.AuthRole.from_flyte_idl(pb2_object.auth_role),
+            workflow_id=_identifier.Identifier.from_flyte_idl(pb2.workflow_id),
+            entity_metadata=LaunchPlanMetadata.from_flyte_idl(pb2.entity_metadata),
+            default_inputs=_interface.ParameterMap.from_flyte_idl(pb2.default_inputs),
+            fixed_inputs=_literals.LiteralMap.from_flyte_idl(pb2.fixed_inputs),
+            labels=_common.Labels.from_flyte_idl(pb2.labels),
+            annotations=_common.Annotations.from_flyte_idl(pb2.annotations),
+            auth_role=_common.AuthRole.from_flyte_idl(pb2.auth_role),
+            raw_output_data_config=_common.RawOutputDataConfig.from_flyte_idl(pb2.raw_output_data_config),
         )
 
 

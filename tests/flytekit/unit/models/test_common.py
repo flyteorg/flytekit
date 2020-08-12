@@ -80,3 +80,10 @@ def test_auth_role():
     assert not obj.assumable_iam_role
     obj2 = _common.AuthRole.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
+
+
+def test_raw_output_data_config():
+    obj = _common.RawOutputDataConfig('s3://bucket')
+    assert obj.output_location_prefix == 's3://bucket'
+    obj2 = _common.RawOutputDataConfig.from_flyte_idl(obj.to_flyte_idl())
+    assert obj2 == obj
