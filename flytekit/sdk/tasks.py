@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import datetime as _datetime
+
 import six as _six
 
 from flytekit.common import constants as _common_constants
@@ -8,15 +9,11 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable_tasks, sdk_dynamic as _sdk_dynamic, \
     spark_task as _sdk_spark_tasks, generic_spark_task as _sdk_generic_spark_task, hive_task as _sdk_hive_tasks, \
     sidecar_task as _sdk_sidecar_tasks, pytorch_task as _sdk_pytorch_tasks
-from flytekit.common.tasks.sagemaker import (
-    training_job_task as _sdk_sagemaker_training_job_tasks,
-    hpo_job_task as _sdk_hpo_job_tasks
-)
 from flytekit.common.tasks import task as _task
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.sdk.spark_types import  SparkType as _spark_type
+from flytekit.contrib.notebook import tasks as _nb_tasks
 from flytekit.models import interface as _interface_model
-from flytekit.contrib.notebook import  tasks as _nb_tasks
+from flytekit.sdk.spark_types import SparkType as _spark_type
 
 
 def inputs(_task_template=None, **kwargs):
@@ -1136,77 +1133,6 @@ def pytorch_task(
     """
     def wrapper(fn):
         return (cls or _sdk_pytorch_tasks.SdkPyTorchTask)(
-            task_function=fn,
-            task_type=_common_constants.SdkTaskType.PYTORCH_TASK,
-            discovery_version=cache_version,
-            retries=retries,
-            interruptible=interruptible,
-            deprecated=deprecated,
-            discoverable=cache,
-            timeout=timeout or _datetime.timedelta(seconds=0),
-            workers_count=workers_count,
-            per_replica_storage_request=per_replica_storage_request,
-            per_replica_cpu_request=per_replica_cpu_request,
-            per_replica_gpu_request=per_replica_gpu_request,
-            per_replica_memory_request=per_replica_memory_request,
-            per_replica_storage_limit=per_replica_storage_limit,
-            per_replica_cpu_limit=per_replica_cpu_limit,
-            per_replica_gpu_limit=per_replica_gpu_limit,
-            per_replica_memory_limit=per_replica_memory_limit,
-            environment=environment or {}
-        )
-
-    if _task_function:
-        return wrapper(_task_function)
-    else:
-        return wrapper
-
-
-def custom_training_job_task(
-        _task_function=None,
-        cache_version='',
-        retries=0,
-        interruptible=False,
-        deprecated='',
-        cache=False,
-        timeout=None,
-        workers_count=1,
-        per_replica_storage_request="",
-        per_replica_cpu_request="",
-        per_replica_gpu_request="",
-        per_replica_memory_request="",
-        per_replica_storage_limit="",
-        per_replica_cpu_limit="",
-        per_replica_gpu_limit="",
-        per_replica_memory_limit="",
-        environment=None,
-        cls=None
-):
-    """
-
-    :param _task_function:
-    :param cache_version:
-    :param retries:
-    :param interruptible:
-    :param deprecated:
-    :param cache:
-    :param timeout:
-    :param workers_count:
-    :param per_replica_storage_request:
-    :param per_replica_cpu_request:
-    :param per_replica_gpu_request:
-    :param per_replica_memory_request:
-    :param per_replica_storage_limit:
-    :param per_replica_cpu_limit:
-    :param per_replica_gpu_limit:
-    :param per_replica_memory_limit:
-    :param environment:
-    :param cls:
-    :return:
-    """
-
-    def wrapper(fn):
-        return (cls or _sdk_sagemaker_training_job_tasks.SdkBuiltinAlgorithmTrainingJobTask)(
             task_function=fn,
             task_type=_common_constants.SdkTaskType.PYTORCH_TASK,
             discovery_version=cache_version,
