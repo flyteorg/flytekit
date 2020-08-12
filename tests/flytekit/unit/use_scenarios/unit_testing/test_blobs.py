@@ -1,9 +1,9 @@
 from __future__ import absolute_import
 
-from flytekit.sdk.types import Types
+from flytekit.common.utils import AutoDeletingTempDir
 from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.test_utils import flyte_test
-from flytekit.common.utils import AutoDeletingTempDir
+from flytekit.sdk.types import Types
 
 
 @flyte_test
@@ -13,14 +13,14 @@ def test_create_blob_from_local_path():
     def test_create_from_local_path(wf_params, a):
         with AutoDeletingTempDir("t") as tmp:
             tmp_name = tmp.get_named_tempfile("abc.blob")
-            with open(tmp_name, 'wb') as w:
+            with open(tmp_name, "wb") as w:
                 w.write("Hello world".encode("utf-8"))
             a.set(tmp_name)
 
     out = test_create_from_local_path.unit_test()
     assert len(out) == 1
-    with out['a'] as r:
-        assert r.read().decode('utf-8') == "Hello world"
+    with out["a"] as r:
+        assert r.read().decode("utf-8") == "Hello world"
 
 
 @flyte_test
@@ -35,8 +35,8 @@ def test_write_blob():
 
     out = test_write.unit_test()
     assert len(out) == 1
-    with out['a'] as r:
-        assert r.read().decode('utf-8') == "Hello world"
+    with out["a"] as r:
+        assert r.read().decode("utf-8") == "Hello world"
 
 
 @flyte_test
@@ -53,13 +53,13 @@ def test_blob_passing():
 
     out = test_pass.unit_test(a=b)
     assert len(out) == 1
-    with out['b'] as r:
-        assert r.read().decode('utf-8') == "Hello world"
+    with out["b"] as r:
+        assert r.read().decode("utf-8") == "Hello world"
 
-    out = test_pass.unit_test(a=out['b'])
+    out = test_pass.unit_test(a=out["b"])
     assert len(out) == 1
-    with out['b'] as r:
-        assert r.read().decode('utf-8') == "Hello world"
+    with out["b"] as r:
+        assert r.read().decode("utf-8") == "Hello world"
 
 
 @flyte_test
@@ -68,18 +68,18 @@ def test_create_multipartblob_from_local_path():
     @python_task
     def test_create_from_local_path(wf_params, a):
         with AutoDeletingTempDir("t") as tmp:
-            with open(tmp.get_named_tempfile("0"), 'wb') as w:
+            with open(tmp.get_named_tempfile("0"), "wb") as w:
                 w.write("Hello world".encode("utf-8"))
-            with open(tmp.get_named_tempfile("1"), 'wb') as w:
+            with open(tmp.get_named_tempfile("1"), "wb") as w:
                 w.write("Hello world2".encode("utf-8"))
             a.set(tmp.name)
 
     out = test_create_from_local_path.unit_test()
     assert len(out) == 1
-    with out['a'] as r:
+    with out["a"] as r:
         assert len(r) == 2
-        assert r[0].read().decode('utf-8') == "Hello world"
-        assert r[1].read().decode('utf-8') == "Hello world2"
+        assert r[0].read().decode("utf-8") == "Hello world"
+        assert r[1].read().decode("utf-8") == "Hello world2"
 
 
 @flyte_test
@@ -96,10 +96,10 @@ def test_write_multipartblob():
 
     out = test_write.unit_test()
     assert len(out) == 1
-    with out['a'] as r:
+    with out["a"] as r:
         assert len(r) == 2
-        assert r[0].read().decode('utf-8') == "Hello world"
-        assert r[1].read().decode('utf-8') == "Hello world2"
+        assert r[0].read().decode("utf-8") == "Hello world"
+        assert r[1].read().decode("utf-8") == "Hello world2"
 
 
 @flyte_test
@@ -118,17 +118,17 @@ def test_multipartblob_passing():
 
     out = test_pass.unit_test(a=b)
     assert len(out) == 1
-    with out['b'] as r:
+    with out["b"] as r:
         assert len(r) == 2
-        assert r[0].read().decode('utf-8') == "Hello world"
-        assert r[1].read().decode('utf-8') == "Hello world2"
+        assert r[0].read().decode("utf-8") == "Hello world"
+        assert r[1].read().decode("utf-8") == "Hello world2"
 
-    out = test_pass.unit_test(a=out['b'])
+    out = test_pass.unit_test(a=out["b"])
     assert len(out) == 1
-    with out['b'] as r:
+    with out["b"] as r:
         assert len(r) == 2
-        assert r[0].read().decode('utf-8') == "Hello world"
-        assert r[1].read().decode('utf-8') == "Hello world2"
+        assert r[0].read().decode("utf-8") == "Hello world"
+        assert r[1].read().decode("utf-8") == "Hello world2"
 
 
 @flyte_test
@@ -143,7 +143,7 @@ def test_write_csv():
 
     out = test_write.unit_test()
     assert len(out) == 1
-    with out['a'] as r:
+    with out["a"] as r:
         assert r.read() == "Hello,world,hi"
 
 
@@ -161,7 +161,7 @@ def test_write_multipartcsv():
 
     out = test_write.unit_test()
     assert len(out) == 1
-    with out['a'] as r:
+    with out["a"] as r:
         assert len(r) == 2
         assert r[0].read() == "Hello,world,1"
         assert r[1].read() == "Hello,world,2"

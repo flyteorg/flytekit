@@ -1,13 +1,15 @@
 from __future__ import absolute_import
+
 import abc as _abc
-import inspect as _inspect
-import six as _six
 import importlib as _importlib
+import inspect as _inspect
 import logging as _logging
 
+import six as _six
+
 from flytekit.common import sdk_bases as _sdk_bases
-from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common import utils as _utils
+from flytekit.common.exceptions import system as _system_exceptions
 
 
 class _InstanceTracker(_sdk_bases.ExtendedSdkType):
@@ -21,12 +23,13 @@ class _InstanceTracker(_sdk_bases.ExtendedSdkType):
     like to only register a task once and do so with the name where it is defined.  This metaclass allows us to do this
     by inspecting the call stack when __call__ is called on the metaclass (thus instantiating an object).
     """
+
     @staticmethod
     def _find_instance_module():
         frame = _inspect.currentframe()
         while frame:
-            if frame.f_code.co_name == '<module>':
-                return frame.f_globals['__name__']
+            if frame.f_code.co_name == "<module>":
+                return frame.f_globals["__name__"]
             frame = frame.f_back
         return None
 
@@ -37,7 +40,6 @@ class _InstanceTracker(_sdk_bases.ExtendedSdkType):
 
 
 class RegisterableEntity(_six.with_metaclass(_InstanceTracker, object)):
-
     def __init__(self, *args, **kwargs):
         self._platform_valid_name = None
         super(RegisterableEntity, self).__init__(*args, **kwargs)

@@ -29,14 +29,16 @@ def test_schema_column():
 
 
 def test_schema_type():
-    obj = _types.SchemaType([
-        _types.SchemaType.SchemaColumn("a", _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
-        _types.SchemaType.SchemaColumn("b", _types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
-        _types.SchemaType.SchemaColumn("c", _types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
-        _types.SchemaType.SchemaColumn("d", _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
-        _types.SchemaType.SchemaColumn("e", _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
-        _types.SchemaType.SchemaColumn("f", _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN)
-    ])
+    obj = _types.SchemaType(
+        [
+            _types.SchemaType.SchemaColumn("a", _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
+            _types.SchemaType.SchemaColumn("b", _types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
+            _types.SchemaType.SchemaColumn("c", _types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
+            _types.SchemaType.SchemaColumn("d", _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
+            _types.SchemaType.SchemaColumn("e", _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
+            _types.SchemaType.SchemaColumn("f", _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
+        ]
+    )
 
     assert obj.columns[0].name == "a"
     assert obj.columns[1].name == "b"
@@ -63,14 +65,16 @@ def test_literal_types():
     assert obj.map_value_type is None
     assert obj == _types.LiteralType.from_flyte_idl(obj.to_flyte_idl())
 
-    schema_type = _types.SchemaType([
-        _types.SchemaType.SchemaColumn("a", _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
-        _types.SchemaType.SchemaColumn("b", _types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
-        _types.SchemaType.SchemaColumn("c", _types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
-        _types.SchemaType.SchemaColumn("d", _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
-        _types.SchemaType.SchemaColumn("e", _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
-        _types.SchemaType.SchemaColumn("f", _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN)
-    ])
+    schema_type = _types.SchemaType(
+        [
+            _types.SchemaType.SchemaColumn("a", _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
+            _types.SchemaType.SchemaColumn("b", _types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
+            _types.SchemaType.SchemaColumn("c", _types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
+            _types.SchemaType.SchemaColumn("d", _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
+            _types.SchemaType.SchemaColumn("e", _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
+            _types.SchemaType.SchemaColumn("f", _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
+        ]
+    )
     obj = _types.LiteralType(schema=schema_type)
     assert obj.simple is None
     assert obj.schema == schema_type
@@ -90,8 +94,8 @@ def test_literal_collections(literal_type):
 
 
 def test_output_reference():
-    obj = _types.OutputReference(node_id='node1', var='var1')
-    assert obj.node_id == 'node1'
-    assert obj.var == 'var1'
+    obj = _types.OutputReference(node_id="node1", var="var1")
+    assert obj.node_id == "node1"
+    assert obj.var == "var1"
     obj2 = _types.OutputReference.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2

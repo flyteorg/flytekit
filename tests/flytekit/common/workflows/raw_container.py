@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from flytekit.common.tasks.raw_container import SdkRawContainerTask
 from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class, Input, Output
+from flytekit.sdk.workflow import Input, Output, workflow_class
 
 square = SdkRawContainerTask(
     input_data_dir="/var/inputs",
@@ -10,7 +10,7 @@ square = SdkRawContainerTask(
     inputs={"val": Types.Integer},
     outputs={"out": Types.Integer},
     image="alpine",
-    command=["sh", "-c", "echo $(( {{.Inputs.val}} * {{.Inputs.val}} )) | tee /var/outputs/out"],
+    command=["sh", "-c", "echo $(( {{.Inputs.val}} * {{.Inputs.val}} )) | tee /var/outputs/out",],
 )
 
 sum = SdkRawContainerTask(
@@ -19,7 +19,7 @@ sum = SdkRawContainerTask(
     inputs={"x": Types.Integer, "y": Types.Integer},
     outputs={"out": Types.Integer},
     image="alpine",
-    command=["sh", "-c", "echo $(( {{.Inputs.x}} + {{.Inputs.y}} )) | tee /var/flyte/outputs/out"],
+    command=["sh", "-c", "echo $(( {{.Inputs.x}} + {{.Inputs.y}} )) | tee /var/flyte/outputs/out",],
 )
 
 

@@ -1,12 +1,13 @@
 import base64 as _base64
 import hashlib as _hashlib
-import keyring as _keyring
 import os as _os
 import re as _re
-import requests as _requests
 import webbrowser as _webbrowser
+from multiprocessing import Process as _Process
+from multiprocessing import Queue as _Queue
 
-from multiprocessing import Process as _Process, Queue as _Queue
+import keyring as _keyring
+import requests as _requests
 
 try:  # Python 3.5+
     from http import HTTPStatus as _StatusCodes
@@ -24,12 +25,13 @@ try:  # Python 3
     import urllib.parse as _urlparse
     from urllib.parse import urlencode as _urlencode
 except ImportError:  # Python 2
-    import urlparse as _urlparse
     from urllib import urlencode as _urlencode
+
+    import urlparse as _urlparse
 
 _code_verifier_length = 64
 _random_seed_length = 40
-_utf_8 = 'utf-8'
+_utf_8 = "utf-8"
 
 
 # Identifies the service used for storing passwords in keyring
@@ -48,7 +50,7 @@ def _generate_code_verifier():
     """
     code_verifier = _base64.urlsafe_b64encode(_os.urandom(_code_verifier_length)).decode(_utf_8)
     # Eliminate invalid characters.
-    code_verifier = _re.sub(r'[^a-zA-Z0-9_\-.~]+', '', code_verifier)
+    code_verifier = _re.sub(r"[^a-zA-Z0-9_\-.~]+", "", code_verifier)
     if len(code_verifier) < 43:
         raise ValueError("Verifier too short. number of bytes must be > 30.")
     elif len(code_verifier) > 128:
@@ -59,7 +61,7 @@ def _generate_code_verifier():
 def _generate_state_parameter():
     state = _base64.urlsafe_b64encode(_os.urandom(_random_seed_length)).decode(_utf_8)
     # Eliminate invalid characters.
-    code_verifier = _re.sub('[^a-zA-Z0-9-_.,]+', '', state)
+    code_verifier = _re.sub("[^a-zA-Z0-9-_.,]+", "", state)
     return code_verifier
 
 
@@ -72,7 +74,7 @@ def _create_code_challenge(code_verifier):
     code_challenge = _hashlib.sha256(code_verifier.encode(_utf_8)).digest()
     code_challenge = _base64.urlsafe_b64encode(code_challenge).decode(_utf_8)
     # Eliminate invalid characters
-    code_challenge = code_challenge.replace('=', '')
+    code_challenge = code_challenge.replace("=", "")
     return code_challenge
 
 
@@ -106,7 +108,7 @@ class OAuthCallbackHandler(_BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_response(_StatusCodes.NOT_FOUND)
 
     def handle_login(self, data):
-        self.server.handle_authorization_code(AuthorizationCode(data['code'], data['state']))
+        self.server.handle_authorization_code(AuthorizationCode(data["code"], data["state"]))
 
 
 class OAuthHTTPServer(_BaseHTTPServer.HTTPServer):
@@ -114,8 +116,10 @@ class OAuthHTTPServer(_BaseHTTPServer.HTTPServer):
     A simple wrapper around the BaseHTTPServer.HTTPServer implementation that binds an authorization_client for handling
     authorization code callbacks.
     """
-    def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True,
-                 redirect_path=None, queue=None):
+
+    def __init__(
+        self, server_address, RequestHandlerClass, bind_and_activate=True, redirect_path=None, queue=None,
+    ):
         _BaseHTTPServer.HTTPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
         self._redirect_path = redirect_path
         self._auth_code = None
@@ -151,7 +155,7 @@ class AuthorizationClient(object):
         self._state = state
         self._credentials = None
         self._refresh_token = None
-        self._headers = {'content-type': "application/x-www-form-urlencoded"}
+        self._headers = {"content-type": "application/x-www-form-urlencoded"}
         self._expired = False
 
         self._params = {
@@ -225,22 +229,18 @@ class AuthorizationClient(object):
     def request_access_token(self, auth_code):
         if self._state != auth_code.state:
             raise ValueError("Unexpected state parameter [{}] passed".format(auth_code.state))
-        self._params.update({
-            "code": auth_code.code,
-            "code_verifier": self._code_verifier,
-            "grant_type": "authorization_code",
-        })
+        self._params.update(
+            {"code": auth_code.code, "code_verifier": self._code_verifier, "grant_type": "authorization_code",}
+        )
         resp = _requests.post(
-            url=self._token_endpoint,
-            data=self._params,
-            headers=self._headers,
-            allow_redirects=False
+            url=self._token_endpoint, data=self._params, headers=self._headers, allow_redirects=False,
         )
         if resp.status_code != _StatusCodes.OK:
             # TODO: handle expected (?) error cases:
             #  https://auth0.com/docs/flows/guides/device-auth/call-api-device-auth#token-responses
-            raise Exception('Failed to request access token with response: [{}] {}'.format(
-                resp.status_code, resp.content))
+            raise Exception(
+                "Failed to request access token with response: [{}] {}".format(resp.status_code, resp.content)
+            )
         self._initialize_credentials(resp)
 
     def refresh_access_token(self):
@@ -249,11 +249,9 @@ class AuthorizationClient(object):
 
         resp = _requests.post(
             url=self._token_endpoint,
-            data={'grant_type': 'refresh_token',
-                  'client_id': self._client_id,
-                  'refresh_token': self._refresh_token},
+            data={"grant_type": "refresh_token", "client_id": self._client_id, "refresh_token": self._refresh_token,},
             headers=self._headers,
-            allow_redirects=False
+            allow_redirects=False,
         )
         if resp.status_code != _StatusCodes.OK:
             self._expired = True

@@ -2,12 +2,14 @@ from __future__ import absolute_import
 
 from flyteidl.admin import launch_plan_pb2 as _launch_plan
 
-from flytekit.models import common as _common, interface as _interface, literals as _literals, schedule as _schedule
+from flytekit.models import common as _common
+from flytekit.models import interface as _interface
+from flytekit.models import literals as _literals
+from flytekit.models import schedule as _schedule
 from flytekit.models.core import identifier as _identifier
 
 
 class LaunchPlanMetadata(_common.FlyteIdlEntity):
-
     def __init__(self, schedule, notifications):
         """
 
@@ -41,7 +43,7 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
         """
         return _launch_plan.LaunchPlanMetadata(
             schedule=self.schedule.to_flyte_idl() if self.schedule is not None else None,
-            notifications=[n.to_flyte_idl() for n in self.notifications]
+            notifications=[n.to_flyte_idl() for n in self.notifications],
         )
 
     @classmethod
@@ -50,9 +52,12 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
         :param flyteidl.admin.launch_plan_pb2.LaunchPlanMetadata pb2_object:
         :rtype: LaunchPlanMetadata
         """
-        return cls(schedule=_schedule.Schedule.from_flyte_idl(pb2_object.schedule) if pb2_object.HasField("schedule")
-                   else None,
-                   notifications=[_common.Notification.from_flyte_idl(n) for n in pb2_object.notifications])
+        return cls(
+            schedule=_schedule.Schedule.from_flyte_idl(pb2_object.schedule)
+            if pb2_object.HasField("schedule")
+            else None,
+            notifications=[_common.Notification.from_flyte_idl(n) for n in pb2_object.notifications],
+        )
 
 
 class Auth(_common.FlyteIdlEntity):
@@ -102,15 +107,24 @@ class Auth(_common.FlyteIdlEntity):
         """
         return cls(
             assumable_iam_role=pb2_object.assumable_iam_role if pb2_object.HasField("assumable_iam_role") else None,
-            kubernetes_service_account=pb2_object.kubernetes_service_account if
-            pb2_object.HasField("kubernetes_service_account") else None,
+            kubernetes_service_account=pb2_object.kubernetes_service_account
+            if pb2_object.HasField("kubernetes_service_account")
+            else None,
         )
 
 
 class LaunchPlanSpec(_common.FlyteIdlEntity):
-
-    def __init__(self, workflow_id, entity_metadata, default_inputs, fixed_inputs, labels, annotations, auth_role,
-                 raw_output_data_config):
+    def __init__(
+        self,
+        workflow_id,
+        entity_metadata,
+        default_inputs,
+        fixed_inputs,
+        labels,
+        annotations,
+        auth_role,
+        raw_output_data_config,
+    ):
         """
         The spec for a Launch Plan.
 
@@ -250,7 +264,6 @@ class LaunchPlanState(object):
 
 
 class LaunchPlanClosure(_common.FlyteIdlEntity):
-
     def __init__(self, state, expected_inputs, expected_outputs):
         """
         :param LaunchPlanState state: Indicate the Launch plan phase
@@ -307,13 +320,7 @@ class LaunchPlanClosure(_common.FlyteIdlEntity):
 
 
 class LaunchPlan(_common.FlyteIdlEntity):
-
-    def __init__(
-        self,
-        id,
-        spec,
-        closure
-    ):
+    def __init__(self, id, spec, closure):
         """
         :param flytekit.models.core.identifier.Identifier id:
         :param LaunchPlanSpec spec:
@@ -349,9 +356,7 @@ class LaunchPlan(_common.FlyteIdlEntity):
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlan
         """
         return _launch_plan.LaunchPlan(
-            id=self.id.to_flyte_idl(),
-            spec=self.spec.to_flyte_idl(),
-            closure=self.closure.to_flyte_idl()
+            id=self.id.to_flyte_idl(), spec=self.spec.to_flyte_idl(), closure=self.closure.to_flyte_idl(),
         )
 
     @classmethod
@@ -363,5 +368,5 @@ class LaunchPlan(_common.FlyteIdlEntity):
         return cls(
             id=_identifier.Identifier.from_flyte_idl(pb2_object.id),
             spec=LaunchPlanSpec.from_flyte_idl(pb2_object.spec),
-            closure=LaunchPlanClosure.from_flyte_idl(pb2_object.closure)
+            closure=LaunchPlanClosure.from_flyte_idl(pb2_object.closure),
         )

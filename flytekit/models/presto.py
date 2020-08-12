@@ -57,10 +57,7 @@ class PrestoQuery(_common.FlyteIdlEntity):
         :rtype: _presto.PrestoQuery 
         """
         return _presto.PrestoQuery(
-            routing_group=self._routing_group,
-            catalog=self._catalog,
-            schema=self._schema,
-            statement=self._statement
+            routing_group=self._routing_group, catalog=self._catalog, schema=self._schema, statement=self._statement,
         )
 
     @classmethod
@@ -73,5 +70,5 @@ class PrestoQuery(_common.FlyteIdlEntity):
             routing_group=pb2_object.routing_group,
             catalog=pb2_object.catalog,
             schema=pb2_object.schema,
-            statement=pb2_object.statement
+            statement=pb2_object.statement,
         )

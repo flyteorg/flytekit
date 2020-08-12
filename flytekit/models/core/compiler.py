@@ -1,14 +1,13 @@
 from __future__ import absolute_import
 
+import six as _six
 from flyteidl.core import compiler_pb2 as _compiler_pb2
+
 from flytekit.models import common as _common
 from flytekit.models.core import workflow as _core_workflow_models
 
-import six as _six
-
 
 class ConnectionSet(_common.FlyteIdlEntity):
-
     class IdList(_common.FlyteIdlEntity):
         def __init__(self, ids):
             """
@@ -65,7 +64,7 @@ class ConnectionSet(_common.FlyteIdlEntity):
         """
         return _compiler_pb2.ConnectionSet(
             upstream={k: v.to_flyte_idl() for k, v in _six.iteritems(self.upstream)},
-            downstream={k: v.to_flyte_idl() for k, v in _six.iteritems(self.upstream)}
+            downstream={k: v.to_flyte_idl() for k, v in _six.iteritems(self.upstream)},
         )
 
     @classmethod
@@ -76,12 +75,11 @@ class ConnectionSet(_common.FlyteIdlEntity):
         """
         return cls(
             upstream={k: ConnectionSet.IdList.from_flyte_idl(v) for k, v in _six.iteritems(p.upstream)},
-            downstream={k: ConnectionSet.IdList.from_flyte_idl(v) for k, v in _six.iteritems(p.downstream)}
+            downstream={k: ConnectionSet.IdList.from_flyte_idl(v) for k, v in _six.iteritems(p.downstream)},
         )
 
 
 class CompiledWorkflow(_common.FlyteIdlEntity):
-
     def __init__(self, template, connections):
         """
         :param flytekit.models.core.workflow.WorkflowTemplate template:
@@ -109,8 +107,7 @@ class CompiledWorkflow(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.compiler_pb2.CompiledWorkflow
         """
         return _compiler_pb2.CompiledWorkflow(
-            template=self.template.to_flyte_idl(),
-            connections=self.connections.to_flyte_idl()
+            template=self.template.to_flyte_idl(), connections=self.connections.to_flyte_idl(),
         )
 
     @classmethod
@@ -121,13 +118,12 @@ class CompiledWorkflow(_common.FlyteIdlEntity):
         """
         return cls(
             template=_core_workflow_models.WorkflowTemplate.from_flyte_idl(p.template),
-            connections=ConnectionSet.from_flyte_idl(p.connections)
+            connections=ConnectionSet.from_flyte_idl(p.connections),
         )
 
 
 # TODO: properly sort out the model code and remove one of these duplicate CompiledTasks
 class CompiledTask(_common.FlyteIdlEntity):
-
     def __init__(self, template):
         """
         :param TODO template:
@@ -145,9 +141,7 @@ class CompiledTask(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.compiler_pb2.CompiledTask
         """
-        return _compiler_pb2.CompiledTask(
-            template=self.template  # TODO: .to_flyte_idl()
-        )
+        return _compiler_pb2.CompiledTask(template=self.template)  # TODO: .to_flyte_idl()
 
     @classmethod
     def from_flyte_idl(cls, p):
@@ -160,7 +154,6 @@ class CompiledTask(_common.FlyteIdlEntity):
 
 
 class CompiledWorkflowClosure(_common.FlyteIdlEntity):
-
     def __init__(self, primary, sub_workflows, tasks):
         """
         :param CompiledWorkflow primary:
@@ -199,7 +192,7 @@ class CompiledWorkflowClosure(_common.FlyteIdlEntity):
         return _compiler_pb2.CompiledWorkflowClosure(
             primary=self.primary.to_flyte_idl(),
             sub_workflows=[s.to_flyte_idl() for s in self.sub_workflows],
-            tasks=[t.to_flyte_idl() for t in self.tasks]
+            tasks=[t.to_flyte_idl() for t in self.tasks],
         )
 
     @classmethod
@@ -211,8 +204,9 @@ class CompiledWorkflowClosure(_common.FlyteIdlEntity):
         # This import is here to prevent a circular dependency issue.
         # TODO: properly sort out the model code and remove the duplicate CompiledTask
         from flytekit.models.task import CompiledTask as _CompiledTask
+
         return cls(
             primary=CompiledWorkflow.from_flyte_idl(p.primary),
             sub_workflows=[CompiledWorkflow.from_flyte_idl(s) for s in p.sub_workflows],
-            tasks=[_CompiledTask.from_flyte_idl(t) for t in p.tasks]
+            tasks=[_CompiledTask.from_flyte_idl(t) for t in p.tasks],
         )

@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
 import logging
 import shlex as _schlex
@@ -14,12 +13,7 @@ def check_call(cmd_args, **kwargs):
     # Jupyter notebooks hijack I/O and thus we cannot dump directly to stdout.
     with _tempfile.TemporaryFile() as std_out:
         with _tempfile.TemporaryFile() as std_err:
-            ret_code = _subprocess.Popen(
-                cmd_args,
-                stdout=std_out,
-                stderr=std_err,
-                **kwargs
-            ).wait()
+            ret_code = _subprocess.Popen(cmd_args, stdout=std_out, stderr=std_err, **kwargs).wait()
 
             # Dump sub-process' std out into current std out
             std_out.seek(0)
