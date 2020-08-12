@@ -59,7 +59,7 @@ def test_casting():
     class MyDateTime(primitives.Datetime):
         ...
 
-    with test_utils.LocalTestFileSystem() as t:
+    with test_utils.LocalTestFileSystem():
         test_columns_1 = [("altered", MyDateTime)]
         test_columns_2 = [("altered", primitives.Datetime)]
 

@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 import json
 
-from mock import MagicMock, PropertyMock, patch
+from mock import MagicMock, patch
 
 from flytekit.clis.flyte_cli.main import _welcome_message
 from flytekit.clis.sdk_in_container import basic_auth

@@ -51,5 +51,5 @@ The auth mode defines the behavior used to request and refresh credentials. The 
         access.
 - 'basic' This uses cert-based auth in which the end user enters his/her username and password and public key encryption
         is used to facilitate authentication.
-- None: No auth will be attempted.        
+- None: No auth will be attempted.
 """

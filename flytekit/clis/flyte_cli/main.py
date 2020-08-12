@@ -123,7 +123,7 @@ def _fetch_and_stringify_literal_map(path, verbose=False):
                 _utils.load_proto_from_file(_literals_pb2.LiteralMap, fname)
             )
             return _get_io_string(literal_map, verbose=verbose)
-        except:
+        except Exception:
             return "Failed to pull data from {}. Do you have permissions?".format(path)
 
 
@@ -424,9 +424,7 @@ class _FlyteSubCommand(_click.Command):
                 and param.name in parent.params
                 and parent.params[param.name] is not None
             ):
-                prefix_args.extend(
-                    [type(self)._PASSABLE_ARGS[param.name], _six.text_type(parent.params[param.name]),]
-                )
+                prefix_args.extend([type(self)._PASSABLE_ARGS[param.name], _six.text_type(parent.params[param.name])])
 
             # For flags, we don't append the value of the flag, otherwise click will fail to parse
             if param.name in type(self)._PASSABLE_FLAGS and param.name in parent.params and parent.params[param.name]:
@@ -1489,7 +1487,7 @@ def _extract_pair(identifier_file, object_file):
         _identifier_pb2.TASK: _task_pb2.TaskSpec,
     }
     id = _load_proto_from_file(_identifier_pb2.Identifier, identifier_file)
-    if not id.resource_type in resource_map:
+    if id.resource_type not in resource_map:
         raise _user_exceptions.FlyteAssertion(
             f"Resource type found in identifier {id.resource_type} invalid, must be launch plan, " f"task, or workflow"
         )

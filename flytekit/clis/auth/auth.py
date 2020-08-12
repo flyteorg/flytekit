@@ -230,7 +230,7 @@ class AuthorizationClient(object):
         if self._state != auth_code.state:
             raise ValueError("Unexpected state parameter [{}] passed".format(auth_code.state))
         self._params.update(
-            {"code": auth_code.code, "code_verifier": self._code_verifier, "grant_type": "authorization_code",}
+            {"code": auth_code.code, "code_verifier": self._code_verifier, "grant_type": "authorization_code"}
         )
         resp = _requests.post(
             url=self._token_endpoint, data=self._params, headers=self._headers, allow_redirects=False,
@@ -249,7 +249,7 @@ class AuthorizationClient(object):
 
         resp = _requests.post(
             url=self._token_endpoint,
-            data={"grant_type": "refresh_token", "client_id": self._client_id, "refresh_token": self._refresh_token,},
+            data={"grant_type": "refresh_token", "client_id": self._client_id, "refresh_token": self._refresh_token},
             headers=self._headers,
             allow_redirects=False,
         )

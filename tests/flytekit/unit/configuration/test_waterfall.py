@@ -3,9 +3,7 @@ from __future__ import absolute_import
 import os as _os
 
 from flytekit.common.utils import AutoDeletingTempDir as _AutoDeletingTempDir
-from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.configuration import common as _common
-from flytekit.configuration import set_flyte_config_file as _set_flyte_config_file
 
 
 def test_lookup_waterfall_raw_env_var():

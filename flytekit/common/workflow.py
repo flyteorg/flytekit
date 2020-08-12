@@ -306,7 +306,7 @@ class SdkWorkflow(
             self._id = id_to_register
             _engine_loader.get_engine().get_workflow(self).register(id_to_register)
             return _six.text_type(self.id)
-        except:
+        except Exception:
             self._id = old_id
             raise
 

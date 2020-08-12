@@ -40,7 +40,7 @@ def test_workflow_template():
     wf_metadata_defaults = _workflow.WorkflowMetadataDefaults()
     typed_interface = _interface.TypedInterface(
         {"a": _interface.Variable(int_type, "description1")},
-        {"b": _interface.Variable(int_type, "description2"), "c": _interface.Variable(int_type, "description3"),},
+        {"b": _interface.Variable(int_type, "description2"), "c": _interface.Variable(int_type, "description3")},
     )
     wf_node = _workflow.Node(
         id="some:node:id", metadata=nm, inputs=[], upstream_node_ids=[], output_aliases=[], task_node=task,

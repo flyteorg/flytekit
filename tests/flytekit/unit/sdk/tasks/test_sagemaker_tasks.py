@@ -188,7 +188,7 @@ def test_simple_hpo_job_task():
     assert simple_xgboost_hpo_job_task.metadata.deprecated_error_message == ""
     assert "metricDefinitions" in simple_xgboost_hpo_job_task.custom["trainingJob"]["algorithmSpecification"].keys()
     assert len(simple_xgboost_hpo_job_task.custom["trainingJob"]["algorithmSpecification"]["metricDefinitions"]) == 1
-    """ These are attributes for SdkRunnable. We will need these when supporting CustomTrainingJobTask and CustomHPOJobTask 
+    """ These are attributes for SdkRunnable. We will need these when supporting CustomTrainingJobTask and CustomHPOJobTask
     assert simple_xgboost_hpo_job_task.task_module == __name__
     assert simple_xgboost_hpo_job_task._get_container_definition().args[0] == 'pyflyte-execute'
     """

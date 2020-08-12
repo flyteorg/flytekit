@@ -1,10 +1,5 @@
 from __future__ import absolute_import
 
-try:
-    from inspect import getfullargspec as _getargspec
-except ImportError:
-    from inspect import getargspec as _getargspec
-
 import sys as _sys
 
 import six as _six

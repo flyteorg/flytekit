@@ -31,12 +31,12 @@ def get_supported_literal_types_to_pandas_types():
     global _SUPPORTED_LITERAL_TYPE_TO_PANDAS_TYPES
     if _SUPPORTED_LITERAL_TYPE_TO_PANDAS_TYPES is None:
         _SUPPORTED_LITERAL_TYPE_TO_PANDAS_TYPES = {
-            _primitives.Integer.to_flyte_literal_type(): {_np.int32, _np.int64, _np.uint32, _np.uint64,},
+            _primitives.Integer.to_flyte_literal_type(): {_np.int32, _np.int64, _np.uint32, _np.uint64},
             _primitives.Float.to_flyte_literal_type(): {_np.float32, _np.float64},
             _primitives.Boolean.to_flyte_literal_type(): {_np.bool},
             _primitives.Datetime.to_flyte_literal_type(): {_np.datetime64},
             _primitives.Timedelta.to_flyte_literal_type(): {_np.timedelta64},
-            _primitives.String.to_flyte_literal_type(): {_np.object_, _np.str_, _np.string_,},
+            _primitives.String.to_flyte_literal_type(): {_np.object_, _np.str_, _np.string_},
         }
     return _SUPPORTED_LITERAL_TYPE_TO_PANDAS_TYPES
 

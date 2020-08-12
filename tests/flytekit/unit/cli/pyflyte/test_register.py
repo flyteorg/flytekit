@@ -1,8 +1,5 @@
-import pytest
-from click.testing import CliRunner
-from mock import MagicMock, PropertyMock, patch
+from mock import MagicMock
 
-from flytekit.clis.sdk_in_container import constants as _constants
 from flytekit.engines.flyte import engine
 
 

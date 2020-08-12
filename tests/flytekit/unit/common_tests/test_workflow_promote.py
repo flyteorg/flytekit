@@ -129,7 +129,7 @@ def test_basic_workflow_promote(mock_task_fetch):
         # inputs
         {"a": _interface.Variable(int_type, "description1")},
         # outputs
-        {"b": _interface.Variable(int_type, "description2"), "c": _interface.Variable(int_type, "description3"),},
+        {"b": _interface.Variable(int_type, "description2"), "c": _interface.Variable(int_type, "description3")},
     )
     # Since the promotion of a workflow requires retrieving the task from Admin, we mock the SdkTask to return
     task_template = _task_model.TaskTemplate(

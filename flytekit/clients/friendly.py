@@ -11,10 +11,8 @@ from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
-from flyteidl.core import identifier_pb2 as _identifier_pb2
 
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
-from flytekit.common.exceptions.user import FlyteAssertion as _FlyteAssertion
 from flytekit.models import common as _common
 from flytekit.models import execution as _execution
 from flytekit.models import filters as _filters

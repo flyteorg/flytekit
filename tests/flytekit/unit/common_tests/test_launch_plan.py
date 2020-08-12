@@ -301,7 +301,7 @@ def test_serialize():
     lp = workflow_to_test.create_launch_plan(fixed_inputs={"required_input": 5}, role="iam_role",)
     with _configuration.TemporaryConfiguration(
         _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../common/configs/local.config",),
-        internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development",},
+        internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
     ):
         s = lp.serialize()
 

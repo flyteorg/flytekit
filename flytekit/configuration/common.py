@@ -52,7 +52,7 @@ class FlyteConfigurationFile(object):
         if self._config is not None:
             try:
                 return self._config.get(section, key, fallback=default)
-            except:
+            except Exception:
                 pass
         return default
 
@@ -67,7 +67,7 @@ class FlyteConfigurationFile(object):
         if self._config is not None:
             try:
                 return self._config.getint(section, key, fallback=default)
-            except:
+            except Exception:
                 pass
         return default
 
@@ -82,7 +82,7 @@ class FlyteConfigurationFile(object):
         if self._config is not None:
             try:
                 return self._config.getboolean(section, key, fallback=default)
-            except:
+            except Exception:
                 pass
         return default
 

@@ -37,7 +37,7 @@ class LazyLoadPlugin(object):
 
 def lazy_load_module(module):
     """
-    :param Text module: 
+    :param Text module:
     :rtype: _types.ModuleType
     """
 

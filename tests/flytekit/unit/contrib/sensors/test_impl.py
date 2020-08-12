@@ -8,7 +8,7 @@ from flytekit.contrib.sensors.impl import HiveFilteredPartitionSensor, HiveNamed
 
 
 def test_HiveTableSensor():
-    hive_table_sensor = HiveTableSensor(table_name="mocked_table", host="localhost", port=1234,)
+    hive_table_sensor = HiveTableSensor(table_name="mocked_table", host="localhost", port=1234)
     assert hive_table_sensor._schema == "default"
     with mock.patch.object(HMSClient, "open"):
         with mock.patch.object(HMSClient, "get_table"):
@@ -24,7 +24,7 @@ def test_HiveTableSensor():
 
 def test_HiveNamedPartitionSensor():
     hive_named_partition_sensor = HiveNamedPartitionSensor(
-        table_name="mocked_table", partition_names=["ds=2019-10-10", "ds=2019-10-11",], host="localhost", port=1234,
+        table_name="mocked_table", partition_names=["ds=2019-10-10", "ds=2019-10-11"], host="localhost", port=1234
     )
     assert hive_named_partition_sensor._schema == "default"
     with mock.patch.object(HMSClient, "open"):
@@ -43,7 +43,7 @@ def test_HiveNamedPartitionSensor():
 
 def test_HiveFilteredPartitionSensor():
     hive_filtered_partition_sensor = HiveFilteredPartitionSensor(
-        table_name="mocked_table", partition_filter="ds = '2019-10-10' AND region = 'NYC'", host="localhost", port=1234,
+        table_name="mocked_table", partition_filter="ds = '2019-10-10' AND region = 'NYC'", host="localhost", port=1234
     )
     assert hive_filtered_partition_sensor._schema == "default"
     with mock.patch.object(HMSClient, "open"):

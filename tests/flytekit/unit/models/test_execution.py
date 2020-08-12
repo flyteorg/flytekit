@@ -4,7 +4,6 @@ import pytest
 
 from flytekit.models import common as _common_models
 from flytekit.models import execution as _execution
-from flytekit.models import literals as _literal_models
 from flytekit.models.core import execution as _core_exec
 from flytekit.models.core import identifier as _identifier
 from tests.flytekit.common import parameterizers as _parameterizers

@@ -514,7 +514,7 @@ class Generic(_base_sdk_types.FlyteSdkValue):
         """
         try:
             t = _json_format.Parse(string_value, _struct.Struct())
-        except:
+        except Exception:
             raise _user_exceptions.FlyteValueException(string_value, "Could not be parsed from JSON.")
         return cls(t)
 
@@ -540,7 +540,7 @@ class Generic(_base_sdk_types.FlyteSdkValue):
 
         try:
             t = _json.dumps(t_value)
-        except:
+        except Exception:
             raise _user_exceptions.FlyteValueException(t_value, "Is not JSON serializable.")
 
         return cls(_json_format.Parse(t, _struct.Struct()))

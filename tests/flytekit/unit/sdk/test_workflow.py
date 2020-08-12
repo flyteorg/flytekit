@@ -1,7 +1,5 @@
 from __future__ import absolute_import
 
-import datetime
-
 import pytest
 
 from flytekit.common import constants
@@ -35,7 +33,7 @@ def test_input():
 
     i = Input(primitives.Integer, default=1)
     assert i.name == ""
-    assert i.sdk_default is 1
+    assert i.sdk_default == 1
     assert i.default == primitives.Integer(1)
     assert i.sdk_required is False
     assert i.required is None
@@ -45,7 +43,7 @@ def test_input():
 
     i = i.rename_and_return_reference("new_name")
     assert i.name == "new_name"
-    assert i.sdk_default is 1
+    assert i.sdk_default == 1
     assert i.default == primitives.Integer(1)
     assert i.sdk_required is False
     assert i.required is None

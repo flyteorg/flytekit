@@ -59,7 +59,7 @@ class CronSchedule(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _ExtendedSche
             # Cut to 5 fields and just assume year field is good because croniter treats the 6th field as seconds.
             # TODO: Parse this field ourselves and check
             _croniter.croniter(" ".join(cron_expression.replace("?", "*").split()[:5]))
-        except:
+        except Exception:
             raise _user_exceptions.FlyteAssertion(
                 "Scheduled string is invalid.  The cron expression was found to be invalid."
                 " Provided cron expr: {}".format(cron_expression)

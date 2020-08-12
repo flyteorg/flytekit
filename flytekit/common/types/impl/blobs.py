@@ -369,7 +369,7 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
                 self._blobs.append(b)
 
             return file_handles
-        except:
+        except Exception:
             # Exit is idempotent so close partially opened context that way
             exc_type, exc_obj, exc_tb = _sys.exc_info()
             self.__exit__(exc_type, exc_obj, exc_tb)

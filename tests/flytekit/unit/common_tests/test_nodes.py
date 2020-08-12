@@ -50,7 +50,7 @@ def test_sdk_node_from_task():
     assert n.outputs["b"].sdk_type == _types.Types.Integer
     assert n.metadata.name == "abc"
     assert n.metadata.retries.retries == 3
-    assert n.metadata.interruptible == False
+    assert n.metadata.interruptible is False
     assert len(n.upstream_nodes) == 0
     assert len(n.upstream_node_ids) == 0
     assert len(n.output_aliases) == 0

@@ -33,7 +33,7 @@ def test__extract_files(load_mock):
     id = _core_identifier.Identifier(_core_identifier.ResourceType.TASK, "myproject", "development", "name", "v")
     t = get_sample_task()
     with TemporaryConfiguration(
-        "", internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development",},
+        "", internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
     ):
         task_spec = t.serialize()
 

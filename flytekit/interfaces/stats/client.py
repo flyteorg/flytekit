@@ -10,7 +10,7 @@ import statsd
 from flytekit.configuration import statsd as _statsd_config
 
 RESERVED_TAG_WORDS = frozenset(
-    ["asg", "az", "backend", "canary", "host", "period", "region", "shard", "window", "source",]
+    ["asg", "az", "backend", "canary", "host", "period", "region", "shard", "window", "source"]
 )
 
 # TODO should this be a whitelist instead?

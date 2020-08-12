@@ -160,7 +160,7 @@ class SdkTask(
             self._id = id_to_register
             _engine_loader.get_engine().get_task(self).register(id_to_register)
             return _six.text_type(self.id)
-        except:
+        except Exception:
             self._id = old_id
             raise
 
@@ -330,7 +330,7 @@ class SdkTask(
         try:
             self._id = id_to_register
             _engine_loader.get_engine().get_task(self).register(id_to_register)
-        except:
+        except Exception:
             self._id = old_id
             raise
         return self.launch(project, domain, inputs=inputs)

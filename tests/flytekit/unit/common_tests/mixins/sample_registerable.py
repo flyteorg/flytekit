@@ -2,8 +2,6 @@ from __future__ import absolute_import
 
 import six as _six
 
-from flytekit.common import interface as _interface
-from flytekit.common import nodes as _nodes
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.mixins import registerable as _registerable
 

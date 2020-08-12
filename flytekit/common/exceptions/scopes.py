@@ -163,7 +163,7 @@ def system_entry_point(wrapped, instance, args, kwargs):
                 _reraise(
                     FlyteScopedUserException, FlyteScopedUserException(*_exc_info()), _exc_info()[2],
                 )
-            except:
+            except Exception:
                 # System error, raise full stack-trace all the way up the chain.
                 _reraise(
                     FlyteScopedSystemException,
@@ -206,7 +206,7 @@ def user_entry_point(wrapped, instance, args, kwargs):
                 _reraise(
                     FlyteScopedSystemException, FlyteScopedSystemException(*_exc_info()), _exc_info()[2],
                 )
-            except:
+            except Exception:
                 # Any non-platform raised exception is a user exception.
                 # This will also catch FlyteUserException re-raised by the system_entry_point handler
                 _reraise(

@@ -2,14 +2,6 @@ import logging
 
 import requests as _requests
 
-try:  # Python 3.5+
-    from http import HTTPStatus as _StatusCodes
-except ImportError:
-    try:  # Python 3
-        from http import client as _StatusCodes
-    except ImportError:  # Python 2
-        import httplib as _StatusCodes
-
 # These response keys are defined in https://tools.ietf.org/id/draft-ietf-oauth-discovery-08.html.
 _authorization_endpoint_key = "authorization_endpoint"
 _token_endpoint_key = "token_endpoint"

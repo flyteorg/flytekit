@@ -15,7 +15,7 @@ def test_workflow_closure():
     int_type = _types.LiteralType(_types.SimpleType.INTEGER)
     typed_interface = _interface.TypedInterface(
         {"a": _interface.Variable(int_type, "description1")},
-        {"b": _interface.Variable(int_type, "description2"), "c": _interface.Variable(int_type, "description3"),},
+        {"b": _interface.Variable(int_type, "description2"), "c": _interface.Variable(int_type, "description3")},
     )
 
     b0 = _literals.Binding(

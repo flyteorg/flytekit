@@ -269,7 +269,7 @@ class SdkLaunchPlan(
         if len(args) > 0:
             raise _user_exceptions.FlyteAssertion(
                 "When adding a launchplan as a node in a workflow, all inputs must be specified with kwargs only.  We "
-                "detected {} positional args.".format(self, len(args))
+                "detected {} positional args.".format(len(args))
             )
 
         # Take the default values from the launch plan
