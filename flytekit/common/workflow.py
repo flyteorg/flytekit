@@ -517,7 +517,6 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
         :param Text kubernetes_service_account: The kubernetes service account to execute the workflow with.
         :rtype: flytekit.common.launch_plan.SdkRunnableLaunchPlan
         """
-        import ipdb; ipdb.set_trace()
         # TODO: Actually ensure the parameters conform.
         if role and (assumable_iam_role or kubernetes_service_account):
             raise ValueError("Cannot set both role and auth. Role is deprecated, use auth instead.")

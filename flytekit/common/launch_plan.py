@@ -365,7 +365,7 @@ class SdkRunnableLaunchPlan(
             auth_role=None,
     ):
         """
-        :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
+        :param flytekit.common.workflow.PythonWorkflow sdk_workflow:
         :param dict[Text,flytekit.common.promise.Input] default_inputs:
         :param dict[Text,Any] fixed_inputs: These inputs will be fixed and not need to be set when executing this
             launch plan.
@@ -445,6 +445,13 @@ class SdkRunnableLaunchPlan(
         raise _user_exceptions.FlyteAssertion(
             "An SdkRunnableLaunchPlan must be created from a reference to local Python code only."
         )
+
+    @property
+    def workflow_id(self):
+        """
+        :rtype: flytekit.common.core.identifier.Identifier
+        """
+        return self._sdk_workflow.id
 
     def __repr__(self):
         """
