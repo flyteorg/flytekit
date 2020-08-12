@@ -316,6 +316,7 @@ class SdkWorkflow(
             annotations=None,
             assumable_iam_role=None,
             kubernetes_service_account=None,
+            raw_output_data_prefix=None,
             cls=None
     ):
         """
@@ -332,6 +333,8 @@ class SdkWorkflow(
         class provided should be a subclass of flytekit.common.launch_plan.SdkLaunchPlan.
         :param Text assumable_iam_role: The IAM role to execute the workflow with.
         :param Text kubernetes_service_account: The kubernetes service account to execute the workflow with.
+        :param Text raw_output_data_prefix: Bucket for offloaded data
+
         :rtype: flytekit.common.launch_plan.SdkRunnableLaunchPlan
         """
         # TODO: Actually ensure the parameters conform.
@@ -346,6 +349,8 @@ class SdkWorkflow(
         auth_role = _common_models.AuthRole(assumable_iam_role=assumable_iam_role,
                                             kubernetes_service_account=kubernetes_service_account)
 
+        raw_output_config = _common_models.RawOutputDataConfig(raw_output_data_prefix or "")
+
         return (cls or _launch_plan.SdkRunnableLaunchPlan)(
             sdk_workflow=self,
             default_inputs={
@@ -358,6 +363,7 @@ class SdkWorkflow(
             labels=labels,
             annotations=annotations,
             auth_role=auth_role,
+            raw_output_data_config=raw_output_config,
         )
 
     @_exception_scopes.system_entry_point

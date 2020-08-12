@@ -11,10 +11,7 @@ import flytekit as _flytekit
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.models.core import identifier as _identifier
 
-try:
-    from pathlib import Path
-except ImportError:
-    from pathlib2 import Path  # python 2 backport
+from pathlib import Path
 
 
 def _dnsify(value):
@@ -156,12 +153,12 @@ class PerformanceTimer(object):
 
     def __enter__(self):
         _logging.info("Entering timed context: {}".format(self._context_statement))
-        self._start_wall_time = _time.time()
-        self._start_process_time = _time.clock()
+        self._start_wall_time = _time.perf_counter()
+        self._start_process_time = _time.process_time()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        end_wall_time = _time.time()
-        end_process_time = _time.clock()
+        end_wall_time = _time.perf_counter()
+        end_process_time = _time.process_time()
         _logging.info("Exiting timed context: {} [Wall Time: {}s, Process Time: {}s]".format(
             self._context_statement,
             end_wall_time - self._start_wall_time,
