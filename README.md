@@ -114,8 +114,6 @@ make fmt
 
 ### Testing
 
-Flytekit is Python 2.7+ compatible, so when feasible, it is recommended to test with both Python 2 and 3.
-
 #### Unit Testing
 
 ```bash
