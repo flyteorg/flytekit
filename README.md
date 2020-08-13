@@ -120,3 +120,14 @@ make fmt
 source ~/.virtualenvs/flytekit/bin/activate
 make test
 ```
+
+### Updating requirements
+
+Update requirements in [`setup.py`](setup.py), or update requirements for development in [`dev-requirements.in`](dev-requirements.in). Then, validate, pin and freeze all requirements by running:
+
+```bash
+source ~/.virtualenvs/flytekit/bin/activate
+make requirements
+```
+
+This will create the [`requirements.txt`](requirements.txt) and [`dev-requirements.txt`](dev-requirements.txt) files which will be used for testing.
