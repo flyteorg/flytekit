@@ -57,6 +57,7 @@ setup(
         "scripts/flytekit_install_spark3.sh",
         "scripts/flytekit_build_image.sh",
         "scripts/flytekit_venv",
+        "scripts/flytekit_sagemaker_runner.py",
     ],
     license="apache2",
     python_requires=">=2.7",
