@@ -4,20 +4,23 @@ import logging as _logging
 
 import click
 
-from flytekit.clis.sdk_in_container.constants import CTX_PROJECT, CTX_DOMAIN, CTX_TEST, CTX_PACKAGES, CTX_VERSION
+from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_TEST, CTX_VERSION
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.tasks import task as _task
-from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag, \
-    IMAGE as _IMAGE
+from flytekit.configuration.internal import IMAGE as _IMAGE
+from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
 
 def register_all(project, domain, pkgs, test, version):
     if test:
-        click.echo('Test switch enabled, not doing anything...')
-    click.echo('Running task, workflow, and launch plan registration for {}, {}, {} with version {}'.format(
-        project, domain, pkgs, version))
+        click.echo("Test switch enabled, not doing anything...")
+    click.echo(
+        "Running task, workflow, and launch plan registration for {}, {}, {} with version {}".format(
+            project, domain, pkgs, version
+        )
+    )
 
     # m = module (i.e. python file)
     # k = value of dir(m), type str
@@ -26,13 +29,7 @@ def register_all(project, domain, pkgs, test, version):
     for m, k, o in iterate_registerable_entities_in_order(pkgs):
         name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
         _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
-        o._id = _identifier.Identifier(
-            o.resource_type,
-            project,
-            domain,
-            name,
-            version
-        )
+        o._id = _identifier.Identifier(o.resource_type, project, domain, name, version)
         loaded_entities.append(o)
 
     for o in loaded_entities:
@@ -45,10 +42,9 @@ def register_all(project, domain, pkgs, test, version):
 
 def register_tasks_only(project, domain, pkgs, test, version):
     if test:
-        click.echo('Test switch enabled, not doing anything...')
+        click.echo("Test switch enabled, not doing anything...")
 
-    click.echo('Running task only registration for {}, {}, {} with version {}'.format(
-        project, domain, pkgs, version))
+    click.echo("Running task only registration for {}, {}, {} with version {}".format(project, domain, pkgs, version))
 
     # Discover all tasks by loading the module
     for m, k, t in iterate_registerable_entities_in_order(pkgs, include_entities={_task.SdkTask}):
@@ -61,10 +57,12 @@ def register_tasks_only(project, domain, pkgs, test, version):
             t.register(project, domain, name, version)
 
 
-@click.group('register')
+@click.group("register")
 # --pkgs on the register group is DEPRECATED, use same arg on pyflyte.main instead
-@click.option('--pkgs', multiple=True, help="DEPRECATED. This arg can only be used before the 'register' keyword")
-@click.option('--test', is_flag=True, help='Dry run, do not actually register with Admin')
+@click.option(
+    "--pkgs", multiple=True, help="DEPRECATED. This arg can only be used before the 'register' keyword",
+)
+@click.option("--test", is_flag=True, help="Dry run, do not actually register with Admin")
 @click.pass_context
 def register(ctx, pkgs=None, test=None):
     """
@@ -79,9 +77,13 @@ def register(ctx, pkgs=None, test=None):
     ctx.obj[CTX_TEST] = test
 
 
-@click.command('tasks')
-@click.option('-v', '--version', type=str, help='Version to register tasks with. This is normally parsed from the'
-                                                'image, but you can override here.')
+@click.command("tasks")
+@click.option(
+    "-v",
+    "--version",
+    type=str,
+    help="Version to register tasks with. This is normally parsed from the" "image, but you can override here.",
+)
 @click.pass_context
 def tasks(ctx, version=None):
     """
@@ -96,9 +98,13 @@ def tasks(ctx, version=None):
     register_tasks_only(project, domain, pkgs, test, version)
 
 
-@click.command('workflows')
-@click.option('-v', '--version', type=str, help='Version to register tasks with. This is normally parsed from the'
-                                                'image, but you can override here.')
+@click.command("workflows")
+@click.option(
+    "-v",
+    "--version",
+    type=str,
+    help="Version to register tasks with. This is normally parsed from the" "image, but you can override here.",
+)
 @click.pass_context
 def workflows(ctx, version=None):
     """

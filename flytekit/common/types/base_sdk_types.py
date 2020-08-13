@@ -1,13 +1,16 @@
 from __future__ import absolute_import
-from flytekit.models import literals as _literal_models, common as _common_models
+
+import abc as _abc
+
+import six as _six
+
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
-import abc as _abc
-import six as _six
+from flytekit.models import common as _common_models
+from flytekit.models import literals as _literal_models
 
 
 class FlyteSdkType(_six.with_metaclass(_common_models.FlyteABCMeta, _sdk_bases.ExtendedSdkType)):
-
     @_abc.abstractmethod
     def is_castable_from(cls, other):
         """
@@ -54,7 +57,6 @@ class FlyteSdkType(_six.with_metaclass(_common_models.FlyteABCMeta, _sdk_bases.E
 
 
 class FlyteSdkValue(_six.with_metaclass(FlyteSdkType, _literal_models.Literal)):
-
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         """
@@ -83,7 +85,6 @@ class InstantiableType(_six.with_metaclass(_common_models.FlyteABCMeta, FlyteSdk
 
 
 class Void(FlyteSdkValue):
-
     @classmethod
     def is_castable_from(cls, other):
         """
@@ -106,8 +107,9 @@ class Void(FlyteSdkValue):
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        raise _user_exceptions.FlyteAssertion("A Void type does not have a literal type and cannot be used in this "
-                                              "manner.")
+        raise _user_exceptions.FlyteAssertion(
+            "A Void type does not have a literal type and cannot be used in this " "manner."
+        )
 
     @classmethod
     def promote_from_model(cls, _):
@@ -123,7 +125,7 @@ class Void(FlyteSdkValue):
         """
         :rtype: Text
         """
-        return 'Void'
+        return "Void"
 
     def __init__(self):
         super(Void, self).__init__(scalar=_literal_models.Scalar(none_type=_literal_models.Void()))

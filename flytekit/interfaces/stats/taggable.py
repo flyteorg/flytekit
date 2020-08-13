@@ -14,25 +14,29 @@ class TaggableStats(_stats_client.ScopeableStatsProxy):
 
     def _create_wrapped_function(self, base_func):
         if self._scope_prefix:
+
             def name_wrap(stat, *args, **kwargs):
-                tags = kwargs.pop('tags', {})
+                tags = kwargs.pop("tags", {})
                 tags.update(self._tags)
-                if kwargs.pop('per_host', False):
-                    tags['_f'] = 'i'
+                if kwargs.pop("per_host", False):
+                    tags["_f"] = "i"
 
                 if bool(tags):
                     stat = self._serialize_tags(stat, tags)
                 return base_func(self._p_with_prefix(stat), *args, **kwargs)
+
         else:
+
             def name_wrap(stat, *args, **kwargs):
-                tags = kwargs.pop('tags', {})
+                tags = kwargs.pop("tags", {})
                 tags.update(self._tags)
-                if kwargs.pop('per_host', False):
-                    tags['_f'] = 'i'
+                if kwargs.pop("per_host", False):
+                    tags["_f"] = "i"
 
                 if bool(tags):
                     stat = self._serialize_tags(stat, tags)
                 return base_func(stat, *args, **kwargs)
+
         return name_wrap
 
     def clear_tags(self):
@@ -43,17 +47,13 @@ class TaggableStats(_stats_client.ScopeableStatsProxy):
 
     def pipeline(self):
         return TaggableStats(
-            self._client.pipeline(),
-            self._full_prefix,
-            prefix=self._scope_prefix,
-            tags=dict(self._tags))
+            self._client.pipeline(), self._full_prefix, prefix=self._scope_prefix, tags=dict(self._tags),
+        )
 
     def __enter__(self):
         return TaggableStats(
-            self._client.__enter__(),
-            self._full_prefix,
-            prefix=self._scope_prefix,
-            tags=dict(self._tags))
+            self._client.__enter__(), self._full_prefix, prefix=self._scope_prefix, tags=dict(self._tags),
+        )
 
     def get_stats(self, name, copy_tags=True):
         if not self._scope_prefix or self._scope_prefix == "":
@@ -62,7 +62,7 @@ class TaggableStats(_stats_client.ScopeableStatsProxy):
             prefix = self._scope_prefix + "." + name
 
         if self._full_prefix:
-            full_prefix = self._full_prefix + '.' + prefix
+            full_prefix = self._full_prefix + "." + prefix
         else:
             full_prefix = prefix
 

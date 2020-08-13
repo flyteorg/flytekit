@@ -6,9 +6,13 @@ import six as _six
 
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.tasks import sdk_runnable as _sdk_runnable_tasks, sdk_dynamic as _sdk_dynamic, \
-    spark_task as _sdk_spark_tasks, generic_spark_task as _sdk_generic_spark_task, hive_task as _sdk_hive_tasks, \
-    sidecar_task as _sdk_sidecar_tasks, pytorch_task as _sdk_pytorch_tasks
+from flytekit.common.tasks import generic_spark_task as _sdk_generic_spark_task
+from flytekit.common.tasks import hive_task as _sdk_hive_tasks
+from flytekit.common.tasks import pytorch_task as _sdk_pytorch_tasks
+from flytekit.common.tasks import sdk_dynamic as _sdk_dynamic
+from flytekit.common.tasks import sdk_runnable as _sdk_runnable_tasks
+from flytekit.common.tasks import sidecar_task as _sdk_sidecar_tasks
+from flytekit.common.tasks import spark_task as _sdk_spark_tasks
 from flytekit.common.tasks import task as _task
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.contrib.notebook import tasks as _nb_tasks
@@ -41,20 +45,18 @@ def inputs(_task_template=None, **kwargs):
 
     def apply_inputs_wrapper(task):
         if not isinstance(task, _task.SdkTask):
-            additional_msg = \
-                "Inputs can only be applied to a task. Did you forget the task decorator on method '{}.{}'?".format(
-                    task.__module__,
-                    task.__name__ if hasattr(task, "__name__") else "<unknown>"
-                )
+            additional_msg = "Inputs can only be applied to a task. Did you forget the task decorator on method '{}.{}'?".format(
+                task.__module__, task.__name__ if hasattr(task, "__name__") else "<unknown>",
+            )
             raise _user_exceptions.FlyteTypeException(
                 expected_type=_sdk_runnable_tasks.SdkRunnableTask,
                 received_type=type(task),
                 received_value=task,
-                additional_msg=additional_msg)
+                additional_msg=additional_msg,
+            )
         for k, v in _six.iteritems(kwargs):
             kwargs[k] = _interface_model.Variable(
-                _type_helpers.python_std_to_sdk_type(v).to_flyte_literal_type(),
-                ''
+                _type_helpers.python_std_to_sdk_type(v).to_flyte_literal_type(), ""
             )  # TODO: Support descriptions
 
         task.add_inputs(kwargs)
@@ -88,22 +90,23 @@ def outputs(_task_template=None, **kwargs):
         name and type.
     :rtype: flytekit.common.tasks.sdk_runnable.SdkRunnableTask
     """
+
     def apply_outputs_wrapper(task):
-        if not isinstance(task, _sdk_runnable_tasks.SdkRunnableTask) and not isinstance(task, _nb_tasks.SdkNotebookTask):
-            additional_msg = \
-                "Outputs can only be applied to a task. Did you forget the task decorator on method '{}.{}'?".format(
-                    task.__module__,
-                    task.__name__ if hasattr(task, "__name__") else "<unknown>"
-                )
+        if not isinstance(task, _sdk_runnable_tasks.SdkRunnableTask) and not isinstance(
+            task, _nb_tasks.SdkNotebookTask
+        ):
+            additional_msg = "Outputs can only be applied to a task. Did you forget the task decorator on method '{}.{}'?".format(
+                task.__module__, task.__name__ if hasattr(task, "__name__") else "<unknown>",
+            )
             raise _user_exceptions.FlyteTypeException(
                 expected_type=_sdk_runnable_tasks.SdkRunnableTask,
                 received_type=type(task),
                 received_value=task,
-                additional_msg=additional_msg)
+                additional_msg=additional_msg,
+            )
         for k, v in _six.iteritems(kwargs):
             kwargs[k] = _interface_model.Variable(
-                _type_helpers.python_std_to_sdk_type(v).to_flyte_literal_type(),
-                ''
+                _type_helpers.python_std_to_sdk_type(v).to_flyte_literal_type(), ""
             )  # TODO: Support descriptions
 
         task.add_outputs(kwargs)
@@ -116,23 +119,23 @@ def outputs(_task_template=None, **kwargs):
 
 
 def python_task(
-        _task_function=None,
-        cache_version='',
-        retries=0,
-        interruptible=None,
-        deprecated='',
-        storage_request=None,
-        cpu_request=None,
-        gpu_request=None,
-        memory_request=None,
-        storage_limit=None,
-        cpu_limit=None,
-        gpu_limit=None,
-        memory_limit=None,
-        cache=False,
-        timeout=None,
-        environment=None,
-        cls=None,
+    _task_function=None,
+    cache_version="",
+    retries=0,
+    interruptible=None,
+    deprecated="",
+    storage_request=None,
+    cpu_request=None,
+    gpu_request=None,
+    memory_request=None,
+    storage_limit=None,
+    cpu_limit=None,
+    gpu_limit=None,
+    memory_limit=None,
+    cache=False,
+    timeout=None,
+    environment=None,
+    cls=None,
 ):
     """
     Decorator to create a Python Task definition.  This task will run as a single unit of work on the platform.
@@ -225,6 +228,7 @@ def python_task(
 
     :rtype: flytekit.common.tasks.sdk_runnable.SdkRunnableTask
     """
+
     def wrapper(fn):
         return (cls or _sdk_runnable_tasks.SdkRunnableTask)(
             task_function=fn,
@@ -244,7 +248,8 @@ def python_task(
             discoverable=cache,
             timeout=timeout or _datetime.timedelta(seconds=0),
             environment=environment,
-            custom={})
+            custom={},
+        )
 
     if _task_function:
         return wrapper(_task_function)
@@ -253,25 +258,25 @@ def python_task(
 
 
 def dynamic_task(
-        _task_function=None,
-        cache_version='',
-        retries=0,
-        interruptible=None,
-        deprecated='',
-        storage_request=None,
-        cpu_request=None,
-        gpu_request=None,
-        memory_request=None,
-        storage_limit=None,
-        cpu_limit=None,
-        gpu_limit=None,
-        memory_limit=None,
-        cache=False,
-        timeout=None,
-        allowed_failure_ratio=None,
-        max_concurrency=None,
-        environment=None,
-        cls=None
+    _task_function=None,
+    cache_version="",
+    retries=0,
+    interruptible=None,
+    deprecated="",
+    storage_request=None,
+    cpu_request=None,
+    gpu_request=None,
+    memory_request=None,
+    storage_limit=None,
+    cpu_limit=None,
+    gpu_limit=None,
+    memory_limit=None,
+    cache=False,
+    timeout=None,
+    allowed_failure_ratio=None,
+    max_concurrency=None,
+    environment=None,
+    cls=None,
 ):
     """
     Decorator to create a custom dynamic task definition.  Dynamic tasks should be used to split up work into
@@ -406,17 +411,17 @@ def dynamic_task(
 
 
 def spark_task(
-        _task_function=None,
-        cache_version='',
-        retries=0,
-        interruptible=None,
-        deprecated='',
-        cache=False,
-        timeout=None,
-        spark_conf=None,
-        hadoop_conf=None,
-        environment=None,
-        cls=None
+    _task_function=None,
+    cache_version="",
+    retries=0,
+    interruptible=None,
+    deprecated="",
+    cache=False,
+    timeout=None,
+    spark_conf=None,
+    hadoop_conf=None,
+    environment=None,
+    cls=None,
 ):
     """
     Decorator to create a spark task.  This task will connect to a Spark cluster, configure the environment,
@@ -478,7 +483,7 @@ def spark_task(
             discovery_version=cache_version,
             retries=retries,
             interruptible=interruptible,
-            spark_type= _spark_type.PYTHON,
+            spark_type=_spark_type.PYTHON,
             deprecated=deprecated,
             discoverable=cache,
             timeout=timeout or _datetime.timedelta(seconds=0),
@@ -494,19 +499,19 @@ def spark_task(
 
 
 def generic_spark_task(
-        spark_type,
-        main_class,
-        main_application_file,
-        cache_version='',
-        retries=0,
-        interruptible=None,
-        inputs=None,
-        deprecated='',
-        cache=False,
-        timeout=None,
-        spark_conf=None,
-        hadoop_conf=None,
-        environment=None,
+    spark_type,
+    main_class,
+    main_application_file,
+    cache_version="",
+    retries=0,
+    interruptible=None,
+    inputs=None,
+    deprecated="",
+    cache=False,
+    timeout=None,
+    spark_conf=None,
+    hadoop_conf=None,
+    environment=None,
 ):
     """
     Create a generic spark task. This task will connect to a Spark cluster, configure the environment,
@@ -515,21 +520,21 @@ def generic_spark_task(
     """
 
     return _sdk_generic_spark_task.SdkGenericSparkTask(
-            task_type=_common_constants.SdkTaskType.SPARK_TASK,
-            discovery_version=cache_version,
-            retries=retries,
-            interruptible=interruptible,
-            deprecated=deprecated,
-            discoverable=cache,
-            timeout=timeout or _datetime.timedelta(seconds=0),
-            spark_type = spark_type,
-            task_inputs= inputs,
-            main_class = main_class or "",
-            main_application_file = main_application_file or "",
-            spark_conf=spark_conf or {},
-            hadoop_conf=hadoop_conf or {},
-            environment=environment or {},
-        )
+        task_type=_common_constants.SdkTaskType.SPARK_TASK,
+        discovery_version=cache_version,
+        retries=retries,
+        interruptible=interruptible,
+        deprecated=deprecated,
+        discoverable=cache,
+        timeout=timeout or _datetime.timedelta(seconds=0),
+        spark_type=spark_type,
+        task_inputs=inputs,
+        main_class=main_class or "",
+        main_application_file=main_application_file or "",
+        spark_conf=spark_conf or {},
+        hadoop_conf=hadoop_conf or {},
+        environment=environment or {},
+    )
 
 
 def qubole_spark_task(*args, **kwargs):
@@ -540,24 +545,24 @@ def qubole_spark_task(*args, **kwargs):
 
 
 def hive_task(
-        _task_function=None,
-        cache_version='',
-        retries=0,
-        interruptible=None,
-        deprecated='',
-        storage_request=None,
-        cpu_request=None,
-        gpu_request=None,
-        memory_request=None,
-        storage_limit=None,
-        cpu_limit=None,
-        gpu_limit=None,
-        memory_limit=None,
-        cache=False,
-        timeout=None,
-        environment=None,
-        cls=None
-        ):
+    _task_function=None,
+    cache_version="",
+    retries=0,
+    interruptible=None,
+    deprecated="",
+    storage_request=None,
+    cpu_request=None,
+    gpu_request=None,
+    memory_request=None,
+    storage_limit=None,
+    cpu_limit=None,
+    gpu_limit=None,
+    memory_limit=None,
+    cache=False,
+    timeout=None,
+    environment=None,
+    cls=None,
+):
     """
     Decorator to create a hive task. This task should output a list of hive queries which are run on a hive cluster.
 
@@ -648,6 +653,7 @@ def hive_task(
 
     :rtype: flytekit.common.tasks.sdk_runnable.SdkHiveTask
     """
+
     def wrapper(fn):
 
         return (cls or _sdk_hive_tasks.SdkHiveTask)(
@@ -667,7 +673,7 @@ def hive_task(
             memory_limit=memory_limit,
             discoverable=cache,
             timeout=timeout or _datetime.timedelta(seconds=0),
-            cluster_label='',
+            cluster_label="",
             tags=[],
             environment=environment or {},
         )
@@ -679,26 +685,26 @@ def hive_task(
 
 
 def qubole_hive_task(
-        _task_function=None,
-        cache_version='',
-        retries=0,
-        interruptible=None,
-        deprecated='',
-        storage_request=None,
-        cpu_request=None,
-        gpu_request=None,
-        memory_request=None,
-        storage_limit=None,
-        cpu_limit=None,
-        gpu_limit=None,
-        memory_limit=None,
-        cache=False,
-        timeout=None,
-        cluster_label=None,
-        tags=None,
-        environment=None,
-        cls=None
-        ):
+    _task_function=None,
+    cache_version="",
+    retries=0,
+    interruptible=None,
+    deprecated="",
+    storage_request=None,
+    cpu_request=None,
+    gpu_request=None,
+    memory_request=None,
+    storage_limit=None,
+    cpu_limit=None,
+    gpu_limit=None,
+    memory_limit=None,
+    cache=False,
+    timeout=None,
+    cluster_label=None,
+    tags=None,
+    environment=None,
+    cls=None,
+):
     """
     Decorator to create a qubole hive task. This is hive task runs on a qubole cluster, and therefore allows users to
     pass cluster labels and qubole query tags. Similar to hive task, this task should output a list of hive queries
@@ -792,6 +798,7 @@ def qubole_hive_task(
 
     :rtype: flytekit.common.tasks.sdk_runnable.SdkHiveTask
     """
+
     def wrapper(fn):
 
         return (cls or _sdk_hive_tasks.SdkHiveTask)(
@@ -811,7 +818,7 @@ def qubole_hive_task(
             memory_limit=memory_limit,
             discoverable=cache,
             timeout=timeout or _datetime.timedelta(seconds=0),
-            cluster_label=cluster_label or '',
+            cluster_label=cluster_label or "",
             tags=tags or [],
             environment=environment or {},
         )
@@ -825,25 +832,25 @@ def qubole_hive_task(
 
 
 def sidecar_task(
-        _task_function=None,
-        cache_version='',
-        retries=0,
-        interruptible=None,
-        deprecated='',
-        storage_request=None,
-        cpu_request=None,
-        gpu_request=None,
-        memory_request=None,
-        storage_limit=None,
-        cpu_limit=None,
-        gpu_limit=None,
-        memory_limit=None,
-        cache=False,
-        timeout=None,
-        environment=None,
-        pod_spec=None,
-        primary_container_name=None,
-        cls=None,
+    _task_function=None,
+    cache_version="",
+    retries=0,
+    interruptible=None,
+    deprecated="",
+    storage_request=None,
+    cpu_request=None,
+    gpu_request=None,
+    memory_request=None,
+    storage_limit=None,
+    cpu_limit=None,
+    gpu_limit=None,
+    memory_limit=None,
+    cache=False,
+    timeout=None,
+    environment=None,
+    pod_spec=None,
+    primary_container_name=None,
+    cls=None,
 ):
     """
     Decorator to create a Sidecar Task definition.  This task will execute the primary task alongside the specified
@@ -975,6 +982,7 @@ def sidecar_task(
     :rtype: flytekit.common.tasks.sdk_runnable.SdkRunnableTask
 
     """
+
     def wrapper(fn):
 
         return (cls or _sdk_sidecar_tasks.SdkSidecarTask)(
@@ -1006,27 +1014,27 @@ def sidecar_task(
 
 
 def dynamic_sidecar_task(
-        _task_function=None,
-        cache_version="",
-        retries=0,
-        interruptible=None,
-        deprecated="",
-        storage_request=None,
-        cpu_request=None,
-        gpu_request=None,
-        memory_request=None,
-        storage_limit=None,
-        cpu_limit=None,
-        gpu_limit=None,
-        memory_limit=None,
-        cache=False,
-        timeout=None,
-        allowed_failure_ratio=None,
-        max_concurrency=None,
-        environment=None,
-        pod_spec=None,
-        primary_container_name=None,
-        cls=None,
+    _task_function=None,
+    cache_version="",
+    retries=0,
+    interruptible=None,
+    deprecated="",
+    storage_request=None,
+    cpu_request=None,
+    gpu_request=None,
+    memory_request=None,
+    storage_limit=None,
+    cpu_limit=None,
+    gpu_limit=None,
+    memory_limit=None,
+    cache=False,
+    timeout=None,
+    allowed_failure_ratio=None,
+    max_concurrency=None,
+    environment=None,
+    pod_spec=None,
+    primary_container_name=None,
+    cls=None,
 ):
     """
     Decorator to create a custom dynamic sidecar task definition. Dynamic
@@ -1167,6 +1175,7 @@ def dynamic_sidecar_task(
         logic into the base Flyte programming model.
     :rtype: flytekit.common.tasks.sidecar_Task.SdkDynamicSidecarTask
     """
+
     def wrapper(fn):
         return (cls or _sdk_sidecar_tasks.SdkDynamicSidecarTask)(
             task_function=fn,
@@ -1199,24 +1208,24 @@ def dynamic_sidecar_task(
 
 
 def pytorch_task(
-        _task_function=None,
-        cache_version='',
-        retries=0,
-        interruptible=False,
-        deprecated='',
-        cache=False,
-        timeout=None,
-        workers_count=1,
-        per_replica_storage_request="",
-        per_replica_cpu_request="",
-        per_replica_gpu_request="",
-        per_replica_memory_request="",
-        per_replica_storage_limit="",
-        per_replica_cpu_limit="",
-        per_replica_gpu_limit="",
-        per_replica_memory_limit="",
-        environment=None,
-        cls=None
+    _task_function=None,
+    cache_version="",
+    retries=0,
+    interruptible=False,
+    deprecated="",
+    cache=False,
+    timeout=None,
+    workers_count=1,
+    per_replica_storage_request="",
+    per_replica_cpu_request="",
+    per_replica_gpu_request="",
+    per_replica_memory_request="",
+    per_replica_storage_limit="",
+    per_replica_cpu_limit="",
+    per_replica_gpu_limit="",
+    per_replica_memory_limit="",
+    environment=None,
+    cls=None,
 ):
     """
     Decorator to create a Pytorch Task definition. This task will submit PyTorchJob (see https://github.com/kubeflow/pytorch-operator)
@@ -1324,6 +1333,7 @@ def pytorch_task(
 
     :rtype: flytekit.common.tasks.sdk_runnable.SdkRunnableTask
     """
+
     def wrapper(fn):
         return (cls or _sdk_pytorch_tasks.SdkPyTorchTask)(
             task_function=fn,
@@ -1343,7 +1353,7 @@ def pytorch_task(
             per_replica_cpu_limit=per_replica_cpu_limit,
             per_replica_gpu_limit=per_replica_gpu_limit,
             per_replica_memory_limit=per_replica_memory_limit,
-            environment=environment or {}
+            environment=environment or {},
         )
 
     if _task_function:

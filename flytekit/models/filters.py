@@ -1,9 +1,9 @@
 from __future__ import absolute_import
+
 from flytekit.models.common import FlyteIdlEntity as _FlyteIdlEntity
 
 
 class FilterList(_FlyteIdlEntity):
-
     def __init__(self, filter_list):
         """
         :param list[Filter] filter_list: List of filters to AND together
@@ -51,21 +51,21 @@ class Filter(_FlyteIdlEntity):
         :param Text string:
         :rtype: Filter
         """
-        if string.startswith('eq('):
+        if string.startswith("eq("):
             return Equal._parse_from_string(string)
-        elif string.startswith('neq('):
+        elif string.startswith("neq("):
             return NotEqual._parse_from_string(string)
-        elif string.startswith('gt('):
+        elif string.startswith("gt("):
             return GreaterThan._parse_from_string(string)
-        elif string.startswith('gte('):
+        elif string.startswith("gte("):
             return GreaterThanOrEqual._parse_from_string(string)
-        elif string.startswith('lt('):
+        elif string.startswith("lt("):
             return LessThan._parse_from_string(string)
-        elif string.startswith('lte('):
+        elif string.startswith("lte("):
             return LessThanOrEqual._parse_from_string(string)
-        elif string.startswith('contains('):
+        elif string.startswith("contains("):
             return Contains._parse_from_string(string)
-        elif string.startswith('value_in('):
+        elif string.startswith("value_in("):
             return ValueIn._parse_from_string(string)
         else:
             raise ValueError("'{}' could not be parsed into a filter.".format(string))
@@ -76,8 +76,8 @@ class Filter(_FlyteIdlEntity):
         :param Text string:
         :rtype: Filter
         """
-        stripped = string[len(cls._comparator) + 1:]
-        if stripped[-1] != ')':
+        stripped = string[len(cls._comparator) + 1 :]
+        if stripped[-1] != ")":
             raise ValueError("Filter could not be parsed because {} did not end with a ')'".format(string))
         split = stripped[:-1].split(",")
         if len(split) != 2:
@@ -92,31 +92,30 @@ class Filter(_FlyteIdlEntity):
 
 
 class Equal(Filter):
-    _comparator = 'eq'
+    _comparator = "eq"
 
 
 class NotEqual(Filter):
-    _comparator = 'neq'
+    _comparator = "neq"
 
 
 class GreaterThan(Filter):
-    _comparator = 'gt'
+    _comparator = "gt"
 
 
 class GreaterThanOrEqual(Filter):
-    _comparator = 'gte'
+    _comparator = "gte"
 
 
 class LessThan(Filter):
-    _comparator = 'lt'
+    _comparator = "lt"
 
 
 class LessThanOrEqual(Filter):
-    _comparator = 'lte'
+    _comparator = "lte"
 
 
 class SetFilter(Filter):
-
     def __init__(self, key, values):
         """
         :param Text key:  The name of the field to compare against
@@ -126,12 +125,12 @@ class SetFilter(Filter):
 
     @classmethod
     def _parse_value(cls, value):
-        return value.split(';')
+        return value.split(";")
 
 
 class Contains(SetFilter):
-    _comparator = 'contains'
+    _comparator = "contains"
 
 
 class ValueIn(SetFilter):
-    _comparator = 'value_in'
+    _comparator = "value_in"

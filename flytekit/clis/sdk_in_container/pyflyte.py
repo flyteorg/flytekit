@@ -1,8 +1,8 @@
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
-import os as _os
 import logging as _logging
+import os as _os
+
 import click
 
 try:
@@ -10,32 +10,49 @@ try:
 except ImportError:
     from pathlib2 import Path  # python 2 backport
 
-from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
+from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_VERSION
+from flytekit.clis.sdk_in_container.launch_plan import launch_plans
 from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.serialize import serialize
-from flytekit.clis.sdk_in_container.constants import CTX_PROJECT, CTX_DOMAIN, CTX_VERSION
-from flytekit.clis.sdk_in_container.launch_plan import launch_plans
-from flytekit.configuration import internal as _internal_config, platform as _platform_config, sdk as _sdk_config
-
-from flytekit.configuration.internal import CONFIGURATION_PATH
-from flytekit.configuration.platform import URL as _URL
+from flytekit.configuration import internal as _internal_config
+from flytekit.configuration import platform as _platform_config
+from flytekit.configuration import sdk as _sdk_config
 from flytekit.configuration import set_flyte_config_file
-from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag, \
-    IMAGE as _IMAGE
+from flytekit.configuration.internal import CONFIGURATION_PATH
+from flytekit.configuration.internal import IMAGE as _IMAGE
+from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag
+from flytekit.configuration.platform import URL as _URL
 from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
 
 
-@click.group('pyflyte', invoke_without_command=True)
-@click.option('-p', '--project', required=True, type=str,
-              help='Flyte project to use. You can have more than one project per repo')
-@click.option('-d', '--domain', required=True, type=str, help='This is usually development, staging, or production')
-@click.option('-c', '--config', required=False, type=str, help='Path to config file for use within container')
-@click.option('-k', '--pkgs', required=False, multiple=True,
-              help='Dot separated python packages to operate on.  Multiple may be specified  Please note that this '
-                   'option will override the option specified in the configuration file, or environment variable')
-@click.option('-v', '--version', required=False, type=str, help='This is the version to apply globally for this '
-                                                                'context')
-@click.option('-i', '--insecure', required=False, type=bool, help='Do not use SSL to connect to Admin')
+@click.group("pyflyte", invoke_without_command=True)
+@click.option(
+    "-p",
+    "--project",
+    required=True,
+    type=str,
+    help="Flyte project to use. You can have more than one project per repo",
+)
+@click.option(
+    "-d", "--domain", required=True, type=str, help="This is usually development, staging, or production",
+)
+@click.option(
+    "-c", "--config", required=False, type=str, help="Path to config file for use within container",
+)
+@click.option(
+    "-k",
+    "--pkgs",
+    required=False,
+    multiple=True,
+    help="Dot separated python packages to operate on.  Multiple may be specified  Please note that this "
+    "option will override the option specified in the configuration file, or environment variable",
+)
+@click.option(
+    "-v", "--version", required=False, type=str, help="This is the version to apply globally for this " "context",
+)
+@click.option(
+    "-i", "--insecure", required=False, type=bool, help="Do not use SSL to connect to Admin",
+)
 @click.pass_context
 def main(ctx, project, domain, config=None, pkgs=None, version=None, insecure=None):
     """
@@ -59,7 +76,7 @@ def main(ctx, project, domain, config=None, pkgs=None, version=None, insecure=No
     # says no, let's override the config object by overriding the environment variable.
     if insecure and not _platform_config.INSECURE.get():
         _platform_config.INSECURE.get()
-        _os.environ[_platform_config.INSECURE.env_var] = 'True'
+        _os.environ[_platform_config.INSECURE.env_var] = "True"
 
     # Handle package management - get from config if not specified on the command line
     pkgs = pkgs or []
@@ -81,14 +98,19 @@ def update_configuration_file(config_file_path):
     """
     configuration_file = Path(config_file_path or CONFIGURATION_PATH.get())
     if configuration_file.is_file():
-        click.secho('Using configuration file at {}'.format(configuration_file.absolute().as_posix()),
-                    fg='green')
+        click.secho(
+            "Using configuration file at {}".format(configuration_file.absolute().as_posix()), fg="green",
+        )
         set_flyte_config_file(configuration_file.as_posix())
     else:
-        click.secho("Configuration file '{}' could not be loaded. Using values from environment.".format(CONFIGURATION_PATH.get()),
-                    color='yellow')
+        click.secho(
+            "Configuration file '{}' could not be loaded. Using values from environment.".format(
+                CONFIGURATION_PATH.get()
+            ),
+            color="yellow",
+        )
         set_flyte_config_file(None)
-    click.secho('Flyte Admin URL {}'.format(_URL.get()), fg='green')
+    click.secho("Flyte Admin URL {}".format(_URL.get()), fg="green")
 
 
 main.add_command(register)

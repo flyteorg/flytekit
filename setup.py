@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
-from setuptools import setup, find_packages  # noqa
+from setuptools import find_packages, setup  # noqa
+
 import flytekit  # noqa
 from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
 
@@ -9,24 +10,24 @@ extras_require = LazyLoadPlugin.get_extras_require()
 extras_require[':python_version<"3"'] = [
     "configparser>=3.0.0,<4.0.0",
     "futures>=3.2.0,<4.0.0",
-    "pathlib2>=2.3.2,<3.0.0"
+    "pathlib2>=2.3.2,<3.0.0",
 ]
 
 setup(
-    name='flytekit',
+    name="flytekit",
     version=flytekit.__version__,
-    maintainer='Lyft',
-    maintainer_email='flyte-eng@lyft.com',
+    maintainer="Lyft",
+    maintainer_email="flyte-eng@lyft.com",
     packages=find_packages(exclude=["tests*"]),
-    url='https://github.com/lyft/flytekit',
-    description='Flyte SDK for Python',
-    long_description=open('README.md').read(),
+    url="https://github.com/lyft/flytekit",
+    description="Flyte SDK for Python",
+    long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     entry_points={
-        'console_scripts': [
-            'pyflyte-execute=flytekit.bin.entrypoint:execute_task_cmd',
-            'pyflyte=flytekit.clis.sdk_in_container.pyflyte:main',
-            'flyte-cli=flytekit.clis.flyte_cli.main:_flyte_cli'
+        "console_scripts": [
+            "pyflyte-execute=flytekit.bin.entrypoint:execute_task_cmd",
+            "pyflyte=flytekit.clis.sdk_in_container.pyflyte:main",
+            "flyte-cli=flytekit.clis.flyte_cli.main:_flyte_cli",
         ]
     },
     install_requires=[
@@ -52,10 +53,10 @@ setup(
     ],
     extras_require=extras_require,
     scripts=[
-        'scripts/flytekit_install_spark.sh',
-        'scripts/flytekit_install_spark3.sh',
-        'scripts/flytekit_build_image.sh',
-        'scripts/flytekit_venv'
+        "scripts/flytekit_install_spark.sh",
+        "scripts/flytekit_install_spark3.sh",
+        "scripts/flytekit_build_image.sh",
+        "scripts/flytekit_venv",
     ],
     license="apache2",
     python_requires=">=2.7",

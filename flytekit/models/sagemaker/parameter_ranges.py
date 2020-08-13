@@ -16,10 +16,7 @@ class HyperparameterScalingType(object):
 
 class ContinuousParameterRange(_common.FlyteIdlEntity):
     def __init__(
-            self,
-            max_value: float,
-            min_value: float,
-            scaling_type: int,
+        self, max_value: float, min_value: float, scaling_type: int,
     ):
         """
 
@@ -61,9 +58,7 @@ class ContinuousParameterRange(_common.FlyteIdlEntity):
         """
 
         return _idl_parameter_ranges.ContinuousParameterRange(
-            max_value=self._max_value,
-            min_value=self._min_value,
-            scaling_type=self.scaling_type,
+            max_value=self._max_value, min_value=self._min_value, scaling_type=self.scaling_type,
         )
 
     @classmethod
@@ -74,18 +69,13 @@ class ContinuousParameterRange(_common.FlyteIdlEntity):
         :rtype: ContinuousParameterRange
         """
         return cls(
-            max_value=pb2_object.max_value,
-            min_value=pb2_object.min_value,
-            scaling_type=pb2_object.scaling_type,
+            max_value=pb2_object.max_value, min_value=pb2_object.min_value, scaling_type=pb2_object.scaling_type,
         )
 
 
 class IntegerParameterRange(_common.FlyteIdlEntity):
     def __init__(
-            self,
-            max_value: int,
-            min_value: int,
-            scaling_type: int,
+        self, max_value: int, min_value: int, scaling_type: int,
     ):
         """
         :param int max_value:
@@ -124,9 +114,7 @@ class IntegerParameterRange(_common.FlyteIdlEntity):
         :rtype: _idl_parameter_ranges.IntegerParameterRange
         """
         return _idl_parameter_ranges.IntegerParameterRange(
-            max_value=self._max_value,
-            min_value=self._min_value,
-            scaling_type=self.scaling_type,
+            max_value=self._max_value, min_value=self._min_value, scaling_type=self.scaling_type,
         )
 
     @classmethod
@@ -137,16 +125,13 @@ class IntegerParameterRange(_common.FlyteIdlEntity):
         :rtype: IntegerParameterRange
         """
         return cls(
-            max_value=pb2_object.max_value,
-            min_value=pb2_object.min_value,
-            scaling_type=pb2_object.scaling_type,
+            max_value=pb2_object.max_value, min_value=pb2_object.min_value, scaling_type=pb2_object.scaling_type,
         )
 
 
 class CategoricalParameterRange(_common.FlyteIdlEntity):
     def __init__(
-            self,
-            values: List[str],
+        self, values: List[str],
     ):
         """
 
@@ -165,21 +150,16 @@ class CategoricalParameterRange(_common.FlyteIdlEntity):
         """
         :rtype: _idl_parameter_ranges.CategoricalParameterRange
         """
-        return _idl_parameter_ranges.CategoricalParameterRange(
-            values=self._values
-        )
+        return _idl_parameter_ranges.CategoricalParameterRange(values=self._values)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _idl_parameter_ranges.CategoricalParameterRange):
-        return cls(
-            values=pb2_object.values
-        )
+        return cls(values=pb2_object.values)
 
 
 class ParameterRanges(_common.FlyteIdlEntity):
     def __init__(
-            self,
-            parameter_range_map: Dict[str, _common.FlyteIdlEntity],
+        self, parameter_range_map: Dict[str, _common.FlyteIdlEntity],
     ):
         self._parameter_range_map = parameter_range_map
 
@@ -193,9 +173,7 @@ class ParameterRanges(_common.FlyteIdlEntity):
             else:
                 converted[k] = _idl_parameter_ranges.ParameterRangeOneOf(categorical_parameter_range=v.to_flyte_idl())
 
-        return _idl_parameter_ranges.ParameterRanges(
-            parameter_range_map=converted,
-        )
+        return _idl_parameter_ranges.ParameterRanges(parameter_range_map=converted,)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _idl_parameter_ranges.ParameterRanges):
@@ -208,6 +186,4 @@ class ParameterRanges(_common.FlyteIdlEntity):
             else:
                 converted[k] = CategoricalParameterRange.from_flyte_idl(v)
 
-        return cls(
-            parameter_range_map=converted,
-        )
+        return cls(parameter_range_map=converted,)

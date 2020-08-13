@@ -1,12 +1,14 @@
 from __future__ import absolute_import
-from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
-from flytekit.configuration import sdk as _sdk_config
+
 import importlib as _importlib
 
+from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.configuration import sdk as _sdk_config
 
 _ENGINE_NAME_TO_MODULES_CACHE = {
-    'flyte': ('flytekit.engines.flyte.engine', 'FlyteEngineFactory', None),
-    'unit': ('flytekit.engines.unit.engine', 'UnitTestEngineFactory', None),
+    "flyte": ("flytekit.engines.flyte.engine", "FlyteEngineFactory", None),
+    "unit": ("flytekit.engines.unit.engine", "UnitTestEngineFactory", None),
     # 'local': ('flytekit.engines.local.engine', 'EngineObjectFactory', None)
 }
 
@@ -23,9 +25,8 @@ def get_engine(engine_name=None):
         raise _user_exceptions.FlyteValueException(
             engine_name,
             "Could not load an engine with the identifier '{}'.  Known engines are: {}".format(
-                engine_name,
-                list(_ENGINE_NAME_TO_MODULES_CACHE.keys())
-            )
+                engine_name, list(_ENGINE_NAME_TO_MODULES_CACHE.keys())
+            ),
         )
 
     module_path, attr, engine_impl = _ENGINE_NAME_TO_MODULES_CACHE[engine_name]
@@ -36,9 +37,7 @@ def get_engine(engine_name=None):
             raise _user_exceptions.FlyteValueException(
                 module,
                 "Failed to load the engine because the attribute named '{}' could not be found"
-                "in the module '{}'.".format(
-                    attr, module_path
-                )
+                "in the module '{}'.".format(attr, module_path),
             )
 
         engine_impl = getattr(module, attr)()

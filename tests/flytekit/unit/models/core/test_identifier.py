@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 from flytekit.models.core import identifier
 
 
@@ -21,10 +22,7 @@ def test_identifier():
 
 def test_node_execution_identifier():
     wf_exec_id = identifier.WorkflowExecutionIdentifier("project", "domain", "name")
-    obj = identifier.NodeExecutionIdentifier(
-        "node_id",
-        wf_exec_id
-    )
+    obj = identifier.NodeExecutionIdentifier("node_id", wf_exec_id)
     assert obj.node_id == "node_id"
     assert obj.execution_id == wf_exec_id
 
@@ -37,10 +35,7 @@ def test_node_execution_identifier():
 def test_task_execution_identifier():
     task_id = identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version")
     wf_exec_id = identifier.WorkflowExecutionIdentifier("project", "domain", "name")
-    node_exec_id = identifier.NodeExecutionIdentifier(
-        "node_id",
-        wf_exec_id,
-    )
+    node_exec_id = identifier.NodeExecutionIdentifier("node_id", wf_exec_id,)
     obj = identifier.TaskExecutionIdentifier(task_id, node_exec_id, 3)
     assert obj.retry_attempt == 3
     assert obj.task_id == task_id
@@ -65,7 +60,8 @@ def test_workflow_execution_identifier():
     assert obj2.domain == "domain"
     assert obj2.name == "name"
 
-def test_task_execution_identifier():
+
+def test_identifier_emptiness():
     empty_id = identifier.Identifier(identifier.ResourceType.UNSPECIFIED, "", "", "", "")
     not_empty_id = identifier.Identifier(identifier.ResourceType.UNSPECIFIED, "", "", "", "version")
     assert empty_id.is_empty
