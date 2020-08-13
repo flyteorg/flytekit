@@ -138,7 +138,7 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         for upstream_entity in executable_sdk_object.upstream_entities:
             # If the upstream entity is either a Workflow or a Task, yield them in the
             # dynamic job spec. Otherwise (e.g. a LaunchPlan), we will assume it already
-            # is registered (can't be dynamically created). Thi will cause a runtime error
+            # is registered (can't be dynamically created). This will cause a runtime error
             # if it's not already registered with the control plane.
             if isinstance(upstream_entity, _workflow.SdkWorkflow):
                 sub_workflows.add(upstream_entity)

@@ -4,6 +4,7 @@ from typing import List, Dict, Any
 
 import six as _six
 from six.moves import queue as _queue
+from  flyteidl.core import workflow_pb2 as _core_workflow_pb2
 
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface, nodes as _nodes, sdk_bases as _sdk_bases, \
@@ -546,6 +547,9 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
             annotations=annotations,
             auth_role=auth_role,
         )
+
+    def to_flyte_idl(self)-> _core_workflow_pb2.WorkflowTemplate:
+        return self.flyte_workflow.to_flyte_idl()
 
 
 def build_sdk_workflow_from_metaclass(metaclass, on_failure=None):
