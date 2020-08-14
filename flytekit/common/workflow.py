@@ -388,12 +388,14 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
 
     def __init__(self, flyte_workflow: SdkWorkflow, inputs: List[_promise.Input],
                  nodes: List[_nodes.SdkNode]):
-        # Currently doing a has-a relationship, cuz it's easier to work with while refactoring, can revisit later.
+        _registerable.LocalEntity.__init__(self)
+        # Currently experimenting with using composition instead of inheritance, which is why this has an sdk workflow.
         self._flyte_workflow = flyte_workflow
         self._workflow_inputs = inputs
         self._nodes = nodes
         self._user_inputs = inputs
         self._upstream_entities = set(n.executable_sdk_object for n in nodes)
+
 
     def __call__(self, *args, **input_map):
         # Take the default values from the Inputs
