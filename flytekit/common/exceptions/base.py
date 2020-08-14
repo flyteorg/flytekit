@@ -9,7 +9,7 @@ class _FlyteCodedExceptionMetaclass(type):
 
 
 class FlyteException(_six.with_metaclass(_FlyteCodedExceptionMetaclass, Exception)):
-    _ERROR_CODE = 'UnknownFlyteException'
+    _ERROR_CODE = "UnknownFlyteException"
 
 
 class FlyteRecoverableException(FlyteException):

@@ -16,7 +16,6 @@ class FlyteABCMeta(_abc.ABCMeta):
 
 
 class FlyteType(FlyteABCMeta):
-
     def __repr__(cls):
         return cls.short_class_string()
 
@@ -41,10 +40,11 @@ class FlyteType(FlyteABCMeta):
 
 
 class FlyteIdlEntity(_six.with_metaclass(FlyteType, object)):
-
     def __eq__(self, other):
-        return isinstance(other, FlyteIdlEntity) and \
-            other.to_flyte_idl() == self.to_flyte_idl()
+        return (
+            isinstance(other, FlyteIdlEntity)
+            and other.to_flyte_idl() == self.to_flyte_idl()
+        )
 
     def __ne__(self, other):
         return not (self == other)
@@ -80,7 +80,6 @@ class FlyteIdlEntity(_six.with_metaclass(FlyteType, object)):
 
 
 class FlyteCustomIdlEntity(FlyteIdlEntity):
-
     @classmethod
     def from_flyte_idl(cls, idl_object):
         """
@@ -107,7 +106,6 @@ class FlyteCustomIdlEntity(FlyteIdlEntity):
 
 
 class NamedEntityIdentifier(FlyteIdlEntity):
-
     def __init__(self, project, domain, name=None):
         """
         :param Text project: The name of the project in which this entity lives.
@@ -150,9 +148,7 @@ class NamedEntityIdentifier(FlyteIdlEntity):
 
         # We use the kwarg constructor of the protobuf and setting name=None is equivalent to not setting it at all
         return _common_pb2.NamedEntityIdentifier(
-            project=self.project,
-            domain=self.domain,
-            name=self.name
+            project=self.project, domain=self.domain, name=self.name
         )
 
     @classmethod
@@ -165,7 +161,6 @@ class NamedEntityIdentifier(FlyteIdlEntity):
 
 
 class EmailNotification(FlyteIdlEntity):
-
     def __init__(self, recipients_email):
         """
         :param list[Text] recipients_email:
@@ -195,7 +190,6 @@ class EmailNotification(FlyteIdlEntity):
 
 
 class SlackNotification(FlyteIdlEntity):
-
     def __init__(self, recipients_email):
         """
         :param list[Text] recipients_email:
@@ -225,7 +219,6 @@ class SlackNotification(FlyteIdlEntity):
 
 
 class PagerDutyNotification(FlyteIdlEntity):
-
     def __init__(self, recipients_email):
         """
         :param list[Text] recipients_email:
@@ -255,7 +248,6 @@ class PagerDutyNotification(FlyteIdlEntity):
 
 
 class Notification(FlyteIdlEntity):
-
     def __init__(self, phases, email=None, pager_duty=None, slack=None):
         """
         Represents a structure for notifications based on execution status.
@@ -307,7 +299,7 @@ class Notification(FlyteIdlEntity):
             phases=self.phases,
             email=self.email.to_flyte_idl() if self.email else None,
             pager_duty=self.pager_duty.to_flyte_idl() if self.pager_duty else None,
-            slack=self.slack.to_flyte_idl() if self.slack else None
+            slack=self.slack.to_flyte_idl() if self.slack else None,
         )
 
     @classmethod
@@ -318,9 +310,15 @@ class Notification(FlyteIdlEntity):
         """
         return cls(
             p.phases,
-            email=EmailNotification.from_flyte_idl(p.email) if p.HasField("email") else None,
-            pager_duty=PagerDutyNotification.from_flyte_idl(p.pager_duty) if p.HasField("pager_duty") else None,
-            slack=SlackNotification.from_flyte_idl(p.slack) if p.HasField("slack") else None,
+            email=EmailNotification.from_flyte_idl(p.email)
+            if p.HasField("email")
+            else None,
+            pager_duty=PagerDutyNotification.from_flyte_idl(p.pager_duty)
+            if p.HasField("pager_duty")
+            else None,
+            slack=SlackNotification.from_flyte_idl(p.slack)
+            if p.HasField("slack")
+            else None,
         )
 
 
@@ -341,9 +339,7 @@ class Labels(FlyteIdlEntity):
         """
         :rtype: dict[Text, Text]
         """
-        return _common_pb2.Labels(
-            values={k: v for k, v in _six.iteritems(self.values)}
-        )
+        return _common_pb2.Labels(values={k: v for k, v in _six.iteritems(self.values)})
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -385,7 +381,6 @@ class Annotations(FlyteIdlEntity):
 
 
 class UrlBlob(FlyteIdlEntity):
-
     def __init__(self, url, bytes):
         """
         :param Text url:
@@ -432,7 +427,9 @@ class AuthRole(FlyteIdlEntity):
             administrators are responsible for handling permissions as they relate to the service account.
         """
         if assumable_iam_role and kubernetes_service_account:
-            raise ValueError("Only one of assumable_iam_role or kubernetes_service_account can be set")
+            raise ValueError(
+                "Only one of assumable_iam_role or kubernetes_service_account can be set"
+            )
         self._assumable_iam_role = assumable_iam_role
         self._kubernetes_service_account = kubernetes_service_account
 
@@ -457,8 +454,12 @@ class AuthRole(FlyteIdlEntity):
         :rtype: flyteidl.admin.launch_plan_pb2.Auth
         """
         return _common_pb2.AuthRole(
-            assumable_iam_role=self.assumable_iam_role if self.assumable_iam_role else None,
-            kubernetes_service_account=self.kubernetes_service_account if self.kubernetes_service_account else None,
+            assumable_iam_role=self.assumable_iam_role
+            if self.assumable_iam_role
+            else None,
+            kubernetes_service_account=self.kubernetes_service_account
+            if self.kubernetes_service_account
+            else None,
         )
 
     @classmethod
@@ -468,9 +469,10 @@ class AuthRole(FlyteIdlEntity):
         :rtype: Auth
         """
         return cls(
-            assumable_iam_role=pb2_object.assumable_iam_role if pb2_object.HasField("assumable_iam_role") else None,
-            kubernetes_service_account=pb2_object.kubernetes_service_account if
-            pb2_object.HasField("kubernetes_service_account") else None,
+            assumable_iam_role=pb2_object.assumable_iam_role
+            if pb2_object.HasField("assumable_iam_role")
+            else None,
+            kubernetes_service_account=pb2_object.kubernetes_service_account
+            if pb2_object.HasField("kubernetes_service_account")
+            else None,
         )
-
-

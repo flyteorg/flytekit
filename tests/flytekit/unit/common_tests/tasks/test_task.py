@@ -57,18 +57,23 @@ def get_sample_task():
 def test_task_serialization():
     t = get_sample_task()
     with TemporaryConfiguration(
-            _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), '../../../common/configs/local.config'),
-            internal_overrides={
-                'image': 'myflyteimage:v123',
-                'project': 'myflyteproject',
-                'domain': 'development'
-            }
+        _os.path.join(
+            _os.path.dirname(_os.path.realpath(__file__)),
+            "../../../common/configs/local.config",
+        ),
+        internal_overrides={
+            "image": "myflyteimage:v123",
+            "project": "myflyteproject",
+            "domain": "development",
+        },
     ):
         s = t.serialize()
 
     assert isinstance(s, _admin_task_pb2.TaskSpec)
-    assert s.template.id.name == 'tests.flytekit.unit.common_tests.tasks.test_task.my_task'
-    assert s.template.container.image == 'myflyteimage:v123'
+    assert (
+        s.template.id.name == "tests.flytekit.unit.common_tests.tasks.test_task.my_task"
+    )
+    assert s.template.container.image == "myflyteimage:v123"
 
 
 schema = Types.Schema([("a", Types.String), ("b", Types.Integer)])
@@ -93,11 +98,15 @@ def test_task_produce_deterministic_version():
         output_schema=schema,
         routing_group="{{ .Inputs.rg }}",
     )
-    assert containerless_task._produce_deterministic_version() == \
-           identical_containerless_task._produce_deterministic_version()
+    assert (
+        containerless_task._produce_deterministic_version()
+        == identical_containerless_task._produce_deterministic_version()
+    )
 
-    assert containerless_task._produce_deterministic_version() != \
-           different_containerless_task._produce_deterministic_version()
+    assert (
+        containerless_task._produce_deterministic_version()
+        != different_containerless_task._produce_deterministic_version()
+    )
 
     with _pytest.raises(Exception):
         get_sample_task()._produce_deterministic_version()

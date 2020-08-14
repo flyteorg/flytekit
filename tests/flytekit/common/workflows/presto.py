@@ -22,6 +22,6 @@ class PrestoWorkflow(object):
     ds = Input(Types.String, required=True, help="Test string with no default")
     # routing_group = Input(Types.String, required=True, help="Test string with no default")
 
-    p_task = presto_task(ds=ds, rg='etl')
+    p_task = presto_task(ds=ds, rg="etl")
 
     output_a = Output(p_task.outputs.results, sdk_type=schema)

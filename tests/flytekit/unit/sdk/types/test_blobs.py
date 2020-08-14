@@ -12,7 +12,7 @@ import pytest
         (_sdk_types.Types.CSV, _blob_impl.Blob),
         (_sdk_types.Types.MultiPartBlob, _blob_impl.MultiPartBlob),
         (_sdk_types.Types.MultiPartCSV, _blob_impl.MultiPartBlob),
-    ]
+    ],
 )
 def test_instantiable_blobs(blob_tuple):
     sdk_type, impl = blob_tuple
@@ -28,5 +28,5 @@ def test_instantiable_blobs(blob_tuple):
     with pytest.raises(Exception):
         sdk_type(a=1)
 
-    blob_inst = sdk_type.create_at_known_location('abc')
+    blob_inst = sdk_type.create_at_known_location("abc")
     assert isinstance(blob_inst, impl)

@@ -46,9 +46,7 @@ class HiveQuery(_common.FlyteIdlEntity):
         :rtype: _qubole.HiveQuery
         """
         return _qubole.HiveQuery(
-            query=self.query,
-            timeout_sec=self.timeout_sec,
-            retryCount=self.retry_count
+            query=self.query, timeout_sec=self.timeout_sec, retryCount=self.retry_count
         )
 
     @classmethod
@@ -60,8 +58,9 @@ class HiveQuery(_common.FlyteIdlEntity):
         return cls(
             query=pb2_object.query,
             timeout_sec=pb2_object.timeout_sec,
-            retry_count=pb2_object.retryCount
+            retry_count=pb2_object.retryCount,
         )
+
 
 class HiveQueryCollection(_common.FlyteIdlEntity):
     def __init__(self, queries):
@@ -84,7 +83,9 @@ class HiveQueryCollection(_common.FlyteIdlEntity):
         :rtype: _qubole.HiveQueryCollection
         """
         return _qubole.HiveQueryCollection(
-            queries=[query.to_flyte_idl() for query in self.queries] if self.queries else None
+            queries=[query.to_flyte_idl() for query in self.queries]
+            if self.queries
+            else None
         )
 
     @classmethod
@@ -99,7 +100,6 @@ class HiveQueryCollection(_common.FlyteIdlEntity):
 
 
 class QuboleHiveJob(_common.FlyteIdlEntity):
-
     def __init__(self, query, cluster_label, tags, query_collection=None):
         """
         Initializes a HiveJob.
@@ -130,7 +130,6 @@ class QuboleHiveJob(_common.FlyteIdlEntity):
         """
         return self._query
 
-
     @property
     def cluster_label(self):
         """
@@ -152,10 +151,12 @@ class QuboleHiveJob(_common.FlyteIdlEntity):
         :rtype: _qubole.QuboleHiveJob
         """
         return _qubole.QuboleHiveJob(
-            query_collection=self._query_collection.to_flyte_idl() if self._query_collection else None,
+            query_collection=self._query_collection.to_flyte_idl()
+            if self._query_collection
+            else None,
             query=self._query.to_flyte_idl() if self._query else None,
             cluster_label=self._cluster_label,
-            tags=self._tags
+            tags=self._tags,
         )
 
     @classmethod
@@ -165,8 +166,9 @@ class QuboleHiveJob(_common.FlyteIdlEntity):
         :rtype: QuboleHiveJob
         """
         return cls(
-            query_collection=HiveQueryCollection.from_flyte_idl(p.query_collection) if p.HasField(
-                "query_collection") else None,
+            query_collection=HiveQueryCollection.from_flyte_idl(p.query_collection)
+            if p.HasField("query_collection")
+            else None,
             query=HiveQuery.from_flyte_idl(p.query) if p.HasField("query") else None,
             cluster_label=p.cluster_label,
             tags=p.tags,

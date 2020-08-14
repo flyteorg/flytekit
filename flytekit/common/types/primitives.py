@@ -14,7 +14,6 @@ import datetime as _datetime
 
 
 class Integer(_base_sdk_types.FlyteSdkValue):
-
     @classmethod
     def from_string(cls, string_value):
         """
@@ -24,9 +23,12 @@ class Integer(_base_sdk_types.FlyteSdkValue):
         try:
             return cls(int(string_value))
         except (ValueError, TypeError):
-            raise _user_exceptions.FlyteTypeException(_six.text_type, int,
-                                                      additional_msg='String not castable to Integer SDK type:'
-                                                                     ' {}'.format(string_value))
+            raise _user_exceptions.FlyteTypeException(
+                _six.text_type,
+                int,
+                additional_msg="String not castable to Integer SDK type:"
+                " {}".format(string_value),
+            )
 
     @classmethod
     def is_castable_from(cls, other):
@@ -46,7 +48,9 @@ class Integer(_base_sdk_types.FlyteSdkValue):
         if t_value is None:
             return _base_sdk_types.Void()
         if type(t_value) not in _six.integer_types:
-            raise _user_exceptions.FlyteTypeException(type(t_value), _six.integer_types, t_value)
+            raise _user_exceptions.FlyteTypeException(
+                type(t_value), _six.integer_types, t_value
+            )
         return cls(t_value)
 
     @classmethod
@@ -70,13 +74,15 @@ class Integer(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: Text
         """
-        return 'Integer'
+        return "Integer"
 
     def __init__(self, value):
         """
         :param int value: Int value to wrap
         """
-        super(Integer, self).__init__(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=value)))
+        super(Integer, self).__init__(
+            scalar=_literals.Scalar(primitive=_literals.Primitive(integer=value))
+        )
 
     def to_python_std(self):
         """
@@ -92,7 +98,6 @@ class Integer(_base_sdk_types.FlyteSdkValue):
 
 
 class Float(_base_sdk_types.FlyteSdkValue):
-
     @classmethod
     def from_string(cls, string_value):
         """
@@ -102,9 +107,12 @@ class Float(_base_sdk_types.FlyteSdkValue):
         try:
             return cls(float(string_value))
         except ValueError:
-            raise _user_exceptions.FlyteTypeException(_six.text_type, float,
-                                                      additional_msg='String not castable to Float SDK type:'
-                                                                     ' {}'.format(string_value))
+            raise _user_exceptions.FlyteTypeException(
+                _six.text_type,
+                float,
+                additional_msg="String not castable to Float SDK type:"
+                " {}".format(string_value),
+            )
 
     @classmethod
     def is_castable_from(cls, other):
@@ -148,13 +156,15 @@ class Float(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: Text
         """
-        return 'Float'
+        return "Float"
 
     def __init__(self, value):
         """
         :param float value: value to wrap
         """
-        super(Float, self).__init__(scalar=_literals.Scalar(primitive=_literals.Primitive(float_value=value)))
+        super(Float, self).__init__(
+            scalar=_literals.Scalar(primitive=_literals.Primitive(float_value=value))
+        )
 
     def to_python_std(self):
         """
@@ -170,20 +180,22 @@ class Float(_base_sdk_types.FlyteSdkValue):
 
 
 class Boolean(_base_sdk_types.FlyteSdkValue):
-
     @classmethod
     def from_string(cls, string_value):
         """
         :param Text string_value:
         :rtype: Boolean
         """
-        if string_value == '1' or string_value.lower() == 'true':
+        if string_value == "1" or string_value.lower() == "true":
             return cls(True)
-        elif string_value == '0' or string_value.lower() == 'false':
+        elif string_value == "0" or string_value.lower() == "false":
             return cls(False)
-        raise _user_exceptions.FlyteTypeException(_six.text_type, bool,
-                                                  additional_msg='String not castable to Boolean SDK '
-                                                                 'type: {}'.format(string_value))
+        raise _user_exceptions.FlyteTypeException(
+            _six.text_type,
+            bool,
+            additional_msg="String not castable to Boolean SDK "
+            "type: {}".format(string_value),
+        )
 
     @classmethod
     def is_castable_from(cls, other):
@@ -227,13 +239,15 @@ class Boolean(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: Text
         """
-        return 'Boolean'
+        return "Boolean"
 
     def __init__(self, value):
         """
         :param bool value: value to wrap
         """
-        super(Boolean, self).__init__(scalar=_literals.Scalar(primitive=_literals.Primitive(boolean=value)))
+        super(Boolean, self).__init__(
+            scalar=_literals.Scalar(primitive=_literals.Primitive(boolean=value))
+        )
 
     def to_python_std(self):
         """
@@ -249,7 +263,6 @@ class Boolean(_base_sdk_types.FlyteSdkValue):
 
 
 class String(_base_sdk_types.FlyteSdkValue):
-
     @classmethod
     def from_string(cls, string_value):
         """
@@ -258,8 +271,12 @@ class String(_base_sdk_types.FlyteSdkValue):
         """
         if type(string_value) == dict or type(string_value) == list:
             raise _user_exceptions.FlyteTypeException(
-                type(string_value), _six.text_type,
-                additional_msg='Should not cast native Python type to string {}'.format(string_value))
+                type(string_value),
+                _six.text_type,
+                additional_msg="Should not cast native Python type to string {}".format(
+                    string_value
+                ),
+            )
         return cls(string_value)
 
     @classmethod
@@ -281,7 +298,9 @@ class String(_base_sdk_types.FlyteSdkValue):
         if t_value is None:
             return _base_sdk_types.Void()
         if type(t_value) not in set([str, _six.text_type]):
-            raise _user_exceptions.FlyteTypeException(type(t_value), set([str, _six.text_type]), t_value)
+            raise _user_exceptions.FlyteTypeException(
+                type(t_value), set([str, _six.text_type]), t_value
+            )
         return cls(t_value)
 
     @classmethod
@@ -305,13 +324,15 @@ class String(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: Text
         """
-        return 'String'
+        return "String"
 
     def __init__(self, value):
         """
         :param Text value: value to wrap
         """
-        super(String, self).__init__(scalar=_literals.Scalar(primitive=_literals.Primitive(string_value=value)))
+        super(String, self).__init__(
+            scalar=_literals.Scalar(primitive=_literals.Primitive(string_value=value))
+        )
 
     def to_python_std(self):
         """
@@ -326,7 +347,9 @@ class String(_base_sdk_types.FlyteSdkValue):
         _TRUNCATE_LENGTH = 100
         return "String('{}'{})".format(
             self.scalar.primitive.string_value[:_TRUNCATE_LENGTH],
-            " ..." if len(self.scalar.primitive.string_value) > _TRUNCATE_LENGTH else ""
+            " ..."
+            if len(self.scalar.primitive.string_value) > _TRUNCATE_LENGTH
+            else "",
         )
 
     def verbose_string(self):
@@ -337,7 +360,6 @@ class String(_base_sdk_types.FlyteSdkValue):
 
 
 class Datetime(_base_sdk_types.FlyteSdkValue):
-
     @classmethod
     def from_string(cls, string_value):
         """
@@ -347,9 +369,12 @@ class Datetime(_base_sdk_types.FlyteSdkValue):
         try:
             python_std_datetime = _parser.parse(string_value)
         except ValueError:
-            raise _user_exceptions.FlyteTypeException(_six.text_type, _datetime.datetime,
-                                                      additional_msg='String not castable to Datetime '
-                                                                     'SDK type: {}'.format(string_value))
+            raise _user_exceptions.FlyteTypeException(
+                _six.text_type,
+                _datetime.datetime,
+                additional_msg="String not castable to Datetime "
+                "SDK type: {}".format(string_value),
+            )
 
         return cls.from_python_std(python_std_datetime)
 
@@ -371,10 +396,15 @@ class Datetime(_base_sdk_types.FlyteSdkValue):
         if t_value is None:
             return _base_sdk_types.Void()
         elif type(t_value) != _datetime.datetime:
-            raise _user_exceptions.FlyteTypeException(type(t_value), _datetime.datetime, t_value)
+            raise _user_exceptions.FlyteTypeException(
+                type(t_value), _datetime.datetime, t_value
+            )
         elif t_value.tzinfo is None:
-            raise _user_exceptions.FlyteValueException(t_value, "Datetime objects in Flyte must be timezone aware.  "
-                                                                "tzinfo was found to be None.")
+            raise _user_exceptions.FlyteValueException(
+                t_value,
+                "Datetime objects in Flyte must be timezone aware.  "
+                "tzinfo was found to be None.",
+            )
         return cls(t_value)
 
     @classmethod
@@ -398,13 +428,15 @@ class Datetime(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: Text
         """
-        return 'Datetime'
+        return "Datetime"
 
     def __init__(self, value):
         """
         :param datetime.datetime value: value to wrap
         """
-        super(Datetime, self).__init__(scalar=_literals.Scalar(primitive=_literals.Primitive(datetime=value)))
+        super(Datetime, self).__init__(
+            scalar=_literals.Scalar(primitive=_literals.Primitive(datetime=value))
+        )
 
     def to_python_std(self):
         """
@@ -420,7 +452,6 @@ class Datetime(_base_sdk_types.FlyteSdkValue):
 
 
 class Timedelta(_base_sdk_types.FlyteSdkValue):
-
     @classmethod
     def from_string(cls, string_value):
         """
@@ -429,9 +460,12 @@ class Timedelta(_base_sdk_types.FlyteSdkValue):
         """
         td = _parse_duration_string(string_value)
         if td is None:
-            raise _user_exceptions.FlyteTypeException(_six.text_type, _datetime.timedelta,
-                                                      additional_msg='Could not convert string to'
-                                                                     ' time delta: {}'.format(string_value))
+            raise _user_exceptions.FlyteTypeException(
+                _six.text_type,
+                _datetime.timedelta,
+                additional_msg="Could not convert string to"
+                " time delta: {}".format(string_value),
+            )
         return cls.from_python_std(_datetime.timedelta(seconds=td))
 
     @classmethod
@@ -452,7 +486,9 @@ class Timedelta(_base_sdk_types.FlyteSdkValue):
         if t_value is None:
             return _base_sdk_types.Void()
         elif type(t_value) != _datetime.timedelta:
-            raise _user_exceptions.FlyteTypeException(type(t_value), _datetime.timedelta, t_value)
+            raise _user_exceptions.FlyteTypeException(
+                type(t_value), _datetime.timedelta, t_value
+            )
 
         return cls(t_value)
 
@@ -477,13 +513,15 @@ class Timedelta(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: Text
         """
-        return 'Timedelta'
+        return "Timedelta"
 
     def __init__(self, value):
         """
         :param datetime.timedelta value: value to wrap
         """
-        super(Timedelta, self).__init__(scalar=_literals.Scalar(primitive=_literals.Primitive(duration=value)))
+        super(Timedelta, self).__init__(
+            scalar=_literals.Scalar(primitive=_literals.Primitive(duration=value))
+        )
 
     def to_python_std(self):
         """
@@ -499,7 +537,6 @@ class Timedelta(_base_sdk_types.FlyteSdkValue):
 
 
 class Generic(_base_sdk_types.FlyteSdkValue):
-
     @classmethod
     def from_string(cls, string_value):
         """
@@ -510,8 +547,7 @@ class Generic(_base_sdk_types.FlyteSdkValue):
             t = _json_format.Parse(string_value, _struct.Struct())
         except:
             raise _user_exceptions.FlyteValueException(
-                string_value,
-                "Could not be parsed from JSON."
+                string_value, "Could not be parsed from JSON."
             )
         return cls(t)
 
@@ -539,8 +575,7 @@ class Generic(_base_sdk_types.FlyteSdkValue):
             t = _json.dumps(t_value)
         except:
             raise _user_exceptions.FlyteValueException(
-                t_value,
-                "Is not JSON serializable."
+                t_value, "Is not JSON serializable."
             )
 
         return cls(_json_format.Parse(t, _struct.Struct()))
@@ -566,7 +601,7 @@ class Generic(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: Text
         """
-        return 'Generic'
+        return "Generic"
 
     def __init__(self, value):
         """

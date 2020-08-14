@@ -60,7 +60,9 @@ class GCSProxy(_common_data.DataProxy):
         GCSProxy._check_binary()
 
         if not remote_path.startswith("gs://"):
-            raise ValueError("Not an GS Key. Please use FQN (GS ARN) of the format gs://...")
+            raise ValueError(
+                "Not an GS Key. Please use FQN (GS ARN) of the format gs://..."
+            )
 
         cmd = [GCSProxy._GS_UTIL_CLI, "-q", "stat", remote_path]
         try:
@@ -77,9 +79,13 @@ class GCSProxy(_common_data.DataProxy):
         GCSProxy._check_binary()
 
         if not remote_path.startswith("gs://"):
-            raise ValueError("Not an GS Key. Please use FQN (GS ARN) of the format gs://...")
+            raise ValueError(
+                "Not an GS Key. Please use FQN (GS ARN) of the format gs://..."
+            )
 
-        cmd = self._maybe_with_gsutil_parallelism("cp", "-r", _amend_path(remote_path), local_path)
+        cmd = self._maybe_with_gsutil_parallelism(
+            "cp", "-r", _amend_path(remote_path), local_path
+        )
         return _update_cmd_config_and_execute(cmd)
 
     def download(self, remote_path, local_path):
@@ -88,7 +94,9 @@ class GCSProxy(_common_data.DataProxy):
         :param Text local_path: directory to copy to
         """
         if not remote_path.startswith("gs://"):
-            raise ValueError("Not an GS Key. Please use FQN (GS ARN) of the format gs://...")
+            raise ValueError(
+                "Not an GS Key. Please use FQN (GS ARN) of the format gs://..."
+            )
 
         GCSProxy._check_binary()
 
@@ -111,15 +119,17 @@ class GCSProxy(_common_data.DataProxy):
         :param Text remote_path:
         """
         if not remote_path.startswith("gs://"):
-            raise ValueError("Not an GS Key. Please use FQN (GS ARN) of the format gs://...")
+            raise ValueError(
+                "Not an GS Key. Please use FQN (GS ARN) of the format gs://..."
+            )
 
         GCSProxy._check_binary()
 
         cmd = self._maybe_with_gsutil_parallelism(
-           "cp",
-           "-r",
-           _amend_path(local_path),
-           remote_path if remote_path.endswith("/") else remote_path + "/"
+            "cp",
+            "-r",
+            _amend_path(local_path),
+            remote_path if remote_path.endswith("/") else remote_path + "/",
         )
         return _update_cmd_config_and_execute(cmd)
 

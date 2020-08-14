@@ -3,12 +3,14 @@ import logging as _logging
 
 import requests as _requests
 
-from flytekit.common.exceptions.user import FlyteAuthenticationException as _FlyteAuthenticationException
+from flytekit.common.exceptions.user import (
+    FlyteAuthenticationException as _FlyteAuthenticationException,
+)
 from flytekit.configuration.creds import (
     CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET,
 )
 
-_utf_8 = 'utf-8'
+_utf_8 = "utf-8"
 
 
 def get_secret():
@@ -20,7 +22,7 @@ def get_secret():
     secret = _CREDENTIALS_SECRET.get()
     if secret:
         return secret
-    raise _FlyteAuthenticationException('No secret could be found')
+    raise _FlyteAuthenticationException("No secret could be found")
 
 
 def get_basic_authorization_header(client_id, client_secret):
@@ -44,20 +46,24 @@ def get_token(token_endpoint, authorization_header, scope):
             in seconds
     """
     headers = {
-        'Authorization': authorization_header,
-        'Cache-Control': 'no-cache',
-        'Accept': 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded'
+        "Authorization": authorization_header,
+        "Cache-Control": "no-cache",
+        "Accept": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
     }
     body = {
-        'grant_type': 'client_credentials',
+        "grant_type": "client_credentials",
     }
     if scope is not None:
-        body['scope'] = scope
+        body["scope"] = scope
     response = _requests.post(token_endpoint, data=body, headers=headers)
     if response.status_code != 200:
-        _logging.error("Non-200 ({}) received from IDP: {}".format(response.status_code, response.text))
-        raise _FlyteAuthenticationException('Non-200 received from IDP')
+        _logging.error(
+            "Non-200 ({}) received from IDP: {}".format(
+                response.status_code, response.text
+            )
+        )
+        raise _FlyteAuthenticationException("Non-200 received from IDP")
 
     response = response.json()
-    return response['access_token'], response['expires_in']
+    return response["access_token"], response["expires_in"]

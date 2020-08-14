@@ -19,59 +19,73 @@ LIST_OF_SCALAR_LITERAL_TYPES = [
     types.LiteralType(simple=types.SimpleType.NONE),
     types.LiteralType(simple=types.SimpleType.STRING),
     types.LiteralType(
-        schema=types.SchemaType([
-            types.SchemaType.SchemaColumn("a", types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
-            types.SchemaType.SchemaColumn("b", types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
-            types.SchemaType.SchemaColumn("c", types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
-            types.SchemaType.SchemaColumn("d", types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
-            types.SchemaType.SchemaColumn("e", types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
-            types.SchemaType.SchemaColumn("f", types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
-        ])
+        schema=types.SchemaType(
+            [
+                types.SchemaType.SchemaColumn(
+                    "a", types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
+                ),
+                types.SchemaType.SchemaColumn(
+                    "b", types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
+                ),
+                types.SchemaType.SchemaColumn(
+                    "c", types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
+                ),
+                types.SchemaType.SchemaColumn(
+                    "d", types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
+                ),
+                types.SchemaType.SchemaColumn(
+                    "e", types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
+                ),
+                types.SchemaType.SchemaColumn(
+                    "f", types.SchemaType.SchemaColumn.SchemaColumnType.STRING
+                ),
+            ]
+        )
     ),
     types.LiteralType(
         blob=_core_types.BlobType(
-            format="",
-            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+        )
+    ),
+    types.LiteralType(
+        blob=_core_types.BlobType(
+            format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+        )
+    ),
+    types.LiteralType(
+        blob=_core_types.BlobType(
+            format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
         )
     ),
     types.LiteralType(
         blob=_core_types.BlobType(
             format="csv",
-            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
-        )
-    ),
-    types.LiteralType(
-        blob=_core_types.BlobType(
-            format="",
             dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
         )
     ),
-    types.LiteralType(
-        blob=_core_types.BlobType(
-            format="csv",
-            dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
-        )
-    )
 ]
 
 
 LIST_OF_COLLECTION_LITERAL_TYPES = [
-    types.LiteralType(collection_type=literal_type) for literal_type in LIST_OF_SCALAR_LITERAL_TYPES
+    types.LiteralType(collection_type=literal_type)
+    for literal_type in LIST_OF_SCALAR_LITERAL_TYPES
 ]
 
 LIST_OF_NESTED_COLLECTION_LITERAL_TYPES = [
-    types.LiteralType(collection_type=literal_type) for literal_type in LIST_OF_COLLECTION_LITERAL_TYPES
+    types.LiteralType(collection_type=literal_type)
+    for literal_type in LIST_OF_COLLECTION_LITERAL_TYPES
 ]
 
-LIST_OF_ALL_LITERAL_TYPES = \
-    LIST_OF_SCALAR_LITERAL_TYPES + \
-    LIST_OF_COLLECTION_LITERAL_TYPES + \
-    LIST_OF_NESTED_COLLECTION_LITERAL_TYPES
+LIST_OF_ALL_LITERAL_TYPES = (
+    LIST_OF_SCALAR_LITERAL_TYPES
+    + LIST_OF_COLLECTION_LITERAL_TYPES
+    + LIST_OF_NESTED_COLLECTION_LITERAL_TYPES
+)
 
 LIST_OF_INTERFACES = [
     interface.TypedInterface(
-        {'a': interface.Variable(t, "description 1")},
-        {'b': interface.Variable(t, "description 2")}
+        {"a": interface.Variable(t, "description 1")},
+        {"b": interface.Variable(t, "description 2")},
     )
     for t in LIST_OF_ALL_LITERAL_TYPES
 ]
@@ -81,36 +95,32 @@ LIST_OF_RESOURCE_ENTRIES = [
     task.Resources.ResourceEntry(task.Resources.ResourceName.CPU, "1"),
     task.Resources.ResourceEntry(task.Resources.ResourceName.GPU, "1"),
     task.Resources.ResourceEntry(task.Resources.ResourceName.MEMORY, "1G"),
-    task.Resources.ResourceEntry(task.Resources.ResourceName.STORAGE, "1G")
+    task.Resources.ResourceEntry(task.Resources.ResourceName.STORAGE, "1G"),
 ]
 
 
-LIST_OF_RESOURCE_ENTRY_LISTS = [
-    LIST_OF_RESOURCE_ENTRIES
-]
+LIST_OF_RESOURCE_ENTRY_LISTS = [LIST_OF_RESOURCE_ENTRIES]
 
 
 LIST_OF_RESOURCES = [
     task.Resources(request, limit)
-    for request, limit in product(LIST_OF_RESOURCE_ENTRY_LISTS, LIST_OF_RESOURCE_ENTRY_LISTS)
+    for request, limit in product(
+        LIST_OF_RESOURCE_ENTRY_LISTS, LIST_OF_RESOURCE_ENTRY_LISTS
+    )
 ]
 
 
 LIST_OF_RUNTIME_METADATA = [
     task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.OTHER, "1.0.0", "python"),
-    task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0b0", "golang")
+    task.RuntimeMetadata(
+        task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0b0", "golang"
+    ),
 ]
 
 
-LIST_OF_RETRY_POLICIES = [
-    literals.RetryStrategy(retries=i) for i in [0, 1, 3, 100]
-]
+LIST_OF_RETRY_POLICIES = [literals.RetryStrategy(retries=i) for i in [0, 1, 3, 100]]
 
-LIST_OF_INTERRUPTIBLE = [
-    None,
-    True,
-    False
-]
+LIST_OF_INTERRUPTIBLE = [None, True, False]
 
 LIST_OF_TASK_METADATA = [
     task.TaskMetadata(
@@ -120,7 +130,7 @@ LIST_OF_TASK_METADATA = [
         retry_strategy,
         interruptible,
         discovery_version,
-        deprecated
+        deprecated,
     )
     for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated in product(
         [True, False],
@@ -129,31 +139,31 @@ LIST_OF_TASK_METADATA = [
         LIST_OF_RETRY_POLICIES,
         LIST_OF_INTERRUPTIBLE,
         ["1.0"],
-        ["deprecated"]
+        ["deprecated"],
     )
 ]
 
 
 LIST_OF_TASK_TEMPLATES = [
     task.TaskTemplate(
-        identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
+        identifier.Identifier(
+            identifier.ResourceType.TASK, "project", "domain", "name", "version"
+        ),
         "python",
         task_metadata,
         interfaces,
-        {'a': 1, 'b': [1, 2, 3], 'c': 'abc', 'd': {'x': 1, 'y': 2, 'z': 3}},
+        {"a": 1, "b": [1, 2, 3], "c": "abc", "d": {"x": 1, "y": 2, "z": 3}},
         container=task.Container(
             "my_image",
             ["this", "is", "a", "cmd"],
             ["this", "is", "an", "arg"],
             resources,
-            {'a': 'b'},
-            {'d': 'e'}
-        )
+            {"a": "b"},
+            {"d": "e"},
+        ),
     )
     for task_metadata, interfaces, resources in product(
-        LIST_OF_TASK_METADATA,
-        LIST_OF_INTERFACES,
-        LIST_OF_RESOURCES
+        LIST_OF_TASK_METADATA, LIST_OF_INTERFACES, LIST_OF_RESOURCES
     )
 ]
 
@@ -163,105 +173,134 @@ LIST_OF_CONTAINERS = [
         ["this", "is", "a", "cmd"],
         ["this", "is", "an", "arg"],
         resources,
-        {'a': 'b'},
-        {'d': 'e'}
+        {"a": "b"},
+        {"d": "e"},
     )
     for resources in LIST_OF_RESOURCES
 ]
 
-LIST_OF_TASK_CLOSURES = [task.TaskClosure(task.CompiledTask(template)) for template in LIST_OF_TASK_TEMPLATES]
+LIST_OF_TASK_CLOSURES = [
+    task.TaskClosure(task.CompiledTask(template)) for template in LIST_OF_TASK_TEMPLATES
+]
 
 LIST_OF_SCALARS_AND_PYTHON_VALUES = [
     (literals.Scalar(primitive=literals.Primitive(integer=100)), 100),
     (literals.Scalar(primitive=literals.Primitive(float_value=500.0)), 500.0),
     (literals.Scalar(primitive=literals.Primitive(boolean=True)), True),
-    (literals.Scalar(primitive=literals.Primitive(string_value='hello')), 'hello'),
-    (literals.Scalar(primitive=literals.Primitive(duration=timedelta(seconds=5))), timedelta(seconds=5)),
+    (literals.Scalar(primitive=literals.Primitive(string_value="hello")), "hello"),
+    (
+        literals.Scalar(primitive=literals.Primitive(duration=timedelta(seconds=5))),
+        timedelta(seconds=5),
+    ),
     (literals.Scalar(none_type=literals.Void()), None),
     (
         literals.Scalar(
             blob=literals.Blob(
                 literals.BlobMetadata(
                     _core_types.BlobType(
-                        "csv",
-                        _core_types.BlobType.BlobDimensionality.SINGLE
+                        "csv", _core_types.BlobType.BlobDimensionality.SINGLE
                     )
                 ),
-                "s3://some/where"
+                "s3://some/where",
             )
         ),
-        _blob_impl.Blob("s3://some/where", format="csv")
+        _blob_impl.Blob("s3://some/where", format="csv"),
     ),
     (
         literals.Scalar(
             blob=literals.Blob(
                 literals.BlobMetadata(
                     _core_types.BlobType(
-                        "",
-                        _core_types.BlobType.BlobDimensionality.SINGLE
+                        "", _core_types.BlobType.BlobDimensionality.SINGLE
                     )
                 ),
-                "s3://some/where"
+                "s3://some/where",
             )
         ),
-        _blob_impl.Blob("s3://some/where")
+        _blob_impl.Blob("s3://some/where"),
     ),
     (
         literals.Scalar(
             blob=literals.Blob(
                 literals.BlobMetadata(
                     _core_types.BlobType(
-                        "csv",
-                        _core_types.BlobType.BlobDimensionality.MULTIPART
+                        "csv", _core_types.BlobType.BlobDimensionality.MULTIPART
                     )
                 ),
-                "s3://some/where/"
+                "s3://some/where/",
             )
         ),
-        _blob_impl.MultiPartBlob("s3://some/where/", format="csv")
+        _blob_impl.MultiPartBlob("s3://some/where/", format="csv"),
     ),
     (
         literals.Scalar(
             blob=literals.Blob(
                 literals.BlobMetadata(
                     _core_types.BlobType(
-                        "",
-                        _core_types.BlobType.BlobDimensionality.MULTIPART
+                        "", _core_types.BlobType.BlobDimensionality.MULTIPART
                     )
                 ),
-                "s3://some/where/"
+                "s3://some/where/",
             )
         ),
-        _blob_impl.MultiPartBlob("s3://some/where/")
+        _blob_impl.MultiPartBlob("s3://some/where/"),
     ),
     (
         literals.Scalar(
             schema=literals.Schema(
                 "s3://some/where/",
-                types.SchemaType([
-                    types.SchemaType.SchemaColumn("a", types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
-                    types.SchemaType.SchemaColumn("b", types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
-                    types.SchemaType.SchemaColumn("c", types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
-                    types.SchemaType.SchemaColumn("d", types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
-                    types.SchemaType.SchemaColumn("e", types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
-                    types.SchemaType.SchemaColumn("f", types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
-                ])
+                types.SchemaType(
+                    [
+                        types.SchemaType.SchemaColumn(
+                            "a", types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
+                        ),
+                        types.SchemaType.SchemaColumn(
+                            "b", types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
+                        ),
+                        types.SchemaType.SchemaColumn(
+                            "c", types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
+                        ),
+                        types.SchemaType.SchemaColumn(
+                            "d", types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
+                        ),
+                        types.SchemaType.SchemaColumn(
+                            "e", types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
+                        ),
+                        types.SchemaType.SchemaColumn(
+                            "f", types.SchemaType.SchemaColumn.SchemaColumnType.STRING
+                        ),
+                    ]
+                ),
             )
         ),
         _schema_impl.Schema(
             "s3://some/where/",
             _schema_impl.SchemaType.promote_from_model(
-                types.SchemaType([
-                    types.SchemaType.SchemaColumn("a", types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
-                    types.SchemaType.SchemaColumn("b", types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
-                    types.SchemaType.SchemaColumn("c", types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
-                    types.SchemaType.SchemaColumn("d", types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
-                    types.SchemaType.SchemaColumn("e", types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
-                    types.SchemaType.SchemaColumn("f", types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
-                ])
-            )
-        )
-    )
+                types.SchemaType(
+                    [
+                        types.SchemaType.SchemaColumn(
+                            "a", types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
+                        ),
+                        types.SchemaType.SchemaColumn(
+                            "b", types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
+                        ),
+                        types.SchemaType.SchemaColumn(
+                            "c", types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
+                        ),
+                        types.SchemaType.SchemaColumn(
+                            "d", types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
+                        ),
+                        types.SchemaType.SchemaColumn(
+                            "e", types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
+                        ),
+                        types.SchemaType.SchemaColumn(
+                            "f", types.SchemaType.SchemaColumn.SchemaColumnType.STRING
+                        ),
+                    ]
+                )
+            ),
+        ),
+    ),
 ]
 
 LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE = [
@@ -269,8 +308,11 @@ LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE = [
 ]
 
 LIST_OF_LITERAL_COLLECTIONS_AND_PYTHON_VALUE = [
-    (literals.LiteralCollection(literals=[l, l, l]), [v, v, v]) for l, v in LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE
+    (literals.LiteralCollection(literals=[l, l, l]), [v, v, v])
+    for l, v in LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE
 ]
 
-LIST_OF_ALL_LITERALS_AND_VALUES = LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE + \
-                                  LIST_OF_LITERAL_COLLECTIONS_AND_PYTHON_VALUE
+LIST_OF_ALL_LITERALS_AND_VALUES = (
+    LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE
+    + LIST_OF_LITERAL_COLLECTIONS_AND_PYTHON_VALUE
+)

@@ -14,8 +14,8 @@ from six.moves import range
 def my_spark_task(wf, sc, out):
     def _inside(p):
         return p < 1000
-    count = sc.parallelize(range(0, 10000)) \
-        .filter(_inside).count()
+
+    count = sc.parallelize(range(0, 10000)).filter(_inside).count()
     out.set(count)
 
 
@@ -26,14 +26,14 @@ def my_spark_task2(wf, sc, out):
     # modules.
     def _inside(p):
         return p < 500
-    count = sc.parallelize(range(0, 10000)) \
-        .filter(_inside).count()
+
+    count = sc.parallelize(range(0, 10000)).filter(_inside).count()
     out.set(count)
 
 
 def test_basic_spark_execution():
     outputs = my_spark_task.unit_test()
-    assert outputs['out'] == 1000
+    assert outputs["out"] == 1000
 
     outputs = my_spark_task2.unit_test()
-    assert outputs['out'] == 500
+    assert outputs["out"] == 500

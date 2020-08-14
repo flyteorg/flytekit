@@ -11,7 +11,6 @@ class ResourceType(object):
 
 
 class Identifier(_common_models.FlyteIdlEntity):
-
     def __init__(self, resource_type, project, domain, name, version):
         """
         :param int resource_type: enum value from ResourceType
@@ -71,7 +70,7 @@ class Identifier(_common_models.FlyteIdlEntity):
             project=self.project,
             domain=self.domain,
             name=self.name,
-            version=self.version
+            version=self.version,
         )
 
     @classmethod
@@ -85,7 +84,7 @@ class Identifier(_common_models.FlyteIdlEntity):
             project=p.project,
             domain=p.domain,
             name=p.name,
-            version=p.version
+            version=p.version,
         )
 
 
@@ -126,9 +125,7 @@ class WorkflowExecutionIdentifier(_common_models.FlyteIdlEntity):
         :rtype: flyteidl.core.identifier_pb2.WorkflowExecutionIdentifier
         """
         return _identifier_pb2.WorkflowExecutionIdentifier(
-            project=self.project,
-            domain=self.domain,
-            name=self.name,
+            project=self.project, domain=self.domain, name=self.name,
         )
 
     @classmethod
@@ -137,15 +134,10 @@ class WorkflowExecutionIdentifier(_common_models.FlyteIdlEntity):
         :param flyteidl.core.identifier_pb2.WorkflowExecutionIdentifier p:
         :rtype: WorkflowExecutionIdentifier
         """
-        return cls(
-            project=p.project,
-            domain=p.domain,
-            name=p.name,
-        )
+        return cls(project=p.project, domain=p.domain, name=p.name,)
 
 
 class NodeExecutionIdentifier(_common_models.FlyteIdlEntity):
-
     def __init__(self, node_id, execution_id):
         """
         :param Text node_id:
@@ -173,8 +165,7 @@ class NodeExecutionIdentifier(_common_models.FlyteIdlEntity):
         :rtype: flyteidl.core.identifier_pb2.NodeExecutionIdentifier
         """
         return _identifier_pb2.NodeExecutionIdentifier(
-            node_id=self.node_id,
-            execution_id=self.execution_id.to_flyte_idl(),
+            node_id=self.node_id, execution_id=self.execution_id.to_flyte_idl(),
         )
 
     @classmethod
@@ -190,7 +181,6 @@ class NodeExecutionIdentifier(_common_models.FlyteIdlEntity):
 
 
 class TaskExecutionIdentifier(_common_models.FlyteIdlEntity):
-
     def __init__(self, task_id, node_execution_id, retry_attempt):
         """
         :param Identifier task_id: The identifier for the task that is executing
@@ -229,7 +219,7 @@ class TaskExecutionIdentifier(_common_models.FlyteIdlEntity):
         return _identifier_pb2.TaskExecutionIdentifier(
             task_id=self.task_id.to_flyte_idl(),
             node_execution_id=self.node_execution_id.to_flyte_idl(),
-            retry_attempt=self.retry_attempt
+            retry_attempt=self.retry_attempt,
         )
 
     @classmethod
@@ -240,6 +230,8 @@ class TaskExecutionIdentifier(_common_models.FlyteIdlEntity):
         """
         return cls(
             task_id=Identifier.from_flyte_idl(proto.task_id),
-            node_execution_id=NodeExecutionIdentifier.from_flyte_idl(proto.node_execution_id),
-            retry_attempt=proto.retry_attempt
+            node_execution_id=NodeExecutionIdentifier.from_flyte_idl(
+                proto.node_execution_id
+            ),
+            retry_attempt=proto.retry_attempt,
         )

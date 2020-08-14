@@ -1,9 +1,9 @@
 from __future__ import absolute_import
 
-INPUT_FILE_NAME = 'inputs.pb'
-OUTPUT_FILE_NAME = 'outputs.pb'
-FUTURES_FILE_NAME = 'futures.pb'
-ERROR_FILE_NAME = 'error.pb'
+INPUT_FILE_NAME = "inputs.pb"
+OUTPUT_FILE_NAME = "outputs.pb"
+FUTURES_FILE_NAME = "futures.pb"
+ERROR_FILE_NAME = "error.pb"
 
 
 class SdkTaskType(object):
@@ -25,9 +25,12 @@ class SdkTaskType(object):
     # Raw container task is just a name, it defaults to using the regular container task (like python etc), but sets the data_config in the container
     RAW_CONTAINER_TASK = "raw-container"
     SAGEMAKER_TRAINING_JOB_TASK = "sagemaker_training_job_task"
-    SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK = "sagemaker_hyperparameter_tuning_job_task"
+    SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK = (
+        "sagemaker_hyperparameter_tuning_job_task"
+    )
 
-GLOBAL_INPUT_NODE_ID = ''
+
+GLOBAL_INPUT_NODE_ID = ""
 
 START_NODE_ID = "start-node"
 END_NODE_ID = "end-node"

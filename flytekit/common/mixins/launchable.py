@@ -6,8 +6,16 @@ from deprecated import deprecated as _deprecated
 
 
 class LaunchableEntity(object, metaclass=_abc.ABCMeta):
-    def launch(self, project, domain, inputs=None, name=None, notification_overrides=None, label_overrides=None,
-               annotation_overrides=None):
+    def launch(
+        self,
+        project,
+        domain,
+        inputs=None,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+    ):
         """
         Creates a remote execution from the entity and returns the execution identifier.
         This version of launch is meant for when inputs are specified as Python native types/structures.
@@ -36,9 +44,17 @@ class LaunchableEntity(object, metaclass=_abc.ABCMeta):
             annotation_overrides=annotation_overrides,
         )
 
-    @_deprecated(reason="Use launch instead", version='0.9.0')
-    def execute(self, project, domain, inputs=None, name=None, notification_overrides=None, label_overrides=None,
-                annotation_overrides=None):
+    @_deprecated(reason="Use launch instead", version="0.9.0")
+    def execute(
+        self,
+        project,
+        domain,
+        inputs=None,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+    ):
         """
         Deprecated.
         """
@@ -57,8 +73,16 @@ class LaunchableEntity(object, metaclass=_abc.ABCMeta):
         pass
 
     @_abc.abstractmethod
-    def launch_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
-                             label_overrides=None, annotation_overrides=None):
+    def launch_with_literals(
+        self,
+        project,
+        domain,
+        literal_inputs,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+    ):
         """
         Executes the entity and returns the execution identifier.  This version of execution is meant for when
         you already have a LiteralMap of inputs.
@@ -77,11 +101,26 @@ class LaunchableEntity(object, metaclass=_abc.ABCMeta):
         """
         pass
 
-    @_deprecated(reason="Use launch_with_literals instead", version='0.9.0')
-    def execute_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
-                              label_overrides=None, annotation_overrides=None):
+    @_deprecated(reason="Use launch_with_literals instead", version="0.9.0")
+    def execute_with_literals(
+        self,
+        project,
+        domain,
+        literal_inputs,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+    ):
         """
         Deprecated.
         """
-        return self.launch_with_literals(project, domain, literal_inputs, name, notification_overrides, label_overrides,
-                                         annotation_overrides)
+        return self.launch_with_literals(
+            project,
+            domain,
+            literal_inputs,
+            name,
+            notification_overrides,
+            label_overrides,
+            annotation_overrides,
+        )

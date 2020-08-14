@@ -18,16 +18,16 @@ def create_protobuf(pb_type):
         raise _user_exceptions.FlyteTypeException(
             expected_type=_proto_reflection.GeneratedProtocolMessageType,
             received_type=type(pb_type),
-            received_value=pb_type
+            received_value=pb_type,
         )
 
     class _Protobuf(Protobuf):
         _pb_type = pb_type
+
     return _Protobuf
 
 
 class ProtobufType(_base_sdk_types.FlyteSdkType):
-
     @property
     def pb_type(cls):
         """
@@ -63,8 +63,7 @@ class Protobuf(_six.with_metaclass(ProtobufType, _base_sdk_types.FlyteSdkValue))
         super(Protobuf, self).__init__(
             scalar=_literals.Scalar(
                 binary=_literals.Binary(
-                    value=bytes(data) if _six.PY2 else data,
-                    tag=type(self).tag
+                    value=bytes(data) if _six.PY2 else data, tag=type(self).tag
                 )
             )
         )
@@ -78,7 +77,9 @@ class Protobuf(_six.with_metaclass(ProtobufType, _base_sdk_types.FlyteSdkValue))
         try:
             decoded = _base64.b64decode(string_value)
         except TypeError:
-            raise _user_exceptions.FlyteValueException(string_value, "The string is not valid base64-encoded.")
+            raise _user_exceptions.FlyteValueException(
+                string_value, "The string is not valid base64-encoded."
+            )
         pb_obj = cls.pb_type()
         pb_obj.ParseFromString(decoded)
         return cls(pb_obj)
@@ -104,9 +105,7 @@ class Protobuf(_six.with_metaclass(ProtobufType, _base_sdk_types.FlyteSdkValue))
             return cls(t_value)
         else:
             raise _user_exceptions.FlyteTypeException(
-                type(t_value),
-                cls.pb_type,
-                received_value=t_value
+                type(t_value), cls.pb_type, received_value=t_value
             )
 
     @classmethod
@@ -116,9 +115,7 @@ class Protobuf(_six.with_metaclass(ProtobufType, _base_sdk_types.FlyteSdkValue))
         """
         return _idl_types.LiteralType(
             simple=_idl_types.SimpleType.BINARY,
-            metadata={
-                cls.PB_FIELD_KEY: cls.descriptor
-            }
+            metadata={cls.PB_FIELD_KEY: cls.descriptor},
         )
 
     @classmethod
@@ -133,7 +130,7 @@ class Protobuf(_six.with_metaclass(ProtobufType, _base_sdk_types.FlyteSdkValue))
                 literal_model.scalar.binary.tag,
                 cls.pb_type,
                 received_value=_base64.b64encode(literal_model.scalar.binary.value),
-                additional_msg="Can not deserialize as proto tags don't match."
+                additional_msg="Can not deserialize as proto tags don't match.",
             )
         pb_obj = cls.pb_type()
         pb_obj.ParseFromString(literal_model.scalar.binary.value)

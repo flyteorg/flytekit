@@ -7,12 +7,14 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
-from flytekit.models.types import SchemaType as _SchemaType, OutputReference as _OutputReference
+from flytekit.models.types import (
+    SchemaType as _SchemaType,
+    OutputReference as _OutputReference,
+)
 from flytekit.models.core import types as _core_types
 
 
 class RetryStrategy(_common.FlyteIdlEntity):
-
     def __init__(self, retries):
         """
         :param int retries: Number of retries to attempt on recoverable failures.  If retries is 0, then
@@ -40,14 +42,19 @@ class RetryStrategy(_common.FlyteIdlEntity):
         :param flyteidl.core.literals_pb2.RetryStrategy pb2_object:
         :rtype: RetryStrategy
         """
-        return cls(
-            retries=pb2_object.retries
-        )
+        return cls(retries=pb2_object.retries)
 
 
 class Primitive(_common.FlyteIdlEntity):
-
-    def __init__(self, integer=None, float_value=None, string_value=None, boolean=None, datetime=None, duration=None):
+    def __init__(
+        self,
+        integer=None,
+        float_value=None,
+        string_value=None,
+        boolean=None,
+        datetime=None,
+        duration=None,
+    ):
         """
         This object proxies the primitives supported by the Flyte IDL system.  Only one value can be set.
         :param int integer: [Optional]
@@ -119,7 +126,14 @@ class Primitive(_common.FlyteIdlEntity):
         This returns whichever field is set.
         :rtype: T
         """
-        for value in [self.integer, self.float_value, self.string_value, self.boolean, self.datetime, self.duration]:
+        for value in [
+            self.integer,
+            self.float_value,
+            self.string_value,
+            self.boolean,
+            self.datetime,
+            self.duration,
+        ]:
             if value is not None:
                 return value
 
@@ -131,11 +145,13 @@ class Primitive(_common.FlyteIdlEntity):
             integer=self.integer,
             float_value=self.float_value,
             string_value=self.string_value,
-            boolean=self.boolean
+            boolean=self.boolean,
         )
         if self.datetime is not None:
             # Convert to UTC and remove timezone so protobuf behaves.
-            primitive.datetime.FromDatetime(self.datetime.astimezone(_pytz.UTC).replace(tzinfo=None))
+            primitive.datetime.FromDatetime(
+                self.datetime.astimezone(_pytz.UTC).replace(tzinfo=None)
+            )
         if self.duration is not None:
             primitive.duration.FromTimedelta(self.duration)
         return primitive
@@ -151,13 +167,16 @@ class Primitive(_common.FlyteIdlEntity):
             float_value=proto.float_value if proto.HasField("float_value") else None,
             string_value=proto.string_value if proto.HasField("string_value") else None,
             boolean=proto.boolean if proto.HasField("boolean") else None,
-            datetime=proto.datetime.ToDatetime().replace(tzinfo=_pytz.UTC) if proto.HasField("datetime") else None,
-            duration=proto.duration.ToTimedelta() if proto.HasField("duration") else None
+            datetime=proto.datetime.ToDatetime().replace(tzinfo=_pytz.UTC)
+            if proto.HasField("datetime")
+            else None,
+            duration=proto.duration.ToTimedelta()
+            if proto.HasField("duration")
+            else None,
         )
 
 
 class Binary(_common.FlyteIdlEntity):
-
     def __init__(self, value, tag):
         """
         :param bytes value:
@@ -192,15 +211,20 @@ class Binary(_common.FlyteIdlEntity):
         :param flyteidl.core.literals_pb2.Binary pb2_object:
         :rtype: Binary
         """
-        return cls(
-            value=pb2_object.value,
-            tag=pb2_object.tag
-        )
+        return cls(value=pb2_object.value, tag=pb2_object.tag)
 
 
 class Scalar(_common.FlyteIdlEntity):
-
-    def __init__(self, primitive=None, blob=None, binary=None, schema=None, none_type=None, error=None, generic=None):
+    def __init__(
+        self,
+        primitive=None,
+        blob=None,
+        binary=None,
+        schema=None,
+        none_type=None,
+        error=None,
+        generic=None,
+    ):
         """
         Scalar wrapper around Flyte types.  Only one can be specified.
 
@@ -276,18 +300,29 @@ class Scalar(_common.FlyteIdlEntity):
         Returns whichever value is set
         :rtype: T
         """
-        return self.primitive or self.blob or self.binary or self.schema or self.none_type or self.error
+        return (
+            self.primitive
+            or self.blob
+            or self.binary
+            or self.schema
+            or self.none_type
+            or self.error
+        )
 
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.literals_pb2.Scalar
         """
         return _literals_pb2.Scalar(
-            primitive=self.primitive.to_flyte_idl() if self.primitive is not None else None,
+            primitive=self.primitive.to_flyte_idl()
+            if self.primitive is not None
+            else None,
             blob=self.blob.to_flyte_idl() if self.blob is not None else None,
             binary=self.binary.to_flyte_idl() if self.binary is not None else None,
             schema=self.schema.to_flyte_idl() if self.schema is not None else None,
-            none_type=self.none_type.to_flyte_idl() if self.none_type is not None else None,
+            none_type=self.none_type.to_flyte_idl()
+            if self.none_type is not None
+            else None,
             error=self.error if self.error is not None else None,
             generic=self.generic,
         )
@@ -300,18 +335,27 @@ class Scalar(_common.FlyteIdlEntity):
         """
         # todo finish
         return cls(
-            primitive=Primitive.from_flyte_idl(pb2_object.primitive) if pb2_object.HasField("primitive") else None,
-            blob=Blob.from_flyte_idl(pb2_object.blob) if pb2_object.HasField("blob") else None,
-            binary=Binary.from_flyte_idl(pb2_object.binary) if pb2_object.HasField("binary") else None,
-            schema=Schema.from_flyte_idl(pb2_object.schema) if pb2_object.HasField("schema") else None,
-            none_type=Void.from_flyte_idl(pb2_object.none_type) if pb2_object.HasField("none_type") else None,
+            primitive=Primitive.from_flyte_idl(pb2_object.primitive)
+            if pb2_object.HasField("primitive")
+            else None,
+            blob=Blob.from_flyte_idl(pb2_object.blob)
+            if pb2_object.HasField("blob")
+            else None,
+            binary=Binary.from_flyte_idl(pb2_object.binary)
+            if pb2_object.HasField("binary")
+            else None,
+            schema=Schema.from_flyte_idl(pb2_object.schema)
+            if pb2_object.HasField("schema")
+            else None,
+            none_type=Void.from_flyte_idl(pb2_object.none_type)
+            if pb2_object.HasField("none_type")
+            else None,
             error=pb2_object.error if pb2_object.HasField("error") else None,
             generic=pb2_object.generic if pb2_object.HasField("generic") else None,
         )
 
 
 class BlobMetadata(_common.FlyteIdlEntity):
-
     def __init__(self, type):
         """
         :param flytekit.models.core.types.BlobType type: The type of the underlying blob
@@ -341,7 +385,6 @@ class BlobMetadata(_common.FlyteIdlEntity):
 
 
 class Blob(_common.FlyteIdlEntity):
-
     def __init__(self, metadata, uri):
         """
         :param BlobMetadata metadata:
@@ -368,10 +411,7 @@ class Blob(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.Blob
         """
-        return _literals_pb2.Blob(
-            metadata=self.metadata.to_flyte_idl(),
-            uri=self.uri
-        )
+        return _literals_pb2.Blob(metadata=self.metadata.to_flyte_idl(), uri=self.uri)
 
     @classmethod
     def from_flyte_idl(cls, proto):
@@ -379,14 +419,10 @@ class Blob(_common.FlyteIdlEntity):
         :param flyteidl.core.literals_pb2.Blob proto:
         :rtype: Blob
         """
-        return cls(
-            metadata=BlobMetadata.from_flyte_idl(proto.metadata),
-            uri=proto.uri
-        )
+        return cls(metadata=BlobMetadata.from_flyte_idl(proto.metadata), uri=proto.uri)
 
 
 class Void(_common.FlyteIdlEntity):
-
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.literals_pb2.Void
@@ -403,7 +439,6 @@ class Void(_common.FlyteIdlEntity):
 
 
 class BindingDataMap(_common.FlyteIdlEntity):
-
     def __init__(self, bindings):
         """
         A map of BindingData items.  Can be a recursive structure
@@ -435,11 +470,15 @@ class BindingDataMap(_common.FlyteIdlEntity):
         :rtype: flytekit.models.literals.BindingDataMap
         """
 
-        return cls({k: BindingData.from_flyte_idl(v) for (k, v) in _six.iteritems(pb2_object.bindings)})
+        return cls(
+            {
+                k: BindingData.from_flyte_idl(v)
+                for (k, v) in _six.iteritems(pb2_object.bindings)
+            }
+        )
 
 
 class BindingDataCollection(_common.FlyteIdlEntity):
-
     def __init__(self, bindings):
         """
         A list of BindingData items.
@@ -459,7 +498,9 @@ class BindingDataCollection(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.BindingDataCollection
         """
-        return _literals_pb2.BindingDataCollection(bindings=[b.to_flyte_idl() for b in self.bindings])
+        return _literals_pb2.BindingDataCollection(
+            bindings=[b.to_flyte_idl() for b in self.bindings]
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -471,7 +512,6 @@ class BindingDataCollection(_common.FlyteIdlEntity):
 
 
 class BindingData(_common.FlyteIdlEntity):
-
     def __init__(self, scalar=None, collection=None, promise=None, map=None):
         """
         Specifies either a simple value or a reference to another output. Only one of the input arguments may be
@@ -534,9 +574,11 @@ class BindingData(_common.FlyteIdlEntity):
         """
         return _literals_pb2.BindingData(
             scalar=self.scalar.to_flyte_idl() if self.scalar is not None else None,
-            collection=self.collection.to_flyte_idl() if self.collection is not None else None,
+            collection=self.collection.to_flyte_idl()
+            if self.collection is not None
+            else None,
             promise=self.promise.to_flyte_idl() if self.promise is not None else None,
-            map=self.map.to_flyte_idl() if self.map is not None else None
+            map=self.map.to_flyte_idl() if self.map is not None else None,
         )
 
     @classmethod
@@ -546,11 +588,18 @@ class BindingData(_common.FlyteIdlEntity):
         :return: BindingData
         """
         return cls(
-            scalar=Scalar.from_flyte_idl(pb2_object.scalar) if pb2_object.HasField("scalar") else None,
+            scalar=Scalar.from_flyte_idl(pb2_object.scalar)
+            if pb2_object.HasField("scalar")
+            else None,
             collection=BindingDataCollection.from_flyte_idl(pb2_object.collection)
-            if pb2_object.HasField("collection") else None,
-            promise=_OutputReference.from_flyte_idl(pb2_object.promise) if pb2_object.HasField("promise") else None,
-            map=BindingDataMap.from_flyte_idl(pb2_object.map) if pb2_object.HasField("map") else None
+            if pb2_object.HasField("collection")
+            else None,
+            promise=_OutputReference.from_flyte_idl(pb2_object.promise)
+            if pb2_object.HasField("promise")
+            else None,
+            map=BindingDataMap.from_flyte_idl(pb2_object.map)
+            if pb2_object.HasField("map")
+            else None,
         )
 
     def to_literal_model(self):
@@ -559,19 +608,33 @@ class BindingData(_common.FlyteIdlEntity):
         :rtype: Literal
         """
         if self.promise:
-            raise _user_exceptions.FlyteValueException(self.promise, "Cannot convert BindingData to a Literal because "
-                                                                     "it has a promise.")
+            raise _user_exceptions.FlyteValueException(
+                self.promise,
+                "Cannot convert BindingData to a Literal because " "it has a promise.",
+            )
         elif self.scalar:
             return Literal(scalar=self.scalar)
         elif self.collection:
-            return Literal(collection=LiteralCollection(
-                literals=[binding.to_literal_model() for binding in self.collection.bindings]))
+            return Literal(
+                collection=LiteralCollection(
+                    literals=[
+                        binding.to_literal_model()
+                        for binding in self.collection.bindings
+                    ]
+                )
+            )
         elif self.map:
-            return Literal(map=LiteralMap(literals={k: binding.to_literal_model() for k, binding in self.map.bindings}))
+            return Literal(
+                map=LiteralMap(
+                    literals={
+                        k: binding.to_literal_model()
+                        for k, binding in self.map.bindings
+                    }
+                )
+            )
 
 
 class Binding(_common.FlyteIdlEntity):
-
     def __init__(self, var, binding):
         """
         An input/output binding of a variable to either static value or a node output.
@@ -602,10 +665,7 @@ class Binding(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.Binding
         """
-        return _literals_pb2.Binding(
-            var=self.var,
-            binding=self.binding.to_flyte_idl()
-        )
+        return _literals_pb2.Binding(var=self.var, binding=self.binding.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -617,7 +677,6 @@ class Binding(_common.FlyteIdlEntity):
 
 
 class Schema(_common.FlyteIdlEntity):
-
     def __init__(self, uri, type):
         """
         A strongly typed schema that defines the interface of data retrieved from the underlying storage medium.
@@ -658,7 +717,6 @@ class Schema(_common.FlyteIdlEntity):
 
 
 class LiteralCollection(_common.FlyteIdlEntity):
-
     def __init__(self, literals):
         """
         :param list[Literal] literals: underlying list of literals in this collection.
@@ -690,7 +748,6 @@ class LiteralCollection(_common.FlyteIdlEntity):
 
 
 class LiteralMap(_common.FlyteIdlEntity):
-
     def __init__(self, literals):
         """
         :param dict[Text, Literal] literals: A dictionary mapping Text key names to Literal objects.
@@ -719,11 +776,15 @@ class LiteralMap(_common.FlyteIdlEntity):
         :param flyteidl.core.literals_pb2.LiteralMap pb2_object:
         :rtype: LiteralMap
         """
-        return cls({k: Literal.from_flyte_idl(v) for k, v in _six.iteritems(pb2_object.literals)})
+        return cls(
+            {
+                k: Literal.from_flyte_idl(v)
+                for k, v in _six.iteritems(pb2_object.literals)
+            }
+        )
 
 
 class Literal(_common.FlyteIdlEntity):
-
     def __init__(self, scalar=None, collection=None, map=None):
         """
         :param Scalar scalar:
@@ -772,8 +833,10 @@ class Literal(_common.FlyteIdlEntity):
         """
         return _literals_pb2.Literal(
             scalar=self.scalar.to_flyte_idl() if self.scalar is not None else None,
-            collection=self.collection.to_flyte_idl() if self.collection is not None else None,
-            map=self.map.to_flyte_idl() if self.map is not None else None
+            collection=self.collection.to_flyte_idl()
+            if self.collection is not None
+            else None,
+            map=self.map.to_flyte_idl() if self.map is not None else None,
         )
 
     @classmethod
@@ -787,7 +850,11 @@ class Literal(_common.FlyteIdlEntity):
             collection = LiteralCollection.from_flyte_idl(pb2_object.collection)
 
         return cls(
-            scalar=Scalar.from_flyte_idl(pb2_object.scalar) if pb2_object.HasField("scalar") else None,
+            scalar=Scalar.from_flyte_idl(pb2_object.scalar)
+            if pb2_object.HasField("scalar")
+            else None,
             collection=collection,
-            map=LiteralMap.from_flyte_idl(pb2_object.map) if pb2_object.HasField("map") else None
+            map=LiteralMap.from_flyte_idl(pb2_object.map)
+            if pb2_object.HasField("map")
+            else None,
         )

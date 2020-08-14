@@ -31,10 +31,10 @@ def _dnsify(value):
     MAX = 63
     HASH_LEN = 10
     if len(value) >= MAX:
-        h = _sha224(value.encode('utf-8')).hexdigest()[:HASH_LEN]
-        value = "{}-{}".format(h, value[-(MAX - HASH_LEN - 1):])
+        h = _sha224(value.encode("utf-8")).hexdigest()[:HASH_LEN]
+        value = "{}-{}".format(h, value[-(MAX - HASH_LEN - 1) :])
     for ch in value:
-        if ch == '_' or ch == '-' or ch == '.':
+        if ch == "_" or ch == "-" or ch == ".":
             # Convert '_' to '-' unless it's the first character, in which case we drop it.
             if res != "" and len(res) < 62:
                 res += "-"
@@ -46,18 +46,18 @@ def _dnsify(value):
             res += ch
         else:
             # Character is upper-case. Add a '-' before it for better readability.
-            if res != "" and res[-1] != '-' and len(res) < 62:
+            if res != "" and res[-1] != "-" and len(res) < 62:
                 res += "-"
             res += ch.lower()
 
-    if res[-1] == '-':
-        res = res[:len(res) - 1]
+    if res[-1] == "-":
+        res = res[: len(res) - 1]
 
     return res
 
 
 def load_proto_from_file(pb2_type, path):
-    with open(path, 'rb') as reader:
+    with open(path, "rb") as reader:
         out = pb2_type()
         out.ParseFromString(reader.read())
         return out
@@ -65,7 +65,7 @@ def load_proto_from_file(pb2_type, path):
 
 def write_proto_to_file(proto, path):
     Path(_os.path.dirname(path)).mkdir(parents=True, exist_ok=True)
-    with open(path, 'wb') as writer:
+    with open(path, "wb") as writer:
         writer.write(proto.SerializeToString())
 
 
@@ -74,7 +74,6 @@ def get_version_message():
 
 
 class Directory(object):
-
     def __init__(self, path):
         """
         :param Text path: local path of directory
@@ -114,12 +113,16 @@ class AutoDeletingTempDir(Directory):
         :param bool cleanup: Whether the directory should be cleaned up upon exit
         """
         self._tmp_dir = tmp_dir
-        self._working_dir_prefix = (working_dir_prefix + "_") if working_dir_prefix else ''
+        self._working_dir_prefix = (
+            (working_dir_prefix + "_") if working_dir_prefix else ""
+        )
         self._cleanup = cleanup
         super(AutoDeletingTempDir, self).__init__(None)
 
     def __enter__(self):
-        self._name = _tempfile.mkdtemp(dir=self._tmp_dir, prefix=self._working_dir_prefix)
+        self._name = _tempfile.mkdtemp(
+            dir=self._tmp_dir, prefix=self._working_dir_prefix
+        )
         return self
 
     def get_named_tempfile(self, name):
@@ -145,7 +148,6 @@ class AutoDeletingTempDir(Directory):
 
 
 class PerformanceTimer(object):
-
     def __init__(self, context_statement):
         """
         :param Text context_statement: the statement to log
@@ -162,15 +164,16 @@ class PerformanceTimer(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         end_wall_time = _time.time()
         end_process_time = _time.clock()
-        _logging.info("Exiting timed context: {} [Wall Time: {}s, Process Time: {}s]".format(
-            self._context_statement,
-            end_wall_time - self._start_wall_time,
-            end_process_time - self._start_process_time
-        ))
+        _logging.info(
+            "Exiting timed context: {} [Wall Time: {}s, Process Time: {}s]".format(
+                self._context_statement,
+                end_wall_time - self._start_wall_time,
+                end_process_time - self._start_process_time,
+            )
+        )
 
 
 class ExitStack(object):
-
     def __init__(self, entered_stack=None):
         self._contexts = entered_stack
 

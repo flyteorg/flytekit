@@ -8,9 +8,16 @@ import six as _six
 import uuid as _uuid
 
 from flytekit.common import utils as _utils, sdk_bases as _sdk_bases
-from flytekit.common.types import primitives as _primitives, base_sdk_types as _base_sdk_types, helpers as _helpers
+from flytekit.common.types import (
+    primitives as _primitives,
+    base_sdk_types as _base_sdk_types,
+    helpers as _helpers,
+)
 from flytekit.common.types.impl import blobs as _blob_impl
-from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
+from flytekit.common.exceptions import (
+    user as _user_exceptions,
+    scopes as _exception_scopes,
+)
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import types as _type_models, literals as _literal_models
 from flytekit.configuration import sdk as _sdk_config
@@ -25,12 +32,21 @@ def get_supported_literal_types_to_pandas_types():
     global _SUPPORTED_LITERAL_TYPE_TO_PANDAS_TYPES
     if _SUPPORTED_LITERAL_TYPE_TO_PANDAS_TYPES is None:
         _SUPPORTED_LITERAL_TYPE_TO_PANDAS_TYPES = {
-            _primitives.Integer.to_flyte_literal_type(): {_np.int32, _np.int64, _np.uint32, _np.uint64},
+            _primitives.Integer.to_flyte_literal_type(): {
+                _np.int32,
+                _np.int64,
+                _np.uint32,
+                _np.uint64,
+            },
             _primitives.Float.to_flyte_literal_type(): {_np.float32, _np.float64},
             _primitives.Boolean.to_flyte_literal_type(): {_np.bool},
             _primitives.Datetime.to_flyte_literal_type(): {_np.datetime64},
             _primitives.Timedelta.to_flyte_literal_type(): {_np.timedelta64},
-            _primitives.String.to_flyte_literal_type(): {_np.object_, _np.str_, _np.string_}
+            _primitives.String.to_flyte_literal_type(): {
+                _np.object_,
+                _np.str_,
+                _np.string_,
+            },
         }
     return _SUPPORTED_LITERAL_TYPE_TO_PANDAS_TYPES
 
@@ -42,8 +58,7 @@ _ALLOWED_PARTITION_TYPES = {str, int}
 # work-around where we create an external table with the appropriate schema and write the data to our desired
 # location.  The issue here is that the table information in the meta-store might not get cleaned up during a partial
 # failure.
-_HIVE_QUERY_FORMATTER = \
-    """
+_HIVE_QUERY_FORMATTER = """
     {stage_query_str}
 
     CREATE TEMPORARY TABLE {table}_tmp AS {query_str};
@@ -59,8 +74,7 @@ _HIVE_QUERY_FORMATTER = \
 
 # Once https://issues.apache.org/jira/browse/HIVE-12860 is resolved.  We will prefer the following syntax because it
 # guarantees cleanup on partial failures.
-_HIVE_QUERY_FORMATTER_V2 = \
-    """
+_HIVE_QUERY_FORMATTER_V2 = """
     CREATE TEMPORARY TABLE {table} AS {query_str};
 
     INSERT OVERWRITE DIRECTORY '{url}' STORED AS PARQUET
@@ -70,8 +84,7 @@ _HIVE_QUERY_FORMATTER_V2 = \
 
 # Set location in both parts of this query so in case of a partial failure, we will always have some data backing a
 # partition.
-_WRITE_HIVE_PARTITION_QUERY_FORMATTER = \
-    """
+_WRITE_HIVE_PARTITION_QUERY_FORMATTER = """
     ALTER TABLE {write_table} ADD IF NOT EXISTS {partition_string} LOCATION '{url}';
 
     ALTER TABLE {write_table} {partition_string} SET LOCATION '{url}';
@@ -79,24 +92,21 @@ _WRITE_HIVE_PARTITION_QUERY_FORMATTER = \
 
 
 def _format_insert_partition_query(table_name, partition_string, remote_location):
-    table_pieces = table_name.split('.')
+    table_pieces = table_name.split(".")
     if len(table_pieces) > 1:
         # Hive shell commands don't allow us to alter tables and select databases in the table specification.  So
         # we split the table name and use the 'use' command to choose the correct database.
         prefix = "use {};\n".format(table_pieces[0])
-        table_name = '.'.join(table_pieces[1:])
+        table_name = ".".join(table_pieces[1:])
     else:
         prefix = ""
 
     return prefix + _WRITE_HIVE_PARTITION_QUERY_FORMATTER.format(
-        write_table=table_name,
-        partition_string=partition_string,
-        url=remote_location
+        write_table=table_name, partition_string=partition_string, url=remote_location
     )
 
 
 class _SchemaIO(object):
-
     def __init__(self, schema_instance, local_dir, mode):
         """
         :param Schema schema_instance:
@@ -146,7 +156,9 @@ class _SchemaIO(object):
         if index < 0 or index > self.chunk_count:
             raise _user_exceptions.FlyteValueException(
                 index,
-                "Attempting to seek to a chunk that is out of range. Allowed range is [0, {}]".format(self.chunk_count)
+                "Attempting to seek to a chunk that is out of range. Allowed range is [0, {}]".format(
+                    self.chunk_count
+                ),
             )
         self._index = index
 
@@ -156,19 +168,17 @@ class _SchemaIO(object):
 
     def __repr__(self):
         return "{mode} IO Object for {type} @ {location}".format(
-            type=self._schema.type,
-            location=self._schema.remote_prefix,
-            mode=self._mode)
+            type=self._schema.type, location=self._schema.remote_prefix, mode=self._mode
+        )
 
 
 class _SchemaReader(_SchemaIO):
-
     def __init__(self, schema_instance, local_dir):
         """
         :param Schema schema_instance:
         :param flytekit.common.utils.Directory local_dir:
         """
-        super(_SchemaReader, self).__init__(schema_instance, local_dir, 'Read-Only')
+        super(_SchemaReader, self).__init__(schema_instance, local_dir, "Read-Only")
         self.reset_chunks()
 
     @_exception_scopes.system_entry_point
@@ -196,22 +206,29 @@ class _SchemaReader(_SchemaIO):
         """
         df = None
 
-        if parquet_engine == 'fastparquet':
+        if parquet_engine == "fastparquet":
             from fastparquet import ParquetFile as _ParquetFile
             import fastparquet.thrift_structures as _ts
 
             # https://github.com/dask/fastparquet/issues/414#issuecomment-478983811
-            df = _pd.read_parquet(chunk, columns=columns, engine=parquet_engine, index=False)
+            df = _pd.read_parquet(
+                chunk, columns=columns, engine=parquet_engine, index=False
+            )
             df_column_types = df.dtypes
             pf = _ParquetFile(chunk)
-            schema_column_dtypes = {l.name: l.type for l in list(pf.schema.schema_elements)}
+            schema_column_dtypes = {
+                l.name: l.type for l in list(pf.schema.schema_elements)
+            }
 
-            for idx in df_column_types[df_column_types == 'float16'].index.tolist():
+            for idx in df_column_types[df_column_types == "float16"].index.tolist():
                 # A hacky way to get the string representations of the column types of a parquet schema
                 # Reference:
                 # https://github.com/dask/fastparquet/blob/f4ecc67f50e7bf98b2d0099c9589c615ea4b06aa/fastparquet/schema.py
-                if _ts.parquet_thrift.Type._VALUES_TO_NAMES[schema_column_dtypes[idx]] == "BOOLEAN":
-                    df[idx] = df[idx].astype('object')
+                if (
+                    _ts.parquet_thrift.Type._VALUES_TO_NAMES[schema_column_dtypes[idx]]
+                    == "BOOLEAN"
+                ):
+                    df[idx] = df[idx].astype("object")
                     df[idx].replace({0: False, 1: True, _pd.np.nan: None}, inplace=True)
 
         else:
@@ -244,9 +261,10 @@ class _SchemaReader(_SchemaIO):
         self._access_guard()
 
         parquet_engine = _sdk_config.PARQUET_ENGINE.get()
-        if parquet_engine not in {'fastparquet', 'pyarrow'}:
+        if parquet_engine not in {"fastparquet", "pyarrow"}:
             raise _user_exceptions.FlyteAssertion(
-                "environment variable parquet_engine must be one of 'pyarrow', 'fastparquet', or be unset")
+                "environment variable parquet_engine must be one of 'pyarrow', 'fastparquet', or be unset"
+            )
 
         df_out = None
         if not columns:
@@ -264,15 +282,13 @@ class _SchemaReader(_SchemaIO):
                     chunk=chunk, columns=columns, parquet_engine=parquet_engine
                 )
                 # _pd.read_parquet(chunk, columns=columns, engine=parquet_engine)
-                for chunk in self._chunks[self._index:]
+                for chunk in self._chunks[self._index :]
                 if _os.path.getsize(chunk) > 0
             ]
             if len(frames) == 1:
                 df_out = frames[0]
             elif len(frames) > 1:
-                df_out = _pd.concat(
-                    frames,
-                    copy=True)
+                df_out = _pd.concat(frames, copy=True)
             self._index = len(self._chunks)
         else:
             while self._index < len(self._chunks) and df_out is None:
@@ -282,11 +298,14 @@ class _SchemaReader(_SchemaIO):
                         chunk=self._chunks[self._index],
                         columns=columns,
                         parquet_engine=parquet_engine,
-                        **kwargs)
+                        **kwargs
+                    )
                 self._index += 1
 
         if df_out is not None:
-            self._schema.compare_dataframe_to_schema(df_out, read=True, column_subset=columns)
+            self._schema.compare_dataframe_to_schema(
+                df_out, read=True, column_subset=columns
+            )
 
             # Make sure the columns are renamed to exactly what the user specifies.  This prevents unexpected
             # unicode v. string mismatches.  Also, if a schema is mapped with strict_names=False, the input might
@@ -302,19 +321,19 @@ class _SchemaReader(_SchemaIO):
                 # Avoid using pandas.DataFrame.rename() as this function incurs significant memory overhead
                 df_out.columns = [
                     user_column_dict[col] if col in user_columns else col
-                    for col in df_out.columns.values]
+                    for col in df_out.columns.values
+                ]
         return df_out
 
 
 class _SchemaWriter(_SchemaIO):
-
     def __init__(self, schema_instance, local_dir):
         """
         :param Schema schema_instance:
         :param flytekit.common.utils.Directory local_dir:
         :param Text mode:
         """
-        super(_SchemaWriter, self).__init__(schema_instance, local_dir, 'Write-Only')
+        super(_SchemaWriter, self).__init__(schema_instance, local_dir, "Write-Only")
 
     @_exception_scopes.system_entry_point
     def close(self):
@@ -324,12 +343,16 @@ class _SchemaWriter(_SchemaIO):
         try:
             # TODO: Introduce system logging
             # logging.info("Copying recursively {} -> {}".format(self._local_dir.name, self._schema.remote_prefix))
-            _data_proxy.Data.put_data(self._local_dir.name, self._schema.remote_prefix, is_multipart=True)
+            _data_proxy.Data.put_data(
+                self._local_dir.name, self._schema.remote_prefix, is_multipart=True
+            )
         finally:
             super(_SchemaWriter, self).close()
 
     @_exception_scopes.system_entry_point
-    def write(self, data_frame, coerce_timestamps='us', allow_truncated_timestamps=False):
+    def write(
+        self, data_frame, coerce_timestamps="us", allow_truncated_timestamps=False
+    ):
         """
         Writes data frame as a chunk to the local directory owned by the Schema object.  Will later be uploaded to s3.
 
@@ -346,7 +369,8 @@ class _SchemaWriter(_SchemaIO):
                 expected_type=_pd.DataFrame,
                 received_type=type(data_frame),
                 received_value=data_frame,
-                additional_msg="Only pandas DataFrame objects can be written to a Schema object")
+                additional_msg="Only pandas DataFrame objects can be written to a Schema object",
+            )
 
         self._schema.compare_dataframe_to_schema(data_frame)
         all_columns = list(data_frame.columns.values)
@@ -357,11 +381,14 @@ class _SchemaWriter(_SchemaIO):
         unicode_columns = [_six.text_type(col) for col in all_columns]
         data_frame.columns = unicode_columns
         try:
-            filename = self._local_dir.get_named_tempfile(_os.path.join(str(self._index).zfill(6)))
+            filename = self._local_dir.get_named_tempfile(
+                _os.path.join(str(self._index).zfill(6))
+            )
             data_frame.to_parquet(
                 filename,
                 coerce_timestamps=coerce_timestamps,
-                allow_truncated_timestamps=allow_truncated_timestamps)
+                allow_truncated_timestamps=allow_truncated_timestamps,
+            )
             if self._index == len(self._chunks):
                 self._chunks.append(filename)
             self._index += 1
@@ -371,7 +398,6 @@ class _SchemaWriter(_SchemaIO):
 
 
 class _SchemaBackingMpBlob(_blob_impl.MultiPartBlob):
-
     @property
     def directory(self):
         """
@@ -389,21 +415,27 @@ class _SchemaBackingMpBlob(_blob_impl.MultiPartBlob):
                 )
             self._directory = _utils.AutoDeletingTempDir(
                 _uuid.uuid4().hex,
-                tmp_dir=_data_proxy.LocalWorkingDirectoryContext.get().name
+                tmp_dir=_data_proxy.LocalWorkingDirectoryContext.get().name,
             )
             self._is_managed = True
             self._directory.__enter__()
 
-            if 'r' in self.mode:
-                _data_proxy.Data.get_data(self.remote_location, self.local_path, is_multipart=True)
+            if "r" in self.mode:
+                _data_proxy.Data.get_data(
+                    self.remote_location, self.local_path, is_multipart=True
+                )
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if 'w' in self.mode:
-            _data_proxy.Data.put_data(self.local_path, self.remote_location, is_multipart=True)
+        if "w" in self.mode:
+            _data_proxy.Data.put_data(
+                self.local_path, self.remote_location, is_multipart=True
+            )
         return super(_SchemaBackingMpBlob, self).__exit__(exc_type, exc_val, exc_tb)
 
 
-class SchemaType(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.SchemaType)):
+class SchemaType(
+    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.SchemaType)
+):
     _LITERAL_TYPE_TO_PROTO_ENUM = {
         _primitives.Integer.to_flyte_literal_type(): _type_models.SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
         _primitives.Float.to_flyte_literal_type(): _type_models.SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
@@ -433,8 +465,7 @@ class SchemaType(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.Sc
         """
         return [
             _type_models.SchemaType.SchemaColumn(
-                n,
-                type(self)._LITERAL_TYPE_TO_PROTO_ENUM[v.to_flyte_literal_type()]
+                n, type(self)._LITERAL_TYPE_TO_PROTO_ENUM[v.to_flyte_literal_type()]
             )
             for n, v in _six.iteritems(self.sdk_columns)
         ]
@@ -446,18 +477,24 @@ class SchemaType(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.Sc
         :rtype: SchemaType
         """
         _PROTO_ENUM_TO_SDK_TYPE = {
-            _type_models.SchemaType.SchemaColumn.SchemaColumnType.INTEGER:
-                _helpers.get_sdk_type_from_literal_type(_primitives.Integer.to_flyte_literal_type()),
-            _type_models.SchemaType.SchemaColumn.SchemaColumnType.FLOAT:
-                _helpers.get_sdk_type_from_literal_type(_primitives.Float.to_flyte_literal_type()),
-            _type_models.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN:
-                _helpers.get_sdk_type_from_literal_type(_primitives.Boolean.to_flyte_literal_type()),
-            _type_models.SchemaType.SchemaColumn.SchemaColumnType.DATETIME:
-                _helpers.get_sdk_type_from_literal_type(_primitives.Datetime.to_flyte_literal_type()),
-            _type_models.SchemaType.SchemaColumn.SchemaColumnType.DURATION:
-                _helpers.get_sdk_type_from_literal_type(_primitives.Timedelta.to_flyte_literal_type()),
-            _type_models.SchemaType.SchemaColumn.SchemaColumnType.STRING:
-                _helpers.get_sdk_type_from_literal_type(_primitives.String.to_flyte_literal_type()),
+            _type_models.SchemaType.SchemaColumn.SchemaColumnType.INTEGER: _helpers.get_sdk_type_from_literal_type(
+                _primitives.Integer.to_flyte_literal_type()
+            ),
+            _type_models.SchemaType.SchemaColumn.SchemaColumnType.FLOAT: _helpers.get_sdk_type_from_literal_type(
+                _primitives.Float.to_flyte_literal_type()
+            ),
+            _type_models.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN: _helpers.get_sdk_type_from_literal_type(
+                _primitives.Boolean.to_flyte_literal_type()
+            ),
+            _type_models.SchemaType.SchemaColumn.SchemaColumnType.DATETIME: _helpers.get_sdk_type_from_literal_type(
+                _primitives.Datetime.to_flyte_literal_type()
+            ),
+            _type_models.SchemaType.SchemaColumn.SchemaColumnType.DURATION: _helpers.get_sdk_type_from_literal_type(
+                _primitives.Timedelta.to_flyte_literal_type()
+            ),
+            _type_models.SchemaType.SchemaColumn.SchemaColumnType.STRING: _helpers.get_sdk_type_from_literal_type(
+                _primitives.String.to_flyte_literal_type()
+            ),
         }
         return cls([(c.name, _PROTO_ENUM_TO_SDK_TYPE[c.type]) for c in model.columns])
 
@@ -468,46 +505,60 @@ class SchemaType(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.Sc
                 raise _user_exceptions.FlyteValueException(
                     column,
                     "When specifying a Schema type with a known set of columns.  Each column must be "
-                    "specified as a tuple in the form ('name', type).")
+                    "specified as a tuple in the form ('name', type).",
+                )
             if len(column) != 2:
                 raise _user_exceptions.FlyteValueException(
                     column,
                     "When specifying a Schema type with a known set of columns.  Each column must be "
-                    "specified as a tuple in the form ('name', type).")
+                    "specified as a tuple in the form ('name', type).",
+                )
             name, sdk_type = column
             sdk_type = _helpers.python_std_to_sdk_type(sdk_type)
 
             if not isinstance(name, (str, _six.text_type)):
-                additional_msg = "When specifying a Schema type with a known set of columns, the first element in" \
-                                 " each tuple must be text."
+                additional_msg = (
+                    "When specifying a Schema type with a known set of columns, the first element in"
+                    " each tuple must be text."
+                )
                 raise _user_exceptions.FlyteTypeException(
                     received_type=type(name),
                     received_value=name,
                     expected_type={str, _six.text_type},
-                    additional_msg=additional_msg)
+                    additional_msg=additional_msg,
+                )
 
-            if not isinstance(sdk_type, _base_sdk_types.FlyteSdkType) or sdk_type.to_flyte_literal_type() not in \
-                    get_supported_literal_types_to_pandas_types():
-                additional_msg = \
-                    "When specifying a Schema type with a known set of columns, the second element of " \
+            if (
+                not isinstance(sdk_type, _base_sdk_types.FlyteSdkType)
+                or sdk_type.to_flyte_literal_type()
+                not in get_supported_literal_types_to_pandas_types()
+            ):
+                additional_msg = (
+                    "When specifying a Schema type with a known set of columns, the second element of "
                     "each tuple must be a supported type.  Failed for column: {name}".format(
-                        name=name)
+                        name=name
+                    )
+                )
                 raise _user_exceptions.FlyteTypeException(
-                    expected_type=list(get_supported_literal_types_to_pandas_types().keys()),
+                    expected_type=list(
+                        get_supported_literal_types_to_pandas_types().keys()
+                    ),
                     received_type=sdk_type,
-                    additional_msg=additional_msg)
+                    additional_msg=additional_msg,
+                )
 
             if name in names_seen:
-                raise ValueError("The column name {name} was specified multiple times when instantiating the "
-                                 "Schema.".format(name=name))
+                raise ValueError(
+                    "The column name {name} was specified multiple times when instantiating the "
+                    "Schema.".format(name=name)
+                )
             names_seen.add(name)
 
         self._sdk_columns = _collections.OrderedDict(columns)
 
 
 class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Schema)):
-
-    def __init__(self, remote_path, mode='rb', schema_type=None):
+    def __init__(self, remote_path, mode="rb", schema_type=None):
         """
         :param Text remote_path:
         :param Text mode:
@@ -515,10 +566,7 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
             not specified, the schema will be considered generic.
         """
         self._mp_blob = _SchemaBackingMpBlob(remote_path, mode=mode)
-        super(Schema, self).__init__(
-            self._mp_blob.uri,
-            schema_type or SchemaType()
-        )
+        super(Schema, self).__init__(self._mp_blob.uri, schema_type or SchemaType())
         self._io_object = None
 
     @classmethod
@@ -531,7 +579,9 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def create_at_known_location(cls, known_remote_location, mode='wb', schema_type=None):
+    def create_at_known_location(
+        cls, known_remote_location, mode="wb", schema_type=None
+    ):
         """
         :param Text known_remote_location: The location to which to write the object.  Usually an s3 path.
         :param Text mode:
@@ -543,18 +593,22 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def create_at_any_location(cls, mode='wb', schema_type=None):
+    def create_at_any_location(cls, mode="wb", schema_type=None):
         """
         :param Text mode:
         :param SchemaType schema_type: [Optional] If specified, the schema will be forced to conform to this type.  If
             not specified, the schema will be considered generic.
         :rtype: Schema
         """
-        return cls.create_at_known_location(_data_proxy.Data.get_remote_path(), mode=mode, schema_type=schema_type)
+        return cls.create_at_known_location(
+            _data_proxy.Data.get_remote_path(), mode=mode, schema_type=schema_type
+        )
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def fetch(cls, remote_path, local_path=None, overwrite=False, mode='rb', schema_type=None):
+    def fetch(
+        cls, remote_path, local_path=None, overwrite=False, mode="rb", schema_type=None
+    ):
         """
         :param Text remote_path: The location from which to fetch the object. Usually an s3 path.
         :param Text local_path: [Optional] A local path to which to download the object. If specified, the object
@@ -606,7 +660,7 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
                             type(t_value),
                             {str, _six.text_type, Schema},
                             received_value=x,
-                            additional_msg="A Schema object can only be create from a pandas DataFrame or a list of pandas DataFrame."
+                            additional_msg="A Schema object can only be create from a pandas DataFrame or a list of pandas DataFrame.",
                         )
             return o
         else:
@@ -614,7 +668,7 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
                 type(t_value),
                 {str, _six.text_type, Schema},
                 received_value=t_value,
-                additional_msg="Unable to create Schema from user-provided value."
+                additional_msg="Unable to create Schema from user-provided value.",
             )
 
     @classmethod
@@ -625,18 +679,21 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
         :rtype: Schema
         """
         if not string_value:
-            _user_exceptions.FlyteValueException(string_value, "Cannot create a Schema from an empty path")
+            _user_exceptions.FlyteValueException(
+                string_value, "Cannot create a Schema from an empty path"
+            )
         return cls.create_at_known_location(string_value, schema_type=schema_type)
 
     @classmethod
     @_exception_scopes.system_entry_point
     def create_from_hive_query(
-            cls,
-            select_query,
-            stage_query=None,
-            schema_to_table_name_map=None,
-            schema_type=None,
-            known_location=None):
+        cls,
+        select_query,
+        stage_query=None,
+        schema_to_table_name_map=None,
+        schema_type=None,
+        known_location=None,
+    ):
         """
         Returns a query that can be submitted to Hive and produce the desired output.  It also returns a properly-typed
         schema object.
@@ -653,38 +710,51 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
         """
         schema_object = cls(
             known_location or _data_proxy.Data.get_remote_directory(),
-            mode='wb',
-            schema_type=schema_type
+            mode="wb",
+            schema_type=schema_type,
         )
 
         if len(schema_object.type.sdk_columns) > 0:
-            identity_dict = {n: n for n in _six.iterkeys(schema_object.type.sdk_columns)}
+            identity_dict = {
+                n: n for n in _six.iterkeys(schema_object.type.sdk_columns)
+            }
             identity_dict.update(schema_to_table_name_map or {})
             schema_to_table_name_map = identity_dict
 
             columnar_clauses = []
             for name, sdk_type in _six.iteritems(schema_object.type.sdk_columns):
                 if sdk_type == _primitives.Float:
-                    columnar_clauses.append("CAST({table_column_name} as double) {schema_name}".format(
-                        table_column_name=schema_to_table_name_map[name],
-                        schema_name=name))
+                    columnar_clauses.append(
+                        "CAST({table_column_name} as double) {schema_name}".format(
+                            table_column_name=schema_to_table_name_map[name],
+                            schema_name=name,
+                        )
+                    )
                 else:
-                    columnar_clauses.append("{table_column_name} as {schema_name}".format(
-                        table_column_name=schema_to_table_name_map[name],
-                        schema_name=name))
+                    columnar_clauses.append(
+                        "{table_column_name} as {schema_name}".format(
+                            table_column_name=schema_to_table_name_map[name],
+                            schema_name=name,
+                        )
+                    )
             columnar_query = ",\n\t\t".join(columnar_clauses)
         else:
             columnar_query = "*"
 
-        stage_query_str = _six.text_type(stage_query or '')
+        stage_query_str = _six.text_type(stage_query or "")
         # the stage query should always end with a semicolon
-        stage_query_str = stage_query_str if stage_query_str.endswith(';') else (stage_query_str + ';')
+        stage_query_str = (
+            stage_query_str
+            if stage_query_str.endswith(";")
+            else (stage_query_str + ";")
+        )
         query = _HIVE_QUERY_FORMATTER.format(
             url=schema_object.remote_location,
             stage_query_str=stage_query_str,
-            query_str=select_query.strip().strip(';'),
+            query_str=select_query.strip().strip(";"),
             columnar_query=columnar_query,
-            table=_uuid.uuid4().hex)
+            table=_uuid.uuid4().hex,
+        )
         return schema_object, query
 
     @property
@@ -754,7 +824,7 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
             )
 
         self._mp_blob.__enter__()
-        if 'r' in self.mode:
+        if "r" in self.mode:
             self._io_object = _SchemaReader(self, self.multipart_blob.directory)
         else:
             self._io_object = _SchemaWriter(self, self.multipart_blob.directory)
@@ -769,7 +839,7 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
         return "Schema({columns}) @ {location} ({mode})".format(
             columns=self.type.columns,
             location=self.remote_prefix,
-            mode='read-only' if 'r' in self.mode else 'write-only'
+            mode="read-only" if "r" in self.mode else "write-only",
         )
 
     @_exception_scopes.system_entry_point
@@ -785,12 +855,13 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
 
     @_exception_scopes.system_entry_point
     def get_write_partition_to_hive_table_query(
-            self,
-            table_name,
-            partitions=None,
-            schema_to_table_name_map=None,
-            partitions_in_table=False,
-            append_to_partition=False):
+        self,
+        table_name,
+        partitions=None,
+        schema_to_table_name_map=None,
+        partitions_in_table=False,
+        append_to_partition=False,
+    ):
         """
         Returns a Hive query string that will update the metatable to point to the data as the new partition.
 
@@ -809,7 +880,9 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
         identity_dict = {n: n for n in _six.iterkeys(self.type.sdk_columns)}
         identity_dict.update(schema_to_table_name_map or {})
         schema_to_table_name_map = identity_dict
-        table_to_schema_name_map = {v: k for k, v in _six.iteritems(schema_to_table_name_map)}
+        table_to_schema_name_map = {
+            v: k for k, v in _six.iteritems(schema_to_table_name_map)
+        }
 
         if partitions:
             partition_conditions = []
@@ -819,36 +892,48 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
                         expected_type={str, _six.text_type},
                         received_type=type(partition_name),
                         received_value=partition_name,
-                        additional_msg="All partition names must be type str.")
+                        additional_msg="All partition names must be type str.",
+                    )
                 if type(partition_value) not in _ALLOWED_PARTITION_TYPES:
                     raise _user_exceptions.FlyteTypeException(
                         expected_type=_ALLOWED_PARTITION_TYPES,
                         received_type=type(partition_value),
                         received_value=partition_value,
-                        additional_msg="Partition {name} has an unsupported type.".format(name=partition_name)
+                        additional_msg="Partition {name} has an unsupported type.".format(
+                            name=partition_name
+                        ),
                     )
 
                 # We need the string to be quoted in the query, so let's take repr of it.
                 if isinstance(partition_value, (str, _six.text_type)):
                     partition_value = repr(partition_value)
-                partition_conditions.append("{partition_name} = {partition_value}".format(
-                    partition_name=partition_name,
-                    partition_value=partition_value))
+                partition_conditions.append(
+                    "{partition_name} = {partition_value}".format(
+                        partition_name=partition_name, partition_value=partition_value
+                    )
+                )
             partition_formatter = "PARTITION (\n\t{conditions}\n)"
-            partition_string = partition_formatter.format(conditions=",\n\t".join(partition_conditions))
+            partition_string = partition_formatter.format(
+                conditions=",\n\t".join(partition_conditions)
+            )
 
         if partitions_in_table and partitions:
             where_clauses = []
             for partition_name, partition_value in partitions:
-                where_clauses.append("\n\t\t{schema_name} = {value_str} AND ".format(
-                    schema_name=table_to_schema_name_map[partition_name],
-                    value_str=partition_value
-                ))
-            where_string = "WHERE\n\t\t{where_clauses}".format(where_clauses=" AND\n\t\t".join(where_clauses))
+                where_clauses.append(
+                    "\n\t\t{schema_name} = {value_str} AND ".format(
+                        schema_name=table_to_schema_name_map[partition_name],
+                        value_str=partition_value,
+                    )
+                )
+            where_string = "WHERE\n\t\t{where_clauses}".format(
+                where_clauses=" AND\n\t\t".join(where_clauses)
+            )
 
         if where_string or partitions_in_table:
             raise _user_exceptions.FlyteAssertion(
-                "Currently, the partition values should not be present in the schema pushed to Hive.")
+                "Currently, the partition values should not be present in the schema pushed to Hive."
+            )
         if append_to_partition:
             raise _user_exceptions.FlyteAssertion(
                 "Currently, partitions can only be overwritten, they cannot be appended."
@@ -861,7 +946,8 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
         return _format_insert_partition_query(
             remote_location=self.remote_location,
             table_name=table_name,
-            partition_string=partition_string)
+            partition_string=partition_string,
+        )
 
     def compare_dataframe_to_schema(self, data_frame, column_subset=None, read=False):
         """
@@ -891,9 +977,7 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
                 additional_msg = ""
                 raise _user_exceptions.FlyteAssertion(
                     "{} was/where requested but could not be found in the schema: {}.{}".format(
-                        failed_columns,
-                        self.type.sdk_columns,
-                        additional_msg
+                        failed_columns, self.type.sdk_columns, additional_msg
                     )
                 )
 
@@ -902,7 +986,7 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
                 expected_type=self.type.sdk_columns,
                 received_type=data_frame.columns,
                 additional_msg="Mismatch between the data frame's column names {} and schema's column names {} "
-                               "with strict_names=True.".format(all_columns, schema_column_names)
+                "with strict_names=True.".format(all_columns, schema_column_names),
             )
 
         # This only iterates if the Schema has specified columns.
@@ -912,25 +996,31 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
 
             # TODO np.issubdtype is deprecated. Replace it
             if all(
-                    not _np.issubdtype(dtype, allowed_type)
-                    for allowed_type in get_supported_literal_types_to_pandas_types()[literal_type]
+                not _np.issubdtype(dtype, allowed_type)
+                for allowed_type in get_supported_literal_types_to_pandas_types()[
+                    literal_type
+                ]
             ):
                 if read:
                     read_or_write_msg = "read data frame object from schema"
                 else:
                     read_or_write_msg = "write data frame object to schema"
-                additional_msg = \
-                    "Cannot {read_write} because the types do not match. Column " \
-                    "'{name}' did not pass type checking.  Note: If your " \
-                    "column contains null values, the types might not transition as expected between parquet and " \
-                    "pandas.  For more information, see: " \
+                additional_msg = (
+                    "Cannot {read_write} because the types do not match. Column "
+                    "'{name}' did not pass type checking.  Note: If your "
+                    "column contains null values, the types might not transition as expected between parquet and "
+                    "pandas.  For more information, see: "
                     "http://arrow.apache.org/docs/python/pandas.html#arrow-pandas-conversion".format(
-                        read_write=read_or_write_msg,
-                        name=name)
+                        read_write=read_or_write_msg, name=name
+                    )
+                )
                 raise _user_exceptions.FlyteTypeException(
-                    expected_type=get_supported_literal_types_to_pandas_types()[literal_type],
+                    expected_type=get_supported_literal_types_to_pandas_types()[
+                        literal_type
+                    ],
                     received_type=dtype,
-                    additional_msg=additional_msg)
+                    additional_msg=additional_msg,
+                )
 
     def cast_to(self, other_type):
         """
@@ -943,17 +1033,22 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
                     raise _user_exceptions.FlyteTypeException(
                         self.type,
                         other_type,
-                        additional_msg="Cannot cast because a required column '{}' was not found.".format(k),
-                        received_value=self
+                        additional_msg="Cannot cast because a required column '{}' was not found.".format(
+                            k
+                        ),
+                        received_value=self,
                     )
-                if not isinstance(v, _base_sdk_types.FlyteSdkType) or \
-                        v.to_flyte_literal_type() != self.type.sdk_columns[k].to_flyte_literal_type():
+                if (
+                    not isinstance(v, _base_sdk_types.FlyteSdkType)
+                    or v.to_flyte_literal_type()
+                    != self.type.sdk_columns[k].to_flyte_literal_type()
+                ):
                     raise _user_exceptions.FlyteTypeException(
                         self.type.sdk_columns[k],
                         v,
                         additional_msg="Cannot cast because the column type for column '{}' does not match.".format(
                             k
-                        )
+                        ),
                     )
         return Schema(self.remote_location, mode=self.mode, schema_type=other_type)
 
@@ -962,18 +1057,18 @@ class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Sch
         """
         Upload the schema to the remote location
         """
-        if 'w' not in self.mode:
+        if "w" not in self.mode:
             raise _user_exceptions.FlyteAssertion("Cannot upload a read-only schema!")
 
         elif not self.local_path:
-            raise _user_exceptions.FlyteAssertion("The schema is not currently backed by a local directory "
-                                                  "and therefore cannot be uploaded.  Please write to this before "
-                                                  "attempting an upload.")
+            raise _user_exceptions.FlyteAssertion(
+                "The schema is not currently backed by a local directory "
+                "and therefore cannot be uploaded.  Please write to this before "
+                "attempting an upload."
+            )
         else:
             # TODO: Introduce system logging
             # logging.info("Putting {} -> {}".format(self.local_path, self.remote_location))
             _data_proxy.Data.put_data(
-                self.local_path,
-                self.remote_location,
-                is_multipart=True
+                self.local_path, self.remote_location, is_multipart=True
             )

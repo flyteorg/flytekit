@@ -2,12 +2,16 @@ import click
 import six as _six
 import logging as _logging
 
-from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map
+from flytekit.clis.helpers import (
+    construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map,
+)
 from flytekit.clis.sdk_in_container import constants as _constants
 from flytekit.common import utils as _utils
 from flytekit.common.launch_plan import SdkLaunchPlan as _SdkLaunchPlan
-from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag, \
-    IMAGE as _IMAGE
+from flytekit.configuration.internal import (
+    look_up_version_from_image_tag as _look_up_version_from_image_tag,
+    IMAGE as _IMAGE,
+)
 from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
@@ -28,13 +32,13 @@ class LaunchPlanAbstractGroup(click.Group):
         pkgs = ctx.obj[_constants.CTX_PACKAGES]
         # Discover all launch plans by loading the modules
         for m, k, lp in iterate_registerable_entities_in_order(
-                pkgs, include_entities={_SdkLaunchPlan},
-                detect_unreferenced_entities=False):
+            pkgs, include_entities={_SdkLaunchPlan}, detect_unreferenced_entities=False
+        ):
             safe_name = _utils.fqdn(m.__name__, k, entity_type=lp.resource_type)
             commands.append(safe_name)
             lps[safe_name] = lp
 
-        ctx.obj['lps'] = lps
+        ctx.obj["lps"] = lps
         commands.sort()
 
         return commands
@@ -46,24 +50,27 @@ class LaunchPlanAbstractGroup(click.Group):
         launch_plan = None
         pkgs = ctx.obj[_constants.CTX_PACKAGES]
 
-        if 'lps' in ctx.obj:
-            launch_plan = ctx.obj['lps'][lp_argument]
+        if "lps" in ctx.obj:
+            launch_plan = ctx.obj["lps"][lp_argument]
         else:
             for m, k, lp in iterate_registerable_entities_in_order(
-                    pkgs, include_entities={_SdkLaunchPlan}, detect_unreferenced_entities=False):
+                pkgs,
+                include_entities={_SdkLaunchPlan},
+                detect_unreferenced_entities=False,
+            ):
                 safe_name = _utils.fqdn(m.__name__, k, entity_type=lp.resource_type)
                 if lp_argument == safe_name:
                     launch_plan = lp
 
         if launch_plan is None:
-            raise Exception('Could not load launch plan {}'.format(lp_argument))
+            raise Exception("Could not load launch plan {}".format(lp_argument))
 
         launch_plan._id = _identifier.Identifier(
             _identifier.ResourceType.LAUNCH_PLAN,
             ctx.obj[_constants.CTX_PROJECT],
             ctx.obj[_constants.CTX_DOMAIN],
             lp_argument,
-            ctx.obj[_constants.CTX_VERSION]
+            ctx.obj[_constants.CTX_VERSION],
         )
         return self._get_command(ctx, launch_plan, lp_argument)
 
@@ -77,7 +84,6 @@ class LaunchPlanAbstractGroup(click.Group):
 
 
 class LaunchPlanExecuteGroup(LaunchPlanAbstractGroup):
-
     def _get_command(self, ctx, lp, cmd_name):
         """
         This function returns the function that click will actually use to execute a specific launch plan.  It also
@@ -93,15 +99,23 @@ class LaunchPlanExecuteGroup(LaunchPlanAbstractGroup):
                 if isinstance(kwargs[input_name], tuple):
                     kwargs[input_name] = list(kwargs[input_name])
 
-            inputs = _construct_literal_map_from_parameter_map(lp.default_inputs, kwargs)
+            inputs = _construct_literal_map_from_parameter_map(
+                lp.default_inputs, kwargs
+            )
             execution = lp.execute_with_literals(
                 ctx.obj[_constants.CTX_PROJECT],
                 ctx.obj[_constants.CTX_DOMAIN],
                 literal_inputs=inputs,
-                notification_overrides=ctx.obj.get(_constants.CTX_NOTIFICATIONS, None)
+                notification_overrides=ctx.obj.get(_constants.CTX_NOTIFICATIONS, None),
             )
-            click.echo(click.style("Workflow scheduled, execution_id={}".format(
-                _six.text_type(execution.id)), fg='blue'))
+            click.echo(
+                click.style(
+                    "Workflow scheduled, execution_id={}".format(
+                        _six.text_type(execution.id)
+                    ),
+                    fg="blue",
+                )
+            )
 
         command = click.Command(name=cmd_name, callback=_execute_lp)
 
@@ -110,15 +124,18 @@ class LaunchPlanExecuteGroup(LaunchPlanAbstractGroup):
             param = lp.default_inputs.parameters[var_name]
             # TODO: Figure out how to better handle the fact that we want strings to parse,
             # but we probably shouldn't have click say that that's the type on the CLI.
-            help_msg = '{} Type: {}'.format(
-                _six.text_type(param.var.description),
-                _six.text_type(param.var.type)
+            help_msg = "{} Type: {}".format(
+                _six.text_type(param.var.description), _six.text_type(param.var.type)
             ).strip()
 
             if param.required:
                 # If it's a required input, add the required flag
-                wrapper = click.option('--{}'.format(var_name), required=True, type=_six.text_type,
-                                       help=help_msg)
+                wrapper = click.option(
+                    "--{}".format(var_name),
+                    required=True,
+                    type=_six.text_type,
+                    help=help_msg,
+                )
             else:
                 # If it's not a required input, it should have a default
                 # Use to_python_std so that the text of the default ends up being parseable, if not, the click
@@ -126,16 +143,19 @@ class LaunchPlanExecuteGroup(LaunchPlanAbstractGroup):
                 # we'd get '11' and then we'd need annoying logic to differentiate between the default text
                 # and user text.
                 default = param.default.to_python_std()
-                wrapper = click.option('--{}'.format(var_name), default='{}'.format(_six.text_type(default)),
-                                       type=_six.text_type,
-                                       help='{}. Default: {}'.format(help_msg, _six.text_type(default)))
+                wrapper = click.option(
+                    "--{}".format(var_name),
+                    default="{}".format(_six.text_type(default)),
+                    type=_six.text_type,
+                    help="{}. Default: {}".format(help_msg, _six.text_type(default)),
+                )
 
             command = wrapper(command)
 
         return command
 
 
-@click.group('lp')
+@click.group("lp")
 @click.pass_context
 def launch_plans(ctx):
     """
@@ -144,7 +164,7 @@ def launch_plans(ctx):
     pass
 
 
-@click.group('execute', cls=LaunchPlanExecuteGroup)
+@click.group("execute", cls=LaunchPlanExecuteGroup)
 @click.pass_context
 def execute_launch_plan(ctx):
     """
@@ -158,7 +178,9 @@ def activate_all_impl(project, domain, version, pkgs, ignore_schedules=False):
     # TODO: We should optionally allow deactivation of missing launch plans
 
     # Discover all launch plans by loading the modules
-    _logging.info(f"Setting this version's {version} launch plans active in {project} {domain}")
+    _logging.info(
+        f"Setting this version's {version} launch plans active in {project} {domain}"
+    )
     for m, k, lp in iterate_registerable_entities_in_order(
         pkgs, include_entities={_SdkLaunchPlan}, detect_unreferenced_entities=False
     ):
@@ -167,16 +189,23 @@ def activate_all_impl(project, domain, version, pkgs, ignore_schedules=False):
             project,
             domain,
             _utils.fqdn(m.__name__, k, entity_type=lp.resource_type),
-            version
+            version,
         )
         if not (lp.is_scheduled and ignore_schedules):
-            _logging.info(f"Setting active {_utils.fqdn(m.__name__, k, entity_type=lp.resource_type)}")
+            _logging.info(
+                f"Setting active {_utils.fqdn(m.__name__, k, entity_type=lp.resource_type)}"
+            )
             lp.update(_launch_plan_model.LaunchPlanState.ACTIVE)
 
 
-@click.command('activate-all-schedules')
-@click.option('-v', '--version', type=str, help='Version to register tasks with. This is normally parsed from the'
-                                                'image, but you can override here.')
+@click.command("activate-all-schedules")
+@click.option(
+    "-v",
+    "--version",
+    type=str,
+    help="Version to register tasks with. This is normally parsed from the"
+    "image, but you can override here.",
+)
 @click.pass_context
 def activate_all_schedules(ctx, version=None):
     """
@@ -184,18 +213,34 @@ def activate_all_schedules(ctx, version=None):
 
     The behavior of this command is identical to activate-all.
     """
-    click.secho("activate-all-schedules is deprecated, please use activate-all instead.", color="yellow")
+    click.secho(
+        "activate-all-schedules is deprecated, please use activate-all instead.",
+        color="yellow",
+    )
     project = ctx.obj[_constants.CTX_PROJECT]
     domain = ctx.obj[_constants.CTX_DOMAIN]
     pkgs = ctx.obj[_constants.CTX_PACKAGES]
-    version = version or ctx.obj[_constants.CTX_VERSION] or _look_up_version_from_image_tag(_IMAGE.get())
+    version = (
+        version
+        or ctx.obj[_constants.CTX_VERSION]
+        or _look_up_version_from_image_tag(_IMAGE.get())
+    )
     activate_all_impl(project, domain, version, pkgs)
 
 
-@click.command('activate-all')
-@click.option('-v', '--version', type=str, help='Version to register tasks with. This is normally parsed from the'
-                                                'image, but you can override here.')
-@click.option("--ignore-schedules", is_flag=True, help='Activate all except for launch plans with schedules.')
+@click.command("activate-all")
+@click.option(
+    "-v",
+    "--version",
+    type=str,
+    help="Version to register tasks with. This is normally parsed from the"
+    "image, but you can override here.",
+)
+@click.option(
+    "--ignore-schedules",
+    is_flag=True,
+    help="Activate all except for launch plans with schedules.",
+)
 @click.pass_context
 def activate_all(ctx, version=None, ignore_schedules=False):
     """
@@ -214,7 +259,11 @@ def activate_all(ctx, version=None, ignore_schedules=False):
     project = ctx.obj[_constants.CTX_PROJECT]
     domain = ctx.obj[_constants.CTX_DOMAIN]
     pkgs = ctx.obj[_constants.CTX_PACKAGES]
-    version = version or ctx.obj[_constants.CTX_VERSION] or _look_up_version_from_image_tag(_IMAGE.get())
+    version = (
+        version
+        or ctx.obj[_constants.CTX_VERSION]
+        or _look_up_version_from_image_tag(_IMAGE.get())
+    )
     activate_all_impl(project, domain, version, pkgs, ignore_schedules=ignore_schedules)
 
 

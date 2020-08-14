@@ -6,16 +6,29 @@ import itertools as _itertools
 import math
 import six as _six
 
-from flytekit.common import constants as _constants, interface as _interface, sdk_bases as _sdk_bases, \
-    launch_plan as _launch_plan, workflow as _workflow
+from flytekit.common import (
+    constants as _constants,
+    interface as _interface,
+    sdk_bases as _sdk_bases,
+    launch_plan as _launch_plan,
+    workflow as _workflow,
+)
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.mixins import registerable as _registerable
-from flytekit.common.tasks import output as _task_output, sdk_runnable as _sdk_runnable, task as _task
+from flytekit.common.tasks import (
+    output as _task_output,
+    sdk_runnable as _sdk_runnable,
+    task as _task,
+)
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import _dnsify
 from flytekit.configuration import internal as _internal_config
-from flytekit.models import literals as _literal_models, dynamic_job as _dynamic_job, array_job as _array_job
+from flytekit.models import (
+    literals as _literal_models,
+    dynamic_job as _dynamic_job,
+    array_job as _array_job,
+)
 
 
 class PromiseOutputReference(_task_output.OutputReference):
@@ -47,11 +60,16 @@ def _append_node(generated_files, node, nodes, sub_task_node):
     # Upload inputs to working directory under /array_job.input_ref/inputs.pb
     input_path = _os.path.join(node.id, _constants.INPUT_FILE_NAME)
     generated_files[input_path] = _literal_models.LiteralMap(
-        literals={binding.var: binding.binding.to_literal_model() for binding in
-                  sub_task_node.inputs})
+        literals={
+            binding.var: binding.binding.to_literal_model()
+            for binding in sub_task_node.inputs
+        }
+    )
 
 
-class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnable.SdkRunnableTask)):
+class SdkDynamicTask(
+    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnable.SdkRunnableTask)
+):
     """
     This class includes the additional logic for building a task that executes parent-child tasks in Python code.  It
     has even more validation checks to ensure proper behavior than it's superclasses.
@@ -61,27 +79,27 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
     """
 
     def __init__(
-            self,
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            interruptible,
-            deprecated,
-            storage_request,
-            cpu_request,
-            gpu_request,
-            memory_request,
-            storage_limit,
-            cpu_limit,
-            gpu_limit,
-            memory_limit,
-            discoverable,
-            timeout,
-            allowed_failure_ratio,
-            max_concurrency,
-            environment,
-            custom
+        self,
+        task_function,
+        task_type,
+        discovery_version,
+        retries,
+        interruptible,
+        deprecated,
+        storage_request,
+        cpu_request,
+        gpu_request,
+        memory_request,
+        storage_limit,
+        cpu_limit,
+        gpu_limit,
+        memory_limit,
+        discoverable,
+        timeout,
+        allowed_failure_ratio,
+        max_concurrency,
+        environment,
+        custom,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -106,9 +124,25 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         :param dict[Text, T] custom:
         """
         super(SdkDynamicTask, self).__init__(
-            task_function, task_type, discovery_version, retries, interruptible, deprecated,
-            storage_request, cpu_request, gpu_request, memory_request, storage_limit,
-            cpu_limit, gpu_limit, memory_limit, discoverable, timeout, environment, custom)
+            task_function,
+            task_type,
+            discovery_version,
+            retries,
+            interruptible,
+            deprecated,
+            storage_request,
+            cpu_request,
+            gpu_request,
+            memory_request,
+            storage_limit,
+            cpu_limit,
+            gpu_limit,
+            memory_limit,
+            discoverable,
+            timeout,
+            environment,
+            custom,
+        )
 
         # These will only appear in the generated futures
         self._allowed_failure_ratio = allowed_failure_ratio
@@ -120,9 +154,11 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         :param str inputs_prefix:
         :rtype: _array_job.ArrayJob
         """
-        return _array_job.ArrayJob(parallelism=self._max_concurrency if self._max_concurrency else 0,
-                                   size=1,
-                                   min_successes=1)
+        return _array_job.ArrayJob(
+            parallelism=self._max_concurrency if self._max_concurrency else 0,
+            size=1,
+            min_successes=1,
+        )
 
     @staticmethod
     def _can_run_as_array(task_type):
@@ -137,7 +173,9 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
     def _add_upstream_entities(executable_sdk_object, sub_workflows, tasks):
         upstream_entities = []
         if isinstance(executable_sdk_object, _workflow.SdkWorkflow):
-            upstream_entities = [n.executable_sdk_object for n in executable_sdk_object.nodes]
+            upstream_entities = [
+                n.executable_sdk_object for n in executable_sdk_object.nodes
+            ]
 
         for upstream_entity in upstream_entities:
             # If the upstream entity is either a Workflow or a Task, yield them in the
@@ -147,7 +185,9 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             if isinstance(upstream_entity, _workflow.SdkWorkflow):
                 sub_workflows.add(upstream_entity)
                 # Recursively discover all statically defined dependencies
-                SdkDynamicTask._add_upstream_entities(upstream_entity, sub_workflows, tasks)
+                SdkDynamicTask._add_upstream_entities(
+                    upstream_entity, sub_workflows, tasks
+                )
             elif isinstance(upstream_entity, _task.SdkTask):
                 tasks.add(upstream_entity)
 
@@ -158,24 +198,43 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         :param flytekit.models.literals.LiteralMap literal_map inputs:
         :rtype: (_dynamic_job.DynamicJobSpec, dict[Text, flytekit.models.common.FlyteIdlEntity])
         """
-        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(inputs, {
-            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)
-        })
+        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(
+            inputs,
+            {
+                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
+                for k, v in _six.iteritems(self.interface.inputs)
+            },
+        )
         outputs_dict = {
-            name: PromiseOutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
+            name: PromiseOutputReference(
+                _type_helpers.get_sdk_type_from_literal_type(variable.type)
+            )
             for name, variable in _six.iteritems(self.interface.outputs)
         }
 
         # Because users declare both inputs and outputs in their functions signatures, merge them together
         # before calling user code
         inputs_dict.update(outputs_dict)
-        yielded_sub_tasks = [sub_task for sub_task in
-                             super(SdkDynamicTask, self)._execute_user_code(context, inputs_dict) or []]
+        yielded_sub_tasks = [
+            sub_task
+            for sub_task in super(SdkDynamicTask, self)._execute_user_code(
+                context, inputs_dict
+            )
+            or []
+        ]
 
         upstream_nodes = list()
-        output_bindings = [_literal_models.Binding(var=name, binding=_interface.BindingData.from_python_std(
-            b.sdk_type.to_flyte_literal_type(), b.raw_value, upstream_nodes=upstream_nodes))
-                           for name, b in _six.iteritems(outputs_dict)]
+        output_bindings = [
+            _literal_models.Binding(
+                var=name,
+                binding=_interface.BindingData.from_python_std(
+                    b.sdk_type.to_flyte_literal_type(),
+                    b.raw_value,
+                    upstream_nodes=upstream_nodes,
+                ),
+            )
+            for name, b in _six.iteritems(outputs_dict)
+        ]
         upstream_nodes = set(upstream_nodes)
 
         generated_files = {}
@@ -205,10 +264,12 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
                 executable.auto_assign_name()
                 executable._id = _identifier.Identifier(
                     executable.resource_type,
-                    _internal_config.TASK_PROJECT.get() or _internal_config.PROJECT.get(),
+                    _internal_config.TASK_PROJECT.get()
+                    or _internal_config.PROJECT.get(),
                     _internal_config.TASK_DOMAIN.get() or _internal_config.DOMAIN.get(),
                     executable.platform_valid_name,
-                    _internal_config.TASK_VERSION.get() or _internal_config.VERSION.get()
+                    _internal_config.TASK_VERSION.get()
+                    or _internal_config.VERSION.get(),
                 )
 
             # Generate an id that's unique in the document (if the same task is used multiple times with
@@ -216,13 +277,17 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
             # be.
             safe_task_id = _six.text_type(sub_task_node.executable_sdk_object.id)
             if safe_task_id in generated_ids:
-                new_count = generated_ids[safe_task_id] = generated_ids[safe_task_id] + 1
+                new_count = generated_ids[safe_task_id] = (
+                    generated_ids[safe_task_id] + 1
+                )
             else:
                 new_count = generated_ids[safe_task_id] = 0
             unique_node_id = _dnsify("{}-{}".format(safe_task_id, new_count))
 
             # Handling case where the yielded node is launch plan
-            if isinstance(sub_task_node.executable_sdk_object, _launch_plan.SdkLaunchPlan):
+            if isinstance(
+                sub_task_node.executable_sdk_object, _launch_plan.SdkLaunchPlan
+            ):
                 node = sub_task_node.assign_id_and_return(unique_node_id)
                 _append_node(generated_files, node, nodes, sub_task_node)
             # Handling case where the yielded node is launching a sub-workflow
@@ -231,31 +296,50 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
                 _append_node(generated_files, node, nodes, sub_task_node)
                 # Add the workflow itself to the yielded sub-workflows
                 sub_workflows.add(sub_task_node.executable_sdk_object)
-                if isinstance(sub_task_node.executable_sdk_object, _workflow.SdkWorkflow):
+                if isinstance(
+                    sub_task_node.executable_sdk_object, _workflow.SdkWorkflow
+                ):
                     # Recursively discover statically defined upstream entities (tasks, wfs)
-                    SdkDynamicTask._add_upstream_entities(sub_task_node.executable_sdk_object, sub_workflows, tasks)
-            elif isinstance(sub_task_node.executable_sdk_object, _workflow.PythonWorkflow):
+                    SdkDynamicTask._add_upstream_entities(
+                        sub_task_node.executable_sdk_object, sub_workflows, tasks
+                    )
+            elif isinstance(
+                sub_task_node.executable_sdk_object, _workflow.PythonWorkflow
+            ):
                 node = sub_task_node.assign_id_and_return(unique_node_id)
                 _append_node(generated_files, node, nodes, sub_task_node)
                 # Add the workflow itself to the yielded sub-workflows
                 sub_workflows.add(sub_task_node.executable_sdk_object)
-                if isinstance(sub_task_node.executable_sdk_object, _workflow.PythonWorkflow):
+                if isinstance(
+                    sub_task_node.executable_sdk_object, _workflow.PythonWorkflow
+                ):
                     # Recursively discover statically defined upstream entities (tasks, wfs)
-                    SdkDynamicTask._add_upstream_entities(sub_task_node.executable_sdk_object, sub_workflows, tasks)
+                    SdkDynamicTask._add_upstream_entities(
+                        sub_task_node.executable_sdk_object, sub_workflows, tasks
+                    )
 
             # Handling tasks
             else:
                 # If the task can run as an array job, group its instances together. Otherwise, keep each
                 # invocation as a separate node.
-                if SdkDynamicTask._can_run_as_array(sub_task_node.executable_sdk_object.type):
+                if SdkDynamicTask._can_run_as_array(
+                    sub_task_node.executable_sdk_object.type
+                ):
                     if sub_task_node.executable_sdk_object in array_job_index:
-                        array_job, node = array_job_index[sub_task_node.executable_sdk_object]
+                        array_job, node = array_job_index[
+                            sub_task_node.executable_sdk_object
+                        ]
                         array_job.size += 1
-                        array_job.min_successes = int(math.ceil((1 - effective_failure_ratio) * array_job.size))
+                        array_job.min_successes = int(
+                            math.ceil((1 - effective_failure_ratio) * array_job.size)
+                        )
                     else:
                         array_job = self._create_array_job(inputs_prefix=unique_node_id)
                         node = sub_task_node.assign_id_and_return(unique_node_id)
-                        array_job_index[sub_task_node.executable_sdk_object] = (array_job, node)
+                        array_job_index[sub_task_node.executable_sdk_object] = (
+                            array_job,
+                            node,
+                        )
 
                     node_index = _six.text_type(array_job.size - 1)
                     for k, node_output in _six.iteritems(sub_task_node.outputs):
@@ -264,10 +348,15 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
                         node_output.var = "[{}].{}".format(node_index, node_output.var)
 
                     # Upload inputs to working directory under /array_job.input_ref/<index>/inputs.pb
-                    input_path = _os.path.join(node.id, node_index, _constants.INPUT_FILE_NAME)
+                    input_path = _os.path.join(
+                        node.id, node_index, _constants.INPUT_FILE_NAME
+                    )
                     generated_files[input_path] = _literal_models.LiteralMap(
-                        literals={binding.var: binding.binding.to_literal_model() for binding in
-                                  sub_task_node.inputs})
+                        literals={
+                            binding.var: binding.binding.to_literal_model()
+                            for binding in sub_task_node.inputs
+                        }
+                    )
                 else:
                     node = sub_task_node.assign_id_and_return(unique_node_id)
                     tasks.add(sub_task_node.executable_sdk_object)
@@ -276,18 +365,24 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         # assign custom field to the ArrayJob properties computed.
         for task, (array_job, _) in _six.iteritems(array_job_index):
             # TODO: Reconstruct task template object instead of modifying an existing one?
-            tasks.add(task.assign_custom_and_return(array_job.to_dict()).assign_type_and_return(
-                _constants.SdkTaskType.CONTAINER_ARRAY_TASK))
+            tasks.add(
+                task.assign_custom_and_return(
+                    array_job.to_dict()
+                ).assign_type_and_return(_constants.SdkTaskType.CONTAINER_ARRAY_TASK)
+            )
 
         # min_successes is absolute, it's computed as the reverse of allowed_failure_ratio and multiplied by the
         # total length of tasks to get an absolute count.
-        nodes.extend([array_job_node for (_, array_job_node) in array_job_index.values()])
+        nodes.extend(
+            [array_job_node for (_, array_job_node) in array_job_index.values()]
+        )
         dynamic_job_spec = _dynamic_job.DynamicJobSpec(
             min_successes=len(nodes),
             tasks=list(tasks),
             nodes=nodes,
             outputs=output_bindings,
-            subworkflows=list(sub_workflows))
+            subworkflows=list(sub_workflows),
+        )
 
         return dynamic_job_spec, generated_files
 
@@ -311,11 +406,13 @@ class SdkDynamicTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _sdk_runnab
         if len(spec.nodes) == 0:
             return {
                 _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
-                    literals={binding.var: binding.binding.to_literal_model() for binding in spec.outputs})
+                    literals={
+                        binding.var: binding.binding.to_literal_model()
+                        for binding in spec.outputs
+                    }
+                )
             }
         else:
-            generated_files.update({
-                _constants.FUTURES_FILE_NAME: spec
-            })
+            generated_files.update({_constants.FUTURES_FILE_NAME: spec})
 
             return generated_files

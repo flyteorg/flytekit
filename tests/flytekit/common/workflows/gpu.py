@@ -17,6 +17,6 @@ def add_one(wf_params, a, b):
 @workflow_class
 class SimpleWorkflow(object):
     input_1 = Input(Types.Integer)
-    input_2 = Input(Types.Integer, default=5, help='Not required.')
+    input_2 = Input(Types.Integer, default=5, help="Not required.")
     a = add_one(a=input_1)
     output = Output(a.outputs.b, sdk_type=Types.Integer)

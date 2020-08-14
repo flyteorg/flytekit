@@ -8,8 +8,9 @@ from flytekit.common.types import helpers as _type_helpers
 from flytekit.models import interface as _interface_models, types as _type_models
 
 
-class Input(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.Parameter)):
-
+class Input(
+    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.Parameter)
+):
     def __init__(self, name, sdk_type, help=None, **kwargs):
         """
         :param Text name:
@@ -20,22 +21,24 @@ class Input(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.Pa
         :param T default:  If this is not a required input, the value will default to this value.
         """
         param_default = None
-        if 'required' not in kwargs and 'default' not in kwargs:
+        if "required" not in kwargs and "default" not in kwargs:
             # Neither required or default is set so assume required
             required = True
             default = None
-        elif kwargs.get('required', False) and 'default' in kwargs:
+        elif kwargs.get("required", False) and "default" in kwargs:
             # Required cannot be set to True and have a default specified
-            raise _user_exceptions.FlyteAssertion("Default cannot be set when required is True")
-        elif 'default' in kwargs:
+            raise _user_exceptions.FlyteAssertion(
+                "Default cannot be set when required is True"
+            )
+        elif "default" in kwargs:
             # If default is specified, then required must be false and the value is whatever is specified
             required = None
-            default = kwargs['default']
+            default = kwargs["default"]
             param_default = sdk_type.from_python_std(default)
         else:
             # If no default is set, but required is set, then the behavior is determined by required == True or False
             default = None
-            required = kwargs['required']
+            required = kwargs["required"]
             if not required:
                 # If required == False, we assume default to be None
                 param_default = sdk_type.from_python_std(default)
@@ -45,12 +48,16 @@ class Input(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.Pa
         self._sdk_default = default
         self._help = help
         self._sdk_type = sdk_type
-        self._promise = _type_models.OutputReference(_constants.GLOBAL_INPUT_NODE_ID, name)
+        self._promise = _type_models.OutputReference(
+            _constants.GLOBAL_INPUT_NODE_ID, name
+        )
         self._name = name
         super(Input, self).__init__(
-            _interface_models.Variable(type=sdk_type.to_flyte_literal_type(), description=help or ''),
+            _interface_models.Variable(
+                type=sdk_type.to_flyte_literal_type(), description=help or ""
+            ),
             required=required,
-            default=param_default
+            default=param_default,
         )
 
     def rename_and_return_reference(self, new_name):
@@ -100,7 +107,9 @@ class Input(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.Pa
         return self._sdk_type
 
     def __repr__(self):
-        return "Input({}, {}, required={}, help={})".format(self.name, self.sdk_type, self.required, self.help)
+        return "Input({}, {}, required={}, help={})".format(
+            self.name, self.sdk_type, self.required, self.help
+        )
 
     @classmethod
     def promote_from_model(cls, model):
@@ -111,25 +120,23 @@ class Input(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.Pa
         sdk_type = _type_helpers.get_sdk_type_from_literal_type(model.var.type)
 
         if model.default is not None:
-            default_value = sdk_type.from_flyte_idl(model.default.to_flyte_idl()).to_python_std()
+            default_value = sdk_type.from_flyte_idl(
+                model.default.to_flyte_idl()
+            ).to_python_std()
             return cls(
                 "",
                 sdk_type,
                 help=model.var.description,
                 required=False,
-                default=default_value
+                default=default_value,
             )
         else:
-            return cls(
-                "",
-                sdk_type,
-                help=model.var.description,
-                required=True
-            )
+            return cls("", sdk_type, help=model.var.description, required=True)
 
 
-class NodeOutput(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.OutputReference)):
-
+class NodeOutput(
+    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.OutputReference)
+):
     def __init__(self, sdk_node, sdk_type, var):
         """
         :param flytekit.common.nodes.SdkNode sdk_node:
@@ -138,10 +145,7 @@ class NodeOutput(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.Ou
         """
         self._node = sdk_node
         self._type = sdk_type
-        super(NodeOutput, self).__init__(
-            self._node.id,
-            var
-        )
+        super(NodeOutput, self).__init__(self._node.id, var)
 
     @property
     def node_id(self):
@@ -157,8 +161,10 @@ class NodeOutput(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.Ou
         :param flytekit.models.types.OutputReference model:
         :rtype: NodeOutput
         """
-        raise _user_exceptions.FlyteAssertion("A NodeOutput cannot be promoted from a protobuf because it must be "
-                                              "contextualized by an existing SdkNode.")
+        raise _user_exceptions.FlyteAssertion(
+            "A NodeOutput cannot be promoted from a protobuf because it must be "
+            "contextualized by an existing SdkNode."
+        )
 
     @property
     def sdk_node(self):

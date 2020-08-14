@@ -5,10 +5,16 @@ import uuid as _uuid
 import six as _six
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
-from flytekit.common import constants as _constants, nodes as _nodes, interface as _interface
+from flytekit.common import (
+    constants as _constants,
+    nodes as _nodes,
+    interface as _interface,
+)
 from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions.user import FlyteTypeException as _FlyteTypeException, \
-    FlyteValueException as _FlyteValueException
+from flytekit.common.exceptions.user import (
+    FlyteTypeException as _FlyteTypeException,
+    FlyteValueException as _FlyteValueException,
+)
 from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable, task as _base_task
 from flytekit.common.types import helpers as _type_helpers
@@ -16,7 +22,7 @@ from flytekit.models import (
     qubole as _qubole,
     interface as _interface_model,
     literals as _literal_models,
-    dynamic_job as _dynamic_job
+    dynamic_job as _dynamic_job,
 )
 from flytekit.models.core import workflow as _workflow_model
 
@@ -30,26 +36,26 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
     """
 
     def __init__(
-            self,
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            interruptible,
-            deprecated,
-            storage_request,
-            cpu_request,
-            gpu_request,
-            memory_request,
-            storage_limit,
-            cpu_limit,
-            gpu_limit,
-            memory_limit,
-            discoverable,
-            timeout,
-            cluster_label,
-            tags,
-            environment
+        self,
+        task_function,
+        task_type,
+        discovery_version,
+        retries,
+        interruptible,
+        deprecated,
+        storage_request,
+        cpu_request,
+        gpu_request,
+        memory_request,
+        storage_limit,
+        cpu_limit,
+        gpu_limit,
+        memory_limit,
+        discoverable,
+        timeout,
+        cluster_label,
+        tags,
+        environment,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -72,9 +78,26 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         :param dict[Text, Text] environment:
         """
         self._task_function = task_function
-        super(SdkHiveTask, self).__init__(task_function, task_type, discovery_version, retries, interruptible, deprecated,
-                                          storage_request, cpu_request, gpu_request, memory_request, storage_limit,
-                                          cpu_limit, gpu_limit, memory_limit, discoverable, timeout, environment, {})
+        super(SdkHiveTask, self).__init__(
+            task_function,
+            task_type,
+            discovery_version,
+            retries,
+            interruptible,
+            deprecated,
+            storage_request,
+            cpu_request,
+            gpu_request,
+            memory_request,
+            storage_limit,
+            cpu_limit,
+            gpu_limit,
+            memory_limit,
+            discoverable,
+            timeout,
+            environment,
+            {},
+        )
         self._validate_task_parameters(cluster_label, tags)
         self._cluster_label = cluster_label
         self._tags = tags
@@ -86,7 +109,9 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         :param dict[Text, T] inputs:
         :rtype: list[_qubole.QuboleHiveJob]
         """
-        queries_from_task = super(SdkHiveTask, self)._execute_user_code(context, inputs_dict) or []
+        queries_from_task = (
+            super(SdkHiveTask, self)._execute_user_code(context, inputs_dict) or []
+        )
         if not isinstance(queries_from_task, list):
             queries_from_task = [queries_from_task]
 
@@ -94,8 +119,11 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         plugin_objects = []
 
         for q in queries_from_task:
-            hive_query = _qubole.HiveQuery(query=q, timeout_sec=self.metadata.timeout.seconds,
-                                           retry_count=self.metadata.retries.retries)
+            hive_query = _qubole.HiveQuery(
+                query=q,
+                timeout_sec=self.metadata.timeout.seconds,
+                retry_count=self.metadata.retries.retries,
+            )
 
             # TODO: Remove this after all users of older SDK versions that did the single node, multi-query pattern are
             #       deprecated. This is only here for backwards compatibility - in addition to writing the query to the
@@ -103,32 +131,49 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
             #       older plugin will continue to work.
             query_collection = _qubole.HiveQueryCollection([hive_query])
 
-            plugin_objects.append(_qubole.QuboleHiveJob(hive_query, self._cluster_label, self._tags,
-                                                        query_collection=query_collection))
+            plugin_objects.append(
+                _qubole.QuboleHiveJob(
+                    hive_query,
+                    self._cluster_label,
+                    self._tags,
+                    query_collection=query_collection,
+                )
+            )
 
         return plugin_objects
 
     @staticmethod
     def _validate_task_parameters(cluster_label, tags):
-        if not (cluster_label is None or isinstance(cluster_label, (str, _six.text_type))):
+        if not (
+            cluster_label is None or isinstance(cluster_label, (str, _six.text_type))
+        ):
             raise _FlyteTypeException(
                 type(cluster_label),
                 {str, _six.text_type},
                 additional_msg="cluster_label for a hive task must be in text format",
-                received_value=cluster_label
+                received_value=cluster_label,
             )
         if tags is not None:
-            if not (isinstance(tags, list) and all(isinstance(tag, (str, _six.text_type)) for tag in tags)):
+            if not (
+                isinstance(tags, list)
+                and all(isinstance(tag, (str, _six.text_type)) for tag in tags)
+            ):
                 raise _FlyteTypeException(
                     type(tags),
                     [],
                     additional_msg="tags for a hive task must be in 'list of text' format",
-                    received_value=tags
+                    received_value=tags,
                 )
             if len(tags) > ALLOWED_TAGS_COUNT:
-                raise _FlyteValueException(len(tags), "number of tags must be less than {}".format(ALLOWED_TAGS_COUNT))
+                raise _FlyteValueException(
+                    len(tags),
+                    "number of tags must be less than {}".format(ALLOWED_TAGS_COUNT),
+                )
             if not all(len(tag) for tag in tags):
-                raise _FlyteValueException(tags, "length of a tag must be less than {} chars".format(MAX_TAG_LENGTH))
+                raise _FlyteValueException(
+                    tags,
+                    "length of a tag must be less than {} chars".format(MAX_TAG_LENGTH),
+                )
 
     @staticmethod
     def _validate_queries(queries_from_task):
@@ -138,7 +183,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
                     type(query_from_task),
                     {str, _six.text_type},
                     additional_msg="All queries returned from a Hive task must be in text format.",
-                    received_value=query_from_task
+                    received_value=query_from_task,
                 )
 
     def _produce_dynamic_job_spec(self, context, inputs):
@@ -148,11 +193,17 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         :param flytekit.models.literals.LiteralMap literal_map inputs:
         :rtype: flytekit.models.dynamic_job.DynamicJobSpec
         """
-        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(inputs, {
-            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)
-        })
+        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(
+            inputs,
+            {
+                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
+                for k, v in _six.iteritems(self.interface.inputs)
+            },
+        )
         outputs_dict = {
-            name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
+            name: _task_output.OutputReference(
+                _type_helpers.get_sdk_type_from_literal_type(variable.type)
+            )
             for name, variable in _six.iteritems(self.interface.outputs)
         }
 
@@ -165,16 +216,20 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         generated_queries = self._generate_plugin_objects(context, inputs_dict)
 
         # Create output bindings always - this has to happen after user code has run
-        output_bindings = [_literal_models.Binding(var=name, binding=_interface.BindingData.from_python_std(
-            b.sdk_type.to_flyte_literal_type(), b.value))
-                           for name, b in _six.iteritems(outputs_dict)]
+        output_bindings = [
+            _literal_models.Binding(
+                var=name,
+                binding=_interface.BindingData.from_python_std(
+                    b.sdk_type.to_flyte_literal_type(), b.value
+                ),
+            )
+            for name, b in _six.iteritems(outputs_dict)
+        ]
 
         i = 0
         for quboleHiveJob in generated_queries:
             hive_job_node = _create_hive_job_node(
-                "HiveQuery_{}".format(i),
-                quboleHiveJob.to_flyte_idl(),
-                self.metadata
+                "HiveQuery_{}".format(i), quboleHiveJob.to_flyte_idl(), self.metadata
             )
             nodes.append(hive_job_node)
             tasks.append(hive_job_node.executable_sdk_object)
@@ -185,7 +240,8 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
             tasks=tasks,
             nodes=nodes,
             outputs=output_bindings,
-            subworkflows=[])
+            subworkflows=[],
+        )
 
         return dynamic_job_spec
 
@@ -211,12 +267,14 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         if len(spec.nodes) == 0:
             return {
                 _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
-                    literals={binding.var: binding.binding.to_literal_model() for binding in spec.outputs})
+                    literals={
+                        binding.var: binding.binding.to_literal_model()
+                        for binding in spec.outputs
+                    }
+                )
             }
         else:
-            generated_files.update({
-                _constants.FUTURES_FILE_NAME: spec
-            })
+            generated_files.update({_constants.FUTURES_FILE_NAME: spec})
 
             return generated_files
 
@@ -233,8 +291,10 @@ def _create_hive_job_node(name, hive_job, metadata):
         id=_six.text_type(_uuid.uuid4()),
         upstream_nodes=[],
         bindings=[],
-        metadata=_workflow_model.NodeMetadata(name, metadata.timeout, _literal_models.RetryStrategy(0)),
-        sdk_task=SdkHiveJob(hive_job, metadata)
+        metadata=_workflow_model.NodeMetadata(
+            name, metadata.timeout, _literal_models.RetryStrategy(0)
+        ),
+        sdk_task=SdkHiveJob(hive_job, metadata),
     )
 
 
@@ -245,9 +305,7 @@ class SdkHiveJob(_base_task.SdkTask):
     """
 
     def __init__(
-            self,
-            hive_job,
-            metadata,
+        self, hive_job, metadata,
     ):
         """
         :param _qubole.QuboleHiveJob hive_job: Hive job spec

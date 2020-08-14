@@ -36,7 +36,6 @@ class GlobalSparkContext(object):
 
 
 class SdkRunnableSparkContainer(_sdk_runnable.SdkRunnableContainer):
-
     @property
     def args(self):
         """
@@ -51,20 +50,21 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
     This class includes the additional logic for building a task that executes as a Spark Job.
 
     """
+
     def __init__(
-            self,
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            interruptible,
-            deprecated,
-            discoverable,
-            timeout,
-            spark_type,
-            spark_conf,
-            hadoop_conf,
-            environment,
+        self,
+        task_function,
+        task_type,
+        discovery_version,
+        retries,
+        interruptible,
+        deprecated,
+        discoverable,
+        timeout,
+        spark_type,
+        spark_conf,
+        hadoop_conf,
+        environment,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -81,7 +81,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
         """
 
         spark_exec_path = _os.path.abspath(_entrypoint.__file__)
-        if spark_exec_path.endswith('.pyc'):
+        if spark_exec_path.endswith(".pyc"):
             spark_exec_path = spark_exec_path[:-1]
 
         spark_job = _task_models.SparkJob(
@@ -125,11 +125,17 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
             working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
-        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(inputs, {
-            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)
-        })
+        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(
+            inputs,
+            {
+                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
+                for k, v in _six.iteritems(self.interface.inputs)
+            },
+        )
         outputs_dict = {
-            name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
+            name: _task_output.OutputReference(
+                _type_helpers.get_sdk_type_from_literal_type(variable.type)
+            )
             for name, variable in _six.iteritems(self.interface.outputs)
         }
 
@@ -142,7 +148,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
                     execution_id=context.execution_id,
                     stats=context.stats,
                     logging=context.logging,
-                    tmp_dir=context.working_directory
+                    tmp_dir=context.working_directory,
                 ),
                 GlobalSparkContext.get_spark_context(),
                 **inputs_dict
@@ -153,14 +159,13 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
             )
         }
 
-    def _get_container_definition(
-            self,
-            **kwargs
-    ):
+    def _get_container_definition(self, **kwargs):
         """
         :rtype: SdkRunnableSparkContainer
         """
-        return super(SdkSparkTask, self)._get_container_definition(cls=SdkRunnableSparkContainer, **kwargs)
+        return super(SdkSparkTask, self)._get_container_definition(
+            cls=SdkRunnableSparkContainer, **kwargs
+        )
 
     def _get_kwarg_inputs(self):
         # Trim off first two parameters as they are reserved for workflow_parameters and spark_context

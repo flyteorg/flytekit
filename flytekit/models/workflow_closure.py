@@ -7,7 +7,6 @@ from flytekit.models import task as _task_models
 
 
 class WorkflowClosure(_common.FlyteIdlEntity):
-
     def __init__(self, workflow, tasks=None):
         """
         :param flytekit.models.core.workflow.WorkflowTemplate workflow: Workflow template
@@ -36,7 +35,7 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         """
         return _workflow_closure_pb2.WorkflowClosure(
             workflow=self.workflow.to_flyte_idl(),
-            tasks=[t.to_flyte_idl() for t in self.tasks]
+            tasks=[t.to_flyte_idl() for t in self.tasks],
         )
 
     @classmethod
@@ -46,6 +45,10 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         :rtype: WorkflowClosure
         """
         return cls(
-            workflow=_core_workflow_models.WorkflowTemplate.from_flyte_idl(pb2_object.workflow),
-            tasks=[_task_models.TaskTemplate.from_flyte_idl(t) for t in pb2_object.tasks],
+            workflow=_core_workflow_models.WorkflowTemplate.from_flyte_idl(
+                pb2_object.workflow
+            ),
+            tasks=[
+                _task_models.TaskTemplate.from_flyte_idl(t) for t in pb2_object.tasks
+            ],
         )

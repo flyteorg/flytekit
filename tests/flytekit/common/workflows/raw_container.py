@@ -10,7 +10,11 @@ square = SdkRawContainerTask(
     inputs={"val": Types.Integer},
     outputs={"out": Types.Integer},
     image="alpine",
-    command=["sh", "-c", "echo $(( {{.Inputs.val}} * {{.Inputs.val}} )) | tee /var/outputs/out"],
+    command=[
+        "sh",
+        "-c",
+        "echo $(( {{.Inputs.val}} * {{.Inputs.val}} )) | tee /var/outputs/out",
+    ],
 )
 
 sum = SdkRawContainerTask(
@@ -19,7 +23,11 @@ sum = SdkRawContainerTask(
     inputs={"x": Types.Integer, "y": Types.Integer},
     outputs={"out": Types.Integer},
     image="alpine",
-    command=["sh", "-c", "echo $(( {{.Inputs.x}} + {{.Inputs.y}} )) | tee /var/flyte/outputs/out"],
+    command=[
+        "sh",
+        "-c",
+        "echo $(( {{.Inputs.x}} + {{.Inputs.y}} )) | tee /var/flyte/outputs/out",
+    ],
 )
 
 

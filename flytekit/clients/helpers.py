@@ -1,6 +1,4 @@
-
 from flytekit.clis.auth import credentials as _credentials_access
-
 
 
 def iterate_node_executions(
@@ -8,7 +6,7 @@ def iterate_node_executions(
     workflow_execution_identifier=None,
     task_execution_identifier=None,
     limit=None,
-    filters=None
+    filters=None,
 ):
     """
     This returns a generator for node executions.
@@ -30,14 +28,14 @@ def iterate_node_executions(
                 workflow_execution_identifier=workflow_execution_identifier,
                 limit=num_to_fetch,
                 token=token,
-                filters=filters
+                filters=filters,
             )
         else:
             node_execs, next_token = client.list_node_executions_for_task_paginated(
                 task_execution_identifier=task_execution_identifier,
                 limit=num_to_fetch,
                 token=token,
-                filters=filters
+                filters=filters,
             )
         for n in node_execs:
             counter += 1
@@ -49,7 +47,9 @@ def iterate_node_executions(
         token = next_token
 
 
-def iterate_task_executions(client, node_execution_identifier, limit=None, filters=None):
+def iterate_task_executions(
+    client, node_execution_identifier, limit=None, filters=None
+):
     """
     This returns a generator for task executions, given a node execution identifier
     :param flytekit.clients.friendly.SynchronousFlyteClient client:
@@ -68,7 +68,7 @@ def iterate_task_executions(client, node_execution_identifier, limit=None, filte
             node_execution_identifier=node_execution_identifier,
             limit=num_to_fetch,
             token=token,
-            filters=filters
+            filters=filters,
         )
         for t in task_execs:
             counter += 1
@@ -78,4 +78,3 @@ def iterate_task_executions(client, node_execution_identifier, limit=None, filte
         if not next_token:
             break
         token = next_token
-

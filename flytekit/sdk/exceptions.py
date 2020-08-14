@@ -8,4 +8,5 @@ class RecoverableException(_user.FlyteRecoverableException):
     Any exception raised from user code other than RecoverableException will NOT be considered retryable and the task
     will fail without additional retries.
     """
+
     pass

@@ -17,7 +17,9 @@ def log_something(wf_params):
     wf_params.logging.warn("Hello world")
 
 
-@workflow_class(on_failure=WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE)
+@workflow_class(
+    on_failure=WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
+)
 class FailingWorkflowWithRunToCompletion(object):
     """
     [start] ->  [first_layer] -> [second_layer]   ->  [end]

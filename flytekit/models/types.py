@@ -22,9 +22,7 @@ class SimpleType(object):
 
 
 class SchemaType(_common.FlyteIdlEntity):
-
     class SchemaColumn(_common.FlyteIdlEntity):
-
         class SchemaColumnType(object):
             INTEGER = _types_pb2.SchemaType.SchemaColumn.INTEGER
             FLOAT = _types_pb2.SchemaType.SchemaColumn.FLOAT
@@ -61,10 +59,7 @@ class SchemaType(_common.FlyteIdlEntity):
             """
             :rtype: flyteidl.core.types_pb2.SchemaType.SchemaColumn
             """
-            return _types_pb2.SchemaType.SchemaColumn(
-                name=self.name,
-                type=self.type
-            )
+            return _types_pb2.SchemaType.SchemaColumn(name=self.name, type=self.type)
 
         @classmethod
         def from_flyte_idl(cls, proto):
@@ -92,9 +87,7 @@ class SchemaType(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.types_pb2.SchemaType
         """
-        return _types_pb2.SchemaType(
-            columns=[c.to_flyte_idl() for c in self.columns]
-        )
+        return _types_pb2.SchemaType(columns=[c.to_flyte_idl() for c in self.columns])
 
     @classmethod
     def from_flyte_idl(cls, proto):
@@ -102,12 +95,21 @@ class SchemaType(_common.FlyteIdlEntity):
         :param flyteidl.core.types_pb2.SchemaType proto:
         :rtype: SchemaType
         """
-        return cls(columns=[SchemaType.SchemaColumn.from_flyte_idl(c) for c in proto.columns])
+        return cls(
+            columns=[SchemaType.SchemaColumn.from_flyte_idl(c) for c in proto.columns]
+        )
 
 
 class LiteralType(_common.FlyteIdlEntity):
-
-    def __init__(self, simple=None, schema=None, collection_type=None, map_value_type=None, blob=None, metadata=None):
+    def __init__(
+        self,
+        simple=None,
+        schema=None,
+        collection_type=None,
+        map_value_type=None,
+        blob=None,
+        metadata=None,
+    ):
         """
         Only one of the kwargs may be set.
         :param int simple: Enum type from SimpleType
@@ -182,10 +184,14 @@ class LiteralType(_common.FlyteIdlEntity):
         t = _types_pb2.LiteralType(
             simple=self.simple if self.simple is not None else None,
             schema=self.schema.to_flyte_idl() if self.schema is not None else None,
-            collection_type=self.collection_type.to_flyte_idl() if self.collection_type is not None else None,
-            map_value_type=self.map_value_type.to_flyte_idl() if self.map_value_type is not None else None,
+            collection_type=self.collection_type.to_flyte_idl()
+            if self.collection_type is not None
+            else None,
+            map_value_type=self.map_value_type.to_flyte_idl()
+            if self.map_value_type is not None
+            else None,
             blob=self.blob.to_flyte_idl() if self.blob is not None else None,
-            metadata=metadata
+            metadata=metadata,
         )
         return t
 
@@ -203,11 +209,15 @@ class LiteralType(_common.FlyteIdlEntity):
             map_value_type = LiteralType.from_flyte_idl(proto.map_value_type)
         return cls(
             simple=proto.simple if proto.HasField("simple") else None,
-            schema=SchemaType.from_flyte_idl(proto.schema) if proto.HasField("schema") else None,
+            schema=SchemaType.from_flyte_idl(proto.schema)
+            if proto.HasField("schema")
+            else None,
             collection_type=collection_type,
             map_value_type=map_value_type,
-            blob=_core_types.BlobType.from_flyte_idl(proto.blob) if proto.HasField("blob") else None,
-            metadata=_json_format.MessageToDict(proto.metadata) or None
+            blob=_core_types.BlobType.from_flyte_idl(proto.blob)
+            if proto.HasField("blob")
+            else None,
+            metadata=_json_format.MessageToDict(proto.metadata) or None,
         )
 
 
@@ -255,7 +265,4 @@ class OutputReference(_common.FlyteIdlEntity):
         :param flyteidl.core.types.OutputReference pb2_object:
         :rtype: OutputReference
         """
-        return cls(
-            node_id=pb2_object.node_id,
-            var=pb2_object.var
-        )
+        return cls(node_id=pb2_object.node_id, var=pb2_object.var)

@@ -6,7 +6,6 @@ from flytekit.models import common as _common
 
 
 class Project(_common.FlyteIdlEntity):
-
     def __init__(self, id, name, description):
         """
         A project represents a logical grouping used to organize entities (tasks, workflows, executions) in the Flyte
@@ -49,9 +48,7 @@ class Project(_common.FlyteIdlEntity):
         :rtype: flyteidl.admin.project_pb2.Project
         """
         return _project_pb2.Project(
-            id=self.id,
-            name=self.name,
-            description=self.description,
+            id=self.id, name=self.name, description=self.description,
         )
 
     @classmethod
@@ -61,7 +58,5 @@ class Project(_common.FlyteIdlEntity):
         :rtype: Project
         """
         return cls(
-            id=pb2_object.id,
-            name=pb2_object.name,
-            description=pb2_object.description,
+            id=pb2_object.id, name=pb2_object.name, description=pb2_object.description,
         )

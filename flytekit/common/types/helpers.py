@@ -2,7 +2,10 @@ from __future__ import absolute_import
 
 import six as _six
 from flytekit.models import literals as _literal_models
-from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
+from flytekit.common.exceptions import (
+    user as _user_exceptions,
+    scopes as _exception_scopes,
+)
 from flytekit.configuration import sdk as _sdk_config
 import importlib as _importlib
 
@@ -20,20 +23,23 @@ class _TypeEngineLoader(object):
             for fqdn in config:
                 split = fqdn.split(".")
                 module_path, attr = ".".join(split[:-1]), split[-1]
-                module = _exception_scopes.user_entry_point(_importlib.import_module)(module_path)
+                module = _exception_scopes.user_entry_point(_importlib.import_module)(
+                    module_path
+                )
 
                 if not hasattr(module, attr):
                     raise _user_exceptions.FlyteValueException(
                         module,
                         "Failed to load the type engine because the attribute named '{}' could not be found"
-                        "in the module '{}'.".format(
-                            attr, module_path
-                        )
+                        "in the module '{}'.".format(attr, module_path),
                     )
 
                 engine_impl = getattr(module, attr)()
                 cls._LOADED_ENGINES.append(engine_impl)
-            from flytekit.type_engines.default.flyte import FlyteDefaultTypeEngine as _DefaultEngine
+            from flytekit.type_engines.default.flyte import (
+                FlyteDefaultTypeEngine as _DefaultEngine,
+            )
+
             cls._LOADED_ENGINES.append(_DefaultEngine())
 
     @classmethod
@@ -54,7 +60,9 @@ def python_std_to_sdk_type(t):
         out = e.python_std_to_sdk_type(t)
         if out is not None:
             return out
-    raise _user_exceptions.FlyteValueException(t, "Could not resolve to an SDK type for this value.")
+    raise _user_exceptions.FlyteValueException(
+        t, "Could not resolve to an SDK type for this value."
+    )
 
 
 def get_sdk_type_from_literal_type(literal_type):
@@ -66,8 +74,9 @@ def get_sdk_type_from_literal_type(literal_type):
         out = e.get_sdk_type_from_literal_type(literal_type)
         if out is not None:
             return out
-    raise _user_exceptions.FlyteValueException(literal_type, "Could not resolve to a type implementation for this "
-                                                             "value.")
+    raise _user_exceptions.FlyteValueException(
+        literal_type, "Could not resolve to a type implementation for this " "value."
+    )
 
 
 def infer_sdk_type_from_literal(literal):
@@ -79,7 +88,9 @@ def infer_sdk_type_from_literal(literal):
         out = e.infer_sdk_type_from_literal(literal)
         if out is not None:
             return out
-    raise _user_exceptions.FlyteValueException(literal, "Could not resolve to a type implementation for this value.")
+    raise _user_exceptions.FlyteValueException(
+        literal, "Could not resolve to a type implementation for this value."
+    )
 
 
 def get_sdk_value_from_literal(literal, sdk_type=None):
@@ -115,7 +126,9 @@ def unpack_literal_map_to_sdk_python_std(literal_map, type_map=None):
     """
     return {
         k: v.to_python_std()
-        for k, v in _six.iteritems(unpack_literal_map_to_sdk_object(literal_map, type_map=type_map))
+        for k, v in _six.iteritems(
+            unpack_literal_map_to_sdk_object(literal_map, type_map=type_map)
+        )
     }
 
 
@@ -127,7 +140,5 @@ def pack_python_std_map_to_literal_map(std_map, type_map):
     :raises: flytekit.common.exceptions.user.FlyteTypeException
     """
     return _literal_models.LiteralMap(
-        literals={
-            k: v.from_python_std(std_map[k]) for k, v in _six.iteritems(type_map)
-        }
+        literals={k: v.from_python_std(std_map[k]) for k, v in _six.iteritems(type_map)}
     )

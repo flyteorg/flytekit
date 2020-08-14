@@ -2,13 +2,21 @@ import json as _json
 
 import six as _six
 from flyteidl.admin import task_pb2 as _admin_task
-from flyteidl.core import tasks_pb2 as _core_task, literals_pb2 as _literals_pb2, compiler_pb2 as _compiler
+from flyteidl.core import (
+    tasks_pb2 as _core_task,
+    literals_pb2 as _literals_pb2,
+    compiler_pb2 as _compiler,
+)
 from flyteidl.plugins import spark_pb2 as _spark_task
 from flyteidl.plugins import pytorch_pb2 as _pytorch_task
 from flytekit.plugins import flyteidl as _lazy_flyteidl
 from google.protobuf import json_format as _json_format, struct_pb2 as _struct
 from flytekit.sdk.spark_types import SparkType as _spark_type
-from flytekit.models import common as _common, literals as _literals, interface as _interface
+from flytekit.models import (
+    common as _common,
+    literals as _literals,
+    interface as _interface,
+)
 from flytekit.models.core import identifier as _identifier
 from flytekit.common.exceptions import user as _user_exceptions
 
@@ -22,7 +30,6 @@ class Resources(_common.FlyteIdlEntity):
         STORAGE = _core_task.Resources.STORAGE
 
     class ResourceEntry(_common.FlyteIdlEntity):
-
         def __init__(self, name, value):
             """
             :param int name: enum value from ResourceName
@@ -93,7 +100,7 @@ class Resources(_common.FlyteIdlEntity):
         """
         return _core_task.Resources(
             requests=[r.to_flyte_idl() for r in self.requests],
-            limits=[r.to_flyte_idl() for r in self.limits]
+            limits=[r.to_flyte_idl() for r in self.limits],
         )
 
     @classmethod
@@ -103,8 +110,12 @@ class Resources(_common.FlyteIdlEntity):
         :rtype: Resources
         """
         return cls(
-            requests=[Resources.ResourceEntry.from_flyte_idl(r) for r in pb2_object.requests],
-            limits=[Resources.ResourceEntry.from_flyte_idl(l) for l in pb2_object.limits]
+            requests=[
+                Resources.ResourceEntry.from_flyte_idl(r) for r in pb2_object.requests
+            ],
+            limits=[
+                Resources.ResourceEntry.from_flyte_idl(l) for l in pb2_object.limits
+            ],
         )
 
 
@@ -153,9 +164,7 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.tasks_pb2.RuntimeMetadata
         """
         return _core_task.RuntimeMetadata(
-            type=self.type,
-            version=self.version,
-            flavor=self.flavor
+            type=self.type, version=self.version, flavor=self.flavor
         )
 
     @classmethod
@@ -165,16 +174,21 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
         :rtype: RuntimeMetadata
         """
         return cls(
-            type=pb2_object.type,
-            version=pb2_object.version,
-            flavor=pb2_object.flavor
+            type=pb2_object.type, version=pb2_object.version, flavor=pb2_object.flavor
         )
 
 
 class TaskMetadata(_common.FlyteIdlEntity):
-
-    def __init__(self, discoverable, runtime, timeout, retries, interruptible, discovery_version,
-                 deprecated_error_message):
+    def __init__(
+        self,
+        discoverable,
+        runtime,
+        timeout,
+        retries,
+        interruptible,
+        discovery_version,
+        deprecated_error_message,
+    ):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
         and retries.
@@ -269,7 +283,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             retries=self.retries.to_flyte_idl(),
             interruptible=self.interruptible,
             discovery_version=self.discovery_version,
-            deprecated_error_message=self.deprecated_error_message
+            deprecated_error_message=self.deprecated_error_message,
         )
         tm.timeout.FromTimedelta(self.timeout)
         return tm
@@ -284,15 +298,16 @@ class TaskMetadata(_common.FlyteIdlEntity):
             discoverable=pb2_object.discoverable,
             runtime=RuntimeMetadata.from_flyte_idl(pb2_object.runtime),
             timeout=pb2_object.timeout.ToTimedelta(),
-            interruptible=pb2_object.interruptible if pb2_object.HasField("interruptible") else None,
+            interruptible=pb2_object.interruptible
+            if pb2_object.HasField("interruptible")
+            else None,
             retries=_literals.RetryStrategy.from_flyte_idl(pb2_object.retries),
             discovery_version=pb2_object.discovery_version,
-            deprecated_error_message=pb2_object.deprecated_error_message
+            deprecated_error_message=pb2_object.deprecated_error_message,
         )
 
 
 class TaskTemplate(_common.FlyteIdlEntity):
-
     def __init__(self, id, type, metadata, interface, custom, container=None):
         """
         A task template represents the full set of information necessary to perform a unit of work in the Flyte system.
@@ -374,8 +389,10 @@ class TaskTemplate(_common.FlyteIdlEntity):
             type=self.type,
             metadata=self.metadata.to_flyte_idl(),
             interface=self.interface.to_flyte_idl(),
-            custom=_json_format.Parse(_json.dumps(self.custom), _struct.Struct()) if self.custom else None,
-            container=self.container.to_flyte_idl() if self.container else None
+            custom=_json_format.Parse(_json.dumps(self.custom), _struct.Struct())
+            if self.custom
+            else None,
+            container=self.container.to_flyte_idl() if self.container else None,
         )
 
     @classmethod
@@ -389,13 +406,16 @@ class TaskTemplate(_common.FlyteIdlEntity):
             type=pb2_object.type,
             metadata=TaskMetadata.from_flyte_idl(pb2_object.metadata),
             interface=_interface.TypedInterface.from_flyte_idl(pb2_object.interface),
-            custom=_json_format.MessageToDict(pb2_object.custom) if pb2_object else None,
-            container=Container.from_flyte_idl(pb2_object.container) if pb2_object.HasField("container") else None
+            custom=_json_format.MessageToDict(pb2_object.custom)
+            if pb2_object
+            else None,
+            container=Container.from_flyte_idl(pb2_object.container)
+            if pb2_object.HasField("container")
+            else None,
         )
 
 
 class TaskSpec(_common.FlyteIdlEntity):
-
     def __init__(self, template):
         """
         :param TaskTemplate template:
@@ -413,9 +433,7 @@ class TaskSpec(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.tasks_pb2.TaskSpec
         """
-        return _admin_task.TaskSpec(
-            template=self.template.to_flyte_idl()
-        )
+        return _admin_task.TaskSpec(template=self.template.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -427,7 +445,6 @@ class TaskSpec(_common.FlyteIdlEntity):
 
 
 class Task(_common.FlyteIdlEntity):
-
     def __init__(self, id, closure):
         """
         :param flytekit.models.core.identifier.Identifier id: The (project, domain, name) identifier for this task.
@@ -457,8 +474,7 @@ class Task(_common.FlyteIdlEntity):
         :rtype: flyteidl.admin.task_pb2.Task
         """
         return _admin_task.Task(
-            closure=self.closure.to_flyte_idl(),
-            id=self.id.to_flyte_idl(),
+            closure=self.closure.to_flyte_idl(), id=self.id.to_flyte_idl(),
         )
 
     @classmethod
@@ -469,12 +485,11 @@ class Task(_common.FlyteIdlEntity):
         """
         return cls(
             closure=TaskClosure.from_flyte_idl(pb2_object.closure),
-            id=_identifier.Identifier.from_flyte_idl(pb2_object.id)
+            id=_identifier.Identifier.from_flyte_idl(pb2_object.id),
         )
 
 
 class TaskClosure(_common.FlyteIdlEntity):
-
     def __init__(self, compiled_task):
         """
         :param CompiledTask compiled_task:
@@ -492,9 +507,7 @@ class TaskClosure(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.task_pb2.TaskClosure
         """
-        return _admin_task.TaskClosure(
-            compiled_task=self.compiled_task.to_flyte_idl()
-        )
+        return _admin_task.TaskClosure(compiled_task=self.compiled_task.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -502,13 +515,10 @@ class TaskClosure(_common.FlyteIdlEntity):
         :param flyteidl.admin.task_pb2.TaskClosure pb2_object:
         :rtype: TaskClosure
         """
-        return cls(
-            compiled_task=CompiledTask.from_flyte_idl(pb2_object.compiled_task)
-        )
+        return cls(compiled_task=CompiledTask.from_flyte_idl(pb2_object.compiled_task))
 
 
 class CompiledTask(_common.FlyteIdlEntity):
-
     def __init__(self, template):
         """
         :param TaskTemplate template:
@@ -526,9 +536,7 @@ class CompiledTask(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.compiler_pb2.CompiledTask
         """
-        return _compiler.CompiledTask(
-            template=self.template.to_flyte_idl()
-        )
+        return _compiler.CompiledTask(template=self.template.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -536,14 +544,19 @@ class CompiledTask(_common.FlyteIdlEntity):
         :param flyteidl.core.compiler_pb2.CompiledTask pb2_object:
         :rtype: CompiledTask
         """
-        return cls(
-            template=TaskTemplate.from_flyte_idl(pb2_object.template)
-        )
+        return cls(template=TaskTemplate.from_flyte_idl(pb2_object.template))
 
 
 class SparkJob(_common.FlyteIdlEntity):
-
-    def __init__(self, spark_type, application_file, main_class, spark_conf, hadoop_conf, executor_path):
+    def __init__(
+        self,
+        spark_type,
+        application_file,
+        main_class,
+        spark_conf,
+        hadoop_conf,
+        executor_path,
+    ):
         """
         This defines a SparkJob target.  It will execute the appropriate SparkJob.
 
@@ -620,7 +633,9 @@ class SparkJob(_common.FlyteIdlEntity):
         elif self.spark_type == _spark_type.R:
             application_type = _spark_task.SparkApplication.R
         else:
-            raise _user_exceptions.FlyteValidationException("Invalid Spark Application Type Specified")
+            raise _user_exceptions.FlyteValidationException(
+                "Invalid Spark Application Type Specified"
+            )
 
         return _spark_task.SparkJob(
             applicationType=application_type,
@@ -660,6 +675,7 @@ class IOStrategy(_common.FlyteIdlEntity):
     """
     Provides methods to manage data in and out of the Raw container using Download Modes. This can only be used if DataLoadingConfig is enabled.
     """
+
     DOWNLOAD_MODE_EAGER = _core_task.IOStrategy.DOWNLOAD_EAGER
     DOWNLOAD_MODE_STREAM = _core_task.IOStrategy.DOWNLOAD_STREAM
     DOWNLOAD_MODE_NO_DOWNLOAD = _core_task.IOStrategy.DO_NOT_DOWNLOAD
@@ -668,16 +684,17 @@ class IOStrategy(_common.FlyteIdlEntity):
     UPLOAD_MODE_ON_EXIT = _core_task.IOStrategy.UPLOAD_ON_EXIT
     UPLOAD_MODE_NO_UPLOAD = _core_task.IOStrategy.DO_NOT_UPLOAD
 
-    def __init__(self,
-                 download_mode: _core_task.IOStrategy.DownloadMode=DOWNLOAD_MODE_EAGER,
-                 upload_mode: _core_task.IOStrategy.UploadMode=UPLOAD_MODE_ON_EXIT):
+    def __init__(
+        self,
+        download_mode: _core_task.IOStrategy.DownloadMode = DOWNLOAD_MODE_EAGER,
+        upload_mode: _core_task.IOStrategy.UploadMode = UPLOAD_MODE_ON_EXIT,
+    ):
         self._download_mode = download_mode
         self._upload_mode = upload_mode
 
     def to_flyte_idl(self) -> _core_task.IOStrategy:
         return _core_task.IOStrategy(
-            download_mode=self._download_mode,
-            upload_mode=self._upload_mode
+            download_mode=self._download_mode, upload_mode=self._upload_mode
         )
 
     @classmethod
@@ -685,8 +702,7 @@ class IOStrategy(_common.FlyteIdlEntity):
         if pb2_object is None:
             return None
         return cls(
-            download_mode=pb2_object.download_mode,
-            upload_mode=pb2_object.upload_mode,
+            download_mode=pb2_object.download_mode, upload_mode=pb2_object.upload_mode,
         )
 
 
@@ -694,13 +710,24 @@ class DataLoadingConfig(_common.FlyteIdlEntity):
     LITERALMAP_FORMAT_PROTO = _core_task.DataLoadingConfig.PROTO
     LITERALMAP_FORMAT_JSON = _core_task.DataLoadingConfig.JSON
     LITERALMAP_FORMAT_YAML = _core_task.DataLoadingConfig.YAML
-    _LITERALMAP_FORMATS = frozenset([LITERALMAP_FORMAT_JSON, LITERALMAP_FORMAT_PROTO, LITERALMAP_FORMAT_YAML])
+    _LITERALMAP_FORMATS = frozenset(
+        [LITERALMAP_FORMAT_JSON, LITERALMAP_FORMAT_PROTO, LITERALMAP_FORMAT_YAML]
+    )
 
-    def __init__(self, input_path: str, output_path: str, enabled: bool = True,
-                 format: _core_task.DataLoadingConfig.LiteralMapFormat = LITERALMAP_FORMAT_PROTO, io_strategy: IOStrategy=None):
+    def __init__(
+        self,
+        input_path: str,
+        output_path: str,
+        enabled: bool = True,
+        format: _core_task.DataLoadingConfig.LiteralMapFormat = LITERALMAP_FORMAT_PROTO,
+        io_strategy: IOStrategy = None,
+    ):
         if format not in self._LITERALMAP_FORMATS:
             raise ValueError(
-                "Metadata format {} not supported. Should be one of {}".format(format, self._LITERALMAP_FORMATS))
+                "Metadata format {} not supported. Should be one of {}".format(
+                    format, self._LITERALMAP_FORMATS
+                )
+            )
         self._input_path = input_path
         self._output_path = output_path
         self._enabled = enabled
@@ -713,11 +740,13 @@ class DataLoadingConfig(_common.FlyteIdlEntity):
             output_path=self._output_path,
             format=self._format,
             enabled=self._enabled,
-            io_strategy=self._io_strategy.to_flyte_idl() if self._io_strategy is not None else None,
+            io_strategy=self._io_strategy.to_flyte_idl()
+            if self._io_strategy is not None
+            else None,
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2: _core_task.DataLoadingConfig)-> 'DataLoadingConfig':
+    def from_flyte_idl(cls, pb2: _core_task.DataLoadingConfig) -> "DataLoadingConfig":
         if pb2 is None:
             return None
         return cls(
@@ -725,13 +754,16 @@ class DataLoadingConfig(_common.FlyteIdlEntity):
             output_path=pb2.output_path,
             enabled=pb2.enabled,
             format=pb2.format,
-            io_strategy=IOStrategy.from_flyte_idl(pb2.io_strategy) if pb2.HasField("io_strategy") else None,
+            io_strategy=IOStrategy.from_flyte_idl(pb2.io_strategy)
+            if pb2.HasField("io_strategy")
+            else None,
         )
 
 
 class Container(_common.FlyteIdlEntity):
-
-    def __init__(self, image, command, args, resources, env, config, data_loading_config=None):
+    def __init__(
+        self, image, command, args, resources, env, config, data_loading_config=None
+    ):
         """
            This defines a container target.  It will execute the appropriate command line on the appropriate image with
            the given configurations.
@@ -818,9 +850,17 @@ class Container(_common.FlyteIdlEntity):
             command=self.command,
             args=self.args,
             resources=self.resources.to_flyte_idl(),
-            env=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in _six.iteritems(self.env)],
-            config=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in _six.iteritems(self.config)],
-            data_config=self._data_loading_config.to_flyte_idl() if self._data_loading_config else None,
+            env=[
+                _literals_pb2.KeyValuePair(key=k, value=v)
+                for k, v in _six.iteritems(self.env)
+            ],
+            config=[
+                _literals_pb2.KeyValuePair(key=k, value=v)
+                for k, v in _six.iteritems(self.config)
+            ],
+            data_config=self._data_loading_config.to_flyte_idl()
+            if self._data_loading_config
+            else None,
         )
 
     @classmethod
@@ -837,12 +877,12 @@ class Container(_common.FlyteIdlEntity):
             env={kv.key: kv.value for kv in pb2_object.env},
             config={kv.key: kv.value for kv in pb2_object.config},
             data_loading_config=DataLoadingConfig.from_flyte_idl(pb2_object.data_config)
-                if pb2_object.HasField("data_config") else None,
+            if pb2_object.HasField("data_config")
+            else None,
         )
 
 
 class SidecarJob(_common.FlyteIdlEntity):
-
     def __init__(self, pod_spec, primary_container_name):
         """
         A sidecar job represents the full kubernetes pod spec and related metadata required for executing a sidecar
@@ -873,8 +913,7 @@ class SidecarJob(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.tasks_pb2.SidecarJob
         """
         return _lazy_flyteidl.plugins.sidecar_pb2.SidecarJob(
-            pod_spec=self.pod_spec,
-            primary_container_name=self.primary_container_name
+            pod_spec=self.pod_spec, primary_container_name=self.primary_container_name
         )
 
     @classmethod
@@ -890,7 +929,6 @@ class SidecarJob(_common.FlyteIdlEntity):
 
 
 class PyTorchJob(_common.FlyteIdlEntity):
-
     def __init__(self, workers_count):
         self._workers_count = workers_count
 
@@ -899,12 +937,8 @@ class PyTorchJob(_common.FlyteIdlEntity):
         return self._workers_count
 
     def to_flyte_idl(self):
-        return _pytorch_task.DistributedPyTorchTrainingTask(
-            workers=self.workers_count,
-        )
+        return _pytorch_task.DistributedPyTorchTrainingTask(workers=self.workers_count,)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
-        return cls(
-            workers_count=pb2_object.workers,
-        )
+        return cls(workers_count=pb2_object.workers,)

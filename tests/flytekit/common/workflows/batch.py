@@ -54,7 +54,7 @@ def no_inputs_sample_batch_task(wf_params, out_str, out_ints):
 
 @inputs(in1=Types.Integer)
 @outputs(out_str=[Types.String])
-@dynamic_task(cache=True, cache_version='1')
+@dynamic_task(cache=True, cache_version="1")
 def sample_batch_task_beatles_cached(wf_params, in1, out_str):
     wf_params.stats.incr("task_run")
     res2 = []
@@ -67,7 +67,7 @@ def sample_batch_task_beatles_cached(wf_params, in1, out_str):
 
 @inputs(in1=Types.Integer)
 @outputs(out1=Types.String)
-@python_task(cache=True, cache_version='1')
+@python_task(cache=True, cache_version="1")
 def sample_beatles_lyrics_cached(wf_params, in1, out1):
     wf_params.stats.incr("task_run")
     lyrics = ["Ob-La-Di, Ob-La-Da", "When I'm 64", "Yesterday"]
@@ -99,15 +99,30 @@ def sq_sub_task(wf_params, in1, out1):
 
 
 @inputs(ints_to_print=[[Types.Integer]], strings_to_print=[Types.String])
-@python_task(cache_version='1')
+@python_task(cache_version="1")
 def print_every_time(wf_params, ints_to_print, strings_to_print):
     wf_params.stats.incr("task_run")
-    print("Expected Int values: {}".format([[0, 0, 0], [1, 2, 3], [2, 4, 6], [0, 1, 4], [0, 1, 4]]))
+    print(
+        "Expected Int values: {}".format(
+            [[0, 0, 0], [1, 2, 3], [2, 4, 6], [0, 1, 4], [0, 1, 4]]
+        )
+    )
     print("Actual Int values: {}".format(ints_to_print))
 
-    print("Expected String values: {}".format(
-        [u"I'm the first result", u"hello 0", u"I'm after each sub-task result", u'hello 1',
-         u"I'm after each sub-task result", u'hello 2', u"I'm after each sub-task result", u"I'm the last result"]))
+    print(
+        "Expected String values: {}".format(
+            [
+                u"I'm the first result",
+                u"hello 0",
+                u"I'm after each sub-task result",
+                u"hello 1",
+                u"I'm after each sub-task result",
+                u"hello 2",
+                u"I'm after each sub-task result",
+                u"I'm the last result",
+            ]
+        )
+    )
     print("Actual String values: {}".format(strings_to_print))
 
 
@@ -116,6 +131,8 @@ class BatchTasksWorkflow(object):
     num_subtasks = Input(Types.Integer, default=3)
     task1 = no_inputs_sample_batch_task()
     task2 = sample_batch_task_beatles_cached(in1=num_subtasks)
-    t = print_every_time(ints_to_print=task1.outputs.out_ints, strings_to_print=task1.outputs.out_str)
+    t = print_every_time(
+        ints_to_print=task1.outputs.out_ints, strings_to_print=task1.outputs.out_str
+    )
     ints_out = Output(task1.outputs.out_ints, sdk_type=[[Types.Integer]])
     str_out = Output(task2.outputs.out_str, sdk_type=[Types.String])

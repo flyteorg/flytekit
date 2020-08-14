@@ -17,12 +17,20 @@ def add_two_integers(wf_params, a, b, c):
 @workflow_class
 class BasicWorkflow(object):
     input_1 = Input(Types.Integer)
-    input_2 = Input(Types.Integer, default=1, help='Not required.')
+    input_2 = Input(Types.Integer, default=1, help="Not required.")
     a = add_two_integers(a=input_1, b=input_2)
 
 
-notification_lp = BasicWorkflow.create_launch_plan(notifications=[
-    _notifications.Email([_execution.WorkflowExecutionPhase.SUCCEEDED, _execution.WorkflowExecutionPhase.FAILED,
-                          _execution.WorkflowExecutionPhase.TIMED_OUT, _execution.WorkflowExecutionPhase.ABORTED],
-                         ['flyte-test-notifications@mydomain.com'])
-])
+notification_lp = BasicWorkflow.create_launch_plan(
+    notifications=[
+        _notifications.Email(
+            [
+                _execution.WorkflowExecutionPhase.SUCCEEDED,
+                _execution.WorkflowExecutionPhase.FAILED,
+                _execution.WorkflowExecutionPhase.TIMED_OUT,
+                _execution.WorkflowExecutionPhase.ABORTED,
+            ],
+            ["flyte-test-notifications@mydomain.com"],
+        )
+    ]
+)

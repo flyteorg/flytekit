@@ -18,7 +18,6 @@ def _make_local_path(path):
 
 
 class LocalFileProxy(_common_data.DataProxy):
-
     def __init__(self, sandbox):
         """
         :param Text sandbox:
@@ -72,7 +71,9 @@ class LocalFileProxy(_common_data.DataProxy):
         # collision between objects when 2^(n/2) objects are created (where n is the number of bits in the hash).
         # Assuming Flyte eventually creates 1 trillion pieces of data (~2 ^ 40), the likelihood
         # of a collision is 10^-15 with 128-bit...or basically 0.
-        return _os.path.join(self._sandbox, _uuid.UUID(int=_flyte_random.random.getrandbits(128)).hex)
+        return _os.path.join(
+            self._sandbox, _uuid.UUID(int=_flyte_random.random.getrandbits(128)).hex
+        )
 
     def get_random_directory(self):
         """

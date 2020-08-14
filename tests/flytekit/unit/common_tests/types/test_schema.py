@@ -5,12 +5,12 @@ from flytekit.sdk import test_utils
 
 
 _ALL_COLUMN_TYPES = [
-    ('a', primitives.Integer),
-    ('b', primitives.String),
-    ('c', primitives.Float),
-    ('d', primitives.Datetime),
-    ('e', primitives.Timedelta),
-    ('f', primitives.Boolean),
+    ("a", primitives.Integer),
+    ("b", primitives.String),
+    ("c", primitives.Float),
+    ("d", primitives.Datetime),
+    ("e", primitives.Timedelta),
+    ("f", primitives.Boolean),
 ]
 
 
@@ -60,8 +60,8 @@ def test_casting():
         ...
 
     with test_utils.LocalTestFileSystem() as t:
-        test_columns_1 = [('altered', MyDateTime)]
-        test_columns_2 = [('altered', primitives.Datetime)]
+        test_columns_1 = [("altered", MyDateTime)]
+        test_columns_2 = [("altered", primitives.Datetime)]
 
         instantiator_1 = schema.schema_instantiator(test_columns_1)
         a = instantiator_1()

@@ -17,4 +17,4 @@ class EdgeDetector(object):
     script = Input(Types.Blob)
     image = Input(Types.Blob)
     edge_task = edges(script=script, image=image)
-    out =  Output(edge_task.outputs.edges, sdk_type=Types.Blob)
+    out = Output(edge_task.outputs.edges, sdk_type=Types.Blob)

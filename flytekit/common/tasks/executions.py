@@ -47,15 +47,18 @@ class SdkTaskExecution(
         :rtype: dict[Text, T]
         """
         if self._inputs is None:
-            client = _flyte_engine._FlyteClientManager(_platform_config.URL.get(),
-                                                       insecure=_platform_config.INSECURE.get()).client
+            client = _flyte_engine._FlyteClientManager(
+                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
+            ).client
             url_blob = client.get_task_execution_data(self.id)
             if url_blob.inputs.bytes > 0:
                 with _common_utils.AutoDeletingTempDir() as t:
                     tmp_name = _os.path.join(t.name, "inputs.pb")
                     _data_proxy.Data.get_data(url_blob.inputs.url, tmp_name)
                     input_map = _literal_models.LiteralMap.from_flyte_idl(
-                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                        _common_utils.load_proto_from_file(
+                            _literals_pb2.LiteralMap, tmp_name
+                        )
                     )
             else:
                 input_map = _literal_models.LiteralMap({})
@@ -72,25 +75,34 @@ class SdkTaskExecution(
         :rtype: dict[Text, T]
         """
         if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion("Please what until the task execution has completed before "
-                                                  "requesting the outputs.")
+            raise _user_exceptions.FlyteAssertion(
+                "Please what until the task execution has completed before "
+                "requesting the outputs."
+            )
         if self.error:
-            raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
+            raise _user_exceptions.FlyteAssertion(
+                "Outputs could not be found because the execution ended in failure."
+            )
 
         if self._outputs is None:
-            client = _flyte_engine._FlyteClientManager(_platform_config.URL.get(),
-                                                       insecure=_platform_config.INSECURE.get()).client
+            client = _flyte_engine._FlyteClientManager(
+                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
+            ).client
             url_blob = client.get_task_execution_data(self.id)
             if url_blob.outputs.bytes > 0:
                 with _common_utils.AutoDeletingTempDir() as t:
                     tmp_name = _os.path.join(t.name, "outputs.pb")
                     _data_proxy.Data.get_data(url_blob.outputs.url, tmp_name)
                     output_map = _literal_models.LiteralMap.from_flyte_idl(
-                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                        _common_utils.load_proto_from_file(
+                            _literals_pb2.LiteralMap, tmp_name
+                        )
                     )
             else:
                 output_map = _literal_models.LiteralMap({})
-            self._outputs = _type_helpers.unpack_literal_map_to_sdk_python_std(output_map)
+            self._outputs = _type_helpers.unpack_literal_map_to_sdk_python_std(
+                output_map
+            )
         return self._outputs
 
     @property
@@ -101,8 +113,10 @@ class SdkTaskExecution(
         :rtype: flytekit.models.core.execution.ExecutionError or None
         """
         if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion("Please what until the task execution has completed before "
-                                                  "requesting error information.")
+            raise _user_exceptions.FlyteAssertion(
+                "Please what until the task execution has completed before "
+                "requesting error information."
+            )
         return self.closure.error
 
     def get_child_executions(self, filters=None):
@@ -111,16 +125,18 @@ class SdkTaskExecution(
         :rtype: dict[Text, flytekit.common.nodes.SdkNodeExecution]
         """
         from flytekit.common import nodes as _nodes
+
         if not self.is_parent:
-            raise _user_exceptions.FlyteAssertion("Only task executions marked with 'is_parent' have child executions.")
-        client = _flyte_engine._FlyteClientManager(_platform_config.URL.get(),
-                                                   insecure=_platform_config.INSECURE.get()).client
+            raise _user_exceptions.FlyteAssertion(
+                "Only task executions marked with 'is_parent' have child executions."
+            )
+        client = _flyte_engine._FlyteClientManager(
+            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
+        ).client
         models = {
             v.id.node_id: v
             for v in _iterate_node_executions(
-                client,
-                task_execution_identifier=self.id,
-                filters=filters
+                client, task_execution_identifier=self.id, filters=filters
             )
         }
 
@@ -150,6 +166,7 @@ class SdkTaskExecution(
         Syncs the closure of the underlying execution artifact with the state observed by the platform.
         :rtype: None
         """
-        client = _flyte_engine._FlyteClientManager(_platform_config.URL.get(),
-                                                   insecure=_platform_config.INSECURE.get()).client
+        client = _flyte_engine._FlyteClientManager(
+            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
+        ).client
         self._closure = client.get_task_execution(self.id).closure

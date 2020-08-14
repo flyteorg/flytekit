@@ -24,8 +24,8 @@ class _InstanceTracker(_sdk_bases.ExtendedSdkType):
     def _find_instance_module():
         frame = _inspect.currentframe()
         while frame:
-            if frame.f_code.co_name == '<module>':
-                return frame.f_globals['__name__']
+            if frame.f_code.co_name == "<module>":
+                return frame.f_globals["__name__"]
             frame = frame.f_back
         return None
 
@@ -57,7 +57,6 @@ class FlyteEntity(object, metaclass=_sdk_bases.ExtendedSdkType):
 
 # Think of Registerable more as a "Control Plane" entity, as opposed to the "LocalEntity" one below.
 class RegisterableEntity(FlyteEntity):
-
     def __init__(self, *args, **kwargs):
         super(RegisterableEntity, self).__init__(*args, **kwargs)
 
@@ -87,7 +86,6 @@ class RegisterableEntity(FlyteEntity):
 
 
 class LocalEntity(FlyteEntity, metaclass=_InstanceTracker):
-
     def __init__(self, *args, **kwargs):
         self._platform_valid_name = None
         self._upstream_entities = set()
@@ -167,8 +165,12 @@ class LocalEntity(FlyteEntity, metaclass=_InstanceTracker):
         for k in dir(m):
             try:
                 if getattr(m, k) is self:
-                    self._platform_valid_name = _utils.fqdn(m.__name__, k, entity_type=self.resource_type)
-                    _logging.debug("Auto-assigning name to {}".format(self._platform_valid_name))
+                    self._platform_valid_name = _utils.fqdn(
+                        m.__name__, k, entity_type=self.resource_type
+                    )
+                    _logging.debug(
+                        "Auto-assigning name to {}".format(self._platform_valid_name)
+                    )
                     return
             except ValueError as err:
                 # Empty pandas dataframes behave weirdly here such that calling `m.df` raises:
@@ -176,8 +178,14 @@ class LocalEntity(FlyteEntity, metaclass=_InstanceTracker):
                 #   a.any() or a.all()
                 # Since dataframes aren't registrable entities to begin with we swallow any errors they raise and
                 # continue looping through m.
-                _logging.warning("Caught ValueError {} while attempting to auto-assign name".format(err))
+                _logging.warning(
+                    "Caught ValueError {} while attempting to auto-assign name".format(
+                        err
+                    )
+                )
                 pass
 
         _logging.error("Could not auto-assign name")
-        raise _system_exceptions.FlyteSystemException("Error looking for object while auto-assigning name.")
+        raise _system_exceptions.FlyteSystemException(
+            "Error looking for object while auto-assigning name."
+        )

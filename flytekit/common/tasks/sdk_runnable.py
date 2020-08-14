@@ -2,11 +2,22 @@ from inspect import getfullargspec as _getargspec
 import six as _six
 
 from flytekit import __version__
-from flytekit.common import interface as _interface, constants as _constants, sdk_bases as _sdk_bases
-from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
+from flytekit.common import (
+    interface as _interface,
+    constants as _constants,
+    sdk_bases as _sdk_bases,
+)
+from flytekit.common.exceptions import (
+    user as _user_exceptions,
+    scopes as _exception_scopes,
+)
 from flytekit.common.tasks import task as _base_task, output as _task_output
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import sdk as _sdk_config, internal as _internal_config, resources as _resource_config
+from flytekit.configuration import (
+    sdk as _sdk_config,
+    internal as _internal_config,
+    resources as _resource_config,
+)
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import literals as _literal_models, task as _task_models
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
@@ -90,23 +101,14 @@ class ExecutionParameters(object):
         return self._execution_id
 
 
-class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.ExtendedSdkType):
-
+class SdkRunnableContainer(
+    _task_models.Container, metaclass=_sdk_bases.ExtendedSdkType
+):
     def __init__(
-            self,
-            command,
-            args,
-            resources,
-            env,
-            config,
+        self, command, args, resources, env, config,
     ):
         super(SdkRunnableContainer, self).__init__(
-            "",
-            command,
-            args,
-            resources,
-            env or {},
-            config
+            "", command, args, resources, env or {}, config
         )
 
     @property
@@ -143,7 +145,9 @@ class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.Extended
         return env
 
 
-class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_sdk_bases.ExtendedSdkType):
+class SdkRunnableTask(
+    _base_task.SdkTask, _registerable.LocalEntity, metaclass=_sdk_bases.ExtendedSdkType
+):
     """
     This class includes the additional logic for building a task that executes in Python code.  It has even more
     validation checks to ensure proper behavior than it's superclasses.
@@ -153,25 +157,25 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
     """
 
     def __init__(
-            self,
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            interruptible,
-            deprecated,
-            storage_request,
-            cpu_request,
-            gpu_request,
-            memory_request,
-            storage_limit,
-            cpu_limit,
-            gpu_limit,
-            memory_limit,
-            discoverable,
-            timeout,
-            environment,
-            custom
+        self,
+        task_function,
+        task_type,
+        discovery_version,
+        retries,
+        interruptible,
+        deprecated,
+        storage_request,
+        cpu_request,
+        gpu_request,
+        memory_request,
+        storage_limit,
+        cpu_limit,
+        gpu_limit,
+        memory_limit,
+        discoverable,
+        timeout,
+        environment,
+        custom,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -201,13 +205,13 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
                 _task_models.RuntimeMetadata(
                     _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
                     __version__,
-                    'python'
+                    "python",
                 ),
                 timeout,
                 _literal_models.RetryStrategy(retries),
                 interruptible,
                 discovery_version,
-                deprecated
+                deprecated,
             ),
             _interface.TypedInterface({}, {}),
             custom,
@@ -220,8 +224,8 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
                 cpu_limit=cpu_limit,
                 gpu_limit=gpu_limit,
                 memory_limit=memory_limit,
-                environment=environment
-            )
+                environment=environment,
+            ),
         )
         # Constructor is not called since SdkTask's gets called.
         _registerable.LocalEntity.__init__(self)
@@ -244,7 +248,9 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
     @classmethod
     def promote_from_model(cls, base_model):
         # TODO: If the task exists in this container, we should be able to retrieve it.
-        raise _user_exceptions.FlyteAssertion("Cannot promote a base object to a runnable task.")
+        raise _user_exceptions.FlyteAssertion(
+            "Cannot promote a base object to a runnable task."
+        )
 
     @property
     def task_function(self):
@@ -271,10 +277,7 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
             raise _user_exceptions.FlyteAssertion(
                 "The task {} is invalid because not all inputs and outputs in the "
                 "task function definition were specified in @outputs and @inputs. "
-                "We are missing definitions for {}.".format(
-                    self,
-                    missing_args
-                )
+                "We are missing definitions for {}.".format(self, missing_args)
             )
 
     @_exception_scopes.system_entry_point
@@ -284,11 +287,18 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
             literals.
         :returns: Depends on the behavior of the specific task in the unit engine.
         """
-        return _engine_loader.get_engine('unit').get_task(self).execute(
-            _type_helpers.pack_python_std_map_to_literal_map(input_map, {
-                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
-                for k, v in _six.iteritems(self.interface.inputs)
-            })
+        return (
+            _engine_loader.get_engine("unit")
+            .get_task(self)
+            .execute(
+                _type_helpers.pack_python_std_map_to_literal_map(
+                    input_map,
+                    {
+                        k: _type_helpers.get_sdk_type_from_literal_type(v.type)
+                        for k, v in _six.iteritems(self.interface.inputs)
+                    },
+                )
+            )
         )
 
     @_exception_scopes.system_entry_point
@@ -299,11 +309,18 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
         :rtype: dict[Text, T]
         :returns: The output produced by this task in Python standard format.
         """
-        return _engine_loader.get_engine('local').get_task(self).execute(
-            _type_helpers.pack_python_std_map_to_literal_map(input_map, {
-                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
-                for k, v in _six.iteritems(self.interface.inputs)
-            })
+        return (
+            _engine_loader.get_engine("local")
+            .get_task(self)
+            .execute(
+                _type_helpers.pack_python_std_map_to_literal_map(
+                    input_map,
+                    {
+                        k: _type_helpers.get_sdk_type_from_literal_type(v.type)
+                        for k, v in _six.iteritems(self.interface.inputs)
+                    },
+                )
+            )
         )
 
     def _execute_user_code(self, context, inputs):
@@ -326,10 +343,12 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
             ExecutionParameters(
                 execution_date=context.execution_date,
                 # TODO: it might be better to consider passing the full struct
-                execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
+                execution_id=_six.text_type(
+                    WorkflowExecutionIdentifier.promote_from_model(context.execution_id)
+                ),
                 stats=context.stats,
                 logging=context.logging,
-                tmp_dir=context.working_directory
+                tmp_dir=context.working_directory,
             ),
             **inputs
         )
@@ -346,11 +365,17 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
             working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
-        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(inputs, {
-            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)
-        })
+        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(
+            inputs,
+            {
+                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
+                for k, v in _six.iteritems(self.interface.inputs)
+            },
+        )
         outputs_dict = {
-            name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
+            name: _task_output.OutputReference(
+                _type_helpers.get_sdk_type_from_literal_type(variable.type)
+            )
             for name, variable in _six.iteritems(self.interface.outputs)
         }
         inputs_dict.update(outputs_dict)
@@ -364,17 +389,17 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
         }
 
     def _get_container_definition(
-            self,
-            storage_request=None,
-            cpu_request=None,
-            gpu_request=None,
-            memory_request=None,
-            storage_limit=None,
-            cpu_limit=None,
-            gpu_limit=None,
-            memory_limit=None,
-            environment=None,
-            cls=None,
+        self,
+        storage_request=None,
+        cpu_request=None,
+        gpu_request=None,
+        memory_request=None,
+        storage_limit=None,
+        cpu_limit=None,
+        gpu_limit=None,
+        memory_limit=None,
+        environment=None,
+        cls=None,
     ):
         """
         :param Text storage_request:
@@ -390,7 +415,9 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
         :rtype: flytekit.models.task.Container
         """
         storage_limit = storage_limit or _resource_config.DEFAULT_STORAGE_LIMIT.get()
-        storage_request = storage_request or _resource_config.DEFAULT_STORAGE_REQUEST.get()
+        storage_request = (
+            storage_request or _resource_config.DEFAULT_STORAGE_REQUEST.get()
+        )
         cpu_limit = cpu_limit or _resource_config.DEFAULT_CPU_LIMIT.get()
         cpu_request = cpu_request or _resource_config.DEFAULT_CPU_REQUEST.get()
         gpu_limit = gpu_limit or _resource_config.DEFAULT_GPU_LIMIT.get()
@@ -402,29 +429,25 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
         if storage_request:
             requests.append(
                 _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.STORAGE,
-                    storage_request
+                    _task_models.Resources.ResourceName.STORAGE, storage_request
                 )
             )
         if cpu_request:
             requests.append(
                 _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.CPU,
-                    cpu_request
+                    _task_models.Resources.ResourceName.CPU, cpu_request
                 )
             )
         if gpu_request:
             requests.append(
                 _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.GPU,
-                    gpu_request
+                    _task_models.Resources.ResourceName.GPU, gpu_request
                 )
             )
         if memory_request:
             requests.append(
                 _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.MEMORY,
-                    memory_request
+                    _task_models.Resources.ResourceName.MEMORY, memory_request
                 )
             )
 
@@ -432,29 +455,25 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
         if storage_limit:
             limits.append(
                 _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.STORAGE,
-                    storage_limit
+                    _task_models.Resources.ResourceName.STORAGE, storage_limit
                 )
             )
         if cpu_limit:
             limits.append(
                 _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.CPU,
-                    cpu_limit
+                    _task_models.Resources.ResourceName.CPU, cpu_limit
                 )
             )
         if gpu_limit:
             limits.append(
                 _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.GPU,
-                    gpu_limit
+                    _task_models.Resources.ResourceName.GPU, gpu_limit
                 )
             )
         if memory_limit:
             limits.append(
                 _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.MEMORY,
-                    memory_limit
+                    _task_models.Resources.ResourceName.MEMORY, memory_limit
                 )
             )
 
@@ -469,11 +488,11 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
                 "--inputs",
                 "{{.input}}",
                 "--output-prefix",
-                "{{.outputPrefix}}"
+                "{{.outputPrefix}}",
             ],
             resources=_task_models.Resources(limits=limits, requests=requests),
             env=environment,
-            config={}
+            config={},
         )
 
     def _validate_inputs(self, inputs):
@@ -490,7 +509,10 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
                     "The input named '{}' was not specified in the task function.  Therefore, this input cannot be "
                     "provided to the task.".format(k)
                 )
-            if _type_helpers.get_sdk_type_from_literal_type(v.type) in type(self)._banned_inputs:
+            if (
+                _type_helpers.get_sdk_type_from_literal_type(v.type)
+                in type(self)._banned_inputs
+            ):
                 raise _user_exceptions.FlyteValidationException(
                     "The input '{}' is not an accepted input type.".format(v)
                 )
@@ -509,7 +531,10 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
                     "The output named '{}' was not specified in the task function.  Therefore, this output cannot be "
                     "provided to the task.".format(k)
                 )
-            if _type_helpers.get_sdk_type_from_literal_type(v.type) in type(self)._banned_outputs:
+            if (
+                _type_helpers.get_sdk_type_from_literal_type(v.type)
+                in type(self)._banned_outputs
+            ):
                 raise _user_exceptions.FlyteValidationException(
                     "The output '{}' is not an accepted output type.".format(v)
                 )
@@ -524,5 +549,7 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
     def _missing_mapped_inputs_outputs(self):
         # Trim off first parameter as it is reserved for workflow_parameters
         args = self._get_kwarg_inputs()
-        inputs_and_outputs = set(self.interface.outputs.keys()) | set(self.interface.inputs.keys())
+        inputs_and_outputs = set(self.interface.outputs.keys()) | set(
+            self.interface.inputs.keys()
+        )
         return args ^ inputs_and_outputs

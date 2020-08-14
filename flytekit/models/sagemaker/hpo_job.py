@@ -3,7 +3,10 @@ from __future__ import absolute_import
 from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
 
 from flytekit.models import common as _common
-from flytekit.models.sagemaker import parameter_ranges as _parameter_ranges_models, training_job as _training_job
+from flytekit.models.sagemaker import (
+    parameter_ranges as _parameter_ranges_models,
+    training_job as _training_job,
+)
 
 
 class HyperparameterTuningObjectiveType(object):
@@ -18,10 +21,9 @@ class HyperparameterTuningObjective(_common.FlyteIdlEntity):
 
     https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-define-metrics.html
     """
+
     def __init__(
-            self,
-            objective_type: int,
-            metric_name: str,
+        self, objective_type: int, metric_name: str,
     ):
         self._objective_type = objective_type
         self._metric_name = metric_name
@@ -47,8 +49,7 @@ class HyperparameterTuningObjective(_common.FlyteIdlEntity):
     def to_flyte_idl(self) -> _pb2_hpo_job.HyperparameterTuningObjective:
 
         return _pb2_hpo_job.HyperparameterTuningObjective(
-            objective_type=self.objective_type,
-            metric_name=self._metric_name,
+            objective_type=self.objective_type, metric_name=self._metric_name,
         )
 
     @classmethod
@@ -75,12 +76,13 @@ class HyperparameterTuningJobConfig(_common.FlyteIdlEntity):
     The specification of the hyperparameter tuning process
     https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-ex-tuning-job.html#automatic-model-tuning-ex-low-tuning-config
     """
+
     def __init__(
-            self,
-            hyperparameter_ranges: _parameter_ranges_models.ParameterRanges,
-            tuning_strategy: int,
-            tuning_objective: HyperparameterTuningObjective,
-            training_job_early_stopping_type: int,
+        self,
+        hyperparameter_ranges: _parameter_ranges_models.ParameterRanges,
+        tuning_strategy: int,
+        tuning_objective: HyperparameterTuningObjective,
+        training_job_early_stopping_type: int,
     ):
         self._hyperparameter_ranges = hyperparameter_ranges
         self._tuning_strategy = tuning_strategy
@@ -138,20 +140,24 @@ class HyperparameterTuningJobConfig(_common.FlyteIdlEntity):
 
         return cls(
             hyperparameter_ranges=(
-                _parameter_ranges_models.ParameterRanges.from_flyte_idl(pb2_object.hyperparameter_ranges)),
+                _parameter_ranges_models.ParameterRanges.from_flyte_idl(
+                    pb2_object.hyperparameter_ranges
+                )
+            ),
             tuning_strategy=pb2_object.tuning_strategy,
-            tuning_objective=HyperparameterTuningObjective.from_flyte_idl(pb2_object.tuning_objective),
+            tuning_objective=HyperparameterTuningObjective.from_flyte_idl(
+                pb2_object.tuning_objective
+            ),
             training_job_early_stopping_type=pb2_object.training_job_early_stopping_type,
         )
 
 
 class HyperparameterTuningJob(_common.FlyteIdlEntity):
-
     def __init__(
-            self,
-            max_number_of_training_jobs: int,
-            max_parallel_training_jobs: int,
-            training_job: _training_job.TrainingJob,
+        self,
+        max_number_of_training_jobs: int,
+        max_parallel_training_jobs: int,
+        training_job: _training_job.TrainingJob,
     ):
         self._max_number_of_training_jobs = max_number_of_training_jobs
         self._max_parallel_training_jobs = max_parallel_training_jobs
@@ -195,5 +201,7 @@ class HyperparameterTuningJob(_common.FlyteIdlEntity):
         return cls(
             max_number_of_training_jobs=pb2_object.max_number_of_training_jobs,
             max_parallel_training_jobs=pb2_object.max_parallel_training_jobs,
-            training_job=_training_job.TrainingJob.from_flyte_idl(pb2_object.training_job),
+            training_job=_training_job.TrainingJob.from_flyte_idl(
+                pb2_object.training_job
+            ),
         )

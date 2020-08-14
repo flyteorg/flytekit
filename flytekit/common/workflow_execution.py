@@ -42,15 +42,18 @@ class SdkWorkflowExecution(
         :rtype:  dict[Text, T]
         """
         if self._inputs is None:
-            client = _flyte_engine._FlyteClientManager(_platform_config.URL.get(),
-                                                       insecure=_platform_config.INSECURE.get()).client
+            client = _flyte_engine._FlyteClientManager(
+                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
+            ).client
             url_blob = client.get_execution_data(self.id)
             if url_blob.inputs.bytes > 0:
                 with _common_utils.AutoDeletingTempDir() as t:
                     tmp_name = _os.path.join(t.name, "inputs.pb")
                     _data_proxy.Data.get_data(url_blob.inputs.url, tmp_name)
                     input_map = _literal_models.LiteralMap.from_flyte_idl(
-                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                        _common_utils.load_proto_from_file(
+                            _literals_pb2.LiteralMap, tmp_name
+                        )
                     )
             else:
                 input_map = _literal_models.LiteralMap({})
@@ -66,25 +69,34 @@ class SdkWorkflowExecution(
         :rtype:  dict[Text, T] or None
         """
         if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion("Please what until the node execution has completed before "
-                                                  "requesting the outputs.")
+            raise _user_exceptions.FlyteAssertion(
+                "Please what until the node execution has completed before "
+                "requesting the outputs."
+            )
         if self.error:
-            raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
+            raise _user_exceptions.FlyteAssertion(
+                "Outputs could not be found because the execution ended in failure."
+            )
 
         if self._outputs is None:
-            client = _flyte_engine._FlyteClientManager(_platform_config.URL.get(),
-                                                       insecure=_platform_config.INSECURE.get()).client
+            client = _flyte_engine._FlyteClientManager(
+                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
+            ).client
             url_blob = client.get_execution_data(self.id)
             if url_blob.outputs.bytes > 0:
                 with _common_utils.AutoDeletingTempDir() as t:
                     tmp_name = _os.path.join(t.name, "outputs.pb")
                     _data_proxy.Data.get_data(url_blob.outputs.url, tmp_name)
                     output_map = _literal_models.LiteralMap.from_flyte_idl(
-                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                        _common_utils.load_proto_from_file(
+                            _literals_pb2.LiteralMap, tmp_name
+                        )
                     )
             else:
                 output_map = _literal_models.LiteralMap({})
-            self._outputs = _type_helpers.unpack_literal_map_to_sdk_python_std(output_map)
+            self._outputs = _type_helpers.unpack_literal_map_to_sdk_python_std(
+                output_map
+            )
         return self._outputs
 
     @property
@@ -95,8 +107,10 @@ class SdkWorkflowExecution(
         :rtype: flytekit.models.core.execution.ExecutionError or None
         """
         if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion("Please wait until a workflow has completed before checking for an "
-                                                  "error.")
+            raise _user_exceptions.FlyteAssertion(
+                "Please wait until a workflow has completed before checking for an "
+                "error."
+            )
         return self.closure.error
 
     @property
@@ -120,7 +134,9 @@ class SdkWorkflowExecution(
         """
         return cls(
             closure=base_model.closure,
-            id=_core_identifier.WorkflowExecutionIdentifier.promote_from_model(base_model.id),
+            id=_core_identifier.WorkflowExecutionIdentifier.promote_from_model(
+                base_model.id
+            ),
             spec=base_model.spec,
         )
 
@@ -133,13 +149,10 @@ class SdkWorkflowExecution(
         :rtype: SdkWorkflowExecution
         """
         wf_exec_id = _core_identifier.WorkflowExecutionIdentifier(
-            project=project,
-            domain=domain,
-            name=name
+            project=project, domain=domain, name=name
         )
         admin_exec = _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(),
-            insecure=_platform_config.INSECURE.get()
+            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
         ).client.get_execution(wf_exec_id)
 
         return cls.promote_from_model(admin_exec)
@@ -159,8 +172,9 @@ class SdkWorkflowExecution(
         :rtype: None
         """
         if not self.is_complete:
-            client = _flyte_engine._FlyteClientManager(_platform_config.URL.get(),
-                                                       insecure=_platform_config.INSECURE.get()).client
+            client = _flyte_engine._FlyteClientManager(
+                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
+            ).client
             self._closure = client.get_execution(self.id).closure
 
     def get_node_executions(self, filters=None):
@@ -168,8 +182,9 @@ class SdkWorkflowExecution(
         :param list[flytekit.models.filters.Filter] filters:
         :rtype: dict[Text, flytekit.common.nodes.SdkNodeExecution]
         """
-        client = _flyte_engine._FlyteClientManager(_platform_config.URL.get(),
-                                                   insecure=_platform_config.INSECURE.get()).client
+        client = _flyte_engine._FlyteClientManager(
+            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
+        ).client
         node_exec_models = {
             v.id.node_id: v
             for v in _iterate_node_executions(client, self.id, filters=filters)
@@ -185,6 +200,5 @@ class SdkWorkflowExecution(
         :param Text cause:
         """
         _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(),
-            insecure=_platform_config.INSECURE.get()
+            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
         ).client.terminate_execution(self.id, cause)

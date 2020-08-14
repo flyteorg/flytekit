@@ -6,7 +6,6 @@ import six as _six
 
 
 class Variable(_common.FlyteIdlEntity):
-
     def __init__(self, type, description):
         """
         :param flytekit.models.types.LiteralType type: This describes the type of value that must be provided to
@@ -38,8 +37,7 @@ class Variable(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.interface_pb2.Variable
         """
         return _interface_pb2.Variable(
-            type=self.type.to_flyte_idl(),
-            description=self.description
+            type=self.type.to_flyte_idl(), description=self.description
         )
 
     @classmethod
@@ -50,12 +48,11 @@ class Variable(_common.FlyteIdlEntity):
         """
         return cls(
             type=_types.LiteralType.from_flyte_idl(variable_proto.type),
-            description=variable_proto.description
+            description=variable_proto.description,
         )
 
 
 class VariableMap(_common.FlyteIdlEntity):
-
     def __init__(self, variables):
         """
         A map of Variables
@@ -85,12 +82,15 @@ class VariableMap(_common.FlyteIdlEntity):
         :param dict[Text, Variable] pb2_object:
         :rtype: VariableMap
         """
-        return cls({k: Variable.from_flyte_idl(v)
-                    for k, v in _six.iteritems(pb2_object.variables)})
+        return cls(
+            {
+                k: Variable.from_flyte_idl(v)
+                for k, v in _six.iteritems(pb2_object.variables)
+            }
+        )
 
 
 class TypedInterface(_common.FlyteIdlEntity):
-
     def __init__(self, inputs, outputs):
         """
         Please note that this model is slightly incorrect, but is more user-friendly. The underlying inputs and
@@ -126,7 +126,7 @@ class TypedInterface(_common.FlyteIdlEntity):
             ),
             outputs=_interface_pb2.VariableMap(
                 variables={k: v.to_flyte_idl() for k, v in _six.iteritems(self.outputs)}
-            )
+            ),
         )
 
     @classmethod
@@ -136,13 +136,18 @@ class TypedInterface(_common.FlyteIdlEntity):
         :rtype: TypedInterface
         """
         return cls(
-            inputs={k: Variable.from_flyte_idl(v) for k, v in _six.iteritems(proto.inputs.variables)},
-            outputs={k: Variable.from_flyte_idl(v) for k, v in _six.iteritems(proto.outputs.variables)}
+            inputs={
+                k: Variable.from_flyte_idl(v)
+                for k, v in _six.iteritems(proto.inputs.variables)
+            },
+            outputs={
+                k: Variable.from_flyte_idl(v)
+                for k, v in _six.iteritems(proto.outputs.variables)
+            },
         )
 
 
 class Parameter(_common.FlyteIdlEntity):
-
     def __init__(self, var, default=None, required=None):
         """
         Declares an input parameter.  A parameter is used as input to a launch plan and has
@@ -205,13 +210,14 @@ class Parameter(_common.FlyteIdlEntity):
         """
         return cls(
             Variable.from_flyte_idl(pb2_object.var),
-            _literals.Literal.from_flyte_idl(pb2_object.default) if pb2_object.HasField("default") else None,
-            pb2_object.required if pb2_object.HasField("required") else None
+            _literals.Literal.from_flyte_idl(pb2_object.default)
+            if pb2_object.HasField("default")
+            else None,
+            pb2_object.required if pb2_object.HasField("required") else None,
         )
 
 
 class ParameterMap(_common.FlyteIdlEntity):
-
     def __init__(self, parameters):
         """
         A map of Parameters
@@ -231,7 +237,9 @@ class ParameterMap(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.interface_pb2.ParameterMap
         """
         return _interface_pb2.ParameterMap(
-            parameters={k: v.to_flyte_idl() for k, v in _six.iteritems(self.parameters)},
+            parameters={
+                k: v.to_flyte_idl() for k, v in _six.iteritems(self.parameters)
+            },
         )
 
     @classmethod
@@ -240,4 +248,9 @@ class ParameterMap(_common.FlyteIdlEntity):
         :param flyteidl.core.interface_pb2.ParameterMap pb2_object:
         :rtype: ParameterMap
         """
-        return cls(parameters={k: Parameter.from_flyte_idl(v) for k, v in _six.iteritems(pb2_object.parameters)})
+        return cls(
+            parameters={
+                k: Parameter.from_flyte_idl(v)
+                for k, v in _six.iteritems(pb2_object.parameters)
+            }
+        )

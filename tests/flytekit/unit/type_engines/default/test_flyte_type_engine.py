@@ -13,7 +13,7 @@ def test_proto_from_literal_type():
             simple=_type_models.SimpleType.BINARY,
             metadata={
                 _proto.Protobuf.PB_FIELD_KEY: "flyteidl.core.errors_pb2.ContainerError"
-            }
+            },
         )
     )
 
@@ -27,7 +27,7 @@ def test_unloadable_module_from_literal_type():
                 simple=_type_models.SimpleType.BINARY,
                 metadata={
                     _proto.Protobuf.PB_FIELD_KEY: "flyteidl.core.errors_pb2_no_exist.ContainerError"
-                }
+                },
             )
         )
 
@@ -39,7 +39,7 @@ def test_unloadable_proto_from_literal_type():
                 simple=_type_models.SimpleType.BINARY,
                 metadata={
                     _proto.Protobuf.PB_FIELD_KEY: "flyteidl.core.errors_pb2.ContainerErrorNoExist"
-                }
+                },
             )
         )
 
@@ -50,7 +50,10 @@ def test_infer_proto_from_literal():
             scalar=_literal_models.Scalar(
                 binary=_literal_models.Binary(
                     value="",
-                    tag="{}{}".format(_proto.Protobuf.TAG_PREFIX, "flyteidl.core.errors_pb2.ContainerError")
+                    tag="{}{}".format(
+                        _proto.Protobuf.TAG_PREFIX,
+                        "flyteidl.core.errors_pb2.ContainerError",
+                    ),
                 )
             )
         )

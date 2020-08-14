@@ -1,18 +1,42 @@
 from __future__ import absolute_import
 
-from flytekit.common import sdk_bases as _sdk_bases, promise as _promises, interface as _interface, nodes as _nodes, \
-    workflow_execution as _workflow_execution
+from flytekit.common import (
+    sdk_bases as _sdk_bases,
+    promise as _promises,
+    interface as _interface,
+    nodes as _nodes,
+    workflow_execution as _workflow_execution,
+)
 from flytekit.common.core import identifier as _identifier
-from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
+from flytekit.common.exceptions import (
+    scopes as _exception_scopes,
+    user as _user_exceptions,
+)
 
-from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, \
-    launchable as _launchable_mixin
+from flytekit.common.mixins import (
+    registerable as _registerable,
+    hash as _hash_mixin,
+    launchable as _launchable_mixin,
+)
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import sdk as _sdk_config, auth as _auth_config, platform as _platform_config
+from flytekit.configuration import (
+    sdk as _sdk_config,
+    auth as _auth_config,
+    platform as _platform_config,
+)
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models import launch_plan as _launch_plan_models, schedule as _schedule_model, interface as \
-    _interface_models, literals as _literal_models, common as _common_models, execution as _execution_models
-from flytekit.models.core import identifier as _identifier_model, workflow as _workflow_models
+from flytekit.models import (
+    launch_plan as _launch_plan_models,
+    schedule as _schedule_model,
+    interface as _interface_models,
+    literals as _literal_models,
+    common as _common_models,
+    execution as _execution_models,
+)
+from flytekit.models.core import (
+    identifier as _identifier_model,
+    workflow as _workflow_models,
+)
 import datetime as _datetime
 from deprecated import deprecated as _deprecated
 import logging as _logging
@@ -37,7 +61,7 @@ class SdkLaunchPlan(
         self._interface = None
 
     @classmethod
-    def promote_from_model(cls, model) -> 'SdkLaunchPlan':
+    def promote_from_model(cls, model) -> "SdkLaunchPlan":
         """
         :param flytekit.models.launch_plan.LaunchPlanSpec model:
         :rtype: SdkLaunchPlan
@@ -46,7 +70,9 @@ class SdkLaunchPlan(
             workflow_id=_identifier.Identifier.promote_from_model(model.workflow_id),
             default_inputs=_interface_models.ParameterMap(
                 {
-                    k: _promises.Input.promote_from_model(v).rename_and_return_reference(k)
+                    k: _promises.Input.promote_from_model(
+                        v
+                    ).rename_and_return_reference(k)
                     for k, v in _six.iteritems(model.default_inputs.parameters)
                 }
             ),
@@ -67,19 +93,13 @@ class SdkLaunchPlan(
         """
         self.validate()
         id_to_register = _identifier.Identifier(
-            _identifier_model.ResourceType.LAUNCH_PLAN,
-            project,
-            domain,
-            name,
-            version
+            _identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version
         )
-        client = _flyte_engine._FlyteClientManager(_platform_config.URL.get(),
-                                                   insecure=_platform_config.INSECURE.get()).client
+        client = _flyte_engine._FlyteClientManager(
+            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
+        ).client
         try:
-            client.create_launch_plan(
-                id_to_register,
-                self
-            )
+            client.create_launch_plan(id_to_register, self)
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             pass
 
@@ -99,24 +119,21 @@ class SdkLaunchPlan(
         :rtype: SdkLaunchPlan
         """
         from flytekit.common import workflow as _workflow
+
         launch_plan_id = _identifier.Identifier(
             _identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version
         )
 
         if launch_plan_id.version:
             lp = _flyte_engine._FlyteClientManager(
-                _platform_config.URL.get(),
-                insecure=_platform_config.INSECURE.get()
+                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
             ).client.get_launch_plan(launch_plan_id)
         else:
             named_entity_id = _common_models.NamedEntityIdentifier(
-                launch_plan_id.project,
-                launch_plan_id.domain,
-                launch_plan_id.name
+                launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name
             )
             lp = _flyte_engine._FlyteClientManager(
-                _platform_config.URL.get(),
-                insecure=_platform_config.INSECURE.get()
+                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
             ).client.get_active_launch_plan(named_entity_id)
 
         sdk_lp = cls.promote_from_model(lp.spec)
@@ -124,7 +141,9 @@ class SdkLaunchPlan(
 
         # TODO: Add a test for this, and this function as a whole
         wf_id = sdk_lp.workflow_id
-        lp_wf = _workflow.SdkWorkflow.fetch(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
+        lp_wf = _workflow.SdkWorkflow.fetch(
+            wf_id.project, wf_id.domain, wf_id.name, wf_id.version
+        )
         sdk_lp._interface = lp_wf.interface
         return sdk_lp
 
@@ -150,7 +169,10 @@ class SdkLaunchPlan(
         """
         if self.entity_metadata.schedule.cron_expression:
             return True
-        elif self.entity_metadata.schedule.rate and self.entity_metadata.schedule.rate.value:
+        elif (
+            self.entity_metadata.schedule.rate
+            and self.entity_metadata.schedule.rate.value
+        ):
             return True
         else:
             return False
@@ -161,19 +183,25 @@ class SdkLaunchPlan(
         :rtype: flytekit.models.common.AuthRole
         """
         fixed_auth = super(SdkLaunchPlan, self).auth_role
-        if fixed_auth is not None and \
-                (fixed_auth.assumable_iam_role is not None or fixed_auth.kubernetes_service_account is not None):
+        if fixed_auth is not None and (
+            fixed_auth.assumable_iam_role is not None
+            or fixed_auth.kubernetes_service_account is not None
+        ):
             return fixed_auth
 
         assumable_iam_role = _auth_config.ASSUMABLE_IAM_ROLE.get()
         kubernetes_service_account = _auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
 
         if not (assumable_iam_role or kubernetes_service_account):
-            _logging.warning("Using deprecated `role` from config. "
-                             "Please update your config to use `assumable_iam_role` instead")
+            _logging.warning(
+                "Using deprecated `role` from config. "
+                "Please update your config to use `assumable_iam_role` instead"
+            )
             assumable_iam_role = _sdk_config.ROLE.get()
-        return _common_models.AuthRole(assumable_iam_role=assumable_iam_role,
-                                       kubernetes_service_account=kubernetes_service_account)
+        return _common_models.AuthRole(
+            assumable_iam_role=assumable_iam_role,
+            kubernetes_service_account=kubernetes_service_account,
+        )
 
     @property
     def workflow_id(self):
@@ -223,8 +251,7 @@ class SdkLaunchPlan(
                 "or register the identifier first"
             )
         return _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(),
-            insecure=_platform_config.INSECURE.get()
+            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
         ).client.update_launch_plan(self.id, state)
 
     def _python_std_input_map_to_literal_map(self, inputs):
@@ -237,22 +264,46 @@ class SdkLaunchPlan(
             inputs,
             {
                 k: user_input.sdk_type
-                for k, user_input in _six.iteritems(self.default_inputs.parameters) if k in inputs
-            }
+                for k, user_input in _six.iteritems(self.default_inputs.parameters)
+                if k in inputs
+            },
         )
 
-    @_deprecated(reason="Use launch_with_literals instead", version='0.9.0')
-    def execute_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
-                              label_overrides=None, annotation_overrides=None):
+    @_deprecated(reason="Use launch_with_literals instead", version="0.9.0")
+    def execute_with_literals(
+        self,
+        project,
+        domain,
+        literal_inputs,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+    ):
         """
         Deprecated.
         """
-        return self.launch_with_literals(project, domain, literal_inputs, name, notification_overrides, label_overrides,
-                                         annotation_overrides)
+        return self.launch_with_literals(
+            project,
+            domain,
+            literal_inputs,
+            name,
+            notification_overrides,
+            label_overrides,
+            annotation_overrides,
+        )
 
     @_exception_scopes.system_entry_point
-    def launch_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
-                             label_overrides=None, annotation_overrides=None):
+    def launch_with_literals(
+        self,
+        project,
+        domain,
+        literal_inputs,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+    ):
         """
         Executes the launch plan and returns the execution identifier.  This version of execution is meant for when
         you already have a LiteralMap of inputs.
@@ -271,7 +322,7 @@ class SdkLaunchPlan(
         """
         # Kubernetes requires names starting with an alphabet for some resources.
         name = name or "f" + _uuid.uuid4().hex[:19]
-        disable_all = (notification_overrides == [])
+        disable_all = notification_overrides == []
         if disable_all:
             notification_overrides = None
         else:
@@ -280,8 +331,9 @@ class SdkLaunchPlan(
             )
             disable_all = None
 
-        client = _flyte_engine._FlyteClientManager(_platform_config.URL.get(),
-                                                   insecure=_platform_config.INSECURE.get()).client
+        client = _flyte_engine._FlyteClientManager(
+            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
+        ).client
         try:
             exec_id = client.create_execution(
                 project,
@@ -291,8 +343,8 @@ class SdkLaunchPlan(
                     self.id,
                     _execution_models.ExecutionMetadata(
                         _execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
-                        'sdk',  # TODO: get principle
-                        0  # TODO: Detect nesting
+                        "sdk",  # TODO: get principle
+                        0,  # TODO: Detect nesting
                     ),
                     notifications=notification_overrides,
                     disable_all=disable_all,
@@ -323,25 +375,32 @@ class SdkLaunchPlan(
         # Take the default values from the launch plan
         default_inputs = {
             k: v.sdk_default
-            for k, v in _six.iteritems(self.default_inputs.parameters) if not v.required
+            for k, v in _six.iteritems(self.default_inputs.parameters)
+            if not v.required
         }
         default_inputs.update(input_map)
 
-        bindings, upstream_nodes = self.interface.create_bindings_for_inputs(default_inputs)
+        bindings, upstream_nodes = self.interface.create_bindings_for_inputs(
+            default_inputs
+        )
 
         return _nodes.SdkNode(
             id=None,
-            metadata=_workflow_models.NodeMetadata("", _datetime.timedelta(), _literal_models.RetryStrategy(0)),
+            metadata=_workflow_models.NodeMetadata(
+                "", _datetime.timedelta(), _literal_models.RetryStrategy(0)
+            ),
             bindings=sorted(bindings, key=lambda b: b.var),
             upstream_nodes=upstream_nodes,
-            sdk_launch_plan=self
+            sdk_launch_plan=self,
         )
 
     def __repr__(self):
         """
         :rtype: Text
         """
-        return "SdkLaunchPlan(ID: {} Interface: {} WF ID: {})".format(self.id, self.interface, self.workflow_id)
+        return "SdkLaunchPlan(ID: {} Interface: {} WF ID: {})".format(
+            self.id, self.interface, self.workflow_id
+        )
 
 
 # The difference between this and the SdkLaunchPlan class is that this runnable class is supposed to only be used for
@@ -353,16 +412,16 @@ class SdkRunnableLaunchPlan(
     _registerable.LocalEntity,
 ):
     def __init__(
-            self,
-            sdk_workflow,
-            default_inputs=None,
-            fixed_inputs=None,
-            role=None,
-            schedule=None,
-            notifications=None,
-            labels=None,
-            annotations=None,
-            auth_role=None,
+        self,
+        sdk_workflow,
+        default_inputs=None,
+        fixed_inputs=None,
+        role=None,
+        schedule=None,
+        notifications=None,
+        labels=None,
+        annotations=None,
+        auth_role=None,
     ):
         """
         :param flytekit.common.workflow.PythonWorkflow sdk_workflow:
@@ -380,7 +439,9 @@ class SdkRunnableLaunchPlan(
         :param flytekit.models.common.Authrole auth_role: The auth method with which to execute the workflow.
         """
         if role and auth_role:
-            raise ValueError("Cannot set both role and auth. Role is deprecated, use auth instead.")
+            raise ValueError(
+                "Cannot set both role and auth. Role is deprecated, use auth instead."
+            )
 
         fixed_inputs = fixed_inputs or {}
         default_inputs = default_inputs or {}
@@ -397,16 +458,17 @@ class SdkRunnableLaunchPlan(
         super(SdkRunnableLaunchPlan, self).__init__(
             None,
             _launch_plan_models.LaunchPlanMetadata(
-                schedule=schedule or _schedule_model.Schedule(''),
-                notifications=notifications or []
+                schedule=schedule or _schedule_model.Schedule(""),
+                notifications=notifications or [],
             ),
             _interface_models.ParameterMap(default_inputs),
             _type_helpers.pack_python_std_map_to_literal_map(
                 fixed_inputs,
                 {
                     k: _type_helpers.get_sdk_type_from_literal_type(var.type)
-                    for k, var in _six.iteritems(sdk_workflow.interface.inputs) if k in fixed_inputs
-                }
+                    for k, var in _six.iteritems(sdk_workflow.interface.inputs)
+                    if k in fixed_inputs
+                },
             ),
             labels or _common_models.Labels({}),
             annotations or _common_models.Annotations({}),
@@ -414,7 +476,7 @@ class SdkRunnableLaunchPlan(
         )
         self._interface = _interface.TypedInterface(
             {k: v.var for k, v in _six.iteritems(default_inputs)},
-            sdk_workflow.interface.outputs
+            sdk_workflow.interface.outputs,
         )
         self._upstream_entities = {sdk_workflow}
         self._sdk_workflow = sdk_workflow
@@ -457,4 +519,6 @@ class SdkRunnableLaunchPlan(
         """
         :rtype: Text
         """
-        return "SdkRunnableLaunchPlan(ID: {} Interface: {} WF ID: {})".format(self.id, self.interface, self.workflow_id)
+        return "SdkRunnableLaunchPlan(ID: {} Interface: {} WF ID: {})".format(
+            self.id, self.interface, self.workflow_id
+        )

@@ -27,17 +27,20 @@ def test_lte_filter():
 
 
 def test_value_in_filter():
-    assert filters.ValueIn("key", ["1", "2", "3"]).to_flyte_idl() == "value_in(key,1;2;3)"
+    assert (
+        filters.ValueIn("key", ["1", "2", "3"]).to_flyte_idl() == "value_in(key,1;2;3)"
+    )
 
 
 def test_contains_filter():
-    assert filters.Contains("key", ["1", "2", "3"]).to_flyte_idl() == "contains(key,1;2;3)"
+    assert (
+        filters.Contains("key", ["1", "2", "3"]).to_flyte_idl() == "contains(key,1;2;3)"
+    )
 
 
 def test_filter_list():
-    fl = filters.FilterList([
-        filters.Equal("domain", "staging"),
-        filters.NotEqual("project", "FakeProject")
-    ])
+    fl = filters.FilterList(
+        [filters.Equal("domain", "staging"), filters.NotEqual("project", "FakeProject")]
+    )
 
     assert fl.to_flyte_idl() == "eq(domain,staging)+neq(project,FakeProject)"

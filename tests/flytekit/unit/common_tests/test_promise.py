@@ -6,8 +6,8 @@ import pytest
 
 
 def test_input():
-    i = promise.Input('name', primitives.Integer, help="blah", default=None)
-    assert i.name == 'name'
+    i = promise.Input("name", primitives.Integer, help="blah", default=None)
+    assert i.name == "name"
     assert i.sdk_default is None
     assert i.default == base_sdk_types.Void()
     assert i.sdk_required is False
@@ -15,8 +15,8 @@ def test_input():
     assert i.var.description == "blah"
     assert i.sdk_type == primitives.Integer
 
-    i = promise.Input('name2', primitives.Integer, default=1)
-    assert i.name == 'name2'
+    i = promise.Input("name2", primitives.Integer, default=1)
+    assert i.name == "name2"
     assert i.sdk_default is 1
     assert i.default == primitives.Integer(1)
     assert i.required is None
@@ -26,4 +26,4 @@ def test_input():
     assert i.sdk_type == primitives.Integer
 
     with pytest.raises(_user_exceptions.FlyteAssertion):
-        promise.Input('abc', primitives.Integer, required=True, default=1)
+        promise.Input("abc", primitives.Integer, required=True, default=1)

@@ -4,7 +4,6 @@ from flyteidl.core import errors_pb2 as _errors_pb2
 
 
 class ContainerError(_common.FlyteIdlEntity):
-
     class Kind(object):
         NON_RECOVERABLE = _errors_pb2.ContainerError.NON_RECOVERABLE
         RECOVERABLE = _errors_pb2.ContainerError.RECOVERABLE
@@ -44,7 +43,9 @@ class ContainerError(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.errors_pb2.ContainerError
         """
-        return _errors_pb2.ContainerError(code=self.code, message=self.message, kind=self.kind)
+        return _errors_pb2.ContainerError(
+            code=self.code, message=self.message, kind=self.kind
+        )
 
     @classmethod
     def from_flyte_idl(cls, proto):
@@ -56,7 +57,6 @@ class ContainerError(_common.FlyteIdlEntity):
 
 
 class ErrorDocument(_common.FlyteIdlEntity):
-
     def __init__(self, error):
         """
         :param ContainerError error:

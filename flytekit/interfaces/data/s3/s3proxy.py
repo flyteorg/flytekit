@@ -31,14 +31,18 @@ def _update_cmd_config_and_execute(cmd):
         env[_aws_config.S3_ACCESS_KEY_ID_ENV_NAME] = _aws_config.S3_ACCESS_KEY_ID.get()
 
     if _aws_config.S3_SECRET_ACCESS_KEY.get() is not None:
-        env[_aws_config.S3_SECRET_ACCESS_KEY_ENV_NAME] = _aws_config.S3_SECRET_ACCESS_KEY.get()
+        env[
+            _aws_config.S3_SECRET_ACCESS_KEY_ENV_NAME
+        ] = _aws_config.S3_SECRET_ACCESS_KEY.get()
 
     return _subprocess.check_call(cmd, env=env)
 
 
 class AwsS3Proxy(_common_data.DataProxy):
     _AWS_CLI = "aws"
-    _SHARD_CHARACTERS = [_text_type(x) for x in _six_moves.range(10)] + list(_string.ascii_lowercase)
+    _SHARD_CHARACTERS = [_text_type(x) for x in _six_moves.range(10)] + list(
+        _string.ascii_lowercase
+    )
 
     @staticmethod
     def _check_binary():
@@ -46,7 +50,7 @@ class AwsS3Proxy(_common_data.DataProxy):
         Make sure that the AWS cli is present
         """
         if not _which(AwsS3Proxy._AWS_CLI):
-            raise _FlyteUserException('AWS CLI not found at Please install.')
+            raise _FlyteUserException("AWS CLI not found at Please install.")
 
     @staticmethod
     def _split_s3_path_to_bucket_and_key(path):
@@ -54,9 +58,9 @@ class AwsS3Proxy(_common_data.DataProxy):
         :param Text path:
         :rtype: (Text, Text)
         """
-        path = path[len("s3://"):]
-        first_slash = path.index('/')
-        return path[:first_slash], path[first_slash + 1:]
+        path = path[len("s3://") :]
+        first_slash = path.index("/")
+        return path[:first_slash], path[first_slash + 1 :]
 
     def exists(self, remote_path):
         """
@@ -66,10 +70,20 @@ class AwsS3Proxy(_common_data.DataProxy):
         AwsS3Proxy._check_binary()
 
         if not remote_path.startswith("s3://"):
-            raise ValueError("Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://...")
+            raise ValueError(
+                "Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://..."
+            )
 
         bucket, file_path = self._split_s3_path_to_bucket_and_key(remote_path)
-        cmd = [AwsS3Proxy._AWS_CLI, "s3api", "head-object", "--bucket", bucket, "--key", file_path]
+        cmd = [
+            AwsS3Proxy._AWS_CLI,
+            "s3api",
+            "head-object",
+            "--bucket",
+            bucket,
+            "--key",
+            file_path,
+        ]
         try:
             _update_cmd_config_and_execute(cmd)
             return True
@@ -78,7 +92,7 @@ class AwsS3Proxy(_common_data.DataProxy):
             # the http status code: "An error occurred (404) when calling the HeadObject operation: Not Found"
             #  This is a best effort for returning if the object does not exist by searching
             # for existence of (404) in the error message. This should not be needed when we get off the cli and use lib
-            if _re.search('(404)', _text_type(ex)):
+            if _re.search("(404)", _text_type(ex)):
                 return False
             else:
                 raise ex
@@ -91,7 +105,9 @@ class AwsS3Proxy(_common_data.DataProxy):
         AwsS3Proxy._check_binary()
 
         if not remote_path.startswith("s3://"):
-            raise ValueError("Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://...")
+            raise ValueError(
+                "Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://..."
+            )
 
         cmd = [AwsS3Proxy._AWS_CLI, "s3", "cp", "--recursive", remote_path, local_path]
         return _update_cmd_config_and_execute(cmd)
@@ -102,7 +118,9 @@ class AwsS3Proxy(_common_data.DataProxy):
         :param Text local_path: directory to copy to
         """
         if not remote_path.startswith("s3://"):
-            raise ValueError("Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://...")
+            raise ValueError(
+                "Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://..."
+            )
 
         AwsS3Proxy._check_binary()
         cmd = [AwsS3Proxy._AWS_CLI, "s3", "cp", remote_path, local_path]
@@ -116,7 +134,7 @@ class AwsS3Proxy(_common_data.DataProxy):
         AwsS3Proxy._check_binary()
 
         extra_args = {
-            'ACL': 'bucket-owner-full-control',
+            "ACL": "bucket-owner-full-control",
         }
 
         cmd = [AwsS3Proxy._AWS_CLI, "s3", "cp"]
@@ -136,11 +154,13 @@ class AwsS3Proxy(_common_data.DataProxy):
         :param Text remote_path:
         """
         extra_args = {
-            'ACL': 'bucket-owner-full-control',
+            "ACL": "bucket-owner-full-control",
         }
 
         if not remote_path.startswith("s3://"):
-            raise ValueError("Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://...")
+            raise ValueError(
+                "Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://..."
+            )
 
         AwsS3Proxy._check_binary()
         cmd = [AwsS3Proxy._AWS_CLI, "s3", "cp", "--recursive"]

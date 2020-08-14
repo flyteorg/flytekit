@@ -21,7 +21,7 @@ class TypedCollectionType(CollectionType):
         return cls._sub_type
 
     def __eq__(cls, other):
-        return hasattr(other, 'sub_type') and cls.sub_type == other.sub_type
+        return hasattr(other, "sub_type") and cls.sub_type == other.sub_type
 
     def __hash__(cls):
         # Python 3 checks complain if hash isn't implemented at the same time as equals
@@ -47,7 +47,6 @@ class ListImpl(_six.with_metaclass(CollectionType, _base_sdk_types.FlyteSdkValue
 
 
 class TypedListImpl(_six.with_metaclass(TypedCollectionType, ListImpl)):
-
     @classmethod
     def from_string(cls, string_value):
         """
@@ -59,11 +58,17 @@ class TypedListImpl(_six.with_metaclass(TypedCollectionType, ListImpl)):
             items = _json.loads(string_value)
         except ValueError:
             raise _user_exceptions.FlyteTypeException(
-                _six.text_type, cls, additional_msg='String not parseable to json {}'.format(string_value))
+                _six.text_type,
+                cls,
+                additional_msg="String not parseable to json {}".format(string_value),
+            )
 
         if type(items) != list:
             raise _user_exceptions.FlyteTypeException(
-                _six.text_type, cls, additional_msg='String is not a list {}'.format(string_value))
+                _six.text_type,
+                cls,
+                additional_msg="String is not a list {}".format(string_value),
+            )
 
         # Instead of recursively calling from_string(), we're changing to from_python_std() instead because json
         # loading naturally interprets all layers, not just the outer layer.
@@ -97,7 +102,9 @@ class TypedListImpl(_six.with_metaclass(TypedCollectionType, ListImpl)):
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return _idl_types.LiteralType(collection_type=cls.sub_type.to_flyte_literal_type())
+        return _idl_types.LiteralType(
+            collection_type=cls.sub_type.to_flyte_literal_type()
+        )
 
     @classmethod
     def promote_from_model(cls, literal_model):
@@ -106,30 +113,36 @@ class TypedListImpl(_six.with_metaclass(TypedCollectionType, ListImpl)):
         :param flytekit.models.literals.Literal literal_model:
         :rtype: TypedListImpl
         """
-        return cls([cls.sub_type.from_flyte_idl(l.to_flyte_idl()) for l in literal_model.collection.literals])
+        return cls(
+            [
+                cls.sub_type.from_flyte_idl(l.to_flyte_idl())
+                for l in literal_model.collection.literals
+            ]
+        )
 
     @classmethod
     def short_class_string(cls):
         """
         :rtype: Text
         """
-        return 'List<{}>'.format(cls.sub_type.short_class_string())
+        return "List<{}>".format(cls.sub_type.short_class_string())
 
     def __init__(self, value):
         """
         :param list[flytekit.common.types.base_sdk_types.FlyteSdkValue] value: List value to wrap
         """
         super(TypedListImpl, self).__init__(
-            collection=_literals.LiteralCollection(
-                literals=value
-            )
+            collection=_literals.LiteralCollection(literals=value)
         )
 
     def to_python_std(self):
         """
         :rtype: list[T]
         """
-        return [type(self).sub_type.from_flyte_idl(l.to_flyte_idl()).to_python_std() for l in self.collection.literals]
+        return [
+            type(self).sub_type.from_flyte_idl(l.to_flyte_idl()).to_python_std()
+            for l in self.collection.literals
+        ]
 
     def short_string(self):
         """
@@ -142,7 +155,7 @@ class TypedListImpl(_six.with_metaclass(TypedCollectionType, ListImpl)):
         return "{}(len={}, [{}])".format(
             type(self).short_class_string(),
             len(self.collection.literals),
-            ", ".join(to_print)
+            ", ".join(to_print),
         )
 
     def verbose_string(self):
@@ -155,5 +168,5 @@ class TypedListImpl(_six.with_metaclass(TypedCollectionType, ListImpl)):
             ",\n\t\t".join(
                 "\n\t\t".join(v.verbose_string().splitlines())
                 for v in self.collection.literals
-            )
+            ),
         )

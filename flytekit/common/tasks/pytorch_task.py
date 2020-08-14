@@ -15,7 +15,6 @@ from google.protobuf.json_format import MessageToDict as _MessageToDict
 
 
 class SdkRunnablePytorchContainer(_sdk_runnable.SdkRunnableContainer):
-
     @property
     def args(self):
         """
@@ -24,27 +23,28 @@ class SdkRunnablePytorchContainer(_sdk_runnable.SdkRunnableContainer):
         """
         return self._args
 
+
 class SdkPyTorchTask(_sdk_runnable.SdkRunnableTask):
     def __init__(
-            self,
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            interruptible,
-            deprecated,
-            discoverable,
-            timeout,
-            workers_count,
-            per_replica_storage_request,
-            per_replica_cpu_request,
-            per_replica_gpu_request,
-            per_replica_memory_request,
-            per_replica_storage_limit,
-            per_replica_cpu_limit,
-            per_replica_gpu_limit,
-            per_replica_memory_limit,
-            environment
+        self,
+        task_function,
+        task_type,
+        discovery_version,
+        retries,
+        interruptible,
+        deprecated,
+        discoverable,
+        timeout,
+        workers_count,
+        per_replica_storage_request,
+        per_replica_cpu_request,
+        per_replica_gpu_request,
+        per_replica_memory_request,
+        per_replica_storage_limit,
+        per_replica_cpu_limit,
+        per_replica_gpu_limit,
+        per_replica_memory_limit,
+        environment,
     ):
         pytorch_job = _task_models.PyTorchJob(
             workers_count=workers_count
@@ -67,14 +67,13 @@ class SdkPyTorchTask(_sdk_runnable.SdkRunnableTask):
             discoverable=discoverable,
             timeout=timeout,
             environment=environment,
-            custom=_MessageToDict(pytorch_job)
+            custom=_MessageToDict(pytorch_job),
         )
 
-    def _get_container_definition(
-            self,
-            **kwargs
-    ):
+    def _get_container_definition(self, **kwargs):
         """
         :rtype: SdkRunnablePytorchContainer
         """
-        return super(SdkPyTorchTask, self)._get_container_definition(cls=SdkRunnablePytorchContainer, **kwargs)
+        return super(SdkPyTorchTask, self)._get_container_definition(
+            cls=SdkRunnablePytorchContainer, **kwargs
+        )

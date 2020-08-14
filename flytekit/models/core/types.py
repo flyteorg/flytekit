@@ -39,8 +39,7 @@ class BlobType(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.types_pb2.BlobType
         """
         return _types_pb2.BlobType(
-            format=self.format,
-            dimensionality=self.dimensionality
+            format=self.format, dimensionality=self.dimensionality
         )
 
     @classmethod
@@ -49,7 +48,4 @@ class BlobType(_common.FlyteIdlEntity):
         :param flyteidl.core.types_pb2.BlobType proto:
         :rtype: BlobType
         """
-        return cls(
-            format=proto.format,
-            dimensionality=proto.dimensionality
-        )
+        return cls(format=proto.format, dimensionality=proto.dimensionality)

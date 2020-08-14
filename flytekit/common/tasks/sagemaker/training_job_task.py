@@ -21,17 +21,19 @@ def _content_type_to_blob_format(content_type: _training_job_models) -> str:
     if content_type == _training_job_models.InputContentType.TEXT_CSV:
         return "csv"
     else:
-        raise _user_exceptions.FlyteValueException("Unsupported InputContentType: {}".format(content_type))
+        raise _user_exceptions.FlyteValueException(
+            "Unsupported InputContentType: {}".format(content_type)
+        )
 
 
 class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
     def __init__(
-            self,
-            training_job_resource_config: _training_job_models.TrainingJobResourceConfig,
-            algorithm_specification: _training_job_models.AlgorithmSpecification,
-            retries: int = 0,
-            cacheable: bool = False,
-            cache_version: str = "",
+        self,
+        training_job_resource_config: _training_job_models.TrainingJobResourceConfig,
+        algorithm_specification: _training_job_models.AlgorithmSpecification,
+        retries: int = 0,
+        cacheable: bool = False,
+        cache_version: str = "",
     ):
         """
 
@@ -57,7 +59,7 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
                 runtime=_task_models.RuntimeMetadata(
                     type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
                     version=__version__,
-                    flavor='sagemaker'
+                    flavor="sagemaker",
                 ),
                 discoverable=cacheable,
                 timeout=timeout,
@@ -69,14 +71,18 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
             interface=_interface.TypedInterface(
                 inputs={
                     "static_hyperparameters": _interface_model.Variable(
-                        type=_idl_types.LiteralType(simple=_idl_types.SimpleType.STRUCT),
+                        type=_idl_types.LiteralType(
+                            simple=_idl_types.SimpleType.STRUCT
+                        ),
                         description="",
                     ),
                     "train": _interface_model.Variable(
                         type=_idl_types.LiteralType(
                             blob=_core_types.BlobType(
-                                format=_content_type_to_blob_format(algorithm_specification.input_content_type),
-                                dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                                format=_content_type_to_blob_format(
+                                    algorithm_specification.input_content_type
+                                ),
+                                dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
                             ),
                         ),
                         description="",
@@ -84,8 +90,10 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
                     "validation": _interface_model.Variable(
                         type=_idl_types.LiteralType(
                             blob=_core_types.BlobType(
-                                format=_content_type_to_blob_format(algorithm_specification.input_content_type),
-                                dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                                format=_content_type_to_blob_format(
+                                    algorithm_specification.input_content_type
+                                ),
+                                dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
                             ),
                         ),
                         description="",
@@ -96,12 +104,12 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
                         type=_idl_types.LiteralType(
                             blob=_core_types.BlobType(
                                 format="",
-                                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
                             )
                         ),
-                        description=""
+                        description="",
                     )
-                }
+                },
             ),
             custom=MessageToDict(self._training_job_model.to_flyte_idl()),
         )

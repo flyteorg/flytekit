@@ -55,7 +55,9 @@ class LocalDataContext(_OutputDataContext):
         """
         :param Text sandbox:
         """
-        super(LocalDataContext, self).__init__(_local_file_proxy.LocalFileProxy(sandbox))
+        super(LocalDataContext, self).__init__(
+            _local_file_proxy.LocalFileProxy(sandbox)
+        )
 
 
 class RemoteDataContext(_OutputDataContext):
@@ -74,8 +76,7 @@ class RemoteDataContext(_OutputDataContext):
         if proxy is None:
             raise _user_exception.FlyteAssertion(
                 "Configured cloud provider is not supported for data I/O.  Received: {}, expected one of: {}".format(
-                    cloud_provider,
-                    list(type(self)._CLOUD_PROVIDER_TO_PROXIES.keys())
+                    cloud_provider, list(type(self)._CLOUD_PROVIDER_TO_PROXIES.keys())
                 )
             )
         super(RemoteDataContext, self).__init__(proxy)
@@ -119,7 +120,9 @@ class Data(object):
         :param bool is_multipart:
         """
         try:
-            with _common_utils.PerformanceTimer("Copying ({} -> {})".format(remote_path, local_path)):
+            with _common_utils.PerformanceTimer(
+                "Copying ({} -> {})".format(remote_path, local_path)
+            ):
                 proxy = cls._load_data_proxy_by_path(remote_path)
                 if is_multipart:
                     proxy.download_directory(remote_path, local_path)
@@ -132,7 +135,7 @@ class Data(object):
                     remote_path=remote_path,
                     local_path=local_path,
                     is_multipart=is_multipart,
-                    error_string=_six.text_type(ex)
+                    error_string=_six.text_type(ex),
                 )
             )
 
@@ -144,7 +147,9 @@ class Data(object):
         :param bool is_multipart:
         """
         try:
-            with _common_utils.PerformanceTimer("Writing ({} -> {})".format(local_path, remote_path)):
+            with _common_utils.PerformanceTimer(
+                "Writing ({} -> {})".format(local_path, remote_path)
+            ):
                 proxy = cls._load_data_proxy_by_path(remote_path)
                 if is_multipart:
                     proxy.upload_directory(local_path, remote_path)
@@ -157,7 +162,7 @@ class Data(object):
                     remote_path=remote_path,
                     local_path=local_path,
                     is_multipart=is_multipart,
-                    error_string=_six.text_type(ex)
+                    error_string=_six.text_type(ex),
                 )
             )
 

@@ -9,7 +9,6 @@ from flytekit.models import common as _common
 
 
 class ArrayJob(_common.FlyteCustomIdlEntity):
-
     def __init__(self, parallelism, size, min_successes):
         """
         Initializes a new ArrayJob.
@@ -64,11 +63,13 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
         """
         :rtype: dict[T, Text]
         """
-        return _json_format.MessageToDict(_array_job.ArrayJob(
-            parallelism=self.parallelism,
-            size=self.size,
-            min_successes=self.min_successes
-        ))
+        return _json_format.MessageToDict(
+            _array_job.ArrayJob(
+                parallelism=self.parallelism,
+                size=self.size,
+                min_successes=self.min_successes,
+            )
+        )
 
     @classmethod
     def from_dict(cls, idl_dict):
@@ -81,5 +82,5 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
         return cls(
             parallelism=pb2_object.parallelism,
             size=pb2_object.size,
-            min_successes=pb2_object.min_successes
+            min_successes=pb2_object.min_successes,
         )

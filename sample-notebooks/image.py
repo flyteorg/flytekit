@@ -1,6 +1,7 @@
 import cv2
 import sys
 
+
 def filter_edges(input_image_path: str, output_image_path: str):
     print("Reading {}".format(input_image_path))
     img = cv2.imread(input_image_path, 0)
@@ -9,6 +10,7 @@ def filter_edges(input_image_path: str, output_image_path: str):
     edges = cv2.Canny(img, 50, 200)  # hysteresis thresholds
     cv2.imwrite(output_image_path, edges)
     return output_image_path
+
 
 if __name__ == "__main__":
     inp = sys.argv[1]

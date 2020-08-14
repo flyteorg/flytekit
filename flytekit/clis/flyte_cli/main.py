@@ -8,16 +8,28 @@ import stat as _stat
 import click as _click
 import six as _six
 
-from flyteidl.core import literals_pb2 as _literals_pb2, identifier_pb2 as _identifier_pb2
-from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2, workflow_pb2 as _workflow_pb2, task_pb2 as _task_pb2
+from flyteidl.core import (
+    literals_pb2 as _literals_pb2,
+    identifier_pb2 as _identifier_pb2,
+)
+from flyteidl.admin import (
+    launch_plan_pb2 as _launch_plan_pb2,
+    workflow_pb2 as _workflow_pb2,
+    task_pb2 as _task_pb2,
+)
 
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
-from flytekit.clis.helpers import construct_literal_map_from_variable_map as _construct_literal_map_from_variable_map, \
-    construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map, \
-    parse_args_into_dict as _parse_args_into_dict
-from flytekit.common import utils as _utils, launch_plan as _launch_plan_common, \
-    workflow_execution as _workflow_execution_common
+from flytekit.clis.helpers import (
+    construct_literal_map_from_variable_map as _construct_literal_map_from_variable_map,
+    construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map,
+    parse_args_into_dict as _parse_args_into_dict,
+)
+from flytekit.common import (
+    utils as _utils,
+    launch_plan as _launch_plan_common,
+    workflow_execution as _workflow_execution_common,
+)
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.tasks import task as _tasks_common
 from flytekit.common.types import helpers as _type_helpers
@@ -25,20 +37,35 @@ from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import set_flyte_config_file
 from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.models import common as _common_models, filters as _filters, launch_plan as _launch_plan, literals as \
-    _literals, named_entity as _named_entity
+from flytekit.models import (
+    common as _common_models,
+    filters as _filters,
+    launch_plan as _launch_plan,
+    literals as _literals,
+    named_entity as _named_entity,
+)
 from flytekit.models.admin import common as _admin_common
-from flytekit.models.core import execution as _core_execution_models, identifier as _core_identifier
-from flytekit.models.execution import ExecutionSpec as _ExecutionSpec, ExecutionMetadata as _ExecutionMetadata
-from flytekit.models.matchable_resource import ClusterResourceAttributes as _ClusterResourceAttributes,\
-    ExecutionQueueAttributes as _ExecutionQueueAttributes, ExecutionClusterLabel as _ExecutionClusterLabel,\
-    MatchingAttributes as _MatchingAttributes
+from flytekit.models.core import (
+    execution as _core_execution_models,
+    identifier as _core_identifier,
+)
+from flytekit.models.execution import (
+    ExecutionSpec as _ExecutionSpec,
+    ExecutionMetadata as _ExecutionMetadata,
+)
+from flytekit.models.matchable_resource import (
+    ClusterResourceAttributes as _ClusterResourceAttributes,
+    ExecutionQueueAttributes as _ExecutionQueueAttributes,
+    ExecutionClusterLabel as _ExecutionClusterLabel,
+    MatchingAttributes as _MatchingAttributes,
+)
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
 from flytekit.common.exceptions import user as _user_exceptions
 
 
 import requests as _requests
+
 try:  # Python 3
     import urllib.parse as _urlparse
 except ImportError:  # Python 2
@@ -54,7 +81,9 @@ _default_config_file_name = "config"
 
 
 def _welcome_message():
-    _click.secho("Welcome to Flyte CLI! Version: {}".format(_tt(__version__)), bold=True)
+    _click.secho(
+        "Welcome to Flyte CLI! Version: {}".format(_tt(__version__)), bold=True
+    )
 
 
 def _get_user_filepath_home():
@@ -69,11 +98,16 @@ def _get_config_file_path():
 def _detect_default_config_file():
     config_file = _get_config_file_path()
     if _get_user_filepath_home() and _os.path.exists(config_file):
-        _click.secho("Using default config file at {}".format(_tt(config_file)), fg='blue')
+        _click.secho(
+            "Using default config file at {}".format(_tt(config_file)), fg="blue"
+        )
         set_flyte_config_file(config_file_path=config_file)
     else:
-        _click.secho("""Config file not found at default location, relying on environment variables instead.
-                        To setup your config file run 'flyte-cli setup-config'""", fg='blue')
+        _click.secho(
+            """Config file not found at default location, relying on environment variables instead.
+                        To setup your config file run 'flyte-cli setup-config'""",
+            fg="blue",
+        )
 
 
 # Run this as the module is loading to pick up settings that click can then use when constructing the commands
@@ -91,8 +125,12 @@ def _get_io_string(literal_map, verbose=False):
         return "\n" + "\n".join(
             "{:30}: {}".format(
                 k,
-                _prefix_lines("{:30}  ".format(""), v.verbose_string() if verbose else v.short_string())
-            ) for k, v in _six.iteritems(value_dict)
+                _prefix_lines(
+                    "{:30}  ".format(""),
+                    v.verbose_string() if verbose else v.short_string(),
+                ),
+            )
+            for k, v in _six.iteritems(value_dict)
         )
     else:
         return "(None)"
@@ -130,30 +168,32 @@ def _secho_workflow_status(status, nl=True):
         _core_execution_models.WorkflowExecutionPhase.FAILED,
         _core_execution_models.WorkflowExecutionPhase.ABORTED,
         _core_execution_models.WorkflowExecutionPhase.FAILING,
-        _core_execution_models.WorkflowExecutionPhase.TIMED_OUT
+        _core_execution_models.WorkflowExecutionPhase.TIMED_OUT,
     }
     yellow_phases = {
         _core_execution_models.WorkflowExecutionPhase.QUEUED,
-        _core_execution_models.WorkflowExecutionPhase.UNDEFINED
+        _core_execution_models.WorkflowExecutionPhase.UNDEFINED,
     }
     green_phases = {
         _core_execution_models.WorkflowExecutionPhase.SUCCEEDED,
-        _core_execution_models.WorkflowExecutionPhase.SUCCEEDING
+        _core_execution_models.WorkflowExecutionPhase.SUCCEEDING,
     }
     if status in red_phases:
-        fg = 'red'
+        fg = "red"
     elif status in yellow_phases:
-        fg = 'yellow'
+        fg = "yellow"
     elif status in green_phases:
-        fg = 'green'
+        fg = "green"
     else:
-        fg = 'blue'
+        fg = "blue"
 
     _click.secho(
-        "{:10} ".format(_tt(_core_execution_models.WorkflowExecutionPhase.enum_to_string(status))),
+        "{:10} ".format(
+            _tt(_core_execution_models.WorkflowExecutionPhase.enum_to_string(status))
+        ),
         bold=True,
         fg=fg,
-        nl=nl
+        nl=nl,
     )
 
 
@@ -162,29 +202,29 @@ def _secho_node_execution_status(status, nl=True):
         _core_execution_models.NodeExecutionPhase.FAILING,
         _core_execution_models.NodeExecutionPhase.FAILED,
         _core_execution_models.NodeExecutionPhase.ABORTED,
-        _core_execution_models.NodeExecutionPhase.TIMED_OUT
+        _core_execution_models.NodeExecutionPhase.TIMED_OUT,
     }
     yellow_phases = {
         _core_execution_models.NodeExecutionPhase.QUEUED,
-        _core_execution_models.NodeExecutionPhase.UNDEFINED
+        _core_execution_models.NodeExecutionPhase.UNDEFINED,
     }
-    green_phases = {
-        _core_execution_models.NodeExecutionPhase.SUCCEEDED
-    }
+    green_phases = {_core_execution_models.NodeExecutionPhase.SUCCEEDED}
     if status in red_phases:
-        fg = 'red'
+        fg = "red"
     elif status in yellow_phases:
-        fg = 'yellow'
+        fg = "yellow"
     elif status in green_phases:
-        fg = 'green'
+        fg = "green"
     else:
-        fg = 'blue'
+        fg = "blue"
 
     _click.secho(
-        "{:10} ".format(_tt(_core_execution_models.NodeExecutionPhase.enum_to_string(status))),
+        "{:10} ".format(
+            _tt(_core_execution_models.NodeExecutionPhase.enum_to_string(status))
+        ),
         bold=True,
         fg=fg,
-        nl=nl
+        nl=nl,
     )
 
 
@@ -196,25 +236,25 @@ def _secho_task_execution_status(status, nl=True):
     yellow_phases = {
         _core_execution_models.TaskExecutionPhase.QUEUED,
         _core_execution_models.TaskExecutionPhase.UNDEFINED,
-        _core_execution_models.TaskExecutionPhase.RUNNING
+        _core_execution_models.TaskExecutionPhase.RUNNING,
     }
-    green_phases = {
-        _core_execution_models.TaskExecutionPhase.SUCCEEDED
-    }
+    green_phases = {_core_execution_models.TaskExecutionPhase.SUCCEEDED}
     if status in red_phases:
-        fg = 'red'
+        fg = "red"
     elif status in yellow_phases:
-        fg = 'yellow'
+        fg = "yellow"
     elif status in green_phases:
-        fg = 'green'
+        fg = "green"
     else:
-        fg = 'blue'
+        fg = "blue"
 
     _click.secho(
-        "{:10} ".format(_tt(_core_execution_models.TaskExecutionPhase.enum_to_string(status))),
+        "{:10} ".format(
+            _tt(_core_execution_models.TaskExecutionPhase.enum_to_string(status))
+        ),
         bold=True,
         fg=fg,
-        nl=nl
+        nl=nl,
     )
 
 
@@ -226,7 +266,7 @@ def _secho_one_execution(ex, urns_only):
                 _tt(ex.id.name),
                 _tt(ex.spec.launch_plan.name),
             ),
-            nl=False
+            nl=False,
         )
         _secho_workflow_status(ex.closure.phase)
     else:
@@ -234,7 +274,7 @@ def _secho_one_execution(ex, urns_only):
             "{:100}".format(
                 _tt(_identifier.WorkflowExecutionIdentifier.promote_from_model(ex.id))
             ),
-            nl=True
+            nl=True,
         )
 
 
@@ -242,8 +282,7 @@ def _terminate_one_execution(client, urn, cause, shouldPrint=True):
     if shouldPrint:
         _click.echo("{:100} {:40}".format(_tt(urn), _tt(cause)))
     client.terminate_execution(
-        _identifier.WorkflowExecutionIdentifier.from_python_std(urn),
-        cause
+        _identifier.WorkflowExecutionIdentifier.from_python_std(urn), cause
     )
 
 
@@ -266,10 +305,12 @@ def _render_schedule_expr(lp):
         )
     elif lp.spec.entity_metadata.schedule.rate:
         sched_expr = "rate({unit}={value})".format(
-            unit=_tt(_Schedule.FixedRateUnit.enum_to_string(
-                lp.spec.entity_metadata.schedule.rate.unit
-            )),
-            value=_tt(lp.spec.entity_metadata.schedule.rate.value)
+            unit=_tt(
+                _Schedule.FixedRateUnit.enum_to_string(
+                    lp.spec.entity_metadata.schedule.rate.unit
+                )
+            ),
+            value=_tt(lp.spec.entity_metadata.schedule.rate.value),
         )
     return "{:30}".format(sched_expr)
 
@@ -299,67 +340,50 @@ _PRINCIPAL_FLAGS = ["-r", "--principal"]
 _INSECURE_FLAGS = ["-i", "--insecure"]
 
 _project_option = _click.option(
-    *_PROJECT_FLAGS,
-    required=True,
-    help="The project namespace to query."
+    *_PROJECT_FLAGS, required=True, help="The project namespace to query."
 )
 _optional_project_option = _click.option(
     *_PROJECT_FLAGS,
     required=False,
     default=None,
-    help="[Optional] The project namespace to query."
+    help="[Optional] The project namespace to query.",
 )
 _domain_option = _click.option(
-    *_DOMAIN_FLAGS,
-    required=True,
-    help="The domain namespace to query."
+    *_DOMAIN_FLAGS, required=True, help="The domain namespace to query."
 )
 _optional_domain_option = _click.option(
     *_DOMAIN_FLAGS,
     required=False,
     default=None,
-    help="[Optional] The domain namespace to query."
+    help="[Optional] The domain namespace to query.",
 )
-_name_option = _click.option(
-    *_NAME_FLAGS,
-    required=True,
-    help="The name to query."
-)
+_name_option = _click.option(*_NAME_FLAGS, required=True, help="The name to query.")
 _optional_name_option = _click.option(
     *_NAME_FLAGS,
     required=False,
     type=str,
     default=None,
-    help="[Optional] The name to query."
+    help="[Optional] The name to query.",
 )
 _principal_option = _click.option(
-    *_PRINCIPAL_FLAGS,
-    required=True,
-    help="Your team name, or your name"
+    *_PRINCIPAL_FLAGS, required=True, help="Your team name, or your name"
 )
 _optional_principal_option = _click.option(
     *_PRINCIPAL_FLAGS,
     required=False,
     type=str,
     default=None,
-    help="[Optional] Your team name, or your name"
+    help="[Optional] Your team name, or your name",
 )
 _insecure_option = _click.option(
-    *_INSECURE_FLAGS,
-    is_flag=True,
-    required=True,
-    help="Do not use SSL"
+    *_INSECURE_FLAGS, is_flag=True, required=True, help="Do not use SSL"
 )
 _urn_option = _click.option(
-    "-u", "--urn",
-    required=True,
-    help="The unique identifier for an entity."
+    "-u", "--urn", required=True, help="The unique identifier for an entity."
 )
 
 _optional_urn_option = _click.option(
-    "-u", "--urn",
-    required=False,
-    help="The unique identifier for an entity."
+    "-u", "--urn", required=False, help="The unique identifier for an entity."
 )
 
 _host_option = _click.option(
@@ -367,143 +391,160 @@ _host_option = _click.option(
     required=not bool(_HOST_URL),
     default=_HOST_URL,
     help="The URL for the Flyte Admin Service. If you intend for this to be consistent, set the FLYTE_PLATFORM_URL "
-         "environment variable to the desired URL and this will not need to be set."
+    "environment variable to the desired URL and this will not need to be set.",
 )
 _token_option = _click.option(
-    "-t", "--token",
+    "-t",
+    "--token",
     required=False,
     default="",
     type=str,
-    help="Pagination token from which to start listing in the list of results."
+    help="Pagination token from which to start listing in the list of results.",
 )
 _limit_option = _click.option(
-    "-l", "--limit",
+    "-l",
+    "--limit",
     required=False,
     default=100,
     type=int,
-    help="Maximum number of results to return for this call."
+    help="Maximum number of results to return for this call.",
 )
 _show_all_option = _click.option(
-    "-a", "--show-all",
+    "-a",
+    "--show-all",
     is_flag=True,
     default=False,
-    help="Set this flag to page through and list all results."
+    help="Set this flag to page through and list all results.",
 )
 # TODO: Provide documentation on filter format
 _filter_option = _click.option(
-    "-f", "--filter",
+    "-f",
+    "--filter",
     multiple=True,
-    help="Filter to be applied.  Multiple filters can be applied and they will be ANDed together."
+    help="Filter to be applied.  Multiple filters can be applied and they will be ANDed together.",
 )
 _state_choice = _click.option(
     "--state",
     type=_click.Choice(["active", "inactive"]),
     required=True,
-    help="Whether or not to set schedule as active."
+    help="Whether or not to set schedule as active.",
 )
 _named_entity_state_choice = _click.option(
     "--state",
     type=_click.Choice(["active", "archived"]),
     required=True,
-    help="The state change to apply to a named entity"
+    help="The state change to apply to a named entity",
 )
 _named_entity_description_option = _click.option(
     "--description",
     required=False,
     type=str,
-    help="Concise description for the entity."
+    help="Concise description for the entity.",
 )
 _sort_by_option = _click.option(
     "--sort-by",
     required=False,
-    help="Provide an entity type and field to be sorted.  i.e. asc(workflow.name) or desc(workflow.name)"
+    help="Provide an entity type and field to be sorted.  i.e. asc(workflow.name) or desc(workflow.name)",
 )
 _show_io_option = _click.option(
     "--show-io",
     is_flag=True,
     default=False,
     help="Set this flag to view inputs and outputs.  Pair with the --verbose flag to get the full textual description"
-         " inputs and outputs."
+    " inputs and outputs.",
 )
 _verbose_option = _click.option(
     "--verbose",
     is_flag=True,
     default=False,
-    help="Set this flag to view the full textual description of all fields."
+    help="Set this flag to view the full textual description of all fields.",
 )
 
 _filename_option = _click.option(
-    '-f', '--filename',
-    required=True,
-    help="File path of pb file"
+    "-f", "--filename", required=True, help="File path of pb file"
 )
 _idl_class_option = _click.option(
-    '-p', '--proto_class',
+    "-p",
+    "--proto_class",
     required=True,
-    help="Dot (.) separated path to Python IDL class. (e.g. flyteidl.core.workflow_closure_pb2.WorkflowClosure)"
+    help="Dot (.) separated path to Python IDL class. (e.g. flyteidl.core.workflow_closure_pb2.WorkflowClosure)",
 )
 _cause_option = _click.option(
-    '-c', '--cause',
+    "-c",
+    "--cause",
     required=True,
-    help="The message signaling the cause of the termination of the execution(s)"
+    help="The message signaling the cause of the termination of the execution(s)",
 )
 _optional_urns_only_option = _click.option(
-    '--urns-only',
+    "--urns-only",
     is_flag=True,
     default=False,
     required=False,
-    help="[Optional] Set the flag if you want to output the urn(s) only. Setting this will override the verbose flag"
+    help="[Optional] Set the flag if you want to output the urn(s) only. Setting this will override the verbose flag",
 )
 _project_identifier_option = _click.option(
-    '-p', '--identifier',
+    "-p",
+    "--identifier",
     required=True,
     type=str,
-    help="Unique identifier for the project."
+    help="Unique identifier for the project.",
 )
 _project_name_option = _click.option(
-    '-n', '--name',
+    "-n",
+    "--name",
     required=True,
     type=str,
-    help="The human-readable name for the project."
+    help="The human-readable name for the project.",
 )
 _project_description_option = _click.option(
-    '-d', '--description',
+    "-d",
+    "--description",
     required=True,
     type=str,
-    help="Concise description for the project."
+    help="Concise description for the project.",
 )
 _watch_option = _click.option(
-    '-w', '--watch',
+    "-w",
+    "--watch",
     is_flag=True,
     default=False,
-    help="Set the flag if you want the command to keep watching the execution until its completion"
+    help="Set the flag if you want the command to keep watching the execution until its completion",
 )
 
 
 class _FlyteSubCommand(_click.Command):
     _PASSABLE_ARGS = {
-        'project': _PROJECT_FLAGS[0],
-        'domain': _DOMAIN_FLAGS[0],
-        'name': _NAME_FLAGS[0],
-        'host': _HOST_FLAGS[0],
+        "project": _PROJECT_FLAGS[0],
+        "domain": _DOMAIN_FLAGS[0],
+        "name": _NAME_FLAGS[0],
+        "host": _HOST_FLAGS[0],
     }
 
     _PASSABLE_FLAGS = {
-        'insecure': _INSECURE_FLAGS[0],
+        "insecure": _INSECURE_FLAGS[0],
     }
 
     def make_context(self, cmd_name, args, parent=None):
         prefix_args = []
         for param in self.params:
-            if param.name in type(self)._PASSABLE_ARGS and \
-                    param.name in parent.params and \
-                    parent.params[param.name] is not None:
-                prefix_args.extend([type(self)._PASSABLE_ARGS[param.name], _six.text_type(parent.params[param.name])])
+            if (
+                param.name in type(self)._PASSABLE_ARGS
+                and param.name in parent.params
+                and parent.params[param.name] is not None
+            ):
+                prefix_args.extend(
+                    [
+                        type(self)._PASSABLE_ARGS[param.name],
+                        _six.text_type(parent.params[param.name]),
+                    ]
+                )
 
             # For flags, we don't append the value of the flag, otherwise click will fail to parse
-            if param.name in type(self)._PASSABLE_FLAGS and \
-                    param.name in parent.params and \
-                    parent.params[param.name]:
+            if (
+                param.name in type(self)._PASSABLE_FLAGS
+                and param.name in parent.params
+                and parent.params[param.name]
+            ):
                 prefix_args.append(type(self)._PASSABLE_FLAGS[param.name])
 
         # This is where we handle the value read from the flyte-cli config file, if any, for the insecure flag.
@@ -513,7 +554,9 @@ class _FlyteSubCommand(_click.Command):
         if _INSECURE_FLAG and _INSECURE_FLAGS[0] not in prefix_args:
             prefix_args.append(_INSECURE_FLAGS[0])
 
-        ctx = super(_FlyteSubCommand, self).make_context(cmd_name, prefix_args + args, parent=parent)
+        ctx = super(_FlyteSubCommand, self).make_context(
+            cmd_name, prefix_args + args, parent=parent
+        )
         return ctx
 
 
@@ -523,7 +566,7 @@ class _FlyteSubCommand(_click.Command):
     type=str,
     default=None,
     help="[Optional] The host to pass to the sub-command (if applicable).  If set again in the sub-command, "
-         "the sub-command's parameter takes precedence."
+    "the sub-command's parameter takes precedence.",
 )
 @_click.option(
     *_PROJECT_FLAGS,
@@ -531,7 +574,7 @@ class _FlyteSubCommand(_click.Command):
     type=str,
     default=None,
     help="[Optional] The project to pass to the sub-command (if applicable)  If set again in the sub-command, "
-         "the sub-command's parameter takes precedence."
+    "the sub-command's parameter takes precedence.",
 )
 @_click.option(
     *_DOMAIN_FLAGS,
@@ -539,7 +582,7 @@ class _FlyteSubCommand(_click.Command):
     type=str,
     default=None,
     help="[Optional] The domain to pass to the sub-command (if applicable)  If set again in the sub-command, "
-         "the sub-command's parameter takes precedence."
+    "the sub-command's parameter takes precedence.",
 )
 @_click.option(
     *_NAME_FLAGS,
@@ -547,7 +590,7 @@ class _FlyteSubCommand(_click.Command):
     type=str,
     default=None,
     help="[Optional] The name to pass to the sub-command (if applicable)  If set again in the sub-command, "
-         "the sub-command's parameter takes precedence."
+    "the sub-command's parameter takes precedence.",
 )
 @_insecure_option
 @_click.group("flyte-cli")
@@ -566,13 +609,13 @@ def _flyte_cli(ctx, host, project, domain, name, insecure):
 ########################################################################################################################
 
 
-@_flyte_cli.command('parse-proto', cls=_click.Command)
+@_flyte_cli.command("parse-proto", cls=_click.Command)
 @_filename_option
 @_idl_class_option
 def parse_proto(filename, proto_class):
     _welcome_message()
-    splitted = proto_class.split('.')
-    idl_module = '.'.join(splitted[:-1])
+    splitted = proto_class.split(".")
+    idl_module = ".".join(splitted[:-1])
     idl_obj = splitted[-1]
     mod = _importlib.import_module(idl_module)
     idl = getattr(mod, idl_obj)
@@ -588,7 +631,8 @@ def parse_proto(filename, proto_class):
 #
 ########################################################################################################################
 
-@_flyte_cli.command('list-task-names', cls=_FlyteSubCommand)
+
+@_flyte_cli.command("list-task-names", cls=_FlyteSubCommand)
 @_project_option
 @_domain_option
 @_host_option
@@ -612,7 +656,7 @@ def list_task_names(project, domain, host, insecure, token, limit, show_all, sor
             domain,
             limit=limit,
             token=token,
-            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None
+            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None,
         )
         for t in task_ids:
             _click.echo("\t{}".format(_tt(t.name)))
@@ -627,7 +671,7 @@ def list_task_names(project, domain, host, insecure, token, limit, show_all, sor
     _click.echo("")
 
 
-@_flyte_cli.command('list-task-versions', cls=_FlyteSubCommand)
+@_flyte_cli.command("list-task-versions", cls=_FlyteSubCommand)
 @_project_option
 @_domain_option
 @_optional_name_option
@@ -638,7 +682,9 @@ def list_task_names(project, domain, host, insecure, token, limit, show_all, sor
 @_show_all_option
 @_filter_option
 @_sort_by_option
-def list_task_versions(project, domain, name, host, insecure, token, limit, show_all, filter, sort_by):
+def list_task_versions(
+    project, domain, name, host, insecure, token, limit, show_all, filter, sort_by
+):
     """
     List all the versions of the tasks under a specific {Project, Domain} tuple.
     If the name of a certain task is supplied, this command will list all the
@@ -647,22 +693,27 @@ def list_task_versions(project, domain, name, host, insecure, token, limit, show
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
 
-    _click.echo("Task Versions Found for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name or '*')))
-    _click.echo("{:50} {:40}".format('Version', 'Urn'))
+    _click.echo(
+        "Task Versions Found for {}:{}:{}\n".format(
+            _tt(project), _tt(domain), _tt(name or "*")
+        )
+    )
+    _click.echo("{:50} {:40}".format("Version", "Urn"))
     while True:
         task_list, next_token = client.list_tasks_paginated(
-            _common_models.NamedEntityIdentifier(
-                project,
-                domain,
-                name
-            ),
+            _common_models.NamedEntityIdentifier(project, domain, name),
             limit=limit,
             token=token,
             filters=[_filters.Filter.from_python_std(f) for f in filter],
-            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None
+            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None,
         )
         for t in task_list:
-            _click.echo("{:50} {:40}".format(_tt(t.id.version), _tt(_identifier.Identifier.promote_from_model(t.id))))
+            _click.echo(
+                "{:50} {:40}".format(
+                    _tt(t.id.version),
+                    _tt(_identifier.Identifier.promote_from_model(t.id)),
+                )
+            )
 
         if show_all is not True:
             if next_token:
@@ -674,7 +725,7 @@ def list_task_versions(project, domain, name, host, insecure, token, limit, show
     _click.echo("")
 
 
-@_flyte_cli.command('get-task', cls=_FlyteSubCommand)
+@_flyte_cli.command("get-task", cls=_FlyteSubCommand)
 @_urn_option
 @_host_option
 @_insecure_option
@@ -690,14 +741,14 @@ def get_task(urn, host, insecure):
     _click.echo("")
 
 
-@_flyte_cli.command('launch-task', cls=_FlyteSubCommand)
+@_flyte_cli.command("launch-task", cls=_FlyteSubCommand)
 @_project_option
 @_domain_option
 @_optional_name_option
 @_host_option
 @_insecure_option
 @_urn_option
-@_click.argument('task_args', nargs=-1, type=_click.UNPROCESSED)
+@_click.argument("task_args", nargs=-1, type=_click.UNPROCESSED)
 def launch_task(project, domain, name, host, insecure, urn, task_args):
     """
     Kick off a single task execution. Note that the {project, domain, name} specified in the command line
@@ -714,22 +765,28 @@ def launch_task(project, domain, name, host, insecure, urn, task_args):
     """
     _welcome_message()
 
-    with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
+    with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(
+        _tt(insecure)
+    ):
         task_id = _identifier.Identifier.from_python_std(urn)
-        task = _tasks_common.SdkTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
+        task = _tasks_common.SdkTask.fetch(
+            task_id.project, task_id.domain, task_id.name, task_id.version
+        )
 
         text_args = _parse_args_into_dict(task_args)
         inputs = {}
         for var_name, variable in _six.iteritems(task.interface.inputs):
             sdk_type = _type_helpers.get_sdk_type_from_literal_type(variable.type)
             if var_name in text_args and text_args[var_name] is not None:
-                inputs[var_name] = sdk_type.from_string(text_args[var_name]).to_python_std()
+                inputs[var_name] = sdk_type.from_string(
+                    text_args[var_name]
+                ).to_python_std()
 
         # TODO: Implement notification overrides
         # TODO: Implement label overrides
         # TODO: Implement annotation overrides
         execution = task.launch(project, domain, inputs=inputs, name=name)
-        _click.secho("Launched execution: {}".format(_tt(execution.id)), fg='blue')
+        _click.secho("Launched execution: {}".format(_tt(execution.id)), fg="blue")
         _click.echo("")
 
 
@@ -739,7 +796,8 @@ def launch_task(project, domain, name, host, insecure, urn, task_args):
 #
 ########################################################################################################################
 
-@_flyte_cli.command('list-workflow-names', cls=_FlyteSubCommand)
+
+@_flyte_cli.command("list-workflow-names", cls=_FlyteSubCommand)
 @_project_option
 @_domain_option
 @_host_option
@@ -748,7 +806,9 @@ def launch_task(project, domain, name, host, insecure, urn, task_args):
 @_limit_option
 @_show_all_option
 @_sort_by_option
-def list_workflow_names(project, domain, host, insecure, token, limit, show_all, sort_by):
+def list_workflow_names(
+    project, domain, host, insecure, token, limit, show_all, sort_by
+):
     """
     List the names of the workflows under a scope specified by ``{project, domain}``.
     """
@@ -762,7 +822,7 @@ def list_workflow_names(project, domain, host, insecure, token, limit, show_all,
             domain,
             limit=limit,
             token=token,
-            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None
+            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None,
         )
         for i in wf_ids:
             _click.echo("\t{}".format(_tt(i.name)))
@@ -777,7 +837,7 @@ def list_workflow_names(project, domain, host, insecure, token, limit, show_all,
     _click.echo("")
 
 
-@_flyte_cli.command('list-workflow-versions', cls=_FlyteSubCommand)
+@_flyte_cli.command("list-workflow-versions", cls=_FlyteSubCommand)
 @_project_option
 @_domain_option
 @_optional_name_option
@@ -788,7 +848,9 @@ def list_workflow_names(project, domain, host, insecure, token, limit, show_all,
 @_show_all_option
 @_filter_option
 @_sort_by_option
-def list_workflow_versions(project, domain, name, host, insecure, token, limit, show_all, filter, sort_by):
+def list_workflow_versions(
+    project, domain, name, host, insecure, token, limit, show_all, filter, sort_by
+):
     """
     List all the versions of the workflows under the scope specified by ``{project, domain}``.
     If the name of a a certain workflow is supplied, this command will list all the
@@ -797,22 +859,27 @@ def list_workflow_versions(project, domain, name, host, insecure, token, limit, 
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
 
-    _click.echo("Workflow Versions Found for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name or '*')))
-    _click.echo("{:50} {:40}".format('Version', 'Urn'))
+    _click.echo(
+        "Workflow Versions Found for {}:{}:{}\n".format(
+            _tt(project), _tt(domain), _tt(name or "*")
+        )
+    )
+    _click.echo("{:50} {:40}".format("Version", "Urn"))
     while True:
         wf_list, next_token = client.list_workflows_paginated(
-            _common_models.NamedEntityIdentifier(
-                project,
-                domain,
-                name
-            ),
+            _common_models.NamedEntityIdentifier(project, domain, name),
             limit=limit,
             token=token,
             filters=[_filters.Filter.from_python_std(f) for f in filter],
-            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None
+            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None,
         )
         for w in wf_list:
-            _click.echo("{:50} {:40}".format(_tt(w.id.version), _tt(_identifier.Identifier.promote_from_model(w.id))))
+            _click.echo(
+                "{:50} {:40}".format(
+                    _tt(w.id.version),
+                    _tt(_identifier.Identifier.promote_from_model(w.id)),
+                )
+            )
 
         if show_all is not True:
             if next_token:
@@ -824,7 +891,7 @@ def list_workflow_versions(project, domain, name, host, insecure, token, limit, 
     _click.echo("")
 
 
-@_flyte_cli.command('get-workflow', cls=_FlyteSubCommand)
+@_flyte_cli.command("get-workflow", cls=_FlyteSubCommand)
 @_urn_option
 @_host_option
 @_insecure_option
@@ -846,7 +913,8 @@ def get_workflow(urn, host, insecure):
 #
 ########################################################################################################################
 
-@_flyte_cli.command('list-launch-plan-names', cls=_FlyteSubCommand)
+
+@_flyte_cli.command("list-launch-plan-names", cls=_FlyteSubCommand)
 @_project_option
 @_domain_option
 @_host_option
@@ -855,7 +923,9 @@ def get_workflow(urn, host, insecure):
 @_limit_option
 @_show_all_option
 @_sort_by_option
-def list_launch_plan_names(project, domain, host, insecure, token, limit, show_all, sort_by):
+def list_launch_plan_names(
+    project, domain, host, insecure, token, limit, show_all, sort_by
+):
     """
     List the names of the launch plans under the scope specified by {project, domain}.
     """
@@ -869,7 +939,7 @@ def list_launch_plan_names(project, domain, host, insecure, token, limit, show_a
             domain,
             limit=limit,
             token=token,
-            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None
+            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None,
         )
         for i in wf_ids:
             _click.echo("\t{}".format(_tt(i.name)))
@@ -884,7 +954,7 @@ def list_launch_plan_names(project, domain, host, insecure, token, limit, show_a
     _click.echo("")
 
 
-@_flyte_cli.command('list-active-launch-plans', cls=_FlyteSubCommand)
+@_flyte_cli.command("list-active-launch-plans", cls=_FlyteSubCommand)
 @_project_option
 @_domain_option
 @_host_option
@@ -894,15 +964,19 @@ def list_launch_plan_names(project, domain, host, insecure, token, limit, show_a
 @_show_all_option
 @_sort_by_option
 @_optional_urns_only_option
-def list_active_launch_plans(project, domain, host, insecure, token, limit, show_all, sort_by, urns_only):
+def list_active_launch_plans(
+    project, domain, host, insecure, token, limit, show_all, sort_by, urns_only
+):
     """
     List the information of all the active launch plans under the scope specified by {project, domain}.
     An active launch plan is a launch plan with an active schedule associated with it.
     """
     if not urns_only:
         _welcome_message()
-        _click.echo("Active Launch Plan Found in {}:{}\n".format(_tt(project), _tt(domain)))
-        _click.echo("{:30} {:50} {:80}".format('Schedule', 'Version', 'Urn'))
+        _click.echo(
+            "Active Launch Plan Found in {}:{}\n".format(_tt(project), _tt(domain))
+        )
+        _click.echo("{:30} {:50} {:80}".format("Schedule", "Version", "Urn"))
 
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
 
@@ -912,14 +986,16 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
             domain,
             limit=limit,
             token=token,
-            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None
+            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None,
         )
 
         for lp in active_lps:
             if urns_only:
-                _click.echo("{:80}".format(
-                    _tt(_identifier.Identifier.promote_from_model(lp.id))
-                ))
+                _click.echo(
+                    "{:80}".format(
+                        _tt(_identifier.Identifier.promote_from_model(lp.id))
+                    )
+                )
             else:
                 _click.echo(
                     "{:30} {:50} {:80}".format(
@@ -942,7 +1018,7 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
     return
 
 
-@_flyte_cli.command('list-launch-plan-versions', cls=_FlyteSubCommand)
+@_flyte_cli.command("list-launch-plan-versions", cls=_FlyteSubCommand)
 @_project_option
 @_domain_option
 @_optional_name_option
@@ -954,29 +1030,44 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
 @_filter_option
 @_sort_by_option
 @_optional_urns_only_option
-def list_launch_plan_versions(project, domain, name, host, insecure, token, limit, show_all, filter, sort_by,
-                              urns_only):
+def list_launch_plan_versions(
+    project,
+    domain,
+    name,
+    host,
+    insecure,
+    token,
+    limit,
+    show_all,
+    filter,
+    sort_by,
+    urns_only,
+):
     """
     List the versions of all the launch plans under the scope specified by {project, domain}.
     """
     if not urns_only:
         _welcome_message()
-        _click.echo("Launch Plan Versions Found for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name)))
-        _click.echo("{:50} {:80} {:30} {:15}".format('Version', 'Urn', "Schedule", "Schedule State"))
+        _click.echo(
+            "Launch Plan Versions Found for {}:{}:{}\n".format(
+                _tt(project), _tt(domain), _tt(name)
+            )
+        )
+        _click.echo(
+            "{:50} {:80} {:30} {:15}".format(
+                "Version", "Urn", "Schedule", "Schedule State"
+            )
+        )
 
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
 
     while True:
         lp_list, next_token = client.list_launch_plans_paginated(
-            _common_models.NamedEntityIdentifier(
-                project,
-                domain,
-                name
-            ),
+            _common_models.NamedEntityIdentifier(project, domain, name),
             limit=limit,
             token=token,
             filters=[_filters.Filter.from_python_std(f) for f in filter],
-            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None
+            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None,
         )
         for l in lp_list:
             if urns_only:
@@ -985,18 +1076,20 @@ def list_launch_plan_versions(project, domain, name, host, insecure, token, limi
                 _click.echo(
                     "{:50} {:80} ".format(
                         _tt(l.id.version),
-                        _tt(_identifier.Identifier.promote_from_model(l.id))
+                        _tt(_identifier.Identifier.promote_from_model(l.id)),
                     ),
-                    nl=False
+                    nl=False,
                 )
-                if l.spec.entity_metadata.schedule.cron_expression or l.spec.entity_metadata.schedule.rate:
-                    _click.echo(
-                        "{:30} ".format(_render_schedule_expr(l)),
-                        nl=False
-                    )
+                if (
+                    l.spec.entity_metadata.schedule.cron_expression
+                    or l.spec.entity_metadata.schedule.rate
+                ):
+                    _click.echo("{:30} ".format(_render_schedule_expr(l)), nl=False)
                     _click.secho(
                         _launch_plan.LaunchPlanState.enum_to_string(l.closure.state),
-                        fg="green" if l.closure.state == _launch_plan.LaunchPlanState.ACTIVE else None
+                        fg="green"
+                        if l.closure.state == _launch_plan.LaunchPlanState.ACTIVE
+                        else None,
                     )
                 else:
                     _click.echo()
@@ -1012,7 +1105,7 @@ def list_launch_plan_versions(project, domain, name, host, insecure, token, limi
         _click.echo("")
 
 
-@_flyte_cli.command('get-launch-plan', cls=_FlyteSubCommand)
+@_flyte_cli.command("get-launch-plan", cls=_FlyteSubCommand)
 @_urn_option
 @_host_option
 @_insecure_option
@@ -1023,12 +1116,14 @@ def get_launch_plan(urn, host, insecure):
     """
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
-    _click.echo(_tt(client.get_launch_plan(_identifier.Identifier.from_python_std(urn))))
+    _click.echo(
+        _tt(client.get_launch_plan(_identifier.Identifier.from_python_std(urn)))
+    )
     # TODO: Print launch plan pretty
     _click.echo("")
 
 
-@_flyte_cli.command('get-active-launch-plan', cls=_FlyteSubCommand)
+@_flyte_cli.command("get-active-launch-plan", cls=_FlyteSubCommand)
 @_project_option
 @_domain_option
 @_name_option
@@ -1042,18 +1137,16 @@ def get_active_launch_plan(project, domain, name, host, insecure):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
 
     lp = client.get_active_launch_plan(
-        _common_models.NamedEntityIdentifier(
-            project,
-            domain,
-            name
-        )
+        _common_models.NamedEntityIdentifier(project, domain, name)
     )
-    _click.echo("Active Launch Plan for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name)))
+    _click.echo(
+        "Active Launch Plan for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name))
+    )
     _click.echo(lp)
     _click.echo("")
 
 
-@_flyte_cli.command('update-launch-plan', cls=_FlyteSubCommand)
+@_flyte_cli.command("update-launch-plan", cls=_FlyteSubCommand)
 @_state_choice
 @_host_option
 @_insecure_option
@@ -1066,18 +1159,23 @@ def update_launch_plan(state, host, insecure, urn=None):
             # Examine whether the input is from the named pipe
             if _stat.S_ISFIFO(_os.fstat(0).st_mode):
                 for line in _sys.stdin.readlines():
-                    _update_one_launch_plan(urn=line.rstrip(), host=host, insecure=insecure, state=state)
+                    _update_one_launch_plan(
+                        urn=line.rstrip(), host=host, insecure=insecure, state=state
+                    )
             else:
                 # If the commandline parameter urn is not supplied, and neither
                 # the input comes from a pipe, it means the user is not using
                 # this command approperiately
-                raise _click.UsageError('Missing option "-u" / "--urn" or missing pipe inputs')
+                raise _click.UsageError(
+                    'Missing option "-u" / "--urn" or missing pipe inputs'
+                )
         except KeyboardInterrupt:
             _sys.stdout.flush()
     else:
         _update_one_launch_plan(urn=urn, host=host, insecure=insecure, state=state)
 
-@_flyte_cli.command('execute-launch-plan', cls=_FlyteSubCommand)
+
+@_flyte_cli.command("execute-launch-plan", cls=_FlyteSubCommand)
 @_project_option
 @_domain_option
 @_optional_name_option
@@ -1087,8 +1185,10 @@ def update_launch_plan(state, host, insecure, urn=None):
 @_principal_option
 @_verbose_option
 @_watch_option
-@_click.argument('lp_args', nargs=-1, type=_click.UNPROCESSED)
-def execute_launch_plan(project, domain, name, host, insecure, urn, principal, verbose, watch, lp_args):
+@_click.argument("lp_args", nargs=-1, type=_click.UNPROCESSED)
+def execute_launch_plan(
+    project, domain, name, host, insecure, urn, principal, verbose, watch, lp_args
+):
     """
     Kick off a launch plan. Note that the {project, domain, name} specified in the command line
     will be for the execution.  The project/domain for the launch plan are specified in the urn.
@@ -1105,16 +1205,22 @@ def execute_launch_plan(project, domain, name, host, insecure, urn, principal, v
     """
     _welcome_message()
 
-    with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
+    with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(
+        _tt(insecure)
+    ):
         lp_id = _identifier.Identifier.from_python_std(urn)
-        lp = _launch_plan_common.SdkLaunchPlan.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+        lp = _launch_plan_common.SdkLaunchPlan.fetch(
+            lp_id.project, lp_id.domain, lp_id.name, lp_id.version
+        )
 
-        inputs = _construct_literal_map_from_parameter_map(lp.default_inputs, _parse_args_into_dict(lp_args))
+        inputs = _construct_literal_map_from_parameter_map(
+            lp.default_inputs, _parse_args_into_dict(lp_args)
+        )
         # TODO: Implement notification overrides
         # TODO: Implement label overrides
         # TODO: Implement annotation overrides
         execution = lp.launch_with_literals(project, domain, inputs, name=name)
-        _click.secho("Launched execution: {}".format(_tt(execution.id)), fg='blue')
+        _click.secho("Launched execution: {}".format(_tt(execution.id)), fg="blue")
         _click.echo("")
 
         if watch is True:
@@ -1128,7 +1234,7 @@ def execute_launch_plan(project, domain, name, host, insecure, urn, principal, v
 ########################################################################################################################
 
 
-@_flyte_cli.command('watch-execution', cls=_FlyteSubCommand)
+@_flyte_cli.command("watch-execution", cls=_FlyteSubCommand)
 @_host_option
 @_insecure_option
 @_urn_option
@@ -1144,13 +1250,17 @@ def watch_execution(host, insecure, urn):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     ex_id = _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
 
-    execution = _workflow_execution_common.SdkWorkflowExecution.promote_from_model(client.get_execution(ex_id))
+    execution = _workflow_execution_common.SdkWorkflowExecution.promote_from_model(
+        client.get_execution(ex_id)
+    )
 
-    _click.echo("Waiting for the execution {} to complete ...".format(_tt(execution.id)))
+    _click.echo(
+        "Waiting for the execution {} to complete ...".format(_tt(execution.id))
+    )
     execution.wait_for_completion()
 
 
-@_flyte_cli.command('relaunch-execution', cls=_FlyteSubCommand)
+@_flyte_cli.command("relaunch-execution", cls=_FlyteSubCommand)
 @_optional_project_option
 @_optional_domain_option
 @_optional_name_option
@@ -1159,8 +1269,10 @@ def watch_execution(host, insecure, urn):
 @_urn_option
 @_optional_principal_option
 @_verbose_option
-@_click.argument('lp_args', nargs=-1, type=_click.UNPROCESSED)
-def relaunch_execution(project, domain, name, host, insecure, urn, principal, verbose, lp_args):
+@_click.argument("lp_args", nargs=-1, type=_click.UNPROCESSED)
+def relaunch_execution(
+    project, domain, name, host, insecure, urn, principal, verbose, lp_args
+):
     """
     Relaunch a launch plan.
     As with kicking off a launch plan (see execute-launch-plan), the project and domain will correspond to the new
@@ -1187,7 +1299,9 @@ def relaunch_execution(project, domain, name, host, insecure, urn, principal, ve
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
 
     _click.echo("Relaunching execution {}\n".format(_tt(urn)))
-    existing_workflow_execution_identifier = _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
+    existing_workflow_execution_identifier = _identifier.WorkflowExecutionIdentifier.from_python_std(
+        urn
+    )
     e = client.get_execution(existing_workflow_execution_identifier)
 
     if project is None:
@@ -1204,7 +1318,9 @@ def relaunch_execution(project, domain, name, host, insecure, urn, principal, ve
     # optional (because we can default to the original execution's), we reduce first to bare Variables.
     variable_map = {k: v.var for k, v in _six.iteritems(expected_inputs.parameters)}
     parsed_text_args = _parse_args_into_dict(lp_args)
-    new_inputs = _construct_literal_map_from_variable_map(variable_map, parsed_text_args)
+    new_inputs = _construct_literal_map_from_variable_map(
+        variable_map, parsed_text_args
+    )
     if len(new_inputs.literals) > 0:
         _click.secho(
             "\tNew Inputs: {}\n".format(
@@ -1228,15 +1344,21 @@ def relaunch_execution(project, domain, name, host, insecure, urn, principal, ve
             )
         )
 
-    metadata = _ExecutionMetadata(mode=_ExecutionMetadata.ExecutionMode.MANUAL, principal=principal, nesting=0)
+    metadata = _ExecutionMetadata(
+        mode=_ExecutionMetadata.ExecutionMode.MANUAL, principal=principal, nesting=0
+    )
     ex_spec = _ExecutionSpec(launch_plan=lp_model.id, inputs=inputs, metadata=metadata)
-    execution_identifier = client.create_execution(project=project, domain=domain, name=name, execution_spec=ex_spec)
-    execution_identifier = _identifier.WorkflowExecutionIdentifier.promote_from_model(execution_identifier)
-    _click.secho("Launched execution: {}".format(execution_identifier), fg='blue')
+    execution_identifier = client.create_execution(
+        project=project, domain=domain, name=name, execution_spec=ex_spec
+    )
+    execution_identifier = _identifier.WorkflowExecutionIdentifier.promote_from_model(
+        execution_identifier
+    )
+    _click.secho("Launched execution: {}".format(execution_identifier), fg="blue")
     _click.echo("")
 
 
-@_flyte_cli.command('terminate-execution', cls=_FlyteSubCommand)
+@_flyte_cli.command("terminate-execution", cls=_FlyteSubCommand)
 @_host_option
 @_insecure_option
 @_cause_option
@@ -1278,7 +1400,9 @@ def terminate_execution(host, insecure, cause, urn=None):
                 # If the commandline parameter urn is not supplied, and neither
                 # the input is from a pipe, it means the user is not using
                 # this command appropriately
-                raise _click.UsageError('Missing option "-u" / "--urn" or missing pipe inputs.')
+                raise _click.UsageError(
+                    'Missing option "-u" / "--urn" or missing pipe inputs.'
+                )
         except KeyboardInterrupt:
             _sys.stdout.flush()
             pass
@@ -1286,7 +1410,7 @@ def terminate_execution(host, insecure, cause, urn=None):
         _terminate_one_execution(client, urn, cause)
 
 
-@_flyte_cli.command('list-executions', cls=_FlyteSubCommand)
+@_flyte_cli.command("list-executions", cls=_FlyteSubCommand)
 @_project_option
 @_domain_option
 @_host_option
@@ -1297,7 +1421,9 @@ def terminate_execution(host, insecure, cause, urn=None):
 @_filter_option
 @_sort_by_option
 @_optional_urns_only_option
-def list_executions(project, domain, host, insecure, token, limit, show_all, filter, sort_by, urns_only):
+def list_executions(
+    project, domain, host, insecure, token, limit, show_all, filter, sort_by, urns_only
+):
     """
     List the key information of all the executions under the scope specified by {project, domain}.
     Users can supply additional filter arguments to show only the desired exeuctions.
@@ -1322,7 +1448,7 @@ def list_executions(project, domain, host, insecure, token, limit, show_all, fil
             limit=limit,
             token=token,
             filters=[_filters.Filter.from_python_std(f) for f in filter],
-            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None
+            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None,
         )
         for ex in exec_ids:
             _secho_one_execution(ex, urns_only)
@@ -1343,15 +1469,27 @@ def _get_io(node_executions, wf_execution, show_io, verbose):
     uri_to_message_map = {}
     if show_io:
         uris = [ne.input_uri for ne in node_executions]
-        uris.extend([ne.closure.output_uri for ne in node_executions if ne.closure.output_uri is not None])
-        if wf_execution is not None and \
-                wf_execution.closure.outputs is not None and \
-                wf_execution.closure.outputs.uri is not None:
+        uris.extend(
+            [
+                ne.closure.output_uri
+                for ne in node_executions
+                if ne.closure.output_uri is not None
+            ]
+        )
+        if (
+            wf_execution is not None
+            and wf_execution.closure.outputs is not None
+            and wf_execution.closure.outputs.uri is not None
+        ):
             uris.append(wf_execution.closure.outputs.uri)
 
-        with _click.progressbar(uris, label="Downloading Inputs and Outputs") as progress_bar_uris:
+        with _click.progressbar(
+            uris, label="Downloading Inputs and Outputs"
+        ) as progress_bar_uris:
             for uri in progress_bar_uris:
-                uri_to_message_map[uri] = _fetch_and_stringify_literal_map(uri, verbose=verbose)
+                uri_to_message_map[uri] = _fetch_and_stringify_literal_map(
+                    uri, verbose=verbose
+                )
     return uri_to_message_map
 
 
@@ -1360,7 +1498,7 @@ def _render_workflow_execution(wf_execution, uri_to_message_map, show_io, verbos
         "\nExecution {project}:{domain}:{name}\n".format(
             project=_tt(wf_execution.id.project),
             domain=_tt(wf_execution.id.domain),
-            name=_tt(wf_execution.id.name)
+            name=_tt(wf_execution.id.name),
         )
     )
     _click.echo("\t{:15} ".format("State:"), nl=False)
@@ -1368,14 +1506,21 @@ def _render_workflow_execution(wf_execution, uri_to_message_map, show_io, verbos
     _click.echo(
         "\t{:15} {}".format(
             "Launch Plan:",
-            _tt(_identifier.Identifier.promote_from_model(wf_execution.spec.launch_plan))
+            _tt(
+                _identifier.Identifier.promote_from_model(wf_execution.spec.launch_plan)
+            ),
         )
     )
 
     if show_io:
         _click.secho(
             "\tInputs: {}\n".format(
-                _prefix_lines("\t\t", _get_io_string(wf_execution.closure.computed_inputs, verbose=verbose))
+                _prefix_lines(
+                    "\t\t",
+                    _get_io_string(
+                        wf_execution.closure.computed_inputs, verbose=verbose
+                    ),
+                )
             )
         )
         if wf_execution.closure.outputs is not None:
@@ -1386,22 +1531,31 @@ def _render_workflow_execution(wf_execution, uri_to_message_map, show_io, verbos
                             "\t\t",
                             uri_to_message_map.get(
                                 wf_execution.closure.outputs.uri,
-                                wf_execution.closure.outputs.uri
-                            )
+                                wf_execution.closure.outputs.uri,
+                            ),
                         )
                     )
                 )
             elif wf_execution.closure.outputs.values is not None:
                 _click.secho(
                     "\tOutputs: {}\n".format(
-                        _prefix_lines("\t\t", _get_io_string(wf_execution.closure.outputs.values, verbose=verbose))
+                        _prefix_lines(
+                            "\t\t",
+                            _get_io_string(
+                                wf_execution.closure.outputs.values, verbose=verbose
+                            ),
+                        )
                     )
                 )
             else:
                 _click.echo("\t{:15} (None)".format("Outputs:"))
 
     if wf_execution.closure.error is not None:
-        _click.secho(_prefix_lines("\t", _render_error(wf_execution.closure.error)), fg='red', bold=True)
+        _click.secho(
+            _prefix_lines("\t", _render_error(wf_execution.closure.error)),
+            fg="red",
+            bold=True,
+        )
 
 
 def _render_error(error):
@@ -1421,7 +1575,7 @@ def _get_all_task_executions_for_node(client, node_execution_identifier):
         task_execs, next_token = client.list_task_executions_paginated(
             node_execution_identifier=node_execution_identifier,
             limit=num_to_fetch,
-            token=token
+            token=token,
         )
         for te in task_execs:
             fetched_task_execs.append(te)
@@ -1433,7 +1587,9 @@ def _get_all_task_executions_for_node(client, node_execution_identifier):
     return fetched_task_execs
 
 
-def _get_all_node_executions(client, workflow_execution_identifier=None, task_execution_identifier=None):
+def _get_all_node_executions(
+    client, workflow_execution_identifier=None, task_execution_identifier=None
+):
     all_node_execs = []
     token = ""
     while True:
@@ -1442,7 +1598,7 @@ def _get_all_node_executions(client, workflow_execution_identifier=None, task_ex
             node_execs, next_token = client.list_node_executions(
                 workflow_execution_identifier=workflow_execution_identifier,
                 limit=num_to_fetch,
-                token=token
+                token=token,
             )
         else:
             node_execs, next_token = client.list_node_executions_for_task_paginated(
@@ -1457,10 +1613,14 @@ def _get_all_node_executions(client, workflow_execution_identifier=None, task_ex
     return all_node_execs
 
 
-def _render_node_executions(client, node_execs, show_io, verbose, host, insecure, wf_execution=None):
+def _render_node_executions(
+    client, node_execs, show_io, verbose, host, insecure, wf_execution=None
+):
     node_executions_to_task_executions = {}
     for node_exec in node_execs:
-        node_executions_to_task_executions[node_exec.id] = _get_all_task_executions_for_node(client, node_exec.id)
+        node_executions_to_task_executions[
+            node_exec.id
+        ] = _get_all_task_executions_for_node(client, node_exec.id)
 
     uri_to_message_map = _get_io(node_execs, wf_execution, show_io, verbose)
     if wf_execution is not None:
@@ -1468,7 +1628,7 @@ def _render_node_executions(client, node_execs, show_io, verbose, host, insecure
 
     _click.echo("\n\tNode Executions:\n")
     for ne in sorted(node_execs, key=lambda x: x.closure.started_at):
-        if ne.id.node_id == 'start-node':
+        if ne.id.node_id == "start-node":
             continue
         _click.echo("\t\tID: {}\n".format(_tt(ne.id.node_id)))
         _click.echo("\t\t\t{:15} ".format("Status:"), nl=False)
@@ -1478,7 +1638,10 @@ def _render_node_executions(client, node_execs, show_io, verbose, host, insecure
         _click.echo(
             "\t\t\t{:15} {}".format(
                 "Input:",
-                _prefix_lines("\t\t\t{:15} ".format(""), uri_to_message_map.get(ne.input_uri, ne.input_uri))
+                _prefix_lines(
+                    "\t\t\t{:15} ".format(""),
+                    uri_to_message_map.get(ne.input_uri, ne.input_uri),
+                ),
             )
         )
         if ne.closure.output_uri:
@@ -1487,18 +1650,17 @@ def _render_node_executions(client, node_execs, show_io, verbose, host, insecure
                     "Output:",
                     _prefix_lines(
                         "\t\t\t{:15} ".format(""),
-                        uri_to_message_map.get(ne.closure.output_uri, ne.closure.output_uri)
-                    )
+                        uri_to_message_map.get(
+                            ne.closure.output_uri, ne.closure.output_uri
+                        ),
+                    ),
                 )
             )
         if ne.closure.error is not None:
             _click.secho(
-                _prefix_lines(
-                    "\t\t\t",
-                    _render_error(ne.closure.error)
-                ),
+                _prefix_lines("\t\t\t", _render_error(ne.closure.error)),
                 bold=True,
-                fg='red'
+                fg="red",
             )
 
         task_executions = node_executions_to_task_executions.get(ne.id, [])
@@ -1506,14 +1668,32 @@ def _render_node_executions(client, node_execs, show_io, verbose, host, insecure
             _click.echo("\n\t\t\tTask Executions:\n")
             for te in sorted(task_executions, key=lambda x: x.id.retry_attempt):
                 _click.echo("\t\t\t\tAttempt {}:\n".format(te.id.retry_attempt))
-                _click.echo("\t\t\t\t\t{:15} {:60} ".format("Created:", _tt(te.closure.created_at)))
-                _click.echo("\t\t\t\t\t{:15} {:60} ".format("Started:", _tt(te.closure.started_at)))
-                _click.echo("\t\t\t\t\t{:15} {:60} ".format("Updated:", _tt(te.closure.updated_at)))
-                _click.echo("\t\t\t\t\t{:15} {:60} ".format("Duration:", _tt(te.closure.duration)))
+                _click.echo(
+                    "\t\t\t\t\t{:15} {:60} ".format(
+                        "Created:", _tt(te.closure.created_at)
+                    )
+                )
+                _click.echo(
+                    "\t\t\t\t\t{:15} {:60} ".format(
+                        "Started:", _tt(te.closure.started_at)
+                    )
+                )
+                _click.echo(
+                    "\t\t\t\t\t{:15} {:60} ".format(
+                        "Updated:", _tt(te.closure.updated_at)
+                    )
+                )
+                _click.echo(
+                    "\t\t\t\t\t{:15} {:60} ".format(
+                        "Duration:", _tt(te.closure.duration)
+                    )
+                )
                 _click.echo("\t\t\t\t\t{:15} ".format("Status:"), nl=False)
                 _secho_task_execution_status(te.closure.phase)
                 if len(te.closure.logs) == 0:
-                    _click.echo("\t\t\t\t\t{:15} {:60} ".format("Logs:", "(None Found Yet)"))
+                    _click.echo(
+                        "\t\t\t\t\t{:15} {:60} ".format("Logs:", "(None Found Yet)")
+                    )
                 else:
                     _click.echo("\t\t\t\t\tLogs:\n")
                     for log in sorted(te.closure.logs, key=lambda x: x.name):
@@ -1522,12 +1702,9 @@ def _render_node_executions(client, node_execs, show_io, verbose, host, insecure
 
                 if te.closure.error is not None:
                     _click.secho(
-                        _prefix_lines(
-                            "\t\t\t\t\t",
-                            _render_error(te.closure.error)
-                        ),
+                        _prefix_lines("\t\t\t\t\t", _render_error(te.closure.error)),
                         bold=True,
-                        fg='red'
+                        fg="red",
                     )
 
                 if te.is_parent:
@@ -1536,9 +1713,13 @@ def _render_node_executions(client, node_execs, show_io, verbose, host, insecure
                             "Subtasks:",
                             "flyte-cli get-child-executions -h {host}{insecure} -u {urn}".format(
                                 host=host,
-                                urn=_tt(_identifier.TaskExecutionIdentifier.promote_from_model(te.id)),
-                                insecure=" --insecure" if insecure else ""
-                            )
+                                urn=_tt(
+                                    _identifier.TaskExecutionIdentifier.promote_from_model(
+                                        te.id
+                                    )
+                                ),
+                                insecure=" --insecure" if insecure else "",
+                            ),
                         )
                     )
             _click.echo()
@@ -1546,7 +1727,7 @@ def _render_node_executions(client, node_execs, show_io, verbose, host, insecure
     _click.echo()
 
 
-@_flyte_cli.command('get-execution', cls=_FlyteSubCommand)
+@_flyte_cli.command("get-execution", cls=_FlyteSubCommand)
 @_urn_option
 @_host_option
 @_insecure_option
@@ -1559,12 +1740,16 @@ def get_execution(urn, host, insecure, show_io, verbose):
     """
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
-    e = client.get_execution(_identifier.WorkflowExecutionIdentifier.from_python_std(urn))
+    e = client.get_execution(
+        _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
+    )
     node_execs = _get_all_node_executions(client, workflow_execution_identifier=e.id)
-    _render_node_executions(client, node_execs, show_io, verbose, host, insecure, wf_execution=e)
+    _render_node_executions(
+        client, node_execs, show_io, verbose, host, insecure, wf_execution=e
+    )
 
 
-@_flyte_cli.command('get-child-executions', cls=_FlyteSubCommand)
+@_flyte_cli.command("get-child-executions", cls=_FlyteSubCommand)
 @_urn_option
 @_host_option
 @_insecure_option
@@ -1575,12 +1760,14 @@ def get_child_executions(urn, host, insecure, show_io, verbose):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     node_execs = _get_all_node_executions(
         client,
-        task_execution_identifier=_identifier.TaskExecutionIdentifier.from_python_std(urn)
+        task_execution_identifier=_identifier.TaskExecutionIdentifier.from_python_std(
+            urn
+        ),
     )
     _render_node_executions(client, node_execs, show_io, verbose, host, insecure)
 
 
-@_flyte_cli.command('register-project', cls=_FlyteSubCommand)
+@_flyte_cli.command("register-project", cls=_FlyteSubCommand)
 @_project_identifier_option
 @_project_name_option
 @_project_description_option
@@ -1594,7 +1781,11 @@ def register_project(identifier, name, description, host, insecure):
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     client.register_project(_Project(identifier, name, description))
-    _click.echo("Registered project [id: {}, name: {}, description: {}]".format(identifier, name, description))
+    _click.echo(
+        "Registered project [id: {}, name: {}, description: {}]".format(
+            identifier, name, description
+        )
+    )
 
 
 def _extract_pair(identifier_file, object_file):
@@ -1606,12 +1797,14 @@ def _extract_pair(identifier_file, object_file):
     resource_map = {
         _identifier_pb2.LAUNCH_PLAN: _launch_plan_pb2.LaunchPlanSpec,
         _identifier_pb2.WORKFLOW: _workflow_pb2.WorkflowSpec,
-        _identifier_pb2.TASK: _task_pb2.TaskSpec
+        _identifier_pb2.TASK: _task_pb2.TaskSpec,
     }
     id = _load_proto_from_file(_identifier_pb2.Identifier, identifier_file)
     if not id.resource_type in resource_map:
-        raise _user_exceptions.FlyteAssertion(f"Resource type found in identifier {id.resource_type} invalid, must be launch plan, "
-                              f"task, or workflow")
+        raise _user_exceptions.FlyteAssertion(
+            f"Resource type found in identifier {id.resource_type} invalid, must be launch plan, "
+            f"task, or workflow"
+        )
     entity = _load_proto_from_file(resource_map[id.resource_type], object_file)
     return id, entity
 
@@ -1635,13 +1828,11 @@ def _extract_files(file_paths):
     return results
 
 
-@_flyte_cli.command('register-files', cls=_FlyteSubCommand)
+@_flyte_cli.command("register-files", cls=_FlyteSubCommand)
 @_host_option
 @_insecure_option
 @_click.argument(
-    'files',
-    type=_click.Path(exists=True),
-    nargs=-1,
+    "files", type=_click.Path(exists=True), nargs=-1,
 )
 def register_files(host, insecure, files):
     """
@@ -1666,7 +1857,7 @@ def register_files(host, insecure, files):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     files = list(files)
     files.sort()
-    _click.secho("Parsing files...", fg='green', bold=True)
+    _click.secho("Parsing files...", fg="green", bold=True)
     for f in files:
         _click.echo(f"  {f}")
 
@@ -1674,22 +1865,30 @@ def register_files(host, insecure, files):
     for id, flyte_entity in flyte_entities_list:
         try:
             if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
-                client.raw.create_launch_plan(_launch_plan_pb2.LaunchPlanCreateRequest(id=id, spec=flyte_entity))
+                client.raw.create_launch_plan(
+                    _launch_plan_pb2.LaunchPlanCreateRequest(id=id, spec=flyte_entity)
+                )
             elif id.resource_type == _identifier_pb2.TASK:
-                client.raw.create_task(_task_pb2.TaskCreateRequest(id=id, spec=flyte_entity))
+                client.raw.create_task(
+                    _task_pb2.TaskCreateRequest(id=id, spec=flyte_entity)
+                )
             elif id.resource_type == _identifier_pb2.WORKFLOW:
-                client.raw.create_workflow(_workflow_pb2.WorkflowCreateRequest(id=id, spec=flyte_entity))
+                client.raw.create_workflow(
+                    _workflow_pb2.WorkflowCreateRequest(id=id, spec=flyte_entity)
+                )
             else:
-                raise _user_exceptions.FlyteAssertion(f"Only tasks, launch plans, and workflows can be called with this function, "
-                                      f"resource type {id.resource_type} was passed")
-            _click.secho(f"Registered {id}", fg='green')
+                raise _user_exceptions.FlyteAssertion(
+                    f"Only tasks, launch plans, and workflows can be called with this function, "
+                    f"resource type {id.resource_type} was passed"
+                )
+            _click.secho(f"Registered {id}", fg="green")
         except _user_exceptions.FlyteEntityAlreadyExistsException:
-            _click.secho(f"Skipping because already registered {id}", fg='cyan')
+            _click.secho(f"Skipping because already registered {id}", fg="cyan")
 
     _click.echo(f"Finished scanning {len(flyte_entities_list)} files")
 
 
-@_flyte_cli.command('update-workflow-meta', cls=_FlyteSubCommand)
+@_flyte_cli.command("update-workflow-meta", cls=_FlyteSubCommand)
 @_named_entity_description_option
 @_named_entity_state_choice
 @_host_option
@@ -1710,11 +1909,12 @@ def update_workflow_meta(description, state, host, insecure, project, domain, na
     client.update_named_entity(
         _core_identifier.ResourceType.WORKFLOW,
         _named_entity.NamedEntityIdentifier(project, domain, name),
-        _named_entity.NamedEntityMetadata(description, state))
+        _named_entity.NamedEntityMetadata(description, state),
+    )
     _click.echo("Successfully updated workflow")
 
 
-@_flyte_cli.command('update-task-meta', cls=_FlyteSubCommand)
+@_flyte_cli.command("update-task-meta", cls=_FlyteSubCommand)
 @_named_entity_description_option
 @_host_option
 @_insecure_option
@@ -1730,11 +1930,14 @@ def update_task_meta(description, host, insecure, project, domain, name):
     client.update_named_entity(
         _core_identifier.ResourceType.TASK,
         _named_entity.NamedEntityIdentifier(project, domain, name),
-        _named_entity.NamedEntityMetadata(description, _named_entity.NamedEntityState.ACTIVE))
+        _named_entity.NamedEntityMetadata(
+            description, _named_entity.NamedEntityState.ACTIVE
+        ),
+    )
     _click.echo("Successfully updated task")
 
 
-@_flyte_cli.command('update-launch-plan-meta', cls=_FlyteSubCommand)
+@_flyte_cli.command("update-launch-plan-meta", cls=_FlyteSubCommand)
 @_named_entity_description_option
 @_host_option
 @_insecure_option
@@ -1750,18 +1953,23 @@ def update_launch_plan_meta(description, host, insecure, project, domain, name):
     client.update_named_entity(
         _core_identifier.ResourceType.LAUNCH_PLAN,
         _named_entity.NamedEntityIdentifier(project, domain, name),
-        _named_entity.NamedEntityMetadata(description, _named_entity.NamedEntityState.ACTIVE))
+        _named_entity.NamedEntityMetadata(
+            description, _named_entity.NamedEntityState.ACTIVE
+        ),
+    )
     _click.echo("Successfully updated launch plan")
 
 
-@_flyte_cli.command('update-cluster-resource-attributes', cls=_FlyteSubCommand)
+@_flyte_cli.command("update-cluster-resource-attributes", cls=_FlyteSubCommand)
 @_host_option
 @_insecure_option
 @_project_option
 @_domain_option
 @_optional_name_option
-@_click.option('--attributes', type=(str, str),  multiple=True)
-def update_cluster_resource_attributes(host, insecure, project, domain, name, attributes):
+@_click.option("--attributes", type=(str, str), multiple=True)
+def update_cluster_resource_attributes(
+    host, insecure, project, domain, name, attributes
+):
     """
     Sets matchable cluster resource attributes for a project, domain and optionally, workflow name.
 
@@ -1771,24 +1979,30 @@ def update_cluster_resource_attributes(host, insecure, project, domain, name, at
     """
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
-    cluster_resource_attributes = _ClusterResourceAttributes({attribute[0]: attribute[1] for attribute in attributes})
-    matching_attributes = _MatchingAttributes(cluster_resource_attributes=cluster_resource_attributes)
+    cluster_resource_attributes = _ClusterResourceAttributes(
+        {attribute[0]: attribute[1] for attribute in attributes}
+    )
+    matching_attributes = _MatchingAttributes(
+        cluster_resource_attributes=cluster_resource_attributes
+    )
 
     if name is not None:
-        client.update_workflow_attributes(
-            project, domain, name, matching_attributes
+        client.update_workflow_attributes(project, domain, name, matching_attributes)
+        _click.echo(
+            "Successfully updated cluster resource attributes for project: {}, domain: {}, and workflow: {}".format(
+                project, domain, name
+            )
         )
-        _click.echo("Successfully updated cluster resource attributes for project: {}, domain: {}, and workflow: {}".
-                    format(project, domain, name))
     else:
-        client.update_project_domain_attributes(
-            project, domain, matching_attributes
+        client.update_project_domain_attributes(project, domain, matching_attributes)
+        _click.echo(
+            "Successfully updated cluster resource attributes for project: {} and domain: {}".format(
+                project, domain
+            )
         )
-        _click.echo("Successfully updated cluster resource attributes for project: {} and domain: {}".
-                    format(project, domain))
 
 
-@_flyte_cli.command('update-execution-queue-attributes', cls=_FlyteSubCommand)
+@_flyte_cli.command("update-execution-queue-attributes", cls=_FlyteSubCommand)
 @_host_option
 @_insecure_option
 @_project_option
@@ -1806,29 +2020,35 @@ def update_execution_queue_attributes(host, insecure, project, domain, name, tag
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     execution_queue_attributes = _ExecutionQueueAttributes(list(tags))
-    matching_attributes = _MatchingAttributes(execution_queue_attributes=execution_queue_attributes)
+    matching_attributes = _MatchingAttributes(
+        execution_queue_attributes=execution_queue_attributes
+    )
 
     if name is not None:
-        client.update_workflow_attributes(
-            project, domain, name, matching_attributes
+        client.update_workflow_attributes(project, domain, name, matching_attributes)
+        _click.echo(
+            "Successfully updated execution queue attributes for project: {}, domain: {}, and workflow: {}".format(
+                project, domain, name
+            )
         )
-        _click.echo("Successfully updated execution queue attributes for project: {}, domain: {}, and workflow: {}".
-                    format(project, domain, name))
     else:
-        client.update_project_domain_attributes(
-            project, domain, matching_attributes
+        client.update_project_domain_attributes(project, domain, matching_attributes)
+        _click.echo(
+            "Successfully updated execution queue attributes for project: {} and domain: {}".format(
+                project, domain
+            )
         )
-        _click.echo("Successfully updated execution queue attributes for project: {} and domain: {}".
-                    format(project, domain))
 
 
-@_flyte_cli.command('update-execution-cluster-label', cls=_FlyteSubCommand)
+@_flyte_cli.command("update-execution-cluster-label", cls=_FlyteSubCommand)
 @_host_option
 @_insecure_option
 @_project_option
 @_domain_option
 @_optional_name_option
-@_click.option("--value",  help="Cluster label for which to schedule matching executions")
+@_click.option(
+    "--value", help="Cluster label for which to schedule matching executions"
+)
 def update_execution_cluster_label(host, insecure, project, domain, name, value):
     """
     Label value to determine where an execution's task will be run for tasks belonging to a project, domain and
@@ -1840,23 +2060,27 @@ def update_execution_cluster_label(host, insecure, project, domain, name, value)
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     execution_cluster_label = _ExecutionClusterLabel(value)
-    matching_attributes = _MatchingAttributes(execution_cluster_label=execution_cluster_label)
+    matching_attributes = _MatchingAttributes(
+        execution_cluster_label=execution_cluster_label
+    )
 
     if name is not None:
-        client.update_workflow_attributes(
-            project, domain, name, matching_attributes
+        client.update_workflow_attributes(project, domain, name, matching_attributes)
+        _click.echo(
+            "Successfully updated execution cluster label for project: {}, domain: {}, and workflow: {}".format(
+                project, domain, name
+            )
         )
-        _click.echo("Successfully updated execution cluster label for project: {}, domain: {}, and workflow: {}".
-                    format(project, domain, name))
     else:
-        client.update_project_domain_attributes(
-            project, domain, matching_attributes
+        client.update_project_domain_attributes(project, domain, matching_attributes)
+        _click.echo(
+            "Successfully updated execution cluster label for project: {} and domain: {}".format(
+                project, domain
+            )
         )
-        _click.echo("Successfully updated execution cluster label for project: {} and domain: {}".
-                    format(project, domain))
 
 
-@_flyte_cli.command('setup-config', cls=_click.Command)
+@_flyte_cli.command("setup-config", cls=_click.Command)
 @_host_option
 @_insecure_option
 def setup_config(host, insecure):
@@ -1867,13 +2091,20 @@ def setup_config(host, insecure):
     _welcome_message()
     config_file = _get_config_file_path()
     if _get_user_filepath_home() and _os.path.exists(config_file):
-        _click.secho("Config file already exists at {}".format(_tt(config_file)), fg='blue')
+        _click.secho(
+            "Config file already exists at {}".format(_tt(config_file)), fg="blue"
+        )
         return
 
     # Before creating check that the directory exists and create if not
     config_dir = _os.path.join(_get_user_filepath_home(), _default_config_file_dir)
     if not _os.path.isdir(config_dir):
-        _click.secho("Creating default Flyte configuration directory at {}".format(_tt(config_dir)), fg='blue')
+        _click.secho(
+            "Creating default Flyte configuration directory at {}".format(
+                _tt(config_dir)
+            ),
+            fg="blue",
+        )
         _os.mkdir(config_dir)
 
     full_host = "http://{}".format(host) if insecure else "https://{}".format(host)
@@ -1894,12 +2125,14 @@ def setup_config(host, insecure):
         f.write("\n")
         f.write("redirect_uri={}".format(data["redirect_uri"]))
         f.write("\n")
-        f.write("authorization_metadata_key={}".format(data["authorization_metadata_key"]))
+        f.write(
+            "authorization_metadata_key={}".format(data["authorization_metadata_key"])
+        )
         f.write("\n")
         f.write("auth_mode=standard")
         f.write("\n")
     set_flyte_config_file(config_file_path=config_file)
-    _click.secho("Wrote default config file to {}".format(_tt(config_file)), fg='blue')
+    _click.secho("Wrote default config file to {}".format(_tt(config_file)), fg="blue")
 
 
 if __name__ == "__main__":

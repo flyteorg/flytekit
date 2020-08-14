@@ -8,11 +8,8 @@ from flytekit import __version__
 
 from flytekit.common import constants as _constants
 from flytekit.common.tasks import task as _base_task
-from flytekit.models import (
-    interface as _interface_model
-)
-from flytekit.models import literals as _literals, types as _types, \
-    task as _task_model
+from flytekit.models import interface as _interface_model
+from flytekit.models import literals as _literals, types as _types, task as _task_model
 
 from flytekit.common import interface as _interface
 import datetime as _datetime
@@ -27,19 +24,19 @@ class SdkPrestoTask(_base_task.SdkTask):
     """
 
     def __init__(
-            self,
-            statement,
-            output_schema,
-            routing_group=None,
-            catalog=None,
-            schema=None,
-            task_inputs=None,
-            interruptible=False,
-            discoverable=False,
-            discovery_version=None,
-            retries=1,
-            timeout=None,
-            deprecated=None
+        self,
+        statement,
+        output_schema,
+        routing_group=None,
+        catalog=None,
+        schema=None,
+        task_inputs=None,
+        interruptible=False,
+        discoverable=False,
+        discovery_version=None,
+        retries=1,
+        timeout=None,
+        deprecated=None,
     ):
         """
         :param Text statement: Presto query specification
@@ -66,20 +63,20 @@ class SdkPrestoTask(_base_task.SdkTask):
             discoverable,
             # This needs to have the proper version reflected in it
             _task_model.RuntimeMetadata(
-                _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__,
-                "python"),
+                _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"
+            ),
             timeout or _datetime.timedelta(seconds=0),
             _literals.RetryStrategy(retries),
             interruptible,
             discovery_version,
-            deprecated
+            deprecated,
         )
 
         presto_query = _presto_models.PrestoQuery(
             routing_group=routing_group or "",
             catalog=catalog or "",
             schema=schema or "",
-            statement=statement
+            statement=statement,
         )
 
         # Here we set the routing_group, catalog, and schema as implicit
@@ -88,24 +85,25 @@ class SdkPrestoTask(_base_task.SdkTask):
             {
                 "__implicit_routing_group": _interface_model.Variable(
                     type=_types.LiteralType(simple=_types.SimpleType.STRING),
-                    description="The routing group set as an implicit input"
+                    description="The routing group set as an implicit input",
                 ),
                 "__implicit_catalog": _interface_model.Variable(
                     type=_types.LiteralType(simple=_types.SimpleType.STRING),
-                    description="The catalog set as an implicit input"
+                    description="The catalog set as an implicit input",
                 ),
                 "__implicit_schema": _interface_model.Variable(
                     type=_types.LiteralType(simple=_types.SimpleType.STRING),
-                    description="The schema set as an implicit input"
-                )
+                    description="The schema set as an implicit input",
+                ),
             },
             {
                 # Set the schema for the Presto query as an output
                 "results": _interface_model.Variable(
                     type=_types.LiteralType(schema=output_schema.schema_type),
-                    description="The schema for the Presto query"
+                    description="The schema for the Presto query",
                 )
-            })
+            },
+        )
 
         super(SdkPrestoTask, self).__init__(
             _constants.SdkTaskType.PRESTO_TASK,
@@ -132,9 +130,7 @@ class SdkPrestoTask(_base_task.SdkTask):
     def __call__(self, *args, **kwargs):
         kwargs = self._add_implicit_inputs(kwargs)
 
-        return super(SdkPrestoTask, self).__call__(
-            *args, **kwargs
-        )
+        return super(SdkPrestoTask, self).__call__(*args, **kwargs)
 
     # Override method in order to set the implicit inputs
     def _python_std_input_map_to_literal_map(self, inputs):
@@ -144,10 +140,13 @@ class SdkPrestoTask(_base_task.SdkTask):
         :rtype: flytekit.models.literals.LiteralMap
         """
         inputs = self._add_implicit_inputs(inputs)
-        return _type_helpers.pack_python_std_map_to_literal_map(inputs, {
-            k: _type_helpers.get_sdk_type_from_literal_type(v.type)
-            for k, v in _six.iteritems(self.interface.inputs)
-        })
+        return _type_helpers.pack_python_std_map_to_literal_map(
+            inputs,
+            {
+                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
+                for k, v in _six.iteritems(self.interface.inputs)
+            },
+        )
 
     @_exception_scopes.system_entry_point
     def add_inputs(self, inputs):

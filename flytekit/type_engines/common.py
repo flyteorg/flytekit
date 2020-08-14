@@ -4,7 +4,6 @@ import six as _six
 
 
 class TypeEngine(_six.with_metaclass(_abc.ABCMeta, object)):
-
     @_abc.abstractmethod
     def python_std_to_sdk_type(self, t):
         """

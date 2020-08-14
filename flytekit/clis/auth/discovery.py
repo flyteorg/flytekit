@@ -18,6 +18,7 @@ class AuthorizationEndpoints(object):
     """
     A simple wrapper around commonly discovered endpoints used for the PKCE auth flow.
     """
+
     def __init__(self, auth_endpoint=None, token_endpoint=None):
         self._auth_endpoint = auth_endpoint
         self._token_endpoint = token_endpoint
@@ -52,9 +53,7 @@ class DiscoveryClient(object):
     def get_authorization_endpoints(self):
         if self.authorization_endpoints is not None:
             return self.authorization_endpoints
-        resp = _requests.get(
-            url=self._discovery_url,
-        )
+        resp = _requests.get(url=self._discovery_url,)
 
         response_body = resp.json()
 
@@ -62,17 +61,22 @@ class DiscoveryClient(object):
         token_endpoint = response_body[_token_endpoint_key]
 
         if authorization_endpoint is None:
-            raise ValueError('Unable to discover authorization endpoint')
+            raise ValueError("Unable to discover authorization endpoint")
 
         if token_endpoint is None:
-            raise ValueError('Unable to discover token endpoint')
+            raise ValueError("Unable to discover token endpoint")
 
         if authorization_endpoint.startswith("/"):
-             authorization_endpoint= _requests.compat.urljoin(self._discovery_url, authorization_endpoint)
+            authorization_endpoint = _requests.compat.urljoin(
+                self._discovery_url, authorization_endpoint
+            )
 
         if token_endpoint.startswith("/"):
-            token_endpoint = _requests.compat.urljoin(self._discovery_url, token_endpoint)
+            token_endpoint = _requests.compat.urljoin(
+                self._discovery_url, token_endpoint
+            )
 
-        self._authorization_endpoints = AuthorizationEndpoints(auth_endpoint=authorization_endpoint,
-                                                               token_endpoint=token_endpoint)
+        self._authorization_endpoints = AuthorizationEndpoints(
+            auth_endpoint=authorization_endpoint, token_endpoint=token_endpoint
+        )
         return self.authorization_endpoints

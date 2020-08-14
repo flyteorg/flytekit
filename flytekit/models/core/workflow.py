@@ -3,8 +3,15 @@ from __future__ import absolute_import
 from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit.models import common as _common, interface as _interface
-from flytekit.models.core import identifier as _identifier, errors as _errors, condition as _condition
-from flytekit.models.literals import RetryStrategy as _RetryStrategy, Binding as _Binding
+from flytekit.models.core import (
+    identifier as _identifier,
+    errors as _errors,
+    condition as _condition,
+)
+from flytekit.models.literals import (
+    RetryStrategy as _RetryStrategy,
+    Binding as _Binding,
+)
 
 
 class IfBlock(_common.FlyteIdlEntity):
@@ -36,13 +43,17 @@ class IfBlock(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.IfBlock
         """
-        return _core_workflow.IfBlock(condition=self.condition.to_flyte_idl(),
-                                      then_node=self.then_node.to_flyte_idl())
+        return _core_workflow.IfBlock(
+            condition=self.condition.to_flyte_idl(),
+            then_node=self.then_node.to_flyte_idl(),
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
-        return cls(condition=_condition.BooleanExpression.from_flyte_idl(pb2_object.condition),
-                   then_node=Node.from_flyte_idl(pb2_object.then_node))
+        return cls(
+            condition=_condition.BooleanExpression.from_flyte_idl(pb2_object.condition),
+            then_node=Node.from_flyte_idl(pb2_object.then_node),
+        )
 
 
 class IfElseBlock(_common.FlyteIdlEntity):
@@ -102,18 +113,24 @@ class IfElseBlock(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.IfElseBlock
         """
-        return _core_workflow.IfElseBlock(case=self.case.to_flyte_idl(),
-                                          other=[a.to_flyte_idl() for a in self.other] if self.other else None,
-                                          else_node=self.else_node.to_flyte_idl() if self.else_node else None,
-                                          error=self.error.to_flyte_idl() if self.error else None)
+        return _core_workflow.IfElseBlock(
+            case=self.case.to_flyte_idl(),
+            other=[a.to_flyte_idl() for a in self.other] if self.other else None,
+            else_node=self.else_node.to_flyte_idl() if self.else_node else None,
+            error=self.error.to_flyte_idl() if self.error else None,
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         return cls(
             case=IfBlock.from_flyte_idl(pb2_object.case),
             other=[IfBlock.from_flyte_idl(a) for a in pb2_object.other],
-            else_node=Node.from_flyte_idl(pb2_object.else_node) if pb2_object.HasField('else_node') else None,
-            error=_errors.ContainerError.from_flyte_idl(pb2_object.error) if pb2_object.HasField('error') else None
+            else_node=Node.from_flyte_idl(pb2_object.else_node)
+            if pb2_object.HasField("else_node")
+            else None,
+            error=_errors.ContainerError.from_flyte_idl(pb2_object.error)
+            if pb2_object.HasField("error")
+            else None,
         )
 
 
@@ -147,7 +164,6 @@ class BranchNode(_common.FlyteIdlEntity):
 
 
 class NodeMetadata(_common.FlyteIdlEntity):
-
     def __init__(self, name, timeout, retries, interruptible=False):
         """
         Defines extra information about the Node.
@@ -193,7 +209,11 @@ class NodeMetadata(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.NodeMetadata
         """
-        node_metadata = _core_workflow.NodeMetadata(name=self.name, retries=self.retries.to_flyte_idl(), interruptible=self.interruptible)
+        node_metadata = _core_workflow.NodeMetadata(
+            name=self.name,
+            retries=self.retries.to_flyte_idl(),
+            interruptible=self.interruptible,
+        )
         node_metadata.timeout.FromTimedelta(self.timeout)
         return node_metadata
 
@@ -202,14 +222,22 @@ class NodeMetadata(_common.FlyteIdlEntity):
         return cls(
             pb2_object.name,
             pb2_object.timeout.ToTimedelta(),
-            _RetryStrategy.from_flyte_idl(pb2_object.retries)
+            _RetryStrategy.from_flyte_idl(pb2_object.retries),
         )
 
 
 class Node(_common.FlyteIdlEntity):
-
-    def __init__(self, id, metadata, inputs, upstream_node_ids, output_aliases, task_node=None,
-                 workflow_node=None, branch_node=None):
+    def __init__(
+        self,
+        id,
+        metadata,
+        inputs,
+        upstream_node_ids,
+        output_aliases,
+        task_node=None,
+        workflow_node=None,
+        branch_node=None,
+    ):
         """
         A Workflow graph Node. One unit of execution in the graph. Each node can be linked to a Task,
         a Workflow or a branch node.  One of the nodes must be specified.
@@ -323,13 +351,21 @@ class Node(_common.FlyteIdlEntity):
         """
         return _core_workflow.Node(
             id=self.id,
-            metadata=self.metadata.to_flyte_idl() if self.metadata is not None else None,
+            metadata=self.metadata.to_flyte_idl()
+            if self.metadata is not None
+            else None,
             inputs=[i.to_flyte_idl() for i in self.inputs],
             upstream_node_ids=self.upstream_node_ids,
             output_aliases=[a.to_flyte_idl() for a in self.output_aliases],
-            task_node=self.task_node.to_flyte_idl() if self.task_node is not None else None,
-            workflow_node=self.workflow_node.to_flyte_idl() if self.workflow_node is not None else None,
-            branch_node=self.branch_node.to_flyte_idl() if self.branch_node is not None else None
+            task_node=self.task_node.to_flyte_idl()
+            if self.task_node is not None
+            else None,
+            workflow_node=self.workflow_node.to_flyte_idl()
+            if self.workflow_node is not None
+            else None,
+            branch_node=self.branch_node.to_flyte_idl()
+            if self.branch_node is not None
+            else None,
         )
 
     @classmethod
@@ -344,16 +380,19 @@ class Node(_common.FlyteIdlEntity):
             inputs=[_Binding.from_flyte_idl(b) for b in pb2_object.inputs],
             upstream_node_ids=pb2_object.upstream_node_ids,
             output_aliases=[Alias.from_flyte_idl(a) for a in pb2_object.output_aliases],
-            task_node=TaskNode.from_flyte_idl(pb2_object.task_node) if pb2_object.HasField('task_node') else None,
+            task_node=TaskNode.from_flyte_idl(pb2_object.task_node)
+            if pb2_object.HasField("task_node")
+            else None,
             workflow_node=WorkflowNode.from_flyte_idl(pb2_object.workflow_node)
-            if pb2_object.HasField('workflow_node') else None,
-            branch_node=BranchNode.from_flyte_idl(pb2_object.branch_node) if pb2_object.HasField(
-                'branch_node') else None,
+            if pb2_object.HasField("workflow_node")
+            else None,
+            branch_node=BranchNode.from_flyte_idl(pb2_object.branch_node)
+            if pb2_object.HasField("branch_node")
+            else None,
         )
 
 
 class TaskNode(_common.FlyteIdlEntity):
-
     def __init__(self, reference_id):
         """
         Refers to the task that the Node is to execute.
@@ -384,11 +423,12 @@ class TaskNode(_common.FlyteIdlEntity):
         :param flyteidl.core.workflow_pb2.TaskNode pb2_object:
         :rtype: TaskNode
         """
-        return cls(reference_id=_identifier.Identifier.from_flyte_idl(pb2_object.reference_id))
+        return cls(
+            reference_id=_identifier.Identifier.from_flyte_idl(pb2_object.reference_id)
+        )
 
 
 class WorkflowNode(_common.FlyteIdlEntity):
-
     def __init__(self, launchplan_ref=None, sub_workflow_ref=None):
         """
         Refers to a the workflow the node is to execute.  One of the references must be supplied.
@@ -429,8 +469,12 @@ class WorkflowNode(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.workflow_pb2.WorkflowNode
         """
         return _core_workflow.WorkflowNode(
-            launchplan_ref=self.launchplan_ref.to_flyte_idl() if self.launchplan_ref else None,
-            sub_workflow_ref=self.sub_workflow_ref.to_flyte_idl() if self.sub_workflow_ref else None
+            launchplan_ref=self.launchplan_ref.to_flyte_idl()
+            if self.launchplan_ref
+            else None,
+            sub_workflow_ref=self.sub_workflow_ref.to_flyte_idl()
+            if self.sub_workflow_ref
+            else None,
         )
 
     @classmethod
@@ -439,14 +483,21 @@ class WorkflowNode(_common.FlyteIdlEntity):
         :param flyteidl.core.workflow_pb2.WorkflowNode pb2_object:
         :rtype: WorkflowNode
         """
-        if pb2_object.HasField('launchplan_ref'):
-            return cls(launchplan_ref=_identifier.Identifier.from_flyte_idl(pb2_object.launchplan_ref))
+        if pb2_object.HasField("launchplan_ref"):
+            return cls(
+                launchplan_ref=_identifier.Identifier.from_flyte_idl(
+                    pb2_object.launchplan_ref
+                )
+            )
         else:
-            return cls(sub_workflow_ref=_identifier.Identifier.from_flyte_idl(pb2_object.sub_workflow_ref))
+            return cls(
+                sub_workflow_ref=_identifier.Identifier.from_flyte_idl(
+                    pb2_object.sub_workflow_ref
+                )
+            )
 
 
 class WorkflowMetadata(_common.FlyteIdlEntity):
-
     class OnFailurePolicy(object):
         """
         Defines the execution behavior of the workflow when a failure is detected.
@@ -463,8 +514,10 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
                                                     the workflow execution as failed.
         """
 
-        FAIL_IMMEDIATELY = _core_workflow.WorkflowMetadata.FAIL_IMMEDIATELY        
-        FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = _core_workflow.WorkflowMetadata.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
+        FAIL_IMMEDIATELY = _core_workflow.WorkflowMetadata.FAIL_IMMEDIATELY
+        FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = (
+            _core_workflow.WorkflowMetadata.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
+        )
 
     def __init__(self, on_failure=None):
         """
@@ -497,12 +550,13 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
         :rtype: WorkflowMetadata
         """
         return cls(
-            on_failure=pb2_object.on_failure if pb2_object.on_failure else WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
+            on_failure=pb2_object.on_failure
+            if pb2_object.on_failure
+            else WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
         )
 
 
 class WorkflowMetadataDefaults(_common.FlyteIdlEntity):
-
     def __init__(self, interruptible=None):
         """
         Metadata Defaults for the workflow.
@@ -527,8 +581,16 @@ class WorkflowMetadataDefaults(_common.FlyteIdlEntity):
 
 
 class WorkflowTemplate(_common.FlyteIdlEntity):
-
-    def __init__(self, id, metadata, metadata_defaults, interface, nodes, outputs, failure_node=None):
+    def __init__(
+        self,
+        id,
+        metadata,
+        metadata_defaults,
+        interface,
+        nodes,
+        outputs,
+        failure_node=None,
+    ):
         """
         A workflow template encapsulates all the task, branch, and subworkflow nodes to run a statically analyzable,
         directed acyclic graph. It contains also metadata that tells the system how to execute the workflow (i.e.
@@ -633,7 +695,9 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
             interface=self.interface.to_flyte_idl(),
             nodes=[n.to_flyte_idl() for n in self.nodes],
             outputs=[o.to_flyte_idl() for o in self.outputs],
-            failure_node=self.failure_node.to_flyte_idl() if self.failure_node is not None else None
+            failure_node=self.failure_node.to_flyte_idl()
+            if self.failure_node is not None
+            else None,
         )
 
     @classmethod
@@ -645,16 +709,19 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
         return cls(
             id=_identifier.Identifier.from_flyte_idl(pb2_object.id),
             metadata=WorkflowMetadata.from_flyte_idl(pb2_object.metadata),
-            metadata_defaults=WorkflowMetadataDefaults.from_flyte_idl(pb2_object.metadata_defaults),
+            metadata_defaults=WorkflowMetadataDefaults.from_flyte_idl(
+                pb2_object.metadata_defaults
+            ),
             interface=_interface.TypedInterface.from_flyte_idl(pb2_object.interface),
             nodes=[Node.from_flyte_idl(n) for n in pb2_object.nodes],
             outputs=[_Binding.from_flyte_idl(b) for b in pb2_object.outputs],
-            failure_node=Node.from_flyte_idl(pb2_object.failure_node) if pb2_object.HasField('failure_node') else None
+            failure_node=Node.from_flyte_idl(pb2_object.failure_node)
+            if pb2_object.HasField("failure_node")
+            else None,
         )
 
 
 class Alias(_common.FlyteIdlEntity):
-
     def __init__(self, var, alias):
         """
         Links a variable to an alias.
