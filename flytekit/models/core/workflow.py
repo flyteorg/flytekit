@@ -40,7 +40,7 @@ class IfBlock(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.IfBlock
         """
-        return _core_workflow.IfBlock(condition=self.condition.to_flyte_idl(), then_node=self.then_node.to_flyte_idl(),)
+        return _core_workflow.IfBlock(condition=self.condition.to_flyte_idl(), then_node=self.then_node.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -470,7 +470,7 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
                                                     clean up resources before finally marking the workflow executions as failed.
 
             FAIL_AFTER_EXECUTABLE_NODES_COMPLETE    Instructs the system to make as much progress as it can. The system
-                                                    will not alter the dependencies of the execution graph so any node 
+                                                    will not alter the dependencies of the execution graph so any node
                                                     that depend on the failed node will not be run. Other nodes that will
                                                     be executed to completion before cleaning up resources and marking
                                                     the workflow execution as failed.
@@ -482,7 +482,6 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
     def __init__(self, on_failure=None):
         """
         Metadata for the workflow.
-        
         :param on_failure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
         """
         self._on_failure = on_failure

@@ -124,9 +124,9 @@ def dynamic_wf_task(wf_params, task_input_num, out):
     node1 = sq_sub_task(in1=input_a)
 
     MyUnregisteredWorkflow = workflow(
-        inputs={"a": input_a,},
-        outputs={"ooo": Output(node1.outputs.out1, sdk_type=Types.Integer, help="This is an integer output",)},
-        nodes={"node_one": node1,},
+        inputs={"a": input_a},
+        outputs={"ooo": Output(node1.outputs.out1, sdk_type=Types.Integer, help="This is an integer output")},
+        nodes={"node_one": node1},
     )
 
     setattr(MyUnregisteredWorkflow, "auto_assign_name", manual_assign_name)
@@ -185,9 +185,9 @@ def nested_dynamic_wf_task(wf_params, task_input_num, out):
     node1 = sq_sub_task(in1=input_a)
 
     MyUnregisteredWorkflowInner = workflow(
-        inputs={"a": input_a,},
-        outputs={"ooo": Output(node1.outputs.out1, sdk_type=Types.Integer, help="This is an integer output",)},
-        nodes={"node_one": node1,},
+        inputs={"a": input_a},
+        outputs={"ooo": Output(node1.outputs.out1, sdk_type=Types.Integer, help="This is an integer output")},
+        nodes={"node_one": node1},
     )
 
     setattr(MyUnregisteredWorkflowInner, "auto_assign_name", manual_assign_name)
@@ -198,9 +198,9 @@ def nested_dynamic_wf_task(wf_params, task_input_num, out):
     node1 = MyUnregisteredWorkflowInner(a=task_input_num)
 
     MyUnregisteredWorkflowOuter = workflow(
-        inputs={"a": input_a,},
-        outputs={"ooo": Output(node1.outputs.ooo, sdk_type=Types.Integer, help="This is an integer output",)},
-        nodes={"node_one": node1,},
+        inputs={"a": input_a},
+        outputs={"ooo": Output(node1.outputs.ooo, sdk_type=Types.Integer, help="This is an integer output")},
+        nodes={"node_one": node1},
     )
 
     setattr(MyUnregisteredWorkflowOuter, "auto_assign_name", manual_assign_name)
@@ -226,7 +226,7 @@ def dynamic_wf_no_outputs_task(wf_params, task_input_num):
     input_a = Input(Types.Integer, help="Tell me something")
     node1 = sq_sub_task(in1=input_a)
 
-    MyUnregisteredWorkflow = workflow(inputs={"a": input_a,}, outputs={}, nodes={"node_one": node1,})
+    MyUnregisteredWorkflow = workflow(inputs={"a": input_a}, outputs={}, nodes={"node_one": node1})
 
     setattr(MyUnregisteredWorkflow, "auto_assign_name", manual_assign_name)
     MyUnregisteredWorkflow._platform_valid_name = "unregistered"

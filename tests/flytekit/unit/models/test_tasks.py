@@ -46,17 +46,17 @@ def test_task_metadata_interruptible_from_flyte_idl():
     # Interruptible not set
     idl = TaskMetadata()
     obj = task.TaskMetadata.from_flyte_idl(idl)
-    assert obj.interruptible == None
+    assert obj.interruptible is None
 
     idl = TaskMetadata()
     idl.interruptible = True
     obj = task.TaskMetadata.from_flyte_idl(idl)
-    assert obj.interruptible == True
+    assert obj.interruptible is True
 
     idl = TaskMetadata()
     idl.interruptible = False
     obj = task.TaskMetadata.from_flyte_idl(idl)
-    assert obj.interruptible == False
+    assert obj.interruptible is False
 
 
 def test_task_metadata():

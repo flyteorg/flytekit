@@ -302,7 +302,7 @@ def test_serialize():
 
     with _configuration.TemporaryConfiguration(
         _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../common/configs/local.config",),
-        internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development",},
+        internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
     ):
         s = lp.serialize()
 
