@@ -20,11 +20,3 @@ ch.setFormatter(formatter)
 
 # add ch to logger
 logger.addHandler(ch)
-
-
-class FlyteWorkflowMeta(type):
-    """
-    This class should be used as the metaclass for all Flyte workflow classes. It is here currently as a placeholder,
-    to future-proof design changes, in case we need to better __prepare__ classes in the future or otherwise change
-    how workflow classes are constructed.
-    """
