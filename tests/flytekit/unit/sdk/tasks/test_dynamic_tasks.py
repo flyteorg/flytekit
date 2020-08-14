@@ -140,7 +140,7 @@ def test_batch_task():
     assert isinstance(sample_batch_task, _sdk_runnable.SdkRunnableTask)
     assert isinstance(sample_batch_task, _sdk_dynamic.SdkDynamicTask)
     assert isinstance(sample_batch_task, _sdk_dynamic.SdkDynamicTaskMixin)
-    
+
     expected = {
         "out_str": [
             "I'm the first result",
