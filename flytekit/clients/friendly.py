@@ -5,7 +5,8 @@ import six as _six
 from flyteidl.admin import task_pb2 as _task_pb2, common_pb2 as _common_pb2, workflow_pb2 as _workflow_pb2, \
     launch_plan_pb2 as _launch_plan_pb2, execution_pb2 as _execution_pb2, node_execution_pb2 as _node_execution_pb2, \
     task_execution_pb2 as _task_execution_pb2, project_pb2 as _project_pb2, project_domain_attributes_pb2 as \
-    _project_domain_attributes_pb2, workflow_attributes_pb2 as _workflow_attributes_pb2
+    _project_domain_attributes_pb2, workflow_attributes_pb2 as _workflow_attributes_pb2, matchable_resource_pb2 as \
+    _matchable_resource_pb2
 from flyteidl.core import identifier_pb2 as _identifier_pb2
 
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
@@ -928,5 +929,51 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                     workflow=workflow,
                     matching_attributes=matching_attributes.to_flyte_idl(),
                 )
+            )
+        )
+
+    def get_project_domain_attributes(self, project, domain, resource_type):
+        """
+        Fetches the custom attributes set for a project and domain combination.
+        :param Text project:
+        :param Text domain:
+        :param flytekit.models.MatchableResource resource_type:
+        :return:
+        """
+        return super(SynchronousFlyteClient, self).get_project_domain_attributes(
+            _project_domain_attributes_pb2.ProjectDomainAttributesGetRequest(
+                project=project,
+                domain=domain,
+                resource_type=resource_type,
+            )
+        )
+
+    def get_workflow_attributes(self, project, domain, workflow, resource_type):
+        """
+        Fetches the custom attributes set for a project, domain, and workflow combination.
+        :param Text project:
+        :param Text domain:
+        :param Text workflow:
+        :param flytekit.models.MatchableResource resource_type:
+        :return:
+        """
+        return super(SynchronousFlyteClient, self).get_workflow_attributes(
+            _workflow_attributes_pb2.WorkflowAttributesGetRequest(
+                project=project,
+                domain=domain,
+                workflow=workflow,
+                resource_type=resource_type,
+            )
+        )
+
+    def list_matchable_attributes(self, resource_type):
+        """
+        Fetches all custom attributes for a resource type.
+        :param flytekit.models.MatchableResource resource_type:
+        :return:
+        """
+        return super(SynchronousFlyteClient, self).list_matchable_attributes(
+            _matchable_resource_pb2.ListMatchableAttributesRequest(
+                resource_type=resource_type,
             )
         )

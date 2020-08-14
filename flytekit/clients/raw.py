@@ -604,8 +604,8 @@ class RawSynchronousFlyteClient(object):
     def update_project_domain_attributes(self, project_domain_attributes_update_request):
         """
         This updates the attributes for a project and domain registered with the Flyte Admin Service
-        :param flyteidl.admin..ProjectDomainAttributesUpdateRequest project_domain_attributes_update_request:
-        :rtype: flyteidl.admin..ProjectDomainAttributesUpdateResponse
+        :param flyteidl.admin.ProjectDomainAttributesUpdateRequest project_domain_attributes_update_request:
+        :rtype: flyteidl.admin.ProjectDomainAttributesUpdateResponse
         """
         return self._stub.UpdateProjectDomainAttributes(project_domain_attributes_update_request,
                                                         metadata=self._metadata)
@@ -614,10 +614,37 @@ class RawSynchronousFlyteClient(object):
     def update_workflow_attributes(self, workflow_attributes_update_request):
         """
         This updates the attributes for a project, domain, and workflow registered with the Flyte Admin Service
-        :param flyteidl.admin..UpdateWorkflowAttributes workflow_attributes_update_request:
-        :rtype: flyteidl.admin..workflow_attributes_update_requestResponse
+        :param flyteidl.admin.UpdateWorkflowAttributesRequest workflow_attributes_update_request:
+        :rtype: flyteidl.admin.WorkflowAttributesUpdateResponse
         """
         return self._stub.UpdateWorkflowAttributes(workflow_attributes_update_request, metadata=self._metadata)
+
+    @_handle_rpc_error
+    def get_project_domain_attributes(self, project_domain_attributes_get_request):
+        """
+        This fetches the attributes for a project and domain registered with the Flyte Admin Service
+        :param flyteidl.admin.ProjectDomainAttributesGetRequest project_domain_attributes_get_request:
+        :rtype: flyteidl.admin.ProjectDomainAttributesGetResponse
+        """
+        return self._stub.GetProjectDomainAttributes(project_domain_attributes_get_request, metadata=self._metadata)
+
+    @_handle_rpc_error
+    def get_workflow_attributes(self, workflow_attributes_get_request):
+        """
+        This fetches the attributes for a project, domain, and workflow registered with the Flyte Admin Service
+        :param flyteidl.admin.GetWorkflowAttributesAttributesRequest workflow_attributes_get_request:
+        :rtype: flyteidl.admin.WorkflowAttributesGetResponse
+        """
+        return self._stub.GetWorkflowAttributes(workflow_attributes_get_request, metadata=self._metadata)
+
+    @_handle_rpc_error
+    def list_matchable_attributes(self, matchable_attributes_list_request):
+        """
+        This fetches the attributes for a specific resource type registered with the Flyte Admin Service
+        :param flyteidl.admin.ListMatchableAttributesRequest matchable_attributes_list_request:
+        :rtype: flyteidl.admin.ListMatchableAttributesResponse
+        """
+        return self._stub.ListMatchableAttributes(matchable_attributes_list_request, metadata=self._metadata)
 
     ####################################################################################################################
     #
