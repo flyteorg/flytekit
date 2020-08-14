@@ -334,3 +334,20 @@ def test_promote_from_model():
     assert not isinstance(lp_from_spec, _launch_plan.SdkRunnableLaunchPlan)
     assert isinstance(lp_from_spec, _launch_plan.SdkLaunchPlan)
     assert lp_from_spec == lp
+
+
+def test_raw_data_output_prefix():
+    workflow_to_test = _workflow.workflow(
+        {},
+        inputs={
+            "required_input": _workflow.Input(_types.Types.Integer),
+            "default_input": _workflow.Input(_types.Types.Integer, default=5),
+        },
+    )
+    lp = workflow_to_test.create_launch_plan(
+        fixed_inputs={"required_input": 5}, raw_output_data_prefix="s3://bucket-name",
+    )
+    assert lp.raw_output_data_config.output_location_prefix == "s3://bucket-name"
+
+    lp2 = workflow_to_test.create_launch_plan(fixed_inputs={"required_input": 5},)
+    assert lp2.raw_output_data_config.output_location_prefix == ""

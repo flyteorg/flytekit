@@ -340,6 +340,7 @@ class SdkWorkflow(
         labels=None,
         annotations=None,
         auth_role: _common_models.AuthRole = None,
+        raw_output_data_prefix=None,
     ):
         """
         This method will create a launch plan object that can execute this workflow.
@@ -353,6 +354,7 @@ class SdkWorkflow(
         :param cls: This parameter can be used by users to define an extension of a launch plan to instantiate.  The
         class provided should be a subclass of flytekit.common.launch_plan.SdkLaunchPlan.
         :param auth_role: Auth object
+        :param Text raw_output_data_prefix: Bucket for offloaded data
         :rtype: flytekit.common.launch_plan.SdkRunnableLaunchPlan
         """
         # TODO: Actually ensure the parameters conform.
@@ -367,6 +369,8 @@ class SdkWorkflow(
             },
         )
 
+        raw_output_config = _common_models.RawOutputDataConfig(raw_output_data_prefix or "")
+
         return _launch_plan.SdkLaunchPlan(
             workflow_id=None,  # One could be calling this anywhere, can't assume an ID.
             entity_metadata=_launch_plan_models.LaunchPlanMetadata(
@@ -377,6 +381,7 @@ class SdkWorkflow(
             labels=labels or _common_models.Labels({}),
             annotations=annotations or _common_models.Annotations({}),
             auth_role=auth_role,
+            raw_output_data_config=raw_output_config,
         )
 
     @_exception_scopes.system_entry_point
@@ -532,6 +537,7 @@ class PythonWorkflow(
         annotations=None,
         assumable_iam_role=None,
         kubernetes_service_account=None,
+        raw_output_data_prefix=None,
     ):
         """
         This method will create a launch plan object that can execute this workflow.
@@ -547,6 +553,7 @@ class PythonWorkflow(
         class provided should be a subclass of flytekit.common.launch_plan.SdkLaunchPlan.
         :param Text assumable_iam_role: The IAM role to execute the workflow with.
         :param Text kubernetes_service_account: The kubernetes service account to execute the workflow with.
+        :param Text raw_output_data_prefix: Bucket for offloaded data
         :rtype: flytekit.common.launch_plan.SdkRunnableLaunchPlan
         """
         # TODO: Actually ensure the parameters conform.
@@ -562,6 +569,8 @@ class PythonWorkflow(
             assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
         )
 
+        raw_output_config = _common_models.RawOutputDataConfig(raw_output_data_prefix or "")
+
         return _launch_plan.SdkRunnableLaunchPlan(
             sdk_workflow=self,
             default_inputs={
@@ -573,6 +582,7 @@ class PythonWorkflow(
             labels=labels,
             annotations=annotations,
             auth_role=auth_role,
+            raw_output_data_config=raw_output_config,
         )
 
     def to_flyte_idl(self) -> _core_workflow_pb2.WorkflowTemplate:
