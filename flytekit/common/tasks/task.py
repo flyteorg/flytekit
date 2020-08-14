@@ -1,10 +1,6 @@
 import hashlib as _hashlib
 import json as _json
 import logging as _logging
-from __future__ import absolute_import
-
-import hashlib as _hashlib
-import json as _json
 import uuid as _uuid
 
 import six as _six
@@ -17,7 +13,6 @@ from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import workflow_execution as _workflow_execution
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.mixins import launchable as _launchable_mixin
@@ -32,10 +27,6 @@ from flytekit.models import common as _common_model
 from flytekit.models import execution as _admin_execution_models
 from flytekit.models import task as _task_model
 from flytekit.models.admin import common as _admin_common
-from flytekit.configuration import internal as _internal_config
-from flytekit.engines import loader as _engine_loader
-from flytekit.models import common as _common_model
-from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
 
@@ -373,14 +364,14 @@ class SdkTask(
 
     @_exception_scopes.system_entry_point
     def launch_with_literals(
-        self,
-        project,
-        domain,
-        literal_inputs,
-        name=None,
-        notification_overrides=None,
-        label_overrides=None,
-        annotation_overrides=None,
+            self,
+            project,
+            domain,
+            literal_inputs,
+            name=None,
+            notification_overrides=None,
+            label_overrides=None,
+            annotation_overrides=None,
     ):
         """
         Launches a single task execution and returns the execution identifier.
