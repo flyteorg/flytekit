@@ -50,7 +50,7 @@ class FlyteConfigurationFile(object):
         if self._config is not None:
             try:
                 return self._config.get(section, key, fallback=default)
-            except:
+            except Exception:
                 pass
         return default
 
@@ -65,7 +65,7 @@ class FlyteConfigurationFile(object):
         if self._config is not None:
             try:
                 return self._config.getint(section, key, fallback=default)
-            except:
+            except Exception:
                 pass
         return default
 
@@ -80,7 +80,7 @@ class FlyteConfigurationFile(object):
         if self._config is not None:
             try:
                 return self._config.getboolean(section, key, fallback=default)
-            except:
+            except Exception:
                 pass
         return default
 
@@ -88,9 +88,7 @@ class FlyteConfigurationFile(object):
         """
         :param Text location:
         """
-        self._location = location or _os.environ.get(
-            "FLYTE_INTERNAL_CONFIGURATION_PATH"
-        )
+        self._location = location or _os.environ.get("FLYTE_INTERNAL_CONFIGURATION_PATH")
         self._config = None
 
 
@@ -204,17 +202,13 @@ class _FlyteConfigurationEntry(_six.with_metaclass(_abc.ABCMeta, object)):
 
 class _FlyteRequiredConfigurationEntry(_FlyteConfigurationEntry):
     def __init__(self, section, key, validator=None):
-        super(_FlyteRequiredConfigurationEntry, self).__init__(
-            section, key, validator=self._validate_not_null
-        )
+        super(_FlyteRequiredConfigurationEntry, self).__init__(section, key, validator=self._validate_not_null)
         self._extra_validator = validator
 
     def _validate_not_null(self, val):
         if val is None:
             raise _user_exceptions.FlyteAssertion(
-                "No configuration set for [{}] {}.  This is a required configuration.".format(
-                    self._section, self._key
-                )
+                "No configuration set for [{}] {}.  This is a required configuration.".format(self._section, self._key)
             )
         if self._extra_validator:
             self._extra_validator(val)

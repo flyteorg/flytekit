@@ -14,8 +14,7 @@ from flytekit.common import utils as _common_utils
 from flytekit.common.exceptions import system as _system_exception
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import \
-    TemporaryConfiguration as _TemporaryConfiguration
+from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.engines import common as _common_engine
 from flytekit.engines.unit.mock_stats import MockStats
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -47,58 +46,38 @@ class UnitTestEngineFactory(_common_engine.BaseExecutionEngineFactory):
             return HiveTask(sdk_task)
         else:
             raise _user_exceptions.FlyteAssertion(
-                "Unit tests are not currently supported for tasks of type: {}".format(
-                    sdk_task.type
-                )
+                "Unit tests are not currently supported for tasks of type: {}".format(sdk_task.type)
             )
 
     def get_workflow(self, _):
-        raise _user_exceptions.FlyteAssertion(
-            "Unit testing of workflows is not currently supported"
-        )
+        raise _user_exceptions.FlyteAssertion("Unit testing of workflows is not currently supported")
 
     def get_launch_plan(self, _):
-        raise _user_exceptions.FlyteAssertion(
-            "Unit testing of launch plans is not currently supported"
-        )
+        raise _user_exceptions.FlyteAssertion("Unit testing of launch plans is not currently supported")
 
     def get_task_execution(self, _):
-        raise _user_exceptions.FlyteAssertion(
-            "Unit testing does not return execution handles."
-        )
+        raise _user_exceptions.FlyteAssertion("Unit testing does not return execution handles.")
 
     def get_node_execution(self, _):
-        raise _user_exceptions.FlyteAssertion(
-            "Unit testing does not return execution handles."
-        )
+        raise _user_exceptions.FlyteAssertion("Unit testing does not return execution handles.")
 
     def get_workflow_execution(self, _):
-        raise _user_exceptions.FlyteAssertion(
-            "Unit testing does not return execution handles."
-        )
+        raise _user_exceptions.FlyteAssertion("Unit testing does not return execution handles.")
 
     def fetch_workflow_execution(self, _):
-        raise _user_exceptions.FlyteAssertion(
-            "Unit testing does not fetch execution handles."
-        )
+        raise _user_exceptions.FlyteAssertion("Unit testing does not fetch execution handles.")
 
     def fetch_task(self, _):
         raise _user_exceptions.FlyteAssertion("Unit testing does not fetch real tasks.")
 
     def fetch_latest_task(self, named_task):
-        raise _user_exceptions.FlyteAssertion(
-            "Unit testing does not fetch the real latest task."
-        )
+        raise _user_exceptions.FlyteAssertion("Unit testing does not fetch the real latest task.")
 
     def fetch_launch_plan(self, _):
-        raise _user_exceptions.FlyteAssertion(
-            "Unit testing does not fetch real launch plans."
-        )
+        raise _user_exceptions.FlyteAssertion("Unit testing does not fetch real launch plans.")
 
     def fetch_workflow(self, _):
-        raise _user_exceptions.FlyteAssertion(
-            "Unit testing does not fetch real workflows."
-        )
+        raise _user_exceptions.FlyteAssertion("Unit testing does not fetch real workflows.")
 
 
 class UnitTestEngineTask(_common_engine.BaseTaskExecutor):
@@ -110,16 +89,11 @@ class UnitTestEngineTask(_common_engine.BaseTaskExecutor):
         :rtype: dict[Text,flytekit.models.common.FlyteIdlEntity]
         """
         with _TemporaryConfiguration(
-            _os.path.join(_os.path.dirname(__file__), "unit.config"),
-            internal_overrides={"image": "unit_image"},
+            _os.path.join(_os.path.dirname(__file__), "unit.config"), internal_overrides={"image": "unit_image"},
         ):
-            with _common_utils.AutoDeletingTempDir(
-                "unit_test_dir"
-            ) as working_directory:
+            with _common_utils.AutoDeletingTempDir("unit_test_dir") as working_directory:
                 with _data_proxy.LocalWorkingDirectoryContext(working_directory):
-                    return self._transform_for_user_output(
-                        self._execute_user_code(inputs)
-                    )
+                    return self._transform_for_user_output(self._execute_user_code(inputs))
 
     def _execute_user_code(self, inputs):
         """
@@ -129,9 +103,7 @@ class UnitTestEngineTask(_common_engine.BaseTaskExecutor):
         with _common_utils.AutoDeletingTempDir("user_dir") as user_working_directory:
             return self.sdk_task.execute(
                 _common_engine.EngineContext(
-                    execution_id=WorkflowExecutionIdentifier(
-                        project="unit_test", domain="unit_test", name="unit_test"
-                    ),
+                    execution_id=WorkflowExecutionIdentifier(project="unit_test", domain="unit_test", name="unit_test"),
                     execution_date=_datetime.utcnow(),
                     stats=MockStats(),
                     logging=_logging,  # TODO: A mock logging object that we can read later.
@@ -176,8 +148,7 @@ class ReturnOutputsTask(UnitTestEngineTask):
         literal_map = outputs[_sdk_constants.OUTPUT_FILE_NAME]
         return {
             name: _type_helpers.get_sdk_value_from_literal(
-                literal_map.literals[name],
-                sdk_type=_type_helpers.get_sdk_type_from_literal_type(variable.type),
+                literal_map.literals[name], sdk_type=_type_helpers.get_sdk_type_from_literal_type(variable.type),
             ).to_python_std()
             for name, variable in _six.iteritems(self.sdk_task.interface.outputs)
         }
@@ -222,9 +193,7 @@ class DynamicTask(ReturnOutputsTask):
                     return results
                 task = tasks_map[future_node.task_node.reference_id]
                 if task.type == _sdk_constants.SdkTaskType.CONTAINER_ARRAY_TASK:
-                    sub_task_output = DynamicTask.execute_array_task(
-                        future_node.id, task, results
-                    )
+                    sub_task_output = DynamicTask.execute_array_task(future_node.id, task, results)
                 elif task.type == _sdk_constants.SdkTaskType.HIVE_JOB:
                     # TODO: futures.outputs should have the Schema instances.
                     # After schema is implemented, fill out random data into the random locations
@@ -234,27 +203,19 @@ class DynamicTask(ReturnOutputsTask):
                     # way for unit test authors to provide fake data regardless
                     sub_task_output = None
                 else:
-                    inputs_path = _os.path.join(
-                        future_node.id, _sdk_constants.INPUT_FILE_NAME
-                    )
+                    inputs_path = _os.path.join(future_node.id, _sdk_constants.INPUT_FILE_NAME)
                     if inputs_path not in results:
                         raise _system_exception.FlyteSystemAssertion(
                             "dynamic task hasn't generated expected inputs document [{}] found {}".format(
                                 future_node.id, list(results.keys())
                             )
                         )
-                    sub_task_output = (
-                        UnitTestEngineFactory()
-                        .get_task(task)
-                        .execute(results[inputs_path])
-                    )
+                    sub_task_output = UnitTestEngineFactory().get_task(task).execute(results[inputs_path])
                 sub_task_outputs[future_node.id] = sub_task_output
 
             results[_sdk_constants.OUTPUT_FILE_NAME] = _literals.LiteralMap(
                 literals={
-                    binding.var: DynamicTask.fulfil_bindings(
-                        binding.binding, sub_task_outputs
-                    )
+                    binding.var: DynamicTask.fulfil_bindings(binding.binding, sub_task_outputs)
                     for binding in futures.outputs
                 }
             )
@@ -272,16 +233,10 @@ class DynamicTask(ReturnOutputsTask):
         array_job = _array_job.ArrayJob.from_dict(task.custom)
         outputs = {}
         for job_index in _six_moves.range(0, array_job.size):
-            inputs_path = _os.path.join(
-                root_input_path,
-                _six.text_type(job_index),
-                _sdk_constants.INPUT_FILE_NAME,
-            )
+            inputs_path = _os.path.join(root_input_path, _six.text_type(job_index), _sdk_constants.INPUT_FILE_NAME,)
             if inputs_path not in array_inputs:
                 raise _system_exception.FlyteSystemAssertion(
-                    "dynamic task hasn't generated expected inputs document [{}].".format(
-                        inputs_path
-                    )
+                    "dynamic task hasn't generated expected inputs document [{}].".format(inputs_path)
                 )
 
             input_proto = array_inputs[inputs_path]
@@ -290,9 +245,7 @@ class DynamicTask(ReturnOutputsTask):
             # e.g. [1].out1
             for key, val in _six.iteritems(
                 ReturnOutputsTask(
-                    task.assign_type_and_return(
-                        _sdk_constants.SdkTaskType.PYTHON_TASK
-                    )  # TODO: This is weird
+                    task.assign_type_and_return(_sdk_constants.SdkTaskType.PYTHON_TASK)  # TODO: This is weird
                 ).execute(input_proto)
             ):
                 outputs["[{}].{}".format(job_index, key)] = val
@@ -314,9 +267,7 @@ class DynamicTask(ReturnOutputsTask):
             return _literals.Literal(
                 collection=_literals.LiteralCollection(
                     [
-                        DynamicTask.fulfil_bindings(
-                            sub_binding_data, fulfilled_promises
-                        )
+                        DynamicTask.fulfil_bindings(sub_binding_data, fulfilled_promises)
                         for sub_binding_data in binding_data.collection.bindings
                     ]
                 )
@@ -324,9 +275,7 @@ class DynamicTask(ReturnOutputsTask):
         elif binding_data.promise:
             if binding_data.promise.node_id not in fulfilled_promises:
                 raise _system_exception.FlyteSystemAssertion(
-                    "Expecting output of node [{}] but that hasn't been produced.".format(
-                        binding_data.promise.node_id
-                    )
+                    "Expecting output of node [{}] but that hasn't been produced.".format(binding_data.promise.node_id)
                 )
             node_output = fulfilled_promises[binding_data.promise.node_id]
             if binding_data.promise.var not in node_output:
@@ -336,19 +285,13 @@ class DynamicTask(ReturnOutputsTask):
                     )
                 )
 
-            return binding_data.promise.sdk_type.from_python_std(
-                node_output[binding_data.promise.var]
-            )
+            return binding_data.promise.sdk_type.from_python_std(node_output[binding_data.promise.var])
         elif binding_data.map:
             return _literals.Literal(
                 map=_literals.LiteralMap(
                     {
-                        k: DynamicTask.fulfil_bindings(
-                            sub_binding_data, fulfilled_promises
-                        )
-                        for k, sub_binding_data in _six.iteritems(
-                            binding_data.map.bindings
-                        )
+                        k: DynamicTask.fulfil_bindings(sub_binding_data, fulfilled_promises)
+                        for k, sub_binding_data in _six.iteritems(binding_data.map.bindings)
                     }
                 )
             )
@@ -371,9 +314,7 @@ class HiveTask(DynamicTask):
                 for t in futures.tasks
             }
             for node in futures.nodes:
-                queries.append(
-                    task_ids_to_defs[node.task_node.reference_id.name].query.query
-                )
+                queries.append(task_ids_to_defs[node.task_node.reference_id.name].query.query)
             return queries
         else:
             return []

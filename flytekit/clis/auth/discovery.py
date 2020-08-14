@@ -2,14 +2,6 @@ import logging
 
 import requests as _requests
 
-try:  # Python 3.5+
-    from http import HTTPStatus as _StatusCodes
-except ImportError:
-    try:  # Python 3
-        from http import client as _StatusCodes
-    except ImportError:  # Python 2
-        import httplib as _StatusCodes
-
 # These response keys are defined in https://tools.ietf.org/id/draft-ietf-oauth-discovery-08.html.
 _authorization_endpoint_key = "authorization_endpoint"
 _token_endpoint_key = "token_endpoint"
@@ -68,14 +60,10 @@ class DiscoveryClient(object):
             raise ValueError("Unable to discover token endpoint")
 
         if authorization_endpoint.startswith("/"):
-            authorization_endpoint = _requests.compat.urljoin(
-                self._discovery_url, authorization_endpoint
-            )
+            authorization_endpoint = _requests.compat.urljoin(self._discovery_url, authorization_endpoint)
 
         if token_endpoint.startswith("/"):
-            token_endpoint = _requests.compat.urljoin(
-                self._discovery_url, token_endpoint
-            )
+            token_endpoint = _requests.compat.urljoin(self._discovery_url, token_endpoint)
 
         self._authorization_endpoints = AuthorizationEndpoints(
             auth_endpoint=authorization_endpoint, token_endpoint=token_endpoint

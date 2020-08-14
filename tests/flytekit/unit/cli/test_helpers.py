@@ -23,37 +23,27 @@ def test_parse_args_into_dict():
 
 
 def test_construct_literal_map_from_variable_map():
-    v = Variable(
-        type=types.LiteralType(simple=types.SimpleType.INTEGER),
-        description="some description",
-    )
+    v = Variable(type=types.LiteralType(simple=types.SimpleType.INTEGER), description="some description")
     variable_map = {
         "inputa": v,
     }
 
     input_txt_dictionary = {"inputa": "15"}
 
-    literal_map = helpers.construct_literal_map_from_variable_map(
-        variable_map, input_txt_dictionary
-    )
+    literal_map = helpers.construct_literal_map_from_variable_map(variable_map, input_txt_dictionary)
     parsed_literal = literal_map.literals["inputa"].value
     ll = literals.Scalar(primitive=literals.Primitive(integer=15))
     assert parsed_literal == ll
 
 
 def test_construct_literal_map_from_parameter_map():
-    v = Variable(
-        type=types.LiteralType(simple=types.SimpleType.INTEGER),
-        description="some description",
-    )
+    v = Variable(type=types.LiteralType(simple=types.SimpleType.INTEGER), description="some description")
     p = Parameter(var=v, required=True)
-    pm = ParameterMap(parameters={"inputa": p,})
+    pm = ParameterMap(parameters={"inputa": p})
 
     input_txt_dictionary = {"inputa": "15"}
 
-    literal_map = helpers.construct_literal_map_from_parameter_map(
-        pm, input_txt_dictionary
-    )
+    literal_map = helpers.construct_literal_map_from_parameter_map(pm, input_txt_dictionary)
     parsed_literal = literal_map.literals["inputa"].value
     ll = literals.Scalar(primitive=literals.Primitive(integer=15))
     assert parsed_literal == ll

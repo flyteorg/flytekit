@@ -24,17 +24,13 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
         :param Text format: Format
         """
         if "+" in mode or "a" in mode or ("w" in mode and "r" in mode):
-            raise _user_exceptions.FlyteAssertion(
-                "A blob cannot be read and written at the same time"
-            )
+            raise _user_exceptions.FlyteAssertion("A blob cannot be read and written at the same time")
         self._mode = mode
         self._local_path = None
         self._file = None
         super(Blob, self).__init__(
             _literal_models.BlobMetadata(
-                type=_core_types.BlobType(
-                    format or "", _core_types.BlobType.BlobDimensionality.SINGLE
-                )
+                type=_core_types.BlobType(format or "", _core_types.BlobType.BlobDimensionality.SINGLE)
             ),
             remote_path,
         )
@@ -96,15 +92,11 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
         :param Text format:
         :rtype: Blob
         """
-        return cls.create_at_known_location(
-            _data_proxy.Data.get_remote_path(), mode=mode, format=format
-        )
+        return cls.create_at_known_location(_data_proxy.Data.get_remote_path(), mode=mode, format=format)
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def fetch(
-        cls, remote_path, local_path=None, overwrite=False, mode="rb", format=None
-    ):
+    def fetch(cls, remote_path, local_path=None, overwrite=False, mode="rb", format=None):
         """
         :param Text remote_path: The location from which to fetch the object. Usually an s3 path.
         :param Text local_path: [Optional] A local path to which to download the object. If specified, the object
@@ -158,9 +150,7 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
         :rtype: typing.BinaryIO
         """
         if self._file is not None:
-            raise _user_exceptions.FlyteAssertion(
-                "Only one reference can be open to a blob at a time."
-            )
+            raise _user_exceptions.FlyteAssertion("Only one reference can be open to a blob at a time.")
 
         if self.local_path is None:
             if "r" in self.mode:
@@ -188,9 +178,7 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
                 "specify a path when calling this function.  Note: Cleanup is not automatic when a "
                 "path is specified."
             )
-        self._local_path = _data_proxy.LocalWorkingDirectoryContext.get().get_named_tempfile(
-            _uuid.uuid4().hex
-        )
+        self._local_path = _data_proxy.LocalWorkingDirectoryContext.get().get_named_tempfile(_uuid.uuid4().hex)
 
     @_exception_scopes.system_entry_point
     def download(self, local_path=None, overwrite=False):
@@ -213,15 +201,11 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
         if overwrite or not _os.path.exists(self.local_path):
             # TODO: Introduce system logging
             # logging.info("Getting {} -> {}".format(self.remote_location, self.local_path))
-            _data_proxy.Data.get_data(
-                self.remote_location, self.local_path, is_multipart=False
-            )
+            _data_proxy.Data.get_data(self.remote_location, self.local_path, is_multipart=False)
         else:
             raise _user_exceptions.FlyteAssertion(
                 "Cannot download blob to a location that already exists when overwrite is not set to True.  "
-                "Attempted download from {} -> {}".format(
-                    self.remote_location, self.local_path
-                )
+                "Attempted download from {} -> {}".format(self.remote_location, self.local_path)
             )
 
     @_exception_scopes.system_entry_point
@@ -241,14 +225,10 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
         else:
             # TODO: Introduce system logging
             # logging.info("Putting {} -> {}".format(self.local_path, self.remote_location))
-            _data_proxy.Data.put_data(
-                self.local_path, self.remote_location, is_multipart=False
-            )
+            _data_proxy.Data.put_data(self.local_path, self.remote_location, is_multipart=False)
 
 
-class MultiPartBlob(
-    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
-):
+class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)):
     def __init__(self, remote_path, mode="rb", format=None):
         """
         :param Text remote_path: Path to location where the Blob should be synced to.
@@ -258,9 +238,7 @@ class MultiPartBlob(
         remote_path = remote_path.strip().rstrip("/") + "/"
         super(MultiPartBlob, self).__init__(
             _literal_models.BlobMetadata(
-                type=_core_types.BlobType(
-                    format or "", _core_types.BlobType.BlobDimensionality.MULTIPART
-                )
+                type=_core_types.BlobType(format or "", _core_types.BlobType.BlobDimensionality.MULTIPART)
             ),
             remote_path,
         )
@@ -297,15 +275,11 @@ class MultiPartBlob(
         :param Text format:
         :rtype: MultiPartBlob
         """
-        return cls.create_at_known_location(
-            _data_proxy.Data.get_remote_path(), mode=mode, format=format
-        )
+        return cls.create_at_known_location(_data_proxy.Data.get_remote_path(), mode=mode, format=format)
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def fetch(
-        cls, remote_path, local_path=None, overwrite=False, mode="rb", format=None
-    ):
+    def fetch(cls, remote_path, local_path=None, overwrite=False, mode="rb", format=None):
         """
         :param Text remote_path: The location from which to fetch the object. Usually an s3 path.
         :param Text local_path: [Optional] A local path to which to download the object. If specified, the object
@@ -365,9 +339,7 @@ class MultiPartBlob(
         :rtype: list[typing.BinaryIO]
         """
         if "r" not in self.mode:
-            raise _user_exceptions.FlyteAssertion(
-                "Do not enter context to write to directory. Call create_piece"
-            )
+            raise _user_exceptions.FlyteAssertion("Do not enter context to write to directory. Call create_piece")
 
         try:
             if not self._directory:
@@ -379,33 +351,25 @@ class MultiPartBlob(
                         "path is specified."
                     )
                 self._directory = _utils.AutoDeletingTempDir(
-                    _uuid.uuid4().hex,
-                    tmp_dir=_data_proxy.LocalWorkingDirectoryContext.get().name,
+                    _uuid.uuid4().hex, tmp_dir=_data_proxy.LocalWorkingDirectoryContext.get().name,
                 )
                 self._is_managed = True
                 self._directory.__enter__()
                 # TODO: Introduce system logging
                 # logging.info("Copying recursively {} -> {}".format(self.remote_location, self.local_path))
-                _data_proxy.Data.get_data(
-                    self.remote_location, self.local_path, is_multipart=True
-                )
+                _data_proxy.Data.get_data(self.remote_location, self.local_path, is_multipart=True)
 
             # Read the files into blobs in case-insensitive lexicographically ascending orders
             self._blobs = []
             file_handles = []
-            for local_path in sorted(
-                self._directory.list_dir(), key=lambda x: x.lower()
-            ):
-                b = Blob(
-                    _os.path.join(self.remote_location, _os.path.basename(local_path)),
-                    mode=self.mode,
-                )
+            for local_path in sorted(self._directory.list_dir(), key=lambda x: x.lower()):
+                b = Blob(_os.path.join(self.remote_location, _os.path.basename(local_path)), mode=self.mode,)
                 b._local_path = local_path
                 file_handles.append(b.__enter__())
                 self._blobs.append(b)
 
             return file_handles
-        except:
+        except Exception:
             # Exit is idempotent so close partially opened context that way
             exc_type, exc_obj, exc_tb = _sys.exc_info()
             self.__exit__(exc_type, exc_obj, exc_tb)
@@ -459,20 +423,15 @@ class MultiPartBlob(
         :rtype: Blob
         """
         if "w" not in self.mode:
-            raise _user_exceptions.FlyteAssertion(
-                "Cannot create a blob in a read-only multipart blob"
-            )
+            raise _user_exceptions.FlyteAssertion("Cannot create a blob in a read-only multipart blob")
         if name is None:
             name = _uuid.uuid4().hex
         if ":" in name or "/" in name:
             raise _user_exceptions.FlyteAssertion(
-                name,
-                "Cannot create a part of a multi-part object with ':' or '/' in the name.",
+                name, "Cannot create a part of a multi-part object with ':' or '/' in the name.",
             )
         return Blob.create_at_known_location(
-            _os.path.join(self.remote_location, name),
-            mode=self.mode,
-            format=self.metadata.type.format,
+            _os.path.join(self.remote_location, name), mode=self.mode, format=self.metadata.type.format,
         )
 
     @_exception_scopes.system_entry_point
@@ -486,9 +445,7 @@ class MultiPartBlob(
             overwrite any existing files at that location.  Default is False.
         """
         if "r" not in self.mode:
-            raise _user_exceptions.FlyteAssertion(
-                "Cannot download a write-only object!"
-            )
+            raise _user_exceptions.FlyteAssertion("Cannot download a write-only object!")
 
         if local_path:
             self._is_managed = False
@@ -500,9 +457,7 @@ class MultiPartBlob(
                 "path is specified."
             )
         else:
-            local_path = _data_proxy.LocalWorkingDirectoryContext.get().get_named_tempfile(
-                _uuid.uuid4().hex
-            )
+            local_path = _data_proxy.LocalWorkingDirectoryContext.get().get_named_tempfile(_uuid.uuid4().hex)
 
         path_exists = _os.path.exists(local_path)
         if not path_exists or overwrite:
@@ -510,15 +465,11 @@ class MultiPartBlob(
                 _shutil.rmtree(local_path)
             _os.makedirs(local_path)
             self._directory = _utils.Directory(local_path)
-            _data_proxy.Data.get_data(
-                self.remote_location, self.local_path, is_multipart=True
-            )
+            _data_proxy.Data.get_data(self.remote_location, self.local_path, is_multipart=True)
         else:
             raise _user_exceptions.FlyteAssertion(
                 "Cannot download multi-part blob to a location that already exists when overwrite is not set to True. "
-                "Attempted download from {} -> {}".format(
-                    self.remote_location, self.local_path
-                )
+                "Attempted download from {} -> {}".format(self.remote_location, self.local_path)
             )
 
     @_exception_scopes.system_entry_point
@@ -527,9 +478,7 @@ class MultiPartBlob(
         Upload the multi-part blob to the remote location
         """
         if "w" not in self.mode:
-            raise _user_exceptions.FlyteAssertion(
-                "Cannot upload a read-only multi-part blob!"
-            )
+            raise _user_exceptions.FlyteAssertion("Cannot upload a read-only multi-part blob!")
 
         elif not self.local_path:
             raise _user_exceptions.FlyteAssertion(
@@ -540,6 +489,4 @@ class MultiPartBlob(
         else:
             # TODO: Introduce system logging
             # logging.info("Putting {} -> {}".format(self.local_path, self.remote_location))
-            _data_proxy.Data.put_data(
-                self.local_path, self.remote_location, is_multipart=True
-            )
+            _data_proxy.Data.put_data(self.local_path, self.remote_location, is_multipart=True)

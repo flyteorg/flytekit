@@ -13,9 +13,7 @@ from flytekit.models.core import errors as _error_model
 
 
 class FlyteScopedException(Exception):
-    def __init__(
-        self, context, exc_type, exc_value, exc_tb, top_trim=0, bottom_trim=0, kind=None
-    ):
+    def __init__(self, context, exc_type, exc_value, exc_tb, top_trim=0, bottom_trim=0, kind=None):
         self._exc_type = exc_type
         self._exc_value = exc_value
         self._exc_tb = exc_tb
@@ -44,14 +42,7 @@ class FlyteScopedException(Exception):
         lines = "\n".join(lines).split("\n")
         traceback_str = "\n    ".join([""] + lines)
 
-        format_str = (
-            "Traceback (most recent call last):\n"
-            "{traceback}\n"
-            "\n"
-            "Message:\n"
-            "\n"
-            "    {message}"
-        )
+        format_str = "Traceback (most recent call last):\n" "{traceback}\n" "\n" "Message:\n" "\n" "    {message}"
         return format_str.format(traceback=traceback_str, message=str(self.value))
 
     def __str__(self):
@@ -108,9 +99,7 @@ class FlyteScopedException(Exception):
 
 class FlyteScopedSystemException(FlyteScopedException):
     def __init__(self, exc_type, exc_value, exc_tb, **kwargs):
-        super(FlyteScopedSystemException, self).__init__(
-            "SYSTEM", exc_type, exc_value, exc_tb, **kwargs
-        )
+        super(FlyteScopedSystemException, self).__init__("SYSTEM", exc_type, exc_value, exc_tb, **kwargs)
 
     @property
     def verbose_message(self):
@@ -124,9 +113,7 @@ class FlyteScopedSystemException(FlyteScopedException):
 
 class FlyteScopedUserException(FlyteScopedException):
     def __init__(self, exc_type, exc_value, exc_tb, **kwargs):
-        super(FlyteScopedUserException, self).__init__(
-            "USER", exc_type, exc_value, exc_tb, **kwargs
-        )
+        super(FlyteScopedUserException, self).__init__("USER", exc_type, exc_value, exc_tb, **kwargs)
 
     @property
     def verbose_message(self):
@@ -174,17 +161,13 @@ def system_entry_point(wrapped, instance, args, kwargs):
             except _user_exceptions.FlyteUserException:
                 # Re-raise from here.
                 _reraise(
-                    FlyteScopedUserException,
-                    FlyteScopedUserException(*_exc_info()),
-                    _exc_info()[2],
+                    FlyteScopedUserException, FlyteScopedUserException(*_exc_info()), _exc_info()[2],
                 )
-            except:
+            except Exception:
                 # System error, raise full stack-trace all the way up the chain.
                 _reraise(
                     FlyteScopedSystemException,
-                    FlyteScopedSystemException(
-                        *_exc_info(), kind=_error_model.ContainerError.Kind.RECOVERABLE
-                    ),
+                    FlyteScopedSystemException(*_exc_info(), kind=_error_model.ContainerError.Kind.RECOVERABLE),
                     _exc_info()[2],
                 )
     finally:
@@ -217,23 +200,17 @@ def user_entry_point(wrapped, instance, args, kwargs):
                 _reraise(*_exc_info())
             except _user_exceptions.FlyteUserException:
                 _reraise(
-                    FlyteScopedUserException,
-                    FlyteScopedUserException(*_exc_info()),
-                    _exc_info()[2],
+                    FlyteScopedUserException, FlyteScopedUserException(*_exc_info()), _exc_info()[2],
                 )
             except _system_exceptions.FlyteSystemException:
                 _reraise(
-                    FlyteScopedSystemException,
-                    FlyteScopedSystemException(*_exc_info()),
-                    _exc_info()[2],
+                    FlyteScopedSystemException, FlyteScopedSystemException(*_exc_info()), _exc_info()[2],
                 )
-            except:
+            except Exception:
                 # Any non-platform raised exception is a user exception.
                 # This will also catch FlyteUserException re-raised by the system_entry_point handler
                 _reraise(
-                    FlyteScopedUserException,
-                    FlyteScopedUserException(*_exc_info()),
-                    _exc_info()[2],
+                    FlyteScopedUserException, FlyteScopedUserException(*_exc_info()), _exc_info()[2],
                 )
     finally:
         _CONTEXT_STACK.pop()

@@ -8,9 +8,7 @@ from flytekit.sdk.workflow import workflow_class
 
 
 @outputs(hive_results=[Types.Schema()])
-@qubole_hive_task(
-    tags=[_six.text_type("these"), _six.text_type("are"), _six.text_type("tags")]
-)
+@qubole_hive_task(tags=[_six.text_type("these"), _six.text_type("are"), _six.text_type("tags")])
 def generate_queries(wf_params, hive_results):
     q1 = "SELECT 1"
     q2 = "SELECT 'two'"

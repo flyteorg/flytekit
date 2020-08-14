@@ -10,9 +10,7 @@ from flytekit.models import common as _common_models
 from flytekit.models import literals as _literal_models
 
 
-class FlyteSdkType(
-    _six.with_metaclass(_common_models.FlyteABCMeta, _sdk_bases.ExtendedSdkType)
-):
+class FlyteSdkType(_six.with_metaclass(_common_models.FlyteABCMeta, _sdk_bases.ExtendedSdkType)):
     @_abc.abstractmethod
     def is_castable_from(cls, other):
         """
@@ -110,8 +108,7 @@ class Void(FlyteSdkValue):
         :rtype: flytekit.models.types.LiteralType
         """
         raise _user_exceptions.FlyteAssertion(
-            "A Void type does not have a literal type and cannot be used in this "
-            "manner."
+            "A Void type does not have a literal type and cannot be used in this " "manner."
         )
 
     @classmethod
@@ -131,9 +128,7 @@ class Void(FlyteSdkValue):
         return "Void"
 
     def __init__(self):
-        super(Void, self).__init__(
-            scalar=_literal_models.Scalar(none_type=_literal_models.Void())
-        )
+        super(Void, self).__init__(scalar=_literal_models.Scalar(none_type=_literal_models.Void()))
 
     def to_python_std(self):
         """

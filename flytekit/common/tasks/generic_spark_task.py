@@ -1,10 +1,5 @@
 from __future__ import absolute_import
 
-try:
-    from inspect import getfullargspec as _getargspec
-except ImportError:
-    from inspect import getargspec as _getargspec
-
 import sys as _sys
 
 import six as _six
@@ -83,11 +78,7 @@ class SdkGenericSparkTask(_base_tasks.SdkTask):
             task_type,
             _task_models.TaskMetadata(
                 discoverable,
-                _task_models.RuntimeMetadata(
-                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
-                    __version__,
-                    "spark",
-                ),
+                _task_models.RuntimeMetadata(_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "spark",),
                 timeout,
                 _literal_models.RetryStrategy(retries),
                 interruptible,

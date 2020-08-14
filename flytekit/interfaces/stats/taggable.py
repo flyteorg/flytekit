@@ -47,18 +47,12 @@ class TaggableStats(_stats_client.ScopeableStatsProxy):
 
     def pipeline(self):
         return TaggableStats(
-            self._client.pipeline(),
-            self._full_prefix,
-            prefix=self._scope_prefix,
-            tags=dict(self._tags),
+            self._client.pipeline(), self._full_prefix, prefix=self._scope_prefix, tags=dict(self._tags),
         )
 
     def __enter__(self):
         return TaggableStats(
-            self._client.__enter__(),
-            self._full_prefix,
-            prefix=self._scope_prefix,
-            tags=dict(self._tags),
+            self._client.__enter__(), self._full_prefix, prefix=self._scope_prefix, tags=dict(self._tags),
         )
 
     def get_stats(self, name, copy_tags=True):
@@ -84,6 +78,4 @@ def get_stats(prefix, tags=None):
     """
     :rtype: TaggableStats
     """
-    return TaggableStats(
-        _stats_client.get_base_stats(prefix.lower()), prefix.lower(), tags=tags
-    )
+    return TaggableStats(_stats_client.get_base_stats(prefix.lower()), prefix.lower(), tags=tags)

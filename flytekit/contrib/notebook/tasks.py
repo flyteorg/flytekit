@@ -14,7 +14,6 @@ from flytekit import __version__
 from flytekit.bin import entrypoint as _entrypoint
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface2
-from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import output as _task_output
@@ -22,9 +21,7 @@ from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.tasks import spark_task as _spark_task
 from flytekit.common.tasks import task as _base_tasks
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.common.types import primitives as _primitives
-from flytekit.contrib.notebook.supported_types import \
-    notebook_types_map as _notebook_types_map
+from flytekit.contrib.notebook.supported_types import notebook_types_map as _notebook_types_map
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literal_models
@@ -126,9 +123,7 @@ class SdkNotebookTask(_base_tasks.SdkTask):
             _task_models.TaskMetadata(
                 discoverable,
                 _task_models.RuntimeMetadata(
-                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
-                    __version__,
-                    "notebook",
+                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "notebook",
                 ),
                 timeout,
                 _literal_models.RetryStrategy(retries),
@@ -160,9 +155,7 @@ class SdkNotebookTask(_base_tasks.SdkTask):
 
         # Add a Notebook output as a Blob.
         self.interface.outputs.update(
-            output_notebook=_interface.Variable(
-                _Types.Blob.to_flyte_literal_type(), OUTPUT_NOTEBOOK
-            )
+            output_notebook=_interface.Variable(_Types.Blob.to_flyte_literal_type(), OUTPUT_NOTEBOOK)
         )
 
     def _validate_inputs(self, inputs):
@@ -174,9 +167,7 @@ class SdkNotebookTask(_base_tasks.SdkTask):
             sdk_type = _type_helpers.get_sdk_type_from_literal_type(v.type)
             if sdk_type not in _notebook_types_map.values():
                 raise _user_exceptions.FlyteValidationException(
-                    "Input Type '{}' not supported.  Only Primitives are supported for notebook.".format(
-                        sdk_type
-                    )
+                    "Input Type '{}' not supported.  Only Primitives are supported for notebook.".format(sdk_type)
                 )
         super(SdkNotebookTask, self)._validate_inputs(inputs)
 
@@ -192,17 +183,13 @@ class SdkNotebookTask(_base_tasks.SdkTask):
 
             if k == OUTPUT_NOTEBOOK:
                 raise ValueError(
-                    "{} is a reserved output keyword. Please use a different output name.".format(
-                        OUTPUT_NOTEBOOK
-                    )
+                    "{} is a reserved output keyword. Please use a different output name.".format(OUTPUT_NOTEBOOK)
                 )
 
             sdk_type = _type_helpers.get_sdk_type_from_literal_type(v.type)
             if sdk_type not in _notebook_types_map.values():
                 raise _user_exceptions.FlyteValidationException(
-                    "Output Type '{}' not supported.  Only Primitives are supported for notebook.".format(
-                        sdk_type
-                    )
+                    "Output Type '{}' not supported.  Only Primitives are supported for notebook.".format(sdk_type)
                 )
         super(SdkNotebookTask, self)._validate_outputs(outputs)
 
@@ -286,18 +273,13 @@ class SdkNotebookTask(_base_tasks.SdkTask):
         """
         inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(
             inputs,
-            {
-                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
-                for k, v in _six.iteritems(self.interface.inputs)
-            },
+            {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)},
         )
 
         input_notebook_path = self._notebook_path
         # Execute Notebook via Papermill.
         output_notebook_path = input_notebook_path.split(".ipynb")[0] + "-out.ipynb"
-        _pm.execute_notebook(
-            input_notebook_path, output_notebook_path, parameters=inputs_dict
-        )
+        _pm.execute_notebook(input_notebook_path, output_notebook_path, parameters=inputs_dict)
 
         # Parse Outputs from Notebook.
         outputs = None
@@ -314,9 +296,7 @@ class SdkNotebookTask(_base_tasks.SdkTask):
 
         # Add output_notebook as an output to the task.
         output_notebook = _task_output.OutputReference(
-            _type_helpers.get_sdk_type_from_literal_type(
-                _Types.Blob.to_flyte_literal_type()
-            )
+            _type_helpers.get_sdk_type_from_literal_type(_Types.Blob.to_flyte_literal_type())
         )
         output_notebook.set(output_notebook_path)
 
@@ -386,53 +366,29 @@ class SdkNotebookTask(_base_tasks.SdkTask):
         requests = []
         if storage_request:
             requests.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.STORAGE, storage_request
-                )
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
             )
         if cpu_request:
-            requests.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.CPU, cpu_request
-                )
-            )
+            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
         if gpu_request:
-            requests.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.GPU, gpu_request
-                )
-            )
+            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
         if memory_request:
             requests.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.MEMORY, memory_request
-                )
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
             )
 
         limits = []
         if storage_limit:
             limits.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.STORAGE, storage_limit
-                )
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit)
             )
         if cpu_limit:
-            limits.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.CPU, cpu_limit
-                )
-            )
+            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
         if gpu_limit:
-            limits.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.GPU, gpu_limit
-                )
-            )
+            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
         if memory_limit:
             limits.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.MEMORY, memory_limit
-                )
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit)
             )
 
         return _sdk_runnable.SdkRunnableContainer(

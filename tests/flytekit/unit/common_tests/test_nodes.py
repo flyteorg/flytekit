@@ -28,15 +28,10 @@ def test_sdk_node_from_task():
         [],
         [
             _literals.Binding(
-                "a",
-                _interface.BindingData.from_python_std(
-                    _types.Types.Integer.to_flyte_literal_type(), 3
-                ),
+                "a", _interface.BindingData.from_python_std(_types.Types.Integer.to_flyte_literal_type(), 3),
             )
         ],
-        _core_workflow_models.NodeMetadata(
-            "abc", _datetime.timedelta(minutes=15), _literals.RetryStrategy(3)
-        ),
+        _core_workflow_models.NodeMetadata("abc", _datetime.timedelta(minutes=15), _literals.RetryStrategy(3)),
         sdk_task=testy_test,
         sdk_workflow=None,
         sdk_launch_plan=None,
@@ -55,7 +50,7 @@ def test_sdk_node_from_task():
     assert n.outputs["b"].sdk_type == _types.Types.Integer
     assert n.metadata.name == "abc"
     assert n.metadata.retries.retries == 3
-    assert n.metadata.interruptible == False
+    assert n.metadata.interruptible is False
     assert len(n.upstream_nodes) == 0
     assert len(n.upstream_node_ids) == 0
     assert len(n.output_aliases) == 0
@@ -65,15 +60,10 @@ def test_sdk_node_from_task():
         [n],
         [
             _literals.Binding(
-                "a",
-                _interface.BindingData.from_python_std(
-                    _types.Types.Integer.to_flyte_literal_type(), n.outputs.b
-                ),
+                "a", _interface.BindingData.from_python_std(_types.Types.Integer.to_flyte_literal_type(), n.outputs.b),
             )
         ],
-        _core_workflow_models.NodeMetadata(
-            "abc2", _datetime.timedelta(minutes=15), _literals.RetryStrategy(3)
-        ),
+        _core_workflow_models.NodeMetadata("abc2", _datetime.timedelta(minutes=15), _literals.RetryStrategy(3)),
         sdk_task=testy_test,
         sdk_workflow=None,
         sdk_launch_plan=None,
@@ -105,15 +95,10 @@ def test_sdk_node_from_task():
         [],
         [
             _literals.Binding(
-                "a",
-                _interface.BindingData.from_python_std(
-                    _types.Types.Integer.to_flyte_literal_type(), 3
-                ),
+                "a", _interface.BindingData.from_python_std(_types.Types.Integer.to_flyte_literal_type(), 3),
             )
         ],
-        _core_workflow_models.NodeMetadata(
-            "abc3", _datetime.timedelta(minutes=15), _literals.RetryStrategy(3)
-        ),
+        _core_workflow_models.NodeMetadata("abc3", _datetime.timedelta(minutes=15), _literals.RetryStrategy(3)),
         sdk_task=testy_test,
         sdk_workflow=None,
         sdk_launch_plan=None,
@@ -148,15 +133,10 @@ def test_sdk_node_from_task():
         [],
         [
             _literals.Binding(
-                "a",
-                _interface.BindingData.from_python_std(
-                    _types.Types.Integer.to_flyte_literal_type(), 3
-                ),
+                "a", _interface.BindingData.from_python_std(_types.Types.Integer.to_flyte_literal_type(), 3),
             )
         ],
-        _core_workflow_models.NodeMetadata(
-            "abc4", _datetime.timedelta(minutes=15), _literals.RetryStrategy(3)
-        ),
+        _core_workflow_models.NodeMetadata("abc4", _datetime.timedelta(minutes=15), _literals.RetryStrategy(3)),
         sdk_task=testy_test,
         sdk_workflow=None,
         sdk_launch_plan=None,
@@ -204,9 +184,7 @@ def test_sdk_task_node():
     def testy_test(wf_params, a, b):
         pass
 
-    testy_test._id = _identifier.Identifier(
-        _identifier.ResourceType.TASK, "project", "domain", "name", "version"
-    )
+    testy_test._id = _identifier.Identifier(_identifier.ResourceType.TASK, "project", "domain", "name", "version")
     n = _component_nodes.SdkTaskNode(testy_test)
     assert n.reference_id.project == "project"
     assert n.reference_id.domain == "domain"
@@ -215,11 +193,7 @@ def test_sdk_task_node():
 
     # Test floating ID
     testy_test._id = _identifier.Identifier(
-        _identifier.ResourceType.TASK,
-        "new_project",
-        "new_domain",
-        "new_name",
-        "new_version",
+        _identifier.ResourceType.TASK, "new_project", "new_domain", "new_name", "new_version",
     )
     assert n.reference_id.project == "new_project"
     assert n.reference_id.domain == "new_domain"
@@ -247,15 +221,10 @@ def test_sdk_node_from_lp():
         [],
         [
             _literals.Binding(
-                "a",
-                _interface.BindingData.from_python_std(
-                    _types.Types.Integer.to_flyte_literal_type(), 3
-                ),
+                "a", _interface.BindingData.from_python_std(_types.Types.Integer.to_flyte_literal_type(), 3),
             )
         ],
-        _core_workflow_models.NodeMetadata(
-            "abc", _datetime.timedelta(minutes=15), _literals.RetryStrategy(3)
-        ),
+        _core_workflow_models.NodeMetadata("abc", _datetime.timedelta(minutes=15), _literals.RetryStrategy(3)),
         sdk_launch_plan=lp,
     )
 
@@ -291,9 +260,7 @@ def test_sdk_launch_plan_node():
 
     lp = test_workflow.create_launch_plan()
 
-    lp._id = _identifier.Identifier(
-        _identifier.ResourceType.TASK, "project", "domain", "name", "version"
-    )
+    lp._id = _identifier.Identifier(_identifier.ResourceType.TASK, "project", "domain", "name", "version")
     n = _component_nodes.SdkWorkflowNode(sdk_launch_plan=lp)
     assert n.launchplan_ref.project == "project"
     assert n.launchplan_ref.domain == "domain"
@@ -302,11 +269,7 @@ def test_sdk_launch_plan_node():
 
     # Test floating ID
     lp._id = _identifier.Identifier(
-        _identifier.ResourceType.TASK,
-        "new_project",
-        "new_domain",
-        "new_name",
-        "new_version",
+        _identifier.ResourceType.TASK, "new_project", "new_domain", "new_name", "new_version",
     )
     assert n.launchplan_ref.project == "new_project"
     assert n.launchplan_ref.domain == "new_domain"

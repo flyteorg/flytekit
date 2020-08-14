@@ -91,19 +91,11 @@ class DynamicJobSpec(_common.FlyteIdlEntity):
         :return: DynamicJobSpec
         """
         return cls(
-            tasks=[_task.TaskTemplate.from_flyte_idl(task) for task in pb2_object.tasks]
-            if pb2_object.tasks
-            else None,
+            tasks=[_task.TaskTemplate.from_flyte_idl(task) for task in pb2_object.tasks] if pb2_object.tasks else None,
             nodes=[_workflow.Node.from_flyte_idl(n) for n in pb2_object.nodes],
             min_successes=pb2_object.min_successes,
-            outputs=[
-                _literals.Binding.from_flyte_idl(output)
-                for output in pb2_object.outputs
-            ]
+            outputs=[_literals.Binding.from_flyte_idl(output) for output in pb2_object.outputs]
             if pb2_object.outputs
             else None,
-            subworkflows=[
-                _workflow.WorkflowTemplate.from_flyte_idl(w)
-                for w in pb2_object.subworkflows
-            ],
+            subworkflows=[_workflow.WorkflowTemplate.from_flyte_idl(w) for w in pb2_object.subworkflows],
         )

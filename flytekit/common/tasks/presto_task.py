@@ -62,9 +62,7 @@ class SdkPrestoTask(_base_task.SdkTask):
         metadata = _task_model.TaskMetadata(
             discoverable,
             # This needs to have the proper version reflected in it
-            _task_model.RuntimeMetadata(
-                _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"
-            ),
+            _task_model.RuntimeMetadata(_task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"),
             timeout or _datetime.timedelta(seconds=0),
             _literals.RetryStrategy(retries),
             interruptible,
@@ -73,10 +71,7 @@ class SdkPrestoTask(_base_task.SdkTask):
         )
 
         presto_query = _presto_models.PrestoQuery(
-            routing_group=routing_group or "",
-            catalog=catalog or "",
-            schema=schema or "",
-            statement=statement,
+            routing_group=routing_group or "", catalog=catalog or "", schema=schema or "", statement=statement,
         )
 
         # Here we set the routing_group, catalog, and schema as implicit
@@ -106,10 +101,7 @@ class SdkPrestoTask(_base_task.SdkTask):
         )
 
         super(SdkPrestoTask, self).__init__(
-            _constants.SdkTaskType.PRESTO_TASK,
-            metadata,
-            i,
-            _MessageToDict(presto_query.to_flyte_idl()),
+            _constants.SdkTaskType.PRESTO_TASK, metadata, i, _MessageToDict(presto_query.to_flyte_idl()),
         )
 
         # Set user provided inputs
@@ -142,10 +134,7 @@ class SdkPrestoTask(_base_task.SdkTask):
         inputs = self._add_implicit_inputs(inputs)
         return _type_helpers.pack_python_std_map_to_literal_map(
             inputs,
-            {
-                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
-                for k, v in _six.iteritems(self.interface.inputs)
-            },
+            {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)},
         )
 
     @_exception_scopes.system_entry_point

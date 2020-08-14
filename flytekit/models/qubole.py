@@ -45,9 +45,7 @@ class HiveQuery(_common.FlyteIdlEntity):
         """
         :rtype: _qubole.HiveQuery
         """
-        return _qubole.HiveQuery(
-            query=self.query, timeout_sec=self.timeout_sec, retryCount=self.retry_count
-        )
+        return _qubole.HiveQuery(query=self.query, timeout_sec=self.timeout_sec, retryCount=self.retry_count)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -55,11 +53,7 @@ class HiveQuery(_common.FlyteIdlEntity):
         :param _qubole.HiveQuery pb2_object:
         :return: HiveQuery
         """
-        return cls(
-            query=pb2_object.query,
-            timeout_sec=pb2_object.timeout_sec,
-            retry_count=pb2_object.retryCount,
-        )
+        return cls(query=pb2_object.query, timeout_sec=pb2_object.timeout_sec, retry_count=pb2_object.retryCount,)
 
 
 class HiveQueryCollection(_common.FlyteIdlEntity):
@@ -83,9 +77,7 @@ class HiveQueryCollection(_common.FlyteIdlEntity):
         :rtype: _qubole.HiveQueryCollection
         """
         return _qubole.HiveQueryCollection(
-            queries=[query.to_flyte_idl() for query in self.queries]
-            if self.queries
-            else None
+            queries=[query.to_flyte_idl() for query in self.queries] if self.queries else None
         )
 
     @classmethod
@@ -94,9 +86,7 @@ class HiveQueryCollection(_common.FlyteIdlEntity):
         :param _qubole.HiveQuery pb2_object:
         :rtype: HiveQueryCollection
         """
-        return cls(
-            queries=[HiveQuery.from_flyte_idl(query) for query in pb2_object.queries]
-        )
+        return cls(queries=[HiveQuery.from_flyte_idl(query) for query in pb2_object.queries])
 
 
 class QuboleHiveJob(_common.FlyteIdlEntity):
@@ -151,9 +141,7 @@ class QuboleHiveJob(_common.FlyteIdlEntity):
         :rtype: _qubole.QuboleHiveJob
         """
         return _qubole.QuboleHiveJob(
-            query_collection=self._query_collection.to_flyte_idl()
-            if self._query_collection
-            else None,
+            query_collection=self._query_collection.to_flyte_idl() if self._query_collection else None,
             query=self._query.to_flyte_idl() if self._query else None,
             cluster_label=self._cluster_label,
             tags=self._tags,

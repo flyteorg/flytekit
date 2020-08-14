@@ -1,10 +1,12 @@
 import os as _os
 
-import six as _six
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.clients.helpers import \
     iterate_node_executions as _iterate_node_executions
+
+import six as _six
+
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _common_utils
 from flytekit.common.exceptions import user as _user_exceptions
@@ -21,7 +23,7 @@ from flytekit.models.core import execution as _execution_models
 class SdkTaskExecution(
     _task_execution_model.TaskExecution,
     _artifact_mixin.ExecutionArtifact,
-    metaclass=_sdk_bases.ExtendedSdkType,
+    metaclass=_sdk_bases.ExtendedSdkType
 ):
     def __init__(self, *args, **kwargs):
         super(SdkTaskExecution, self).__init__(*args, **kwargs)
@@ -77,8 +79,7 @@ class SdkTaskExecution(
         """
         if not self.is_complete:
             raise _user_exceptions.FlyteAssertion(
-                "Please what until the task execution has completed before "
-                "requesting the outputs."
+                "Please what until the task execution has completed before requesting the outputs."
             )
         if self.error:
             raise _user_exceptions.FlyteAssertion(
@@ -115,8 +116,7 @@ class SdkTaskExecution(
         """
         if not self.is_complete:
             raise _user_exceptions.FlyteAssertion(
-                "Please what until the task execution has completed before "
-                "requesting error information."
+                "Please what until the task execution has completed before requesting error information."
             )
         return self.closure.error
 
@@ -128,9 +128,7 @@ class SdkTaskExecution(
         from flytekit.common import nodes as _nodes
 
         if not self.is_parent:
-            raise _user_exceptions.FlyteAssertion(
-                "Only task executions marked with 'is_parent' have child executions."
-            )
+            raise _user_exceptions.FlyteAssertion("Only task executions marked with 'is_parent' have child executions.")
         client = _flyte_engine._FlyteClientManager(
             _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
         ).client

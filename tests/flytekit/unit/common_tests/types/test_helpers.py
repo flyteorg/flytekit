@@ -12,24 +12,17 @@ def test_python_std_to_sdk_type():
     assert o.to_flyte_literal_type().simple == _model_types.SimpleType.INTEGER
 
     o = _type_helpers.python_std_to_sdk_type([_sdk_types.Types.Boolean])
-    assert (
-        o.to_flyte_literal_type().collection_type.simple
-        == _model_types.SimpleType.BOOLEAN
-    )
+    assert o.to_flyte_literal_type().collection_type.simple == _model_types.SimpleType.BOOLEAN
 
 
 def test_get_sdk_type_from_literal_type():
-    o = _type_helpers.get_sdk_type_from_literal_type(
-        _model_types.LiteralType(simple=_model_types.SimpleType.FLOAT)
-    )
+    o = _type_helpers.get_sdk_type_from_literal_type(_model_types.LiteralType(simple=_model_types.SimpleType.FLOAT))
     assert o == _sdk_types.Types.Float
 
 
 def test_infer_sdk_type_from_literal():
     o = _type_helpers.infer_sdk_type_from_literal(
-        _literals.Literal(
-            scalar=_literals.Scalar(primitive=_literals.Primitive(string_value="abc"))
-        )
+        _literals.Literal(scalar=_literals.Scalar(primitive=_literals.Primitive(string_value="abc")))
     )
     assert o == _sdk_types.Types.String
 
@@ -40,21 +33,16 @@ def test_infer_sdk_type_from_literal():
 
 
 def test_get_sdk_value_from_literal():
+    o = _type_helpers.get_sdk_value_from_literal(_literals.Literal(scalar=_literals.Scalar(none_type=_literals.Void())))
+    assert o.to_python_std() is None
+
     o = _type_helpers.get_sdk_value_from_literal(
-        _literals.Literal(scalar=_literals.Scalar(none_type=_literals.Void()))
+        _literals.Literal(scalar=_literals.Scalar(none_type=_literals.Void())), sdk_type=_sdk_types.Types.Integer,
     )
     assert o.to_python_std() is None
 
     o = _type_helpers.get_sdk_value_from_literal(
-        _literals.Literal(scalar=_literals.Scalar(none_type=_literals.Void())),
-        sdk_type=_sdk_types.Types.Integer,
-    )
-    assert o.to_python_std() is None
-
-    o = _type_helpers.get_sdk_value_from_literal(
-        _literals.Literal(
-            scalar=_literals.Scalar(primitive=_literals.Primitive(integer=1))
-        ),
+        _literals.Literal(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=1))),
         sdk_type=_sdk_types.Types.Integer,
     )
     assert o.to_python_std() == 1
@@ -63,14 +51,8 @@ def test_get_sdk_value_from_literal():
         _literals.Literal(
             collection=_literals.LiteralCollection(
                 [
-                    _literals.Literal(
-                        scalar=_literals.Scalar(
-                            primitive=_literals.Primitive(integer=1)
-                        )
-                    ),
-                    _literals.Literal(
-                        scalar=_literals.Scalar(none_type=_literals.Void())
-                    ),
+                    _literals.Literal(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=1))),
+                    _literals.Literal(scalar=_literals.Scalar(none_type=_literals.Void())),
                 ]
             )
         )

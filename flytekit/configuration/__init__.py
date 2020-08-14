@@ -21,16 +21,10 @@ def set_flyte_config_file(config_file_path):
     if config_file_path is not None:
         config_file_path = _os.path.abspath(config_file_path)
         if not _pathlib.Path(config_file_path).is_file():
-            _logging.warning(
-                "Invalid flyte config_file_path {} specified.".format(config_file_path)
-            )
+            _logging.warning("Invalid flyte config_file_path {} specified.".format(config_file_path))
         _os.environ[_internal.CONFIGURATION_PATH.env_var] = config_file_path
     elif _internal.CONFIGURATION_PATH.env_var in _os.environ:
-        _logging.debug(
-            "Deleting configuration path {} from env".format(
-                _internal.CONFIGURATION_PATH.env_var
-            )
-        )
+        _logging.debug("Deleting configuration path {} from env".format(_internal.CONFIGURATION_PATH.env_var))
         del _os.environ[_internal.CONFIGURATION_PATH.env_var]
     _common.CONFIGURATION_SINGLETON.reset_config(config_file_path)
 
@@ -43,8 +37,7 @@ class TemporaryConfiguration(object):
         import flytekit.configuration.common as _common
 
         self._internal_overrides = {
-            _common.format_section_key("internal", k): v
-            for k, v in _six.iteritems(internal_overrides or {})
+            _common.format_section_key("internal", k): v for k, v in _six.iteritems(internal_overrides or {})
         }
         self._new_config_path = new_config_path
         self._old_config_path = None
@@ -53,9 +46,7 @@ class TemporaryConfiguration(object):
     def __enter__(self):
         import flytekit.configuration.internal as _internal
 
-        self._old_internals = {
-            k: _os.environ.get(k) for k in _six.iterkeys(self._internal_overrides)
-        }
+        self._old_internals = {k: _os.environ.get(k) for k in _six.iterkeys(self._internal_overrides)}
         self._old_config_path = _os.environ.get(_internal.CONFIGURATION_PATH.env_var)
         _os.environ.update(self._internal_overrides)
         set_flyte_config_file(self._new_config_path)

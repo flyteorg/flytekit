@@ -9,8 +9,7 @@ import uuid as _uuid
 from six import moves as _six_moves
 from six import text_type as _text_type
 
-from flytekit.common.exceptions.user import \
-    FlyteUserException as _FlyteUserException
+from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserException
 from flytekit.configuration import aws as _aws_config
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import common as _common_data
@@ -33,18 +32,14 @@ def _update_cmd_config_and_execute(cmd):
         env[_aws_config.S3_ACCESS_KEY_ID_ENV_NAME] = _aws_config.S3_ACCESS_KEY_ID.get()
 
     if _aws_config.S3_SECRET_ACCESS_KEY.get() is not None:
-        env[
-            _aws_config.S3_SECRET_ACCESS_KEY_ENV_NAME
-        ] = _aws_config.S3_SECRET_ACCESS_KEY.get()
+        env[_aws_config.S3_SECRET_ACCESS_KEY_ENV_NAME] = _aws_config.S3_SECRET_ACCESS_KEY.get()
 
     return _subprocess.check_call(cmd, env=env)
 
 
 class AwsS3Proxy(_common_data.DataProxy):
     _AWS_CLI = "aws"
-    _SHARD_CHARACTERS = [_text_type(x) for x in _six_moves.range(10)] + list(
-        _string.ascii_lowercase
-    )
+    _SHARD_CHARACTERS = [_text_type(x) for x in _six_moves.range(10)] + list(_string.ascii_lowercase)
 
     @staticmethod
     def _check_binary():
@@ -72,9 +67,7 @@ class AwsS3Proxy(_common_data.DataProxy):
         AwsS3Proxy._check_binary()
 
         if not remote_path.startswith("s3://"):
-            raise ValueError(
-                "Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://..."
-            )
+            raise ValueError("Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://...")
 
         bucket, file_path = self._split_s3_path_to_bucket_and_key(remote_path)
         cmd = [
@@ -107,9 +100,7 @@ class AwsS3Proxy(_common_data.DataProxy):
         AwsS3Proxy._check_binary()
 
         if not remote_path.startswith("s3://"):
-            raise ValueError(
-                "Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://..."
-            )
+            raise ValueError("Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://...")
 
         cmd = [AwsS3Proxy._AWS_CLI, "s3", "cp", "--recursive", remote_path, local_path]
         return _update_cmd_config_and_execute(cmd)
@@ -120,9 +111,7 @@ class AwsS3Proxy(_common_data.DataProxy):
         :param Text local_path: directory to copy to
         """
         if not remote_path.startswith("s3://"):
-            raise ValueError(
-                "Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://..."
-            )
+            raise ValueError("Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://...")
 
         AwsS3Proxy._check_binary()
         cmd = [AwsS3Proxy._AWS_CLI, "s3", "cp", remote_path, local_path]
@@ -160,9 +149,7 @@ class AwsS3Proxy(_common_data.DataProxy):
         }
 
         if not remote_path.startswith("s3://"):
-            raise ValueError(
-                "Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://..."
-            )
+            raise ValueError("Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://...")
 
         AwsS3Proxy._check_binary()
         cmd = [AwsS3Proxy._AWS_CLI, "s3", "cp", "--recursive"]

@@ -22,8 +22,7 @@ def _proto_sdk_type_from_tag(tag):
     """
     if "." not in tag:
         raise _user_exceptions.FlyteValueException(
-            tag,
-            "Protobuf tag must include at least one '.' to delineate package and object name.",
+            tag, "Protobuf tag must include at least one '.' to delineate package and object name.",
         )
 
     module, name = tag.rsplit(".", 1)
@@ -31,15 +30,11 @@ def _proto_sdk_type_from_tag(tag):
         pb_module = _importer.import_module(module)
     except ImportError:
         raise _user_exceptions.FlyteAssertion(
-            "Could not resolve the protobuf definition @ {}.  Is the protobuf library installed?".format(
-                module
-            )
+            "Could not resolve the protobuf definition @ {}.  Is the protobuf library installed?".format(module)
         )
 
     if not hasattr(pb_module, name):
-        raise _user_exceptions.FlyteAssertion(
-            "Could not find the protobuf named: {} @ {}.".format(name, module)
-        )
+        raise _user_exceptions.FlyteAssertion("Could not find the protobuf named: {} @ {}.".format(name, module))
 
     return _proto.create_protobuf(getattr(pb_module, name))
 
@@ -89,9 +84,7 @@ class FlyteDefaultTypeEngine(object):
         :rtype: flytekit.common.types.base_sdk_types.FlyteSdkType
         """
         if literal_type.collection_type is not None:
-            return _container_types.List(
-                _helpers.get_sdk_type_from_literal_type(literal_type.collection_type)
-            )
+            return _container_types.List(_helpers.get_sdk_type_from_literal_type(literal_type.collection_type))
         elif literal_type.map_value_type is not None:
             raise NotImplementedError("TODO: Implement map")
         elif literal_type.schema is not None:
@@ -103,15 +96,11 @@ class FlyteDefaultTypeEngine(object):
                 literal_type.simple == _literal_type_models.SimpleType.BINARY
                 and _proto.Protobuf.PB_FIELD_KEY in literal_type.metadata
             ):
-                return _proto_sdk_type_from_tag(
-                    literal_type.metadata[_proto.Protobuf.PB_FIELD_KEY]
-                )
+                return _proto_sdk_type_from_tag(literal_type.metadata[_proto.Protobuf.PB_FIELD_KEY])
             sdk_type = self._SIMPLE_TYPE_LOOKUP_TABLE.get(literal_type.simple)
             if sdk_type is None:
                 raise NotImplementedError(
-                    "We haven't implemented this type yet:  Simple type={}".format(
-                        literal_type.simple
-                    )
+                    "We haven't implemented this type yet:  Simple type={}".format(literal_type.simple)
                 )
             return sdk_type
         else:
@@ -126,9 +115,7 @@ class FlyteDefaultTypeEngine(object):
         """
         if literal.collection is not None:
             if len(literal.collection.literals) > 0:
-                sdk_type = _container_types.List(
-                    _helpers.infer_sdk_type_from_literal(literal.collection.literals[0])
-                )
+                sdk_type = _container_types.List(_helpers.infer_sdk_type_from_literal(literal.collection.literals[0]))
             else:
                 sdk_type = _container_types.List(_base_sdk_types.Void)
         elif literal.map is not None:
@@ -138,22 +125,16 @@ class FlyteDefaultTypeEngine(object):
         elif literal.scalar.none_type is not None:
             sdk_type = _base_sdk_types.Void
         elif literal.scalar.schema is not None:
-            sdk_type = _schema.schema_instantiator_from_proto(
-                literal.scalar.schema.type
-            )
+            sdk_type = _schema.schema_instantiator_from_proto(literal.scalar.schema.type)
         elif literal.scalar.error is not None:
             raise NotImplementedError("TODO: Implement error from literal map")
         elif literal.scalar.generic is not None:
             sdk_type = _primitive_types.Generic
         elif literal.scalar.binary is not None:
             if literal.scalar.binary.tag.startswith(_proto.Protobuf.TAG_PREFIX):
-                sdk_type = _proto_sdk_type_from_tag(
-                    literal.scalar.binary.tag[len(_proto.Protobuf.TAG_PREFIX) :]
-                )
+                sdk_type = _proto_sdk_type_from_tag(literal.scalar.binary.tag[len(_proto.Protobuf.TAG_PREFIX) :])
             else:
-                raise NotImplementedError(
-                    "TODO: Binary is only supported for protobuf types currently"
-                )
+                raise NotImplementedError("TODO: Binary is only supported for protobuf types currently")
         elif literal.scalar.primitive.boolean is not None:
             sdk_type = _primitive_types.Boolean
         elif literal.scalar.primitive.datetime is not None:
@@ -167,9 +148,7 @@ class FlyteDefaultTypeEngine(object):
         elif literal.scalar.primitive.string_value is not None:
             sdk_type = _primitive_types.String
         else:
-            raise _system_exceptions.FlyteSystemAssertion(
-                "Received unknown literal: {}".format(literal)
-            )
+            raise _system_exceptions.FlyteSystemAssertion("Received unknown literal: {}".format(literal))
         return sdk_type
 
     def _get_blob_impl_from_type(self, blob_type):
@@ -182,16 +161,11 @@ class FlyteDefaultTypeEngine(object):
                 return _blobs.CSV
             else:
                 return _blobs.Blob
-        elif (
-            blob_type.dimensionality
-            == _core_types.BlobType.BlobDimensionality.MULTIPART
-        ):
+        elif blob_type.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART:
             if blob_type.format == "csv":
                 return _blobs.MultiPartCSV
             else:
                 return _blobs.MultiPartBlob
         raise _system_exceptions.FlyteSystemAssertion(
-            "Flyte's base type engine does not support this type of blob. Value: {}".format(
-                blob_type
-            )
+            "Flyte's base type engine does not support this type of blob. Value: {}".format(blob_type)
         )

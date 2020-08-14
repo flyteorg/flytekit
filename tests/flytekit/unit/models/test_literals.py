@@ -328,24 +328,12 @@ def test_scalar_binary():
 def test_scalar_schema():
     schema_type = _types.SchemaType(
         [
-            _types.SchemaType.SchemaColumn(
-                "a", _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
-            ),
-            _types.SchemaType.SchemaColumn(
-                "b", _types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
-            ),
-            _types.SchemaType.SchemaColumn(
-                "c", _types.SchemaType.SchemaColumn.SchemaColumnType.STRING
-            ),
-            _types.SchemaType.SchemaColumn(
-                "d", _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
-            ),
-            _types.SchemaType.SchemaColumn(
-                "e", _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
-            ),
-            _types.SchemaType.SchemaColumn(
-                "f", _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
-            ),
+            _types.SchemaType.SchemaColumn("a", _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
+            _types.SchemaType.SchemaColumn("b", _types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
+            _types.SchemaType.SchemaColumn("c", _types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
+            _types.SchemaType.SchemaColumn("d", _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
+            _types.SchemaType.SchemaColumn("e", _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
+            _types.SchemaType.SchemaColumn("f", _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
         ]
     )
 
@@ -373,9 +361,7 @@ def test_scalar_schema():
 
 
 def test_binding_data_scalar():
-    obj = literals.BindingData(
-        scalar=literals.Scalar(primitive=literals.Primitive(integer=5))
-    )
+    obj = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=5)))
     assert obj.value.value.value == 5
     assert obj.promise is None
     assert obj.collection is None
@@ -390,15 +376,9 @@ def test_binding_data_scalar():
 
 
 def test_binding_data_map():
-    b1 = literals.BindingData(
-        scalar=literals.Scalar(primitive=literals.Primitive(integer=5))
-    )
-    b2 = literals.BindingData(
-        scalar=literals.Scalar(primitive=literals.Primitive(integer=57))
-    )
-    b3 = literals.BindingData(
-        scalar=literals.Scalar(primitive=literals.Primitive(integer=2))
-    )
+    b1 = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=5)))
+    b2 = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=57)))
+    b3 = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=2)))
     binding_map_sub = literals.BindingDataMap(bindings={"first": b1, "second": b2})
     binding_map = literals.BindingDataMap(
         bindings={"three": b3, "sample_map": literals.BindingData(map=binding_map_sub)}
@@ -408,10 +388,7 @@ def test_binding_data_map():
     assert obj.promise is None
     assert obj.collection is None
     assert obj.value.bindings["three"].value.value.value == 2
-    assert (
-        obj.value.bindings["sample_map"].value.bindings["second"].value.value.value
-        == 57
-    )
+    assert obj.value.bindings["sample_map"].value.bindings["second"].value.value.value == 57
 
     obj2 = literals.BindingData.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -419,9 +396,7 @@ def test_binding_data_map():
     assert obj2.promise is None
     assert obj2.collection is None
     assert obj2.value.bindings["three"].value.value.value == 2
-    assert (
-        obj2.value.bindings["sample_map"].value.bindings["first"].value.value.value == 5
-    )
+    assert obj2.value.bindings["sample_map"].value.bindings["first"].value.value.value == 5
 
 
 def test_binding_data_promise():
@@ -442,12 +417,8 @@ def test_binding_data_promise():
 
 
 def test_binding_data_collection():
-    b1 = literals.BindingData(
-        scalar=literals.Scalar(primitive=literals.Primitive(integer=5))
-    )
-    b2 = literals.BindingData(
-        scalar=literals.Scalar(primitive=literals.Primitive(integer=57))
-    )
+    b1 = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=5)))
+    b2 = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=57)))
 
     coll = literals.BindingDataCollection(bindings=[b1, b2])
     obj = literals.BindingData(collection=coll)
@@ -469,12 +440,8 @@ def test_binding_data_collection():
 
 
 def test_binding_data_collection_nested():
-    b1 = literals.BindingData(
-        scalar=literals.Scalar(primitive=literals.Primitive(integer=5))
-    )
-    b2 = literals.BindingData(
-        scalar=literals.Scalar(primitive=literals.Primitive(integer=57))
-    )
+    b1 = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=5)))
+    b2 = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=57)))
 
     bc_inner = literals.BindingDataCollection(bindings=[b1, b2])
 
@@ -496,9 +463,7 @@ def test_binding_data_collection_nested():
     assert obj2.value.bindings[0].value.bindings[1].value.value.value == 57
 
 
-@pytest.mark.parametrize(
-    "scalar_value_pair", parameterizers.LIST_OF_SCALARS_AND_PYTHON_VALUES
-)
+@pytest.mark.parametrize("scalar_value_pair", parameterizers.LIST_OF_SCALARS_AND_PYTHON_VALUES)
 def test_scalar_literals(scalar_value_pair):
     scalar, _ = scalar_value_pair
     obj = literals.Literal(scalar=scalar)
@@ -515,9 +480,7 @@ def test_scalar_literals(scalar_value_pair):
     assert obj2.map is None
 
 
-@pytest.mark.parametrize(
-    "literal_value_pair", parameterizers.LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE
-)
+@pytest.mark.parametrize("literal_value_pair", parameterizers.LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE)
 def test_literal_collection(literal_value_pair):
     lit, _ = literal_value_pair
     obj = literals.LiteralCollection([lit, lit, lit])

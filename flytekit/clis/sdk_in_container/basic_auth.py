@@ -1,12 +1,12 @@
+from __future__ import absolute_import
+
 import base64 as _base64
 import logging as _logging
 
 import requests as _requests
 
-from flytekit.common.exceptions.user import \
-    FlyteAuthenticationException as _FlyteAuthenticationException
-from flytekit.configuration.creds import \
-    CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET
+from flytekit.common.exceptions.user import FlyteAuthenticationException as _FlyteAuthenticationException
+from flytekit.configuration.creds import CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET
 
 _utf_8 = "utf-8"
 
@@ -56,11 +56,7 @@ def get_token(token_endpoint, authorization_header, scope):
         body["scope"] = scope
     response = _requests.post(token_endpoint, data=body, headers=headers)
     if response.status_code != 200:
-        _logging.error(
-            "Non-200 ({}) received from IDP: {}".format(
-                response.status_code, response.text
-            )
-        )
+        _logging.error("Non-200 ({}) received from IDP: {}".format(response.status_code, response.text))
         raise _FlyteAuthenticationException("Non-200 received from IDP")
 
     response = response.json()

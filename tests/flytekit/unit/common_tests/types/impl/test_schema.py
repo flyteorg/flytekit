@@ -58,9 +58,7 @@ value_type_tuples = [
         "locusts",
         _primitives.Datetime,
         [
-            _datetime.datetime(
-                day=1, month=1, year=2017, hour=1, minute=1, second=1, microsecond=1
-            )
+            _datetime.datetime(day=1, month=1, year=2017, hour=1, minute=1, second=1, microsecond=1)
             - _datetime.timedelta(days=i)
             for i in _six_moves.range(5)
         ],
@@ -76,27 +74,19 @@ def test_simple_read_and_write_with_different_types(value_type_pair):
 
     with _test_utils.LocalTestFileSystem() as sandbox:
         with _utils.AutoDeletingTempDir("test") as t:
-            a = _schema_impl.Schema.create_at_known_location(
-                t.name, mode="wb", schema_type=schema_type
-            )
+            a = _schema_impl.Schema.create_at_known_location(t.name, mode="wb", schema_type=schema_type)
             assert a.local_path is None
             with a as writer:
                 for _ in _six_moves.range(5):
-                    writer.write(
-                        _pd.DataFrame.from_records(values, columns=[column_name])
-                    )
+                    writer.write(_pd.DataFrame.from_records(values, columns=[column_name]))
                 assert a.local_path.startswith(sandbox.name)
             assert a.local_path is None
 
-            b = _schema_impl.Schema.create_at_known_location(
-                t.name, mode="rb", schema_type=schema_type
-            )
+            b = _schema_impl.Schema.create_at_known_location(t.name, mode="rb", schema_type=schema_type)
             assert b.local_path is None
             with b as reader:
                 for df in reader.iter_chunks():
-                    for check, actual in _six_moves.zip(
-                        values, df[column_name].tolist()
-                    ):
+                    for check, actual in _six_moves.zip(values, df[column_name].tolist()):
                         assert check[0] == actual
                 assert reader.read() is None
                 reader.seek(0)
@@ -112,9 +102,7 @@ def test_datetime_coercion_explicitly():
     Sanity check that we're using a version of pyarrow that allows us to
     truncate timestamps
     """
-    dt = _datetime.datetime(
-        day=1, month=1, year=2017, hour=1, minute=1, second=1, microsecond=1
-    )
+    dt = _datetime.datetime(day=1, month=1, year=2017, hour=1, minute=1, second=1, microsecond=1)
     values = [(dt,)]
     df = _pd.DataFrame.from_records(values, columns=["testname"])
     assert df["testname"][0] == dt
@@ -132,9 +120,7 @@ def test_datetime_coercion():
     values = [
         tuple(
             [
-                _datetime.datetime(
-                    day=1, month=1, year=2017, hour=1, minute=1, second=1, microsecond=1
-                )
+                _datetime.datetime(day=1, month=1, year=2017, hour=1, minute=1, second=1, microsecond=1)
                 - _datetime.timedelta(days=x)
             ]
         )
@@ -144,9 +130,7 @@ def test_datetime_coercion():
 
     with _test_utils.LocalTestFileSystem():
         with _utils.AutoDeletingTempDir("test") as t:
-            a = _schema_impl.Schema.create_at_known_location(
-                t.name, mode="wb", schema_type=schema_type
-            )
+            a = _schema_impl.Schema.create_at_known_location(t.name, mode="wb", schema_type=schema_type)
             with a as writer:
                 for _ in _six_moves.range(5):
                     # us to ms coercion segfaults unless we explicitly allow truncation.
@@ -162,14 +146,10 @@ def test_datetime_coercion():
                     #        _pd.DataFrame.from_records(values, columns=['testname']),
                     #        coerce_timestamps='ms')
 
-            b = _schema_impl.Schema.create_at_known_location(
-                t.name, mode="wb", schema_type=schema_type
-            )
+            b = _schema_impl.Schema.create_at_known_location(t.name, mode="wb", schema_type=schema_type)
             with b as writer:
                 for _ in _six_moves.range(5):
-                    writer.write(
-                        _pd.DataFrame.from_records(values, columns=["testname"])
-                    )
+                    writer.write(_pd.DataFrame.from_records(values, columns=["testname"]))
 
 
 @_pytest.mark.parametrize("value_type_pair", value_type_tuples)
@@ -186,15 +166,11 @@ def test_fetch(value_type_pair):
 
         with _utils.AutoDeletingTempDir("test2") as local_dir:
             schema_obj = _schema_impl.Schema.fetch(
-                tmpdir.name,
-                local_path=local_dir.get_named_tempfile("schema_test"),
-                schema_type=schema_type,
+                tmpdir.name, local_path=local_dir.get_named_tempfile("schema_test"), schema_type=schema_type,
             )
             with schema_obj as reader:
                 for df in reader.iter_chunks():
-                    for check, actual in _six_moves.zip(
-                        values, df[column_name].tolist()
-                    ):
+                    for check, actual in _six_moves.zip(values, df[column_name].tolist()):
                         assert check[0] == actual
                 assert reader.read() is None
                 reader.seek(0)
@@ -220,9 +196,7 @@ def test_download(value_type_pair):
             schema_obj.download(local_dir.get_named_tempfile(_uuid.uuid4().hex))
             with schema_obj as reader:
                 for df in reader.iter_chunks():
-                    for check, actual in _six_moves.zip(
-                        values, df[column_name].tolist()
-                    ):
+                    for check, actual in _six_moves.zip(values, df[column_name].tolist()):
                         assert check[0] == actual
                 assert reader.read() is None
                 reader.seek(0)
@@ -239,9 +213,7 @@ def test_download(value_type_pair):
             schema_obj.download()
             with schema_obj as reader:
                 for df in reader.iter_chunks():
-                    for check, actual in _six_moves.zip(
-                        values, df[column_name].tolist()
-                    ):
+                    for check, actual in _six_moves.zip(values, df[column_name].tolist()):
                         assert check[0] == actual
                 assert reader.read() is None
                 reader.seek(0)
@@ -313,10 +285,7 @@ def test_hive_queries(monkeypatch):
         ) SET LOCATION 's3://my_fixed_path/';
         """
         query = df.get_write_partition_to_hive_table_query(
-            "some_table",
-            partitions=_collections.OrderedDict(
-                [("region", "SEA"), ("ds", "2017-01-01")]
-            ),
+            "some_table", partitions=_collections.OrderedDict([("region", "SEA"), ("ds", "2017-01-01")]),
         )
         full_query = " ".join(full_query.split())
         query = " ".join(query.split())
@@ -326,20 +295,13 @@ def test_hive_queries(monkeypatch):
 def test_partial_column_read():
     with _test_utils.LocalTestFileSystem():
         a = _schema_impl.Schema.create_at_any_location(
-            schema_type=_schema_impl.SchemaType(
-                [("a", _primitives.Integer), ("b", _primitives.Integer)]
-            )
+            schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)])
         )
         with a as writer:
-            writer.write(
-                _pd.DataFrame.from_dict({"a": [1, 2, 3, 4], "b": [5, 6, 7, 8]})
-            )
+            writer.write(_pd.DataFrame.from_dict({"a": [1, 2, 3, 4], "b": [5, 6, 7, 8]}))
 
         b = _schema_impl.Schema.fetch(
-            a.uri,
-            schema_type=_schema_impl.SchemaType(
-                [("a", _primitives.Integer), ("b", _primitives.Integer)]
-            ),
+            a.uri, schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
         )
         with b as reader:
             df = reader.read(columns=["b"])
@@ -358,16 +320,11 @@ def test_from_python_std():
             df1 = _pd.DataFrame.from_dict({"a": [1, 2, 3, 4], "b": [5, 6, 7, 8]})
             s = _schema_impl.Schema.from_python_std(
                 t_value=df1,
-                schema_type=_schema_impl.SchemaType(
-                    [("a", _primitives.Integer), ("b", _primitives.Integer)]
-                ),
+                schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
             )
             assert s is not None
             n = _schema_impl.Schema.fetch(
-                s.uri,
-                schema_type=_schema_impl.SchemaType(
-                    [("a", _primitives.Integer), ("b", _primitives.Integer)]
-                ),
+                s.uri, schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
             )
             with n as reader:
                 df2 = reader.read()
@@ -379,16 +336,11 @@ def test_from_python_std():
             df2 = _pd.DataFrame.from_dict({"a": [9, 10, 11, 12], "b": [13, 14, 15, 16]})
             s = _schema_impl.Schema.from_python_std(
                 t_value=[df1, df2],
-                schema_type=_schema_impl.SchemaType(
-                    [("a", _primitives.Integer), ("b", _primitives.Integer)]
-                ),
+                schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
             )
             assert s is not None
             n = _schema_impl.Schema.fetch(
-                s.uri,
-                schema_type=_schema_impl.SchemaType(
-                    [("a", _primitives.Integer), ("b", _primitives.Integer)]
-                ),
+                s.uri, schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
             )
             with n as reader:
                 actual = []
@@ -405,24 +357,17 @@ def test_from_python_std():
             with _pytest.raises(_user_exceptions.FlyteTypeException):
                 _schema_impl.Schema.from_python_std(
                     t_value=[df1, df2],
-                    schema_type=_schema_impl.SchemaType(
-                        [("a", _primitives.Integer), ("b", _primitives.Integer)]
-                    ),
+                    schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
                 )
 
         def empty_list():
             s = _schema_impl.Schema.from_python_std(
                 t_value=[],
-                schema_type=_schema_impl.SchemaType(
-                    [("a", _primitives.Integer), ("b", _primitives.Integer)]
-                ),
+                schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
             )
             assert s is not None
             n = _schema_impl.Schema.fetch(
-                s.uri,
-                schema_type=_schema_impl.SchemaType(
-                    [("a", _primitives.Integer), ("b", _primitives.Integer)]
-                ),
+                s.uri, schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
             )
             with n as reader:
                 df = reader.read()
@@ -437,52 +382,22 @@ def test_from_python_std():
 def test_promote_from_model_schema_type():
     m = _type_models.SchemaType(
         [
-            _type_models.SchemaType.SchemaColumn(
-                "a", _type_models.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
-            ),
-            _type_models.SchemaType.SchemaColumn(
-                "b", _type_models.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
-            ),
-            _type_models.SchemaType.SchemaColumn(
-                "c", _type_models.SchemaType.SchemaColumn.SchemaColumnType.DURATION
-            ),
-            _type_models.SchemaType.SchemaColumn(
-                "d", _type_models.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
-            ),
-            _type_models.SchemaType.SchemaColumn(
-                "e", _type_models.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
-            ),
-            _type_models.SchemaType.SchemaColumn(
-                "f", _type_models.SchemaType.SchemaColumn.SchemaColumnType.STRING
-            ),
+            _type_models.SchemaType.SchemaColumn("a", _type_models.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
+            _type_models.SchemaType.SchemaColumn("b", _type_models.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
+            _type_models.SchemaType.SchemaColumn("c", _type_models.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
+            _type_models.SchemaType.SchemaColumn("d", _type_models.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
+            _type_models.SchemaType.SchemaColumn("e", _type_models.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
+            _type_models.SchemaType.SchemaColumn("f", _type_models.SchemaType.SchemaColumn.SchemaColumnType.STRING),
         ]
     )
     s = _schema_impl.SchemaType.promote_from_model(m)
     assert s.columns == m.columns
-    assert (
-        s.sdk_columns["a"].to_flyte_literal_type()
-        == _primitives.Boolean.to_flyte_literal_type()
-    )
-    assert (
-        s.sdk_columns["b"].to_flyte_literal_type()
-        == _primitives.Datetime.to_flyte_literal_type()
-    )
-    assert (
-        s.sdk_columns["c"].to_flyte_literal_type()
-        == _primitives.Timedelta.to_flyte_literal_type()
-    )
-    assert (
-        s.sdk_columns["d"].to_flyte_literal_type()
-        == _primitives.Float.to_flyte_literal_type()
-    )
-    assert (
-        s.sdk_columns["e"].to_flyte_literal_type()
-        == _primitives.Integer.to_flyte_literal_type()
-    )
-    assert (
-        s.sdk_columns["f"].to_flyte_literal_type()
-        == _primitives.String.to_flyte_literal_type()
-    )
+    assert s.sdk_columns["a"].to_flyte_literal_type() == _primitives.Boolean.to_flyte_literal_type()
+    assert s.sdk_columns["b"].to_flyte_literal_type() == _primitives.Datetime.to_flyte_literal_type()
+    assert s.sdk_columns["c"].to_flyte_literal_type() == _primitives.Timedelta.to_flyte_literal_type()
+    assert s.sdk_columns["d"].to_flyte_literal_type() == _primitives.Float.to_flyte_literal_type()
+    assert s.sdk_columns["e"].to_flyte_literal_type() == _primitives.Integer.to_flyte_literal_type()
+    assert s.sdk_columns["f"].to_flyte_literal_type() == _primitives.String.to_flyte_literal_type()
     assert s == m
 
 
@@ -500,54 +415,30 @@ def test_promote_from_model_schema():
                 _type_models.SchemaType.SchemaColumn(
                     "c", _type_models.SchemaType.SchemaColumn.SchemaColumnType.DURATION
                 ),
-                _type_models.SchemaType.SchemaColumn(
-                    "d", _type_models.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
-                ),
+                _type_models.SchemaType.SchemaColumn("d", _type_models.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
                 _type_models.SchemaType.SchemaColumn(
                     "e", _type_models.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
                 ),
-                _type_models.SchemaType.SchemaColumn(
-                    "f", _type_models.SchemaType.SchemaColumn.SchemaColumnType.STRING
-                ),
+                _type_models.SchemaType.SchemaColumn("f", _type_models.SchemaType.SchemaColumn.SchemaColumnType.STRING),
             ]
         ),
     )
 
     s = _schema_impl.Schema.promote_from_model(m)
     assert s.uri == "s3://some/place/"
-    assert (
-        s.type.sdk_columns["a"].to_flyte_literal_type()
-        == _primitives.Boolean.to_flyte_literal_type()
-    )
-    assert (
-        s.type.sdk_columns["b"].to_flyte_literal_type()
-        == _primitives.Datetime.to_flyte_literal_type()
-    )
-    assert (
-        s.type.sdk_columns["c"].to_flyte_literal_type()
-        == _primitives.Timedelta.to_flyte_literal_type()
-    )
-    assert (
-        s.type.sdk_columns["d"].to_flyte_literal_type()
-        == _primitives.Float.to_flyte_literal_type()
-    )
-    assert (
-        s.type.sdk_columns["e"].to_flyte_literal_type()
-        == _primitives.Integer.to_flyte_literal_type()
-    )
-    assert (
-        s.type.sdk_columns["f"].to_flyte_literal_type()
-        == _primitives.String.to_flyte_literal_type()
-    )
+    assert s.type.sdk_columns["a"].to_flyte_literal_type() == _primitives.Boolean.to_flyte_literal_type()
+    assert s.type.sdk_columns["b"].to_flyte_literal_type() == _primitives.Datetime.to_flyte_literal_type()
+    assert s.type.sdk_columns["c"].to_flyte_literal_type() == _primitives.Timedelta.to_flyte_literal_type()
+    assert s.type.sdk_columns["d"].to_flyte_literal_type() == _primitives.Float.to_flyte_literal_type()
+    assert s.type.sdk_columns["e"].to_flyte_literal_type() == _primitives.Integer.to_flyte_literal_type()
+    assert s.type.sdk_columns["f"].to_flyte_literal_type() == _primitives.String.to_flyte_literal_type()
     assert s == m
 
 
 def test_create_at_known_location():
     with _test_utils.LocalTestFileSystem():
         with _utils.AutoDeletingTempDir("test") as wd:
-            b = _schema_impl.Schema.create_at_known_location(
-                wd.name, schema_type=_schema_impl.SchemaType()
-            )
+            b = _schema_impl.Schema.create_at_known_location(wd.name, schema_type=_schema_impl.SchemaType())
             assert b.local_path is None
             assert b.remote_location == wd.name + "/"
             assert b.mode == "wb"
@@ -563,18 +454,12 @@ def test_create_at_known_location():
 def test_generic_schema_read():
     with _test_utils.LocalTestFileSystem():
         a = _schema_impl.Schema.create_at_any_location(
-            schema_type=_schema_impl.SchemaType(
-                [("a", _primitives.Integer), ("b", _primitives.Integer)]
-            )
+            schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)])
         )
         with a as writer:
-            writer.write(
-                _pd.DataFrame.from_dict({"a": [1, 2, 3, 4], "b": [5, 6, 7, 8]})
-            )
+            writer.write(_pd.DataFrame.from_dict({"a": [1, 2, 3, 4], "b": [5, 6, 7, 8]}))
 
-        b = _schema_impl.Schema.fetch(
-            a.remote_prefix, schema_type=_schema_impl.SchemaType([])
-        )
+        b = _schema_impl.Schema.fetch(a.remote_prefix, schema_type=_schema_impl.SchemaType([]))
         with b as reader:
             df = reader.read()
             assert df.columns.values.tolist() == ["a", "b"]
@@ -585,18 +470,13 @@ def test_generic_schema_read():
 def test_extra_schema_read():
     with _test_utils.LocalTestFileSystem():
         a = _schema_impl.Schema.create_at_any_location(
-            schema_type=_schema_impl.SchemaType(
-                [("a", _primitives.Integer), ("b", _primitives.Integer)]
-            )
+            schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)])
         )
         with a as writer:
-            writer.write(
-                _pd.DataFrame.from_dict({"a": [1, 2, 3, 4], "b": [5, 6, 7, 8]})
-            )
+            writer.write(_pd.DataFrame.from_dict({"a": [1, 2, 3, 4], "b": [5, 6, 7, 8]}))
 
         b = _schema_impl.Schema.fetch(
-            a.remote_prefix,
-            schema_type=_schema_impl.SchemaType([("a", _primitives.Integer)]),
+            a.remote_prefix, schema_type=_schema_impl.SchemaType([("a", _primitives.Integer)]),
         )
         with b as reader:
             df = reader.read(concat=True, truncate_extra_columns=False)
@@ -613,25 +493,17 @@ def test_extra_schema_read():
 def test_normal_schema_read_with_fastparquet():
     with _test_utils.LocalTestFileSystem():
         a = _schema_impl.Schema.create_at_any_location(
-            schema_type=_schema_impl.SchemaType(
-                [("a", _primitives.Integer), ("b", _primitives.Boolean)]
-            )
+            schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Boolean)])
         )
         with a as writer:
-            writer.write(
-                _pd.DataFrame.from_dict(
-                    {"a": [1, 2, 3, 4], "b": [False, True, True, False]}
-                )
-            )
+            writer.write(_pd.DataFrame.from_dict({"a": [1, 2, 3, 4], "b": [False, True, True, False]}))
 
         import os as _os
 
         original_engine = _os.getenv("PARQUET_ENGINE")
         _os.environ["PARQUET_ENGINE"] = "fastparquet"
 
-        b = _schema_impl.Schema.fetch(
-            a.remote_prefix, schema_type=_schema_impl.SchemaType([])
-        )
+        b = _schema_impl.Schema.fetch(a.remote_prefix, schema_type=_schema_impl.SchemaType([]))
 
         with b as reader:
             df = reader.read()
@@ -648,33 +520,23 @@ def test_normal_schema_read_with_fastparquet():
 def test_schema_read_consistency_between_two_engines():
     with _test_utils.LocalTestFileSystem():
         a = _schema_impl.Schema.create_at_any_location(
-            schema_type=_schema_impl.SchemaType(
-                [("a", _primitives.Integer), ("b", _primitives.Boolean)]
-            )
+            schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Boolean)])
         )
         with a as writer:
-            writer.write(
-                _pd.DataFrame.from_dict(
-                    {"a": [1, 2, 3, 4], "b": [True, True, True, False]}
-                )
-            )
+            writer.write(_pd.DataFrame.from_dict({"a": [1, 2, 3, 4], "b": [True, True, True, False]}))
 
         import os as _os
 
         original_engine = _os.getenv("PARQUET_ENGINE")
         _os.environ["PARQUET_ENGINE"] = "fastparquet"
 
-        b = _schema_impl.Schema.fetch(
-            a.remote_prefix, schema_type=_schema_impl.SchemaType([])
-        )
+        b = _schema_impl.Schema.fetch(a.remote_prefix, schema_type=_schema_impl.SchemaType([]))
 
         with b as b_reader:
             b_df = b_reader.read()
             _os.environ["PARQUET_ENGINE"] = "pyarrow"
 
-            c = _schema_impl.Schema.fetch(
-                a.remote_prefix, schema_type=_schema_impl.SchemaType([])
-            )
+            c = _schema_impl.Schema.fetch(a.remote_prefix, schema_type=_schema_impl.SchemaType([]))
             with c as c_reader:
                 c_df = c_reader.read()
                 assert b_df.equals(c_df)

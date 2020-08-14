@@ -9,15 +9,11 @@ from flytekit.models.core import condition as _condition
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow
 
-_generic_id = _identifier.Identifier(
-    _identifier.ResourceType.WORKFLOW, "project", "domain", "name", "version"
-)
+_generic_id = _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "project", "domain", "name", "version")
 
 
 def test_node_metadata():
-    obj = _workflow.NodeMetadata(
-        name="node1", timeout=timedelta(seconds=10), retries=_literals.RetryStrategy(0)
-    )
+    obj = _workflow.NodeMetadata(name="node1", timeout=timedelta(seconds=10), retries=_literals.RetryStrategy(0))
     assert obj.timeout.seconds == 10
     assert obj.retries.retries == 0
     obj2 = _workflow.NodeMetadata.from_flyte_idl(obj.to_flyte_idl())
@@ -44,18 +40,10 @@ def test_workflow_template():
     wf_metadata_defaults = _workflow.WorkflowMetadataDefaults()
     typed_interface = _interface.TypedInterface(
         {"a": _interface.Variable(int_type, "description1")},
-        {
-            "b": _interface.Variable(int_type, "description2"),
-            "c": _interface.Variable(int_type, "description3"),
-        },
+        {"b": _interface.Variable(int_type, "description2"), "c": _interface.Variable(int_type, "description3")},
     )
     wf_node = _workflow.Node(
-        id="some:node:id",
-        metadata=nm,
-        inputs=[],
-        upstream_node_ids=[],
-        output_aliases=[],
-        task_node=task,
+        id="some:node:id", metadata=nm, inputs=[], upstream_node_ids=[], output_aliases=[], task_node=task,
     )
     obj = _workflow.WorkflowTemplate(
         id=_generic_id,
@@ -75,14 +63,8 @@ def test_workflow_metadata_failure_policy():
     )
     obj2 = _workflow.WorkflowMetadata.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
-    assert (
-        obj.on_failure
-        == _workflow.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
-    )
-    assert (
-        obj2.on_failure
-        == _workflow.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
-    )
+    assert obj.on_failure == _workflow.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
+    assert obj2.on_failure == _workflow.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
 
 
 def test_workflow_metadata():
@@ -123,9 +105,7 @@ def test_workflow_node_sw():
 
 
 def _get_sample_node_metadata():
-    return _workflow.NodeMetadata(
-        name="node1", timeout=timedelta(seconds=10), retries=_literals.RetryStrategy(0)
-    )
+    return _workflow.NodeMetadata(name="node1", timeout=timedelta(seconds=10), retries=_literals.RetryStrategy(0))
 
 
 def test_node_task_with_no_inputs():
@@ -133,12 +113,7 @@ def test_node_task_with_no_inputs():
     task = _workflow.TaskNode(reference_id=_generic_id)
 
     obj = _workflow.Node(
-        id="some:node:id",
-        metadata=nm,
-        inputs=[],
-        upstream_node_ids=[],
-        output_aliases=[],
-        task_node=task,
+        id="some:node:id", metadata=nm, inputs=[], upstream_node_ids=[], output_aliases=[], task_node=task,
     )
     assert obj.target == task
     assert obj.id == "some:node:id"
@@ -154,12 +129,8 @@ def test_node_task_with_no_inputs():
 def test_node_task_with_inputs():
     nm = _get_sample_node_metadata()
     task = _workflow.TaskNode(reference_id=_generic_id)
-    bd = _literals.BindingData(
-        scalar=_literals.Scalar(primitive=_literals.Primitive(integer=5))
-    )
-    bd2 = _literals.BindingData(
-        scalar=_literals.Scalar(primitive=_literals.Primitive(integer=99))
-    )
+    bd = _literals.BindingData(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=5)))
+    bd2 = _literals.BindingData(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=99)))
     binding = _literals.Binding(var="myvar", binding=bd)
     binding2 = _literals.Binding(var="myothervar", binding=bd2)
 
@@ -189,12 +160,8 @@ def test_node_task_with_inputs():
 def test_branch_node():
     nm = _get_sample_node_metadata()
     task = _workflow.TaskNode(reference_id=_generic_id)
-    bd = _literals.BindingData(
-        scalar=_literals.Scalar(primitive=_literals.Primitive(integer=5))
-    )
-    bd2 = _literals.BindingData(
-        scalar=_literals.Scalar(primitive=_literals.Primitive(integer=99))
-    )
+    bd = _literals.BindingData(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=5)))
+    bd2 = _literals.BindingData(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=99)))
     binding = _literals.Binding(var="myvar", binding=bd)
     binding2 = _literals.Binding(var="myothervar", binding=bd2)
 
@@ -227,23 +194,15 @@ def test_branch_node():
                             _condition.BooleanExpression(
                                 comparison=_condition.ComparisonExpression(
                                     _condition.ComparisonExpression.Operator.EQ,
-                                    _condition.Operand(
-                                        primitive=_literals.Primitive(integer=5)
-                                    ),
-                                    _condition.Operand(
-                                        primitive=_literals.Primitive(integer=2)
-                                    ),
+                                    _condition.Operand(primitive=_literals.Primitive(integer=5)),
+                                    _condition.Operand(primitive=_literals.Primitive(integer=2)),
                                 )
                             ),
                             _condition.BooleanExpression(
                                 comparison=_condition.ComparisonExpression(
                                     _condition.ComparisonExpression.Operator.EQ,
-                                    _condition.Operand(
-                                        primitive=_literals.Primitive(integer=5)
-                                    ),
-                                    _condition.Operand(
-                                        primitive=_literals.Primitive(integer=2)
-                                    ),
+                                    _condition.Operand(primitive=_literals.Primitive(integer=5)),
+                                    _condition.Operand(primitive=_literals.Primitive(integer=2)),
                                 )
                             ),
                         )

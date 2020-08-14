@@ -37,7 +37,7 @@ class LazyLoadPlugin(object):
 
 def lazy_load_module(module):
     """
-    :param Text module: 
+    :param Text module:
     :rtype: _types.ModuleType
     """
 
@@ -66,11 +66,7 @@ class _LazyLoadModule(_types.ModuleType):
             try:
                 module = _importlib.import_module(cls._module)
             except ImportError as e:
-                raise ImportError(
-                    cls._ERROR_MSG_FMT.format(
-                        module=cls._module, plugins=cls._plugins, msg=e
-                    )
-                )
+                raise ImportError(cls._ERROR_MSG_FMT.format(module=cls._module, plugins=cls._plugins, msg=e))
         return module
 
     def __getattribute__(self, item):
@@ -92,9 +88,7 @@ class _LazyLoadModule(_types.ModuleType):
         """
         m = cls._lazy_submodules.get(submodule)
         if not m:
-            m = cls._lazy_submodules[submodule] = lazy_load_module(
-                "{}.{}".format(cls._module, submodule)
-            )
+            m = cls._lazy_submodules[submodule] = lazy_load_module("{}.{}".format(cls._module, submodule))
         return m
 
     @classmethod

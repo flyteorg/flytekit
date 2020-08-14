@@ -15,9 +15,7 @@ class SchemaInstantiator(_base_sdk_types.InstantiableType):
         :param Text location:
         :rtype: flytekit.common.types.impl.schema.Schema
         """
-        return _schema_impl.Schema.create_at_known_location(
-            location, mode="wb", schema_type=cls.schema_type
-        )
+        return _schema_impl.Schema.create_at_known_location(location, mode="wb", schema_type=cls.schema_type)
 
     def fetch(cls, remote_path, local_path=None):
         """
@@ -26,24 +24,16 @@ class SchemaInstantiator(_base_sdk_types.InstantiableType):
             this location is NOT managed and the schema will not be cleaned up upon exit.
         :rtype: flytekit.common.types.impl.schema.Schema
         """
-        return _schema_impl.Schema.fetch(
-            remote_path, mode="rb", local_path=local_path, schema_type=cls.schema_type
-        )
+        return _schema_impl.Schema.fetch(remote_path, mode="rb", local_path=local_path, schema_type=cls.schema_type)
 
     def create(cls):
         """
         :rtype: flytekit.common.types.impl.schema.Schema
         """
-        return _schema_impl.Schema.create_at_any_location(
-            mode="wb", schema_type=cls.schema_type
-        )
+        return _schema_impl.Schema.create_at_any_location(mode="wb", schema_type=cls.schema_type)
 
     def create_from_hive_query(
-        cls,
-        select_query,
-        stage_query=None,
-        schema_to_table_name_map=None,
-        known_location=None,
+        cls, select_query, stage_query=None, schema_to_table_name_map=None, known_location=None,
     ):
         """
         Returns a query that can be submitted to Hive and produce the desired output.  It also returns a properly-typed
@@ -72,9 +62,7 @@ class SchemaInstantiator(_base_sdk_types.InstantiableType):
         :rtype: flytekit.common.types.impl.schema.Schema
         """
         if not args and not kwargs:
-            return _schema_impl.Schema.create_at_any_location(
-                mode="wb", schema_type=cls.schema_type
-            )
+            return _schema_impl.Schema.create_at_any_location(mode="wb", schema_type=cls.schema_type)
         else:
             return super(SchemaInstantiator, cls).__call__(*args, **kwargs)
 
@@ -101,12 +89,8 @@ class Schema(_six.with_metaclass(SchemaInstantiator, _base_sdk_types.FlyteSdkVal
         :rtype: Schema
         """
         if not string_value:
-            _user_exceptions.FlyteValueException(
-                string_value, "Cannot create a Schema from an empty path"
-            )
-        return cls(
-            _schema_impl.Schema.from_string(string_value, schema_type=cls.schema_type)
-        )
+            _user_exceptions.FlyteValueException(string_value, "Cannot create a Schema from an empty path")
+        return cls(_schema_impl.Schema.from_string(string_value, schema_type=cls.schema_type))
 
     @classmethod
     def is_castable_from(cls, other):
@@ -128,9 +112,7 @@ class Schema(_six.with_metaclass(SchemaInstantiator, _base_sdk_types.FlyteSdkVal
         elif isinstance(t_value, _schema_impl.Schema):
             schema = t_value.cast_to(cls.schema_type)
         else:
-            schema = _schema_impl.Schema.from_python_std(
-                t_value, schema_type=cls.schema_type
-            )
+            schema = _schema_impl.Schema.from_python_std(t_value, schema_type=cls.schema_type)
         return cls(schema)
 
     @classmethod
@@ -184,8 +166,7 @@ def schema_instantiator(columns=None):
     if columns is not None and len(columns) == 0:
         raise _user_exceptions.FlyteValueException(
             columns,
-            "When specifying a Schema type with a known set of columns, a non-empty list must be provided as "
-            "inputs",
+            "When specifying a Schema type with a known set of columns, a non-empty list must be provided as " "inputs",
         )
 
     class _Schema(_six.with_metaclass(SchemaInstantiator, Schema)):

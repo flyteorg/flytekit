@@ -14,10 +14,7 @@ def test_list():
     assert list_type.to_flyte_literal_type().simple is None
     assert list_type.to_flyte_literal_type().map_value_type is None
     assert list_type.to_flyte_literal_type().schema is None
-    assert (
-        list_type.to_flyte_literal_type().collection_type.simple
-        == literal_types.SimpleType.INTEGER
-    )
+    assert list_type.to_flyte_literal_type().collection_type.simple == literal_types.SimpleType.INTEGER
 
     list_value = list_type.from_python_std([1, 2, 3, 4])
     assert list_value.to_python_std() == [1, 2, 3, 4]
@@ -90,53 +87,20 @@ def test_nested_list():
     assert list_type.to_flyte_literal_type().collection_type.simple is None
     assert list_type.to_flyte_literal_type().collection_type.map_value_type is None
     assert list_type.to_flyte_literal_type().collection_type.schema is None
-    assert (
-        list_type.to_flyte_literal_type().collection_type.collection_type.simple
-        == literal_types.SimpleType.INTEGER
-    )
+    assert list_type.to_flyte_literal_type().collection_type.collection_type.simple == literal_types.SimpleType.INTEGER
 
     gt = [[1, 2, 3], [4, 5, 6], []]
     list_value = list_type.from_python_std(gt)
     assert list_value.to_python_std() == gt
     assert list_type.from_flyte_idl(list_value.to_flyte_idl()) == list_value
 
-    assert (
-        list_value.collection.literals[0]
-        .collection.literals[0]
-        .scalar.primitive.integer
-        == 1
-    )
-    assert (
-        list_value.collection.literals[0]
-        .collection.literals[1]
-        .scalar.primitive.integer
-        == 2
-    )
-    assert (
-        list_value.collection.literals[0]
-        .collection.literals[2]
-        .scalar.primitive.integer
-        == 3
-    )
+    assert list_value.collection.literals[0].collection.literals[0].scalar.primitive.integer == 1
+    assert list_value.collection.literals[0].collection.literals[1].scalar.primitive.integer == 2
+    assert list_value.collection.literals[0].collection.literals[2].scalar.primitive.integer == 3
 
-    assert (
-        list_value.collection.literals[1]
-        .collection.literals[0]
-        .scalar.primitive.integer
-        == 4
-    )
-    assert (
-        list_value.collection.literals[1]
-        .collection.literals[1]
-        .scalar.primitive.integer
-        == 5
-    )
-    assert (
-        list_value.collection.literals[1]
-        .collection.literals[2]
-        .scalar.primitive.integer
-        == 6
-    )
+    assert list_value.collection.literals[1].collection.literals[0].scalar.primitive.integer == 4
+    assert list_value.collection.literals[1].collection.literals[1].scalar.primitive.integer == 5
+    assert list_value.collection.literals[1].collection.literals[2].scalar.primitive.integer == 6
 
     assert len(list_value.collection.literals[2].collection.literals) == 0
 
@@ -148,10 +112,7 @@ def test_nested_list():
 def test_reprs():
     list_type = containers.List(primitives.Integer)
     obj = list_type.from_python_std(list(_range(3)))
-    assert (
-        obj.short_string()
-        == "List<Integer>(len=3, [Integer(0), Integer(1), Integer(2)])"
-    )
+    assert obj.short_string() == "List<Integer>(len=3, [Integer(0), Integer(1), Integer(2)])"
     assert (
         obj.verbose_string() == "List<Integer>(\n"
         "\tlen=3,\n"
@@ -201,15 +162,9 @@ def test_model_promotion():
     list_model = literals.Literal(
         collection=literals.LiteralCollection(
             literals=[
-                literals.Literal(
-                    scalar=literals.Scalar(primitive=literals.Primitive(integer=0))
-                ),
-                literals.Literal(
-                    scalar=literals.Scalar(primitive=literals.Primitive(integer=1))
-                ),
-                literals.Literal(
-                    scalar=literals.Scalar(primitive=literals.Primitive(integer=2))
-                ),
+                literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=0))),
+                literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=1))),
+                literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=2))),
             ]
         )
     )
@@ -217,6 +172,4 @@ def test_model_promotion():
     assert len(list_obj.collection.literals) == 3
     assert isinstance(list_obj.collection.literals[0], primitives.Integer)
     assert list_obj == list_type.from_python_std([0, 1, 2])
-    assert list_obj == list_type(
-        [primitives.Integer(0), primitives.Integer(1), primitives.Integer(2)]
-    )
+    assert list_obj == list_type([primitives.Integer(0), primitives.Integer(1), primitives.Integer(2)])

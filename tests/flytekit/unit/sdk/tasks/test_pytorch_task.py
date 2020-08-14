@@ -18,9 +18,7 @@ def simple_pytorch_task(wf_params, sc, in1, out1):
     pass
 
 
-simple_pytorch_task._id = _identifier.Identifier(
-    _identifier.ResourceType.TASK, "project", "domain", "name", "version"
-)
+simple_pytorch_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, "project", "domain", "name", "version")
 
 
 def test_simple_pytorch_task():
@@ -31,9 +29,9 @@ def test_simple_pytorch_task():
         simple=_type_models.SimpleType.INTEGER
     )
     assert simple_pytorch_task.interface.outputs["out1"].description == ""
-    assert simple_pytorch_task.interface.outputs[
-        "out1"
-    ].type == _type_models.LiteralType(simple=_type_models.SimpleType.STRING)
+    assert simple_pytorch_task.interface.outputs["out1"].type == _type_models.LiteralType(
+        simple=_type_models.SimpleType.STRING
+    )
     assert simple_pytorch_task.type == _common_constants.SdkTaskType.PYTORCH_TASK
     assert simple_pytorch_task.task_function_name == "simple_pytorch_task"
     assert simple_pytorch_task.task_module == __name__

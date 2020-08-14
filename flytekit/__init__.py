@@ -1,8 +1,8 @@
 from __future__ import absolute_import
 
-import flytekit.plugins
+import flytekit.plugins  # noqa: F401
 
-__version__ = "0.11.3"
+__version__ = "0.13.0b0"
 
 import logging as _logging
 

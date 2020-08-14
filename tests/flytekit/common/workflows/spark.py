@@ -49,6 +49,4 @@ def f(_):
 class SparkTasksWorkflow(object):
     triggered_date = Input(Types.Datetime)
     sparkTask = hello_spark(partitions=50)
-    print_always = print_every_time(
-        value_to_print=sparkTask.outputs.out, date_triggered=triggered_date
-    )
+    print_always = print_every_time(value_to_print=sparkTask.outputs.out, date_triggered=triggered_date)

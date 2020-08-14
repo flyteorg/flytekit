@@ -9,10 +9,8 @@ from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common import nodes as _nodes
 from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions.user import \
-    FlyteTypeException as _FlyteTypeException
-from flytekit.common.exceptions.user import \
-    FlyteValueException as _FlyteValueException
+from flytekit.common.exceptions.user import FlyteTypeException as _FlyteTypeException
+from flytekit.common.exceptions.user import FlyteValueException as _FlyteValueException
 from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.tasks import task as _base_task
@@ -106,9 +104,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         :param dict[Text, T] inputs:
         :rtype: list[_qubole.QuboleHiveJob]
         """
-        queries_from_task = (
-            super(SdkHiveTask, self)._execute_user_code(context, inputs_dict) or []
-        )
+        queries_from_task = super(SdkHiveTask, self)._execute_user_code(context, inputs_dict) or []
         if not isinstance(queries_from_task, list):
             queries_from_task = [queries_from_task]
 
@@ -117,9 +113,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
 
         for q in queries_from_task:
             hive_query = _qubole.HiveQuery(
-                query=q,
-                timeout_sec=self.metadata.timeout.seconds,
-                retry_count=self.metadata.retries.retries,
+                query=q, timeout_sec=self.metadata.timeout.seconds, retry_count=self.metadata.retries.retries,
             )
 
             # TODO: Remove this after all users of older SDK versions that did the single node, multi-query pattern are
@@ -129,21 +123,14 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
             query_collection = _qubole.HiveQueryCollection([hive_query])
 
             plugin_objects.append(
-                _qubole.QuboleHiveJob(
-                    hive_query,
-                    self._cluster_label,
-                    self._tags,
-                    query_collection=query_collection,
-                )
+                _qubole.QuboleHiveJob(hive_query, self._cluster_label, self._tags, query_collection=query_collection,)
             )
 
         return plugin_objects
 
     @staticmethod
     def _validate_task_parameters(cluster_label, tags):
-        if not (
-            cluster_label is None or isinstance(cluster_label, (str, _six.text_type))
-        ):
+        if not (cluster_label is None or isinstance(cluster_label, (str, _six.text_type))):
             raise _FlyteTypeException(
                 type(cluster_label),
                 {str, _six.text_type},
@@ -151,10 +138,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
                 received_value=cluster_label,
             )
         if tags is not None:
-            if not (
-                isinstance(tags, list)
-                and all(isinstance(tag, (str, _six.text_type)) for tag in tags)
-            ):
+            if not (isinstance(tags, list) and all(isinstance(tag, (str, _six.text_type)) for tag in tags)):
                 raise _FlyteTypeException(
                     type(tags),
                     [],
@@ -163,13 +147,11 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
                 )
             if len(tags) > ALLOWED_TAGS_COUNT:
                 raise _FlyteValueException(
-                    len(tags),
-                    "number of tags must be less than {}".format(ALLOWED_TAGS_COUNT),
+                    len(tags), "number of tags must be less than {}".format(ALLOWED_TAGS_COUNT),
                 )
             if not all(len(tag) for tag in tags):
                 raise _FlyteValueException(
-                    tags,
-                    "length of a tag must be less than {} chars".format(MAX_TAG_LENGTH),
+                    tags, "length of a tag must be less than {} chars".format(MAX_TAG_LENGTH),
                 )
 
     @staticmethod
@@ -192,15 +174,10 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         """
         inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(
             inputs,
-            {
-                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
-                for k, v in _six.iteritems(self.interface.inputs)
-            },
+            {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)},
         )
         outputs_dict = {
-            name: _task_output.OutputReference(
-                _type_helpers.get_sdk_type_from_literal_type(variable.type)
-            )
+            name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
             for name, variable in _six.iteritems(self.interface.outputs)
         }
 
@@ -215,29 +192,20 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         # Create output bindings always - this has to happen after user code has run
         output_bindings = [
             _literal_models.Binding(
-                var=name,
-                binding=_interface.BindingData.from_python_std(
-                    b.sdk_type.to_flyte_literal_type(), b.value
-                ),
+                var=name, binding=_interface.BindingData.from_python_std(b.sdk_type.to_flyte_literal_type(), b.value),
             )
             for name, b in _six.iteritems(outputs_dict)
         ]
 
         i = 0
         for quboleHiveJob in generated_queries:
-            hive_job_node = _create_hive_job_node(
-                "HiveQuery_{}".format(i), quboleHiveJob.to_flyte_idl(), self.metadata
-            )
+            hive_job_node = _create_hive_job_node("HiveQuery_{}".format(i), quboleHiveJob.to_flyte_idl(), self.metadata)
             nodes.append(hive_job_node)
             tasks.append(hive_job_node.executable_sdk_object)
             i += 1
 
         dynamic_job_spec = _dynamic_job.DynamicJobSpec(
-            min_successes=len(nodes),
-            tasks=tasks,
-            nodes=nodes,
-            outputs=output_bindings,
-            subworkflows=[],
+            min_successes=len(nodes), tasks=tasks, nodes=nodes, outputs=output_bindings, subworkflows=[],
         )
 
         return dynamic_job_spec
@@ -264,10 +232,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         if len(spec.nodes) == 0:
             return {
                 _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
-                    literals={
-                        binding.var: binding.binding.to_literal_model()
-                        for binding in spec.outputs
-                    }
+                    literals={binding.var: binding.binding.to_literal_model() for binding in spec.outputs}
                 )
             }
         else:
@@ -288,9 +253,7 @@ def _create_hive_job_node(name, hive_job, metadata):
         id=_six.text_type(_uuid.uuid4()),
         upstream_nodes=[],
         bindings=[],
-        metadata=_workflow_model.NodeMetadata(
-            name, metadata.timeout, _literal_models.RetryStrategy(0)
-        ),
+        metadata=_workflow_model.NodeMetadata(name, metadata.timeout, _literal_models.RetryStrategy(0)),
         sdk_task=SdkHiveJob(hive_job, metadata),
     )
 

@@ -14,14 +14,10 @@ from flytekit.sdk.types import Types
 def get_pod_spec():
     a_container = generated_pb2.Container(name="a container",)
     a_container.command.extend(["fee", "fi", "fo", "fum"])
-    a_container.volumeMounts.extend(
-        [generated_pb2.VolumeMount(name="volume mount", mountPath="some/where",)]
-    )
+    a_container.volumeMounts.extend([generated_pb2.VolumeMount(name="volume mount", mountPath="some/where",)])
 
     pod_spec = generated_pb2.PodSpec(restartPolicy="OnFailure",)
-    pod_spec.containers.extend(
-        [a_container, generated_pb2.Container(name="another container")]
-    )
+    pod_spec.containers.extend([a_container, generated_pb2.Container(name="another container")])
     return pod_spec
 
 
@@ -40,9 +36,7 @@ with mock.patch.object(_IMAGE, "get", return_value="docker.io/blah:abc123"):
         pass
 
 
-simple_sidecar_task._id = _identifier.Identifier(
-    _identifier.ResourceType.TASK, "project", "domain", "name", "version"
-)
+simple_sidecar_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, "project", "domain", "name", "version")
 
 
 def test_sidecar_task():
@@ -65,9 +59,7 @@ def test_sidecar_task():
         "--output-prefix",
         "{{.outputPrefix}}",
     ]
-    assert primary_container["volumeMounts"] == [
-        {"mountPath": "some/where", "name": "volume mount"}
-    ]
+    assert primary_container["volumeMounts"] == [{"mountPath": "some/where", "name": "volume mount"}]
     assert {"name": "foo", "value": "bar"} in primary_container["env"]
     assert primary_container["resources"] == {
         "requests": {"cpu": {"string": "10"}},

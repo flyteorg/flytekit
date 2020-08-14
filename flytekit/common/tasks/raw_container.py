@@ -50,54 +50,26 @@ def _get_container_definition(
     requests = []
     if storage_request:
         requests.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.STORAGE, storage_request
-            )
+            _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
         )
     if cpu_request:
-        requests.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.CPU, cpu_request
-            )
-        )
+        requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
     if gpu_request:
-        requests.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.GPU, gpu_request
-            )
-        )
+        requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
     if memory_request:
         requests.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.MEMORY, memory_request
-            )
+            _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
         )
 
     limits = []
     if storage_limit:
-        limits.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.STORAGE, storage_limit
-            )
-        )
+        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit))
     if cpu_limit:
-        limits.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.CPU, cpu_limit
-            )
-        )
+        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
     if gpu_limit:
-        limits.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.GPU, gpu_limit
-            )
-        )
+        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
     if memory_limit:
-        limits.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.MEMORY, memory_limit
-            )
-        )
+        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit))
 
     if environment is None:
         environment = {}
@@ -187,11 +159,7 @@ class SdkRawContainerTask(_base_task.SdkTask):
         metadata = _task_models.TaskMetadata(
             discoverable,
             # This needs to have the proper version reflected in it
-            _task_models.RuntimeMetadata(
-                _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
-                __version__,
-                "python",
-            ),
+            _task_models.RuntimeMetadata(_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python",),
             timeout or _datetime.timedelta(seconds=0),
             _literals.RetryStrategy(retries),
             interruptible,
@@ -200,9 +168,7 @@ class SdkRawContainerTask(_base_task.SdkTask):
         )
 
         # The interface is defined using the inputs and outputs
-        i = _interface.TypedInterface(
-            inputs=types_to_variable(inputs), outputs=types_to_variable(outputs)
-        )
+        i = _interface.TypedInterface(inputs=types_to_variable(inputs), outputs=types_to_variable(outputs))
 
         # This sets the base SDKTask with container etc
         super(SdkRawContainerTask, self).__init__(

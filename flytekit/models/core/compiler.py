@@ -74,14 +74,8 @@ class ConnectionSet(_common.FlyteIdlEntity):
         :rtype: ConnectionSet
         """
         return cls(
-            upstream={
-                k: ConnectionSet.IdList.from_flyte_idl(v)
-                for k, v in _six.iteritems(p.upstream)
-            },
-            downstream={
-                k: ConnectionSet.IdList.from_flyte_idl(v)
-                for k, v in _six.iteritems(p.downstream)
-            },
+            upstream={k: ConnectionSet.IdList.from_flyte_idl(v) for k, v in _six.iteritems(p.upstream)},
+            downstream={k: ConnectionSet.IdList.from_flyte_idl(v) for k, v in _six.iteritems(p.downstream)},
         )
 
 
@@ -113,8 +107,7 @@ class CompiledWorkflow(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.compiler_pb2.CompiledWorkflow
         """
         return _compiler_pb2.CompiledWorkflow(
-            template=self.template.to_flyte_idl(),
-            connections=self.connections.to_flyte_idl(),
+            template=self.template.to_flyte_idl(), connections=self.connections.to_flyte_idl(),
         )
 
     @classmethod
@@ -148,9 +141,7 @@ class CompiledTask(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.compiler_pb2.CompiledTask
         """
-        return _compiler_pb2.CompiledTask(
-            template=self.template  # TODO: .to_flyte_idl()
-        )
+        return _compiler_pb2.CompiledTask(template=self.template)  # TODO: .to_flyte_idl()
 
     @classmethod
     def from_flyte_idl(cls, p):

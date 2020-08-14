@@ -20,53 +20,23 @@ def test_simple_type():
 
 
 def test_schema_column():
-    assert (
-        _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
-        == types_pb2.SchemaType.SchemaColumn.INTEGER
-    )
-    assert (
-        _types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
-        == types_pb2.SchemaType.SchemaColumn.FLOAT
-    )
-    assert (
-        _types.SchemaType.SchemaColumn.SchemaColumnType.STRING
-        == types_pb2.SchemaType.SchemaColumn.STRING
-    )
-    assert (
-        _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
-        == types_pb2.SchemaType.SchemaColumn.DATETIME
-    )
-    assert (
-        _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
-        == types_pb2.SchemaType.SchemaColumn.DURATION
-    )
-    assert (
-        _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
-        == types_pb2.SchemaType.SchemaColumn.BOOLEAN
-    )
+    assert _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER == types_pb2.SchemaType.SchemaColumn.INTEGER
+    assert _types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT == types_pb2.SchemaType.SchemaColumn.FLOAT
+    assert _types.SchemaType.SchemaColumn.SchemaColumnType.STRING == types_pb2.SchemaType.SchemaColumn.STRING
+    assert _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME == types_pb2.SchemaType.SchemaColumn.DATETIME
+    assert _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION == types_pb2.SchemaType.SchemaColumn.DURATION
+    assert _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN == types_pb2.SchemaType.SchemaColumn.BOOLEAN
 
 
 def test_schema_type():
     obj = _types.SchemaType(
         [
-            _types.SchemaType.SchemaColumn(
-                "a", _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
-            ),
-            _types.SchemaType.SchemaColumn(
-                "b", _types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
-            ),
-            _types.SchemaType.SchemaColumn(
-                "c", _types.SchemaType.SchemaColumn.SchemaColumnType.STRING
-            ),
-            _types.SchemaType.SchemaColumn(
-                "d", _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
-            ),
-            _types.SchemaType.SchemaColumn(
-                "e", _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
-            ),
-            _types.SchemaType.SchemaColumn(
-                "f", _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
-            ),
+            _types.SchemaType.SchemaColumn("a", _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
+            _types.SchemaType.SchemaColumn("b", _types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
+            _types.SchemaType.SchemaColumn("c", _types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
+            _types.SchemaType.SchemaColumn("d", _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
+            _types.SchemaType.SchemaColumn("e", _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
+            _types.SchemaType.SchemaColumn("f", _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
         ]
     )
 
@@ -77,20 +47,12 @@ def test_schema_type():
     assert obj.columns[4].name == "e"
     assert obj.columns[5].name == "f"
 
-    assert (
-        obj.columns[0].type == _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
-    )
+    assert obj.columns[0].type == _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
     assert obj.columns[1].type == _types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
     assert obj.columns[2].type == _types.SchemaType.SchemaColumn.SchemaColumnType.STRING
-    assert (
-        obj.columns[3].type == _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
-    )
-    assert (
-        obj.columns[4].type == _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
-    )
-    assert (
-        obj.columns[5].type == _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
-    )
+    assert obj.columns[3].type == _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
+    assert obj.columns[4].type == _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
+    assert obj.columns[5].type == _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
 
     assert obj == _types.SchemaType.from_flyte_idl(obj.to_flyte_idl())
 
@@ -105,24 +67,12 @@ def test_literal_types():
 
     schema_type = _types.SchemaType(
         [
-            _types.SchemaType.SchemaColumn(
-                "a", _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
-            ),
-            _types.SchemaType.SchemaColumn(
-                "b", _types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
-            ),
-            _types.SchemaType.SchemaColumn(
-                "c", _types.SchemaType.SchemaColumn.SchemaColumnType.STRING
-            ),
-            _types.SchemaType.SchemaColumn(
-                "d", _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
-            ),
-            _types.SchemaType.SchemaColumn(
-                "e", _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
-            ),
-            _types.SchemaType.SchemaColumn(
-                "f", _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
-            ),
+            _types.SchemaType.SchemaColumn("a", _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
+            _types.SchemaType.SchemaColumn("b", _types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
+            _types.SchemaType.SchemaColumn("c", _types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
+            _types.SchemaType.SchemaColumn("d", _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
+            _types.SchemaType.SchemaColumn("e", _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
+            _types.SchemaType.SchemaColumn("f", _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
         ]
     )
     obj = _types.LiteralType(schema=schema_type)

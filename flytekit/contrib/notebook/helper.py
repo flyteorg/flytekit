@@ -3,10 +3,8 @@ import os as _os
 import six as _six
 from pyspark import SparkConf, SparkContext
 
-from flytekit.common.types.helpers import \
-    pack_python_std_map_to_literal_map as _packer
-from flytekit.contrib.notebook.supported_types import \
-    notebook_types_map as _notebook_types_map
+from flytekit.common.types.helpers import pack_python_std_map_to_literal_map as _packer
+from flytekit.contrib.notebook.supported_types import notebook_types_map as _notebook_types_map
 
 
 def record_outputs(outputs=None):

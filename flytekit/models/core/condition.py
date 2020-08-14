@@ -130,12 +130,8 @@ class ConjunctionExpression(_common.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object):
         return cls(
             operator=pb2_object.operator,
-            left_expression=BooleanExpression.from_flyte_idl(
-                pb2_object.left_expression
-            ),
-            right_expression=BooleanExpression.from_flyte_idl(
-                pb2_object.right_expression
-            ),
+            left_expression=BooleanExpression.from_flyte_idl(pb2_object.left_expression),
+            right_expression=BooleanExpression.from_flyte_idl(pb2_object.right_expression),
         )
 
 
@@ -171,8 +167,7 @@ class Operand(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.condition_pb2.Operand
         """
         return _condition.Operand(
-            primitive=self.primitive.to_flyte_idl() if self.primitive else None,
-            var=self.var if self.var else None,
+            primitive=self.primitive.to_flyte_idl() if self.primitive else None, var=self.var if self.var else None,
         )
 
     @classmethod

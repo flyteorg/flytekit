@@ -55,9 +55,7 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionMetadata
         """
-        return _execution_pb2.ExecutionMetadata(
-            mode=self.mode, principal=self.principal, nesting=self.nesting
-        )
+        return _execution_pb2.ExecutionMetadata(mode=self.mode, principal=self.principal, nesting=self.nesting)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -65,11 +63,7 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
         :param flyteidl.admin.execution_pb2.ExecutionMetadata pb2_object:
         :return: ExecutionMetadata
         """
-        return cls(
-            mode=pb2_object.mode,
-            principal=pb2_object.principal,
-            nesting=pb2_object.nesting,
-        )
+        return cls(mode=pb2_object.mode, principal=pb2_object.principal, nesting=pb2_object.nesting,)
 
 
 class ExecutionSpec(_common_models.FlyteIdlEntity):
@@ -158,9 +152,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         return _execution_pb2.ExecutionSpec(
             launch_plan=self.launch_plan.to_flyte_idl(),
             metadata=self.metadata.to_flyte_idl(),
-            notifications=self.notifications.to_flyte_idl()
-            if self.notifications
-            else None,
+            notifications=self.notifications.to_flyte_idl() if self.notifications else None,
             disable_all=self.disable_all,
             labels=self.labels.to_flyte_idl(),
             annotations=self.annotations.to_flyte_idl(),
@@ -176,9 +168,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         return cls(
             launch_plan=_identifier.Identifier.from_flyte_idl(p.launch_plan),
             metadata=ExecutionMetadata.from_flyte_idl(p.metadata),
-            notifications=NotificationList.from_flyte_idl(p.notifications)
-            if p.HasField("notifications")
-            else None,
+            notifications=NotificationList.from_flyte_idl(p.notifications) if p.HasField("notifications") else None,
             disable_all=p.disable_all if p.HasField("disable_all") else None,
             labels=_common_models.Labels.from_flyte_idl(p.labels),
             annotations=_common_models.Annotations.from_flyte_idl(p.annotations),
@@ -214,8 +204,7 @@ class LiteralMapBlob(_common_models.FlyteIdlEntity):
         :rtype: flyteidl.admin.execution_pb2.LiteralMapBlob
         """
         return _execution_pb2.LiteralMapBlob(
-            values=self.values.to_flyte_idl() if self.values is not None else None,
-            uri=self.uri,
+            values=self.values.to_flyte_idl() if self.values is not None else None, uri=self.uri,
         )
 
     @classmethod
@@ -268,9 +257,7 @@ class Execution(_common_models.FlyteIdlEntity):
         :rtype: flyteidl.admin.execution_pb2.Execution
         """
         return _execution_pb2.Execution(
-            id=self.id.to_flyte_idl(),
-            closure=self.closure.to_flyte_idl(),
-            spec=self.spec.to_flyte_idl(),
+            id=self.id.to_flyte_idl(), closure=self.closure.to_flyte_idl(), spec=self.spec.to_flyte_idl(),
         )
 
     @classmethod
@@ -337,9 +324,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             error=self.error.to_flyte_idl() if self.error is not None else None,
             outputs=self.outputs.to_flyte_idl() if self.outputs is not None else None,
         )
-        obj.started_at.FromDatetime(
-            self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None)
-        )
+        obj.started_at.FromDatetime(self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None))
         return obj
 
     @classmethod
@@ -380,9 +365,7 @@ class NotificationList(_common_models.FlyteIdlEntity):
         """
         :rtype:  flyteidl.admin.execution_pb2.NotificationList
         """
-        return _execution_pb2.NotificationList(
-            notifications=[n.to_flyte_idl() for n in self.notifications]
-        )
+        return _execution_pb2.NotificationList(notifications=[n.to_flyte_idl() for n in self.notifications])
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -390,12 +373,7 @@ class NotificationList(_common_models.FlyteIdlEntity):
         :param flyteidl.admin.execution_pb2.NotificationList pb2_object:
         :rtype: NotificationList
         """
-        return cls(
-            [
-                _common_models.Notification.from_flyte_idl(p)
-                for p in pb2_object.notifications
-            ]
-        )
+        return cls([_common_models.Notification.from_flyte_idl(p) for p in pb2_object.notifications])
 
 
 class _CommonDataResponse(_common_models.FlyteIdlEntity):

@@ -1,6 +1,10 @@
 import hashlib as _hashlib
 import json as _json
 import logging as _logging
+from __future__ import absolute_import
+
+import hashlib as _hashlib
+import json as _json
 import uuid as _uuid
 
 import six as _six
@@ -28,6 +32,10 @@ from flytekit.models import common as _common_model
 from flytekit.models import execution as _admin_execution_models
 from flytekit.models import task as _task_model
 from flytekit.models.admin import common as _admin_common
+from flytekit.configuration import internal as _internal_config
+from flytekit.engines import loader as _engine_loader
+from flytekit.models import common as _common_model
+from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
 
@@ -139,10 +147,7 @@ class SdkTask(
         return _nodes.SdkNode(
             id=None,
             metadata=_workflow_model.NodeMetadata(
-                "DEADBEEF",
-                self.metadata.timeout,
-                self.metadata.retries,
-                self.metadata.interruptible,
+                "DEADBEEF", self.metadata.timeout, self.metadata.retries, self.metadata.interruptible,
             ),
             bindings=sorted(bindings, key=lambda b: b.var),
             upstream_nodes=upstream_nodes,
@@ -300,9 +305,7 @@ class SdkTask(
                 )
 
     def __repr__(self):
-        return "Flyte {task_type}: {interface}".format(
-            task_type=self.type, interface=self.interface
-        )
+        return "Flyte {task_type}: {interface}".format(task_type=self.type, interface=self.interface)
 
     def _python_std_input_map_to_literal_map(self, inputs):
         """
@@ -312,10 +315,7 @@ class SdkTask(
         """
         return _type_helpers.pack_python_std_map_to_literal_map(
             inputs,
-            {
-                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
-                for k, v in _six.iteritems(self.interface.inputs)
-            },
+            {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)},
         )
 
     def _produce_deterministic_version(self, version=None):

@@ -17,9 +17,7 @@ def test_blob():
     assert b.local_path is None
     assert b.mode == "rb"
     assert b.metadata.type.format == ""
-    assert (
-        b.metadata.type.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
-    )
+    assert b.metadata.type.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
 
 
 def test_blob_from_python_std():
@@ -31,10 +29,7 @@ def test_blob_from_python_std():
             b = blobs.Blob.from_python_std(tmp_name)
             assert b.mode == "wb"
             assert b.metadata.type.format == ""
-            assert (
-                b.metadata.type.dimensionality
-                == _core_types.BlobType.BlobDimensionality.SINGLE
-            )
+            assert b.metadata.type.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
             assert b.remote_location.startswith(t.name)
             assert b.local_path == tmp_name
             with open(b.remote_location, "rb") as r:
@@ -57,10 +52,7 @@ def test_blob_create_at():
             assert b.remote_location == tmp_name
             assert b.mode == "wb"
             assert b.metadata.type.format == ""
-            assert (
-                b.metadata.type.dimensionality
-                == _core_types.BlobType.BlobDimensionality.SINGLE
-            )
+            assert b.metadata.type.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
             with b as w:
                 w.write("hello hello".encode("utf-8"))
 
@@ -81,10 +73,7 @@ def test_blob_fetch_managed():
             assert b.remote_location == tmp_name
             assert b.mode == "rb"
             assert b.metadata.type.format == ""
-            assert (
-                b.metadata.type.dimensionality
-                == _core_types.BlobType.BlobDimensionality.SINGLE
-            )
+            assert b.metadata.type.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
             with b as r:
                 assert r.read() == "hello".encode("utf-8")
 
@@ -115,10 +104,7 @@ def test_blob_fetch_unmanaged():
             assert b.remote_location == tmp_name
             assert b.mode == "rb"
             assert b.metadata.type.format == ""
-            assert (
-                b.metadata.type.dimensionality
-                == _core_types.BlobType.BlobDimensionality.SINGLE
-            )
+            assert b.metadata.type.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
             with b as r:
                 assert r.read() == "hello".encode("utf-8")
 
@@ -156,10 +142,7 @@ def test_blob_download_managed():
             assert b.remote_location == tmp_name
             assert b.mode == "rb"
             assert b.metadata.type.format == ""
-            assert (
-                b.metadata.type.dimensionality
-                == _core_types.BlobType.BlobDimensionality.SINGLE
-            )
+            assert b.metadata.type.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
             with b as r:
                 assert r.read() == "hello".encode("utf-8")
 
@@ -194,10 +177,7 @@ def test_blob_download_unmanaged():
             assert b.remote_location == tmp_name
             assert b.mode == "rb"
             assert b.metadata.type.format == ""
-            assert (
-                b.metadata.type.dimensionality
-                == _core_types.BlobType.BlobDimensionality.SINGLE
-            )
+            assert b.metadata.type.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
             with b as r:
                 assert r.read() == "hello".encode("utf-8")
 
@@ -220,10 +200,7 @@ def test_multipart_blob():
     assert b.local_path is None
     assert b.mode == "w"
     assert b.metadata.type.format == "csv"
-    assert (
-        b.metadata.type.dimensionality
-        == _core_types.BlobType.BlobDimensionality.MULTIPART
-    )
+    assert b.metadata.type.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
 
 
 def _generate_multipart_blob_data(tmp_dir):
@@ -245,10 +222,7 @@ def test_multipart_blob_from_python_std():
             b = blobs.MultiPartBlob.from_python_std(wd.name)
             assert b.mode == "wb"
             assert b.metadata.type.format == ""
-            assert (
-                b.metadata.type.dimensionality
-                == _core_types.BlobType.BlobDimensionality.MULTIPART
-            )
+            assert b.metadata.type.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
             assert b.remote_location.startswith(t.name)
             assert b.local_path == wd.name
             with open(os.path.join(b.remote_location, "0"), "rb") as r:
@@ -274,10 +248,7 @@ def test_multipart_blob_create_at():
             assert b.remote_location == wd.name + "/"
             assert b.mode == "wb"
             assert b.metadata.type.format == ""
-            assert (
-                b.metadata.type.dimensionality
-                == _core_types.BlobType.BlobDimensionality.MULTIPART
-            )
+            assert b.metadata.type.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
             with b.create_part("0") as w:
                 w.write("part0".encode("utf-8"))
             with b.create_part("1") as w:
@@ -303,10 +274,7 @@ def test_multipart_blob_fetch_managed():
             assert b.remote_location == wd.name + "/"
             assert b.mode == "rb"
             assert b.metadata.type.format == ""
-            assert (
-                b.metadata.type.dimensionality
-                == _core_types.BlobType.BlobDimensionality.MULTIPART
-            )
+            assert b.metadata.type.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
             with b as r:
                 assert r[0].read() == "part0".encode("utf-8")
                 assert r[1].read() == "part1".encode("utf-8")
@@ -318,9 +286,7 @@ def test_multipart_blob_fetch_managed():
             with open(os.path.join(wd.name, "0"), "wb") as w:
                 w.write("bye".encode("utf-8"))
 
-            b2 = blobs.MultiPartBlob.fetch(
-                wd.name, local_path=b.local_path, overwrite=True
-            )
+            b2 = blobs.MultiPartBlob.fetch(wd.name, local_path=b.local_path, overwrite=True)
             with b2 as r:
                 assert r[0].read() == "bye".encode("utf-8")
                 assert r[1].read() == "part1".encode("utf-8")
@@ -341,10 +307,7 @@ def test_multipart_blob_fetch_unmanaged():
             assert b.remote_location == wd.name + "/"
             assert b.mode == "rb"
             assert b.metadata.type.format == ""
-            assert (
-                b.metadata.type.dimensionality
-                == _core_types.BlobType.BlobDimensionality.MULTIPART
-            )
+            assert b.metadata.type.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
             with b as r:
                 assert r[0].read() == "part0".encode("utf-8")
                 assert r[1].read() == "part1".encode("utf-8")

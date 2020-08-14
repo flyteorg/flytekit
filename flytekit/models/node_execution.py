@@ -67,9 +67,7 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
             output_uri=self.output_uri,
             error=self.error.to_flyte_idl() if self.error is not None else None,
         )
-        obj.started_at.FromDatetime(
-            self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None)
-        )
+        obj.started_at.FromDatetime(self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None))
         obj.duration.FromTimedelta(self.duration)
         return obj
 
@@ -82,9 +80,7 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         return cls(
             phase=p.phase,
             output_uri=p.output_uri if p.HasField("output_uri") else None,
-            error=_core_execution.ExecutionError.from_flyte_idl(p.error)
-            if p.HasField("error")
-            else None,
+            error=_core_execution.ExecutionError.from_flyte_idl(p.error) if p.HasField("error") else None,
             started_at=p.started_at.ToDatetime().replace(tzinfo=_pytz.UTC),
             duration=p.duration.ToTimedelta(),
         )
@@ -127,9 +123,7 @@ class NodeExecution(_common_models.FlyteIdlEntity):
         :rtype: flyteidl.admin.node_execution_pb2.NodeExecution
         """
         return _node_execution_pb2.NodeExecution(
-            id=self.id.to_flyte_idl(),
-            input_uri=self.input_uri,
-            closure=self.closure.to_flyte_idl(),
+            id=self.id.to_flyte_idl(), input_uri=self.input_uri, closure=self.closure.to_flyte_idl(),
         )
 
     @classmethod

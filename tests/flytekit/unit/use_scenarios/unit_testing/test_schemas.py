@@ -110,11 +110,7 @@ def test_subset_of_columns():
     def source(wf_params, a):
         out = Types.Schema([("a", Types.Integer), ("b", Types.String)])()
         with out as writer:
-            writer.write(
-                pd.DataFrame.from_dict(
-                    {"a": [1, 2, 3, 4, 5], "b": ["a", "b", "c", "d", "e"]}
-                )
-            )
+            writer.write(pd.DataFrame.from_dict({"a": [1, 2, 3, 4, 5], "b": ["a", "b", "c", "d", "e"]}))
         a.set(out)
 
     @inputs(a=Types.Schema([("a", Types.Integer)]))

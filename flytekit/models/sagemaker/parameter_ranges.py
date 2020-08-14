@@ -2,8 +2,7 @@ from __future__ import absolute_import
 
 from typing import Dict, List
 
-from flyteidl.plugins.sagemaker import \
-    parameter_ranges_pb2 as _idl_parameter_ranges
+from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _idl_parameter_ranges
 
 from flytekit.models import common as _common
 
@@ -12,9 +11,7 @@ class HyperparameterScalingType(object):
     AUTO = _idl_parameter_ranges.HyperparameterScalingType.AUTO
     LINEAR = _idl_parameter_ranges.HyperparameterScalingType.LINEAR
     LOGARITHMIC = _idl_parameter_ranges.HyperparameterScalingType.LOGARITHMIC
-    REVERSELOGARITHMIC = (
-        _idl_parameter_ranges.HyperparameterScalingType.REVERSELOGARITHMIC
-    )
+    REVERSELOGARITHMIC = _idl_parameter_ranges.HyperparameterScalingType.REVERSELOGARITHMIC
 
 
 class ContinuousParameterRange(_common.FlyteIdlEntity):
@@ -61,9 +58,7 @@ class ContinuousParameterRange(_common.FlyteIdlEntity):
         """
 
         return _idl_parameter_ranges.ContinuousParameterRange(
-            max_value=self._max_value,
-            min_value=self._min_value,
-            scaling_type=self.scaling_type,
+            max_value=self._max_value, min_value=self._min_value, scaling_type=self.scaling_type,
         )
 
     @classmethod
@@ -74,9 +69,7 @@ class ContinuousParameterRange(_common.FlyteIdlEntity):
         :rtype: ContinuousParameterRange
         """
         return cls(
-            max_value=pb2_object.max_value,
-            min_value=pb2_object.min_value,
-            scaling_type=pb2_object.scaling_type,
+            max_value=pb2_object.max_value, min_value=pb2_object.min_value, scaling_type=pb2_object.scaling_type,
         )
 
 
@@ -121,9 +114,7 @@ class IntegerParameterRange(_common.FlyteIdlEntity):
         :rtype: _idl_parameter_ranges.IntegerParameterRange
         """
         return _idl_parameter_ranges.IntegerParameterRange(
-            max_value=self._max_value,
-            min_value=self._min_value,
-            scaling_type=self.scaling_type,
+            max_value=self._max_value, min_value=self._min_value, scaling_type=self.scaling_type,
         )
 
     @classmethod
@@ -134,9 +125,7 @@ class IntegerParameterRange(_common.FlyteIdlEntity):
         :rtype: IntegerParameterRange
         """
         return cls(
-            max_value=pb2_object.max_value,
-            min_value=pb2_object.min_value,
-            scaling_type=pb2_object.scaling_type,
+            max_value=pb2_object.max_value, min_value=pb2_object.min_value, scaling_type=pb2_object.scaling_type,
         )
 
 
@@ -164,9 +153,7 @@ class CategoricalParameterRange(_common.FlyteIdlEntity):
         return _idl_parameter_ranges.CategoricalParameterRange(values=self._values)
 
     @classmethod
-    def from_flyte_idl(
-        cls, pb2_object: _idl_parameter_ranges.CategoricalParameterRange
-    ):
+    def from_flyte_idl(cls, pb2_object: _idl_parameter_ranges.CategoricalParameterRange):
         return cls(values=pb2_object.values)
 
 
@@ -180,17 +167,11 @@ class ParameterRanges(_common.FlyteIdlEntity):
         converted = {}
         for k, v in self._parameter_range_map.items():
             if isinstance(v, IntegerParameterRange):
-                converted[k] = _idl_parameter_ranges.ParameterRangeOneOf(
-                    integer_parameter_range=v.to_flyte_idl()
-                )
+                converted[k] = _idl_parameter_ranges.ParameterRangeOneOf(integer_parameter_range=v.to_flyte_idl())
             elif isinstance(v, ContinuousParameterRange):
-                converted[k] = _idl_parameter_ranges.ParameterRangeOneOf(
-                    continuous_parameter_range=v.to_flyte_idl()
-                )
+                converted[k] = _idl_parameter_ranges.ParameterRangeOneOf(continuous_parameter_range=v.to_flyte_idl())
             else:
-                converted[k] = _idl_parameter_ranges.ParameterRangeOneOf(
-                    categorical_parameter_range=v.to_flyte_idl()
-                )
+                converted[k] = _idl_parameter_ranges.ParameterRangeOneOf(categorical_parameter_range=v.to_flyte_idl())
 
         return _idl_parameter_ranges.ParameterRanges(parameter_range_map=converted,)
 

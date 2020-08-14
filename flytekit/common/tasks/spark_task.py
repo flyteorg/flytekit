@@ -131,15 +131,10 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
         """
         inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(
             inputs,
-            {
-                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
-                for k, v in _six.iteritems(self.interface.inputs)
-            },
+            {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)},
         )
         outputs_dict = {
-            name: _task_output.OutputReference(
-                _type_helpers.get_sdk_type_from_literal_type(variable.type)
-            )
+            name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
             for name, variable in _six.iteritems(self.interface.outputs)
         }
 
@@ -167,9 +162,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
         """
         :rtype: SdkRunnableSparkContainer
         """
-        return super(SdkSparkTask, self)._get_container_definition(
-            cls=SdkRunnableSparkContainer, **kwargs
-        )
+        return super(SdkSparkTask, self)._get_container_definition(cls=SdkRunnableSparkContainer, **kwargs)
 
     def _get_kwarg_inputs(self):
         # Trim off first two parameters as they are reserved for workflow_parameters and spark_context

@@ -9,15 +9,7 @@ from flytekit.models.core import identifier as _identifier
 
 class TaskExecutionClosure(_common.FlyteIdlEntity):
     def __init__(
-        self,
-        phase,
-        logs,
-        started_at,
-        duration,
-        created_at,
-        updated_at,
-        output_uri=None,
-        error=None,
+        self, phase, logs, started_at, duration, created_at, updated_at, output_uri=None, error=None,
     ):
         """
         :param int phase: Enum value from flytekit.models.core.execution.TaskExecutionPhase
@@ -123,9 +115,7 @@ class TaskExecutionClosure(_common.FlyteIdlEntity):
             phase=p.phase,
             logs=[_execution.TaskLog.from_flyte_idl(l) for l in p.logs],
             output_uri=p.output_uri if p.HasField("output_uri") else None,
-            error=_execution.ExecutionError.from_flyte_idl(p.error)
-            if p.HasField("error")
-            else None,
+            error=_execution.ExecutionError.from_flyte_idl(p.error) if p.HasField("error") else None,
             started_at=p.started_at.ToDatetime(),
             created_at=p.created_at.ToDatetime(),
             updated_at=p.updated_at.ToDatetime(),

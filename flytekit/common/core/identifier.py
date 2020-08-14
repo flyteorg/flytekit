@@ -25,11 +25,7 @@ class Identifier(
         :rtype: Identifier
         """
         return cls(
-            base_model.resource_type,
-            base_model.project,
-            base_model.domain,
-            base_model.name,
-            base_model.version,
+            base_model.resource_type, base_model.project, base_model.domain, base_model.name, base_model.version,
         )
 
     @classmethod
@@ -51,9 +47,7 @@ class Identifier(
         if resource_type not in cls._STRING_TO_TYPE_MAP:
             raise _user_exceptions.FlyteValueException(
                 "The provided string could not be parsed. The first element of an identifier must be one of: {}. "
-                "Received: {}".format(
-                    list(cls._STRING_TO_TYPE_MAP.keys()), resource_type
-                )
+                "Received: {}".format(list(cls._STRING_TO_TYPE_MAP.keys()), resource_type)
             )
         resource_type = cls._STRING_TO_TYPE_MAP[resource_type]
 
@@ -154,8 +148,7 @@ class TaskExecutionIdentifier(
         return cls(
             task_id=Identifier(_core_identifier.ResourceType.TASK, tp, td, tn, tv),
             node_execution_id=_core_identifier.NodeExecutionIdentifier(
-                node_id=node_id,
-                execution_id=_core_identifier.WorkflowExecutionIdentifier(ep, ed, en),
+                node_id=node_id, execution_id=_core_identifier.WorkflowExecutionIdentifier(ep, ed, en),
             ),
             retry_attempt=int(retry),
         )

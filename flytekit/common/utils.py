@@ -6,19 +6,14 @@ import shutil as _shutil
 import tempfile as _tempfile
 import time as _time
 from hashlib import sha224 as _sha224
+from pathlib import Path
 
 import flytekit as _flytekit
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.models.core import identifier as _identifier
 
-try:
-    from pathlib import Path
-except ImportError:
-    from pathlib2 import Path  # python 2 backport
 
-
-def _dnsify(value):
-    # type: (Text) -> Text
+def _dnsify(value):  # type: (str) -> str
     """
     Converts value into a DNS-compliant (RFC1035/RFC1123 DNS_LABEL). The resulting string must only consist of
     alphanumeric (lower-case a-z, and 0-9) and not exceed 63 characters. It's permitted to have '-' character as long
@@ -113,9 +108,7 @@ class AutoDeletingTempDir(Directory):
         :param bool cleanup: Whether the directory should be cleaned up upon exit
         """
         self._tmp_dir = tmp_dir
-        self._working_dir_prefix = (
-            (working_dir_prefix + "_") if working_dir_prefix else ""
-        )
+        self._working_dir_prefix = (working_dir_prefix + "_") if working_dir_prefix else ""
         self._cleanup = cleanup
         super(AutoDeletingTempDir, self).__init__(None)
 
@@ -158,12 +151,12 @@ class PerformanceTimer(object):
 
     def __enter__(self):
         _logging.info("Entering timed context: {}".format(self._context_statement))
-        self._start_wall_time = _time.time()
-        self._start_process_time = _time.clock()
+        self._start_wall_time = _time.perf_counter()
+        self._start_process_time = _time.process_time()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        end_wall_time = _time.time()
-        end_process_time = _time.clock()
+        end_wall_time = _time.perf_counter()
+        end_process_time = _time.process_time()
         _logging.info(
             "Exiting timed context: {} [Wall Time: {}s, Process Time: {}s]".format(
                 self._context_statement,

@@ -2,15 +2,12 @@ import logging as _logging
 
 import click
 
-from flytekit.clis.sdk_in_container.constants import (CTX_DOMAIN, CTX_PACKAGES,
-                                                      CTX_PROJECT, CTX_TEST,
-                                                      CTX_VERSION)
+from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_TEST, CTX_VERSION
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.tasks import task as _task
 from flytekit.configuration.internal import IMAGE as _IMAGE
-from flytekit.configuration.internal import \
-    look_up_version_from_image_tag as _look_up_version_from_image_tag
+from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
 
@@ -29,27 +26,15 @@ def register_all(project, domain, pkgs, test, version):
     loaded_entities = []
     for m, k, o in iterate_registerable_entities_in_order(pkgs):
         name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
-        _logging.debug(
-            "Found module {}\n   K: {} Instantiated in {}".format(
-                m, k, o._instantiated_in
-            )
-        )
+        _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
         o._id = _identifier.Identifier(o.resource_type, project, domain, name, version)
         loaded_entities.append(o)
 
     for o in loaded_entities:
         if test:
-            click.echo(
-                "Would register {:20} {}".format(
-                    "{}:".format(o.entity_type_text), o.id.name
-                )
-            )
+            click.echo("Would register {:20} {}".format("{}:".format(o.entity_type_text), o.id.name))
         else:
-            click.echo(
-                "Registering {:20} {}".format(
-                    "{}:".format(o.entity_type_text), o.id.name
-                )
-            )
+            click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), o.id.name))
             o.register(project, domain, o.id.name, version)
 
 
@@ -57,43 +42,25 @@ def register_tasks_only(project, domain, pkgs, test, version):
     if test:
         click.echo("Test switch enabled, not doing anything...")
 
-    click.echo(
-        "Running task only registration for {}, {}, {} with version {}".format(
-            project, domain, pkgs, version
-        )
-    )
+    click.echo("Running task only registration for {}, {}, {} with version {}".format(project, domain, pkgs, version))
 
     # Discover all tasks by loading the module
-    for m, k, t in iterate_registerable_entities_in_order(
-        pkgs, include_entities={_task.SdkTask}
-    ):
+    for m, k, t in iterate_registerable_entities_in_order(pkgs, include_entities={_task.SdkTask}):
         name = _utils.fqdn(m.__name__, k, entity_type=t.resource_type)
 
         if test:
-            click.echo(
-                "Would register task {:20} {}".format(
-                    "{}:".format(t.entity_type_text), name
-                )
-            )
+            click.echo("Would register task {:20} {}".format("{}:".format(t.entity_type_text), name))
         else:
-            click.echo(
-                "Registering task {:20} {}".format(
-                    "{}:".format(t.entity_type_text), name
-                )
-            )
+            click.echo("Registering task {:20} {}".format("{}:".format(t.entity_type_text), name))
             t.register(project, domain, name, version)
 
 
 @click.group("register")
 # --pkgs on the register group is DEPRECATED, use same arg on pyflyte.main instead
 @click.option(
-    "--pkgs",
-    multiple=True,
-    help="DEPRECATED. This arg can only be used before the 'register' keyword",
+    "--pkgs", multiple=True, help="DEPRECATED. This arg can only be used before the 'register' keyword",
 )
-@click.option(
-    "--test", is_flag=True, help="Dry run, do not actually register with Admin"
-)
+@click.option("--test", is_flag=True, help="Dry run, do not actually register with Admin")
 @click.pass_context
 def register(ctx, pkgs=None, test=None):
     """
@@ -103,9 +70,7 @@ def register(ctx, pkgs=None, test=None):
     created, if a role can be found in the environment variables.
     """
     if pkgs:
-        raise click.UsageError(
-            "--pkgs must now be specified before the 'register' keyword on the command line"
-        )
+        raise click.UsageError("--pkgs must now be specified before the 'register' keyword on the command line")
 
     ctx.obj[CTX_TEST] = test
 
@@ -115,8 +80,7 @@ def register(ctx, pkgs=None, test=None):
     "-v",
     "--version",
     type=str,
-    help="Version to register tasks with. This is normally parsed from the"
-    "image, but you can override here.",
+    help="Version to register tasks with. This is normally parsed from the" "image, but you can override here.",
 )
 @click.pass_context
 def tasks(ctx, version=None):
@@ -128,9 +92,7 @@ def tasks(ctx, version=None):
     test = ctx.obj[CTX_TEST]
     pkgs = ctx.obj[CTX_PACKAGES]
 
-    version = (
-        version or ctx.obj[CTX_VERSION] or _look_up_version_from_image_tag(_IMAGE.get())
-    )
+    version = version or ctx.obj[CTX_VERSION] or _look_up_version_from_image_tag(_IMAGE.get())
     register_tasks_only(project, domain, pkgs, test, version)
 
 
@@ -139,8 +101,7 @@ def tasks(ctx, version=None):
     "-v",
     "--version",
     type=str,
-    help="Version to register tasks with. This is normally parsed from the"
-    "image, but you can override here.",
+    help="Version to register tasks with. This is normally parsed from the" "image, but you can override here.",
 )
 @click.pass_context
 def workflows(ctx, version=None):
@@ -152,9 +113,7 @@ def workflows(ctx, version=None):
     test = ctx.obj[CTX_TEST]
     pkgs = ctx.obj[CTX_PACKAGES]
 
-    version = (
-        version or ctx.obj[CTX_VERSION] or _look_up_version_from_image_tag(_IMAGE.get())
-    )
+    version = version or ctx.obj[CTX_VERSION] or _look_up_version_from_image_tag(_IMAGE.get())
     register_all(project, domain, pkgs, test, version)
 
 

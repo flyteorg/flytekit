@@ -1,11 +1,9 @@
 from __future__ import absolute_import
 
-from flyteidl.plugins.sagemaker import \
-    hyperparameter_tuning_job_pb2 as _pb2_hpo_job
+from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
 
 from flytekit.models import common as _common
-from flytekit.models.sagemaker import \
-    parameter_ranges as _parameter_ranges_models
+from flytekit.models.sagemaker import parameter_ranges as _parameter_ranges_models
 from flytekit.models.sagemaker import training_job as _training_job
 
 
@@ -55,10 +53,7 @@ class HyperparameterTuningObjective(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object: _pb2_hpo_job.HyperparameterTuningObjective):
 
-        return cls(
-            objective_type=pb2_object.objective_type,
-            metric_name=pb2_object.metric_name,
-        )
+        return cls(objective_type=pb2_object.objective_type, metric_name=pb2_object.metric_name,)
 
 
 class HyperparameterTuningStrategy:
@@ -140,14 +135,10 @@ class HyperparameterTuningJobConfig(_common.FlyteIdlEntity):
 
         return cls(
             hyperparameter_ranges=(
-                _parameter_ranges_models.ParameterRanges.from_flyte_idl(
-                    pb2_object.hyperparameter_ranges
-                )
+                _parameter_ranges_models.ParameterRanges.from_flyte_idl(pb2_object.hyperparameter_ranges)
             ),
             tuning_strategy=pb2_object.tuning_strategy,
-            tuning_objective=HyperparameterTuningObjective.from_flyte_idl(
-                pb2_object.tuning_objective
-            ),
+            tuning_objective=HyperparameterTuningObjective.from_flyte_idl(pb2_object.tuning_objective),
             training_job_early_stopping_type=pb2_object.training_job_early_stopping_type,
         )
 
@@ -201,7 +192,5 @@ class HyperparameterTuningJob(_common.FlyteIdlEntity):
         return cls(
             max_number_of_training_jobs=pb2_object.max_number_of_training_jobs,
             max_parallel_training_jobs=pb2_object.max_parallel_training_jobs,
-            training_job=_training_job.TrainingJob.from_flyte_idl(
-                pb2_object.training_job
-            ),
+            training_job=_training_job.TrainingJob.from_flyte_idl(pb2_object.training_job),
         )

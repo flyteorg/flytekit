@@ -9,9 +9,7 @@ from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.models.core import workflow as _workflow_model
 
 
-class SdkTaskNode(
-    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_model.TaskNode)
-):
+class SdkTaskNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_model.TaskNode)):
     def __init__(self, sdk_task):
         """
         :param flytekit.common.tasks.task.SdkTask sdk_task:
@@ -48,18 +46,12 @@ class SdkTaskNode(
 
         if base_model.reference_id in tasks:
             t = tasks[base_model.reference_id]
-            _logging.debug(
-                "Found existing task template for {}, will not retrieve from Admin".format(
-                    t.id
-                )
-            )
+            _logging.debug("Found existing task template for {}, will not retrieve from Admin".format(t.id))
             sdk_task = _task.SdkTask.promote_from_model(t)
             return cls(sdk_task)
 
         # If not found, fetch it from Admin
-        _logging.debug(
-            "Fetching task template for {} from Admin".format(base_model.reference_id)
-        )
+        _logging.debug("Fetching task template for {} from Admin".format(base_model.reference_id))
         project = base_model.reference_id.project
         domain = base_model.reference_id.domain
         name = base_model.reference_id.name
@@ -68,9 +60,7 @@ class SdkTaskNode(
         return cls(sdk_task)
 
 
-class SdkWorkflowNode(
-    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_model.WorkflowNode)
-):
+class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_model.WorkflowNode)):
     def __init__(self, sdk_workflow=None, sdk_launch_plan=None):
         """
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
@@ -88,9 +78,7 @@ class SdkWorkflowNode(
         self._sdk_launch_plan = sdk_launch_plan
         sdk_wf_id = sdk_workflow.id if sdk_workflow else None
         sdk_lp_id = sdk_launch_plan.id if sdk_launch_plan else None
-        super(SdkWorkflowNode, self).__init__(
-            launchplan_ref=sdk_lp_id, sub_workflow_ref=sdk_wf_id
-        )
+        super(SdkWorkflowNode, self).__init__(launchplan_ref=sdk_lp_id, sub_workflow_ref=sdk_wf_id)
 
     def __repr__(self):
         """
@@ -148,17 +136,13 @@ class SdkWorkflowNode(
         name = base_model.reference.name
         version = base_model.reference.version
         if base_model.launchplan_ref is not None:
-            sdk_launch_plan = _launch_plan.SdkLaunchPlan.fetch(
-                project, domain, name, version
-            )
+            sdk_launch_plan = _launch_plan.SdkLaunchPlan.fetch(project, domain, name, version)
             return cls(sdk_launch_plan=sdk_launch_plan)
         elif base_model.sub_workflow_ref is not None:
             # The workflow templates for sub-workflows should have been included in the original response
             if base_model.reference in sub_workflows:
                 sw = sub_workflows[base_model.reference]
-                promoted = _workflow.SdkWorkflow.promote_from_model(
-                    sw, sub_workflows=sub_workflows, tasks=tasks
-                )
+                promoted = _workflow.SdkWorkflow.promote_from_model(sw, sub_workflows=sub_workflows, tasks=tasks)
                 return cls(sdk_workflow=promoted)
 
             # If not found for some reason, fetch it from Admin again.
@@ -166,14 +150,11 @@ class SdkWorkflowNode(
             # along. Ideally subworkflows are never even registered with Admin, so fetching from Admin ideally doesn't
             # return anything.
             _logging.warning(
-                "Your subworkflow with id {} is not included in the promote call.".format(
-                    base_model.reference
-                )
+                "Your subworkflow with id {} is not included in the promote call.".format(base_model.reference)
             )
             sdk_workflow = _workflow.SdkWorkflow.fetch(project, domain, name, version)
             return cls(sdk_workflow=sdk_workflow)
         else:
             raise _system_exceptions.FlyteSystemException(
-                "Bad workflow node model, neither subworkflow nor "
-                "launchplan specified."
+                "Bad workflow node model, neither subworkflow nor " "launchplan specified."
             )

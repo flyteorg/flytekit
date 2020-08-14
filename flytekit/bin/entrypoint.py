@@ -11,8 +11,7 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 from flytekit.common import utils as _utils
 from flytekit.common.exceptions import scopes as _scopes
 from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.configuration import \
-    TemporaryConfiguration as _TemporaryConfiguration
+from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
@@ -31,9 +30,7 @@ def _compute_array_job_index():
     offset = 0
     if _os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
         offset = int(_os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"))
-    return offset + int(
-        _os.environ.get(_os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"))
-    )
+    return offset + int(_os.environ.get(_os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
 
 
 def _map_job_index_to_child_index(local_input_dir, datadir, index):
@@ -45,9 +42,7 @@ def _map_job_index_to_child_index(local_input_dir, datadir, index):
         return index
 
     _data_proxy.Data.get_data(idx_lookup_file, local_lookup_file)
-    mapping_proto = _utils.load_proto_from_file(
-        _literals_pb2.LiteralCollection, local_lookup_file
-    )
+    mapping_proto = _utils.load_proto_from_file(_literals_pb2.LiteralCollection, local_lookup_file)
     if len(mapping_proto.literals) < index:
         raise _system_exceptions.FlyteSystemAssertion(
             "dynamic task index lookup array size: {} is smaller than lookup index {}".format(
@@ -75,27 +70,20 @@ def _execute_task(task_module, task_name, inputs, output_prefix, test):
                     # TODO: Perhaps remove.  This is a workaround to an issue we perceived with limited entropy in
                     # TODO: AWS batch array jobs.
                     _flyte_random.seed_flyte_random(
-                        "{} {} {}".format(
-                            _random.random(), _datetime.datetime.utcnow(), job_index
-                        )
+                        "{} {} {}".format(_random.random(), _datetime.datetime.utcnow(), job_index)
                     )
 
                     # If an ArrayTask is discoverable, the original job index may be different than the one specified in
                     # the environment variable. Look up the correct input/outputs in the index lookup mapping file.
-                    job_index = _map_job_index_to_child_index(
-                        input_dir, inputs, job_index
-                    )
+                    job_index = _map_job_index_to_child_index(input_dir, inputs, job_index)
 
                     inputs = _os.path.join(inputs, str(job_index), "inputs.pb")
                     output_prefix = _os.path.join(output_prefix, str(job_index))
 
                 _data_proxy.Data.get_data(inputs, local_inputs_file)
-                input_proto = _utils.load_proto_from_file(
-                    _literals_pb2.LiteralMap, local_inputs_file
-                )
+                input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
                 _engine_loader.get_engine().get_task(task_def).execute(
-                    _literal_models.LiteralMap.from_flyte_idl(input_proto),
-                    context={"output_prefix": output_prefix},
+                    _literal_models.LiteralMap.from_flyte_idl(input_proto), context={"output_prefix": output_prefix},
                 )
 
 

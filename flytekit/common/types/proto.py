@@ -64,9 +64,7 @@ class Protobuf(_six.with_metaclass(ProtobufType, _base_sdk_types.FlyteSdkValue))
         data = pb_object.SerializeToString()
         super(Protobuf, self).__init__(
             scalar=_literals.Scalar(
-                binary=_literals.Binary(
-                    value=bytes(data) if _six.PY2 else data, tag=type(self).tag
-                )
+                binary=_literals.Binary(value=bytes(data) if _six.PY2 else data, tag=type(self).tag)
             )
         )
 
@@ -79,9 +77,7 @@ class Protobuf(_six.with_metaclass(ProtobufType, _base_sdk_types.FlyteSdkValue))
         try:
             decoded = _base64.b64decode(string_value)
         except TypeError:
-            raise _user_exceptions.FlyteValueException(
-                string_value, "The string is not valid base64-encoded."
-            )
+            raise _user_exceptions.FlyteValueException(string_value, "The string is not valid base64-encoded.")
         pb_obj = cls.pb_type()
         pb_obj.ParseFromString(decoded)
         return cls(pb_obj)
@@ -106,19 +102,14 @@ class Protobuf(_six.with_metaclass(ProtobufType, _base_sdk_types.FlyteSdkValue))
         elif isinstance(t_value, cls.pb_type):
             return cls(t_value)
         else:
-            raise _user_exceptions.FlyteTypeException(
-                type(t_value), cls.pb_type, received_value=t_value
-            )
+            raise _user_exceptions.FlyteTypeException(type(t_value), cls.pb_type, received_value=t_value)
 
     @classmethod
     def to_flyte_literal_type(cls):
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return _idl_types.LiteralType(
-            simple=_idl_types.SimpleType.BINARY,
-            metadata={cls.PB_FIELD_KEY: cls.descriptor},
-        )
+        return _idl_types.LiteralType(simple=_idl_types.SimpleType.BINARY, metadata={cls.PB_FIELD_KEY: cls.descriptor},)
 
     @classmethod
     def promote_from_model(cls, literal_model):

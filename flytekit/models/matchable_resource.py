@@ -26,9 +26,7 @@ class ClusterResourceAttributes(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.matchable_resource_pb2.ClusterResourceAttributes
         """
-        return _matchable_resource.ClusterResourceAttributes(
-            attributes=self.attributes,
-        )
+        return _matchable_resource.ClusterResourceAttributes(attributes=self.attributes,)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -103,10 +101,7 @@ class ExecutionClusterLabel(_common.FlyteIdlEntity):
 
 class MatchingAttributes(_common.FlyteIdlEntity):
     def __init__(
-        self,
-        cluster_resource_attributes=None,
-        execution_queue_attributes=None,
-        execution_cluster_label=None,
+        self, cluster_resource_attributes=None, execution_queue_attributes=None, execution_cluster_label=None,
     ):
         """
         At most one target from cluster_resource_attributes, execution_queue_attributes or execution_cluster_label
@@ -172,19 +167,13 @@ class MatchingAttributes(_common.FlyteIdlEntity):
         :rtype: MatchingAttributes
         """
         return cls(
-            cluster_resource_attributes=ClusterResourceAttributes.from_flyte_idl(
-                pb2_object.cluster_resource_attributes
-            )
+            cluster_resource_attributes=ClusterResourceAttributes.from_flyte_idl(pb2_object.cluster_resource_attributes)
             if pb2_object.HasField("cluster_resource_attributes")
             else None,
-            execution_queue_attributes=ExecutionQueueAttributes.from_flyte_idl(
-                pb2_object.execution_queue_attributes
-            )
+            execution_queue_attributes=ExecutionQueueAttributes.from_flyte_idl(pb2_object.execution_queue_attributes)
             if pb2_object.HasField("execution_queue_attributes")
             else None,
-            execution_cluster_label=ExecutionClusterLabel.from_flyte_idl(
-                pb2_object.execution_cluster_label
-            )
+            execution_cluster_label=ExecutionClusterLabel.from_flyte_idl(pb2_object.execution_cluster_label)
             if pb2_object.HasField("execution_cluster_label")
             else None,
         )

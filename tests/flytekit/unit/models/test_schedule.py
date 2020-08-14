@@ -4,9 +4,7 @@ from flytekit.models import schedule as _schedule
 
 
 def test_schedule():
-    obj = _schedule.Schedule(
-        kickoff_time_input_arg="fdsa", cron_expression="1 2 3 4 5 6"
-    )
+    obj = _schedule.Schedule(kickoff_time_input_arg="fdsa", cron_expression="1 2 3 4 5 6")
     assert obj.rate is None
     assert obj.cron_expression == "1 2 3 4 5 6"
     assert obj.schedule_expression == "1 2 3 4 5 6"

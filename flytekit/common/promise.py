@@ -10,9 +10,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 
 
-class Input(
-    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.Parameter)
-):
+class Input(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.Parameter)):
     def __init__(self, name, sdk_type, help=None, **kwargs):
         """
         :param Text name:
@@ -29,9 +27,7 @@ class Input(
             default = None
         elif kwargs.get("required", False) and "default" in kwargs:
             # Required cannot be set to True and have a default specified
-            raise _user_exceptions.FlyteAssertion(
-                "Default cannot be set when required is True"
-            )
+            raise _user_exceptions.FlyteAssertion("Default cannot be set when required is True")
         elif "default" in kwargs:
             # If default is specified, then required must be false and the value is whatever is specified
             required = None
@@ -55,9 +51,7 @@ class Input(
         )
         self._name = name
         super(Input, self).__init__(
-            _interface_models.Variable(
-                type=sdk_type.to_flyte_literal_type(), description=help or ""
-            ),
+            _interface_models.Variable(type=sdk_type.to_flyte_literal_type(), description=help or ""),
             required=required,
             default=param_default,
         )
@@ -122,23 +116,13 @@ class Input(
         sdk_type = _type_helpers.get_sdk_type_from_literal_type(model.var.type)
 
         if model.default is not None:
-            default_value = sdk_type.from_flyte_idl(
-                model.default.to_flyte_idl()
-            ).to_python_std()
-            return cls(
-                "",
-                sdk_type,
-                help=model.var.description,
-                required=False,
-                default=default_value,
-            )
+            default_value = sdk_type.from_flyte_idl(model.default.to_flyte_idl()).to_python_std()
+            return cls("", sdk_type, help=model.var.description, required=False, default=default_value,)
         else:
             return cls("", sdk_type, help=model.var.description, required=True)
 
 
-class NodeOutput(
-    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.OutputReference)
-):
+class NodeOutput(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.OutputReference)):
     def __init__(self, sdk_node, sdk_type, var):
         """
         :param flytekit.common.nodes.SdkNode sdk_node:

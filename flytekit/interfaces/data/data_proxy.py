@@ -9,8 +9,7 @@ from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
 from flytekit.interfaces.data.http import http_data_proxy as _http_data_proxy
-from flytekit.interfaces.data.local import \
-    local_file_proxy as _local_file_proxy
+from flytekit.interfaces.data.local import local_file_proxy as _local_file_proxy
 from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 
 
@@ -59,9 +58,7 @@ class LocalDataContext(_OutputDataContext):
         """
         :param Text sandbox:
         """
-        super(LocalDataContext, self).__init__(
-            _local_file_proxy.LocalFileProxy(sandbox)
-        )
+        super(LocalDataContext, self).__init__(_local_file_proxy.LocalFileProxy(sandbox))
 
 
 class RemoteDataContext(_OutputDataContext):
@@ -124,9 +121,7 @@ class Data(object):
         :param bool is_multipart:
         """
         try:
-            with _common_utils.PerformanceTimer(
-                "Copying ({} -> {})".format(remote_path, local_path)
-            ):
+            with _common_utils.PerformanceTimer("Copying ({} -> {})".format(remote_path, local_path)):
                 proxy = cls._load_data_proxy_by_path(remote_path)
                 if is_multipart:
                     proxy.download_directory(remote_path, local_path)
@@ -151,9 +146,7 @@ class Data(object):
         :param bool is_multipart:
         """
         try:
-            with _common_utils.PerformanceTimer(
-                "Writing ({} -> {})".format(local_path, remote_path)
-            ):
+            with _common_utils.PerformanceTimer("Writing ({} -> {})".format(local_path, remote_path)):
                 proxy = cls._load_data_proxy_by_path(remote_path)
                 if is_multipart:
                     proxy.upload_directory(local_path, remote_path)

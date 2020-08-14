@@ -1,8 +1,7 @@
 from __future__ import absolute_import
 
 from flytekit.common.exceptions.base import FlyteException as _FlyteException
-from flytekit.common.exceptions.base import \
-    FlyteRecoverableException as _Recoverable
+from flytekit.common.exceptions.base import FlyteRecoverableException as _Recoverable
 
 
 class FlyteUserException(_FlyteException):
@@ -14,16 +13,10 @@ class FlyteTypeException(FlyteUserException, TypeError):
 
     @staticmethod
     def _is_a_container(value):
-        return (
-            isinstance(value, list)
-            or isinstance(value, tuple)
-            or isinstance(value, set)
-        )
+        return isinstance(value, list) or isinstance(value, tuple) or isinstance(value, set)
 
     @classmethod
-    def _create_verbose_message(
-        cls, received_type, expected_type, received_value=None, additional_msg=None
-    ):
+    def _create_verbose_message(cls, received_type, expected_type, received_value=None, additional_msg=None):
         if received_value is not None:
             return "Type error!  Received: {} with value: {}, Expected{}: {}. {}".format(
                 received_type,
@@ -40,15 +33,10 @@ class FlyteTypeException(FlyteUserException, TypeError):
                 additional_msg or "",
             )
 
-    def __init__(
-        self, received_type, expected_type, additional_msg=None, received_value=None
-    ):
+    def __init__(self, received_type, expected_type, additional_msg=None, received_value=None):
         super(FlyteTypeException, self).__init__(
             self._create_verbose_message(
-                received_type,
-                expected_type,
-                received_value=received_value,
-                additional_msg=additional_msg,
+                received_type, expected_type, received_value=received_value, additional_msg=additional_msg,
             )
         )
 
@@ -62,9 +50,7 @@ class FlyteValueException(FlyteUserException, ValueError):
         return "Value error!  Received: {}. {}".format(received_value, error_message)
 
     def __init__(self, received_value, error_message):
-        super(FlyteValueException, self).__init__(
-            self._create_verbose_message(received_value, error_message)
-        )
+        super(FlyteValueException, self).__init__(self._create_verbose_message(received_value, error_message))
 
 
 class FlyteAssertion(FlyteUserException, AssertionError):

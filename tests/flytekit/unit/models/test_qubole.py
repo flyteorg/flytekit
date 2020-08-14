@@ -1,9 +1,6 @@
 from __future__ import absolute_import
 
-import pytest
-
 from flytekit.models import qubole
-from tests.flytekit.common.parameterizers import LIST_OF_ALL_LITERAL_TYPES
 
 
 def test_hive_query():

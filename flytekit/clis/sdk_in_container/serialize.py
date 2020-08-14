@@ -4,8 +4,7 @@ import os as _os
 
 import click
 
-from flytekit.clis.sdk_in_container.constants import (CTX_DOMAIN, CTX_PACKAGES,
-                                                      CTX_PROJECT, CTX_VERSION)
+from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_VERSION
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions.scopes import system_entry_point
@@ -31,15 +30,9 @@ def serialize_tasks_only(project, domain, pkgs, version, folder=None):
     # k = value of dir(m), type str
     # o = object (e.g. SdkWorkflow)
     loaded_entities = []
-    for m, k, o in iterate_registerable_entities_in_order(
-        pkgs, include_entities={_sdk_task.SdkTask}
-    ):
+    for m, k, o in iterate_registerable_entities_in_order(pkgs, include_entities={_sdk_task.SdkTask}):
         name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
-        _logging.debug(
-            "Found module {}\n   K: {} Instantiated in {}".format(
-                m, k, o._instantiated_in
-            )
-        )
+        _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
         o._id = _identifier.Identifier(o.resource_type, project, domain, name, version)
         loaded_entities.append(o)
 
@@ -89,11 +82,7 @@ def serialize_all(project, domain, pkgs, version, folder=None):
     loaded_entities = []
     for m, k, o in iterate_registerable_entities_in_order(pkgs):
         name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
-        _logging.debug(
-            "Found module {}\n   K: {} Instantiated in {}".format(
-                m, k, o._instantiated_in
-            )
-        )
+        _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
         o._id = _identifier.Identifier(o.resource_type, project, domain, name, version)
         loaded_entities.append(o)
 
@@ -139,11 +128,7 @@ def serialize(ctx):
         object contains the WorkflowTemplate, along with the relevant tasks for that workflow.  In lieu of Admin,
         this serialization step will set the URN of the tasks to the fully qualified name of the task function.
     """
-    click.echo(
-        "Serializing Flyte elements with image {}".format(
-            _internal_configuration.IMAGE.get()
-        )
-    )
+    click.echo("Serializing Flyte elements with image {}".format(_internal_configuration.IMAGE.get()))
 
 
 @click.command("tasks")
@@ -151,8 +136,7 @@ def serialize(ctx):
     "-v",
     "--version",
     type=str,
-    help="Version to serialize tasks with. This is normally parsed from the"
-    "image, but you can override here.",
+    help="Version to serialize tasks with. This is normally parsed from the" "image, but you can override here.",
 )
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
@@ -167,9 +151,7 @@ def tasks(ctx, version=None, folder=None):
     version = (
         version
         or ctx.obj[CTX_VERSION]
-        or _internal_configuration.look_up_version_from_image_tag(
-            _internal_configuration.IMAGE.get()
-        )
+        or _internal_configuration.look_up_version_from_image_tag(_internal_configuration.IMAGE.get())
     )
 
     internal_settings = {
@@ -179,9 +161,7 @@ def tasks(ctx, version=None, folder=None):
     }
     # Populate internal settings for project/domain/version from the environment so that the file names are resolved
     # with the correct strings. The file itself doesn't need to change though.
-    with TemporaryConfiguration(
-        _internal_configuration.CONFIGURATION_PATH.get(), internal_settings
-    ):
+    with TemporaryConfiguration(_internal_configuration.CONFIGURATION_PATH.get(), internal_settings):
         _logging.debug(
             "Serializing with settings\n"
             "\n  Project: {}"
@@ -197,8 +177,7 @@ def tasks(ctx, version=None, folder=None):
     "-v",
     "--version",
     type=str,
-    help="Version to serialize tasks with. This is normally parsed from the"
-    "image, but you can override here.",
+    help="Version to serialize tasks with. This is normally parsed from the" "image, but you can override here.",
 )
 # For now let's just assume that the directory needs to exist. If you're docker run -v'ing, docker will create the
 # directory for you so it shouldn't be a problem.
@@ -217,9 +196,7 @@ def workflows(ctx, version=None, folder=None):
     version = (
         version
         or ctx.obj[CTX_VERSION]
-        or _internal_configuration.look_up_version_from_image_tag(
-            _internal_configuration.IMAGE.get()
-        )
+        or _internal_configuration.look_up_version_from_image_tag(_internal_configuration.IMAGE.get())
     )
 
     internal_settings = {
@@ -229,9 +206,7 @@ def workflows(ctx, version=None, folder=None):
     }
     # Populate internal settings for project/domain/version from the environment so that the file names are resolved
     # with the correct strings. The file itself doesn't need to change though.
-    with TemporaryConfiguration(
-        _internal_configuration.CONFIGURATION_PATH.get(), internal_settings
-    ):
+    with TemporaryConfiguration(_internal_configuration.CONFIGURATION_PATH.get(), internal_settings):
         _logging.debug(
             "Serializing with settings\n"
             "\n  Project: {}"

@@ -26,9 +26,7 @@ class HttpFileProxy(_common_data.DataProxy):
         if rsp.status_code not in allowed_codes:
             raise _user_exceptions.FlyteValueException(
                 rsp.status_code,
-                "Data at {} could not be checked for existence. Expected one of: {}".format(
-                    path, allowed_codes
-                ),
+                "Data at {} could not be checked for existence. Expected one of: {}".format(path, allowed_codes),
             )
         return rsp.status_code == type(self)._HTTP_OK
 
@@ -37,9 +35,7 @@ class HttpFileProxy(_common_data.DataProxy):
         :param Text from_path:
         :param Text to_path:
         """
-        raise _user_exceptions.FlyteAssertion(
-            "Reading data recursively from HTTP endpoint is not currently supported."
-        )
+        raise _user_exceptions.FlyteAssertion("Reading data recursively from HTTP endpoint is not currently supported.")
 
     def download(self, from_path, to_path):
         """
@@ -51,9 +47,7 @@ class HttpFileProxy(_common_data.DataProxy):
         if rsp.status_code != type(self)._HTTP_OK:
             raise _user_exceptions.FlyteValueException(
                 rsp.status_code,
-                "Request for data @ {} failed. Expected status code {}".format(
-                    from_path, type(self)._HTTP_OK
-                ),
+                "Request for data @ {} failed. Expected status code {}".format(from_path, type(self)._HTTP_OK),
             )
         with open(to_path, "wb") as writer:
             writer.write(rsp.content)
@@ -63,31 +57,23 @@ class HttpFileProxy(_common_data.DataProxy):
         :param Text from_path:
         :param Text to_path:
         """
-        raise _user_exceptions.FlyteAssertion(
-            "Writing data to HTTP endpoint is not currently supported."
-        )
+        raise _user_exceptions.FlyteAssertion("Writing data to HTTP endpoint is not currently supported.")
 
     def upload_directory(self, from_path, to_path):
         """
         :param Text from_path:
         :param Text to_path:
         """
-        raise _user_exceptions.FlyteAssertion(
-            "Writing data to HTTP endpoint is not currently supported."
-        )
+        raise _user_exceptions.FlyteAssertion("Writing data to HTTP endpoint is not currently supported.")
 
     def get_random_path(self):
         """
         :rtype: Text
         """
-        raise _user_exceptions.FlyteAssertion(
-            "Writing data to HTTP endpoint is not currently supported."
-        )
+        raise _user_exceptions.FlyteAssertion("Writing data to HTTP endpoint is not currently supported.")
 
     def get_random_directory(self):
         """
         :rtype: Text
         """
-        raise _user_exceptions.FlyteAssertion(
-            "Writing data to HTTP endpoint is not currently supported."
-        )
+        raise _user_exceptions.FlyteAssertion("Writing data to HTTP endpoint is not currently supported.")

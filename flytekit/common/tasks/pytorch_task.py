@@ -1,19 +1,8 @@
 from __future__ import absolute_import
 
-try:
-    from inspect import getfullargspec as _getargspec
-except ImportError:
-    from inspect import getargspec as _getargspec
-
-import six as _six
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
-from flytekit.common import constants as _constants
-from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
-from flytekit.common.types import helpers as _type_helpers
-from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_models
 
 
@@ -49,9 +38,7 @@ class SdkPyTorchTask(_sdk_runnable.SdkRunnableTask):
         per_replica_memory_limit,
         environment,
     ):
-        pytorch_job = _task_models.PyTorchJob(
-            workers_count=workers_count
-        ).to_flyte_idl()
+        pytorch_job = _task_models.PyTorchJob(workers_count=workers_count).to_flyte_idl()
         super(SdkPyTorchTask, self).__init__(
             task_function=task_function,
             task_type=task_type,
@@ -77,6 +64,4 @@ class SdkPyTorchTask(_sdk_runnable.SdkRunnableTask):
         """
         :rtype: SdkRunnablePytorchContainer
         """
-        return super(SdkPyTorchTask, self)._get_container_definition(
-            cls=SdkRunnablePytorchContainer, **kwargs
-        )
+        return super(SdkPyTorchTask, self)._get_container_definition(cls=SdkRunnablePytorchContainer, **kwargs)

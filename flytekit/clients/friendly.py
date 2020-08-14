@@ -5,18 +5,14 @@ from flyteidl.admin import common_pb2 as _common_pb2
 from flyteidl.admin import execution_pb2 as _execution_pb2
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
 from flyteidl.admin import node_execution_pb2 as _node_execution_pb2
-from flyteidl.admin import \
-    project_domain_attributes_pb2 as _project_domain_attributes_pb2
+from flyteidl.admin import project_domain_attributes_pb2 as _project_domain_attributes_pb2
 from flyteidl.admin import project_pb2 as _project_pb2
 from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
-from flyteidl.core import identifier_pb2 as _identifier_pb2
 
-from flytekit.clients.raw import \
-    RawSynchronousFlyteClient as _RawSynchronousFlyteClient
-from flytekit.common.exceptions.user import FlyteAssertion as _FlyteAssertion
+from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
 from flytekit.models import common as _common
 from flytekit.models import execution as _execution
 from flytekit.models import filters as _filters
@@ -63,14 +59,10 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :raises grpc.RpcError:
         """
         super(SynchronousFlyteClient, self).create_task(
-            _task_pb2.TaskCreateRequest(
-                id=task_identifer.to_flyte_idl(), spec=task_spec.to_flyte_idl()
-            )
+            _task_pb2.TaskCreateRequest(id=task_identifer.to_flyte_idl(), spec=task_spec.to_flyte_idl())
         )
 
-    def list_task_ids_paginated(
-        self, project, domain, limit=100, token=None, sort_by=None
-    ):
+    def list_task_ids_paginated(self, project, domain, limit=100, token=None, sort_by=None):
         """
         This returns a page of identifiers for the tasks for a given project and domain. Filters can also be
         specified.
@@ -107,16 +99,11 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
         return (
-            [
-                _common.NamedEntityIdentifier.from_flyte_idl(identifier_pb)
-                for identifier_pb in identifier_list.entities
-            ],
+            [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
             _six.text_type(identifier_list.token),
         )
 
-    def list_tasks_paginated(
-        self, identifier, limit=100, token=None, filters=None, sort_by=None
-    ):
+    def list_tasks_paginated(self, identifier, limit=100, token=None, filters=None, sort_by=None):
         """
         This returns a page of task metadata for tasks in a given project and domain.  Optionally,
         specifying a name will limit the results to only tasks with that name in the given project and domain.
@@ -170,9 +157,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :rtype: flytekit.models.task.Task
         """
         return _task.Task.from_flyte_idl(
-            super(SynchronousFlyteClient, self).get_task(
-                _common_pb2.ObjectGetRequest(id=id.to_flyte_idl())
-            )
+            super(SynchronousFlyteClient, self).get_task(_common_pb2.ObjectGetRequest(id=id.to_flyte_idl()))
         )
 
     ####################################################################################################################
@@ -206,9 +191,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def list_workflow_ids_paginated(
-        self, project, domain, limit=100, token=None, sort_by=None
-    ):
+    def list_workflow_ids_paginated(self, project, domain, limit=100, token=None, sort_by=None):
         """
         This returns a page of identifiers for the workflows for a given project and domain. Filters can also be
         specified.
@@ -235,9 +218,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :raises: TODO
         :rtype: list[flytekit.models.common.NamedEntityIdentifier], Text
         """
-        identifier_list = super(
-            SynchronousFlyteClient, self
-        ).list_workflow_ids_paginated(
+        identifier_list = super(SynchronousFlyteClient, self).list_workflow_ids_paginated(
             _common_pb2.NamedEntityIdentifierListRequest(
                 project=project,
                 domain=domain,
@@ -247,16 +228,11 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
         return (
-            [
-                _common.NamedEntityIdentifier.from_flyte_idl(identifier_pb)
-                for identifier_pb in identifier_list.entities
-            ],
+            [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
             _six.text_type(identifier_list.token),
         )
 
-    def list_workflows_paginated(
-        self, identifier, limit=100, token=None, filters=None, sort_by=None
-    ):
+    def list_workflows_paginated(self, identifier, limit=100, token=None, filters=None, sort_by=None):
         """
         This returns a page of workflow meta-information for workflows in a given project and domain.  Optionally,
         specifying a name will limit the results to only workflows with that name in the given project and domain.
@@ -310,9 +286,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :rtype: flytekit.models.admin.workflow.Workflow
         """
         return _workflow.Workflow.from_flyte_idl(
-            super(SynchronousFlyteClient, self).get_workflow(
-                _common_pb2.ObjectGetRequest(id=id.to_flyte_idl())
-            )
+            super(SynchronousFlyteClient, self).get_workflow(_common_pb2.ObjectGetRequest(id=id.to_flyte_idl()))
         )
 
     ####################################################################################################################
@@ -342,8 +316,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         super(SynchronousFlyteClient, self).create_launch_plan(
             _launch_plan_pb2.LaunchPlanCreateRequest(
-                id=launch_plan_identifer.to_flyte_idl(),
-                spec=launch_plan_spec.to_flyte_idl(),
+                id=launch_plan_identifer.to_flyte_idl(), spec=launch_plan_spec.to_flyte_idl(),
             )
         )
 
@@ -355,9 +328,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :rtype: flytekit.models.launch_plan.LaunchPlan
         """
         return _launch_plan.LaunchPlan.from_flyte_idl(
-            super(SynchronousFlyteClient, self).get_launch_plan(
-                _common_pb2.ObjectGetRequest(id=id.to_flyte_idl())
-            )
+            super(SynchronousFlyteClient, self).get_launch_plan(_common_pb2.ObjectGetRequest(id=id.to_flyte_idl()))
         )
 
     def get_active_launch_plan(self, identifier):
@@ -374,9 +345,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def list_launch_plan_ids_paginated(
-        self, project, domain, limit=100, token=None, sort_by=None
-    ):
+    def list_launch_plan_ids_paginated(self, project, domain, limit=100, token=None, sort_by=None):
         """
         This returns a page of identifiers for the launch plans for a given project and domain. Filters can also be
         specified.
@@ -403,9 +372,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :raises: TODO
         :rtype: list[flytekit.models.common.NamedEntityIdentifier], Text
         """
-        identifier_list = super(
-            SynchronousFlyteClient, self
-        ).list_launch_plan_ids_paginated(
+        identifier_list = super(SynchronousFlyteClient, self).list_launch_plan_ids_paginated(
             _common_pb2.NamedEntityIdentifierListRequest(
                 project=project,
                 domain=domain,
@@ -415,16 +382,11 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
         return (
-            [
-                _common.NamedEntityIdentifier.from_flyte_idl(identifier_pb)
-                for identifier_pb in identifier_list.entities
-            ],
+            [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
             _six.text_type(identifier_list.token),
         )
 
-    def list_launch_plans_paginated(
-        self, identifier, limit=100, token=None, filters=None, sort_by=None
-    ):
+    def list_launch_plans_paginated(self, identifier, limit=100, token=None, filters=None, sort_by=None):
         """
         This returns a page of launch plan meta-information for launch plans in a given project and domain.  Optionally,
         specifying a name will limit the results to only workflows with that name in the given project and domain.
@@ -469,9 +431,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             _six.text_type(lp_list.token),
         )
 
-    def list_active_launch_plans_paginated(
-        self, project, domain, limit=100, token=None, sort_by=None
-    ):
+    def list_active_launch_plans_paginated(self, project, domain, limit=100, token=None, sort_by=None):
         """
         This returns a page of currently active launch plan meta-information for launch plans in a given project and
         domain.
@@ -498,9 +458,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :raises: TODO
         :rtype: list[flytekit.models.launch_plan.LaunchPlan], str
         """
-        lp_list = super(
-            SynchronousFlyteClient, self
-        ).list_active_launch_plans_paginated(
+        lp_list = super(SynchronousFlyteClient, self).list_active_launch_plans_paginated(
             _launch_plan_pb2.ActiveLaunchPlanListRequest(
                 project=project,
                 domain=domain,
@@ -548,9 +506,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         super(SynchronousFlyteClient, self).update_named_entity(
             _common_pb2.NamedEntityUpdateRequest(
-                resource_type=resource_type,
-                id=id.to_flyte_idl(),
-                metadata=metadata.to_flyte_idl(),
+                resource_type=resource_type, id=id.to_flyte_idl(), metadata=metadata.to_flyte_idl(),
             )
         )
 
@@ -609,9 +565,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def list_executions_paginated(
-        self, project, domain, limit=100, token=None, filters=None, sort_by=None
-    ):
+    def list_executions_paginated(self, project, domain, limit=100, token=None, filters=None, sort_by=None):
         """
         This returns a page of executions in a given project and domain.
 
@@ -672,9 +626,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
             super(SynchronousFlyteClient, self)
-            .relaunch_execution(
-                _execution_pb2.ExecutionRelaunchRequest(id=id.to_flyte_idl(), name=name)
-            )
+            .relaunch_execution(_execution_pb2.ExecutionRelaunchRequest(id=id.to_flyte_idl(), name=name))
             .id
         )
 
@@ -691,9 +643,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _node_execution.NodeExecution.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_node_execution(
-                _node_execution_pb2.NodeExecutionGetRequest(
-                    id=node_execution_identifier.to_flyte_idl()
-                )
+                _node_execution_pb2.NodeExecutionGetRequest(id=node_execution_identifier.to_flyte_idl())
             )
         )
 
@@ -706,19 +656,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _execution.NodeExecutionGetDataResponse.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_node_execution_data(
-                _node_execution_pb2.NodeExecutionGetDataRequest(
-                    id=node_execution_identifier.to_flyte_idl()
-                )
+                _node_execution_pb2.NodeExecutionGetDataRequest(id=node_execution_identifier.to_flyte_idl())
             )
         )
 
     def list_node_executions(
-        self,
-        workflow_execution_identifier,
-        limit=100,
-        token=None,
-        filters=None,
-        sort_by=None,
+        self, workflow_execution_identifier, limit=100, token=None, filters=None, sort_by=None,
     ):
         """
         TODO: Comment
@@ -741,20 +684,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
         return (
-            [
-                _node_execution.NodeExecution.from_flyte_idl(e)
-                for e in exec_list.node_executions
-            ],
+            [_node_execution.NodeExecution.from_flyte_idl(e) for e in exec_list.node_executions],
             _six.text_type(exec_list.token),
         )
 
     def list_node_executions_for_task_paginated(
-        self,
-        task_execution_identifier,
-        limit=100,
-        token=None,
-        filters=None,
-        sort_by=None,
+        self, task_execution_identifier, limit=100, token=None, filters=None, sort_by=None,
     ):
         """
         This returns nodes spawned by a specific task execution.  This is generally from things like dynamic tasks.
@@ -777,10 +712,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
         return (
-            [
-                _node_execution.NodeExecution.from_flyte_idl(e)
-                for e in exec_list.node_executions
-            ],
+            [_node_execution.NodeExecution.from_flyte_idl(e) for e in exec_list.node_executions],
             _six.text_type(exec_list.token),
         )
 
@@ -810,19 +742,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _execution.TaskExecutionGetDataResponse.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_task_execution_data(
-                _task_execution_pb2.TaskExecutionGetDataRequest(
-                    id=task_execution_identifier.to_flyte_idl()
-                )
+                _task_execution_pb2.TaskExecutionGetDataRequest(id=task_execution_identifier.to_flyte_idl())
             )
         )
 
     def list_task_executions_paginated(
-        self,
-        node_execution_identifier,
-        limit=100,
-        token=None,
-        filters=None,
-        sort_by=None,
+        self, node_execution_identifier, limit=100, token=None, filters=None, sort_by=None,
     ):
         """
         :param flytekit.models.core.identifier.NodeExecutionIdentifier node_execution_identifier:
@@ -844,10 +769,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
         return (
-            [
-                _task_execution.TaskExecution.from_flyte_idl(e)
-                for e in exec_list.task_executions
-            ],
+            [_task_execution.TaskExecution.from_flyte_idl(e) for e in exec_list.task_executions],
             _six.text_type(exec_list.token),
         )
 
@@ -884,16 +806,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         super(SynchronousFlyteClient, self).update_project_domain_attributes(
             _project_domain_attributes_pb2.ProjectDomainAttributesUpdateRequest(
                 attributes=_project_domain_attributes_pb2.ProjectDomainAttributes(
-                    project=project,
-                    domain=domain,
-                    matching_attributes=matching_attributes.to_flyte_idl(),
+                    project=project, domain=domain, matching_attributes=matching_attributes.to_flyte_idl(),
                 )
             )
         )
 
-    def update_workflow_attributes(
-        self, project, domain, workflow, matching_attributes
-    ):
+    def update_workflow_attributes(self, project, domain, workflow, matching_attributes):
         """
         Sets custom attributes for a project, domain, and workflow combination.
         :param Text project:

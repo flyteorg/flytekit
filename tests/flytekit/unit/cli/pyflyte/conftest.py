@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import os
 import sys
 
@@ -23,23 +21,16 @@ def _fake_module_load(names):
 @pytest.yield_fixture(
     scope="function",
     params=[
-        os.path.join(
-            os.path.dirname(os.path.realpath(__file__)),
-            "../../../common/configs/local.config",
-        ),
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../../common/configs/local.config",),
         "/foo/bar",
         None,
     ],
 )
 def mock_ctx(request):
     with _config.TemporaryConfiguration(request.param):
-        sys.path.append(
-            os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..")
-        )
+        sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../.."))
         try:
-            with _mock.patch(
-                "flytekit.tools.module_loader.iterate_modules"
-            ) as mock_module_load:
+            with _mock.patch("flytekit.tools.module_loader.iterate_modules") as mock_module_load:
                 mock_module_load.side_effect = _fake_module_load
                 ctx = _mock.MagicMock()
                 ctx.obj = {
@@ -75,9 +66,7 @@ def mock_clirunner(monkeypatch):
 
         return result
 
-    tests_dir_path = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "../../.."
-    )
+    tests_dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..")
     config_path = os.path.join(tests_dir_path, "common/configs/local.config")
     with _config.TemporaryConfiguration(config_path):
         monkeypatch.syspath_prepend(tests_dir_path)

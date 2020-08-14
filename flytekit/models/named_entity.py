@@ -57,9 +57,7 @@ class NamedEntityIdentifier(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.common_pb2.NamedEntityIdentifier
         """
-        return _common.NamedEntityIdentifier(
-            project=self.project, domain=self.domain, name=self.name,
-        )
+        return _common.NamedEntityIdentifier(project=self.project, domain=self.domain, name=self.name,)
 
     @classmethod
     def from_flyte_idl(cls, p):
@@ -99,9 +97,7 @@ class NamedEntityMetadata(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.common_pb2.NamedEntityMetadata
         """
-        return _common.NamedEntityMetadata(
-            description=self.description, state=self.state,
-        )
+        return _common.NamedEntityMetadata(description=self.description, state=self.state,)
 
     @classmethod
     def from_flyte_idl(cls, p):

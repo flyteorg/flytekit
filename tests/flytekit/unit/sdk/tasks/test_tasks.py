@@ -20,17 +20,13 @@ def default_task(wf_params, in1, out1):
     pass
 
 
-default_task._id = _identifier.Identifier(
-    _identifier.ResourceType.TASK, "project", "domain", "name", "version"
-)
+default_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, "project", "domain", "name", "version")
 
 
 def test_default_python_task():
     assert isinstance(default_task, _sdk_runnable.SdkRunnableTask)
     assert default_task.interface.inputs["in1"].description == ""
-    assert default_task.interface.inputs["in1"].type == _type_models.LiteralType(
-        simple=_type_models.SimpleType.INTEGER
-    )
+    assert default_task.interface.inputs["in1"].type == _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER)
     assert default_task.interface.outputs["out1"].description == ""
     assert default_task.interface.outputs["out1"].type == _type_models.LiteralType(
         simple=_type_models.SimpleType.STRING
@@ -49,10 +45,7 @@ def test_default_python_task():
 
 def test_default_resources():
     with _configuration.TemporaryConfiguration(
-        _os.path.join(
-            _os.path.dirname(_os.path.realpath(__file__)),
-            "../../configuration/configs/good.config",
-        )
+        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../configuration/configs/good.config",)
     ):
 
         @inputs(in1=Types.Integer)
@@ -61,9 +54,7 @@ def test_default_resources():
         def default_task2(wf_params, in1, out1):
             pass
 
-        request_map = {
-            r.name: r.value for r in default_task2.container.resources.requests
-        }
+        request_map = {r.name: r.value for r in default_task2.container.resources.requests}
 
         limit_map = {l.name: l.value for l in default_task2.container.resources.limits}
 
@@ -80,10 +71,7 @@ def test_default_resources():
 
 def test_overriden_resources():
     with _configuration.TemporaryConfiguration(
-        _os.path.join(
-            _os.path.dirname(_os.path.realpath(__file__)),
-            "../../configuration/configs/good.config",
-        )
+        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../configuration/configs/good.config",)
     ):
 
         @inputs(in1=Types.Integer)
@@ -101,9 +89,7 @@ def test_overriden_resources():
         def default_task2(wf_params, in1, out1):
             pass
 
-        request_map = {
-            r.name: r.value for r in default_task2.container.resources.requests
-        }
+        request_map = {r.name: r.value for r in default_task2.container.resources.requests}
 
         limit_map = {l.name: l.value for l in default_task2.container.resources.limits}
 

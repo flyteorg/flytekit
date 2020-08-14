@@ -35,8 +35,7 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.workflow_closure_pb2.WorkflowClosure
         """
         return _workflow_closure_pb2.WorkflowClosure(
-            workflow=self.workflow.to_flyte_idl(),
-            tasks=[t.to_flyte_idl() for t in self.tasks],
+            workflow=self.workflow.to_flyte_idl(), tasks=[t.to_flyte_idl() for t in self.tasks],
         )
 
     @classmethod
@@ -46,10 +45,6 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         :rtype: WorkflowClosure
         """
         return cls(
-            workflow=_core_workflow_models.WorkflowTemplate.from_flyte_idl(
-                pb2_object.workflow
-            ),
-            tasks=[
-                _task_models.TaskTemplate.from_flyte_idl(t) for t in pb2_object.tasks
-            ],
+            workflow=_core_workflow_models.WorkflowTemplate.from_flyte_idl(pb2_object.workflow),
+            tasks=[_task_models.TaskTemplate.from_flyte_idl(t) for t in pb2_object.tasks],
         )

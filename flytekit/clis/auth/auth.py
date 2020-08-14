@@ -48,9 +48,7 @@ def _generate_code_verifier():
     Adapted from https://github.com/openstack/deb-python-oauth2client/blob/master/oauth2client/_pkce.py.
     :return str:
     """
-    code_verifier = _base64.urlsafe_b64encode(
-        _os.urandom(_code_verifier_length)
-    ).decode(_utf_8)
+    code_verifier = _base64.urlsafe_b64encode(_os.urandom(_code_verifier_length)).decode(_utf_8)
     # Eliminate invalid characters.
     code_verifier = _re.sub(r"[^a-zA-Z0-9_\-.~]+", "", code_verifier)
     if len(code_verifier) < 43:
@@ -110,9 +108,7 @@ class OAuthCallbackHandler(_BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_response(_StatusCodes.NOT_FOUND)
 
     def handle_login(self, data):
-        self.server.handle_authorization_code(
-            AuthorizationCode(data["code"], data["state"])
-        )
+        self.server.handle_authorization_code(AuthorizationCode(data["code"], data["state"]))
 
 
 class OAuthHTTPServer(_BaseHTTPServer.HTTPServer):
@@ -122,16 +118,9 @@ class OAuthHTTPServer(_BaseHTTPServer.HTTPServer):
     """
 
     def __init__(
-        self,
-        server_address,
-        RequestHandlerClass,
-        bind_and_activate=True,
-        redirect_path=None,
-        queue=None,
+        self, server_address, RequestHandlerClass, bind_and_activate=True, redirect_path=None, queue=None,
     ):
-        _BaseHTTPServer.HTTPServer.__init__(
-            self, server_address, RequestHandlerClass, bind_and_activate
-        )
+        _BaseHTTPServer.HTTPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
         self._redirect_path = redirect_path
         self._auth_code = None
         self._queue = queue
@@ -154,9 +143,7 @@ class Credentials(object):
 
 
 class AuthorizationClient(object):
-    def __init__(
-        self, auth_endpoint=None, token_endpoint=None, client_id=None, redirect_uri=None
-    ):
+    def __init__(self, auth_endpoint=None, token_endpoint=None, client_id=None, redirect_uri=None):
         self._auth_endpoint = auth_endpoint
         self._token_endpoint = token_endpoint
         self._client_id = client_id
@@ -183,12 +170,8 @@ class AuthorizationClient(object):
         }
 
         # Prefer to use already-fetched token values when they've been set globally.
-        self._refresh_token = _keyring.get_password(
-            _keyring_service_name, _keyring_refresh_token_storage_key
-        )
-        access_token = _keyring.get_password(
-            _keyring_service_name, _keyring_access_token_storage_key
-        )
+        self._refresh_token = _keyring.get_password(_keyring_service_name, _keyring_refresh_token_storage_key)
+        access_token = _keyring.get_password(_keyring_service_name, _keyring_access_token_storage_key)
         if access_token:
             self._credentials = Credentials(access_token=access_token)
             return
@@ -211,9 +194,7 @@ class AuthorizationClient(object):
     def _create_callback_server(self, q):
         server_url = _urlparse.urlparse(self._redirect_uri)
         server_address = (server_url.hostname, server_url.port)
-        return OAuthHTTPServer(
-            server_address, OAuthCallbackHandler, redirect_path=server_url.path, queue=q
-        )
+        return OAuthHTTPServer(server_address, OAuthCallbackHandler, redirect_path=server_url.path, queue=q)
 
     def _request_authorization_code(self):
         scheme, netloc, path, _, _, _ = _urlparse.urlparse(self._auth_endpoint)
@@ -241,55 +222,34 @@ class AuthorizationClient(object):
         access_token = response_body["access_token"]
         refresh_token = response_body["refresh_token"]
 
-        _keyring.set_password(
-            _keyring_service_name, _keyring_access_token_storage_key, access_token
-        )
-        _keyring.set_password(
-            _keyring_service_name, _keyring_refresh_token_storage_key, refresh_token
-        )
+        _keyring.set_password(_keyring_service_name, _keyring_access_token_storage_key, access_token)
+        _keyring.set_password(_keyring_service_name, _keyring_refresh_token_storage_key, refresh_token)
         self._credentials = Credentials(access_token=access_token)
 
     def request_access_token(self, auth_code):
         if self._state != auth_code.state:
-            raise ValueError(
-                "Unexpected state parameter [{}] passed".format(auth_code.state)
-            )
+            raise ValueError("Unexpected state parameter [{}] passed".format(auth_code.state))
         self._params.update(
-            {
-                "code": auth_code.code,
-                "code_verifier": self._code_verifier,
-                "grant_type": "authorization_code",
-            }
+            {"code": auth_code.code, "code_verifier": self._code_verifier, "grant_type": "authorization_code"}
         )
         resp = _requests.post(
-            url=self._token_endpoint,
-            data=self._params,
-            headers=self._headers,
-            allow_redirects=False,
+            url=self._token_endpoint, data=self._params, headers=self._headers, allow_redirects=False,
         )
         if resp.status_code != _StatusCodes.OK:
             # TODO: handle expected (?) error cases:
             #  https://auth0.com/docs/flows/guides/device-auth/call-api-device-auth#token-responses
             raise Exception(
-                "Failed to request access token with response: [{}] {}".format(
-                    resp.status_code, resp.content
-                )
+                "Failed to request access token with response: [{}] {}".format(resp.status_code, resp.content)
             )
         self._initialize_credentials(resp)
 
     def refresh_access_token(self):
         if self._refresh_token is None:
-            raise ValueError(
-                "no refresh token available with which to refresh authorization credentials"
-            )
+            raise ValueError("no refresh token available with which to refresh authorization credentials")
 
         resp = _requests.post(
             url=self._token_endpoint,
-            data={
-                "grant_type": "refresh_token",
-                "client_id": self._client_id,
-                "refresh_token": self._refresh_token,
-            },
+            data={"grant_type": "refresh_token", "client_id": self._client_id, "refresh_token": self._refresh_token},
             headers=self._headers,
             allow_redirects=False,
         )
@@ -298,12 +258,8 @@ class AuthorizationClient(object):
             # In the absence of a successful response, assume the refresh token is expired. This should indicate
             # to the caller that the AuthorizationClient is defunct and a new one needs to be re-initialized.
 
-            _keyring.delete_password(
-                _keyring_service_name, _keyring_access_token_storage_key
-            )
-            _keyring.delete_password(
-                _keyring_service_name, _keyring_refresh_token_storage_key
-            )
+            _keyring.delete_password(_keyring_service_name, _keyring_access_token_storage_key)
+            _keyring.delete_password(_keyring_service_name, _keyring_refresh_token_storage_key)
             return
         self._initialize_credentials(resp)
 

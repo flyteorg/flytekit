@@ -30,6 +30,8 @@ from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import common as _common_models
 from flytekit.models import literals as _literal_models
+from flytekit.engines import loader as _engine_loader
+from flytekit.models import common as _common_models
 from flytekit.models import node_execution as _node_execution_models
 from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import workflow as _workflow_model
@@ -118,23 +120,17 @@ class OutputParameterMapper(ParameterMapper):
         return _promise.NodeOutput(sdk_node, sdk_type, name)
 
 
-class SdkNode(
-    _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType,
-        _hash_mixin.HashOnReferenceMixin,
-        _workflow_model.Node,
-    )
-):
+class SdkNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(
-        self,
-        id,
-        upstream_nodes,
-        bindings,
-        metadata,
-        sdk_task=None,
-        sdk_workflow=None,
-        sdk_launch_plan=None,
-        sdk_branch=None,
+            self,
+            id,
+            upstream_nodes,
+            bindings,
+            metadata,
+            sdk_task=None,
+            sdk_workflow=None,
+            sdk_launch_plan=None,
+            sdk_branch=None,
     ):
         """
         :param Text id: A workflow-level unique identifier that identifies this node in the workflow. "inputs" and
@@ -153,9 +149,7 @@ class SdkNode(
         :param TODO sdk_branch: TODO
         """
         non_none_entities = [
-            entity
-            for entity in [sdk_workflow, sdk_branch, sdk_launch_plan, sdk_task]
-            if entity is not None
+            entity for entity in [sdk_workflow, sdk_branch, sdk_launch_plan, sdk_task] if entity is not None
         ]
         if len(non_none_entities) != 1:
             raise _user_exceptions.FlyteAssertion(
@@ -185,7 +179,7 @@ class SdkNode(
         )
         self._upstream = upstream_nodes
         self._executable_sdk_object = (
-            sdk_task or sdk_workflow or sdk_branch or sdk_launch_plan
+                sdk_task or sdk_workflow or sdk_branch or sdk_launch_plan
         )
         self._outputs = OutputParameterMapper(
             self._executable_sdk_object.interface.outputs, self
@@ -234,8 +228,8 @@ class SdkNode(
         # start node.  In order to make the promoted SdkWorkflow look the same, we strip the start-node text back out.
         for i in model.inputs:
             if (
-                i.binding.promise is not None
-                and i.binding.promise.node_id == _constants.START_NODE_ID
+                    i.binding.promise is not None
+                    and i.binding.promise.node_id == _constants.START_NODE_ID
             ):
                 i.binding.promise._node_id = _constants.GLOBAL_INPUT_NODE_ID
 
@@ -343,11 +337,7 @@ class SdkNode(
 
 
 class SdkNodeExecution(
-    _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType,
-        _node_execution_models.NodeExecution,
-        _artifact_mixin.ExecutionArtifact,
-    )
+    _node_execution_models.NodeExecution, _artifact_mixin.ExecutionArtifact, metaclass=_sdk_bases.ExtendedSdkType
 ):
     def __init__(self, *args, **kwargs):
         super(SdkNodeExecution, self).__init__(*args, **kwargs)
@@ -416,8 +406,7 @@ class SdkNodeExecution(
         """
         if not self.is_complete:
             raise _user_exceptions.FlyteAssertion(
-                "Please what until the node execution has completed before "
-                "requesting the outputs."
+                "Please what until the node execution has completed before requesting the outputs."
             )
         if self.error:
             raise _user_exceptions.FlyteAssertion(
@@ -455,8 +444,7 @@ class SdkNodeExecution(
         """
         if not self.is_complete:
             raise _user_exceptions.FlyteAssertion(
-                "Please what until the node execution has completed before "
-                "requesting error information."
+                "Please what until the node execution has completed before requesting error information."
             )
         return self.closure.error
 
@@ -480,9 +468,7 @@ class SdkNodeExecution(
         :param _node_execution_models.NodeExecution base_model:
         :rtype: SdkNodeExecution
         """
-        return cls(
-            closure=base_model.closure, id=base_model.id, input_uri=base_model.input_uri
-        )
+        return cls(closure=base_model.closure, id=base_model.id, input_uri=base_model.input_uri)
 
     def sync(self):
         """

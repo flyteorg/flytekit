@@ -236,19 +236,14 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
             input_mode=pb2_object.input_mode,
             algorithm_name=pb2_object.algorithm_name,
             algorithm_version=pb2_object.algorithm_version,
-            metric_definitions=[
-                MetricDefinition.from_flyte_idl(m)
-                for m in pb2_object.metric_definitions
-            ],
+            metric_definitions=[MetricDefinition.from_flyte_idl(m) for m in pb2_object.metric_definitions],
             input_content_type=pb2_object.input_content_type,
         )
 
 
 class TrainingJob(_common.FlyteIdlEntity):
     def __init__(
-        self,
-        algorithm_specification: AlgorithmSpecification,
-        training_job_resource_config: TrainingJobResourceConfig,
+        self, algorithm_specification: AlgorithmSpecification, training_job_resource_config: TrainingJobResourceConfig,
     ):
         self._algorithm_specification = algorithm_specification
         self._training_job_resource_config = training_job_resource_config

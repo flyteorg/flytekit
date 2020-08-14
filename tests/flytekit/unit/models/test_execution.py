@@ -4,16 +4,13 @@ import pytest
 
 from flytekit.models import common as _common_models
 from flytekit.models import execution as _execution
-from flytekit.models import literals as _literal_models
 from flytekit.models.core import execution as _core_exec
 from flytekit.models.core import identifier as _identifier
 from tests.flytekit.common import parameterizers as _parameterizers
 
 
 def test_execution_metadata():
-    obj = _execution.ExecutionMetadata(
-        _execution.ExecutionMetadata.ExecutionMode.MANUAL, "tester", 1
-    )
+    obj = _execution.ExecutionMetadata(_execution.ExecutionMetadata.ExecutionMode.MANUAL, "tester", 1)
     assert obj.mode == _execution.ExecutionMetadata.ExecutionMode.MANUAL
     assert obj.principal == "tester"
     assert obj.nesting == 1
@@ -24,26 +21,18 @@ def test_execution_metadata():
     assert obj2.nesting == 1
 
 
-@pytest.mark.parametrize(
-    "literal_value_pair", _parameterizers.LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE
-)
+@pytest.mark.parametrize("literal_value_pair", _parameterizers.LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE)
 def test_execution_spec(literal_value_pair):
     literal_value, _ = literal_value_pair
 
     obj = _execution.ExecutionSpec(
-        _identifier.Identifier(
-            _identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version"
-        ),
-        _execution.ExecutionMetadata(
-            _execution.ExecutionMetadata.ExecutionMode.MANUAL, "tester", 1
-        ),
+        _identifier.Identifier(_identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version"),
+        _execution.ExecutionMetadata(_execution.ExecutionMetadata.ExecutionMode.MANUAL, "tester", 1),
         notifications=_execution.NotificationList(
             [
                 _common_models.Notification(
                     [_core_exec.WorkflowExecutionPhase.ABORTED],
-                    pager_duty=_common_models.PagerDutyNotification(
-                        recipients_email=["a", "b", "c"]
-                    ),
+                    pager_duty=_common_models.PagerDutyNotification(recipients_email=["a", "b", "c"]),
                 )
             ]
         ),
@@ -56,9 +45,7 @@ def test_execution_spec(literal_value_pair):
     assert obj.metadata.mode == _execution.ExecutionMetadata.ExecutionMode.MANUAL
     assert obj.metadata.nesting == 1
     assert obj.metadata.principal == "tester"
-    assert obj.notifications.notifications[0].phases == [
-        _core_exec.WorkflowExecutionPhase.ABORTED
-    ]
+    assert obj.notifications.notifications[0].phases == [_core_exec.WorkflowExecutionPhase.ABORTED]
     assert obj.notifications.notifications[0].pager_duty.recipients_email == [
         "a",
         "b",
@@ -76,9 +63,7 @@ def test_execution_spec(literal_value_pair):
     assert obj2.metadata.mode == _execution.ExecutionMetadata.ExecutionMode.MANUAL
     assert obj2.metadata.nesting == 1
     assert obj2.metadata.principal == "tester"
-    assert obj2.notifications.notifications[0].phases == [
-        _core_exec.WorkflowExecutionPhase.ABORTED
-    ]
+    assert obj2.notifications.notifications[0].phases == [_core_exec.WorkflowExecutionPhase.ABORTED]
     assert obj2.notifications.notifications[0].pager_duty.recipients_email == [
         "a",
         "b",
@@ -87,12 +72,8 @@ def test_execution_spec(literal_value_pair):
     assert obj2.disable_all is None
 
     obj = _execution.ExecutionSpec(
-        _identifier.Identifier(
-            _identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version"
-        ),
-        _execution.ExecutionMetadata(
-            _execution.ExecutionMetadata.ExecutionMode.MANUAL, "tester", 1
-        ),
+        _identifier.Identifier(_identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version"),
+        _execution.ExecutionMetadata(_execution.ExecutionMetadata.ExecutionMode.MANUAL, "tester", 1),
         disable_all=True,
     )
     assert obj.launch_plan.resource_type == _identifier.ResourceType.LAUNCH_PLAN
@@ -124,9 +105,7 @@ def test_workflow_execution_data_response():
     input_blob = _common_models.UrlBlob("in", 1)
     output_blob = _common_models.UrlBlob("out", 2)
     obj = _execution.WorkflowExecutionGetDataResponse(input_blob, output_blob)
-    obj2 = _execution.WorkflowExecutionGetDataResponse.from_flyte_idl(
-        obj.to_flyte_idl()
-    )
+    obj2 = _execution.WorkflowExecutionGetDataResponse.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
     assert obj2.inputs == input_blob
     assert obj2.outputs == output_blob

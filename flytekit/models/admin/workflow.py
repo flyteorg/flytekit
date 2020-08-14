@@ -37,8 +37,7 @@ class WorkflowSpec(_common.FlyteIdlEntity):
         :rtype: flyteidl.admin.workflow_pb2.WorkflowSpec
         """
         return _admin_workflow.WorkflowSpec(
-            template=self._template.to_flyte_idl(),
-            sub_workflows=[s.to_flyte_idl() for s in self._sub_workflows],
+            template=self._template.to_flyte_idl(), sub_workflows=[s.to_flyte_idl() for s in self._sub_workflows],
         )
 
     @classmethod
@@ -49,10 +48,7 @@ class WorkflowSpec(_common.FlyteIdlEntity):
         """
         return cls(
             _core_workflow.WorkflowTemplate.from_flyte_idl(pb2_object.template),
-            [
-                _core_workflow.WorkflowTemplate.from_flyte_idl(s)
-                for s in pb2_object.sub_workflows
-            ],
+            [_core_workflow.WorkflowTemplate.from_flyte_idl(s) for s in pb2_object.sub_workflows],
         )
 
 
@@ -83,9 +79,7 @@ class Workflow(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.workflow_pb2.Workflow
         """
-        return _admin_workflow.Workflow(
-            id=self.id.to_flyte_idl(), closure=self.closure.to_flyte_idl()
-        )
+        return _admin_workflow.Workflow(id=self.id.to_flyte_idl(), closure=self.closure.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -117,9 +111,7 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.workflow_pb2.WorkflowClosure
         """
-        return _admin_workflow.WorkflowClosure(
-            compiled_workflow=self.compiled_workflow.to_flyte_idl()
-        )
+        return _admin_workflow.WorkflowClosure(compiled_workflow=self.compiled_workflow.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, p):
@@ -127,8 +119,4 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         :param flyteidl.admin.workflow_pb2.WorkflowClosure p:
         :rtype: WorkflowClosure
         """
-        return cls(
-            compiled_workflow=_compiler_models.CompiledWorkflowClosure.from_flyte_idl(
-                p.compiled_workflow
-            )
-        )
+        return cls(compiled_workflow=_compiler_models.CompiledWorkflowClosure.from_flyte_idl(p.compiled_workflow))

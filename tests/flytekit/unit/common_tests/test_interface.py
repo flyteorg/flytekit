@@ -35,9 +35,7 @@ def test_binding_data_primitive_static():
 def test_binding_data_list_static():
     upstream_nodes = set()
     bd = interface.BindingData.from_python_std(
-        containers.List(primitives.String).to_flyte_literal_type(),
-        ["abc", "cde"],
-        upstream_nodes=upstream_nodes,
+        containers.List(primitives.String).to_flyte_literal_type(), ["abc", "cde"], upstream_nodes=upstream_nodes,
     )
 
     assert len(upstream_nodes) == 0

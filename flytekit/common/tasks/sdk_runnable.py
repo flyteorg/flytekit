@@ -98,15 +98,11 @@ class ExecutionParameters(object):
         return self._execution_id
 
 
-class SdkRunnableContainer(
-    _task_models.Container, metaclass=_sdk_bases.ExtendedSdkType
-):
+class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(
         self, command, args, resources, env, config,
     ):
-        super(SdkRunnableContainer, self).__init__(
-            "", command, args, resources, env or {}, config
-        )
+        super(SdkRunnableContainer, self).__init__("", command, args, resources, env or {}, config)
 
     @property
     def args(self):
@@ -200,9 +196,7 @@ class SdkRunnableTask(
             _task_models.TaskMetadata(
                 discoverable,
                 _task_models.RuntimeMetadata(
-                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
-                    __version__,
-                    "python",
+                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python",
                 ),
                 timeout,
                 _literal_models.RetryStrategy(retries),
@@ -364,10 +358,7 @@ class SdkRunnableTask(
         """
         inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(
             inputs,
-            {
-                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
-                for k, v in _six.iteritems(self.interface.inputs)
-            },
+            {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)},
         )
         outputs_dict = {
             name: _task_output.OutputReference(
@@ -425,53 +416,29 @@ class SdkRunnableTask(
         requests = []
         if storage_request:
             requests.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.STORAGE, storage_request
-                )
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
             )
         if cpu_request:
-            requests.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.CPU, cpu_request
-                )
-            )
+            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
         if gpu_request:
-            requests.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.GPU, gpu_request
-                )
-            )
+            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
         if memory_request:
             requests.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.MEMORY, memory_request
-                )
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
             )
 
         limits = []
         if storage_limit:
             limits.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.STORAGE, storage_limit
-                )
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit)
             )
         if cpu_limit:
-            limits.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.CPU, cpu_limit
-                )
-            )
+            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
         if gpu_limit:
-            limits.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.GPU, gpu_limit
-                )
-            )
+            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
         if memory_limit:
             limits.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.MEMORY, memory_limit
-                )
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit)
             )
 
         return (cls or SdkRunnableContainer)(

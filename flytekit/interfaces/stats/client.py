@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import re
 import sys
@@ -11,18 +10,7 @@ import statsd
 from flytekit.configuration import statsd as _statsd_config
 
 RESERVED_TAG_WORDS = frozenset(
-    [
-        "asg",
-        "az",
-        "backend",
-        "canary",
-        "host",
-        "period",
-        "region",
-        "shard",
-        "window",
-        "source",
-    ]
+    ["asg", "az", "backend", "canary", "host", "period", "region", "shard", "window", "source"]
 )
 
 # TODO should this be a whitelist instead?
@@ -146,9 +134,7 @@ class StatsClientProxy(ScopeableStatsProxy):
 def _get_stats_client():
     global _stats_client
     if _stats_client is None:
-        _stats_client = statsd.StatsClient(
-            _statsd_config.HOST.get(), _statsd_config.PORT.get()
-        )
+        _stats_client = statsd.StatsClient(_statsd_config.HOST.get(), _statsd_config.PORT.get())
     return _stats_client
 
 

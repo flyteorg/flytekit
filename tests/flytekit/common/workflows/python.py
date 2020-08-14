@@ -31,16 +31,11 @@ def sum_non_none(workflow_parameters, value1_to_print, value2_to_print, out):
 
 
 @inputs(
-    value1_to_add=Types.Integer,
-    value2_to_add=Types.Integer,
-    value3_to_add=Types.Integer,
-    value4_to_add=Types.Integer,
+    value1_to_add=Types.Integer, value2_to_add=Types.Integer, value3_to_add=Types.Integer, value4_to_add=Types.Integer,
 )
 @outputs(out=Types.Integer)
 @python_task(cache_version="1")
-def sum_and_print(
-    workflow_parameters, value1_to_add, value2_to_add, value3_to_add, value4_to_add, out
-):
+def sum_and_print(workflow_parameters, value1_to_add, value2_to_add, value3_to_add, value4_to_add, out):
     workflow_parameters.stats.incr("task_run")
     summed = sum([value1_to_add, value2_to_add, value3_to_add, value4_to_add])
     print("Summed up to: {}".format(summed))
@@ -59,9 +54,7 @@ class PythonTasksWorkflow(object):
     triggered_date = Input(Types.Datetime)
     print1a = add_one_and_print(value_to_print=3)
     print1b = add_one_and_print(value_to_print=101)
-    print2 = sum_non_none(
-        value1_to_print=print1a.outputs.out, value2_to_print=print1b.outputs.out
-    )
+    print2 = sum_non_none(value1_to_print=print1a.outputs.out, value2_to_print=print1b.outputs.out)
     print3 = add_one_and_print(value_to_print=print2.outputs.out)
     print4 = add_one_and_print(value_to_print=print3.outputs.out)
     print_sum = sum_and_print(
@@ -70,6 +63,4 @@ class PythonTasksWorkflow(object):
         value3_to_add=print4.outputs.out,
         value4_to_add=100,
     )
-    print_always = print_every_time(
-        value_to_print=print_sum.outputs.out, date_triggered=triggered_date
-    )
+    print_always = print_every_time(value_to_print=print_sum.outputs.out, date_triggered=triggered_date)

@@ -115,10 +115,6 @@ class Schedule(_common.FlyteIdlEntity):
         """
         return cls(
             pb2_object.kickoff_time_input_arg,
-            cron_expression=pb2_object.cron_expression
-            if pb2_object.HasField("cron_expression")
-            else None,
-            rate=Schedule.FixedRate.from_flyte_idl(pb2_object.rate)
-            if pb2_object.HasField("rate")
-            else None,
+            cron_expression=pb2_object.cron_expression if pb2_object.HasField("cron_expression") else None,
+            rate=Schedule.FixedRate.from_flyte_idl(pb2_object.rate) if pb2_object.HasField("rate") else None,
         )

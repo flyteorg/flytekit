@@ -29,6 +29,4 @@ def test_get_commands(mock_ctx):
 
 def test_launch_plans_commands(mock_ctx):
     command_names = [c for c in launch_plans.list_commands(mock_ctx)]
-    assert command_names == sorted(
-        ["execute", "activate-all", "activate-all-schedules"]
-    )
+    assert command_names == sorted(["execute", "activate-all", "activate-all-schedules"])

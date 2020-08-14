@@ -19,7 +19,7 @@ def test_input():
 
     i = promise.Input("name2", primitives.Integer, default=1)
     assert i.name == "name2"
-    assert i.sdk_default is 1
+    assert i.sdk_default == 1
     assert i.default == primitives.Integer(1)
     assert i.required is None
     assert i.sdk_required is False

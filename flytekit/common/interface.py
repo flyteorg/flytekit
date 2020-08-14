@@ -12,9 +12,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 
 
-class BindingData(
-    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.BindingData)
-):
+class BindingData(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.BindingData)):
     @staticmethod
     def _has_sub_bindings(m):
         """
@@ -34,12 +32,7 @@ class BindingData(
         :param flytekit.models.literals.BindingData model:
         :rtype: BindingData
         """
-        return cls(
-            scalar=model.scalar,
-            collection=model.collection,
-            promise=model.promise,
-            map=model.map,
-        )
+        return cls(scalar=model.scalar, collection=model.collection, promise=model.promise, map=model.map,)
 
     @classmethod
     def from_python_std(cls, literal_type, t_value, upstream_nodes=None):
@@ -84,16 +77,13 @@ class BindingData(
             collection = _literal_models.BindingDataCollection(
                 [
                     BindingData.from_python_std(
-                        downstream_sdk_type.sub_type.to_flyte_literal_type(),
-                        v,
-                        upstream_nodes=upstream_nodes,
+                        downstream_sdk_type.sub_type.to_flyte_literal_type(), v, upstream_nodes=upstream_nodes,
                     )
                     for v in t_value
                 ]
             )
         elif isinstance(t_value, dict) and (
-            not issubclass(downstream_sdk_type, _primitives.Generic)
-            or BindingData._has_sub_bindings(t_value)
+            not issubclass(downstream_sdk_type, _primitives.Generic) or BindingData._has_sub_bindings(t_value)
         ):
             # TODO: This behavior should be embedded in the type engine.  Someone should be able to alter behavior of
             # TODO: binding logic by injecting their own type engine.  The same goes for the list check above.
@@ -106,9 +96,7 @@ class BindingData(
         return cls(scalar=scalar, collection=collection, map=map, promise=promise)
 
 
-class TypedInterface(
-    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.TypedInterface)
-):
+class TypedInterface(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.TypedInterface)):
     @classmethod
     def promote_from_model(cls, model):
         """
@@ -129,9 +117,7 @@ class TypedInterface(
         for k in sorted(self.inputs):
             var = self.inputs[k]
             if k not in map_of_bindings:
-                raise _user_exceptions.FlyteAssertion(
-                    "Input was not specified for: {} of type {}".format(k, var.type)
-                )
+                raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
 
             binding_data[k] = BindingData.from_python_std(
                 var.type, map_of_bindings[k], upstream_nodes=all_upstream_nodes
@@ -140,9 +126,7 @@ class TypedInterface(
         extra_inputs = set(binding_data.keys()) ^ set(map_of_bindings.keys())
         if len(extra_inputs) > 0:
             raise _user_exceptions.FlyteAssertion(
-                "Too many inputs were specified for the interface.  Extra inputs were: {}".format(
-                    extra_inputs
-                )
+                "Too many inputs were specified for the interface.  Extra inputs were: {}".format(extra_inputs)
             )
 
         seen_nodes = set()
@@ -161,17 +145,13 @@ class TypedInterface(
         return "({inputs}) -> ({outputs})".format(
             inputs=", ".join(
                 [
-                    "{}: {}".format(
-                        k, _type_helpers.get_sdk_type_from_literal_type(v.type)
-                    )
+                    "{}: {}".format(k, _type_helpers.get_sdk_type_from_literal_type(v.type))
                     for k, v in _six.iteritems(self.inputs)
                 ]
             ),
             outputs=", ".join(
                 [
-                    "{}: {}".format(
-                        k, _type_helpers.get_sdk_type_from_literal_type(v.type)
-                    )
+                    "{}: {}".format(k, _type_helpers.get_sdk_type_from_literal_type(v.type))
                     for k, v in _six.iteritems(self.outputs)
                 ]
             ),

@@ -78,16 +78,10 @@ class Filter(_FlyteIdlEntity):
         """
         stripped = string[len(cls._comparator) + 1 :]
         if stripped[-1] != ")":
-            raise ValueError(
-                "Filter could not be parsed because {} did not end with a ')'".format(
-                    string
-                )
-            )
+            raise ValueError("Filter could not be parsed because {} did not end with a ')'".format(string))
         split = stripped[:-1].split(",")
         if len(split) != 2:
-            raise ValueError(
-                "Filter must be expressed as a key, value tuple like 'eq(abc,def)'"
-            )
+            raise ValueError("Filter must be expressed as a key, value tuple like 'eq(abc,def)'")
         key = split[0].strip()
         value = split[1].strip()
         return cls(key, cls._parse_value(value))

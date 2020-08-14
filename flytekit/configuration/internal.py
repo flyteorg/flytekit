@@ -15,51 +15,27 @@ CONFIGURATION_PATH = _common_config.FlyteStringConfigurationEntry(
 )
 
 # Project, Domain and Version represent the values at registration time.
-PROJECT = _common_config.FlyteStringConfigurationEntry(
-    "internal", "project", default=""
-)
+PROJECT = _common_config.FlyteStringConfigurationEntry("internal", "project", default="")
 DOMAIN = _common_config.FlyteStringConfigurationEntry("internal", "domain", default="")
 NAME = _common_config.FlyteStringConfigurationEntry("internal", "name", default="")
-VERSION = _common_config.FlyteStringConfigurationEntry(
-    "internal", "version", default=""
-)
+VERSION = _common_config.FlyteStringConfigurationEntry("internal", "version", default="")
 
 # Project, Domain and Version represent the values at registration time.
-TASK_PROJECT = _common_config.FlyteStringConfigurationEntry(
-    "internal", "task_project", default=""
-)
-TASK_DOMAIN = _common_config.FlyteStringConfigurationEntry(
-    "internal", "task_domain", default=""
-)
-TASK_NAME = _common_config.FlyteStringConfigurationEntry(
-    "internal", "task_name", default=""
-)
-TASK_VERSION = _common_config.FlyteStringConfigurationEntry(
-    "internal", "task_version", default=""
-)
+TASK_PROJECT = _common_config.FlyteStringConfigurationEntry("internal", "task_project", default="")
+TASK_DOMAIN = _common_config.FlyteStringConfigurationEntry("internal", "task_domain", default="")
+TASK_NAME = _common_config.FlyteStringConfigurationEntry("internal", "task_name", default="")
+TASK_VERSION = _common_config.FlyteStringConfigurationEntry("internal", "task_version", default="")
 
 # Execution project and domain represent the values passed by execution engine at runtime.
-EXECUTION_PROJECT = _common_config.FlyteStringConfigurationEntry(
-    "internal", "execution_project", default=""
-)
-EXECUTION_DOMAIN = _common_config.FlyteStringConfigurationEntry(
-    "internal", "execution_domain", default=""
-)
-EXECUTION_WORKFLOW = _common_config.FlyteStringConfigurationEntry(
-    "internal", "execution_workflow", default=""
-)
-EXECUTION_LAUNCHPLAN = _common_config.FlyteStringConfigurationEntry(
-    "internal", "execution_launchplan", default=""
-)
-EXECUTION_NAME = _common_config.FlyteStringConfigurationEntry(
-    "internal", "execution_id", default=""
-)
+EXECUTION_PROJECT = _common_config.FlyteStringConfigurationEntry("internal", "execution_project", default="")
+EXECUTION_DOMAIN = _common_config.FlyteStringConfigurationEntry("internal", "execution_domain", default="")
+EXECUTION_WORKFLOW = _common_config.FlyteStringConfigurationEntry("internal", "execution_workflow", default="")
+EXECUTION_LAUNCHPLAN = _common_config.FlyteStringConfigurationEntry("internal", "execution_launchplan", default="")
+EXECUTION_NAME = _common_config.FlyteStringConfigurationEntry("internal", "execution_id", default="")
 
 # This is another layer of logging level, which can be set by propeller, and can override the SDK configuration if
 # necessary.  (See the sdk.py version of this as well.)
-LOGGING_LEVEL = _common_config.FlyteIntegerConfigurationEntry(
-    "internal", "logging_level"
-)
+LOGGING_LEVEL = _common_config.FlyteIntegerConfigurationEntry("internal", "logging_level")
 
 _IMAGE_VERSION_REGEX = ".*:(.+)"
 
@@ -83,7 +59,4 @@ def look_up_version_from_image_tag(tag):
     if m is not None:
         return m.group(1)
 
-    raise Exception(
-        "Could not parse image version from configuration. Did you set it in the"
-        "Dockerfile?"
-    )
+    raise Exception("Could not parse image version from configuration. Did you set it in the" "Dockerfile?")

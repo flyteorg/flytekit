@@ -1,7 +1,5 @@
 from __future__ import absolute_import
 
-import datetime
-
 import pytest
 
 from flytekit.common import constants
@@ -35,7 +33,7 @@ def test_input():
 
     i = Input(primitives.Integer, default=1)
     assert i.name == ""
-    assert i.sdk_default is 1
+    assert i.sdk_default == 1
     assert i.default == primitives.Integer(1)
     assert i.sdk_required is False
     assert i.required is None
@@ -45,7 +43,7 @@ def test_input():
 
     i = i.rename_and_return_reference("new_name")
     assert i.name == "new_name"
-    assert i.sdk_default is 1
+    assert i.sdk_default == 1
     assert i.default == primitives.Integer(1)
     assert i.sdk_required is False
     assert i.required is None
@@ -59,9 +57,7 @@ def test_input():
     i = Input([primitives.Integer], default=[1, 2])
     assert i.name == ""
     assert i.sdk_default == [1, 2]
-    assert i.default == containers.List(primitives.Integer)(
-        [primitives.Integer(1), primitives.Integer(2)]
-    )
+    assert i.default == containers.List(primitives.Integer)([primitives.Integer(1), primitives.Integer(2)])
     assert i.sdk_required is False
     assert i.required is None
     assert i.help is None
@@ -71,9 +67,7 @@ def test_input():
     i = i.rename_and_return_reference("new_name")
     assert i.name == "new_name"
     assert i.sdk_default == [1, 2]
-    assert i.default == containers.List(primitives.Integer)(
-        [primitives.Integer(1), primitives.Integer(2)]
-    )
+    assert i.default == containers.List(primitives.Integer)([primitives.Integer(1), primitives.Integer(2)])
     assert i.sdk_required is False
     assert i.required is None
     assert i.help is None
@@ -125,15 +119,9 @@ def test_workflow_no_node_dependencies_or_outputs():
     assert w.interface.inputs["input_1"].type == Types.Integer.to_flyte_literal_type()
     assert w.interface.inputs["input_2"].type == Types.Integer.to_flyte_literal_type()
     assert _get_node_by_id(w, "a").inputs[0].var == "a"
-    assert (
-        _get_node_by_id(w, "a").inputs[0].binding.promise.node_id
-        == constants.GLOBAL_INPUT_NODE_ID
-    )
+    assert _get_node_by_id(w, "a").inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
     assert _get_node_by_id(w, "a").inputs[0].binding.promise.var == "input_1"
-    assert (
-        _get_node_by_id(w, "b").inputs[0].binding.promise.node_id
-        == constants.GLOBAL_INPUT_NODE_ID
-    )
+    assert _get_node_by_id(w, "b").inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
     assert _get_node_by_id(w, "b").inputs[0].binding.promise.var == "input_2"
     assert _get_node_by_id(w, "c").inputs[0].binding.scalar.primitive.integer == 100
 
@@ -157,14 +145,8 @@ def test_workflow_metaclass_no_node_dependencies_or_outputs():
     assert sup.interface.inputs["input_1"].type == Types.Integer.to_flyte_literal_type()
     assert sup.interface.inputs["input_2"].type == Types.Integer.to_flyte_literal_type()
     assert _get_node_by_id(sup, "a").inputs[0].var == "a"
-    assert (
-        _get_node_by_id(sup, "a").inputs[0].binding.promise.node_id
-        == constants.GLOBAL_INPUT_NODE_ID
-    )
+    assert _get_node_by_id(sup, "a").inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
     assert _get_node_by_id(sup, "a").inputs[0].binding.promise.var == "input_1"
-    assert (
-        _get_node_by_id(sup, "b").inputs[0].binding.promise.node_id
-        == constants.GLOBAL_INPUT_NODE_ID
-    )
+    assert _get_node_by_id(sup, "b").inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
     assert _get_node_by_id(sup, "b").inputs[0].binding.promise.var == "input_2"
     assert _get_node_by_id(sup, "c").inputs[0].binding.scalar.primitive.integer == 100

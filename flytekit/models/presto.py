@@ -54,13 +54,10 @@ class PrestoQuery(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self):
         """
-        :rtype: _presto.PrestoQuery 
+        :rtype: _presto.PrestoQuery
         """
         return _presto.PrestoQuery(
-            routing_group=self._routing_group,
-            catalog=self._catalog,
-            schema=self._schema,
-            statement=self._statement,
+            routing_group=self._routing_group, catalog=self._catalog, schema=self._schema, statement=self._statement,
         )
 
     @classmethod

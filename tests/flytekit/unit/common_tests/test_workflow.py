@@ -66,18 +66,18 @@ def test_workflow():
     )
 
     assert (
-        w.interface.inputs["input_1"].type == primitives.Integer.to_flyte_literal_type()
+            w.interface.inputs["input_1"].type == primitives.Integer.to_flyte_literal_type()
     )
     assert (
-        w.interface.inputs["input_2"].type == primitives.Integer.to_flyte_literal_type()
+            w.interface.inputs["input_2"].type == primitives.Integer.to_flyte_literal_type()
     )
     assert w.nodes[0].inputs[0].var == "a"
     assert (
-        w.nodes[0].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
+            w.nodes[0].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
     )
     assert w.nodes[0].inputs[0].binding.promise.var == "input_1"
     assert (
-        w.nodes[1].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
+            w.nodes[1].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
     )
     assert w.nodes[1].inputs[0].binding.promise.var == "input_2"
     assert w.nodes[2].inputs[0].binding.scalar.primitive.integer == 100
@@ -90,18 +90,18 @@ def test_workflow():
     )
     w = _workflow_models.WorkflowTemplate.from_flyte_idl(w.to_flyte_idl())
     assert (
-        w.interface.inputs["input_1"].type == primitives.Integer.to_flyte_literal_type()
+            w.interface.inputs["input_1"].type == primitives.Integer.to_flyte_literal_type()
     )
     assert (
-        w.interface.inputs["input_2"].type == primitives.Integer.to_flyte_literal_type()
+            w.interface.inputs["input_2"].type == primitives.Integer.to_flyte_literal_type()
     )
     assert w.nodes[0].inputs[0].var == "a"
     assert (
-        w.nodes[0].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
+            w.nodes[0].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
     )
     assert w.nodes[0].inputs[0].binding.promise.var == "input_1"
     assert (
-        w.nodes[1].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
+            w.nodes[1].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
     )
     assert w.nodes[1].inputs[0].binding.promise.var == "input_2"
     assert w.nodes[2].inputs[0].binding.scalar.primitive.integer == 100
@@ -109,20 +109,20 @@ def test_workflow():
     assert w.nodes[3].inputs[0].binding.promise.node_id == n1.id
     assert w.nodes[4].inputs[0].var == "a"
     assert (
-        w.nodes[4].inputs[0].binding.collection.bindings[0].promise.node_id
-        == constants.GLOBAL_INPUT_NODE_ID
+            w.nodes[4].inputs[0].binding.collection.bindings[0].promise.node_id
+            == constants.GLOBAL_INPUT_NODE_ID
     )
     assert w.nodes[4].inputs[0].binding.collection.bindings[0].promise.var == "input_1"
     assert (
-        w.nodes[4].inputs[0].binding.collection.bindings[1].promise.node_id
-        == constants.GLOBAL_INPUT_NODE_ID
+            w.nodes[4].inputs[0].binding.collection.bindings[1].promise.node_id
+            == constants.GLOBAL_INPUT_NODE_ID
     )
     assert w.nodes[4].inputs[0].binding.collection.bindings[1].promise.var == "input_2"
     assert w.nodes[4].inputs[0].binding.collection.bindings[2].promise.node_id == n3.id
     assert w.nodes[4].inputs[0].binding.collection.bindings[2].promise.var == "b"
     assert (
-        w.nodes[4].inputs[0].binding.collection.bindings[3].scalar.primitive.integer
-        == 100
+            w.nodes[4].inputs[0].binding.collection.bindings[3].scalar.primitive.integer
+            == 100
     )
     assert w.nodes[5].inputs[0].var == "a"
     assert w.nodes[5].inputs[0].binding.promise.node_id == n5.id
@@ -176,18 +176,18 @@ def test_workflow_decorator():
     )
 
     assert (
-        w.interface.inputs["input_1"].type == primitives.Integer.to_flyte_literal_type()
+            w.interface.inputs["input_1"].type == primitives.Integer.to_flyte_literal_type()
     )
     assert (
-        w.interface.inputs["input_2"].type == primitives.Integer.to_flyte_literal_type()
+            w.interface.inputs["input_2"].type == primitives.Integer.to_flyte_literal_type()
     )
     assert w.nodes[0].inputs[0].var == "a"
     assert (
-        w.nodes[0].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
+            w.nodes[0].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
     )
     assert w.nodes[0].inputs[0].binding.promise.var == "input_1"
     assert (
-        w.nodes[1].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
+            w.nodes[1].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
     )
     assert w.nodes[1].inputs[0].binding.promise.var == "input_2"
     assert w.nodes[2].inputs[0].binding.scalar.primitive.integer == 100
@@ -195,23 +195,23 @@ def test_workflow_decorator():
     assert w.nodes[3].inputs[0].binding.promise.node_id == "n1"
 
     # Test conversion to flyte_idl and back
-    w._id = _identifier.Identifier(
+    w.id = _identifier.Identifier(
         _identifier.ResourceType.WORKFLOW, "fake", "faker", "fakest", "fakerest"
     )
     w = _workflow_models.WorkflowTemplate.from_flyte_idl(w.to_flyte_idl())
     assert (
-        w.interface.inputs["input_1"].type == primitives.Integer.to_flyte_literal_type()
+            w.interface.inputs["input_1"].type == primitives.Integer.to_flyte_literal_type()
     )
     assert (
-        w.interface.inputs["input_2"].type == primitives.Integer.to_flyte_literal_type()
+            w.interface.inputs["input_2"].type == primitives.Integer.to_flyte_literal_type()
     )
     assert w.nodes[0].inputs[0].var == "a"
     assert (
-        w.nodes[0].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
+            w.nodes[0].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
     )
     assert w.nodes[0].inputs[0].binding.promise.var == "input_1"
     assert (
-        w.nodes[1].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
+            w.nodes[1].inputs[0].binding.promise.node_id == constants.GLOBAL_INPUT_NODE_ID
     )
     assert w.nodes[1].inputs[0].binding.promise.var == "input_2"
     assert w.nodes[2].inputs[0].binding.scalar.primitive.integer == 100
@@ -219,20 +219,20 @@ def test_workflow_decorator():
     assert w.nodes[3].inputs[0].binding.promise.node_id == "n1"
     assert w.nodes[4].inputs[0].var == "a"
     assert (
-        w.nodes[4].inputs[0].binding.collection.bindings[0].promise.node_id
-        == constants.GLOBAL_INPUT_NODE_ID
+            w.nodes[4].inputs[0].binding.collection.bindings[0].promise.node_id
+            == constants.GLOBAL_INPUT_NODE_ID
     )
     assert w.nodes[4].inputs[0].binding.collection.bindings[0].promise.var == "input_1"
     assert (
-        w.nodes[4].inputs[0].binding.collection.bindings[1].promise.node_id
-        == constants.GLOBAL_INPUT_NODE_ID
+            w.nodes[4].inputs[0].binding.collection.bindings[1].promise.node_id
+            == constants.GLOBAL_INPUT_NODE_ID
     )
     assert w.nodes[4].inputs[0].binding.collection.bindings[1].promise.var == "input_2"
     assert w.nodes[4].inputs[0].binding.collection.bindings[2].promise.node_id == "n3"
     assert w.nodes[4].inputs[0].binding.collection.bindings[2].promise.var == "b"
     assert (
-        w.nodes[4].inputs[0].binding.collection.bindings[3].scalar.primitive.integer
-        == 100
+            w.nodes[4].inputs[0].binding.collection.bindings[3].scalar.primitive.integer
+            == 100
     )
     assert w.nodes[5].inputs[0].var == "a"
     assert w.nodes[5].inputs[0].binding.promise.node_id == "n5"
@@ -243,8 +243,8 @@ def test_workflow_decorator():
     assert w.outputs[0].binding.promise.var == "b"
     assert w.outputs[0].binding.promise.node_id == "n1"
     assert (
-        w.metadata.on_failure
-        == _workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
+            w.metadata.on_failure
+            == _workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
     )
     # TODO: Test promotion of w -> SdkWorkflow
 
@@ -338,15 +338,15 @@ def test_workflow_node():
     # Test that outputs are promised
     n.assign_id_and_return("node-id*")  # dns'ified
     assert (
-        n.outputs["scalar_out"].sdk_type.to_flyte_literal_type()
-        == primitives.Integer.to_flyte_literal_type()
+            n.outputs["scalar_out"].sdk_type.to_flyte_literal_type()
+            == primitives.Integer.to_flyte_literal_type()
     )
     assert n.outputs["scalar_out"].var == "scalar_out"
     assert n.outputs["scalar_out"].node_id == "node-id"
 
     assert (
-        n.outputs["nested_out"].sdk_type.to_flyte_literal_type()
-        == containers.List(containers.List(primitives.Integer)).to_flyte_literal_type()
+            n.outputs["nested_out"].sdk_type.to_flyte_literal_type()
+            == containers.List(containers.List(primitives.Integer)).to_flyte_literal_type()
     )
     assert n.outputs["nested_out"].var == "nested_out"
     assert n.outputs["nested_out"].node_id == "node-id"
@@ -438,9 +438,7 @@ def test_workflow_serialization():
         workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
     ]
 
-    w = workflow.PythonWorkflow.construct_from_class_definition(
-        inputs=input_list, outputs=wf_out, nodes=nodes
-    )
+    w = workflow.PythonWorkflow.construct_from_class_definition(inputs=input_list, outputs=wf_out, nodes=nodes)
     serialized = w.serialize()
     assert isinstance(serialized, _workflow_pb2.WorkflowSpec)
     assert len(serialized.template.nodes) == 6

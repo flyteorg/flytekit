@@ -31,7 +31,7 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl>=0.17.34,<1.0.0",
+        "flyteidl>=0.18.1,<1.0.0",
         "click>=6.6,<8.0",
         "croniter>=0.3.20,<4.0.0",
         "deprecated>=1.0,<2.0",
@@ -47,7 +47,7 @@ setup(
         "six>=1.9.0,<2.0.0",
         "sortedcontainers>=1.5.9<3.0.0",
         "statsd>=3.0.0,<4.0.0",
-        "urllib3>=1.22,<1.25",
+        "urllib3>=1.22,<2.0.0",
         "wrapt>=1.0.0,<2.0.0",
         "papermill>=1.2.0",
     ],

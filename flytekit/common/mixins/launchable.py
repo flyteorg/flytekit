@@ -2,7 +2,6 @@ from __future__ import absolute_import
 
 import abc as _abc
 
-import six as _six
 from deprecated import deprecated as _deprecated
 
 
@@ -117,11 +116,5 @@ class LaunchableEntity(object, metaclass=_abc.ABCMeta):
         Deprecated.
         """
         return self.launch_with_literals(
-            project,
-            domain,
-            literal_inputs,
-            name,
-            notification_overrides,
-            label_overrides,
-            annotation_overrides,
+            project, domain, literal_inputs, name, notification_overrides, label_overrides, annotation_overrides,
         )

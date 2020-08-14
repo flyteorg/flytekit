@@ -2,8 +2,7 @@ from __future__ import absolute_import
 
 import six as _six
 
-from flytekit.common.types.helpers import \
-    get_sdk_type_from_literal_type as _get_sdk_type_from_literal_type
+from flytekit.common.types.helpers import get_sdk_type_from_literal_type as _get_sdk_type_from_literal_type
 from flytekit.models import literals as _literals
 
 
@@ -42,10 +41,7 @@ def parse_args_into_dict(input_arguments):
     :rtype: dict[Text, Text]
     """
 
-    return {
-        split_arg[0]: split_arg[1]
-        for split_arg in [input_arg.split("=", 1) for input_arg in input_arguments]
-    }
+    return {split_arg[0]: split_arg[1] for split_arg in [input_arg.split("=", 1) for input_arg in input_arguments]}
 
 
 def construct_literal_map_from_parameter_map(parameter_map, text_args):
