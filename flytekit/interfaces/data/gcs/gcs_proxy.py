@@ -4,12 +4,11 @@ import os as _os
 import sys as _sys
 import uuid as _uuid
 
+from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserException
 from flytekit.configuration import gcp as _gcp_config
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import common as _common_data
 from flytekit.tools import subprocess as _subprocess
-from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserException
-
 
 if _sys.version_info >= (3,):
     from shutil import which as _which
@@ -116,10 +115,7 @@ class GCSProxy(_common_data.DataProxy):
         GCSProxy._check_binary()
 
         cmd = self._maybe_with_gsutil_parallelism(
-           "cp",
-           "-r",
-           _amend_path(local_path),
-           remote_path if remote_path.endswith("/") else remote_path + "/"
+            "cp", "-r", _amend_path(local_path), remote_path if remote_path.endswith("/") else remote_path + "/",
         )
         return _update_cmd_config_and_execute(cmd)
 

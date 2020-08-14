@@ -1,21 +1,23 @@
 from __future__ import absolute_import
 
-from grpc import insecure_channel as _insecure_channel, secure_channel as _secure_channel, RpcError as _RpcError, \
-    StatusCode as _GrpcStatusCode, ssl_channel_credentials as _ssl_channel_credentials
-from google.protobuf.json_format import MessageToJson as _MessageToJson
-from flyteidl.service import admin_pb2_grpc as _admin_service
-from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.configuration.platform import AUTH as _AUTH
-from flytekit.configuration.creds import (
-    CLIENT_ID as _CLIENT_ID,
-    CLIENT_CREDENTIALS_SCOPE as _SCOPE,
-)
-from flytekit.clis.sdk_in_container import basic_auth as _basic_auth
 import logging as _logging
+
 import six as _six
-from flytekit.configuration import creds as _creds_config, platform as _platform_config
+from flyteidl.service import admin_pb2_grpc as _admin_service
+from google.protobuf.json_format import MessageToJson as _MessageToJson
+from grpc import RpcError as _RpcError
+from grpc import StatusCode as _GrpcStatusCode
+from grpc import insecure_channel as _insecure_channel
+from grpc import secure_channel as _secure_channel
+from grpc import ssl_channel_credentials as _ssl_channel_credentials
 
 from flytekit.clis.auth import credentials as _credentials_access
+from flytekit.clis.sdk_in_container import basic_auth as _basic_auth
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.configuration import creds as _creds_config
+from flytekit.configuration.creds import CLIENT_CREDENTIALS_SCOPE as _SCOPE
+from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
+from flytekit.configuration.platform import AUTH as _AUTH
 
 
 def _refresh_credentials_standard(flyte_client):
@@ -43,10 +45,10 @@ def _refresh_credentials_basic(flyte_client):
     auth_endpoints = _credentials_access.get_authorization_endpoints(flyte_client.url)
     token_endpoint = auth_endpoints.token_endpoint
     client_secret = _basic_auth.get_secret()
-    _logging.debug('Basic authorization flow with client id {} scope {}'.format(_CLIENT_ID.get(), _SCOPE.get()))
+    _logging.debug("Basic authorization flow with client id {} scope {}".format(_CLIENT_ID.get(), _SCOPE.get()))
     authorization_header = _basic_auth.get_basic_authorization_header(_CLIENT_ID.get(), client_secret)
     token, expires_in = _basic_auth.get_token(token_endpoint, authorization_header, _SCOPE.get())
-    _logging.info('Retrieved new token, expires in {}'.format(expires_in))
+    _logging.info("Retrieved new token, expires in {}".format(expires_in))
     flyte_client.set_access_token(token)
 
 
@@ -61,7 +63,8 @@ def _get_refresh_handler(auth_mode):
         return _refresh_credentials_basic
     else:
         raise ValueError(
-            "Invalid auth mode [{}] specified. Please update the creds config to use a valid value".format(auth_mode))
+            "Invalid auth mode [{}] specified. Please update the creds config to use a valid value".format(auth_mode)
+        )
 
 
 def _handle_rpc_error(fn):
@@ -91,6 +94,7 @@ def _handle_rpc_error(fn):
                 raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
             else:
                 raise
+
     return handler
 
 
@@ -136,9 +140,7 @@ class RawSynchronousFlyteClient(object):
             self._channel = _insecure_channel(url, options=list((options or {}).items()))
         else:
             self._channel = _secure_channel(
-                url,
-                credentials or _ssl_channel_credentials(),
-                options=list((options or {}).items())
+                url, credentials or _ssl_channel_credentials(), options=list((options or {}).items()),
             )
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._metadata = None
@@ -152,7 +154,7 @@ class RawSynchronousFlyteClient(object):
     def set_access_token(self, access_token):
         # Always set the header to lower-case regardless of what the config is. The grpc libraries that Admin uses
         # to parse the metadata don't change the metadata, but they do automatically lower the key you're looking for.
-        self._metadata = [(_creds_config.AUTHORIZATION_METADATA_KEY.get().lower(), "Bearer {}".format(access_token))]
+        self._metadata = [(_creds_config.AUTHORIZATION_METADATA_KEY.get().lower(), "Bearer {}".format(access_token),)]
 
     def force_auth_flow(self):
         refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
@@ -607,8 +609,9 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.ProjectDomainAttributesUpdateRequest project_domain_attributes_update_request:
         :rtype: flyteidl.admin.ProjectDomainAttributesUpdateResponse
         """
-        return self._stub.UpdateProjectDomainAttributes(project_domain_attributes_update_request,
-                                                        metadata=self._metadata)
+        return self._stub.UpdateProjectDomainAttributes(
+            project_domain_attributes_update_request, metadata=self._metadata
+        )
 
     @_handle_rpc_error
     def update_workflow_attributes(self, workflow_attributes_update_request):

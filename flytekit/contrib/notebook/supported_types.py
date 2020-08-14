@@ -1,6 +1,6 @@
-from flytekit.common.types import primitives as _primitives
 import datetime as _datetime
 
+from flytekit.common.types import primitives as _primitives
 
 notebook_types_map = {
     int: _primitives.Integer,

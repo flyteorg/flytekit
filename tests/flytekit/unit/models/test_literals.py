@@ -1,9 +1,13 @@
 from __future__ import absolute_import
+
 from datetime import datetime, timedelta
-from flytekit.models import literals, types as _types
-from tests.flytekit.common import parameterizers
+
 import pytest
 import pytz
+
+from flytekit.models import literals
+from flytekit.models import types as _types
+from tests.flytekit.common import parameterizers
 
 
 def test_retry_strategy():
@@ -37,7 +41,7 @@ def test_integer_primitive():
     assert obj != literals.Primitive(datetime=datetime.now())
     assert obj != literals.Primitive(duration=timedelta(minutes=1))
     assert obj != literals.Primitive(float_value=1.0)
-    assert obj != literals.Primitive(string_value='abc')
+    assert obj != literals.Primitive(string_value="abc")
 
     obj2 = literals.Primitive.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -53,7 +57,7 @@ def test_integer_primitive():
     assert obj2 != literals.Primitive(datetime=datetime.now())
     assert obj2 != literals.Primitive(duration=timedelta(minutes=1))
     assert obj2 != literals.Primitive(float_value=1.0)
-    assert obj2 != literals.Primitive(string_value='abc')
+    assert obj2 != literals.Primitive(string_value="abc")
 
     obj3 = literals.Primitive(integer=0)
     assert obj3.value == 0
@@ -76,7 +80,7 @@ def test_boolean_primitive():
     assert obj != literals.Primitive(datetime=datetime.now())
     assert obj != literals.Primitive(duration=timedelta(minutes=1))
     assert obj != literals.Primitive(float_value=1.0)
-    assert obj != literals.Primitive(string_value='abc')
+    assert obj != literals.Primitive(string_value="abc")
 
     obj2 = literals.Primitive.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -92,7 +96,7 @@ def test_boolean_primitive():
     assert obj2 != literals.Primitive(datetime=datetime.now())
     assert obj2 != literals.Primitive(duration=timedelta(minutes=1))
     assert obj2 != literals.Primitive(float_value=1.0)
-    assert obj2 != literals.Primitive(string_value='abc')
+    assert obj2 != literals.Primitive(string_value="abc")
 
     obj3 = literals.Primitive(boolean=False)
     assert obj3.value is False
@@ -116,7 +120,7 @@ def test_datetime_primitive():
     assert obj != literals.Primitive(datetime=dt + timedelta(seconds=1))
     assert obj != literals.Primitive(duration=timedelta(minutes=1))
     assert obj != literals.Primitive(float_value=1.0)
-    assert obj != literals.Primitive(string_value='abc')
+    assert obj != literals.Primitive(string_value="abc")
 
     obj2 = literals.Primitive.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -132,7 +136,7 @@ def test_datetime_primitive():
     assert obj2 != literals.Primitive(datetime=dt + timedelta(seconds=1))
     assert obj2 != literals.Primitive(duration=timedelta(minutes=1))
     assert obj2 != literals.Primitive(float_value=1.0)
-    assert obj2 != literals.Primitive(string_value='abc')
+    assert obj2 != literals.Primitive(string_value="abc")
 
     with pytest.raises(Exception):
         literals.Primitive(datetime=1.0).to_flyte_idl()
@@ -153,7 +157,7 @@ def test_duration_primitive():
     assert obj != literals.Primitive(datetime=datetime.now())
     assert obj != literals.Primitive(duration=timedelta(minutes=1))
     assert obj != literals.Primitive(float_value=1.0)
-    assert obj != literals.Primitive(string_value='abc')
+    assert obj != literals.Primitive(string_value="abc")
 
     obj2 = literals.Primitive.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -169,7 +173,7 @@ def test_duration_primitive():
     assert obj2 != literals.Primitive(datetime=datetime.now())
     assert obj2 != literals.Primitive(duration=timedelta(minutes=1))
     assert obj2 != literals.Primitive(float_value=1.0)
-    assert obj2 != literals.Primitive(string_value='abc')
+    assert obj2 != literals.Primitive(string_value="abc")
 
     with pytest.raises(Exception):
         literals.Primitive(duration=1.0).to_flyte_idl()
@@ -189,7 +193,7 @@ def test_float_primitive():
     assert obj != literals.Primitive(datetime=datetime.now())
     assert obj != literals.Primitive(duration=timedelta(minutes=1))
     assert obj != literals.Primitive(float_value=0.0)
-    assert obj != literals.Primitive(string_value='abc')
+    assert obj != literals.Primitive(string_value="abc")
 
     obj2 = literals.Primitive.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -205,30 +209,30 @@ def test_float_primitive():
     assert obj2 != literals.Primitive(datetime=datetime.now())
     assert obj2 != literals.Primitive(duration=timedelta(minutes=1))
     assert obj2 != literals.Primitive(float_value=0.0)
-    assert obj2 != literals.Primitive(string_value='abc')
+    assert obj2 != literals.Primitive(string_value="abc")
 
     obj3 = literals.Primitive(float_value=0.0)
     assert obj3.value == 0.0
 
     with pytest.raises(Exception):
-        literals.Primitive(float_value='abc').to_flyte_idl()
+        literals.Primitive(float_value="abc").to_flyte_idl()
 
 
 def test_string_primitive():
-    obj = literals.Primitive(string_value='abc')
+    obj = literals.Primitive(string_value="abc")
     assert obj.integer is None
     assert obj.boolean is None
     assert obj.datetime is None
     assert obj.duration is None
     assert obj.float_value is None
-    assert obj.string_value == 'abc'
-    assert obj.value == 'abc'
+    assert obj.string_value == "abc"
+    assert obj.value == "abc"
     assert obj != literals.Primitive(integer=0)
     assert obj != literals.Primitive(boolean=False)
     assert obj != literals.Primitive(datetime=datetime.now())
     assert obj != literals.Primitive(duration=timedelta(minutes=1))
     assert obj != literals.Primitive(float_value=0.0)
-    assert obj != literals.Primitive(string_value='cba')
+    assert obj != literals.Primitive(string_value="cba")
 
     obj2 = literals.Primitive.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -237,14 +241,14 @@ def test_string_primitive():
     assert obj2.datetime is None
     assert obj2.duration is None
     assert obj2.float_value is None
-    assert obj2.string_value == 'abc'
-    assert obj2.value == 'abc'
+    assert obj2.string_value == "abc"
+    assert obj2.value == "abc"
     assert obj2 != literals.Primitive(integer=0)
     assert obj2 != literals.Primitive(boolean=False)
     assert obj2 != literals.Primitive(datetime=datetime.now())
     assert obj2 != literals.Primitive(duration=timedelta(minutes=1))
     assert obj2 != literals.Primitive(float_value=0.0)
-    assert obj2 != literals.Primitive(string_value='bca')
+    assert obj2 != literals.Primitive(string_value="bca")
 
     obj3 = literals.Primitive(string_value="")
     assert obj3.value == ""
@@ -299,12 +303,7 @@ def test_scalar_error():
 
 
 def test_scalar_binary():
-    obj = literals.Scalar(
-        binary=literals.Binary(
-            b"value",
-            "taggy"
-        )
-    )
+    obj = literals.Scalar(binary=literals.Binary(b"value", "taggy"))
     assert obj.primitive is None
     assert obj.error is None
     assert obj.blob is None
@@ -327,14 +326,16 @@ def test_scalar_binary():
 
 
 def test_scalar_schema():
-    schema_type = _types.SchemaType([
-        _types.SchemaType.SchemaColumn("a", _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
-        _types.SchemaType.SchemaColumn("b", _types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
-        _types.SchemaType.SchemaColumn("c", _types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
-        _types.SchemaType.SchemaColumn("d", _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
-        _types.SchemaType.SchemaColumn("e", _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
-        _types.SchemaType.SchemaColumn("f", _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN)
-    ])
+    schema_type = _types.SchemaType(
+        [
+            _types.SchemaType.SchemaColumn("a", _types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
+            _types.SchemaType.SchemaColumn("b", _types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
+            _types.SchemaType.SchemaColumn("c", _types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
+            _types.SchemaType.SchemaColumn("d", _types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
+            _types.SchemaType.SchemaColumn("e", _types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
+            _types.SchemaType.SchemaColumn("f", _types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
+        ]
+    )
 
     schema = literals.Schema(uri="asdf", type=schema_type)
     obj = literals.Scalar(schema=schema)
@@ -344,7 +345,7 @@ def test_scalar_schema():
     assert obj.binary is None
     assert obj.schema is not None
     assert obj.none_type is None
-    assert obj.value.type.columns[0].name == 'a'
+    assert obj.value.type.columns[0].name == "a"
     assert len(obj.value.type.columns) == 6
 
     obj2 = literals.Scalar.from_flyte_idl(obj.to_flyte_idl())
@@ -355,7 +356,7 @@ def test_scalar_schema():
     assert obj2.binary is None
     assert obj2.schema is not None
     assert obj2.none_type is None
-    assert obj2.value.type.columns[0].name == 'a'
+    assert obj2.value.type.columns[0].name == "a"
     assert len(obj2.value.type.columns) == 6
 
 
@@ -378,33 +379,34 @@ def test_binding_data_map():
     b1 = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=5)))
     b2 = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=57)))
     b3 = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=2)))
-    binding_map_sub = literals.BindingDataMap(bindings={'first': b1, 'second': b2})
-    binding_map = literals.BindingDataMap(bindings={'three': b3,
-                                                    'sample_map': literals.BindingData(map=binding_map_sub)})
+    binding_map_sub = literals.BindingDataMap(bindings={"first": b1, "second": b2})
+    binding_map = literals.BindingDataMap(
+        bindings={"three": b3, "sample_map": literals.BindingData(map=binding_map_sub)}
+    )
     obj = literals.BindingData(map=binding_map)
     assert obj.scalar is None
     assert obj.promise is None
     assert obj.collection is None
-    assert obj.value.bindings['three'].value.value.value == 2
-    assert obj.value.bindings['sample_map'].value.bindings['second'].value.value.value == 57
+    assert obj.value.bindings["three"].value.value.value == 2
+    assert obj.value.bindings["sample_map"].value.bindings["second"].value.value.value == 57
 
     obj2 = literals.BindingData.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
     assert obj2.scalar is None
     assert obj2.promise is None
     assert obj2.collection is None
-    assert obj2.value.bindings['three'].value.value.value == 2
-    assert obj2.value.bindings['sample_map'].value.bindings['first'].value.value.value == 5
+    assert obj2.value.bindings["three"].value.value.value == 2
+    assert obj2.value.bindings["sample_map"].value.bindings["first"].value.value.value == 5
 
 
 def test_binding_data_promise():
-    obj = literals.BindingData(promise=_types.OutputReference('some_node', 'myvar'))
+    obj = literals.BindingData(promise=_types.OutputReference("some_node", "myvar"))
     assert obj.scalar is None
     assert obj.promise is not None
     assert obj.collection is None
     assert obj.map is None
-    assert obj.value.node_id == 'some_node'
-    assert obj.value.var == 'myvar'
+    assert obj.value.node_id == "some_node"
+    assert obj.value.var == "myvar"
 
     obj2 = literals.BindingData.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2

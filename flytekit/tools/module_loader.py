@@ -14,7 +14,7 @@ def iterate_modules(pkgs):
     for package_name in pkgs:
         package = importlib.import_module(package_name)
         yield package
-        for _, name, _ in pkgutil.walk_packages(package.__path__, prefix='{}.'.format(package_name)):
+        for _, name, _ in pkgutil.walk_packages(package.__path__, prefix="{}.".format(package_name)):
             yield importlib.import_module(name)
 
 
@@ -31,40 +31,36 @@ def load_workflow_modules(pkgs):
 
 
 def _topo_sort_helper(
-        obj,
-        entity_to_module_key,
-        visited,
-        recursion_set,
-        recursion_stack,
-        include_entities,
-        ignore_entities,
-        detect_unreferenced_entities):
+    obj,
+    entity_to_module_key,
+    visited,
+    recursion_set,
+    recursion_stack,
+    include_entities,
+    ignore_entities,
+    detect_unreferenced_entities,
+):
     visited.add(obj)
     recursion_stack.append(obj)
     if obj in recursion_set:
         raise _user_exceptions.FlyteAssertion(
             "A cyclical dependency was detected during topological sort of entities.  "
-            "Cycle path was:\n\n\t{}".format(
-                "\n\t".join(
-                    p for p in recursion_stack[recursion_set[obj]:]
-                )
-            )
+            "Cycle path was:\n\n\t{}".format("\n\t".join(p for p in recursion_stack[recursion_set[obj] :]))
         )
     recursion_set[obj] = len(recursion_stack) - 1
 
     for upstream in obj.upstream_entities:
         if upstream not in visited:
-            for m1, k1, o1 in \
-                    _topo_sort_helper(
-                        upstream,
-                        entity_to_module_key,
-                        visited,
-                        recursion_set,
-                        recursion_stack,
-                        include_entities,
-                        ignore_entities,
-                        detect_unreferenced_entities
-                    ):
+            for m1, k1, o1 in _topo_sort_helper(
+                upstream,
+                entity_to_module_key,
+                visited,
+                recursion_set,
+                recursion_stack,
+                include_entities,
+                ignore_entities,
+                detect_unreferenced_entities,
+            ):
                 yield m1, k1, o1
 
     recursion_stack.pop()
@@ -83,10 +79,7 @@ def _topo_sort_helper(
 
 
 def iterate_registerable_entities_in_order(
-        pkgs,
-        ignore_entities=None,
-        include_entities=None,
-        detect_unreferenced_entities=True
+    pkgs, ignore_entities=None, include_entities=None, detect_unreferenced_entities=True
 ):
     """
     This function will iterate all discovered entities in the given package list.  It will then attempt to
@@ -127,15 +120,14 @@ def iterate_registerable_entities_in_order(
         if o not in visited:
             recursion_set = dict()
             recursion_stack = []
-            for m, k, o2 in \
-                    _topo_sort_helper(
-                        o,
-                        entity_to_module_key,
-                        visited,
-                        recursion_set,
-                        recursion_stack,
-                        include_entities,
-                        ignore_entities,
-                        detect_unreferenced_entities=detect_unreferenced_entities
-                    ):
+            for m, k, o2 in _topo_sort_helper(
+                o,
+                entity_to_module_key,
+                visited,
+                recursion_set,
+                recursion_stack,
+                include_entities,
+                ignore_entities,
+                detect_unreferenced_entities=detect_unreferenced_entities,
+            ):
                 yield m, k, o2

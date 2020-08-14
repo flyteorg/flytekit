@@ -1,9 +1,9 @@
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
-from flytekit.sdk import tasks as _tasks, workflow as _workflow
-from flytekit.sdk.types import Types as _Types
 from flytekit.common import constants as _sdk_constants
+from flytekit.sdk import tasks as _tasks
+from flytekit.sdk import workflow as _workflow
+from flytekit.sdk.types import Types as _Types
 
 
 @_tasks.inputs(num=_Types.Integer)
@@ -124,4 +124,4 @@ def test_dynamic_launch_plan_yielding_of_input_only_workflow():
     # map the LiteralMap of the inputs of that node
     input_key = "{}/inputs.pb".format(dj_spec.nodes[0].id)
     lp_input_map = outputs[input_key]
-    assert lp_input_map.literals['a'] is not None
+    assert lp_input_map.literals["a"] is not None

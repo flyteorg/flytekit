@@ -1,9 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
+from six.moves import range
+
 from flytekit.sdk.workflow import workflow_class
 from tests.flytekit.loadtests.cp_python import FlyteCPPythonLoadTestWorkflow
 from tests.flytekit.loadtests.cp_spark import FlyteCPSparkLoadTestWorkflow
-from six.moves import range
 
 # launch plans for individual load tests.
 python_loadtest_lp = FlyteCPPythonLoadTestWorkflow.create_launch_plan()

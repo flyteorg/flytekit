@@ -1,7 +1,9 @@
 from __future__ import absolute_import
 
 import six as _six
-from flytekit.common import sdk_bases as _sdk_bases, nodes as _nodes
+
+from flytekit.common import nodes as _nodes
+from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.core import identifier as _core_identifier
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import artifact as _artifact
@@ -12,11 +14,7 @@ from flytekit.models.core import execution as _core_execution_models
 
 
 class SdkWorkflowExecution(
-    _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType,
-        _execution_models.Execution,
-        _artifact.ExecutionArtifact
-    )
+    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _execution_models.Execution, _artifact.ExecutionArtifact,)
 ):
     def __init__(self, *args, **kwargs):
         super(SdkWorkflowExecution, self).__init__(*args, **kwargs)
@@ -51,8 +49,9 @@ class SdkWorkflowExecution(
         :rtype:  dict[Text, T] or None
         """
         if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion("Please what until the node execution has completed before "
-                                                  "requesting the outputs.")
+            raise _user_exceptions.FlyteAssertion(
+                "Please what until the node execution has completed before " "requesting the outputs."
+            )
         if self.error:
             raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
 
@@ -70,8 +69,9 @@ class SdkWorkflowExecution(
         :rtype: flytekit.models.core.execution.ExecutionError or None
         """
         if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion("Please wait until a workflow has completed before checking for an "
-                                                  "error.")
+            raise _user_exceptions.FlyteAssertion(
+                "Please wait until a workflow has completed before checking for an " "error."
+            )
         return self.closure.error
 
     @property
@@ -109,11 +109,7 @@ class SdkWorkflowExecution(
         """
         return cls.promote_from_model(
             _engine_loader.get_engine().fetch_workflow_execution(
-                _core_identifier.WorkflowExecutionIdentifier(
-                    project=project,
-                    domain=domain,
-                    name=name
-                )
+                _core_identifier.WorkflowExecutionIdentifier(project=project, domain=domain, name=name)
             )
         )
 
@@ -140,10 +136,7 @@ class SdkWorkflowExecution(
         :rtype: dict[Text, flytekit.common.nodes.SdkNodeExecution]
         """
         models = _engine_loader.get_engine().get_workflow_execution(self).get_node_executions(filters=filters)
-        return {
-            k: _nodes.SdkNodeExecution.promote_from_model(v)
-            for k, v in _six.iteritems(models)
-        }
+        return {k: _nodes.SdkNodeExecution.promote_from_model(v) for k, v in _six.iteritems(models)}
 
     def terminate(self, cause):
         """

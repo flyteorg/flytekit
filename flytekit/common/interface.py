@@ -2,14 +2,17 @@ from __future__ import absolute_import
 
 import six as _six
 
-from flytekit.common import sdk_bases as _sdk_bases, promise as _promise
+from flytekit.common import promise as _promise
+from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.types import helpers as _type_helpers, containers as _containers, primitives as _primitives
-from flytekit.models import interface as _interface_models, literals as _literal_models
+from flytekit.common.types import containers as _containers
+from flytekit.common.types import helpers as _type_helpers
+from flytekit.common.types import primitives as _primitives
+from flytekit.models import interface as _interface_models
+from flytekit.models import literals as _literal_models
 
 
 class BindingData(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.BindingData)):
-
     @staticmethod
     def _has_sub_bindings(m):
         """
@@ -29,9 +32,7 @@ class BindingData(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_model
         :param flytekit.models.literals.BindingData model:
         :rtype: BindingData
         """
-        return cls(
-            scalar=model.scalar, collection=model.collection, promise=model.promise, map=model.map
-        )
+        return cls(scalar=model.scalar, collection=model.collection, promise=model.promise, map=model.map,)
 
     @classmethod
     def from_python_std(cls, literal_type, t_value, upstream_nodes=None):
@@ -52,7 +53,7 @@ class BindingData(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_model
                 _user_exceptions.FlyteTypeException(
                     t_value.sdk_type,
                     downstream_sdk_type,
-                    additional_msg="When binding workflow input: {}".format(t_value)
+                    additional_msg="When binding workflow input: {}".format(t_value),
                 )
             promise = t_value.promise
         elif isinstance(t_value, _promise.NodeOutput):
@@ -60,7 +61,7 @@ class BindingData(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_model
                 _user_exceptions.FlyteTypeException(
                     t_value.sdk_type,
                     downstream_sdk_type,
-                    additional_msg="When binding node output: {}".format(t_value)
+                    additional_msg="When binding node output: {}".format(t_value),
                 )
             promise = t_value
             if upstream_nodes is not None:
@@ -71,20 +72,19 @@ class BindingData(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_model
                     type(t_value),
                     downstream_sdk_type,
                     received_value=t_value,
-                    additional_msg="Cannot bind a list to a non-list type."
+                    additional_msg="Cannot bind a list to a non-list type.",
                 )
             collection = _literal_models.BindingDataCollection(
                 [
                     BindingData.from_python_std(
-                        downstream_sdk_type.sub_type.to_flyte_literal_type(),
-                        v,
-                        upstream_nodes=upstream_nodes
+                        downstream_sdk_type.sub_type.to_flyte_literal_type(), v, upstream_nodes=upstream_nodes,
                     )
                     for v in t_value
                 ]
             )
-        elif isinstance(t_value, dict) and \
-                (not issubclass(downstream_sdk_type, _primitives.Generic) or BindingData._has_sub_bindings(t_value)):
+        elif isinstance(t_value, dict) and (
+            not issubclass(downstream_sdk_type, _primitives.Generic) or BindingData._has_sub_bindings(t_value)
+        ):
             # TODO: This behavior should be embedded in the type engine.  Someone should be able to alter behavior of
             # TODO: binding logic by injecting their own type engine.  The same goes for the list check above.
             raise NotImplementedError("TODO: Cannot use map bindings at the moment")
@@ -97,7 +97,6 @@ class BindingData(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_model
 
 
 class TypedInterface(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.TypedInterface)):
-
     @classmethod
     def promote_from_model(cls, model):
         """
@@ -118,14 +117,10 @@ class TypedInterface(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_
         for k in sorted(self.inputs):
             var = self.inputs[k]
             if k not in map_of_bindings:
-                raise _user_exceptions.FlyteAssertion(
-                    "Input was not specified for: {} of type {}".format(k, var.type)
-                )
+                raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
 
             binding_data[k] = BindingData.from_python_std(
-                var.type,
-                map_of_bindings[k],
-                upstream_nodes=all_upstream_nodes
+                var.type, map_of_bindings[k], upstream_nodes=all_upstream_nodes
             )
 
         extra_inputs = set(binding_data.keys()) ^ set(map_of_bindings.keys())
@@ -141,7 +136,10 @@ class TypedInterface(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_
                 seen_nodes.add(n)
                 min_upstream.append(n)
 
-        return [_literal_models.Binding(k, bd) for k, bd in _six.iteritems(binding_data)], min_upstream
+        return (
+            [_literal_models.Binding(k, bd) for k, bd in _six.iteritems(binding_data)],
+            min_upstream,
+        )
 
     def __repr__(self):
         return "({inputs}) -> ({outputs})".format(
@@ -156,5 +154,5 @@ class TypedInterface(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_
                     "{}: {}".format(k, _type_helpers.get_sdk_type_from_literal_type(v.type))
                     for k, v in _six.iteritems(self.outputs)
                 ]
-            )
+            ),
         )

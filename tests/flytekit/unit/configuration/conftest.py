@@ -1,7 +1,10 @@
 from __future__ import absolute_import
-from flytekit.configuration import set_flyte_config_file as _set_config
-import pytest as _pytest
+
 import os as _os
+
+import pytest as _pytest
+
+from flytekit.configuration import set_flyte_config_file as _set_config
 
 
 @_pytest.fixture(scope="function", autouse=True)

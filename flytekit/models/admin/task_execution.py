@@ -1,12 +1,16 @@
 from __future__ import absolute_import
-from flytekit.models import common as _common
-from flytekit.models.core import identifier as _identifier, execution as _execution
+
 from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
+
+from flytekit.models import common as _common
+from flytekit.models.core import execution as _execution
+from flytekit.models.core import identifier as _identifier
 
 
 class TaskExecutionClosure(_common.FlyteIdlEntity):
-
-    def __init__(self, phase, logs, started_at, duration, created_at, updated_at, output_uri=None, error=None):
+    def __init__(
+        self, phase, logs, started_at, duration, created_at, updated_at, output_uri=None, error=None,
+    ):
         """
         :param int phase: Enum value from flytekit.models.core.execution.TaskExecutionPhase
         :param list[flytekit.models.core.execution.TaskLog] logs: List of all logs associated with the execution.
@@ -93,7 +97,7 @@ class TaskExecutionClosure(_common.FlyteIdlEntity):
             phase=self.phase,
             logs=[l.to_flyte_idl() for l in self.logs],
             output_uri=self.output_uri,
-            error=self.error.to_flyte_idl() if self.error is not None else None
+            error=self.error.to_flyte_idl() if self.error is not None else None,
         )
         p.started_at.FromDatetime(self.started_at)
         p.created_at.FromDatetime(self.created_at)
@@ -115,12 +119,11 @@ class TaskExecutionClosure(_common.FlyteIdlEntity):
             started_at=p.started_at.ToDatetime(),
             created_at=p.created_at.ToDatetime(),
             updated_at=p.updated_at.ToDatetime(),
-            duration=p.duration.ToTimedelta()
+            duration=p.duration.ToTimedelta(),
         )
 
 
 class TaskExecution(_common.FlyteIdlEntity):
-
     def __init__(self, id, input_uri, closure, is_parent):
         """
         :param flytekit.models.core.identifier.TaskExecutionIdentifier id:
@@ -169,7 +172,7 @@ class TaskExecution(_common.FlyteIdlEntity):
             id=self.id.to_flyte_idl(),
             input_uri=self.input_uri,
             closure=self.closure.to_flyte_idl(),
-            is_parent=self.is_parent
+            is_parent=self.is_parent,
         )
 
     @classmethod

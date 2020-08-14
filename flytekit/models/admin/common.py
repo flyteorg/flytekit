@@ -1,11 +1,11 @@
 from __future__ import absolute_import
 
-from flytekit.models import common as _common
 from flyteidl.admin import common_pb2 as _common_pb2
+
+from flytekit.models import common as _common
 
 
 class Sort(_common.FlyteIdlEntity):
-
     class Direction(object):
         DESCENDING = _common_pb2.Sort.DESCENDING
         ASCENDING = _common_pb2.Sort.ASCENDING
@@ -53,16 +53,20 @@ class Sort(_common.FlyteIdlEntity):
         :rtype: Sort
         """
         text = text.strip()
-        if text[-1] != ')':
-            raise ValueError("Could not parse string.  Must be in format 'asc(key)' or 'desc(key)'.  '{}' did not "
-                             "end with ')'.".format(text))
+        if text[-1] != ")":
+            raise ValueError(
+                "Could not parse string.  Must be in format 'asc(key)' or 'desc(key)'.  '{}' did not "
+                "end with ')'.".format(text)
+            )
         if text.startswith("asc("):
             direction = Sort.Direction.ASCENDING
-            key = text[len("asc("):-1].strip()
+            key = text[len("asc(") : -1].strip()
         elif text.startswith("desc("):
             direction = Sort.Direction.DESCENDING
-            key = text[len("desc("):-1].strip()
+            key = text[len("desc(") : -1].strip()
         else:
-            raise ValueError("Could not parse string.  Must be in format 'asc(key)' or 'desc(key)'.  '{}' did not "
-                             "start with 'asc(' or 'desc'.".format(text))
+            raise ValueError(
+                "Could not parse string.  Must be in format 'asc(key)' or 'desc(key)'.  '{}' did not "
+                "start with 'asc(' or 'desc'.".format(text)
+            )
         return cls(key=key, direction=direction)

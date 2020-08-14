@@ -8,14 +8,21 @@ except ImportError:
 import six as _six
 
 from flytekit import __version__
-from flytekit.common import interface as _interface, constants as _constants, sdk_bases as _sdk_bases
-from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
-from flytekit.common.tasks import task as _base_task, output as _task_output
-from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import sdk as _sdk_config, internal as _internal_config, resources as _resource_config
-from flytekit.engines import loader as _engine_loader
-from flytekit.models import literals as _literal_models, task as _task_models
+from flytekit.common import constants as _constants
+from flytekit.common import interface as _interface
+from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
+from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.tasks import output as _task_output
+from flytekit.common.tasks import task as _base_task
+from flytekit.common.types import helpers as _type_helpers
+from flytekit.configuration import internal as _internal_config
+from flytekit.configuration import resources as _resource_config
+from flytekit.configuration import sdk as _sdk_config
+from flytekit.engines import loader as _engine_loader
+from flytekit.models import literals as _literal_models
+from flytekit.models import task as _task_models
 
 
 class ExecutionParameters(object):
@@ -97,23 +104,10 @@ class ExecutionParameters(object):
 
 
 class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task_models.Container)):
-
     def __init__(
-        self,
-        command,
-        args,
-        resources,
-        env,
-        config,
+        self, command, args, resources, env, config,
     ):
-        super(SdkRunnableContainer, self).__init__(
-            "",
-            command,
-            args,
-            resources,
-            env or {},
-            config
-        )
+        super(SdkRunnableContainer, self).__init__("", command, args, resources, env or {}, config)
 
     @property
     def args(self):
@@ -159,25 +153,25 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
     """
 
     def __init__(
-            self,
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            interruptible,
-            deprecated,
-            storage_request,
-            cpu_request,
-            gpu_request,
-            memory_request,
-            storage_limit,
-            cpu_limit,
-            gpu_limit,
-            memory_limit,
-            discoverable,
-            timeout,
-            environment,
-            custom
+        self,
+        task_function,
+        task_type,
+        discovery_version,
+        retries,
+        interruptible,
+        deprecated,
+        storage_request,
+        cpu_request,
+        gpu_request,
+        memory_request,
+        storage_limit,
+        cpu_limit,
+        gpu_limit,
+        memory_limit,
+        discoverable,
+        timeout,
+        environment,
+        custom,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -206,15 +200,13 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             _task_models.TaskMetadata(
                 discoverable,
                 _task_models.RuntimeMetadata(
-                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
-                    __version__,
-                    'python'
+                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python",
                 ),
                 timeout,
                 _literal_models.RetryStrategy(retries),
                 interruptible,
                 discovery_version,
-                deprecated
+                deprecated,
             ),
             _interface.TypedInterface({}, {}),
             custom,
@@ -227,8 +219,8 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 cpu_limit=cpu_limit,
                 gpu_limit=gpu_limit,
                 memory_limit=memory_limit,
-                environment=environment
-            )
+                environment=environment,
+            ),
         )
         self.id._name = "{}.{}".format(self.task_module, self.task_function_name)
 
@@ -245,7 +237,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         """
         self._validate_inputs(inputs)
         self.interface.inputs.update(inputs)
-        
+
     @classmethod
     def promote_from_model(cls, base_model):
         # TODO: If the task exists in this container, we should be able to retrieve it.
@@ -276,10 +268,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             raise _user_exceptions.FlyteAssertion(
                 "The task {} is invalid because not all inputs and outputs in the "
                 "task function definition were specified in @outputs and @inputs. "
-                "We are missing definitions for {}.".format(
-                    self,
-                    missing_args
-                )
+                "We are missing definitions for {}.".format(self, missing_args)
             )
 
     @_exception_scopes.system_entry_point
@@ -289,11 +278,18 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             literals.
         :returns: Depends on the behavior of the specific task in the unit engine.
         """
-        return _engine_loader.get_engine('unit').get_task(self).execute(
-            _type_helpers.pack_python_std_map_to_literal_map(input_map, {
-                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
-                for k, v in _six.iteritems(self.interface.inputs)
-            })
+        return (
+            _engine_loader.get_engine("unit")
+            .get_task(self)
+            .execute(
+                _type_helpers.pack_python_std_map_to_literal_map(
+                    input_map,
+                    {
+                        k: _type_helpers.get_sdk_type_from_literal_type(v.type)
+                        for k, v in _six.iteritems(self.interface.inputs)
+                    },
+                )
+            )
         )
 
     @_exception_scopes.system_entry_point
@@ -304,11 +300,18 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         :rtype: dict[Text, T]
         :returns: The output produced by this task in Python standard format.
         """
-        return _engine_loader.get_engine('local').get_task(self).execute(
-            _type_helpers.pack_python_std_map_to_literal_map(input_map, {
-                k: _type_helpers.get_sdk_type_from_literal_type(v.type)
-                for k, v in _six.iteritems(self.interface.inputs)
-            })
+        return (
+            _engine_loader.get_engine("local")
+            .get_task(self)
+            .execute(
+                _type_helpers.pack_python_std_map_to_literal_map(
+                    input_map,
+                    {
+                        k: _type_helpers.get_sdk_type_from_literal_type(v.type)
+                        for k, v in _six.iteritems(self.interface.inputs)
+                    },
+                )
+            )
         )
 
     def _execute_user_code(self, context, inputs):
@@ -334,7 +337,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
                 stats=context.stats,
                 logging=context.logging,
-                tmp_dir=context.working_directory
+                tmp_dir=context.working_directory,
             ),
             **inputs
         )
@@ -351,9 +354,10 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
-        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(inputs, {
-            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)
-        })
+        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(
+            inputs,
+            {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)},
+        )
         outputs_dict = {
             name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
             for name, variable in _six.iteritems(self.interface.outputs)
@@ -369,17 +373,17 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         }
 
     def _get_container_definition(
-            self,
-            storage_request=None,
-            cpu_request=None,
-            gpu_request=None,
-            memory_request=None,
-            storage_limit=None,
-            cpu_limit=None,
-            gpu_limit=None,
-            memory_limit=None,
-            environment=None,
-            cls=None,
+        self,
+        storage_request=None,
+        cpu_request=None,
+        gpu_request=None,
+        memory_request=None,
+        storage_limit=None,
+        cpu_limit=None,
+        gpu_limit=None,
+        memory_limit=None,
+        environment=None,
+        cls=None,
     ):
         """
         :param Text storage_request:
@@ -406,61 +410,29 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         requests = []
         if storage_request:
             requests.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.STORAGE,
-                    storage_request
-                )
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
             )
         if cpu_request:
-            requests.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.CPU,
-                    cpu_request
-                )
-            )
+            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
         if gpu_request:
-            requests.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.GPU,
-                    gpu_request
-                )
-            )
+            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
         if memory_request:
             requests.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.MEMORY,
-                    memory_request
-                )
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
             )
 
         limits = []
         if storage_limit:
             limits.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.STORAGE,
-                    storage_limit
-                )
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit)
             )
         if cpu_limit:
-            limits.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.CPU,
-                    cpu_limit
-                )
-            )
+            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
         if gpu_limit:
-            limits.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.GPU,
-                    gpu_limit
-                )
-            )
+            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
         if memory_limit:
             limits.append(
-                _task_models.Resources.ResourceEntry(
-                    _task_models.Resources.ResourceName.MEMORY,
-                    memory_limit
-                )
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit)
             )
 
         return (cls or SdkRunnableContainer)(
@@ -474,11 +446,11 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 "--inputs",
                 "{{.input}}",
                 "--output-prefix",
-                "{{.outputPrefix}}"
+                "{{.outputPrefix}}",
             ],
             resources=_task_models.Resources(limits=limits, requests=requests),
             env=environment,
-            config={}
+            config={},
         )
 
     def _validate_inputs(self, inputs):

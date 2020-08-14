@@ -1,28 +1,35 @@
 from __future__ import absolute_import
 
+import datetime as _datetime
 import uuid as _uuid
 
 import six as _six
 from six.moves import queue as _queue
-import datetime as _datetime
 
-from flytekit.common import interface as _interface, nodes as _nodes, sdk_bases as _sdk_bases, \
-    launch_plan as _launch_plan, promise as _promise
+from flytekit.common import constants as _constants
+from flytekit.common import interface as _interface
+from flytekit.common import launch_plan as _launch_plan
+from flytekit.common import nodes as _nodes
+from flytekit.common import promise as _promise
+from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.core import identifier as _identifier
-from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
-from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin
+from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.mixins import hash as _hash_mixin
+from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
-from flytekit.models import interface as _interface_models, literals as _literal_models, common as _common_models
-from flytekit.models.core import workflow as _workflow_models, identifier as _identifier_model
-from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.common import constants as _constants
+from flytekit.models import common as _common_models
+from flytekit.models import interface as _interface_models
+from flytekit.models import literals as _literal_models
 from flytekit.models.admin import workflow as _admin_workflow_model
+from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import workflow as _workflow_models
 
 
 class Output(object):
-
     def __init__(self, name, value, sdk_type=None, help=None):
         """
         :param Text name:
@@ -40,7 +47,7 @@ class Output(object):
         sdk_type = _type_helpers.python_std_to_sdk_type(sdk_type)
 
         self._binding_data = _interface.BindingData.from_python_std(sdk_type.to_flyte_literal_type(), value)
-        self._var = _interface_models.Variable(sdk_type.to_flyte_literal_type(), help or '')
+        self._var = _interface_models.Variable(sdk_type.to_flyte_literal_type(), help or "")
         self._name = name
 
     def rename_and_return_reference(self, new_name):
@@ -50,8 +57,10 @@ class Output(object):
     @staticmethod
     def _infer_type(value):
         # TODO: Infer types
-        raise NotImplementedError("Currently the SDK cannot infer a workflow output type, so please use the type kwarg "
-                                  "when instantiating an output.")
+        raise NotImplementedError(
+            "Currently the SDK cannot infer a workflow output type, so please use the type kwarg "
+            "when instantiating an output."
+        )
 
     @property
     def name(self):
@@ -83,8 +92,17 @@ class SdkWorkflow(
         _registerable.RegisterableEntity,
     )
 ):
-
-    def __init__(self, inputs, outputs, nodes, id=None, metadata=None, metadata_defaults=None, interface=None, output_bindings=None):
+    def __init__(
+        self,
+        inputs,
+        outputs,
+        nodes,
+        id=None,
+        metadata=None,
+        metadata_defaults=None,
+        interface=None,
+        output_bindings=None,
+    ):
         """
         :param list[flytekit.common.promise.Input] inputs:
         :param list[Output] outputs:
@@ -111,22 +129,30 @@ class SdkWorkflow(
                     )
 
         # Allow overrides if specified for all the arguments to the parent class constructor
-        id = id if id is not None else _identifier.Identifier(
-            _identifier_model.ResourceType.WORKFLOW,
-            _internal_config.PROJECT.get(),
-            _internal_config.DOMAIN.get(),
-            _uuid.uuid4().hex,
-            _internal_config.VERSION.get()
+        id = (
+            id
+            if id is not None
+            else _identifier.Identifier(
+                _identifier_model.ResourceType.WORKFLOW,
+                _internal_config.PROJECT.get(),
+                _internal_config.DOMAIN.get(),
+                _uuid.uuid4().hex,
+                _internal_config.VERSION.get(),
+            )
         )
         metadata = metadata if metadata is not None else _workflow_models.WorkflowMetadata()
 
-        interface = interface if interface is not None else _interface.TypedInterface(
-            {v.name: v.var for v in inputs},
-            {v.name: v.var for v in outputs}
+        interface = (
+            interface
+            if interface is not None
+            else _interface.TypedInterface({v.name: v.var for v in inputs}, {v.name: v.var for v in outputs})
         )
 
-        output_bindings = output_bindings if output_bindings is not None else \
-            [_literal_models.Binding(v.name, v.binding_data) for v in outputs]
+        output_bindings = (
+            output_bindings
+            if output_bindings is not None
+            else [_literal_models.Binding(v.name, v.binding_data) for v in outputs]
+        )
 
         super(SdkWorkflow, self).__init__(
             id=id,
@@ -185,13 +211,14 @@ class SdkWorkflow(
         result = []
         for n in self.nodes:
             if n.workflow_node is not None and n.workflow_node.sub_workflow_ref is not None:
-                if n.executable_sdk_object is not None and n.executable_sdk_object.entity_type_text == 'Workflow':
+                if n.executable_sdk_object is not None and n.executable_sdk_object.entity_type_text == "Workflow":
                     result.append(n.executable_sdk_object)
                     result.extend(n.executable_sdk_object.get_sub_workflows())
                 else:
                     raise _system_exceptions.FlyteSystemException(
                         "workflow node with subworkflow found but bad executable "
-                        "object {}".format(n.executable_sdk_object))
+                        "object {}".format(n.executable_sdk_object)
+                    )
             # Ignore other node types (branch, task)
 
         return result
@@ -241,8 +268,9 @@ class SdkWorkflow(
         base_model_non_system_nodes = cls.get_non_system_nodes(base_model.nodes)
         sub_workflows = sub_workflows or {}
         tasks = tasks or {}
-        node_map = {n.id: _nodes.SdkNode.promote_from_model(n, sub_workflows, tasks)
-                    for n in base_model_non_system_nodes}
+        node_map = {
+            n.id: _nodes.SdkNode.promote_from_model(n, sub_workflows, tasks) for n in base_model_non_system_nodes
+        }
 
         # Set upstream nodes for each node
         for n in base_model_non_system_nodes:
@@ -253,7 +281,9 @@ class SdkWorkflow(
 
         # No inputs/outputs specified, see the constructor for more information on the overrides.
         return cls(
-            inputs=None, outputs=None, nodes=list(node_map.values()),
+            inputs=None,
+            outputs=None,
+            nodes=list(node_map.values()),
             id=_identifier.Identifier.promote_from_model(base_model.id),
             metadata=base_model.metadata,
             metadata_defaults=base_model.metadata_defaults,
@@ -270,19 +300,13 @@ class SdkWorkflow(
         :param Text version:
         """
         self.validate()
-        id_to_register = _identifier.Identifier(
-            _identifier_model.ResourceType.WORKFLOW,
-            project,
-            domain,
-            name,
-            version
-        )
+        id_to_register = _identifier.Identifier(_identifier_model.ResourceType.WORKFLOW, project, domain, name, version)
         old_id = self.id
         try:
             self._id = id_to_register
             _engine_loader.get_engine().get_workflow(self).register(id_to_register)
             return _six.text_type(self.id)
-        except:
+        except Exception:
             self._id = old_id
             raise
 
@@ -295,10 +319,7 @@ class SdkWorkflow(
         :rtype: flyteidl.admin.workflow_pb2.WorkflowSpec
         """
         sub_workflows = self.get_sub_workflows()
-        return _admin_workflow_model.WorkflowSpec(
-            self,
-            sub_workflows,
-        ).to_flyte_idl()
+        return _admin_workflow_model.WorkflowSpec(self, sub_workflows,).to_flyte_idl()
 
     @_exception_scopes.system_entry_point
     def validate(self):
@@ -306,18 +327,18 @@ class SdkWorkflow(
 
     @_exception_scopes.system_entry_point
     def create_launch_plan(
-            self,
-            default_inputs=None,
-            fixed_inputs=None,
-            schedule=None,
-            role=None,
-            notifications=None,
-            labels=None,
-            annotations=None,
-            assumable_iam_role=None,
-            kubernetes_service_account=None,
-            raw_output_data_prefix=None,
-            cls=None
+        self,
+        default_inputs=None,
+        fixed_inputs=None,
+        schedule=None,
+        role=None,
+        notifications=None,
+        labels=None,
+        annotations=None,
+        assumable_iam_role=None,
+        kubernetes_service_account=None,
+        raw_output_data_prefix=None,
+        cls=None,
     ):
         """
         This method will create a launch plan object that can execute this workflow.
@@ -346,16 +367,16 @@ class SdkWorkflow(
 
         if role:
             assumable_iam_role = role
-        auth_role = _common_models.AuthRole(assumable_iam_role=assumable_iam_role,
-                                            kubernetes_service_account=kubernetes_service_account)
+        auth_role = _common_models.AuthRole(
+            assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
+        )
 
         raw_output_config = _common_models.RawOutputDataConfig(raw_output_data_prefix or "")
 
         return (cls or _launch_plan.SdkRunnableLaunchPlan)(
             sdk_workflow=self,
             default_inputs={
-                k: user_input.rename_and_return_reference(k)
-                for k, user_input in _six.iteritems(merged_default_inputs)
+                k: user_input.rename_and_return_reference(k) for k, user_input in _six.iteritems(merged_default_inputs)
             },
             fixed_inputs=fixed_inputs,
             schedule=schedule,
@@ -375,21 +396,19 @@ class SdkWorkflow(
             )
 
         # Take the default values from the Inputs
-        compiled_inputs = {
-            v.name: v.sdk_default
-            for v in self.user_inputs if not v.sdk_required
-        }
+        compiled_inputs = {v.name: v.sdk_default for v in self.user_inputs if not v.sdk_required}
         compiled_inputs.update(input_map)
 
         bindings, upstream_nodes = self.interface.create_bindings_for_inputs(compiled_inputs)
 
         node = _nodes.SdkNode(
             id=None,
-            metadata=_workflow_models.NodeMetadata("placeholder", _datetime.timedelta(),
-                                                   _literal_models.RetryStrategy(0)),
+            metadata=_workflow_models.NodeMetadata(
+                "placeholder", _datetime.timedelta(), _literal_models.RetryStrategy(0)
+            ),
             upstream_nodes=upstream_nodes,
             bindings=sorted(bindings, key=lambda b: b.var),
-            sdk_workflow=self
+            sdk_workflow=self,
         )
         return node
 
@@ -434,30 +453,25 @@ def _discover_workflow_components(workflow_class):
         elif isinstance(current_obj, _promise.Input):
             if attribute_name is None or attribute_name not in top_level_attributes:
                 raise _user_exceptions.FlyteValueException(
-                    attribute_name,
-                    "Detected workflow input specified outside of top level."
+                    attribute_name, "Detected workflow input specified outside of top level.",
                 )
             inputs.append(current_obj.rename_and_return_reference(attribute_name))
         elif isinstance(current_obj, Output):
             if attribute_name is None or attribute_name not in top_level_attributes:
                 raise _user_exceptions.FlyteValueException(
-                    attribute_name,
-                    "Detected workflow output specified outside of top level."
+                    attribute_name, "Detected workflow output specified outside of top level.",
                 )
             outputs.append(current_obj.rename_and_return_reference(attribute_name))
         elif isinstance(current_obj, list) or isinstance(current_obj, set) or isinstance(current_obj, tuple):
             for idx, value in enumerate(current_obj):
-                to_visit_objs.put(
-                    (_assign_indexed_attribute_name(attribute_name, idx), value))
+                to_visit_objs.put((_assign_indexed_attribute_name(attribute_name, idx), value))
         elif isinstance(current_obj, dict):
             # Visit dictionary keys.
             for key in current_obj.keys():
-                to_visit_objs.put(
-                    (_assign_indexed_attribute_name(attribute_name, key), key))
+                to_visit_objs.put((_assign_indexed_attribute_name(attribute_name, key), key))
             # Visit dictionary values.
             for key, value in _six.iteritems(current_obj):
-                to_visit_objs.put(
-                    (_assign_indexed_attribute_name(attribute_name, key), value))
+                to_visit_objs.put((_assign_indexed_attribute_name(attribute_name, key), value))
     return inputs, outputs, nodes
 
 
@@ -475,5 +489,5 @@ def build_sdk_workflow_from_metaclass(metaclass, on_failure=None, cls=None):
         inputs=[i for i in sorted(inputs, key=lambda x: x.name)],
         outputs=[o for o in sorted(outputs, key=lambda x: x.name)],
         nodes=[n for n in sorted(nodes, key=lambda x: x.id)],
-        metadata=metadata
+        metadata=metadata,
     )

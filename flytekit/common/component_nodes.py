@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 
-import six as _six
 import logging as _logging
+
+import six as _six
 
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import system as _system_exceptions
@@ -9,7 +10,6 @@ from flytekit.models.core import workflow as _workflow_model
 
 
 class SdkTaskNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_model.TaskNode)):
-
     def __init__(self, sdk_task):
         """
         :param flytekit.common.tasks.task.SdkTask sdk_task:
@@ -43,6 +43,7 @@ class SdkTaskNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_mode
         :rtype: SdkTaskNode
         """
         from flytekit.common.tasks import task as _task
+
         if base_model.reference_id in tasks:
             t = tasks[base_model.reference_id]
             _logging.debug("Found existing task template for {}, will not retrieve from Admin".format(t.id))
@@ -66,9 +67,12 @@ class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_
         :param flytekit.common.launch_plan.SdkLaunchPlan sdk_launch_plan:
         """
         if sdk_workflow and sdk_launch_plan:
-            raise _system_exceptions.FlyteSystemException("SdkWorkflowNode cannot be called with both a workflow and "
-                                                          "a launchplan specified, please pick one. WF: {} LP: {}",
-                                                          sdk_workflow, sdk_launch_plan)
+            raise _system_exceptions.FlyteSystemException(
+                "SdkWorkflowNode cannot be called with both a workflow and "
+                "a launchplan specified, please pick one. WF: {} LP: {}",
+                sdk_workflow,
+                sdk_launch_plan,
+            )
 
         self._sdk_workflow = sdk_workflow
         self._sdk_launch_plan = sdk_launch_plan
@@ -124,7 +128,8 @@ class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_
         :rtype: SdkWorkflowNode
         """
         # put the import statement here to prevent circular dependency error
-        from flytekit.common import workflow as _workflow, launch_plan as _launch_plan
+        from flytekit.common import launch_plan as _launch_plan
+        from flytekit.common import workflow as _workflow
 
         project = base_model.reference.project
         domain = base_model.reference.domain
@@ -137,18 +142,19 @@ class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_
             # The workflow templates for sub-workflows should have been included in the original response
             if base_model.reference in sub_workflows:
                 sw = sub_workflows[base_model.reference]
-                promoted = _workflow.SdkWorkflow.promote_from_model(sw, sub_workflows=sub_workflows,
-                                                                    tasks=tasks)
+                promoted = _workflow.SdkWorkflow.promote_from_model(sw, sub_workflows=sub_workflows, tasks=tasks)
                 return cls(sdk_workflow=promoted)
 
             # If not found for some reason, fetch it from Admin again.
             # The reason there is a warning here but not for tasks is because sub-workflows should always be passed
             # along. Ideally subworkflows are never even registered with Admin, so fetching from Admin ideally doesn't
             # return anything.
-            _logging.warning("Your subworkflow with id {} is not included in the promote call.".format(
-                base_model.reference))
+            _logging.warning(
+                "Your subworkflow with id {} is not included in the promote call.".format(base_model.reference)
+            )
             sdk_workflow = _workflow.SdkWorkflow.fetch(project, domain, name, version)
             return cls(sdk_workflow=sdk_workflow)
         else:
-            raise _system_exceptions.FlyteSystemException("Bad workflow node model, neither subworkflow nor "
-                                                          "launchplan specified.")
+            raise _system_exceptions.FlyteSystemException(
+                "Bad workflow node model, neither subworkflow nor " "launchplan specified."
+            )

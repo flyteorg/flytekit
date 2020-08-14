@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 from flytekit.common.exceptions import user as _user
 
 
@@ -8,4 +9,5 @@ class RecoverableException(_user.FlyteRecoverableException):
     Any exception raised from user code other than RecoverableException will NOT be considered retryable and the task
     will fail without additional retries.
     """
+
     pass

@@ -1,10 +1,13 @@
 from __future__ import absolute_import
 
-import six as _six
-from flytekit.models import literals as _literal_models
-from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
-from flytekit.configuration import sdk as _sdk_config
 import importlib as _importlib
+
+import six as _six
+
+from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.configuration import sdk as _sdk_config
+from flytekit.models import literals as _literal_models
 
 
 class _TypeEngineLoader(object):
@@ -26,14 +29,13 @@ class _TypeEngineLoader(object):
                     raise _user_exceptions.FlyteValueException(
                         module,
                         "Failed to load the type engine because the attribute named '{}' could not be found"
-                        "in the module '{}'.".format(
-                            attr, module_path
-                        )
+                        "in the module '{}'.".format(attr, module_path),
                     )
 
                 engine_impl = getattr(module, attr)()
                 cls._LOADED_ENGINES.append(engine_impl)
             from flytekit.type_engines.default.flyte import FlyteDefaultTypeEngine as _DefaultEngine
+
             cls._LOADED_ENGINES.append(_DefaultEngine())
 
     @classmethod
@@ -66,8 +68,9 @@ def get_sdk_type_from_literal_type(literal_type):
         out = e.get_sdk_type_from_literal_type(literal_type)
         if out is not None:
             return out
-    raise _user_exceptions.FlyteValueException(literal_type, "Could not resolve to a type implementation for this "
-                                                             "value.")
+    raise _user_exceptions.FlyteValueException(
+        literal_type, "Could not resolve to a type implementation for this " "value."
+    )
 
 
 def infer_sdk_type_from_literal(literal):
@@ -126,8 +129,4 @@ def pack_python_std_map_to_literal_map(std_map, type_map):
     :rtype: flytekit.models.literals.LiteralMap
     :raises: flytekit.common.exceptions.user.FlyteTypeException
     """
-    return _literal_models.LiteralMap(
-        literals={
-            k: v.from_python_std(std_map[k]) for k, v in _six.iteritems(type_map)
-        }
-    )
+    return _literal_models.LiteralMap(literals={k: v.from_python_std(std_map[k]) for k, v in _six.iteritems(type_map)})
