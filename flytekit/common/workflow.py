@@ -386,9 +386,8 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
     Wrapper class for locally defined Python workflows
     """
 
-    def __init__(self, workflow_function, flyte_workflow: SdkWorkflow, inputs: List[_promise.Input],
+    def __init__(self, flyte_workflow: SdkWorkflow, inputs: List[_promise.Input],
                  nodes: List[_nodes.SdkNode]):
-        self._workflow_function = workflow_function
         # Currently doing a has-a relationship, cuz it's easier to work with while refactoring, can revisit later.
         self._flyte_workflow = flyte_workflow
         self._workflow_inputs = inputs
@@ -403,7 +402,6 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
             for v in self.user_inputs if not v.sdk_required
         }
         compiled_inputs.update(input_map)
-        # import ipdb; ipdb.set_trace()
 
         return self.flyte_workflow.__call__(*args, **compiled_inputs)
 
@@ -461,7 +459,7 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
             output_bindings=output_bindings,
         )
 
-        return cls(None, sdk_workflow, inputs, nodes)
+        return cls(sdk_workflow, inputs, nodes)
 
     @property
     def nodes(self):
@@ -491,6 +489,9 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
 
     def register(self, *args, **kwargs):
         return self.flyte_workflow.register(*args, **kwargs)
+
+    def serialize(self):
+        return self.flyte_workflow.serialize()
 
     @property
     def user_inputs(self) -> List[_promise.Input]:

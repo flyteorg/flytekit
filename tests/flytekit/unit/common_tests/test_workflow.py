@@ -220,7 +220,7 @@ def test_workflow_node():
     ]
 
     sdk_wf = workflow.SdkWorkflow(inputs=input_list, outputs=wf_out, nodes=nodes)
-    w = workflow.PythonWorkflow(None, sdk_wf, input_list, nodes)
+    w = workflow.PythonWorkflow(sdk_wf, input_list, nodes)
 
     # Test that required input isn't set
     with _pytest.raises(_user_exceptions.FlyteAssertion):
@@ -344,7 +344,7 @@ def test_workflow_serialization():
         workflow.Output('scalar_out', n1.outputs.b, sdk_type=primitives.Integer)
     ]
 
-    w = workflow.SdkWorkflow(inputs=input_list, outputs=wf_out, nodes=nodes)
+    w = workflow.PythonWorkflow.construct_from_class_definition(inputs=input_list, outputs=wf_out, nodes=nodes)
     serialized = w.serialize()
     assert isinstance(serialized, _workflow_pb2.WorkflowSpec)
     assert len(serialized.template.nodes) == 6
