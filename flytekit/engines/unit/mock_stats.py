@@ -61,7 +61,5 @@ class _Timer(object):
         self._timer = _datetime.datetime.utcnow()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._mock_stats.gauge(
-            self._metric, _datetime.datetime.utcnow() - self._timer, tags=self._tags
-        )
+        self._mock_stats.gauge(self._metric, _datetime.datetime.utcnow() - self._timer, tags=self._tags)
         self._timer = None

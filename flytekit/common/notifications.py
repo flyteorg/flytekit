@@ -8,9 +8,7 @@ from flytekit.models import common as _common_model
 from flytekit.models.core import execution as _execution_model
 
 
-class Notification(
-    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _common_model.Notification)
-):
+class Notification(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _common_model.Notification)):
 
     VALID_PHASES = {
         _execution_model.WorkflowExecutionPhase.ABORTED,
@@ -25,18 +23,14 @@ class Notification(
             terminal phases.  Phases should be as defined in: flytekit.models.core.execution.WorkflowExecutionPhase
         """
         self._validate_phases(phases)
-        super(Notification, self).__init__(
-            phases, email=email, pager_duty=pager_duty, slack=slack
-        )
+        super(Notification, self).__init__(phases, email=email, pager_duty=pager_duty, slack=slack)
 
     def _validate_phases(self, phases):
         """
         :param list[int] phases:
         """
         if len(phases) == 0:
-            raise _user_exceptions.FlyteAssertion(
-                "You must specify at least one phase for a notification."
-            )
+            raise _user_exceptions.FlyteAssertion("You must specify at least one phase for a notification.")
         for phase in phases:
             if phase not in self.VALID_PHASES:
                 raise _user_exceptions.FlyteValueException(
@@ -64,9 +58,7 @@ class PagerDuty(Notification):
         """
         :param list[Text] recipients_email: A required non-empty list of recipients for the notification.
         """
-        super(PagerDuty, self).__init__(
-            phases, pager_duty=_common_model.PagerDutyNotification(recipients_email)
-        )
+        super(PagerDuty, self).__init__(phases, pager_duty=_common_model.PagerDutyNotification(recipients_email))
 
     @classmethod
     def promote_from_model(cls, base_model):
@@ -84,9 +76,7 @@ class Email(Notification):
         :param list[int] phases: A required list of phases for which to fire the event.  Events can only be fired for
             terminal phases.  Phases should be as defined in: flytekit.models.core.execution.WorkflowExecutionPhase
         """
-        super(Email, self).__init__(
-            phases, email=_common_model.EmailNotification(recipients_email)
-        )
+        super(Email, self).__init__(phases, email=_common_model.EmailNotification(recipients_email))
 
     @classmethod
     def promote_from_model(cls, base_model):
@@ -104,9 +94,7 @@ class Slack(Notification):
         :param list[int] phases: A required list of phases for which to fire the event.  Events can only be fired for
             terminal phases.  Phases should be as defined in: flytekit.models.core.execution.WorkflowExecutionPhase
         """
-        super(Slack, self).__init__(
-            phases, slack=_common_model.SlackNotification(recipients_email)
-        )
+        super(Slack, self).__init__(phases, slack=_common_model.SlackNotification(recipients_email))
 
     @classmethod
     def promote_from_model(cls, base_model):

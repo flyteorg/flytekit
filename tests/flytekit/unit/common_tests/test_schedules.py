@@ -24,30 +24,22 @@ def test_cron_validation():
 
 
 def test_fixed_rate():
-    obj = _schedules.FixedRate(
-        _datetime.timedelta(hours=10), kickoff_time_input_arg="abc"
-    )
+    obj = _schedules.FixedRate(_datetime.timedelta(hours=10), kickoff_time_input_arg="abc")
     assert obj.rate.unit == _schedules.FixedRate.FixedRateUnit.HOUR
     assert obj.rate.value == 10
     assert obj == _schedules.FixedRate.from_flyte_idl(obj.to_flyte_idl())
 
-    obj = _schedules.FixedRate(
-        _datetime.timedelta(hours=24), kickoff_time_input_arg="abc"
-    )
+    obj = _schedules.FixedRate(_datetime.timedelta(hours=24), kickoff_time_input_arg="abc")
     assert obj.rate.unit == _schedules.FixedRate.FixedRateUnit.DAY
     assert obj.rate.value == 1
     assert obj == _schedules.FixedRate.from_flyte_idl(obj.to_flyte_idl())
 
-    obj = _schedules.FixedRate(
-        _datetime.timedelta(minutes=30), kickoff_time_input_arg="abc"
-    )
+    obj = _schedules.FixedRate(_datetime.timedelta(minutes=30), kickoff_time_input_arg="abc")
     assert obj.rate.unit == _schedules.FixedRate.FixedRateUnit.MINUTE
     assert obj.rate.value == 30
     assert obj == _schedules.FixedRate.from_flyte_idl(obj.to_flyte_idl())
 
-    obj = _schedules.FixedRate(
-        _datetime.timedelta(minutes=120), kickoff_time_input_arg="abc"
-    )
+    obj = _schedules.FixedRate(_datetime.timedelta(minutes=120), kickoff_time_input_arg="abc")
     assert obj.rate.unit == _schedules.FixedRate.FixedRateUnit.HOUR
     assert obj.rate.value == 2
     assert obj == _schedules.FixedRate.from_flyte_idl(obj.to_flyte_idl())

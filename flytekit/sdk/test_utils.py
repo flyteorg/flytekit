@@ -46,13 +46,9 @@ class LocalTestFileSystem(object):
         :rtype: flytekit.common.utils.AutoDeletingTempDir
         """
         self._exit_stack.__enter__()
-        temp_dir = self._exit_stack.enter_context(
-            _utils.AutoDeletingTempDir("local_test_filesystem")
-        )
+        temp_dir = self._exit_stack.enter_context(_utils.AutoDeletingTempDir("local_test_filesystem"))
         self._exit_stack.enter_context(_data_proxy.LocalDataContext(temp_dir.name))
-        self._exit_stack.enter_context(
-            _data_proxy.LocalWorkingDirectoryContext(temp_dir)
-        )
+        self._exit_stack.enter_context(_data_proxy.LocalWorkingDirectoryContext(temp_dir))
         return temp_dir
 
     def __exit__(self, exc_type, exc_val, exc_tb):

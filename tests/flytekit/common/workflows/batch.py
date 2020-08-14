@@ -100,11 +100,7 @@ def sq_sub_task(wf_params, in1, out1):
 @python_task(cache_version="1")
 def print_every_time(wf_params, ints_to_print, strings_to_print):
     wf_params.stats.incr("task_run")
-    print(
-        "Expected Int values: {}".format(
-            [[0, 0, 0], [1, 2, 3], [2, 4, 6], [0, 1, 4], [0, 1, 4]]
-        )
-    )
+    print("Expected Int values: {}".format([[0, 0, 0], [1, 2, 3], [2, 4, 6], [0, 1, 4], [0, 1, 4]]))
     print("Actual Int values: {}".format(ints_to_print))
 
     print(
@@ -129,8 +125,6 @@ class BatchTasksWorkflow(object):
     num_subtasks = Input(Types.Integer, default=3)
     task1 = no_inputs_sample_batch_task()
     task2 = sample_batch_task_beatles_cached(in1=num_subtasks)
-    t = print_every_time(
-        ints_to_print=task1.outputs.out_ints, strings_to_print=task1.outputs.out_str
-    )
+    t = print_every_time(ints_to_print=task1.outputs.out_ints, strings_to_print=task1.outputs.out_str)
     ints_out = Output(task1.outputs.out_ints, sdk_type=[[Types.Integer]])
     str_out = Output(task2.outputs.out_str, sdk_type=[Types.String])

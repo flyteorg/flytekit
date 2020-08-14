@@ -7,9 +7,7 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models.core import identifier as _core_identifier
 
 
-class Identifier(
-    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _core_identifier.Identifier)
-):
+class Identifier(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _core_identifier.Identifier)):
 
     _STRING_TO_TYPE_MAP = {
         "lp": _core_identifier.ResourceType.LAUNCH_PLAN,
@@ -64,9 +62,7 @@ class Identifier(
 
 
 class WorkflowExecutionIdentifier(
-    _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType, _core_identifier.WorkflowExecutionIdentifier
-    )
+    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _core_identifier.WorkflowExecutionIdentifier)
 ):
     @classmethod
     def promote_from_model(cls, base_model):
@@ -106,9 +102,7 @@ class WorkflowExecutionIdentifier(
 
 
 class TaskExecutionIdentifier(
-    _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType, _core_identifier.TaskExecutionIdentifier
-    )
+    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _core_identifier.TaskExecutionIdentifier)
 ):
     @classmethod
     def promote_from_model(cls, base_model):

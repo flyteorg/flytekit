@@ -68,9 +68,7 @@ class HiveNamedPartitionSensor(_HiveSensor):
         with self._hive_metastore_client as client:
             try:
                 for partition_name in self._partition_names:
-                    client.get_partition_by_name(
-                        self._schema, self._table_name, partition_name
-                    )
+                    client.get_partition_by_name(self._schema, self._table_name, partition_name)
                 return True, None
             except _hmsclient.genthrift.hive_metastore.ttypes.NoSuchObjectException:
                 return False, None

@@ -1,12 +1,9 @@
 import os as _os
 
+import six as _six
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit.clients.helpers import \
-    iterate_node_executions as _iterate_node_executions
-
-import six as _six
-
+from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _common_utils
 from flytekit.common.exceptions import user as _user_exceptions
@@ -21,9 +18,7 @@ from flytekit.models.core import execution as _execution_models
 
 
 class SdkTaskExecution(
-    _task_execution_model.TaskExecution,
-    _artifact_mixin.ExecutionArtifact,
-    metaclass=_sdk_bases.ExtendedSdkType
+    _task_execution_model.TaskExecution, _artifact_mixin.ExecutionArtifact, metaclass=_sdk_bases.ExtendedSdkType
 ):
     def __init__(self, *args, **kwargs):
         super(SdkTaskExecution, self).__init__(*args, **kwargs)
@@ -59,9 +54,7 @@ class SdkTaskExecution(
                     tmp_name = _os.path.join(t.name, "inputs.pb")
                     _data_proxy.Data.get_data(url_blob.inputs.url, tmp_name)
                     input_map = _literal_models.LiteralMap.from_flyte_idl(
-                        _common_utils.load_proto_from_file(
-                            _literals_pb2.LiteralMap, tmp_name
-                        )
+                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
             else:
                 input_map = _literal_models.LiteralMap({})
@@ -82,9 +75,7 @@ class SdkTaskExecution(
                 "Please what until the task execution has completed before requesting the outputs."
             )
         if self.error:
-            raise _user_exceptions.FlyteAssertion(
-                "Outputs could not be found because the execution ended in failure."
-            )
+            raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
 
         if self._outputs is None:
             client = _flyte_engine._FlyteClientManager(
@@ -96,15 +87,11 @@ class SdkTaskExecution(
                     tmp_name = _os.path.join(t.name, "outputs.pb")
                     _data_proxy.Data.get_data(url_blob.outputs.url, tmp_name)
                     output_map = _literal_models.LiteralMap.from_flyte_idl(
-                        _common_utils.load_proto_from_file(
-                            _literals_pb2.LiteralMap, tmp_name
-                        )
+                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
             else:
                 output_map = _literal_models.LiteralMap({})
-            self._outputs = _type_helpers.unpack_literal_map_to_sdk_python_std(
-                output_map
-            )
+            self._outputs = _type_helpers.unpack_literal_map_to_sdk_python_std(output_map)
         return self._outputs
 
     @property
@@ -134,15 +121,10 @@ class SdkTaskExecution(
         ).client
         models = {
             v.id.node_id: v
-            for v in _iterate_node_executions(
-                client, task_execution_identifier=self.id, filters=filters
-            )
+            for v in _iterate_node_executions(client, task_execution_identifier=self.id, filters=filters)
         }
 
-        return {
-            k: _nodes.SdkNodeExecution.promote_from_model(v)
-            for k, v in _six.iteritems(models)
-        }
+        return {k: _nodes.SdkNodeExecution.promote_from_model(v) for k, v in _six.iteritems(models)}
 
     @classmethod
     def promote_from_model(cls, base_model):

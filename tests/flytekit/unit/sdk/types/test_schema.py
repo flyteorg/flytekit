@@ -42,9 +42,7 @@ def test_bad_column_types():
 
 
 def test_create_from_hive_query():
-    s, q = Types.Schema().create_from_hive_query(
-        "SELECT * FROM table", known_location="s3://somewhere/"
-    )
+    s, q = Types.Schema().create_from_hive_query("SELECT * FROM table", known_location="s3://somewhere/")
 
     assert s.mode == "wb"
     assert s.local_path is None

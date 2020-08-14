@@ -19,10 +19,7 @@ from flytekit.sdk import workflow as _workflow
 
 def test_default_assumable_iam_role():
     with _configuration.TemporaryConfiguration(
-        _os.path.join(
-            _os.path.dirname(_os.path.realpath(__file__)),
-            "../../common/configs/local.config",
-        )
+        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../common/configs/local.config",)
     ):
         workflow_to_test = _workflow.workflow(
             {},
@@ -32,9 +29,7 @@ def test_default_assumable_iam_role():
             },
         )
         lp = workflow_to_test.create_launch_plan()
-        assert (
-            lp.auth_role.assumable_iam_role == "arn:aws:iam::ABC123:role/my-flyte-role"
-        )
+        assert lp.auth_role.assumable_iam_role == "arn:aws:iam::ABC123:role/my-flyte-role"
 
 
 def test_hard_coded_assumable_iam_role():
@@ -51,10 +46,7 @@ def test_hard_coded_assumable_iam_role():
 
 def test_default_deprecated_role():
     with _configuration.TemporaryConfiguration(
-        _os.path.join(
-            _os.path.dirname(_os.path.realpath(__file__)),
-            "../../common/configs/deprecated_local.config",
-        )
+        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../common/configs/deprecated_local.config",)
     ):
         workflow_to_test = _workflow.workflow(
             {},
@@ -64,9 +56,7 @@ def test_default_deprecated_role():
             },
         )
         lp = workflow_to_test.create_launch_plan()
-        assert (
-            lp.auth_role.assumable_iam_role == "arn:aws:iam::ABC123:role/my-flyte-role"
-        )
+        assert lp.auth_role.assumable_iam_role == "arn:aws:iam::ABC123:role/my-flyte-role"
 
 
 def test_hard_coded_deprecated_role():
@@ -89,9 +79,7 @@ def test_kubernetes_service_account():
             "default_input": _workflow.Input(_types.Types.Integer, default=5),
         },
     )
-    lp = workflow_to_test.create_launch_plan(
-        kubernetes_service_account="kube-service-acct"
-    )
+    lp = workflow_to_test.create_launch_plan(kubernetes_service_account="kube-service-acct")
     assert lp.auth_role.kubernetes_service_account == "kube-service-acct"
 
 
@@ -107,10 +95,7 @@ def test_fixed_inputs():
     assert len(lp.fixed_inputs.literals) == 1
     assert lp.fixed_inputs.literals["required_input"].scalar.primitive.integer == 4
     assert len(lp.default_inputs.parameters) == 1
-    assert (
-        lp.default_inputs.parameters["default_input"].default.scalar.primitive.integer
-        == 5
-    )
+    assert lp.default_inputs.parameters["default_input"].default.scalar.primitive.integer == 5
 
 
 def test_redefining_inputs_good():
@@ -122,20 +107,12 @@ def test_redefining_inputs_good():
         },
     )
     lp = workflow_to_test.create_launch_plan(
-        default_inputs={
-            "required_input": _workflow.Input(_types.Types.Integer, default=900)
-        }
+        default_inputs={"required_input": _workflow.Input(_types.Types.Integer, default=900)}
     )
     assert len(lp.fixed_inputs.literals) == 0
     assert len(lp.default_inputs.parameters) == 2
-    assert (
-        lp.default_inputs.parameters["required_input"].default.scalar.primitive.integer
-        == 900
-    )
-    assert (
-        lp.default_inputs.parameters["default_input"].default.scalar.primitive.integer
-        == 5
-    )
+    assert lp.default_inputs.parameters["required_input"].default.scalar.primitive.integer == 900
+    assert lp.default_inputs.parameters["default_input"].default.scalar.primitive.integer == 5
 
 
 def test_no_additional_inputs():
@@ -148,10 +125,7 @@ def test_no_additional_inputs():
     )
     lp = workflow_to_test.create_launch_plan()
     assert len(lp.fixed_inputs.literals) == 0
-    assert (
-        lp.default_inputs.parameters["default_input"].default.scalar.primitive.integer
-        == 5
-    )
+    assert lp.default_inputs.parameters["default_input"].default.scalar.primitive.integer == 5
     assert lp.default_inputs.parameters["required_input"].required is True
 
 
@@ -164,9 +138,7 @@ def test_schedule():
         },
     )
     lp = workflow_to_test.create_launch_plan(
-        fixed_inputs={"required_input": 5},
-        schedule=_schedules.CronSchedule("* * ? * * *"),
-        role="what",
+        fixed_inputs={"required_input": 5}, schedule=_schedules.CronSchedule("* * ? * * *"), role="what",
     )
     assert lp.entity_metadata.schedule.kickoff_time_input_arg is None
     assert lp.entity_metadata.schedule.cron_expression == "* * ? * * *"
@@ -196,10 +168,7 @@ def test_schedule_pointing_to_datetime():
         },
     )
     lp = workflow_to_test.create_launch_plan(
-        schedule=_schedules.CronSchedule(
-            "* * ? * * *", kickoff_time_input_arg="required_input"
-        ),
-        role="what",
+        schedule=_schedules.CronSchedule("* * ? * * *", kickoff_time_input_arg="required_input"), role="what",
     )
     assert lp.entity_metadata.schedule.kickoff_time_input_arg == "required_input"
     assert lp.entity_metadata.schedule.cron_expression == "* * ? * * *"
@@ -214,19 +183,11 @@ def test_notifications():
         },
     )
     lp = workflow_to_test.create_launch_plan(
-        notifications=[
-            _notifications.PagerDuty(
-                [_execution.WorkflowExecutionPhase.FAILED], ["me@myplace.com"]
-            )
-        ]
+        notifications=[_notifications.PagerDuty([_execution.WorkflowExecutionPhase.FAILED], ["me@myplace.com"])]
     )
     assert len(lp.entity_metadata.notifications) == 1
-    assert lp.entity_metadata.notifications[0].pager_duty.recipients_email == [
-        "me@myplace.com"
-    ]
-    assert lp.entity_metadata.notifications[0].phases == [
-        _execution.WorkflowExecutionPhase.FAILED
-    ]
+    assert lp.entity_metadata.notifications[0].pager_duty.recipients_email == ["me@myplace.com"]
+    assert lp.entity_metadata.notifications[0].phases == [_execution.WorkflowExecutionPhase.FAILED]
 
 
 def test_no_notifications():
@@ -289,10 +250,7 @@ def test_launch_plan_node():
 
     # Test that outputs are promised
     n.assign_id_and_return("node-id")
-    assert (
-        n.outputs["out"].sdk_type.to_flyte_literal_type().collection_type.simple
-        == _type_models.SimpleType.INTEGER
-    )
+    assert n.outputs["out"].sdk_type.to_flyte_literal_type().collection_type.simple == _type_models.SimpleType.INTEGER
     assert n.outputs["out"].var == "out"
     assert n.outputs["out"].node_id == "node-id"
 
@@ -339,37 +297,18 @@ def test_serialize():
             "default_input": _workflow.Input(_types.Types.Integer, default=5),
         },
     )
-    workflow_to_test.id = _identifier.Identifier(
-        _identifier.ResourceType.WORKFLOW, "p", "d", "n", "v"
-    )
-    lp = workflow_to_test.create_launch_plan(
-        fixed_inputs={"required_input": 5}, role="iam_role",
-    )
+    workflow_to_test.id = _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "p", "d", "n", "v")
+    lp = workflow_to_test.create_launch_plan(fixed_inputs={"required_input": 5}, role="iam_role",)
 
     with _configuration.TemporaryConfiguration(
-        _os.path.join(
-            _os.path.dirname(_os.path.realpath(__file__)),
-            "../../common/configs/local.config",
-        ),
-        internal_overrides={
-            "image": "myflyteimage:v123",
-            "project": "myflyteproject",
-            "domain": "development",
-        },
+        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../common/configs/local.config",),
+        internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development",},
     ):
         s = lp.serialize()
 
-    assert (
-        s.workflow_id
-        == _identifier.Identifier(
-            _identifier.ResourceType.WORKFLOW, "p", "d", "n", "v"
-        ).to_flyte_idl()
-    )
+    assert s.workflow_id == _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "p", "d", "n", "v").to_flyte_idl()
     assert s.auth_role.assumable_iam_role == "iam_role"
-    assert (
-        s.default_inputs.parameters["default_input"].default.scalar.primitive.integer
-        == 5
-    )
+    assert s.default_inputs.parameters["default_input"].default.scalar.primitive.integer == 5
 
 
 def test_promote_from_model():
@@ -380,9 +319,7 @@ def test_promote_from_model():
             "default_input": _workflow.Input(_types.Types.Integer, default=5),
         },
     )
-    workflow_to_test.id = _identifier.Identifier(
-        _identifier.ResourceType.WORKFLOW, "p", "d", "n", "v"
-    )
+    workflow_to_test.id = _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "p", "d", "n", "v")
     lp = workflow_to_test.create_launch_plan(
         fixed_inputs={"required_input": 5},
         schedule=_schedules.CronSchedule("* * ? * * *"),

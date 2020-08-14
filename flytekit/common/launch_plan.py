@@ -35,7 +35,9 @@ from flytekit.models.core import workflow as _workflow_models
 
 class SdkLaunchPlan(
     _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType, _launch_plan_models.LaunchPlanSpec, _launchable_mixin.LaunchableEntity,
+        _sdk_bases.ExtendedSdkType,
+        _launch_plan_models.LaunchPlanSpec,
+        _launchable_mixin.LaunchableEntity,
         _registerable.RegisterableEntity,
     )
 ):
@@ -57,9 +59,7 @@ class SdkLaunchPlan(
             workflow_id=_identifier.Identifier.promote_from_model(model.workflow_id),
             default_inputs=_interface_models.ParameterMap(
                 {
-                    k: _promises.Input.promote_from_model(
-                        v
-                    ).rename_and_return_reference(k)
+                    k: _promises.Input.promote_from_model(v).rename_and_return_reference(k)
                     for k, v in _six.iteritems(model.default_inputs.parameters)
                 }
             ),
@@ -129,9 +129,7 @@ class SdkLaunchPlan(
 
         # TODO: Add a test for this, and this function as a whole
         wf_id = sdk_lp.workflow_id
-        lp_wf = _workflow.SdkWorkflow.fetch(
-            wf_id.project, wf_id.domain, wf_id.name, wf_id.version
-        )
+        lp_wf = _workflow.SdkWorkflow.fetch(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
         sdk_lp._interface = lp_wf.interface
         return sdk_lp
 
@@ -157,10 +155,7 @@ class SdkLaunchPlan(
         """
         if self.entity_metadata.schedule.cron_expression:
             return True
-        elif (
-                self.entity_metadata.schedule.rate
-                and self.entity_metadata.schedule.rate.value
-        ):
+        elif self.entity_metadata.schedule.rate and self.entity_metadata.schedule.rate.value:
             return True
         else:
             return False
@@ -172,7 +167,7 @@ class SdkLaunchPlan(
         """
         fixed_auth = super(SdkLaunchPlan, self).auth_role
         if fixed_auth is not None and (
-                fixed_auth.assumable_iam_role is not None or fixed_auth.kubernetes_service_account is not None
+            fixed_auth.assumable_iam_role is not None or fixed_auth.kubernetes_service_account is not None
         ):
             return fixed_auth
 
@@ -264,14 +259,14 @@ class SdkLaunchPlan(
 
     @_deprecated(reason="Use launch_with_literals instead", version="0.9.0")
     def execute_with_literals(
-            self,
-            project,
-            domain,
-            literal_inputs,
-            name=None,
-            notification_overrides=None,
-            label_overrides=None,
-            annotation_overrides=None,
+        self,
+        project,
+        domain,
+        literal_inputs,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
     ):
         """
         Deprecated.
@@ -282,14 +277,14 @@ class SdkLaunchPlan(
 
     @_exception_scopes.system_entry_point
     def launch_with_literals(
-            self,
-            project,
-            domain,
-            literal_inputs,
-            name=None,
-            notification_overrides=None,
-            label_overrides=None,
-            annotation_overrides=None,
+        self,
+        project,
+        domain,
+        literal_inputs,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
     ):
         """
         Executes the launch plan and returns the execution identifier.  This version of execution is meant for when
@@ -313,9 +308,7 @@ class SdkLaunchPlan(
         if disable_all:
             notification_overrides = None
         else:
-            notification_overrides = _execution_models.NotificationList(
-                notification_overrides or []
-            )
+            notification_overrides = _execution_models.NotificationList(notification_overrides or [])
             disable_all = None
 
         client = _flyte_engine._FlyteClientManager(
@@ -366,9 +359,7 @@ class SdkLaunchPlan(
 
         return _nodes.SdkNode(
             id=None,
-            metadata=_workflow_models.NodeMetadata(
-                "", _datetime.timedelta(), _literal_models.RetryStrategy(0)
-            ),
+            metadata=_workflow_models.NodeMetadata("", _datetime.timedelta(), _literal_models.RetryStrategy(0)),
             bindings=sorted(bindings, key=lambda b: b.var),
             upstream_nodes=upstream_nodes,
             sdk_launch_plan=self,
@@ -378,9 +369,7 @@ class SdkLaunchPlan(
         """
         :rtype: Text
         """
-        return "SdkLaunchPlan(ID: {} Interface: {} WF ID: {})".format(
-            self.id, self.interface, self.workflow_id
-        )
+        return "SdkLaunchPlan(ID: {} Interface: {} WF ID: {})".format(self.id, self.interface, self.workflow_id)
 
 
 # The difference between this and the SdkLaunchPlan class is that this runnable class is supposed to only be used for
@@ -389,17 +378,17 @@ class SdkRunnableLaunchPlan(
     _hash_mixin.HashOnReferenceMixin, SdkLaunchPlan, _registerable.RegisterableEntity, _registerable.LocalEntity,
 ):
     def __init__(
-            self,
-            sdk_workflow,
-            default_inputs=None,
-            fixed_inputs=None,
-            role=None,
-            schedule=None,
-            notifications=None,
-            labels=None,
-            annotations=None,
-            auth_role=None,
-            raw_output_data_config=None,
+        self,
+        sdk_workflow,
+        default_inputs=None,
+        fixed_inputs=None,
+        role=None,
+        schedule=None,
+        notifications=None,
+        labels=None,
+        annotations=None,
+        auth_role=None,
+        raw_output_data_config=None,
     ):
         """
         :param flytekit.common.workflow.PythonWorkflow sdk_workflow:
@@ -418,9 +407,7 @@ class SdkRunnableLaunchPlan(
         :param flytekit.models.common.RawOutputDataConfig raw_output_data_config: Config for offloading data
         """
         if role and auth_role:
-            raise ValueError(
-                "Cannot set both role and auth. Role is deprecated, use auth instead."
-            )
+            raise ValueError("Cannot set both role and auth. Role is deprecated, use auth instead.")
 
         fixed_inputs = fixed_inputs or {}
         default_inputs = default_inputs or {}
@@ -497,6 +484,4 @@ class SdkRunnableLaunchPlan(
         """
         :rtype: Text
         """
-        return "SdkRunnableLaunchPlan(ID: {} Interface: {} WF ID: {})".format(
-            self.id, self.interface, self.workflow_id
-        )
+        return "SdkRunnableLaunchPlan(ID: {} Interface: {} WF ID: {})".format(self.id, self.interface, self.workflow_id)

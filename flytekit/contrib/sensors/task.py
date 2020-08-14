@@ -8,9 +8,7 @@ from flytekit.contrib.sensors.base_sensor import Sensor as _Sensor
 
 class SensorTask(_sdk_runnable.SdkRunnableTask):
     def _execute_user_code(self, context, inputs):
-        sensor = super(SensorTask, self)._execute_user_code(
-            context=context, inputs=inputs
-        )
+        sensor = super(SensorTask, self)._execute_user_code(context=context, inputs=inputs)
         if sensor is not None:
             if not isinstance(sensor, _Sensor):
                 raise _user_exceptions.FlyteTypeException(

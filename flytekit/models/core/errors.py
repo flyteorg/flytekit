@@ -45,9 +45,7 @@ class ContainerError(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.errors_pb2.ContainerError
         """
-        return _errors_pb2.ContainerError(
-            code=self.code, message=self.message, kind=self.kind
-        )
+        return _errors_pb2.ContainerError(code=self.code, message=self.message, kind=self.kind)
 
     @classmethod
     def from_flyte_idl(cls, proto):

@@ -22,9 +22,7 @@ class Input(_promise.Input):
         :param bool required: If set, default must be None
         :param T default: If this is not a required input, the value will default to this value.  Specify as a kwarg.
         """
-        super(Input, self).__init__(
-            "", _type_helpers.python_std_to_sdk_type(sdk_type), help=help, **kwargs
-        )
+        super(Input, self).__init__("", _type_helpers.python_std_to_sdk_type(sdk_type), help=help, **kwargs)
 
 
 class Output(_common_workflow.Output):
@@ -41,12 +39,7 @@ class Output(_common_workflow.Output):
             this value be provided as the SDK might not always be able to infer the correct type.
         """
         super(Output, self).__init__(
-            "",
-            value,
-            sdk_type=_type_helpers.python_std_to_sdk_type(sdk_type)
-            if sdk_type
-            else None,
-            help=help,
+            "", value, sdk_type=_type_helpers.python_std_to_sdk_type(sdk_type) if sdk_type else None, help=help,
         )
 
 
@@ -72,9 +65,7 @@ def workflow_class(_workflow_metaclass=None, on_failure=None):
     """
 
     def wrapper(metaclass):
-        wf = _common_workflow.build_sdk_workflow_from_metaclass(
-            metaclass, on_failure=on_failure
-        )
+        wf = _common_workflow.build_sdk_workflow_from_metaclass(metaclass, on_failure=on_failure)
         return wf
 
     if _workflow_metaclass is not None:
@@ -82,9 +73,7 @@ def workflow_class(_workflow_metaclass=None, on_failure=None):
     return wrapper
 
 
-def workflow(
-    nodes: Dict[str, _nodes.SdkNode], inputs=None, outputs=None, on_failure=None
-):
+def workflow(nodes: Dict[str, _nodes.SdkNode], inputs=None, outputs=None, on_failure=None):
     """
     This function provides a user-friendly interface for authoring workflows.
 
@@ -122,17 +111,9 @@ def workflow(
     """
     # TODO: Why does Pycharm complain about nodes?
     wf = _common_workflow.PythonWorkflow.construct_from_class_definition(
-        inputs=[
-            v.rename_and_return_reference(k)
-            for k, v in sorted(_six.iteritems(inputs or {}))
-        ],
-        outputs=[
-            v.rename_and_return_reference(k)
-            for k, v in sorted(_six.iteritems(outputs or {}))
-        ],
+        inputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(inputs or {}))],
+        outputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(outputs or {}))],
         nodes=[v.assign_id_and_return(k) for k, v in sorted(_six.iteritems(nodes))],
-        metadata=_common_workflow._workflow_models.WorkflowMetadata(
-            on_failure=on_failure
-        ),
+        metadata=_common_workflow._workflow_models.WorkflowMetadata(on_failure=on_failure),
     )
     return wf

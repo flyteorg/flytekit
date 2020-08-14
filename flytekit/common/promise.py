@@ -46,9 +46,7 @@ class Input(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.Pa
         self._sdk_default = default
         self._help = help
         self._sdk_type = sdk_type
-        self._promise = _type_models.OutputReference(
-            _constants.GLOBAL_INPUT_NODE_ID, name
-        )
+        self._promise = _type_models.OutputReference(_constants.GLOBAL_INPUT_NODE_ID, name)
         self._name = name
         super(Input, self).__init__(
             _interface_models.Variable(type=sdk_type.to_flyte_literal_type(), description=help or ""),
@@ -103,9 +101,7 @@ class Input(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.Pa
         return self._sdk_type
 
     def __repr__(self):
-        return "Input({}, {}, required={}, help={})".format(
-            self.name, self.sdk_type, self.required, self.help
-        )
+        return "Input({}, {}, required={}, help={})".format(self.name, self.sdk_type, self.required, self.help)
 
     @classmethod
     def promote_from_model(cls, model):

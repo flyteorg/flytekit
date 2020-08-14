@@ -10,18 +10,14 @@ from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
 
 @_pytest.fixture
 def mock_update_cmd_config_and_execute():
-    p = _mock.patch(
-        "flytekit.interfaces.data.gcs.gcs_proxy._update_cmd_config_and_execute"
-    )
+    p = _mock.patch("flytekit.interfaces.data.gcs.gcs_proxy._update_cmd_config_and_execute")
     yield p.start()
     p.stop()
 
 
 @_pytest.fixture
 def gsutil_parallelism():
-    p = _mock.patch(
-        "flytekit.configuration.gcp.GSUTIL_PARALLELISM.get", return_value=True
-    )
+    p = _mock.patch("flytekit.configuration.gcp.GSUTIL_PARALLELISM.get", return_value=True)
     yield p.start()
     p.stop()
 

@@ -138,9 +138,7 @@ class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.Extended
         return env
 
 
-class SdkRunnableTask(
-    _base_task.SdkTask, _registerable.LocalEntity, metaclass=_sdk_bases.ExtendedSdkType
-):
+class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_sdk_bases.ExtendedSdkType):
     """
     This class includes the additional logic for building a task that executes in Python code.  It has even more
     validation checks to ensure proper behavior than it's superclasses.
@@ -239,9 +237,7 @@ class SdkRunnableTask(
     @classmethod
     def promote_from_model(cls, base_model):
         # TODO: If the task exists in this container, we should be able to retrieve it.
-        raise _user_exceptions.FlyteAssertion(
-            "Cannot promote a base object to a runnable task."
-        )
+        raise _user_exceptions.FlyteAssertion("Cannot promote a base object to a runnable task.")
 
     @property
     def task_function(self):
@@ -334,9 +330,7 @@ class SdkRunnableTask(
             ExecutionParameters(
                 execution_date=context.execution_date,
                 # TODO: it might be better to consider passing the full struct
-                execution_id=_six.text_type(
-                    WorkflowExecutionIdentifier.promote_from_model(context.execution_id)
-                ),
+                execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
                 stats=context.stats,
                 logging=context.logging,
                 tmp_dir=context.working_directory,
@@ -361,9 +355,7 @@ class SdkRunnableTask(
             {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)},
         )
         outputs_dict = {
-            name: _task_output.OutputReference(
-                _type_helpers.get_sdk_type_from_literal_type(variable.type)
-            )
+            name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
             for name, variable in _six.iteritems(self.interface.outputs)
         }
         inputs_dict.update(outputs_dict)
@@ -403,9 +395,7 @@ class SdkRunnableTask(
         :rtype: flytekit.models.task.Container
         """
         storage_limit = storage_limit or _resource_config.DEFAULT_STORAGE_LIMIT.get()
-        storage_request = (
-            storage_request or _resource_config.DEFAULT_STORAGE_REQUEST.get()
-        )
+        storage_request = storage_request or _resource_config.DEFAULT_STORAGE_REQUEST.get()
         cpu_limit = cpu_limit or _resource_config.DEFAULT_CPU_LIMIT.get()
         cpu_request = cpu_request or _resource_config.DEFAULT_CPU_REQUEST.get()
         gpu_limit = gpu_limit or _resource_config.DEFAULT_GPU_LIMIT.get()
@@ -473,10 +463,7 @@ class SdkRunnableTask(
                     "The input named '{}' was not specified in the task function.  Therefore, this input cannot be "
                     "provided to the task.".format(k)
                 )
-            if (
-                _type_helpers.get_sdk_type_from_literal_type(v.type)
-                in type(self)._banned_inputs
-            ):
+            if _type_helpers.get_sdk_type_from_literal_type(v.type) in type(self)._banned_inputs:
                 raise _user_exceptions.FlyteValidationException(
                     "The input '{}' is not an accepted input type.".format(v)
                 )
@@ -495,10 +482,7 @@ class SdkRunnableTask(
                     "The output named '{}' was not specified in the task function.  Therefore, this output cannot be "
                     "provided to the task.".format(k)
                 )
-            if (
-                _type_helpers.get_sdk_type_from_literal_type(v.type)
-                in type(self)._banned_outputs
-            ):
+            if _type_helpers.get_sdk_type_from_literal_type(v.type) in type(self)._banned_outputs:
                 raise _user_exceptions.FlyteValidationException(
                     "The output '{}' is not an accepted output type.".format(v)
                 )
@@ -513,7 +497,5 @@ class SdkRunnableTask(
     def _missing_mapped_inputs_outputs(self):
         # Trim off first parameter as it is reserved for workflow_parameters
         args = self._get_kwarg_inputs()
-        inputs_and_outputs = set(self.interface.outputs.keys()) | set(
-            self.interface.inputs.keys()
-        )
+        inputs_and_outputs = set(self.interface.outputs.keys()) | set(self.interface.inputs.keys())
         return args ^ inputs_and_outputs

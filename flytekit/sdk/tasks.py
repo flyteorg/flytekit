@@ -46,8 +46,7 @@ def inputs(_task_template=None, **kwargs):
     def apply_inputs_wrapper(task):
         if not isinstance(task, _task.SdkTask):
             additional_msg = "Inputs can only be applied to a task. Did you forget the task decorator on method '{}.{}'?".format(
-                task.__module__,
-                task.__name__ if hasattr(task, "__name__") else "<unknown>",
+                task.__module__, task.__name__ if hasattr(task, "__name__") else "<unknown>",
             )
             raise _user_exceptions.FlyteTypeException(
                 expected_type=_sdk_runnable_tasks.SdkRunnableTask,
@@ -97,8 +96,7 @@ def outputs(_task_template=None, **kwargs):
             task, _nb_tasks.SdkNotebookTask
         ):
             additional_msg = "Outputs can only be applied to a task. Did you forget the task decorator on method '{}.{}'?".format(
-                task.__module__,
-                task.__name__ if hasattr(task, "__name__") else "<unknown>",
+                task.__module__, task.__name__ if hasattr(task, "__name__") else "<unknown>",
             )
             raise _user_exceptions.FlyteTypeException(
                 expected_type=_sdk_runnable_tasks.SdkRunnableTask,

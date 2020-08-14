@@ -9,9 +9,7 @@ from flytekit.common.types import schema as _schema
 
 
 class Types(object):
-    Integer = _helpers.get_sdk_type_from_literal_type(
-        _primitives.Integer.to_flyte_literal_type()
-    )
+    Integer = _helpers.get_sdk_type_from_literal_type(_primitives.Integer.to_flyte_literal_type())
     """
     Use this to specify a simple integer type.
 
@@ -37,9 +35,7 @@ class Types(object):
             b.set(a * 2)
     """
 
-    Float = _helpers.get_sdk_type_from_literal_type(
-        _primitives.Float.to_flyte_literal_type()
-    )
+    Float = _helpers.get_sdk_type_from_literal_type(_primitives.Float.to_flyte_literal_type())
     """
     Use this to specify a simple floating point type.
 
@@ -63,9 +59,7 @@ class Types(object):
             b.set(a * a)
     """
 
-    String = _helpers.get_sdk_type_from_literal_type(
-        _primitives.String.to_flyte_literal_type()
-    )
+    String = _helpers.get_sdk_type_from_literal_type(_primitives.String.to_flyte_literal_type())
     """
     Use this to specify a simple string type.
 
@@ -91,9 +85,7 @@ class Types(object):
             c.set(a + b)
     """
 
-    Boolean = _helpers.get_sdk_type_from_literal_type(
-        _primitives.Boolean.to_flyte_literal_type()
-    )
+    Boolean = _helpers.get_sdk_type_from_literal_type(_primitives.Boolean.to_flyte_literal_type())
     """
     Use this to specify a simple bool type.
 
@@ -117,9 +109,7 @@ class Types(object):
             b.set(not a)
     """
 
-    Datetime = _helpers.get_sdk_type_from_literal_type(
-        _primitives.Datetime.to_flyte_literal_type()
-    )
+    Datetime = _helpers.get_sdk_type_from_literal_type(_primitives.Datetime.to_flyte_literal_type())
     """
     Use this to specify a simple datetime type.
 
@@ -149,9 +139,7 @@ class Types(object):
             b.set(a + datetime.timedelta(days=1))
     """
 
-    Timedelta = _helpers.get_sdk_type_from_literal_type(
-        _primitives.Timedelta.to_flyte_literal_type()
-    )
+    Timedelta = _helpers.get_sdk_type_from_literal_type(_primitives.Timedelta.to_flyte_literal_type())
     """
     Use this to specify a simple timedelta type.
 
@@ -175,9 +163,7 @@ class Types(object):
             b.set(a * 100)
     """
 
-    Generic = _helpers.get_sdk_type_from_literal_type(
-        _primitives.Generic.to_flyte_literal_type()
-    )
+    Generic = _helpers.get_sdk_type_from_literal_type(_primitives.Generic.to_flyte_literal_type())
     """
     Use this to specify a simple JSON type.
 

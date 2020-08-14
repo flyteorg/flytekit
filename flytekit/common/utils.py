@@ -113,9 +113,7 @@ class AutoDeletingTempDir(Directory):
         super(AutoDeletingTempDir, self).__init__(None)
 
     def __enter__(self):
-        self._name = _tempfile.mkdtemp(
-            dir=self._tmp_dir, prefix=self._working_dir_prefix
-        )
+        self._name = _tempfile.mkdtemp(dir=self._tmp_dir, prefix=self._working_dir_prefix)
         return self
 
     def get_named_tempfile(self, name):

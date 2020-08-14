@@ -40,10 +40,7 @@ class IfBlock(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.IfBlock
         """
-        return _core_workflow.IfBlock(
-            condition=self.condition.to_flyte_idl(),
-            then_node=self.then_node.to_flyte_idl(),
-        )
+        return _core_workflow.IfBlock(condition=self.condition.to_flyte_idl(), then_node=self.then_node.to_flyte_idl(),)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -122,12 +119,8 @@ class IfElseBlock(_common.FlyteIdlEntity):
         return cls(
             case=IfBlock.from_flyte_idl(pb2_object.case),
             other=[IfBlock.from_flyte_idl(a) for a in pb2_object.other],
-            else_node=Node.from_flyte_idl(pb2_object.else_node)
-            if pb2_object.HasField("else_node")
-            else None,
-            error=_errors.ContainerError.from_flyte_idl(pb2_object.error)
-            if pb2_object.HasField("error")
-            else None,
+            else_node=Node.from_flyte_idl(pb2_object.else_node) if pb2_object.HasField("else_node") else None,
+            error=_errors.ContainerError.from_flyte_idl(pb2_object.error) if pb2_object.HasField("error") else None,
         )
 
 
@@ -207,9 +200,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.workflow_pb2.NodeMetadata
         """
         node_metadata = _core_workflow.NodeMetadata(
-            name=self.name,
-            retries=self.retries.to_flyte_idl(),
-            interruptible=self.interruptible,
+            name=self.name, retries=self.retries.to_flyte_idl(), interruptible=self.interruptible,
         )
         node_metadata.timeout.FromTimedelta(self.timeout)
         return node_metadata
@@ -217,9 +208,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         return cls(
-            pb2_object.name,
-            pb2_object.timeout.ToTimedelta(),
-            _RetryStrategy.from_flyte_idl(pb2_object.retries),
+            pb2_object.name, pb2_object.timeout.ToTimedelta(), _RetryStrategy.from_flyte_idl(pb2_object.retries),
         )
 
 
@@ -348,21 +337,13 @@ class Node(_common.FlyteIdlEntity):
         """
         return _core_workflow.Node(
             id=self.id,
-            metadata=self.metadata.to_flyte_idl()
-            if self.metadata is not None
-            else None,
+            metadata=self.metadata.to_flyte_idl() if self.metadata is not None else None,
             inputs=[i.to_flyte_idl() for i in self.inputs],
             upstream_node_ids=self.upstream_node_ids,
             output_aliases=[a.to_flyte_idl() for a in self.output_aliases],
-            task_node=self.task_node.to_flyte_idl()
-            if self.task_node is not None
-            else None,
-            workflow_node=self.workflow_node.to_flyte_idl()
-            if self.workflow_node is not None
-            else None,
-            branch_node=self.branch_node.to_flyte_idl()
-            if self.branch_node is not None
-            else None,
+            task_node=self.task_node.to_flyte_idl() if self.task_node is not None else None,
+            workflow_node=self.workflow_node.to_flyte_idl() if self.workflow_node is not None else None,
+            branch_node=self.branch_node.to_flyte_idl() if self.branch_node is not None else None,
         )
 
     @classmethod
@@ -377,9 +358,7 @@ class Node(_common.FlyteIdlEntity):
             inputs=[_Binding.from_flyte_idl(b) for b in pb2_object.inputs],
             upstream_node_ids=pb2_object.upstream_node_ids,
             output_aliases=[Alias.from_flyte_idl(a) for a in pb2_object.output_aliases],
-            task_node=TaskNode.from_flyte_idl(pb2_object.task_node)
-            if pb2_object.HasField("task_node")
-            else None,
+            task_node=TaskNode.from_flyte_idl(pb2_object.task_node) if pb2_object.HasField("task_node") else None,
             workflow_node=WorkflowNode.from_flyte_idl(pb2_object.workflow_node)
             if pb2_object.HasField("workflow_node")
             else None,
@@ -420,9 +399,7 @@ class TaskNode(_common.FlyteIdlEntity):
         :param flyteidl.core.workflow_pb2.TaskNode pb2_object:
         :rtype: TaskNode
         """
-        return cls(
-            reference_id=_identifier.Identifier.from_flyte_idl(pb2_object.reference_id)
-        )
+        return cls(reference_id=_identifier.Identifier.from_flyte_idl(pb2_object.reference_id))
 
 
 class WorkflowNode(_common.FlyteIdlEntity):
@@ -466,12 +443,8 @@ class WorkflowNode(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.workflow_pb2.WorkflowNode
         """
         return _core_workflow.WorkflowNode(
-            launchplan_ref=self.launchplan_ref.to_flyte_idl()
-            if self.launchplan_ref
-            else None,
-            sub_workflow_ref=self.sub_workflow_ref.to_flyte_idl()
-            if self.sub_workflow_ref
-            else None,
+            launchplan_ref=self.launchplan_ref.to_flyte_idl() if self.launchplan_ref else None,
+            sub_workflow_ref=self.sub_workflow_ref.to_flyte_idl() if self.sub_workflow_ref else None,
         )
 
     @classmethod
@@ -481,17 +454,9 @@ class WorkflowNode(_common.FlyteIdlEntity):
         :rtype: WorkflowNode
         """
         if pb2_object.HasField("launchplan_ref"):
-            return cls(
-                launchplan_ref=_identifier.Identifier.from_flyte_idl(
-                    pb2_object.launchplan_ref
-                )
-            )
+            return cls(launchplan_ref=_identifier.Identifier.from_flyte_idl(pb2_object.launchplan_ref))
         else:
-            return cls(
-                sub_workflow_ref=_identifier.Identifier.from_flyte_idl(
-                    pb2_object.sub_workflow_ref
-                )
-            )
+            return cls(sub_workflow_ref=_identifier.Identifier.from_flyte_idl(pb2_object.sub_workflow_ref))
 
 
 class WorkflowMetadata(_common.FlyteIdlEntity):
@@ -512,9 +477,7 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
         """
 
         FAIL_IMMEDIATELY = _core_workflow.WorkflowMetadata.FAIL_IMMEDIATELY
-        FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = (
-            _core_workflow.WorkflowMetadata.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
-        )
+        FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = _core_workflow.WorkflowMetadata.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
 
     def __init__(self, on_failure=None):
         """
@@ -564,9 +527,7 @@ class WorkflowMetadataDefaults(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.WorkflowMetadataDefaults
         """
-        return _core_workflow.WorkflowMetadataDefaults(
-            interruptible=self.interruptible_
-        )
+        return _core_workflow.WorkflowMetadataDefaults(interruptible=self.interruptible_)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -579,14 +540,7 @@ class WorkflowMetadataDefaults(_common.FlyteIdlEntity):
 
 class WorkflowTemplate(_common.FlyteIdlEntity):
     def __init__(
-        self,
-        id,
-        metadata,
-        metadata_defaults,
-        interface,
-        nodes,
-        outputs,
-        failure_node=None,
+        self, id, metadata, metadata_defaults, interface, nodes, outputs, failure_node=None,
     ):
         """
         A workflow template encapsulates all the task, branch, and subworkflow nodes to run a statically analyzable,
@@ -692,9 +646,7 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
             interface=self.interface.to_flyte_idl(),
             nodes=[n.to_flyte_idl() for n in self.nodes],
             outputs=[o.to_flyte_idl() for o in self.outputs],
-            failure_node=self.failure_node.to_flyte_idl()
-            if self.failure_node is not None
-            else None,
+            failure_node=self.failure_node.to_flyte_idl() if self.failure_node is not None else None,
         )
 
     @classmethod
@@ -706,15 +658,11 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
         return cls(
             id=_identifier.Identifier.from_flyte_idl(pb2_object.id),
             metadata=WorkflowMetadata.from_flyte_idl(pb2_object.metadata),
-            metadata_defaults=WorkflowMetadataDefaults.from_flyte_idl(
-                pb2_object.metadata_defaults
-            ),
+            metadata_defaults=WorkflowMetadataDefaults.from_flyte_idl(pb2_object.metadata_defaults),
             interface=_interface.TypedInterface.from_flyte_idl(pb2_object.interface),
             nodes=[Node.from_flyte_idl(n) for n in pb2_object.nodes],
             outputs=[_Binding.from_flyte_idl(b) for b in pb2_object.outputs],
-            failure_node=Node.from_flyte_idl(pb2_object.failure_node)
-            if pb2_object.HasField("failure_node")
-            else None,
+            failure_node=Node.from_flyte_idl(pb2_object.failure_node) if pb2_object.HasField("failure_node") else None,
         )
 
 

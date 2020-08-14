@@ -95,9 +95,7 @@ class SdkTask(
         t = cls(
             type=base_model.type,
             metadata=base_model.metadata,
-            interface=_interfaces.TypedInterface.promote_from_model(
-                base_model.interface
-            ),
+            interface=_interfaces.TypedInterface.promote_from_model(base_model.interface),
             custom=base_model.custom,
             container=base_model.container,
         )
@@ -156,9 +154,7 @@ class SdkTask(
         # TODO: Revisit the notion of supplying the project, domain, name, version, as opposed to relying on the
         #       current ID.
         self.validate()
-        id_to_register = _identifier.Identifier(
-            _identifier_model.ResourceType.TASK, project, domain, name, version
-        )
+        id_to_register = _identifier.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, version)
         old_id = self.id
 
         client = _flyte_engine._FlyteClientManager(
@@ -193,9 +189,7 @@ class SdkTask(
         :param Text version:
         :rtype: SdkTask
         """
-        task_id = _identifier.Identifier(
-            _identifier_model.ResourceType.TASK, project, domain, name, version
-        )
+        task_id = _identifier.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, version)
         admin_task = _flyte_engine._FlyteClientManager(
             _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
         ).client.get_task(task_id)
@@ -219,18 +213,12 @@ class SdkTask(
             _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
         ).client
         task_list, _ = client.list_tasks_paginated(
-            named_task,
-            limit=1,
-            sort_by=_admin_common.Sort(
-                "created_at", _admin_common.Sort.Direction.DESCENDING
-            ),
+            named_task, limit=1, sort_by=_admin_common.Sort("created_at", _admin_common.Sort.Direction.DESCENDING),
         )
         admin_task = task_list[0] if task_list else None
 
         if not admin_task:
-            raise _user_exceptions.FlyteEntityNotExistException(
-                "Named task {} not found".format(named_task)
-            )
+            raise _user_exceptions.FlyteEntityNotExistException("Named task {} not found".format(named_task))
         sdk_task = cls.promote_from_model(admin_task.closure.compiled_task.template)
         sdk_task._id = admin_task.id
         return sdk_task
@@ -265,9 +253,7 @@ class SdkTask(
         for k, v in _six.iteritems(inputs):
             if k in self.interface.inputs:
                 raise _user_exceptions.FlyteValidationException(
-                    "An input with name '{}' is already defined.  Redefinition is not allowed.".format(
-                        k
-                    )
+                    "An input with name '{}' is already defined.  Redefinition is not allowed.".format(k)
                 )
             if k in self.interface.outputs:
                 raise _user_exceptions.FlyteValidationException(
@@ -285,9 +271,7 @@ class SdkTask(
         for k, v in _six.iteritems(outputs):
             if k in self.interface.outputs:
                 raise _user_exceptions.FlyteValidationException(
-                    "An output with name '{}' is already defined.  Redefinition is not allowed.".format(
-                        k
-                    )
+                    "An output with name '{}' is already defined.  Redefinition is not allowed.".format(k)
                 )
             if k in self.interface.inputs:
                 raise _user_exceptions.FlyteValidationException(
@@ -318,20 +302,10 @@ class SdkTask(
         if self.container is not None and self.container.data_loading_config is None:
             # Only in the case of raw container tasks (which are the only valid tasks with container definitions that
             # can assign a client-side task version) their data config will be None.
-            raise ValueError(
-                "Client-side task versions are not supported for {} task type".format(
-                    self.type
-                )
-            )
+            raise ValueError("Client-side task versions are not supported for {} task type".format(self.type))
         if version is not None:
             return version
-        custom = (
-            _json_format.Parse(
-                _json.dumps(self.custom, sort_keys=True), _struct.Struct()
-            )
-            if self.custom
-            else None
-        )
+        custom = _json_format.Parse(_json.dumps(self.custom, sort_keys=True), _struct.Struct()) if self.custom else None
 
         # The task body is the entirety of the task template MINUS the identifier. The identifier is omitted because
         # 1) this method is used to compute the version portion of the identifier and
@@ -364,14 +338,14 @@ class SdkTask(
 
     @_exception_scopes.system_entry_point
     def launch_with_literals(
-            self,
-            project,
-            domain,
-            literal_inputs,
-            name=None,
-            notification_overrides=None,
-            label_overrides=None,
-            annotation_overrides=None,
+        self,
+        project,
+        domain,
+        literal_inputs,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
     ):
         """
         Launches a single task execution and returns the execution identifier.
@@ -391,9 +365,7 @@ class SdkTask(
         if disable_all:
             notification_overrides = None
         else:
-            notification_overrides = _admin_execution_models.NotificationList(
-                notification_overrides or []
-            )
+            notification_overrides = _admin_execution_models.NotificationList(notification_overrides or [])
             disable_all = None
 
         assumable_iam_role = _auth_config.ASSUMABLE_IAM_ROLE.get()
@@ -401,13 +373,11 @@ class SdkTask(
 
         if not (assumable_iam_role or kubernetes_service_account):
             _logging.warning(
-                "Using deprecated `role` from config. "
-                "Please update your config to use `assumable_iam_role` instead"
+                "Using deprecated `role` from config. " "Please update your config to use `assumable_iam_role` instead"
             )
             assumable_iam_role = _sdk_config.ROLE.get()
         auth_role = _common_model.AuthRole(
-            assumable_iam_role=assumable_iam_role,
-            kubernetes_service_account=kubernetes_service_account,
+            assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
         )
 
         client = _flyte_engine._FlyteClientManager(

@@ -1,9 +1,8 @@
 import logging as _logging
 import os as _os
+from pathlib import Path
 
 import click
-
-from pathlib import Path
 
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_VERSION
 from flytekit.clis.sdk_in_container.launch_plan import launch_plans

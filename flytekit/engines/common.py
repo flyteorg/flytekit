@@ -297,9 +297,7 @@ class BaseTaskExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, object))
         pass
 
 
-class BaseExecutionEngineFactory(
-    _six.with_metaclass(_common_models.FlyteABCMeta, object)
-):
+class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
     """
     This object should be implemented to satisfy the basic engine interface.
     """

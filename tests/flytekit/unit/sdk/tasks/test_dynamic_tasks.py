@@ -118,22 +118,14 @@ def manual_assign_name():
 @outputs(out=Types.Integer)
 @dynamic_task
 def dynamic_wf_task(wf_params, task_input_num, out):
-    wf_params.logging.info(
-        "Running inner task... yielding a code generated sub workflow"
-    )
+    wf_params.logging.info("Running inner task... yielding a code generated sub workflow")
 
     input_a = Input(Types.Integer, help="Tell me something")
     node1 = sq_sub_task(in1=input_a)
 
     MyUnregisteredWorkflow = workflow(
         inputs={"a": input_a,},
-        outputs={
-            "ooo": Output(
-                node1.outputs.out1,
-                sdk_type=Types.Integer,
-                help="This is an integer output",
-            )
-        },
+        outputs={"ooo": Output(node1.outputs.out1, sdk_type=Types.Integer, help="This is an integer output",)},
         nodes={"node_one": node1,},
     )
 
@@ -185,9 +177,7 @@ def test_dynamic_workflow():
 @outputs(out=Types.Integer)
 @dynamic_task
 def nested_dynamic_wf_task(wf_params, task_input_num, out):
-    wf_params.logging.info(
-        "Running inner task... yielding a code generated sub workflow"
-    )
+    wf_params.logging.info("Running inner task... yielding a code generated sub workflow")
 
     # Inner workflow
     input_a = Input(Types.Integer, help="Tell me something")
@@ -195,13 +185,7 @@ def nested_dynamic_wf_task(wf_params, task_input_num, out):
 
     MyUnregisteredWorkflowInner = workflow(
         inputs={"a": input_a,},
-        outputs={
-            "ooo": Output(
-                node1.outputs.out1,
-                sdk_type=Types.Integer,
-                help="This is an integer output",
-            )
-        },
+        outputs={"ooo": Output(node1.outputs.out1, sdk_type=Types.Integer, help="This is an integer output",)},
         nodes={"node_one": node1,},
     )
 
@@ -214,13 +198,7 @@ def nested_dynamic_wf_task(wf_params, task_input_num, out):
 
     MyUnregisteredWorkflowOuter = workflow(
         inputs={"a": input_a,},
-        outputs={
-            "ooo": Output(
-                node1.outputs.ooo,
-                sdk_type=Types.Integer,
-                help="This is an integer output",
-            )
-        },
+        outputs={"ooo": Output(node1.outputs.ooo, sdk_type=Types.Integer, help="This is an integer output",)},
         nodes={"node_one": node1,},
     )
 
@@ -242,16 +220,12 @@ def test_nested_dynamic_workflow():
 @inputs(task_input_num=Types.Integer)
 @dynamic_task
 def dynamic_wf_no_outputs_task(wf_params, task_input_num):
-    wf_params.logging.info(
-        "Running inner task... yielding a code generated sub workflow"
-    )
+    wf_params.logging.info("Running inner task... yielding a code generated sub workflow")
 
     input_a = Input(Types.Integer, help="Tell me something")
     node1 = sq_sub_task(in1=input_a)
 
-    MyUnregisteredWorkflow = workflow(
-        inputs={"a": input_a,}, outputs={}, nodes={"node_one": node1,}
-    )
+    MyUnregisteredWorkflow = workflow(inputs={"a": input_a,}, outputs={}, nodes={"node_one": node1,})
 
     setattr(MyUnregisteredWorkflow, "auto_assign_name", manual_assign_name)
     MyUnregisteredWorkflow._platform_valid_name = "unregistered"

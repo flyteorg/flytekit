@@ -21,8 +21,7 @@ from flytekit.sdk.types import Types
 def test_fetch_latest(mock_url, mock_client_manager):
     mock_url.get.return_value = "localhost"
     admin_task = _task_models.Task(
-        _identifier.Identifier(_identifier.ResourceType.TASK, "p1", "d1", "n1", "v1"),
-        _MagicMock(),
+        _identifier.Identifier(_identifier.ResourceType.TASK, "p1", "d1", "n1", "v1"), _MagicMock(),
     )
     mock_client = _MagicMock()
     mock_client.list_tasks_paginated = _MagicMock(return_value=([admin_task], ""))
@@ -59,22 +58,13 @@ def get_sample_task():
 def test_task_serialization():
     t = get_sample_task()
     with TemporaryConfiguration(
-        _os.path.join(
-            _os.path.dirname(_os.path.realpath(__file__)),
-            "../../../common/configs/local.config",
-        ),
-        internal_overrides={
-            "image": "myflyteimage:v123",
-            "project": "myflyteproject",
-            "domain": "development",
-        },
+        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../../common/configs/local.config",),
+        internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development",},
     ):
         s = t.serialize()
 
     assert isinstance(s, _admin_task_pb2.TaskSpec)
-    assert (
-        s.template.id.name == "tests.flytekit.unit.common_tests.tasks.test_task.my_task"
-    )
+    assert s.template.id.name == "tests.flytekit.unit.common_tests.tasks.test_task.my_task"
     assert s.template.container.image == "myflyteimage:v123"
 
 

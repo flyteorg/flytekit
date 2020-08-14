@@ -31,9 +31,7 @@ def get_engine(engine_name=None):
 
     module_path, attr, engine_impl = _ENGINE_NAME_TO_MODULES_CACHE[engine_name]
     if engine_impl is None:
-        module = _exception_scopes.user_entry_point(_importlib.import_module)(
-            module_path
-        )
+        module = _exception_scopes.user_entry_point(_importlib.import_module)(module_path)
 
         if not hasattr(module, attr):
             raise _user_exceptions.FlyteValueException(

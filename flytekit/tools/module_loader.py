@@ -14,9 +14,7 @@ def iterate_modules(pkgs):
     for package_name in pkgs:
         package = importlib.import_module(package_name)
         yield package
-        for _, name, _ in pkgutil.walk_packages(
-            package.__path__, prefix="{}.".format(package_name)
-        ):
+        for _, name, _ in pkgutil.walk_packages(package.__path__, prefix="{}.".format(package_name)):
             yield importlib.import_module(name)
 
 
@@ -47,9 +45,7 @@ def _topo_sort_helper(
     if obj in recursion_set:
         raise _user_exceptions.FlyteAssertion(
             "A cyclical dependency was detected during topological sort of entities.  "
-            "Cycle path was:\n\n\t{}".format(
-                "\n\t".join(p for p in recursion_stack[recursion_set[obj] :])
-            )
+            "Cycle path was:\n\n\t{}".format("\n\t".join(p for p in recursion_stack[recursion_set[obj] :]))
         )
     recursion_set[obj] = len(recursion_stack) - 1
 
@@ -99,9 +95,7 @@ def iterate_registerable_entities_in_order(
     :rtype: module, Text, flytekit.common.mixins.registerable.RegisterableEntity
     """
     if ignore_entities and include_entities:
-        raise _user_exceptions.FlyteAssertion(
-            "ignore_entities and include_entities cannot both be set"
-        )
+        raise _user_exceptions.FlyteAssertion("ignore_entities and include_entities cannot both be set")
     elif not ignore_entities and not include_entities:
         include_entities = (object,)
         ignore_entities = tuple()

@@ -19,17 +19,13 @@ def test_metadata_schedule():
 
 
 def test_lp_closure():
-    v = interface.Variable(
-        types.LiteralType(simple=types.SimpleType.BOOLEAN), "asdf asdf asdf"
-    )
+    v = interface.Variable(types.LiteralType(simple=types.SimpleType.BOOLEAN), "asdf asdf asdf")
     p = interface.Parameter(var=v)
     parameter_map = interface.ParameterMap({"ppp": p})
     parameter_map.to_flyte_idl()
     variable_map = interface.VariableMap({"vvv": v})
     obj = launch_plan.LaunchPlanClosure(
-        state=launch_plan.LaunchPlanState.ACTIVE,
-        expected_inputs=parameter_map,
-        expected_outputs=variable_map,
+        state=launch_plan.LaunchPlanState.ACTIVE, expected_inputs=parameter_map, expected_outputs=variable_map,
     )
     assert obj.expected_inputs == parameter_map
     assert obj.expected_outputs == variable_map

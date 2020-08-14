@@ -81,6 +81,4 @@ class ExecutionArtifact(_six.with_metaclass(_common_models.FlyteABCMeta, object)
                 return
             _time.sleep(poll_interval.total_seconds())
             self._sync_closure()
-        raise _user_exceptions.FlyteTimeout(
-            "Execution {} did not complete before timeout.".format(self)
-        )
+        raise _user_exceptions.FlyteTimeout("Execution {} did not complete before timeout.".format(self))

@@ -25,9 +25,7 @@ class Sensor(_six.with_metaclass(_abc.ABCMeta, object)):
         self._max_failures = max_failures
         self._failures = 0
         self._exc_info = None
-        self._last_executed_time = _datetime.datetime(
-            year=1990, month=6, day=30
-        )  # Arbitrary date in the past.
+        self._last_executed_time = _datetime.datetime(year=1990, month=6, day=30)  # Arbitrary date in the past.
         self._sensed = False
 
     @_abc.abstractmethod
@@ -54,9 +52,7 @@ class Sensor(_six.with_metaclass(_abc.ABCMeta, object)):
 
         now = _datetime.datetime.utcnow()
 
-        time_to_wait_eval_period = self._evaluation_interval - (
-            now - self._last_executed_time
-        )
+        time_to_wait_eval_period = self._evaluation_interval - (now - self._last_executed_time)
         if time_to_wait_eval_period > _datetime.timedelta():
             return self._sensed, time_to_wait_eval_period
 
@@ -68,17 +64,11 @@ class Sensor(_six.with_metaclass(_abc.ABCMeta, object)):
             self._exc_info = _sys.exc_info()
             if self._failures > self._max_failures:
                 _logging.error(
-                    "{} failed (with no remaining retries) due to:\n\n{}".format(
-                        self, _traceback.format_exc()
-                    ),
+                    "{} failed (with no remaining retries) due to:\n\n{}".format(self, _traceback.format_exc()),
                 )
                 raise
             else:
-                _logging.warn(
-                    "{} failed (but will retry) due to:\n\n{}".format(
-                        self, _traceback.format_exc()
-                    )
-                )
+                _logging.warn("{} failed (but will retry) due to:\n\n{}".format(self, _traceback.format_exc()))
             time_to_wait = self._evaluation_interval
 
         self._last_executed_time = _datetime.datetime.utcnow()
@@ -98,8 +88,5 @@ class Sensor(_six.with_metaclass(_abc.ABCMeta, object)):
                 return True
             if time_to_wait:
                 _time.sleep(time_to_wait.total_seconds())
-            if (
-                timeout is not None
-                and (_datetime.datetime.utcnow() - started) > timeout
-            ):
+            if timeout is not None and (_datetime.datetime.utcnow() - started) > timeout:
                 return False

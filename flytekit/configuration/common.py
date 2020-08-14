@@ -171,15 +171,11 @@ class _FlyteConfigurationEntry(_six.with_metaclass(_abc.ABCMeta, object)):
         """
         val = _os.environ.get(self.env_var, None)
         if val is None:
-            referenced_env_var = _os.environ.get(
-                "{}_FROM_ENV_VAR".format(self.env_var), None
-            )
+            referenced_env_var = _os.environ.get("{}_FROM_ENV_VAR".format(self.env_var), None)
             if referenced_env_var is not None:
                 val = _os.environ.get(referenced_env_var, None)
             if val is None:
-                referenced_file = _os.environ.get(
-                    "{}_FROM_FILE".format(self.env_var), None
-                )
+                referenced_file = _os.environ.get("{}_FROM_FILE".format(self.env_var), None)
                 if referenced_file is not None:
                     val = _get_file_contents(referenced_file)
         return val
@@ -218,9 +214,7 @@ class FlyteStringConfigurationEntry(_FlyteConfigurationEntry):
     def _getter(self):
         val = self.retrieve_value()
         if val is None:
-            val = CONFIGURATION_SINGLETON.get_string(
-                self._section, self._key, default=self._default
-            )
+            val = CONFIGURATION_SINGLETON.get_string(self._section, self._key, default=self._default)
         return val
 
 
@@ -228,9 +222,7 @@ class FlyteIntegerConfigurationEntry(_FlyteConfigurationEntry):
     def _getter(self):
         val = self.retrieve_value()
         if val is None:
-            val = CONFIGURATION_SINGLETON.get_int(
-                self._section, self._key, default=self._default
-            )
+            val = CONFIGURATION_SINGLETON.get_int(self._section, self._key, default=self._default)
         if val is not None:
             return int(val)
         return None
@@ -241,9 +233,7 @@ class FlyteBoolConfigurationEntry(_FlyteConfigurationEntry):
         val = self.retrieve_value()
 
         if val is None:
-            return CONFIGURATION_SINGLETON.get_bool(
-                self._section, self._key, default=self._default
-            )
+            return CONFIGURATION_SINGLETON.get_bool(self._section, self._key, default=self._default)
         else:
             # Because bool('False') is True, compare to the same values that ConfigParser uses
             if val.lower() in ["false", "0", "off", "no"]:
@@ -265,9 +255,7 @@ class FlyteRequiredStringConfigurationEntry(_FlyteRequiredConfigurationEntry):
     def _getter(self):
         val = self.retrieve_value()
         if val is None:
-            val = CONFIGURATION_SINGLETON.get_string(
-                self._section, self._key, default=self._default
-            )
+            val = CONFIGURATION_SINGLETON.get_string(self._section, self._key, default=self._default)
         return val
 
 
@@ -275,9 +263,7 @@ class FlyteRequiredIntegerConfigurationEntry(_FlyteRequiredConfigurationEntry):
     def _getter(self):
         val = self.retrieve_value()
         if val is None:
-            val = CONFIGURATION_SINGLETON.get_int(
-                self._section, self._key, default=self._default
-            )
+            val = CONFIGURATION_SINGLETON.get_int(self._section, self._key, default=self._default)
         return int(val)
 
 
@@ -285,9 +271,7 @@ class FlyteRequiredBoolConfigurationEntry(_FlyteRequiredConfigurationEntry):
     def _getter(self):
         val = self.retrieve_value()
         if val is None:
-            val = CONFIGURATION_SINGLETON.get_bool(
-                self._section, self._key, default=self._default
-            )
+            val = CONFIGURATION_SINGLETON.get_bool(self._section, self._key, default=self._default)
         return bool(val)
 
 

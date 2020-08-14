@@ -40,9 +40,7 @@ def test_notification():
     assert obj2.phases == phases
     assert obj2.email.recipients_email == recipients
 
-    obj = _common.Notification(
-        phases, pager_duty=_common.PagerDutyNotification(recipients)
-    )
+    obj = _common.Notification(phases, pager_duty=_common.PagerDutyNotification(recipients))
     assert obj.phases == phases
     assert obj.pager_duty.recipients_email == recipients
     obj2 = _common.Notification.from_flyte_idl(obj.to_flyte_idl())

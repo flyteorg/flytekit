@@ -27,10 +27,7 @@ def test_proto_to_literal_type():
 
 def test_proto():
     proto_type = _proto.create_protobuf(_errors_pb2.ContainerError)
-    assert (
-        proto_type.short_class_string()
-        == "Types.Proto(flyteidl.core.errors_pb2.ContainerError)"
-    )
+    assert proto_type.short_class_string() == "Types.Proto(flyteidl.core.errors_pb2.ContainerError)"
 
     pb = _errors_pb2.ContainerError(code="code", message="message")
     obj = proto_type.from_python_std(pb)
