@@ -110,7 +110,6 @@ def workflow(nodes: Dict[str, _nodes.SdkNode], inputs=None, outputs=None, on_fai
     :rtype: flytekit.common.workflow.SdkWorkflow
     """
     # TODO: Why does Pycharm complain about nodes?
-    # import ipdb; ipdb.set_trace()
     wf = _common_workflow.PythonWorkflow.construct_from_class_definition(
         inputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(inputs or {}))],
         outputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(outputs or {}))],

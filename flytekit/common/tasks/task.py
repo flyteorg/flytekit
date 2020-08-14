@@ -65,14 +65,6 @@ class SdkTask(
         """
         return super(SdkTask, self).interface
 
-    # TODO: Remove this since this is not a Flyte control plane concept
-    @property
-    def upstream_entities(self):
-        """
-        Task, workflow, and launch plan that need to be registered in advance of this workflow.
-        :rtype: set[T]
-        """
-        return set()
 
     @property
     def resource_type(self):

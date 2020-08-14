@@ -14,7 +14,6 @@ from flytekit.common.mixins import registerable as _registerable
 
 
 class ExecutionParameters(object):
-
     """
     This is the parameter object that will be provided as the first parameter for every execution of any @*_task
     decorated function.
@@ -91,15 +90,15 @@ class ExecutionParameters(object):
         return self._execution_id
 
 
-class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task_models.Container)):
+class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.ExtendedSdkType):
 
     def __init__(
-        self,
-        command,
-        args,
-        resources,
-        env,
-        config,
+            self,
+            command,
+            args,
+            resources,
+            env,
+            config,
     ):
         super(SdkRunnableContainer, self).__init__(
             "",
@@ -144,8 +143,7 @@ class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task
         return env
 
 
-class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task.SdkTask,
-                                          _registerable.LocalEntity)):
+class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_sdk_bases.ExtendedSdkType):
     """
     This class includes the additional logic for building a task that executes in Python code.  It has even more
     validation checks to ensure proper behavior than it's superclasses.
@@ -196,7 +194,6 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         :param dict[Text, T] custom:
         """
         self._task_function = task_function
-
         super(SdkRunnableTask, self).__init__(
             task_type,
             _task_models.TaskMetadata(
@@ -226,6 +223,8 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 environment=environment
             )
         )
+        # Constructor is not called since SdkTask's gets called.
+        _registerable.LocalEntity.__init__(self)
         self.id._name = "{}.{}".format(self.task_module, self.task_function_name)
 
     _banned_inputs = {}
@@ -241,7 +240,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         """
         self._validate_inputs(inputs)
         self.interface.inputs.update(inputs)
-        
+
     @classmethod
     def promote_from_model(cls, base_model):
         # TODO: If the task exists in this container, we should be able to retrieve it.

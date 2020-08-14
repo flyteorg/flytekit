@@ -1,6 +1,5 @@
 from mock import MagicMock
 
-from flytekit.engines.flyte import engine
 from flytekit.common.tasks.task import SdkTask
 from flytekit.common.workflow import SdkWorkflow
 from flytekit.common.launch_plan import SdkLaunchPlan
