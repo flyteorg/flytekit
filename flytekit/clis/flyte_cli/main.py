@@ -1739,7 +1739,7 @@ def update_execution_cluster_label(host, insecure, project, domain, name, value)
         )
 
 
-@_flyte_cli.command('get-matching-attributes', cls=_FlyteSubCommand)
+@_flyte_cli.command("get-matching-attributes", cls=_FlyteSubCommand)
 @_host_option
 @_insecure_option
 @_project_option
@@ -1768,7 +1768,7 @@ def get_matching_attributes(host, insecure, project, domain, name, resource_type
         _click.echo("{}".format(attributes))
 
 
-@_flyte_cli.command('list-matching-attributes', cls=_FlyteSubCommand)
+@_flyte_cli.command("list-matching-attributes", cls=_FlyteSubCommand)
 @_host_option
 @_insecure_option
 @_click.option("--resource-type", help="Resource type", required=True,
