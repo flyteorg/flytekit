@@ -403,8 +403,9 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
             for v in self.user_inputs if not v.sdk_required
         }
         compiled_inputs.update(input_map)
+        # import ipdb; ipdb.set_trace()
 
-        return self.flyte_workflow.__call__(*args, **input_map)
+        return self.flyte_workflow.__call__(*args, **compiled_inputs)
 
     @property
     def flyte_workflow(self) -> SdkWorkflow:
@@ -464,7 +465,11 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
 
     @property
     def nodes(self):
-        return self._nodes
+        return self.flyte_workflow.nodes
+
+    @property
+    def outputs(self):
+        return self.flyte_workflow.outputs
 
     @property
     def upstream_entities(self):

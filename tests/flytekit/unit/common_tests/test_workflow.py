@@ -219,7 +219,8 @@ def test_workflow_node():
         workflow.Output('scalar_out', n1.outputs.b, sdk_type=primitives.Integer)
     ]
 
-    w = workflow.SdkWorkflow(inputs=input_list, outputs=wf_out, nodes=nodes)
+    sdk_wf = workflow.SdkWorkflow(inputs=input_list, outputs=wf_out, nodes=nodes)
+    w = workflow.PythonWorkflow(None, sdk_wf, input_list, nodes)
 
     # Test that required input isn't set
     with _pytest.raises(_user_exceptions.FlyteAssertion):
@@ -252,9 +253,9 @@ def test_workflow_node():
     assert n.inputs[1].binding.scalar.primitive.integer == 10
 
     # Test that workflow is saved in the node
-    w._id = 'fake'
+    w.id = 'fake'
     assert n.workflow_node.sub_workflow_ref == 'fake'
-    w._id = None
+    w.id = None
 
     # Test that outputs are promised
     n.assign_id_and_return('node-id*')  # dns'ified
