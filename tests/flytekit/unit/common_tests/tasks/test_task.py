@@ -1,16 +1,18 @@
-import pytest as _pytest
 import os as _os
-from mock import patch as _patch, MagicMock as _MagicMock
 
-from flytekit.configuration import TemporaryConfiguration
+import pytest as _pytest
+from flyteidl.admin import task_pb2 as _admin_task_pb2
+from mock import MagicMock as _MagicMock
+from mock import patch as _patch
+
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import task as _task
+from flytekit.common.tasks.presto_task import SdkPrestoTask
 from flytekit.common.types import primitives
+from flytekit.configuration import TemporaryConfiguration
 from flytekit.models import task as _task_models
 from flytekit.models.core import identifier as _identifier
-from flytekit.sdk.tasks import python_task, inputs, outputs
-from flyteidl.admin import task_pb2 as _admin_task_pb2
-from flytekit.common.tasks.presto_task import SdkPrestoTask
+from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.types import Types
 
 

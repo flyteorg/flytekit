@@ -6,12 +6,14 @@ import six
 from click.testing import CliRunner
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit.bin.entrypoint import execute_task_cmd, _execute_task
-from flytekit.common import utils as _utils, constants as _constants
+from flytekit.bin.entrypoint import _execute_task, execute_task_cmd
+from flytekit.common import constants as _constants
+from flytekit.common import utils as _utils
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.models import literals as _literals
-from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
+from flytekit.configuration import \
+    TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.models import literals as _literal_models
+from flytekit.models import literals as _literals
 from tests.flytekit.common import task_definitions as _task_defs
 
 

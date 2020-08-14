@@ -2,9 +2,8 @@ from __future__ import absolute_import
 
 import six as _six
 
-from flytekit.common.types.helpers import (
-    get_sdk_type_from_literal_type as _get_sdk_type_from_literal_type,
-)
+from flytekit.common.types.helpers import \
+    get_sdk_type_from_literal_type as _get_sdk_type_from_literal_type
 from flytekit.models import literals as _literals
 
 

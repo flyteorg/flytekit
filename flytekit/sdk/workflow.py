@@ -1,11 +1,10 @@
 from typing import Dict
+
 import six as _six
 
-from flytekit.common import (
-    workflow as _common_workflow,
-    promise as _promise,
-    nodes as _nodes,
-)
+from flytekit.common import nodes as _nodes
+from flytekit.common import promise as _promise
+from flytekit.common import workflow as _common_workflow
 from flytekit.common.types import helpers as _type_helpers
 
 

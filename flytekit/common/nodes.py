@@ -5,40 +5,34 @@ import logging as _logging
 import os as _os
 
 import six as _six
-from sortedcontainers import SortedDict as _SortedDict
 from flyteidl.core import literals_pb2 as _literals_pb2
-from flytekit.clients.helpers import (
-    iterate_node_executions as _iterate_node_executions,
-    iterate_task_executions as _iterate_task_executions,
-)
+from sortedcontainers import SortedDict as _SortedDict
 
-from flytekit.common import constants as _constants, utils as _common_utils
-from flytekit.common import (
-    sdk_bases as _sdk_bases,
-    promise as _promise,
-    component_nodes as _component_nodes,
-)
-from flytekit.common.exceptions import (
-    scopes as _exception_scopes,
-    user as _user_exceptions,
-)
+from flytekit.clients.helpers import \
+    iterate_node_executions as _iterate_node_executions
+from flytekit.clients.helpers import \
+    iterate_task_executions as _iterate_task_executions
+from flytekit.common import component_nodes as _component_nodes
+from flytekit.common import constants as _constants
+from flytekit.common import promise as _promise
+from flytekit.common import sdk_bases as _sdk_bases
+from flytekit.common import utils as _common_utils
+from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.common.mixins import hash as _hash_mixin, artifact as _artifact_mixin
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.mixins import artifact as _artifact_mixin
+from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.tasks import executions as _task_executions
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import _dnsify
 from flytekit.configuration import platform as _platform_config
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models import (
-    common as _common_models,
-    node_execution as _node_execution_models,
-    literals as _literal_models,
-)
-from flytekit.models.core import (
-    workflow as _workflow_model,
-    execution as _execution_models,
-)
 from flytekit.interfaces.data import data_proxy as _data_proxy
+from flytekit.models import common as _common_models
+from flytekit.models import literals as _literal_models
+from flytekit.models import node_execution as _node_execution_models
+from flytekit.models.core import execution as _execution_models
+from flytekit.models.core import workflow as _workflow_model
 
 
 class ParameterMapper(_six.with_metaclass(_common_models.FlyteABCMeta, _SortedDict)):

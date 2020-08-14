@@ -1,9 +1,13 @@
 from __future__ import absolute_import
+
 from datetime import datetime, timedelta
-from flytekit.models import literals, types as _types
-from tests.flytekit.common import parameterizers
+
 import pytest
 import pytz
+
+from flytekit.models import literals
+from flytekit.models import types as _types
+from tests.flytekit.common import parameterizers
 
 
 def test_retry_strategy():

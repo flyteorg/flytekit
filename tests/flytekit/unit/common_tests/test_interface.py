@@ -1,8 +1,10 @@
 from __future__ import absolute_import
+
+import pytest
+
 from flytekit.common import interface
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.types import primitives, containers
-import pytest
+from flytekit.common.types import containers, primitives
 
 
 def test_binding_data_primitive_static():

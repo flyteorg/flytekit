@@ -4,12 +4,8 @@ import os as _os
 
 import click
 
-from flytekit.clis.sdk_in_container.constants import (
-    CTX_PACKAGES,
-    CTX_PROJECT,
-    CTX_DOMAIN,
-    CTX_VERSION,
-)
+from flytekit.clis.sdk_in_container.constants import (CTX_DOMAIN, CTX_PACKAGES,
+                                                      CTX_PROJECT, CTX_VERSION)
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions.scopes import system_entry_point

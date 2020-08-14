@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 from flytekit.models.common import FlyteIdlEntity as _FlyteIdlEntity
 
 

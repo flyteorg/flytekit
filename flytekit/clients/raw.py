@@ -1,26 +1,24 @@
 from __future__ import absolute_import
 
-from grpc import (
-    insecure_channel as _insecure_channel,
-    secure_channel as _secure_channel,
-    RpcError as _RpcError,
-    StatusCode as _GrpcStatusCode,
-    ssl_channel_credentials as _ssl_channel_credentials,
-)
-from google.protobuf.json_format import MessageToJson as _MessageToJson
-from flyteidl.service import admin_pb2_grpc as _admin_service
-from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.configuration.platform import AUTH as _AUTH
-from flytekit.configuration.creds import (
-    CLIENT_ID as _CLIENT_ID,
-    CLIENT_CREDENTIALS_SCOPE as _SCOPE,
-)
-from flytekit.clis.sdk_in_container import basic_auth as _basic_auth
 import logging as _logging
+
 import six as _six
-from flytekit.configuration import creds as _creds_config, platform as _platform_config
+from flyteidl.service import admin_pb2_grpc as _admin_service
+from google.protobuf.json_format import MessageToJson as _MessageToJson
+from grpc import RpcError as _RpcError
+from grpc import StatusCode as _GrpcStatusCode
+from grpc import insecure_channel as _insecure_channel
+from grpc import secure_channel as _secure_channel
+from grpc import ssl_channel_credentials as _ssl_channel_credentials
 
 from flytekit.clis.auth import credentials as _credentials_access
+from flytekit.clis.sdk_in_container import basic_auth as _basic_auth
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.configuration import creds as _creds_config
+from flytekit.configuration import platform as _platform_config
+from flytekit.configuration.creds import CLIENT_CREDENTIALS_SCOPE as _SCOPE
+from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
+from flytekit.configuration.platform import AUTH as _AUTH
 
 
 def _refresh_credentials_standard(flyte_client):

@@ -1,41 +1,36 @@
-import os as _os
-import json as _json
-import papermill as _pm
-from google.protobuf import text_format as _text_format, json_format as _json_format
-import importlib as _importlib
 import datetime as _datetime
+import importlib as _importlib
+import inspect as _inspect
+import json as _json
+import os as _os
 import sys as _sys
+
+import papermill as _pm
 import six as _six
+from google.protobuf import json_format as _json_format
+from google.protobuf import text_format as _text_format
+
 from flytekit import __version__
 from flytekit.bin import entrypoint as _entrypoint
-from flytekit.sdk.types import Types as _Types
-from flytekit.common.types import helpers as _type_helpers, primitives as _primitives
-from flytekit.common import (
-    constants as _constants,
-    sdk_bases as _sdk_bases,
-    interface as _interface2,
-)
-from flytekit.common.exceptions import (
-    scopes as _exception_scopes,
-    user as _user_exceptions,
-)
-from flytekit.common.tasks import (
-    sdk_runnable as _sdk_runnable,
-    spark_task as _spark_task,
-    output as _task_output,
-    task as _base_tasks,
-)
-from flytekit.models import (
-    literals as _literal_models,
-    task as _task_models,
-    interface as _interface,
-)
+from flytekit.common import constants as _constants
+from flytekit.common import interface as _interface2
+from flytekit.common import sdk_bases as _sdk_bases
+from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.tasks import output as _task_output
+from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.common.tasks import spark_task as _spark_task
+from flytekit.common.tasks import task as _base_tasks
+from flytekit.common.types import helpers as _type_helpers
+from flytekit.common.types import primitives as _primitives
+from flytekit.contrib.notebook.supported_types import \
+    notebook_types_map as _notebook_types_map
 from flytekit.engines import loader as _engine_loader
-import inspect as _inspect
+from flytekit.models import interface as _interface
+from flytekit.models import literals as _literal_models
+from flytekit.models import task as _task_models
 from flytekit.sdk.spark_types import SparkType as _spark_type
-from flytekit.contrib.notebook.supported_types import (
-    notebook_types_map as _notebook_types_map,
-)
+from flytekit.sdk.types import Types as _Types
 
 OUTPUT_NOTEBOOK = "output_notebook"
 

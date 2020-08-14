@@ -1,6 +1,8 @@
 from __future__ import absolute_import
-from flytekit.configuration import TemporaryConfiguration
+
 import pytest as _pytest
+
+from flytekit.configuration import TemporaryConfiguration
 
 
 @_pytest.fixture(scope="function", autouse=True)

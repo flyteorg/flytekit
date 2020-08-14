@@ -1,11 +1,12 @@
 from __future__ import absolute_import
 
+import pytest as _pytest
+
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_runnable
 from flytekit.common.types import primitives
 from flytekit.models import interface
-import pytest as _pytest
 
 
 def test_basic_unit_test():

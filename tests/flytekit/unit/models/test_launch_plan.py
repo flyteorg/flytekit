@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from flytekit.models import launch_plan, schedule, interface, types
+from flytekit.models import interface, launch_plan, schedule, types
 
 
 def test_metadata():

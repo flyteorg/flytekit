@@ -1,7 +1,9 @@
 from __future__ import absolute_import
+
+import pytest
+
 from flytekit.clis.sdk_in_container import launch_plan
 from flytekit.clis.sdk_in_container.launch_plan import launch_plans
-import pytest
 
 
 def test_list_commands(mock_ctx):

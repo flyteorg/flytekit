@@ -1,10 +1,13 @@
 from __future__ import absolute_import, division
-from flytekit.models import schedule as _schedule_models
+
+import datetime as _datetime
+
+import croniter as _croniter
+import six as _six
+
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
-import croniter as _croniter
-import datetime as _datetime
-import six as _six
+from flytekit.models import schedule as _schedule_models
 
 
 class _ExtendedSchedule(_schedule_models.Schedule):

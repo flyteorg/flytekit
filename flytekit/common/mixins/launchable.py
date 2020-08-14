@@ -1,7 +1,8 @@
 from __future__ import absolute_import
-import abc as _abc
-import six as _six
 
+import abc as _abc
+
+import six as _six
 from deprecated import deprecated as _deprecated
 
 

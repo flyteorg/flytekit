@@ -1,22 +1,22 @@
 from __future__ import absolute_import
 
+import datetime as _datetime
 import importlib as _importlib
 import os as _os
+import random as _random
 
 import click as _click
-import datetime as _datetime
-import random as _random
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.common import utils as _utils
-from flytekit.common.exceptions import scopes as _scopes, system as _system_exceptions
-from flytekit.configuration import (
-    internal as _internal_config,
-    TemporaryConfiguration as _TemporaryConfiguration,
-)
+from flytekit.common.exceptions import scopes as _scopes
+from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.configuration import \
+    TemporaryConfiguration as _TemporaryConfiguration
+from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
-from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces import random as _flyte_random
+from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import literals as _literal_models
 
 

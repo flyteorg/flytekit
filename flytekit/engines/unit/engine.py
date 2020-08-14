@@ -2,28 +2,26 @@ from __future__ import absolute_import
 
 import logging as _logging
 import os as _os
+from datetime import datetime as _datetime
 
 import six as _six
-from datetime import datetime as _datetime
+from flyteidl.plugins import qubole_pb2 as _qubole_pb2
+from google.protobuf.json_format import ParseDict as _ParseDict
 from six import moves as _six_moves
 
-from google.protobuf.json_format import ParseDict as _ParseDict
-from flyteidl.plugins import qubole_pb2 as _qubole_pb2
-from flytekit.common import constants as _sdk_constants, utils as _common_utils
-from flytekit.common.exceptions import (
-    user as _user_exceptions,
-    system as _system_exception,
-)
+from flytekit.common import constants as _sdk_constants
+from flytekit.common import utils as _common_utils
+from flytekit.common.exceptions import system as _system_exception
+from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
+from flytekit.configuration import \
+    TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.engines import common as _common_engine
 from flytekit.engines.unit.mock_stats import MockStats
 from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.models import (
-    literals as _literals,
-    array_job as _array_job,
-    qubole as _qubole_models,
-)
+from flytekit.models import array_job as _array_job
+from flytekit.models import literals as _literals
+from flytekit.models import qubole as _qubole_models
 from flytekit.models.core.identifier import WorkflowExecutionIdentifier
 
 

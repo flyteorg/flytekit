@@ -3,7 +3,8 @@ import os as _os
 import six as _six
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions
+from flytekit.clients.helpers import \
+    iterate_node_executions as _iterate_node_executions
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _common_utils
 from flytekit.common.exceptions import user as _user_exceptions

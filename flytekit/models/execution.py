@@ -3,10 +3,11 @@ from __future__ import absolute_import
 import flyteidl.admin.execution_pb2 as _execution_pb2
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import flyteidl.admin.task_execution_pb2 as _task_execution_pb2
+import pytz as _pytz
 
 from flytekit.models import common as _common_models
-from flytekit.models.core import execution as _core_execution, identifier as _identifier
-import pytz as _pytz
+from flytekit.models.core import execution as _core_execution
+from flytekit.models.core import identifier as _identifier
 
 
 class ExecutionMetadata(_common_models.FlyteIdlEntity):

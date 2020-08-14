@@ -1,7 +1,10 @@
 from __future__ import absolute_import
-from flytekit.models import common as _common
-from flytekit.models.core import identifier as _identifier, execution as _execution
+
 from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
+
+from flytekit.models import common as _common
+from flytekit.models.core import execution as _execution
+from flytekit.models.core import identifier as _identifier
 
 
 class TaskExecutionClosure(_common.FlyteIdlEntity):

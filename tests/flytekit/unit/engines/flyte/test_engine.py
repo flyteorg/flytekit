@@ -1,25 +1,23 @@
 from __future__ import absolute_import
 
 import os
+
 import pytest
 from flyteidl.core import errors_pb2
-from mock import MagicMock, patch, PropertyMock
+from mock import MagicMock, PropertyMock, patch
 
 from flytekit.common import constants, utils
 from flytekit.common.exceptions import scopes
 from flytekit.configuration import TemporaryConfiguration
 from flytekit.engines.flyte import engine
-from flytekit.models import (
-    literals,
-    execution as _execution_models,
-    common as _common_models,
-    launch_plan as _launch_plan_models,
-    task as _task_models,
-)
+from flytekit.models import common as _common_models
+from flytekit.models import execution as _execution_models
+from flytekit.models import launch_plan as _launch_plan_models
+from flytekit.models import literals
+from flytekit.models import task as _task_models
 from flytekit.models.admin import common as _common
 from flytekit.models.core import errors, identifier
 from flytekit.sdk import test_utils
-
 
 _INPUT_MAP = literals.LiteralMap(
     {

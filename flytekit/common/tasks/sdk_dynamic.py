@@ -1,34 +1,28 @@
 from __future__ import absolute_import
 
-import os as _os
-
 import itertools as _itertools
 import math
+import os as _os
+
 import six as _six
 
-from flytekit.common import (
-    constants as _constants,
-    interface as _interface,
-    sdk_bases as _sdk_bases,
-    launch_plan as _launch_plan,
-    workflow as _workflow,
-)
+from flytekit.common import constants as _constants
+from flytekit.common import interface as _interface
+from flytekit.common import launch_plan as _launch_plan
+from flytekit.common import sdk_bases as _sdk_bases
+from flytekit.common import workflow as _workflow
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.mixins import registerable as _registerable
-from flytekit.common.tasks import (
-    output as _task_output,
-    sdk_runnable as _sdk_runnable,
-    task as _task,
-)
+from flytekit.common.tasks import output as _task_output
+from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.common.tasks import task as _task
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import _dnsify
 from flytekit.configuration import internal as _internal_config
-from flytekit.models import (
-    literals as _literal_models,
-    dynamic_job as _dynamic_job,
-    array_job as _array_job,
-)
+from flytekit.models import array_job as _array_job
+from flytekit.models import dynamic_job as _dynamic_job
+from flytekit.models import literals as _literal_models
 
 
 class PromiseOutputReference(_task_output.OutputReference):

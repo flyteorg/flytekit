@@ -2,16 +2,13 @@ from __future__ import absolute_import
 
 from flyteidl.core import workflow_pb2 as _core_workflow
 
-from flytekit.models import common as _common, interface as _interface
-from flytekit.models.core import (
-    identifier as _identifier,
-    errors as _errors,
-    condition as _condition,
-)
-from flytekit.models.literals import (
-    RetryStrategy as _RetryStrategy,
-    Binding as _Binding,
-)
+from flytekit.models import common as _common
+from flytekit.models import interface as _interface
+from flytekit.models.core import condition as _condition
+from flytekit.models.core import errors as _errors
+from flytekit.models.core import identifier as _identifier
+from flytekit.models.literals import Binding as _Binding
+from flytekit.models.literals import RetryStrategy as _RetryStrategy
 
 
 class IfBlock(_common.FlyteIdlEntity):

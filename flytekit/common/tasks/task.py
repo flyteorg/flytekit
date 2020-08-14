@@ -4,40 +4,32 @@ import logging as _logging
 import uuid as _uuid
 
 import six as _six
-from google.protobuf import json_format as _json_format, struct_pb2 as _struct
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
 
-from flytekit.common import (
-    interface as _interfaces,
-    nodes as _nodes,
-    sdk_bases as _sdk_bases,
-    workflow_execution as _workflow_execution,
-)
+from flytekit.common import interface as _interfaces
+from flytekit.common import nodes as _nodes
+from flytekit.common import sdk_bases as _sdk_bases
+from flytekit.common import workflow_execution as _workflow_execution
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions import (
-    user as _user_exceptions,
-    system as _system_exceptions,
-)
-from flytekit.common.mixins import (
-    registerable as _registerable,
-    hash as _hash_mixin,
-    launchable as _launchable_mixin,
-)
+from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.mixins import hash as _hash_mixin
+from flytekit.common.mixins import launchable as _launchable_mixin
+from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import (
-    internal as _internal_config,
-    platform as _platform_config,
-    auth as _auth_config,
-    sdk as _sdk_config,
-)
+from flytekit.configuration import auth as _auth_config
+from flytekit.configuration import internal as _internal_config
+from flytekit.configuration import platform as _platform_config
+from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models import common as _common_model, task as _task_model
+from flytekit.models import common as _common_model
 from flytekit.models import execution as _admin_execution_models
-from flytekit.models.core import (
-    workflow as _workflow_model,
-    identifier as _identifier_model,
-)
+from flytekit.models import task as _task_model
 from flytekit.models.admin import common as _admin_common
+from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import workflow as _workflow_model
 
 
 class SdkTask(

@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 
-from flytekit.models import common as _common
 from flyteidl.admin import common_pb2 as _common_pb2
+
+from flytekit.models import common as _common
 
 
 class Sort(_common.FlyteIdlEntity):

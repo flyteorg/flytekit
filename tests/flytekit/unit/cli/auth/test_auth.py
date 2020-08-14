@@ -1,10 +1,9 @@
 from __future__ import absolute_import
 
 import re
+from multiprocessing import Queue as _Queue
 
 from flytekit.clis.auth import auth as _auth
-
-from multiprocessing import Queue as _Queue
 
 try:  # Python 3
     import http.server as _BaseHTTPServer

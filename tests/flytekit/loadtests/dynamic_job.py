@@ -2,10 +2,11 @@ from __future__ import absolute_import, division, print_function
 
 import time
 
-from flytekit.sdk.tasks import python_task, dynamic_task, inputs, outputs
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class, Input
 from six.moves import range
+
+from flytekit.sdk.tasks import dynamic_task, inputs, outputs, python_task
+from flytekit.sdk.types import Types
+from flytekit.sdk.workflow import Input, workflow_class
 
 
 @inputs(value1=Types.Integer)

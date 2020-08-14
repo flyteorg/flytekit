@@ -1,9 +1,13 @@
 from __future__ import absolute_import
-from flytekit.models import literals as _literal_models, common as _common_models
+
+import abc as _abc
+
+import six as _six
+
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
-import abc as _abc
-import six as _six
+from flytekit.models import common as _common_models
+from flytekit.models import literals as _literal_models
 
 
 class FlyteSdkType(

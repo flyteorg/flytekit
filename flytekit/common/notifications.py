@@ -1,9 +1,11 @@
 from __future__ import absolute_import
-from flytekit.models import common as _common_model
-from flytekit.models.core import execution as _execution_model
+
+import six as _six
+
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
-import six as _six
+from flytekit.models import common as _common_model
+from flytekit.models.core import execution as _execution_model
 
 
 class Notification(

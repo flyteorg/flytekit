@@ -1,15 +1,13 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import random
 from operator import add
 
 from six.moves import range
 
-from flytekit.sdk.tasks import spark_task, inputs, outputs, python_task
+from flytekit.sdk.tasks import inputs, outputs, python_task, spark_task
 from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class, Input
+from flytekit.sdk.workflow import Input, workflow_class
 
 
 @inputs(partitions=Types.Integer)

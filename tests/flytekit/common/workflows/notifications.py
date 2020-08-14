@@ -1,10 +1,10 @@
 from __future__ import absolute_import, print_function
 
-from flytekit.sdk.tasks import python_task, inputs, outputs
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class, Input
 from flytekit.common import notifications as _notifications
 from flytekit.models.core import execution as _execution
+from flytekit.sdk.tasks import inputs, outputs, python_task
+from flytekit.sdk.types import Types
+from flytekit.sdk.workflow import Input, workflow_class
 
 
 @inputs(a=Types.Integer, b=Types.Integer)

@@ -1,5 +1,6 @@
 from __future__ import absolute_import
-from flytekit.common.exceptions import user, base
+
+from flytekit.common.exceptions import base, user
 
 
 def test_flyte_user_exception():

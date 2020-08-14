@@ -1,12 +1,10 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from six import moves as _six_moves
 
-from flytekit.sdk.tasks import python_task, inputs, outputs, dynamic_task
+from flytekit.sdk.tasks import dynamic_task, inputs, outputs, python_task
 from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class, Output, Input
+from flytekit.sdk.workflow import Input, Output, workflow_class
 
 
 @outputs(out_ints=[Types.Integer])

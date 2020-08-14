@@ -5,25 +5,22 @@ import uuid as _uuid
 import six as _six
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
-from flytekit.common import (
-    constants as _constants,
-    nodes as _nodes,
-    interface as _interface,
-)
+from flytekit.common import constants as _constants
+from flytekit.common import interface as _interface
+from flytekit.common import nodes as _nodes
 from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions.user import (
-    FlyteTypeException as _FlyteTypeException,
-    FlyteValueException as _FlyteValueException,
-)
+from flytekit.common.exceptions.user import \
+    FlyteTypeException as _FlyteTypeException
+from flytekit.common.exceptions.user import \
+    FlyteValueException as _FlyteValueException
 from flytekit.common.tasks import output as _task_output
-from flytekit.common.tasks import sdk_runnable as _sdk_runnable, task as _base_task
+from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.common.tasks import task as _base_task
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.models import (
-    qubole as _qubole,
-    interface as _interface_model,
-    literals as _literal_models,
-    dynamic_job as _dynamic_job,
-)
+from flytekit.models import dynamic_job as _dynamic_job
+from flytekit.models import interface as _interface_model
+from flytekit.models import literals as _literal_models
+from flytekit.models import qubole as _qubole
 from flytekit.models.core import workflow as _workflow_model
 
 ALLOWED_TAGS_COUNT = int(6)

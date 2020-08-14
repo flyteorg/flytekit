@@ -1,9 +1,10 @@
 from __future__ import absolute_import
 
-from flytekit.sdk.types import Types
-from flytekit.sdk.tasks import inputs, outputs, python_task
-from flytekit.common.exceptions import user as _user_exceptions
 import pytest
+
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.sdk.tasks import inputs, outputs, python_task
+from flytekit.sdk.types import Types
 
 
 def test_generic_schema():

@@ -1,18 +1,17 @@
 from __future__ import absolute_import
 
+from datetime import timedelta as _timedelta
 from itertools import product
 
 import pytest
-from datetime import timedelta as _timedelta
 from google.protobuf import text_format
 
-from flytekit.models import (
-    literals as _literals,
-    dynamic_job as _dynamic_job,
-    array_job as _array_job,
-    task as _task,
-)
-from flytekit.models.core import workflow as _workflow, identifier as _identifier
+from flytekit.models import array_job as _array_job
+from flytekit.models import dynamic_job as _dynamic_job
+from flytekit.models import literals as _literals
+from flytekit.models import task as _task
+from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import workflow as _workflow
 from tests.flytekit.common import parameterizers
 
 LIST_OF_DYNAMIC_TASKS = [

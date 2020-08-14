@@ -1,13 +1,16 @@
 from __future__ import absolute_import
-from flytekit.sdk.tasks import python_task, inputs, outputs
-from flytekit.sdk.types import Types
-from flytekit.common import constants as _common_constants
-from flytekit.common.tasks import sdk_runnable as _sdk_runnable
-from flytekit import configuration as _configuration
-from flytekit.models import types as _type_models, task as _task_models
-from flytekit.models.core import identifier as _identifier
+
 import datetime as _datetime
 import os as _os
+
+from flytekit import configuration as _configuration
+from flytekit.common import constants as _common_constants
+from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.models import task as _task_models
+from flytekit.models import types as _type_models
+from flytekit.models.core import identifier as _identifier
+from flytekit.sdk.tasks import inputs, outputs, python_task
+from flytekit.sdk.types import Types
 
 
 @inputs(in1=Types.Integer)

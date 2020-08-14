@@ -3,9 +3,8 @@ from __future__ import absolute_import
 import pytest
 
 from flytekit.clis import helpers
-from flytekit.models import literals
-from flytekit.models import types
-from flytekit.models.interface import Variable, Parameter, ParameterMap
+from flytekit.models import literals, types
+from flytekit.models.interface import Parameter, ParameterMap, Variable
 
 
 def test_parse_args_into_dict():

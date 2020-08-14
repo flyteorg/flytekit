@@ -4,8 +4,9 @@ import os as _os
 import uuid as _uuid
 from distutils import dir_util as _dir_util
 from shutil import copyfile as _copyfile
-from flytekit.interfaces.data import common as _common_data
+
 from flytekit.interfaces import random as _flyte_random
+from flytekit.interfaces.data import common as _common_data
 
 
 def _make_local_path(path):

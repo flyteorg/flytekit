@@ -1,5 +1,6 @@
-import cv2
 import sys
+
+import cv2
 
 
 def filter_edges(input_image_path: str, output_image_path: str):

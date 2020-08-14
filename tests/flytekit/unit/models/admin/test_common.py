@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 
-from flytekit.models.admin import common as _common
 import pytest as _pytest
+
+from flytekit.models.admin import common as _common
 
 
 def test_sort():

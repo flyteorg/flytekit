@@ -1,12 +1,12 @@
 from __future__ import absolute_import
 
-from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
+from flyteidl.plugins.sagemaker import \
+    hyperparameter_tuning_job_pb2 as _pb2_hpo_job
 
 from flytekit.models import common as _common
-from flytekit.models.sagemaker import (
-    parameter_ranges as _parameter_ranges_models,
-    training_job as _training_job,
-)
+from flytekit.models.sagemaker import \
+    parameter_ranges as _parameter_ranges_models
+from flytekit.models.sagemaker import training_job as _training_job
 
 
 class HyperparameterTuningObjectiveType(object):

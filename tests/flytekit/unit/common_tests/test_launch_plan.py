@@ -1,16 +1,20 @@
 from __future__ import absolute_import
-from flytekit import configuration as _configuration
-from flytekit.common import (
-    notifications as _notifications,
-    schedules as _schedules,
-    launch_plan as _launch_plan,
-)
-from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.models import types as _type_models, common as _common_models
-from flytekit.models.core import execution as _execution, identifier as _identifier
-from flytekit.sdk import types as _types, workflow as _workflow
+
 import os as _os
+
 import pytest as _pytest
+
+from flytekit import configuration as _configuration
+from flytekit.common import launch_plan as _launch_plan
+from flytekit.common import notifications as _notifications
+from flytekit.common import schedules as _schedules
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.models import common as _common_models
+from flytekit.models import types as _type_models
+from flytekit.models.core import execution as _execution
+from flytekit.models.core import identifier as _identifier
+from flytekit.sdk import types as _types
+from flytekit.sdk import workflow as _workflow
 
 
 def test_default_assumable_iam_role():

@@ -1,12 +1,9 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
+from flytekit.sdk.spark_types import SparkType
 from flytekit.sdk.tasks import generic_spark_task, inputs, python_task
 from flytekit.sdk.types import Types
-from flytekit.sdk.spark_types import SparkType
-from flytekit.sdk.workflow import workflow_class, Input
-
+from flytekit.sdk.workflow import Input, workflow_class
 
 scala_spark = generic_spark_task(
     spark_type=SparkType.SCALA,

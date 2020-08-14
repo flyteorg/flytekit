@@ -1,30 +1,23 @@
-import os as _os
 import logging as _logging
-import click
+import os as _os
 from pathlib import Path
 
-from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
+import click
+
+from flytekit.clis.sdk_in_container.constants import (CTX_DOMAIN, CTX_PACKAGES,
+                                                      CTX_PROJECT, CTX_VERSION)
+from flytekit.clis.sdk_in_container.launch_plan import launch_plans
 from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.serialize import serialize
-from flytekit.clis.sdk_in_container.constants import (
-    CTX_PROJECT,
-    CTX_DOMAIN,
-    CTX_VERSION,
-)
-from flytekit.clis.sdk_in_container.launch_plan import launch_plans
-from flytekit.configuration import (
-    internal as _internal_config,
-    platform as _platform_config,
-    sdk as _sdk_config,
-)
-
-from flytekit.configuration.internal import CONFIGURATION_PATH
-from flytekit.configuration.platform import URL as _URL
+from flytekit.configuration import internal as _internal_config
+from flytekit.configuration import platform as _platform_config
+from flytekit.configuration import sdk as _sdk_config
 from flytekit.configuration import set_flyte_config_file
-from flytekit.configuration.internal import (
-    look_up_version_from_image_tag as _look_up_version_from_image_tag,
-    IMAGE as _IMAGE,
-)
+from flytekit.configuration.internal import CONFIGURATION_PATH
+from flytekit.configuration.internal import IMAGE as _IMAGE
+from flytekit.configuration.internal import \
+    look_up_version_from_image_tag as _look_up_version_from_image_tag
+from flytekit.configuration.platform import URL as _URL
 from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
 
 

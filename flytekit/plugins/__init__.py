@@ -1,6 +1,6 @@
 from __future__ import absolute_import
-from flytekit.tools import lazy_loader as _lazy_loader
 
+from flytekit.tools import lazy_loader as _lazy_loader
 
 pyspark = _lazy_loader.lazy_load_module("pyspark")  # type: types.ModuleType
 

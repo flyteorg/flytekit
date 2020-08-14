@@ -1,8 +1,8 @@
 from mock import MagicMock
 
+from flytekit.common.launch_plan import SdkLaunchPlan
 from flytekit.common.tasks.task import SdkTask
 from flytekit.common.workflow import SdkWorkflow
-from flytekit.common.launch_plan import SdkLaunchPlan
 
 
 def test_register_workflows(mock_clirunner, monkeypatch):

@@ -3,12 +3,10 @@ import logging as _logging
 
 import requests as _requests
 
-from flytekit.common.exceptions.user import (
-    FlyteAuthenticationException as _FlyteAuthenticationException,
-)
-from flytekit.configuration.creds import (
-    CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET,
-)
+from flytekit.common.exceptions.user import \
+    FlyteAuthenticationException as _FlyteAuthenticationException
+from flytekit.configuration.creds import \
+    CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET
 
 _utf_8 = "utf-8"
 

@@ -1,10 +1,12 @@
 from __future__ import absolute_import
-from flytekit.configuration import (
-    set_flyte_config_file as _set_flyte_config_file,
-    common as _common,
-    TemporaryConfiguration as _TemporaryConfiguration,
-)
+
 import os as _os
+
+from flytekit.configuration import \
+    TemporaryConfiguration as _TemporaryConfiguration
+from flytekit.configuration import common as _common
+from flytekit.configuration import \
+    set_flyte_config_file as _set_flyte_config_file
 
 
 def test_configuration_file():

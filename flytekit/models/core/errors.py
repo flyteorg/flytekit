@@ -1,6 +1,8 @@
 from __future__ import absolute_import
-from flytekit.models import common as _common
+
 from flyteidl.core import errors_pb2 as _errors_pb2
+
+from flytekit.models import common as _common
 
 
 class ContainerError(_common.FlyteIdlEntity):

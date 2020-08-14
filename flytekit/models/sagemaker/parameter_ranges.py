@@ -2,7 +2,8 @@ from __future__ import absolute_import
 
 from typing import Dict, List
 
-from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _idl_parameter_ranges
+from flyteidl.plugins.sagemaker import \
+    parameter_ranges_pb2 as _idl_parameter_ranges
 
 from flytekit.models import common as _common
 

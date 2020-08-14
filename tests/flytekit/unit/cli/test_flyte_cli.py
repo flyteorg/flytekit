@@ -4,11 +4,11 @@ import mock as _mock
 import pytest
 
 from flytekit.clis.flyte_cli import main as _main
+from flytekit.common.exceptions.user import FlyteAssertion
 from flytekit.common.types import primitives
 from flytekit.configuration import TemporaryConfiguration
 from flytekit.models.core import identifier as _core_identifier
-from flytekit.sdk.tasks import python_task, inputs, outputs
-from flytekit.common.exceptions.user import FlyteAssertion
+from flytekit.sdk.tasks import inputs, outputs, python_task
 
 mm = _mock.MagicMock()
 mm.return_value = 100

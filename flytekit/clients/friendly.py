@@ -1,36 +1,31 @@
 from __future__ import absolute_import
 
 import six as _six
-
-from flyteidl.admin import (
-    task_pb2 as _task_pb2,
-    common_pb2 as _common_pb2,
-    workflow_pb2 as _workflow_pb2,
-    launch_plan_pb2 as _launch_plan_pb2,
-    execution_pb2 as _execution_pb2,
-    node_execution_pb2 as _node_execution_pb2,
-    task_execution_pb2 as _task_execution_pb2,
-    project_pb2 as _project_pb2,
-    project_domain_attributes_pb2 as _project_domain_attributes_pb2,
-    workflow_attributes_pb2 as _workflow_attributes_pb2,
-)
+from flyteidl.admin import common_pb2 as _common_pb2
+from flyteidl.admin import execution_pb2 as _execution_pb2
+from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
+from flyteidl.admin import node_execution_pb2 as _node_execution_pb2
+from flyteidl.admin import \
+    project_domain_attributes_pb2 as _project_domain_attributes_pb2
+from flyteidl.admin import project_pb2 as _project_pb2
+from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
+from flyteidl.admin import task_pb2 as _task_pb2
+from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
+from flyteidl.admin import workflow_pb2 as _workflow_pb2
 from flyteidl.core import identifier_pb2 as _identifier_pb2
 
-from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
-from flytekit.models import (
-    filters as _filters,
-    common as _common,
-    launch_plan as _launch_plan,
-    task as _task,
-    execution as _execution,
-    node_execution as _node_execution,
-)
-from flytekit.models.core import identifier as _identifier
-from flytekit.models.admin import (
-    workflow as _workflow,
-    task_execution as _task_execution,
-)
+from flytekit.clients.raw import \
+    RawSynchronousFlyteClient as _RawSynchronousFlyteClient
 from flytekit.common.exceptions.user import FlyteAssertion as _FlyteAssertion
+from flytekit.models import common as _common
+from flytekit.models import execution as _execution
+from flytekit.models import filters as _filters
+from flytekit.models import launch_plan as _launch_plan
+from flytekit.models import node_execution as _node_execution
+from flytekit.models import task as _task
+from flytekit.models.admin import task_execution as _task_execution
+from flytekit.models.admin import workflow as _workflow
+from flytekit.models.core import identifier as _identifier
 
 
 class SynchronousFlyteClient(_RawSynchronousFlyteClient):

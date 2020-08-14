@@ -1,12 +1,13 @@
-import pytest
 from datetime import timedelta
-from google.protobuf import text_format
 from itertools import product
 
+import pytest
 from flyteidl.core.tasks_pb2 import TaskMetadata
-from flytekit.models import task, literals
-from flytekit.models.core import identifier
+from google.protobuf import text_format
 from k8s.io.api.core.v1 import generated_pb2
+
+from flytekit.models import literals, task
+from flytekit.models.core import identifier
 from tests.flytekit.common import parameterizers
 
 

@@ -1,9 +1,9 @@
 from __future__ import absolute_import
 
-from flytekit.sdk.tasks import spark_task, outputs
-from flytekit.sdk.types import Types
-
 from six.moves import range
+
+from flytekit.sdk.tasks import outputs, spark_task
+from flytekit.sdk.types import Types
 
 # This file is in a subdirectory to make it easier to exclude when not running in a container
 # and pyspark is not available

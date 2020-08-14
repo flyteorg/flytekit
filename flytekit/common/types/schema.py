@@ -1,11 +1,12 @@
 from __future__ import absolute_import
 
+import six as _six
+
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 from flytekit.common.types.impl import schema as _schema_impl
-from flytekit.models import types as _idl_types, literals as _literals
-
-import six as _six
+from flytekit.models import literals as _literals
+from flytekit.models import types as _idl_types
 
 
 class SchemaInstantiator(_base_sdk_types.InstantiableType):

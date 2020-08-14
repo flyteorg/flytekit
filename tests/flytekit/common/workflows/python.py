@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-from flytekit.sdk.tasks import python_task, inputs, outputs
+from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class, Input
+from flytekit.sdk.workflow import Input, workflow_class
 
 
 @inputs(value_to_print=Types.Integer)

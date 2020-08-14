@@ -1,14 +1,14 @@
 from __future__ import absolute_import
-from flytekit.sdk.tasks import pytorch_task, inputs, outputs
-from flytekit.sdk.types import Types
+
+import datetime as _datetime
+
 from flytekit.common import constants as _common_constants
-from flytekit.common.tasks import (
-    sdk_runnable as _sdk_runnable,
-    pytorch_task as _pytorch_task,
-)
+from flytekit.common.tasks import pytorch_task as _pytorch_task
+from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.models import types as _type_models
 from flytekit.models.core import identifier as _identifier
-import datetime as _datetime
+from flytekit.sdk.tasks import inputs, outputs, pytorch_task
+from flytekit.sdk.types import Types
 
 
 @inputs(in1=Types.Integer)

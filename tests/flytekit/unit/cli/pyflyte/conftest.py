@@ -1,13 +1,16 @@
 from __future__ import absolute_import
+
+import os
+import sys
+
+import mock as _mock
+import pytest
+from click.testing import CliRunner
+
 from flytekit import configuration as _config
 from flytekit.clis.sdk_in_container import constants as _constants
 from flytekit.clis.sdk_in_container import pyflyte as _pyflyte
 from flytekit.tools import module_loader as _module_loader
-from click.testing import CliRunner
-import mock as _mock
-import pytest
-import os
-import sys
 
 
 def _fake_module_load(names):

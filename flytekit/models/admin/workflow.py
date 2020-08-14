@@ -1,11 +1,11 @@
 from __future__ import absolute_import
-from flytekit.models import common as _common
-from flytekit.models.core import (
-    compiler as _compiler_models,
-    identifier as _identifier,
-    workflow as _core_workflow,
-)
+
 from flyteidl.admin import workflow_pb2 as _admin_workflow
+
+from flytekit.models import common as _common
+from flytekit.models.core import compiler as _compiler_models
+from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import workflow as _core_workflow
 
 
 class WorkflowSpec(_common.FlyteIdlEntity):

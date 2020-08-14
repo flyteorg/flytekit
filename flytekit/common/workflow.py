@@ -1,44 +1,35 @@
 import datetime as _datetime
 import uuid as _uuid
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 import six as _six
-from six.moves import queue as _queue
 from flyteidl.core import workflow_pb2 as _core_workflow_pb2
+from six.moves import queue as _queue
 
 from flytekit.common import constants as _constants
-from flytekit.common import (
-    interface as _interface,
-    nodes as _nodes,
-    sdk_bases as _sdk_bases,
-    launch_plan as _launch_plan,
-    promise as _promise,
-)
+from flytekit.common import interface as _interface
+from flytekit.common import launch_plan as _launch_plan
+from flytekit.common import nodes as _nodes
+from flytekit.common import promise as _promise
+from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.core import identifier as _identifier
-from flytekit.common.exceptions import (
-    scopes as _exception_scopes,
-    user as _user_exceptions,
-)
+from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.mixins import hash as _hash_mixin
+from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import (
-    internal as _internal_config,
-    platform as _platform_config,
-)
+from flytekit.configuration import internal as _internal_config
+from flytekit.configuration import platform as _platform_config
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models import (
-    interface as _interface_models,
-    literals as _literal_models,
-    common as _common_models,
-    schedule as _schedule_models,
-    launch_plan as _launch_plan_models,
-)
+from flytekit.models import common as _common_models
+from flytekit.models import interface as _interface_models
+from flytekit.models import launch_plan as _launch_plan_models
+from flytekit.models import literals as _literal_models
+from flytekit.models import schedule as _schedule_models
 from flytekit.models.admin import workflow as _admin_workflow_model
-from flytekit.models.core import (
-    workflow as _workflow_models,
-    identifier as _identifier_model,
-)
+from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import workflow as _workflow_models
 
 
 class Output(object):

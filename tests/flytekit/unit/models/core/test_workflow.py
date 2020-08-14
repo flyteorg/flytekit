@@ -2,16 +2,12 @@ from __future__ import absolute_import
 
 from datetime import timedelta
 
-from flytekit.models import (
-    literals as _literals,
-    types as _types,
-    interface as _interface,
-)
-from flytekit.models.core import (
-    workflow as _workflow,
-    identifier as _identifier,
-    condition as _condition,
-)
+from flytekit.models import interface as _interface
+from flytekit.models import literals as _literals
+from flytekit.models import types as _types
+from flytekit.models.core import condition as _condition
+from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import workflow as _workflow
 
 _generic_id = _identifier.Identifier(
     _identifier.ResourceType.WORKFLOW, "project", "domain", "name", "version"

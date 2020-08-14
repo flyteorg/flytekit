@@ -1,13 +1,17 @@
 from __future__ import absolute_import
 
-from flytekit.configuration import sdk as _sdk_config, platform as _platform_config
-from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
-from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
-from flytekit.interfaces.data.local import local_file_proxy as _local_file_proxy
-from flytekit.interfaces.data.http import http_data_proxy as _http_data_proxy
-from flytekit.common.exceptions import user as _user_exception
-from flytekit.common import utils as _common_utils, constants as _constants
 import six as _six
+
+from flytekit.common import constants as _constants
+from flytekit.common import utils as _common_utils
+from flytekit.common.exceptions import user as _user_exception
+from flytekit.configuration import platform as _platform_config
+from flytekit.configuration import sdk as _sdk_config
+from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
+from flytekit.interfaces.data.http import http_data_proxy as _http_data_proxy
+from flytekit.interfaces.data.local import \
+    local_file_proxy as _local_file_proxy
+from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 
 
 class LocalWorkingDirectoryContext(object):

@@ -1,5 +1,6 @@
-import requests as _requests
 import logging
+
+import requests as _requests
 
 try:  # Python 3.5+
     from http import HTTPStatus as _StatusCodes

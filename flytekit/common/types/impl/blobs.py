@@ -2,14 +2,15 @@ from __future__ import absolute_import
 
 import os as _os
 import shutil as _shutil
-import six as _six
 import sys as _sys
 import uuid as _uuid
-from flytekit.common import sdk_bases as _sdk_bases, utils as _utils
-from flytekit.common.exceptions import (
-    user as _user_exceptions,
-    scopes as _exception_scopes,
-)
+
+import six as _six
+
+from flytekit.common import sdk_bases as _sdk_bases
+from flytekit.common import utils as _utils
+from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types

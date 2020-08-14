@@ -1,11 +1,12 @@
 from __future__ import absolute_import
 
 import pytest
+from six.moves import range as _range
 
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.types import primitives, containers
-from flytekit.models import types as literal_types, literals
-from six.moves import range as _range
+from flytekit.common.types import containers, primitives
+from flytekit.models import literals
+from flytekit.models import types as literal_types
 
 
 def test_list():

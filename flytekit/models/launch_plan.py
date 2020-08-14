@@ -2,12 +2,10 @@ from __future__ import absolute_import
 
 from flyteidl.admin import launch_plan_pb2 as _launch_plan
 
-from flytekit.models import (
-    common as _common,
-    interface as _interface,
-    literals as _literals,
-    schedule as _schedule,
-)
+from flytekit.models import common as _common
+from flytekit.models import interface as _interface
+from flytekit.models import literals as _literals
+from flytekit.models import schedule as _schedule
 from flytekit.models.core import identifier as _identifier
 
 

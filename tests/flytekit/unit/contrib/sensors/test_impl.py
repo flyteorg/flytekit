@@ -1,13 +1,12 @@
 from __future__ import absolute_import
 
 import mock
-
 from hmsclient import HMSClient
 from hmsclient.genthrift.hive_metastore import ttypes as _ttypes
 
-from flytekit.contrib.sensors.impl import HiveFilteredPartitionSensor
-from flytekit.contrib.sensors.impl import HiveNamedPartitionSensor
-from flytekit.contrib.sensors.impl import HiveTableSensor
+from flytekit.contrib.sensors.impl import (HiveFilteredPartitionSensor,
+                                           HiveNamedPartitionSensor,
+                                           HiveTableSensor)
 
 
 def test_HiveTableSensor():

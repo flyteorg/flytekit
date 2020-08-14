@@ -1,17 +1,16 @@
 from __future__ import absolute_import
 
+from datetime import datetime as _datetime
+
 import pytz as _pytz
 import six as _six
-from datetime import datetime as _datetime
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
-from flytekit.models.types import (
-    SchemaType as _SchemaType,
-    OutputReference as _OutputReference,
-)
 from flytekit.models.core import types as _core_types
+from flytekit.models.types import OutputReference as _OutputReference
+from flytekit.models.types import SchemaType as _SchemaType
 
 
 class RetryStrategy(_common.FlyteIdlEntity):

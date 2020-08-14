@@ -1,35 +1,31 @@
 from __future__ import absolute_import
-from flytekit.common.tasks.sagemaker.training_job_task import (
-    SdkBuiltinAlgorithmTrainingJobTask,
-)
-from flytekit.common.tasks.sagemaker.hpo_job_task import (
-    SdkSimpleHyperparameterTuningJobTask,
-)
-from flytekit.common import constants as _common_constants
-from flytekit.common.tasks import task as _sdk_task
-from flytekit.models.core import identifier as _identifier
-import datetime as _datetime
-from flytekit.models.sagemaker.training_job import (
-    TrainingJobResourceConfig,
-    AlgorithmSpecification,
-    MetricDefinition,
-    AlgorithmName,
-    InputMode,
-    InputContentType,
-)
 
+import datetime as _datetime
+
+from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import \
+    HyperparameterTuningJobConfig as _pb2_HPOJobConfig
+from flyteidl.plugins.sagemaker.training_job_pb2 import \
+    TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
 # from flytekit.sdk.sagemaker.types import InputMode, AlgorithmName
 from google.protobuf.json_format import ParseDict
-from flyteidl.plugins.sagemaker.training_job_pb2 import (
-    TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig,
-)
-from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import (
-    HyperparameterTuningJobConfig as _pb2_HPOJobConfig,
-)
-from flytekit.sdk import types as _sdk_types
+
+from flytekit.common import constants as _common_constants
+from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.tasks.sagemaker import hpo_job_task
+from flytekit.common.tasks.sagemaker.hpo_job_task import \
+    SdkSimpleHyperparameterTuningJobTask
+from flytekit.common.tasks.sagemaker.training_job_task import \
+    SdkBuiltinAlgorithmTrainingJobTask
 from flytekit.models import types as _idl_types
+from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import types as _core_types
+from flytekit.models.sagemaker.training_job import (AlgorithmName,
+                                                    AlgorithmSpecification,
+                                                    InputContentType,
+                                                    InputMode,
+                                                    MetricDefinition,
+                                                    TrainingJobResourceConfig)
+from flytekit.sdk import types as _sdk_types
 
 example_hyperparams = {
     "base_score": "0.5",

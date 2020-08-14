@@ -1,10 +1,13 @@
 from __future__ import absolute_import
-from flytekit.common.exceptions import user as user_exceptions
-from flytekit.common.types import primitives, base_sdk_types
-from flytekit.models import types as literal_types
-from dateutil import tz
+
 import datetime
+
 import pytest
+from dateutil import tz
+
+from flytekit.common.exceptions import user as user_exceptions
+from flytekit.common.types import base_sdk_types, primitives
+from flytekit.models import types as literal_types
 
 
 def test_integer():

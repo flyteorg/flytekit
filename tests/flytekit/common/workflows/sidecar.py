@@ -1,13 +1,13 @@
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
 import os
 import time
 
-from flytekit.sdk.tasks import sidecar_task
-from flytekit.sdk.workflow import workflow_class, Input
-from flytekit.sdk.types import Types
 from k8s.io.api.core.v1 import generated_pb2
+
+from flytekit.sdk.tasks import sidecar_task
+from flytekit.sdk.types import Types
+from flytekit.sdk.workflow import Input, workflow_class
 
 
 def generate_pod_spec_for_task():

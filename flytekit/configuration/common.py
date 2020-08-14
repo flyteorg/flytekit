@@ -1,7 +1,7 @@
 import abc as _abc
+import configparser as _configparser
 import os as _os
 
-import configparser as _configparser
 import six as _six
 
 from flytekit.common.exceptions import user as _user_exceptions

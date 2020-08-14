@@ -1,6 +1,8 @@
 from __future__ import absolute_import
-from flytekit.models.core import types as _types
+
 from flyteidl.core import types_pb2 as _types_pb2
+
+from flytekit.models.core import types as _types
 
 
 def test_blob_dimensionality():

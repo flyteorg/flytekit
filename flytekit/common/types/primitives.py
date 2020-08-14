@@ -1,16 +1,18 @@
 from __future__ import absolute_import
 
+import datetime as _datetime
+import json as _json
+
+import six as _six
+from dateutil import parser as _parser
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
 from pytimeparse import parse as _parse_duration_string
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
-from flytekit.models import types as _idl_types, literals as _literals
-from dateutil import parser as _parser
-from google.protobuf import json_format as _json_format, struct_pb2 as _struct
-
-import json as _json
-import six as _six
-import datetime as _datetime
+from flytekit.models import literals as _literals
+from flytekit.models import types as _idl_types
 
 
 class Integer(_base_sdk_types.FlyteSdkValue):

@@ -1,9 +1,9 @@
 from __future__ import absolute_import
-from flytekit.common.types import (
-    helpers as _type_helpers,
-    base_sdk_types as _base_sdk_types,
-)
-from flytekit.models import literals as _literals, types as _model_types
+
+from flytekit.common.types import base_sdk_types as _base_sdk_types
+from flytekit.common.types import helpers as _type_helpers
+from flytekit.models import literals as _literals
+from flytekit.models import types as _model_types
 from flytekit.sdk import types as _sdk_types
 
 

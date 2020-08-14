@@ -1,6 +1,8 @@
 from __future__ import absolute_import
-from flytekit.models import common as _common_models
+
 from flyteidl.core import identifier_pb2 as _identifier_pb2
+
+from flytekit.models import common as _common_models
 
 
 class ResourceType(object):

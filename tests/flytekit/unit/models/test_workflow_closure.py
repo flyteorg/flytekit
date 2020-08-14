@@ -2,14 +2,13 @@ from __future__ import absolute_import
 
 from datetime import timedelta
 
-from flytekit.models import (
-    workflow_closure as _workflow_closure,
-    interface as _interface,
-    literals as _literals,
-    types as _types,
-    task as _task,
-)
-from flytekit.models.core import workflow as _workflow, identifier as _identifier
+from flytekit.models import interface as _interface
+from flytekit.models import literals as _literals
+from flytekit.models import task as _task
+from flytekit.models import types as _types
+from flytekit.models import workflow_closure as _workflow_closure
+from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import workflow as _workflow
 
 
 def test_workflow_closure():

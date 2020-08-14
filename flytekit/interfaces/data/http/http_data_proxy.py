@@ -1,8 +1,9 @@
 from __future__ import absolute_import
 
 import requests as _requests
-from flytekit.interfaces.data import common as _common_data
+
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.interfaces.data import common as _common_data
 
 
 class HttpFileProxy(_common_data.DataProxy):

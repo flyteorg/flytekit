@@ -1,10 +1,13 @@
 from __future__ import absolute_import
+
+import base64 as _base64
+
+import pytest as _pytest
+from flyteidl.core import errors_pb2 as _errors_pb2
+
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import proto as _proto
-from flyteidl.core import errors_pb2 as _errors_pb2
 from flytekit.models import types as _type_models
-import base64 as _base64
-import pytest as _pytest
 
 
 def test_wrong_type():

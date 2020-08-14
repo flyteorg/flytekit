@@ -1,19 +1,21 @@
 from __future__ import absolute_import
 
+import collections as _collections
 import datetime as _datetime
 import os as _os
 import uuid as _uuid
 
-import collections as _collections
 import pandas as _pd
 import pytest as _pytest
 import six.moves as _six_moves
 
 from flytekit.common import utils as _utils
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.types import primitives as _primitives, blobs as _blobs
+from flytekit.common.types import blobs as _blobs
+from flytekit.common.types import primitives as _primitives
 from flytekit.common.types.impl import schema as _schema_impl
-from flytekit.models import types as _type_models, literals as _literal_models
+from flytekit.models import literals as _literal_models
+from flytekit.models import types as _type_models
 from flytekit.sdk import test_utils as _test_utils
 
 

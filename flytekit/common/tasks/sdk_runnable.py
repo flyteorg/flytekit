@@ -1,27 +1,24 @@
 from inspect import getfullargspec as _getargspec
+
 import six as _six
 
 from flytekit import __version__
-from flytekit.common import (
-    interface as _interface,
-    constants as _constants,
-    sdk_bases as _sdk_bases,
-)
-from flytekit.common.exceptions import (
-    user as _user_exceptions,
-    scopes as _exception_scopes,
-)
-from flytekit.common.tasks import task as _base_task, output as _task_output
-from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import (
-    sdk as _sdk_config,
-    internal as _internal_config,
-    resources as _resource_config,
-)
-from flytekit.engines import loader as _engine_loader
-from flytekit.models import literals as _literal_models, task as _task_models
+from flytekit.common import constants as _constants
+from flytekit.common import interface as _interface
+from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
+from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import registerable as _registerable
+from flytekit.common.tasks import output as _task_output
+from flytekit.common.tasks import task as _base_task
+from flytekit.common.types import helpers as _type_helpers
+from flytekit.configuration import internal as _internal_config
+from flytekit.configuration import resources as _resource_config
+from flytekit.configuration import sdk as _sdk_config
+from flytekit.engines import loader as _engine_loader
+from flytekit.models import literals as _literal_models
+from flytekit.models import task as _task_models
 
 
 class ExecutionParameters(object):

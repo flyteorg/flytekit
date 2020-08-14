@@ -1,6 +1,6 @@
 from flytekit.common.tasks.raw_container import SdkRawContainerTask
 from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class, Input, Output
+from flytekit.sdk.workflow import Input, Output, workflow_class
 
 edges = SdkRawContainerTask(
     input_data_dir="/inputs",

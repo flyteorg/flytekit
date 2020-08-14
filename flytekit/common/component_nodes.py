@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 
-import six as _six
 import logging as _logging
+
+import six as _six
 
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import system as _system_exceptions
@@ -139,7 +140,8 @@ class SdkWorkflowNode(
         :rtype: SdkWorkflowNode
         """
         # put the import statement here to prevent circular dependency error
-        from flytekit.common import workflow as _workflow, launch_plan as _launch_plan
+        from flytekit.common import launch_plan as _launch_plan
+        from flytekit.common import workflow as _workflow
 
         project = base_model.reference.project
         domain = base_model.reference.domain

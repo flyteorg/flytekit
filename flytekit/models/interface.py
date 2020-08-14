@@ -1,8 +1,11 @@
 from __future__ import absolute_import
-from flytekit.models import common as _common, types as _types, literals as _literals
-from flyteidl.core import interface_pb2 as _interface_pb2
 
 import six as _six
+from flyteidl.core import interface_pb2 as _interface_pb2
+
+from flytekit.models import common as _common
+from flytekit.models import literals as _literals
+from flytekit.models import types as _types
 
 
 class Variable(_common.FlyteIdlEntity):

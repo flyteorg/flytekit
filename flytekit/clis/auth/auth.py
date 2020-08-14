@@ -1,12 +1,13 @@
 import base64 as _base64
 import hashlib as _hashlib
-import keyring as _keyring
 import os as _os
 import re as _re
-import requests as _requests
 import webbrowser as _webbrowser
+from multiprocessing import Process as _Process
+from multiprocessing import Queue as _Queue
 
-from multiprocessing import Process as _Process, Queue as _Queue
+import keyring as _keyring
+import requests as _requests
 
 try:  # Python 3.5+
     from http import HTTPStatus as _StatusCodes
@@ -24,8 +25,9 @@ try:  # Python 3
     import urllib.parse as _urlparse
     from urllib.parse import urlencode as _urlencode
 except ImportError:  # Python 2
-    import urlparse as _urlparse
     from urllib import urlencode as _urlencode
+
+    import urlparse as _urlparse
 
 _code_verifier_length = 64
 _random_seed_length = 40

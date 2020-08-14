@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
-from setuptools import setup, find_packages  # noqa
+from setuptools import find_packages, setup  # noqa
+
 import flytekit  # noqa
 from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
 

@@ -1,26 +1,25 @@
 from __future__ import absolute_import
 
 import collections as _collections
-from flytekit.plugins import numpy as _np
-from flytekit.plugins import pandas as _pd
 import os as _os
-import six as _six
 import uuid as _uuid
 
-from flytekit.common import utils as _utils, sdk_bases as _sdk_bases
-from flytekit.common.types import (
-    primitives as _primitives,
-    base_sdk_types as _base_sdk_types,
-    helpers as _helpers,
-)
+import six as _six
+
+from flytekit.common import sdk_bases as _sdk_bases
+from flytekit.common import utils as _utils
+from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.types import base_sdk_types as _base_sdk_types
+from flytekit.common.types import helpers as _helpers
+from flytekit.common.types import primitives as _primitives
 from flytekit.common.types.impl import blobs as _blob_impl
-from flytekit.common.exceptions import (
-    user as _user_exceptions,
-    scopes as _exception_scopes,
-)
-from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.models import types as _type_models, literals as _literal_models
 from flytekit.configuration import sdk as _sdk_config
+from flytekit.interfaces.data import data_proxy as _data_proxy
+from flytekit.models import literals as _literal_models
+from flytekit.models import types as _type_models
+from flytekit.plugins import numpy as _np
+from flytekit.plugins import pandas as _pd
 
 # Note: For now, this is only for basic type-checking.  We need not differentiate between TINYINT, BIGINT,
 # and INT or DOUBLE and FLOAT, VARCHAR and STRING, etc. as we will unpack into appropriate Python
@@ -207,8 +206,8 @@ class _SchemaReader(_SchemaIO):
         df = None
 
         if parquet_engine == "fastparquet":
-            from fastparquet import ParquetFile as _ParquetFile
             import fastparquet.thrift_structures as _ts
+            from fastparquet import ParquetFile as _ParquetFile
 
             # https://github.com/dask/fastparquet/issues/414#issuecomment-478983811
             df = _pd.read_parquet(

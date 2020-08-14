@@ -1,9 +1,10 @@
 from __future__ import absolute_import
+
 import os
 import sys
 
-from flytekit.tools import module_loader
 from flytekit.common import utils as _utils
+from flytekit.tools import module_loader
 
 
 def test_module_loading():

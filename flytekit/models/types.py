@@ -1,11 +1,13 @@
 from __future__ import absolute_import
 
+import json as _json
+
 from flyteidl.core import types_pb2 as _types_pb2
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
 
 from flytekit.models import common as _common
 from flytekit.models.core import types as _core_types
-from google.protobuf import json_format as _json_format, struct_pb2 as _struct
-import json as _json
 
 
 class SimpleType(object):

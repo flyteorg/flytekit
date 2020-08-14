@@ -1,17 +1,17 @@
 from __future__ import absolute_import
-from flytekit.clients.raw import (
-    RawSynchronousFlyteClient as _RawSynchronousFlyteClient,
-    _refresh_credentials_basic,
-)
-from flytekit.configuration.creds import (
-    CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET,
-)
-from flytekit.clis.auth.discovery import (
-    AuthorizationEndpoints as _AuthorizationEndpoints,
-)
-import mock
-import os
+
 import json
+import os
+
+import mock
+
+from flytekit.clients.raw import \
+    RawSynchronousFlyteClient as _RawSynchronousFlyteClient
+from flytekit.clients.raw import _refresh_credentials_basic
+from flytekit.clis.auth.discovery import \
+    AuthorizationEndpoints as _AuthorizationEndpoints
+from flytekit.configuration.creds import \
+    CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET
 
 
 @mock.patch("flytekit.clients.raw._admin_service")

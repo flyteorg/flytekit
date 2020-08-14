@@ -2,69 +2,58 @@ from __future__ import absolute_import
 
 import importlib as _importlib
 import os as _os
-import sys as _sys
 import stat as _stat
+import sys as _sys
 
 import click as _click
+import requests as _requests
 import six as _six
-
-from flyteidl.core import (
-    literals_pb2 as _literals_pb2,
-    identifier_pb2 as _identifier_pb2,
-)
-from flyteidl.admin import (
-    launch_plan_pb2 as _launch_plan_pb2,
-    workflow_pb2 as _workflow_pb2,
-    task_pb2 as _task_pb2,
-)
+from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
+from flyteidl.admin import task_pb2 as _task_pb2
+from flyteidl.admin import workflow_pb2 as _workflow_pb2
+from flyteidl.core import identifier_pb2 as _identifier_pb2
+from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
-from flytekit.clis.helpers import (
-    construct_literal_map_from_variable_map as _construct_literal_map_from_variable_map,
-    construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map,
-    parse_args_into_dict as _parse_args_into_dict,
-)
-from flytekit.common import (
-    utils as _utils,
-    launch_plan as _launch_plan_common,
-    workflow_execution as _workflow_execution_common,
-)
+from flytekit.clis.helpers import \
+    construct_literal_map_from_parameter_map as \
+    _construct_literal_map_from_parameter_map
+from flytekit.clis.helpers import \
+    construct_literal_map_from_variable_map as \
+    _construct_literal_map_from_variable_map
+from flytekit.clis.helpers import parse_args_into_dict as _parse_args_into_dict
+from flytekit.common import launch_plan as _launch_plan_common
+from flytekit.common import utils as _utils
+from flytekit.common import workflow_execution as _workflow_execution_common
 from flytekit.common.core import identifier as _identifier
+from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import task as _tasks_common
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import set_flyte_config_file
 from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.models import (
-    common as _common_models,
-    filters as _filters,
-    launch_plan as _launch_plan,
-    literals as _literals,
-    named_entity as _named_entity,
-)
+from flytekit.models import common as _common_models
+from flytekit.models import filters as _filters
+from flytekit.models import launch_plan as _launch_plan
+from flytekit.models import literals as _literals
+from flytekit.models import named_entity as _named_entity
 from flytekit.models.admin import common as _admin_common
-from flytekit.models.core import (
-    execution as _core_execution_models,
-    identifier as _core_identifier,
-)
-from flytekit.models.execution import (
-    ExecutionSpec as _ExecutionSpec,
-    ExecutionMetadata as _ExecutionMetadata,
-)
-from flytekit.models.matchable_resource import (
-    ClusterResourceAttributes as _ClusterResourceAttributes,
-    ExecutionQueueAttributes as _ExecutionQueueAttributes,
-    ExecutionClusterLabel as _ExecutionClusterLabel,
-    MatchingAttributes as _MatchingAttributes,
-)
+from flytekit.models.core import execution as _core_execution_models
+from flytekit.models.core import identifier as _core_identifier
+from flytekit.models.execution import ExecutionMetadata as _ExecutionMetadata
+from flytekit.models.execution import ExecutionSpec as _ExecutionSpec
+from flytekit.models.matchable_resource import \
+    ClusterResourceAttributes as _ClusterResourceAttributes
+from flytekit.models.matchable_resource import \
+    ExecutionClusterLabel as _ExecutionClusterLabel
+from flytekit.models.matchable_resource import \
+    ExecutionQueueAttributes as _ExecutionQueueAttributes
+from flytekit.models.matchable_resource import \
+    MatchingAttributes as _MatchingAttributes
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
-from flytekit.common.exceptions import user as _user_exceptions
-
-
-import requests as _requests
 
 try:  # Python 3
     import urllib.parse as _urlparse

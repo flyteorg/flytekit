@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 import os
 
-from flytekit.configuration import set_flyte_config_file, resources
+from flytekit.configuration import resources, set_flyte_config_file
 
 
 def test_resource_hints_default():

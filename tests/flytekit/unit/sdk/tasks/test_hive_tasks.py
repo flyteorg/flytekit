@@ -1,24 +1,23 @@
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
-from datetime import datetime as _datetime
 import logging as _logging
+from datetime import datetime as _datetime
+
 import six as _six
 
 from flytekit.common import utils as _common_utils
+from flytekit.common.tasks import hive_task as _hive_task
 from flytekit.common.tasks import output as _task_output
-from flytekit.common.tasks import sdk_runnable as _sdk_runnable, hive_task as _hive_task
-from flytekit.common.types import (
-    base_sdk_types as _base_sdk_types,
-    containers as _containers,
-    schema as _schema,
-)
-from flytekit.models import literals as _literals
-from flytekit.models.core.identifier import WorkflowExecutionIdentifier
+from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.common.types import base_sdk_types as _base_sdk_types
+from flytekit.common.types import containers as _containers
 from flytekit.common.types import helpers as _type_helpers
+from flytekit.common.types import schema as _schema
 from flytekit.common.types.impl.schema import Schema
 from flytekit.engines import common as _common_engine
-from flytekit.sdk.tasks import inputs, hive_task, qubole_hive_task, outputs
+from flytekit.models import literals as _literals
+from flytekit.models.core.identifier import WorkflowExecutionIdentifier
+from flytekit.sdk.tasks import hive_task, inputs, outputs, qubole_hive_task
 from flytekit.sdk.types import Types
 
 

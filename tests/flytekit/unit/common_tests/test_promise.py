@@ -1,8 +1,10 @@
 from __future__ import absolute_import
-from flytekit.common import promise
-from flytekit.common.types import primitives, base_sdk_types
-from flytekit.common.exceptions import user as _user_exceptions
+
 import pytest
+
+from flytekit.common import promise
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.types import base_sdk_types, primitives
 
 
 def test_input():

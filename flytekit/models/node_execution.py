@@ -1,8 +1,11 @@
 from __future__ import absolute_import
-from flytekit.models import common as _common_models
-from flytekit.models.core import execution as _core_execution, identifier as _identifier
+
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import pytz as _pytz
+
+from flytekit.models import common as _common_models
+from flytekit.models.core import execution as _core_execution
+from flytekit.models.core import identifier as _identifier
 
 
 class NodeExecutionClosure(_common_models.FlyteIdlEntity):

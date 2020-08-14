@@ -1,9 +1,9 @@
 from __future__ import absolute_import
 
-from flytekit.sdk.types import Types
+from flytekit.common.utils import AutoDeletingTempDir
 from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.test_utils import flyte_test
-from flytekit.common.utils import AutoDeletingTempDir
+from flytekit.sdk.types import Types
 
 
 @flyte_test

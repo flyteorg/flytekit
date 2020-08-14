@@ -5,14 +5,16 @@ import re as _re
 import string as _string
 import sys as _sys
 import uuid as _uuid
-from six import moves as _six_moves, text_type as _text_type
 
+from six import moves as _six_moves
+from six import text_type as _text_type
+
+from flytekit.common.exceptions.user import \
+    FlyteUserException as _FlyteUserException
 from flytekit.configuration import aws as _aws_config
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import common as _common_data
 from flytekit.tools import subprocess as _subprocess
-from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserException
-
 
 if _sys.version_info >= (3,):
     from shutil import which as _which

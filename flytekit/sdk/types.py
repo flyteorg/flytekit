@@ -1,12 +1,11 @@
 from __future__ import absolute_import
-from flytekit.common.types import (
-    primitives as _primitives,
-    blobs as _blobs,
-    schema as _schema,
-    helpers as _helpers,
-    proto as _proto,
-    containers as _containers,
-)
+
+from flytekit.common.types import blobs as _blobs
+from flytekit.common.types import containers as _containers
+from flytekit.common.types import helpers as _helpers
+from flytekit.common.types import primitives as _primitives
+from flytekit.common.types import proto as _proto
+from flytekit.common.types import schema as _schema
 
 
 class Types(object):

@@ -1,11 +1,12 @@
 from __future__ import absolute_import
 
-from flytekit.sdk.types import Types
-from flytekit.sdk.tasks import inputs, outputs, python_task
-from flytekit.sdk.test_utils import flyte_test
-from flytekit.common.exceptions import user as _user_exceptions
 import pandas as pd
 import pytest
+
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.sdk.tasks import inputs, outputs, python_task
+from flytekit.sdk.test_utils import flyte_test
+from flytekit.sdk.types import Types
 
 
 @flyte_test

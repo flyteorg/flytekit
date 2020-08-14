@@ -1,17 +1,17 @@
-import click
-import six as _six
 import logging as _logging
 
-from flytekit.clis.helpers import (
-    construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map,
-)
+import click
+import six as _six
+
+from flytekit.clis.helpers import \
+    construct_literal_map_from_parameter_map as \
+    _construct_literal_map_from_parameter_map
 from flytekit.clis.sdk_in_container import constants as _constants
 from flytekit.common import utils as _utils
 from flytekit.common.launch_plan import SdkLaunchPlan as _SdkLaunchPlan
-from flytekit.configuration.internal import (
-    look_up_version_from_image_tag as _look_up_version_from_image_tag,
-    IMAGE as _IMAGE,
-)
+from flytekit.configuration.internal import IMAGE as _IMAGE
+from flytekit.configuration.internal import \
+    look_up_version_from_image_tag as _look_up_version_from_image_tag
 from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order

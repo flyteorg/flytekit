@@ -1,15 +1,15 @@
 from __future__ import absolute_import
-from six import reraise as _reraise
 
-from wrapt import decorator as _decorator
 from sys import exc_info as _exc_info
-from flytekit.common.exceptions import (
-    system as _system_exceptions,
-    user as _user_exceptions,
-    base as _base_exceptions,
-)
-from flytekit.models.core import errors as _error_model
 from traceback import format_tb as _format_tb
+
+from six import reraise as _reraise
+from wrapt import decorator as _decorator
+
+from flytekit.common.exceptions import base as _base_exceptions
+from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.models.core import errors as _error_model
 
 
 class FlyteScopedException(Exception):

@@ -1,10 +1,13 @@
 from __future__ import absolute_import
+
+import pytest
+from flyteidl.core import errors_pb2 as _errors_pb2
+
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import proto as _proto
+from flytekit.models import literals as _literal_models
+from flytekit.models import types as _type_models
 from flytekit.type_engines.default import flyte as _flyte_engine
-from flytekit.models import types as _type_models, literals as _literal_models
-from flyteidl.core import errors_pb2 as _errors_pb2
-import pytest
 
 
 def test_proto_from_literal_type():

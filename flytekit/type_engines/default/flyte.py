@@ -1,22 +1,18 @@
 from __future__ import absolute_import
 
-from flytekit.common.exceptions import (
-    system as _system_exceptions,
-    user as _user_exceptions,
-)
-from flytekit.common.types import (
-    primitives as _primitive_types,
-    base_sdk_types as _base_sdk_types,
-    containers as _container_types,
-    schema as _schema,
-    blobs as _blobs,
-    proto as _proto,
-)
-from flytekit.models import types as _literal_type_models
-from flytekit.models.core import types as _core_types
 import importlib as _importer
 
+from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.types import base_sdk_types as _base_sdk_types
+from flytekit.common.types import blobs as _blobs
+from flytekit.common.types import containers as _container_types
 from flytekit.common.types import helpers as _helpers
+from flytekit.common.types import primitives as _primitive_types
+from flytekit.common.types import proto as _proto
+from flytekit.common.types import schema as _schema
+from flytekit.models import types as _literal_type_models
+from flytekit.models.core import types as _core_types
 
 
 def _proto_sdk_type_from_tag(tag):

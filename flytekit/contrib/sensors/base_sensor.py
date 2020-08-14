@@ -2,12 +2,12 @@ from __future__ import absolute_import
 
 import abc as _abc
 import datetime as _datetime
+import logging as _logging
 import sys as _sys
 import time as _time
 import traceback as _traceback
 
 import six as _six
-import logging as _logging
 
 
 class Sensor(_six.with_metaclass(_abc.ABCMeta, object)):

@@ -2,10 +2,12 @@ from __future__ import absolute_import
 
 import six as _six
 
-from flytekit.common import constants as _constants, sdk_bases as _sdk_bases
+from flytekit.common import constants as _constants
+from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.models import interface as _interface_models, types as _type_models
+from flytekit.models import interface as _interface_models
+from flytekit.models import types as _type_models
 
 
 class Input(

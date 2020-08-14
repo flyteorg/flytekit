@@ -1,7 +1,9 @@
 from __future__ import absolute_import
+
+import pytest
+
 from flytekit.engines import loader
 from flytekit.engines.unit import engine as _unit_engine
-import pytest
 
 
 def test_unit_load():

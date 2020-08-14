@@ -1,10 +1,10 @@
 from __future__ import absolute_import
 
+import six as _six
 from flyteidl.core import compiler_pb2 as _compiler_pb2
+
 from flytekit.models import common as _common
 from flytekit.models.core import workflow as _core_workflow_models
-
-import six as _six
 
 
 class ConnectionSet(_common.FlyteIdlEntity):

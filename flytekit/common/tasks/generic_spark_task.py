@@ -5,19 +5,21 @@ try:
 except ImportError:
     from inspect import getargspec as _getargspec
 
-from flytekit import __version__
 import sys as _sys
+
 import six as _six
-from flytekit.common.tasks import task as _base_tasks
-from flytekit.common.types import helpers as _helpers, primitives as _primitives
-
-from flytekit.models import literals as _literal_models, task as _task_models
 from google.protobuf.json_format import MessageToDict as _MessageToDict
-from flytekit.common import interface as _interface
-from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.exceptions import scopes as _exception_scopes
 
+from flytekit import __version__
+from flytekit.common import interface as _interface
+from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.tasks import task as _base_tasks
+from flytekit.common.types import helpers as _helpers
+from flytekit.common.types import primitives as _primitives
 from flytekit.configuration import internal as _internal_config
+from flytekit.models import literals as _literal_models
+from flytekit.models import task as _task_models
 
 input_types_supported = {
     _primitives.Integer,

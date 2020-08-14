@@ -1,8 +1,8 @@
 from __future__ import absolute_import
-from flytekit.common.exceptions.base import (
-    FlyteException as _FlyteException,
-    FlyteRecoverableException as _Recoverable,
-)
+
+from flytekit.common.exceptions.base import FlyteException as _FlyteException
+from flytekit.common.exceptions.base import \
+    FlyteRecoverableException as _Recoverable
 
 
 class FlyteUserException(_FlyteException):

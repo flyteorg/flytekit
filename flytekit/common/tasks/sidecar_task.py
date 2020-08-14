@@ -1,16 +1,13 @@
 from __future__ import absolute_import
 
 import six as _six
-
 from flyteidl.core import tasks_pb2 as _core_task
-
-from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.tasks import sdk_runnable as _sdk_runnable
-from flytekit.common import sdk_bases as _sdk_bases
-
-from flytekit.models import task as _task_models
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
+from flytekit.common import sdk_bases as _sdk_bases
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.models import task as _task_models
 from flytekit.plugins import k8s as _lazy_k8s
 
 

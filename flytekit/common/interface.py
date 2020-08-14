@@ -2,14 +2,14 @@ from __future__ import absolute_import
 
 import six as _six
 
-from flytekit.common import sdk_bases as _sdk_bases, promise as _promise
+from flytekit.common import promise as _promise
+from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.types import (
-    helpers as _type_helpers,
-    containers as _containers,
-    primitives as _primitives,
-)
-from flytekit.models import interface as _interface_models, literals as _literal_models
+from flytekit.common.types import containers as _containers
+from flytekit.common.types import helpers as _type_helpers
+from flytekit.common.types import primitives as _primitives
+from flytekit.models import interface as _interface_models
+from flytekit.models import literals as _literal_models
 
 
 class BindingData(

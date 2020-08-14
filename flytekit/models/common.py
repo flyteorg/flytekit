@@ -5,7 +5,8 @@ import json as _json
 
 import six as _six
 from flyteidl.admin import common_pb2 as _common_pb2
-from google.protobuf import json_format as _json_format, struct_pb2 as _struct
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
 
 
 class FlyteABCMeta(_abc.ABCMeta):

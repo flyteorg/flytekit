@@ -1,12 +1,13 @@
 from __future__ import absolute_import
+
 import json
 
-from mock import MagicMock, patch, PropertyMock
+from mock import MagicMock, PropertyMock, patch
+
 from flytekit.clis.flyte_cli.main import _welcome_message
 from flytekit.clis.sdk_in_container import basic_auth
-from flytekit.configuration.creds import (
-    CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET,
-)
+from flytekit.configuration.creds import \
+    CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET
 
 _welcome_message()
 

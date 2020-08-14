@@ -1,11 +1,14 @@
 from __future__ import absolute_import
+
+import os
+
+import pytest
+
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types.impl import blobs
 from flytekit.common.utils import AutoDeletingTempDir
 from flytekit.models.core import types as _core_types
 from flytekit.sdk import test_utils
-import pytest
-import os
 
 
 def test_blob():

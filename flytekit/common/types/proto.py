@@ -1,12 +1,14 @@
 from __future__ import absolute_import
 
-from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.types import base_sdk_types as _base_sdk_types
-from flytekit.models import types as _idl_types, literals as _literals
+import base64 as _base64
+
+import six as _six
 from google.protobuf import reflection as _proto_reflection
 
-import base64 as _base64
-import six as _six
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.types import base_sdk_types as _base_sdk_types
+from flytekit.models import literals as _literals
+from flytekit.models import types as _idl_types
 
 
 def create_protobuf(pb_type):

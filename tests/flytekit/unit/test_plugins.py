@@ -1,7 +1,9 @@
 from __future__ import absolute_import
+
+import pytest
+
 from flytekit import plugins
 from flytekit.tools import lazy_loader
-import pytest
 
 
 @pytest.mark.run(order=0)

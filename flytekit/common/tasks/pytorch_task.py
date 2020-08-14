@@ -6,12 +6,15 @@ except ImportError:
     from inspect import getargspec as _getargspec
 
 import six as _six
+from google.protobuf.json_format import MessageToDict as _MessageToDict
+
 from flytekit.common import constants as _constants
 from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.tasks import output as _task_output, sdk_runnable as _sdk_runnable
+from flytekit.common.tasks import output as _task_output
+from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.models import literals as _literal_models, task as _task_models
-from google.protobuf.json_format import MessageToDict as _MessageToDict
+from flytekit.models import literals as _literal_models
+from flytekit.models import task as _task_models
 
 
 class SdkRunnablePytorchContainer(_sdk_runnable.SdkRunnableContainer):

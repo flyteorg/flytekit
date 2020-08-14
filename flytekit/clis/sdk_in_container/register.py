@@ -2,20 +2,15 @@ import logging as _logging
 
 import click
 
-from flytekit.clis.sdk_in_container.constants import (
-    CTX_PROJECT,
-    CTX_DOMAIN,
-    CTX_TEST,
-    CTX_PACKAGES,
-    CTX_VERSION,
-)
+from flytekit.clis.sdk_in_container.constants import (CTX_DOMAIN, CTX_PACKAGES,
+                                                      CTX_PROJECT, CTX_TEST,
+                                                      CTX_VERSION)
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.tasks import task as _task
-from flytekit.configuration.internal import (
-    look_up_version_from_image_tag as _look_up_version_from_image_tag,
-    IMAGE as _IMAGE,
-)
+from flytekit.configuration.internal import IMAGE as _IMAGE
+from flytekit.configuration.internal import \
+    look_up_version_from_image_tag as _look_up_version_from_image_tag
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
 

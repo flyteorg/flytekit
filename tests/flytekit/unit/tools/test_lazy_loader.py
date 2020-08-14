@@ -1,7 +1,9 @@
 from __future__ import absolute_import
-from flytekit.tools import lazy_loader
+
 import pytest
 import six
+
+from flytekit.tools import lazy_loader
 
 
 def test_lazy_loader_error_message():

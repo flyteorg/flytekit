@@ -1,7 +1,10 @@
 from __future__ import absolute_import
-from flytekit.configuration import set_flyte_config_file, common
+
 import os
+
 import pytest
+
+from flytekit.configuration import common, set_flyte_config_file
 
 
 def test_file_loader_bad():

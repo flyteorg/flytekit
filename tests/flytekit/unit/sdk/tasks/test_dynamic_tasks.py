@@ -1,15 +1,12 @@
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
 from six import moves as _six_moves
 
-from flytekit.common.tasks import (
-    sdk_runnable as _sdk_runnable,
-    sdk_dynamic as _sdk_dynamic,
-)
-from flytekit.sdk.tasks import inputs, outputs, dynamic_task, python_task
+from flytekit.common.tasks import sdk_dynamic as _sdk_dynamic
+from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.sdk.tasks import dynamic_task, inputs, outputs, python_task
 from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import Input, workflow, Output
+from flytekit.sdk.workflow import Input, Output, workflow
 
 
 @inputs(in1=Types.Integer)

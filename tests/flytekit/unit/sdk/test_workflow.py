@@ -1,14 +1,15 @@
 from __future__ import absolute_import
 
-import pytest
 import datetime
+
+import pytest
 
 from flytekit.common import constants
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.types import primitives, base_sdk_types, containers
-from flytekit.sdk.tasks import python_task, inputs, outputs
+from flytekit.common.types import base_sdk_types, containers, primitives
+from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow, Input, Output, workflow_class
+from flytekit.sdk.workflow import Input, Output, workflow, workflow_class
 
 
 def test_input():

@@ -2,16 +2,16 @@ from __future__ import absolute_import
 
 import datetime as _datetime
 
-from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
+from flyteidl.plugins.sagemaker import \
+    hyperparameter_tuning_job_pb2 as _pb2_hpo_job
 from google.protobuf.json_format import MessageToDict
 
 from flytekit import __version__
 from flytekit.common import interface as _interface
 from flytekit.common.constants import SdkTaskType
 from flytekit.common.tasks import task as _sdk_task
-from flytekit.common.tasks.sagemaker.training_job_task import (
-    SdkBuiltinAlgorithmTrainingJobTask,
-)
+from flytekit.common.tasks.sagemaker.training_job_task import \
+    SdkBuiltinAlgorithmTrainingJobTask
 from flytekit.models import interface as _interface_model
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_models

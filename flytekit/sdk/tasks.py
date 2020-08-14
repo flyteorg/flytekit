@@ -6,15 +6,13 @@ import six as _six
 
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.tasks import (
-    sdk_runnable as _sdk_runnable_tasks,
-    sdk_dynamic as _sdk_dynamic,
-    spark_task as _sdk_spark_tasks,
-    generic_spark_task as _sdk_generic_spark_task,
-    hive_task as _sdk_hive_tasks,
-    sidecar_task as _sdk_sidecar_tasks,
-    pytorch_task as _sdk_pytorch_tasks,
-)
+from flytekit.common.tasks import generic_spark_task as _sdk_generic_spark_task
+from flytekit.common.tasks import hive_task as _sdk_hive_tasks
+from flytekit.common.tasks import pytorch_task as _sdk_pytorch_tasks
+from flytekit.common.tasks import sdk_dynamic as _sdk_dynamic
+from flytekit.common.tasks import sdk_runnable as _sdk_runnable_tasks
+from flytekit.common.tasks import sidecar_task as _sdk_sidecar_tasks
+from flytekit.common.tasks import spark_task as _sdk_spark_tasks
 from flytekit.common.tasks import task as _task
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.contrib.notebook import tasks as _nb_tasks

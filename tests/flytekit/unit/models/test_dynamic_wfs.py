@@ -1,9 +1,9 @@
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
-from flytekit.sdk import tasks as _tasks, workflow as _workflow
-from flytekit.sdk.types import Types as _Types
 from flytekit.common import constants as _sdk_constants
+from flytekit.sdk import tasks as _tasks
+from flytekit.sdk import workflow as _workflow
+from flytekit.sdk.types import Types as _Types
 
 
 @_tasks.inputs(num=_Types.Integer)

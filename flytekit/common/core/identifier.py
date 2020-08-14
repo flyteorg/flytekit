@@ -1,8 +1,10 @@
 from __future__ import absolute_import
-from flytekit.models.core import identifier as _core_identifier
+
+import six as _six
+
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
-import six as _six
+from flytekit.models.core import identifier as _core_identifier
 
 
 class Identifier(

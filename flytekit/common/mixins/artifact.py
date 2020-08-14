@@ -1,10 +1,13 @@
 from __future__ import absolute_import
+
 import abc as _abc
 import datetime as _datetime
-import six as _six
 import time as _time
-from flytekit.models import common as _common_models
+
+import six as _six
+
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.models import common as _common_models
 
 
 class ExecutionArtifact(_six.with_metaclass(_common_models.FlyteABCMeta, object)):

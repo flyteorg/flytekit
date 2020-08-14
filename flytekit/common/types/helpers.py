@@ -1,13 +1,13 @@
 from __future__ import absolute_import
 
-import six as _six
-from flytekit.models import literals as _literal_models
-from flytekit.common.exceptions import (
-    user as _user_exceptions,
-    scopes as _exception_scopes,
-)
-from flytekit.configuration import sdk as _sdk_config
 import importlib as _importlib
+
+import six as _six
+
+from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.configuration import sdk as _sdk_config
+from flytekit.models import literals as _literal_models
 
 
 class _TypeEngineLoader(object):
@@ -36,9 +36,8 @@ class _TypeEngineLoader(object):
 
                 engine_impl = getattr(module, attr)()
                 cls._LOADED_ENGINES.append(engine_impl)
-            from flytekit.type_engines.default.flyte import (
-                FlyteDefaultTypeEngine as _DefaultEngine,
-            )
+            from flytekit.type_engines.default.flyte import \
+                FlyteDefaultTypeEngine as _DefaultEngine
 
             cls._LOADED_ENGINES.append(_DefaultEngine())
 

@@ -2,11 +2,14 @@ from __future__ import absolute_import
 
 from datetime import timedelta
 from itertools import product
+
 from six.moves import range
 
-from flytekit.models import interface, literals, types, task
-from flytekit.models.core import identifier, types as _core_types
-from flytekit.common.types.impl import blobs as _blob_impl, schema as _schema_impl
+from flytekit.common.types.impl import blobs as _blob_impl
+from flytekit.common.types.impl import schema as _schema_impl
+from flytekit.models import interface, literals, task, types
+from flytekit.models.core import identifier
+from flytekit.models.core import types as _core_types
 
 LIST_OF_SCALAR_LITERAL_TYPES = [
     types.LiteralType(simple=types.SimpleType.BINARY),

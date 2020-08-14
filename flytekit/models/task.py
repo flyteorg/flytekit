@@ -2,23 +2,21 @@ import json as _json
 
 import six as _six
 from flyteidl.admin import task_pb2 as _admin_task
-from flyteidl.core import (
-    tasks_pb2 as _core_task,
-    literals_pb2 as _literals_pb2,
-    compiler_pb2 as _compiler,
-)
-from flyteidl.plugins import spark_pb2 as _spark_task
+from flyteidl.core import compiler_pb2 as _compiler
+from flyteidl.core import literals_pb2 as _literals_pb2
+from flyteidl.core import tasks_pb2 as _core_task
 from flyteidl.plugins import pytorch_pb2 as _pytorch_task
-from flytekit.plugins import flyteidl as _lazy_flyteidl
-from google.protobuf import json_format as _json_format, struct_pb2 as _struct
-from flytekit.sdk.spark_types import SparkType as _spark_type
-from flytekit.models import (
-    common as _common,
-    literals as _literals,
-    interface as _interface,
-)
-from flytekit.models.core import identifier as _identifier
+from flyteidl.plugins import spark_pb2 as _spark_task
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
+
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.models import common as _common
+from flytekit.models import interface as _interface
+from flytekit.models import literals as _literals
+from flytekit.models.core import identifier as _identifier
+from flytekit.plugins import flyteidl as _lazy_flyteidl
+from flytekit.sdk.spark_types import SparkType as _spark_type
 
 
 class Resources(_common.FlyteIdlEntity):

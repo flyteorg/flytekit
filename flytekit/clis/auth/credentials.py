@@ -1,22 +1,15 @@
 from __future__ import absolute_import
 
 import logging as _logging
+import urllib.parse as _urlparse
 
 from flytekit.clis.auth.auth import AuthorizationClient as _AuthorizationClient
 from flytekit.clis.auth.discovery import DiscoveryClient as _DiscoveryClient
-
-from flytekit.configuration.creds import (
-    REDIRECT_URI as _REDIRECT_URI,
-    CLIENT_ID as _CLIENT_ID,
-)
-from flytekit.configuration.platform import (
-    URL as _URL,
-    INSECURE as _INSECURE,
-    HTTP_URL as _HTTP_URL,
-)
-
-
-import urllib.parse as _urlparse
+from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
+from flytekit.configuration.creds import REDIRECT_URI as _REDIRECT_URI
+from flytekit.configuration.platform import HTTP_URL as _HTTP_URL
+from flytekit.configuration.platform import INSECURE as _INSECURE
+from flytekit.configuration.platform import URL as _URL
 
 # Default, well known-URI string used for fetching JSON metadata. See https://tools.ietf.org/html/rfc8414#section-3.
 discovery_endpoint_path = "./.well-known/oauth-authorization-server"

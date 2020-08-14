@@ -4,39 +4,37 @@ import logging as _logging
 import os as _os
 import traceback as _traceback
 from datetime import datetime as _datetime
-from deprecated import deprecated as _deprecated
 
 import six as _six
+from deprecated import deprecated as _deprecated
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import __version__ as _api_version
-from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
-from flytekit.clients.helpers import (
-    iterate_node_executions as _iterate_node_executions,
-    iterate_task_executions as _iterate_task_executions,
-)
-from flytekit.common import utils as _common_utils, constants as _constants
-from flytekit.common.exceptions import (
-    user as _user_exceptions,
-    scopes as _exception_scopes,
-)
-from flytekit.configuration import (
-    platform as _platform_config,
-    internal as _internal_config,
-    sdk as _sdk_config,
-    auth as _auth_config,
-)
+from flytekit.clients.friendly import \
+    SynchronousFlyteClient as _SynchronousFlyteClient
+from flytekit.clients.helpers import \
+    iterate_node_executions as _iterate_node_executions
+from flytekit.clients.helpers import \
+    iterate_task_executions as _iterate_task_executions
+from flytekit.common import constants as _constants
+from flytekit.common import utils as _common_utils
+from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.configuration import auth as _auth_config
+from flytekit.configuration import internal as _internal_config
+from flytekit.configuration import platform as _platform_config
+from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines import common as _common_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
-from flytekit.models import (
-    task as _task_models,
-    execution as _execution_models,
-    literals as _literals,
-    common as _common_models,
-)
-from flytekit.models.admin import common as _common, workflow as _workflow_model
-from flytekit.models.core import errors as _error_models, identifier as _identifier
+from flytekit.models import common as _common_models
+from flytekit.models import execution as _execution_models
+from flytekit.models import literals as _literals
+from flytekit.models import task as _task_models
+from flytekit.models.admin import common as _common
+from flytekit.models.admin import workflow as _workflow_model
+from flytekit.models.core import errors as _error_models
+from flytekit.models.core import identifier as _identifier
 
 
 class _FlyteClientManager(object):

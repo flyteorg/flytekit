@@ -2,7 +2,9 @@ from __future__ import absolute_import
 
 from flyteidl.core import dynamic_job_pb2 as _dynamic_job
 
-from flytekit.models import common as _common, task as _task, literals as _literals
+from flytekit.models import common as _common
+from flytekit.models import literals as _literals
+from flytekit.models import task as _task
 from flytekit.models.core import workflow as _workflow
 
 

@@ -1,15 +1,16 @@
 from __future__ import absolute_import
 
 import pytest as _pytest
-
-from flytekit.common import workflow, constants, promise, nodes, interface
-from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.types import primitives, containers
-from flytekit.models import literals as _literals
-from flytekit.models.core import workflow as _workflow_models, identifier as _identifier
-from flytekit.sdk import types as _types
-from flytekit.sdk.tasks import python_task, inputs, outputs
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
+
+from flytekit.common import constants, interface, nodes, promise, workflow
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.types import containers, primitives
+from flytekit.models import literals as _literals
+from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import workflow as _workflow_models
+from flytekit.sdk import types as _types
+from flytekit.sdk.tasks import inputs, outputs, python_task
 
 
 def test_output():
