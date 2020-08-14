@@ -59,7 +59,7 @@ setup(
         "scripts/flytekit_venv",
     ],
     license="apache2",
-    python_requires=">=2.7",
+    python_requires=">=3.6",
     classifiers=[
         "Intended Audience :: Developers",
         "Intended Audience :: System Administrators",
