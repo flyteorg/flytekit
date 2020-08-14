@@ -842,9 +842,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return super(SynchronousFlyteClient, self).get_project_domain_attributes(
             _project_domain_attributes_pb2.ProjectDomainAttributesGetRequest(
-                project=project,
-                domain=domain,
-                resource_type=resource_type,
+                project=project, domain=domain, resource_type=resource_type,
             )
         )
 
@@ -859,10 +857,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return super(SynchronousFlyteClient, self).get_workflow_attributes(
             _workflow_attributes_pb2.WorkflowAttributesGetRequest(
-                project=project,
-                domain=domain,
-                workflow=workflow,
-                resource_type=resource_type,
+                project=project, domain=domain, workflow=workflow, resource_type=resource_type,
             )
         )
 
@@ -873,7 +868,5 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :return:
         """
         return super(SynchronousFlyteClient, self).list_matchable_attributes(
-            _matchable_resource_pb2.ListMatchableAttributesRequest(
-                resource_type=resource_type,
-            )
+            _matchable_resource_pb2.ListMatchableAttributesRequest(resource_type=resource_type,)
         )

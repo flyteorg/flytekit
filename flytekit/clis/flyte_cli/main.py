@@ -1745,9 +1745,20 @@ def update_execution_cluster_label(host, insecure, project, domain, name, value)
 @_project_option
 @_domain_option
 @_optional_name_option
-@_click.option("--resource-type", help="Resource type", required=True,
-               type=_click.Choice(["task_resource", "cluster_resource", "execution_queue", "execution_cluster_label",
-                                   "quality_of_service_specification"]))
+@_click.option(
+    "--resource-type",
+    help="Resource type",
+    required=True,
+    type=_click.Choice(
+        [
+            "task_resource",
+            "cluster_resource",
+            "execution_queue",
+            "execution_cluster_label",
+            "quality_of_service_specification",
+        ]
+    ),
+)
 def get_matching_attributes(host, insecure, project, domain, name, resource_type):
     """
     Fetches the matchable resource of the given resource type for this project, domain and optionally workflow name
@@ -1771,9 +1782,20 @@ def get_matching_attributes(host, insecure, project, domain, name, resource_type
 @_flyte_cli.command("list-matching-attributes", cls=_FlyteSubCommand)
 @_host_option
 @_insecure_option
-@_click.option("--resource-type", help="Resource type", required=True,
-               type=_click.Choice(["task_resource", "cluster_resource", "execution_queue", "execution_cluster_label",
-                                   "quality_of_service_specification"]))
+@_click.option(
+    "--resource-type",
+    help="Resource type",
+    required=True,
+    type=_click.Choice(
+        [
+            "task_resource",
+            "cluster_resource",
+            "execution_queue",
+            "execution_cluster_label",
+            "quality_of_service_specification",
+        ]
+    ),
+)
 def list_matching_attributes(host, insecure, resource_type):
     """
     Fetches all matchable resources of the given resource type.
@@ -1790,8 +1812,8 @@ def list_matching_attributes(host, insecure, resource_type):
                 _tt(configuration.workflow),
                 _tt(configuration.launch_plan),
             ),
-            fg='blue',
-            nl=False
+            fg="blue",
+            nl=False,
         )
         _click.echo("{}".format(configuration.attributes))
 
