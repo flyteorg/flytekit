@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import six as _six
-
 from flyteidl.admin import common_pb2 as _common_pb2
 from flyteidl.admin import execution_pb2 as _execution_pb2
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
