@@ -3,8 +3,9 @@ from __future__ import absolute_import
 import pytest as _pytest
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 
+from flytekit.common import constants, interface
 from flytekit.common import local_workflow as _local_workflow
-from flytekit.common import constants, interface, nodes, promise, workflow
+from flytekit.common import nodes, promise, workflow
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import containers, primitives
 from flytekit.models import literals as _literals
@@ -57,8 +58,9 @@ def test_workflow():
     nodes = [n1, n2, n3, n4, n5, n6]
 
     w = _local_workflow.PythonWorkflow.construct_from_class_definition(
-        inputs=input_list, outputs=[
-            _local_workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)], nodes=nodes,
+        inputs=input_list,
+        outputs=[_local_workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)],
+        nodes=nodes,
     )
 
     assert w.interface.inputs["input_1"].type == primitives.Integer.to_flyte_literal_type()

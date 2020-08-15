@@ -33,13 +33,7 @@ class SdkWorkflow(
     """
 
     def __init__(
-            self,
-            nodes,
-            interface,
-            output_bindings,
-            id=None,
-            metadata=None,
-            metadata_defaults=None,
+        self, nodes, interface, output_bindings, id=None, metadata=None, metadata_defaults=None,
     ):
         """
         :param list[flytekit.common.nodes.SdkNode] nodes:
@@ -219,7 +213,7 @@ class SdkWorkflow(
                 _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
             ).client
             sub_workflows = self.get_sub_workflows()
-            client.create_workflow(id_to_register, _admin_workflow_model.WorkflowSpec(self, sub_workflows, ))
+            client.create_workflow(id_to_register, _admin_workflow_model.WorkflowSpec(self, sub_workflows,))
             self._id = id_to_register
             return str(id_to_register)
         except _user_exceptions.FlyteEntityAlreadyExistsException:
@@ -237,7 +231,7 @@ class SdkWorkflow(
         :rtype: flyteidl.admin.workflow_pb2.WorkflowSpec
         """
         sub_workflows = self.get_sub_workflows()
-        return _admin_workflow_model.WorkflowSpec(self, sub_workflows, ).to_flyte_idl()
+        return _admin_workflow_model.WorkflowSpec(self, sub_workflows,).to_flyte_idl()
 
     @_exception_scopes.system_entry_point
     def validate(self):

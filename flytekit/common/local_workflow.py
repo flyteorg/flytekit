@@ -1,19 +1,26 @@
 import uuid as _uuid
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 import six as _six
 from flyteidl.core import workflow_pb2 as _core_workflow_pb2
 from six.moves import queue as _queue
 
-from flytekit.common import promise as _promise, nodes as _nodes, interface as _interface, launch_plan as _launch_plan
+from flytekit.common import interface as _interface
+from flytekit.common import launch_plan as _launch_plan
+from flytekit.common import nodes as _nodes
+from flytekit.common import promise as _promise
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.mixins import hash as _hash_mixin, registerable as _registerable
+from flytekit.common.mixins import hash as _hash_mixin
+from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.workflow import SdkWorkflow
 from flytekit.configuration import internal as _internal_config
-from flytekit.models import literals as _literal_models, common as _common_models, interface as _interface_models
-from flytekit.models.core import workflow as _workflow_models, identifier as _identifier_model
+from flytekit.models import common as _common_models
+from flytekit.models import interface as _interface_models
+from flytekit.models import literals as _literal_models
+from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import workflow as _workflow_models
 
 
 # TODO: This will break everyone because it's a user-facing object and people will have imported it.
@@ -79,7 +86,7 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
     """
 
     def __init__(
-            self, flyte_workflow: SdkWorkflow, inputs: List[_promise.Input], nodes: List[_nodes.SdkNode],
+        self, flyte_workflow: SdkWorkflow, inputs: List[_promise.Input], nodes: List[_nodes.SdkNode],
     ):
         _registerable.LocalEntity.__init__(self)
         # Currently experimenting with using composition instead of inheritance, which is why this has an sdk workflow.
@@ -102,12 +109,12 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
 
     @classmethod
     def construct_from_class_definition(
-            cls,
-            inputs: List[_promise.Input],
-            outputs: List[Output],
-            nodes: List[_nodes.SdkNode],
-            metadata: _workflow_models.WorkflowMetadata = None,
-            metadata_defaults: _workflow_models.WorkflowMetadataDefaults = None,
+        cls,
+        inputs: List[_promise.Input],
+        outputs: List[Output],
+        nodes: List[_nodes.SdkNode],
+        metadata: _workflow_models.WorkflowMetadata = None,
+        metadata_defaults: _workflow_models.WorkflowMetadataDefaults = None,
     ) -> "PythonWorkflow":
         """
         This constructor is here to provide backwards-compatibility for class-defined Workflows
@@ -191,17 +198,17 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
         return self._user_inputs
 
     def create_launch_plan(
-            self,
-            default_inputs: Dict[str, _promise.Input] = None,
-            fixed_inputs: Dict[str, Any] = None,
-            schedule=None,
-            role=None,
-            notifications=None,
-            labels=None,
-            annotations=None,
-            assumable_iam_role=None,
-            kubernetes_service_account=None,
-            raw_output_data_prefix=None,
+        self,
+        default_inputs: Dict[str, _promise.Input] = None,
+        fixed_inputs: Dict[str, Any] = None,
+        schedule=None,
+        role=None,
+        notifications=None,
+        labels=None,
+        annotations=None,
+        assumable_iam_role=None,
+        kubernetes_service_account=None,
+        raw_output_data_prefix=None,
     ):
         """
         This method will create a launch plan object that can execute this workflow.
