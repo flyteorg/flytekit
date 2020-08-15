@@ -26,7 +26,7 @@ class Input(_promise.Input):
         super(Input, self).__init__("", _type_helpers.python_std_to_sdk_type(sdk_type), help=help, **kwargs)
 
 
-class Output(_common_workflow.Output):
+class Output(flytekit.common.local_workflow.Output):
     """
     This object should be used to specify outputs. It can be used in conjunction with
     :py:meth:`flytekit.common.workflow.workflow` and :py:meth:`flytekit.common.workflow.workflow_class`

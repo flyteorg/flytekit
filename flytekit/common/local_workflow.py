@@ -9,21 +9,77 @@ from flytekit.common import promise as _promise, nodes as _nodes, interface as _
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin, registerable as _registerable
-from flytekit.common.workflow import SdkWorkflow, Output
+from flytekit.common.types import helpers as _type_helpers
+from flytekit.common.workflow import SdkWorkflow
 from flytekit.configuration import internal as _internal_config
-from flytekit.models import literals as _literal_models, common as _common_models
+from flytekit.models import literals as _literal_models, common as _common_models, interface as _interface_models
 from flytekit.models.core import workflow as _workflow_models, identifier as _identifier_model
 
 
-class PythonWorkflow(
-    _hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity, _registerable.RegisterableEntity,
-):
+# TODO: This will break everyone because it's a user-facing object and people will have imported it.
+#       Can move it back pretty easily, won't cause a circular import.
+class Output(object):
+    def __init__(self, name, value, sdk_type=None, help=None):
+        """
+        :param Text name:
+        :param T value:
+        :param U sdk_type: If specified, the value provided must cast to this type.  Normally should be an instance of
+            flytekit.common.types.base_sdk_types.FlyteSdkType.  But could also be something like:
+
+            list[flytekit.common.types.base_sdk_types.FlyteSdkType],
+            dict[flytekit.common.types.base_sdk_types.FlyteSdkType,flytekit.common.types.base_sdk_types.FlyteSdkType],
+            (flytekit.common.types.base_sdk_types.FlyteSdkType, flytekit.common.types.base_sdk_types.FlyteSdkType, ...)
+        """
+        if sdk_type is None:
+            # This syntax didn't work for some reason: sdk_type = sdk_type or Output._infer_type(value)
+            sdk_type = Output._infer_type(value)
+        sdk_type = _type_helpers.python_std_to_sdk_type(sdk_type)
+
+        self._binding_data = _interface.BindingData.from_python_std(sdk_type.to_flyte_literal_type(), value)
+        self._var = _interface_models.Variable(sdk_type.to_flyte_literal_type(), help or "")
+        self._name = name
+
+    def rename_and_return_reference(self, new_name):
+        self._name = new_name
+        return self
+
+    @staticmethod
+    def _infer_type(value):
+        # TODO: Infer types
+        raise NotImplementedError(
+            "Currently the SDK cannot infer a workflow output type, so please use the type kwarg "
+            "when instantiating an output."
+        )
+
+    @property
+    def name(self):
+        """
+        :rtype: Text
+        """
+        return self._name
+
+    @property
+    def binding_data(self):
+        """
+        :rtype: flytekit.models.literals.BindingData
+        """
+        return self._binding_data
+
+    @property
+    def var(self):
+        """
+        :rtype: flytekit.models.interface.Variable
+        """
+        return self._var
+
+
+class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity, _registerable.RegisterableEntity):
     """
     Wrapper class for locally defined Python workflows
     """
 
     def __init__(
-        self, flyte_workflow: SdkWorkflow, inputs: List[_promise.Input], nodes: List[_nodes.SdkNode],
+            self, flyte_workflow: SdkWorkflow, inputs: List[_promise.Input], nodes: List[_nodes.SdkNode],
     ):
         _registerable.LocalEntity.__init__(self)
         # Currently experimenting with using composition instead of inheritance, which is why this has an sdk workflow.
@@ -46,21 +102,22 @@ class PythonWorkflow(
 
     @classmethod
     def construct_from_class_definition(
-        cls,
-        inputs: List[_promise.Input],
-        outputs: List[Output],
-        nodes: List[_nodes.SdkNode],
-        metadata: _workflow_models.WorkflowMetadata = None,
-        metadata_defaults: _workflow_models.WorkflowMetadataDefaults = None,
+            cls,
+            inputs: List[_promise.Input],
+            outputs: List[Output],
+            nodes: List[_nodes.SdkNode],
+            metadata: _workflow_models.WorkflowMetadata = None,
+            metadata_defaults: _workflow_models.WorkflowMetadataDefaults = None,
     ) -> "PythonWorkflow":
         """
         This constructor is here to provide backwards-compatibility for class-defined Workflows
 
-        :param inputs:
-        :param outputs:
-        :param nodes:
-        :param metadata:
-        :param metadata_defaults:
+        :param list[flytekit.common.promise.Input] inputs:
+        :param list[Output] outputs:
+        :param list[flytekit.common.nodes.SdkNode] nodes:
+        :param WorkflowMetadata metadata: This contains information on how to run the workflow.
+        :param flytekit.models.core.workflow.WorkflowMetadataDefaults metadata_defaults: Defaults to be passed
+            to nodes contained within workflow.
         :rtype: PythonWorkflow
         """
         for n in nodes:
@@ -84,8 +141,6 @@ class PythonWorkflow(
         output_bindings = [_literal_models.Binding(v.name, v.binding_data) for v in outputs]
 
         sdk_workflow = SdkWorkflow(
-            inputs=None,
-            outputs=None,
             id=id,
             metadata=metadata,
             metadata_defaults=metadata_defaults,
@@ -136,17 +191,17 @@ class PythonWorkflow(
         return self._user_inputs
 
     def create_launch_plan(
-        self,
-        default_inputs: Dict[str, _promise.Input] = None,
-        fixed_inputs: Dict[str, Any] = None,
-        schedule=None,
-        role=None,
-        notifications=None,
-        labels=None,
-        annotations=None,
-        assumable_iam_role=None,
-        kubernetes_service_account=None,
-        raw_output_data_prefix=None,
+            self,
+            default_inputs: Dict[str, _promise.Input] = None,
+            fixed_inputs: Dict[str, Any] = None,
+            schedule=None,
+            role=None,
+            notifications=None,
+            labels=None,
+            annotations=None,
+            assumable_iam_role=None,
+            kubernetes_service_account=None,
+            raw_output_data_prefix=None,
     ):
         """
         This method will create a launch plan object that can execute this workflow.
