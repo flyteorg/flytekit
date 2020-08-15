@@ -10,7 +10,7 @@ parser.add_argument('--__FLYTE_SAGEMAKER_CMD__', dest='flyte_sagmaker_cmd',
 args, unknowns = parser.parse_known_args()
 
 # Extending the command with the rest of the command-line arguments
-subprocess_cmd = args.flyte_sagmaker_cmd.split()
+subprocess_cmd = args.flyte_sagmaker_cmd.split('+')
 
 flyte_sagemaker_cmd_parser = argparse.ArgumentParser(description="Parse pyflyte execute command to replace output prefix location.")
 flyte_sagemaker_cmd_parser.add_argument('--output-prefix', dest='output_prefix')
