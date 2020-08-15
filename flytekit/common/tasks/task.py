@@ -113,7 +113,6 @@ class SdkTask(
         self._type = new_type
         return self
 
-    # TODO: Move this to Runnable since this is not a Flyte control plane concept
     @_exception_scopes.system_entry_point
     def __call__(self, *args, **input_map):
         """
