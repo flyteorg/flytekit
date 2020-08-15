@@ -9,7 +9,7 @@ parser.add_argument('--__FLYTE_SAGEMAKER_CMD__', dest='flyte_sagmaker_cmd',
 args, unknowns = parser.parse_known_args()
 
 # Extending the command with the rest of the command-line arguments
-subprocess_cmd = args.flyte_sagmaker_cmd.split(str=" ")
+subprocess_cmd = args.flyte_sagmaker_cmd.split(separator=" ")
 logging.info("Launching a subprocess with: {}".format(subprocess_cmd))
 
 # Launching a subprocess with the selected entrypoint script and the rest of the arguments
