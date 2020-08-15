@@ -2,6 +2,7 @@ from typing import Dict
 
 import six as _six
 
+import flytekit.common.local_workflow
 from flytekit.common import nodes as _nodes
 from flytekit.common import promise as _promise
 from flytekit.common import workflow as _common_workflow
@@ -65,7 +66,7 @@ def workflow_class(_workflow_metaclass=None, on_failure=None):
     """
 
     def wrapper(metaclass):
-        wf = _common_workflow.build_sdk_workflow_from_metaclass(metaclass, on_failure=on_failure)
+        wf = flytekit.common.local_workflow.build_sdk_workflow_from_metaclass(metaclass, on_failure=on_failure)
         return wf
 
     if _workflow_metaclass is not None:
@@ -110,7 +111,7 @@ def workflow(nodes: Dict[str, _nodes.SdkNode], inputs=None, outputs=None, on_fai
     :rtype: flytekit.common.workflow.SdkWorkflow
     """
     # TODO: Why does Pycharm complain about nodes?
-    wf = _common_workflow.PythonWorkflow.construct_from_class_definition(
+    wf = flytekit.common.local_workflow.PythonWorkflow.construct_from_class_definition(
         inputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(inputs or {}))],
         outputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(outputs or {}))],
         nodes=[v.assign_id_and_return(k) for k, v in sorted(_six.iteritems(nodes))],

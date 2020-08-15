@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import pytest as _pytest
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 
+import flytekit.common.local_workflow
 from flytekit.common import constants, interface, nodes, promise, workflow
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import containers, primitives
@@ -133,7 +134,7 @@ def test_workflow_decorator():
         n1 >> n6
         a = workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)
 
-    w = workflow.build_sdk_workflow_from_metaclass(
+    w = flytekit.common.local_workflow.build_sdk_workflow_from_metaclass(
         my_workflow, on_failure=_workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE,
     )
 
@@ -224,7 +225,7 @@ def test_workflow_node():
     ]
 
     sdk_wf = workflow.SdkWorkflow(inputs=input_list, outputs=wf_out, nodes=nodes)
-    w = workflow.PythonWorkflow(sdk_wf, input_list, nodes)
+    w = flytekit.common.local_workflow.PythonWorkflow(sdk_wf, input_list, nodes)
 
     # Test that required input isn't set
     with _pytest.raises(_user_exceptions.FlyteAssertion):
@@ -348,7 +349,7 @@ def test_workflow_serialization():
         workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
     ]
 
-    w = workflow.PythonWorkflow.construct_from_class_definition(inputs=input_list, outputs=wf_out, nodes=nodes)
+    w = flytekit.common.local_workflow.PythonWorkflow.construct_from_class_definition(inputs=input_list, outputs=wf_out, nodes=nodes)
     serialized = w.serialize()
     assert isinstance(serialized, _workflow_pb2.WorkflowSpec)
     assert len(serialized.template.nodes) == 6

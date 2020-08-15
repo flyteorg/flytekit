@@ -7,7 +7,7 @@ import six
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import registerable as _registerable
-from flytekit.common.workflow import PythonWorkflow as _PythonWorkflow
+from flytekit.common.local_workflow import PythonWorkflow as _PythonWorkflow
 
 
 def iterate_modules(pkgs):

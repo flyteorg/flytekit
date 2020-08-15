@@ -391,7 +391,7 @@ class SdkRunnableLaunchPlan(
         raw_output_data_config=None,
     ):
         """
-        :param flytekit.common.workflow.PythonWorkflow sdk_workflow:
+        :param flytekit.common.local_workflow.PythonWorkflow sdk_workflow:
         :param dict[Text,flytekit.common.promise.Input] default_inputs:
         :param dict[Text,Any] fixed_inputs: These inputs will be fixed and not need to be set when executing this
             launch plan.
