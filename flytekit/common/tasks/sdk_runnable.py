@@ -99,6 +99,10 @@ class ExecutionParameters(object):
 
 
 class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.ExtendedSdkType):
+    """
+    This is not necessarily a local-only Container object. So long as configuration is present, you can use this object
+    """
+
     def __init__(
         self, command, args, resources, env, config,
     ):
@@ -136,6 +140,58 @@ class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.Extended
             }
         )
         return env
+
+    @classmethod
+    def get_resources(
+        cls,
+        storage_request=None,
+        cpu_request=None,
+        gpu_request=None,
+        memory_request=None,
+        storage_limit=None,
+        cpu_limit=None,
+        gpu_limit=None,
+        memory_limit=None,
+    ):
+        """
+        :param Text storage_request:
+        :param Text cpu_request:
+        :param Text gpu_request:
+        :param Text memory_request:
+        :param Text storage_limit:
+        :param Text cpu_limit:
+        :param Text gpu_limit:
+        :param Text memory_limit:
+        """
+        requests = []
+        if storage_request:
+            requests.append(
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
+            )
+        if cpu_request:
+            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
+        if gpu_request:
+            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
+        if memory_request:
+            requests.append(
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
+            )
+
+        limits = []
+        if storage_limit:
+            limits.append(
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit)
+            )
+        if cpu_limit:
+            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
+        if gpu_limit:
+            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
+        if memory_limit:
+            limits.append(
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit)
+            )
+
+        return _task_models.Resources(limits=limits, requests=requests)
 
 
 class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_sdk_bases.ExtendedSdkType):
@@ -403,33 +459,9 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
         memory_limit = memory_limit or _resource_config.DEFAULT_MEMORY_LIMIT.get()
         memory_request = memory_request or _resource_config.DEFAULT_MEMORY_REQUEST.get()
 
-        requests = []
-        if storage_request:
-            requests.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
-            )
-        if cpu_request:
-            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
-        if gpu_request:
-            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
-        if memory_request:
-            requests.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
-            )
-
-        limits = []
-        if storage_limit:
-            limits.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit)
-            )
-        if cpu_limit:
-            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
-        if gpu_limit:
-            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
-        if memory_limit:
-            limits.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit)
-            )
+        resources = SdkRunnableContainer.get_resources(
+            storage_request, cpu_request, gpu_request, memory_request, storage_limit, cpu_limit, gpu_limit, memory_limit
+        )
 
         return (cls or SdkRunnableContainer)(
             command=[],
@@ -444,7 +476,7 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.LocalEntity, metaclass=_
                 "--output-prefix",
                 "{{.outputPrefix}}",
             ],
-            resources=_task_models.Resources(limits=limits, requests=requests),
+            resources=resources,
             env=environment,
             config={},
         )
