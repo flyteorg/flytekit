@@ -13,71 +13,12 @@ from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.mixins import registerable as _registerable
-from flytekit.common.types import helpers as _type_helpers
-from flytekit.common.workflow import SdkWorkflow
+from flytekit.common.workflow import SdkWorkflow, Output
 from flytekit.configuration import internal as _internal_config
 from flytekit.models import common as _common_models
-from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
-
-
-# TODO: This will break everyone because it's a user-facing object and people will have imported it.
-#       Can move it back pretty easily, won't cause a circular import.
-class Output(object):
-    def __init__(self, name, value, sdk_type=None, help=None):
-        """
-        :param Text name:
-        :param T value:
-        :param U sdk_type: If specified, the value provided must cast to this type.  Normally should be an instance of
-            flytekit.common.types.base_sdk_types.FlyteSdkType.  But could also be something like:
-
-            list[flytekit.common.types.base_sdk_types.FlyteSdkType],
-            dict[flytekit.common.types.base_sdk_types.FlyteSdkType,flytekit.common.types.base_sdk_types.FlyteSdkType],
-            (flytekit.common.types.base_sdk_types.FlyteSdkType, flytekit.common.types.base_sdk_types.FlyteSdkType, ...)
-        """
-        if sdk_type is None:
-            # This syntax didn't work for some reason: sdk_type = sdk_type or Output._infer_type(value)
-            sdk_type = Output._infer_type(value)
-        sdk_type = _type_helpers.python_std_to_sdk_type(sdk_type)
-
-        self._binding_data = _interface.BindingData.from_python_std(sdk_type.to_flyte_literal_type(), value)
-        self._var = _interface_models.Variable(sdk_type.to_flyte_literal_type(), help or "")
-        self._name = name
-
-    def rename_and_return_reference(self, new_name):
-        self._name = new_name
-        return self
-
-    @staticmethod
-    def _infer_type(value):
-        # TODO: Infer types
-        raise NotImplementedError(
-            "Currently the SDK cannot infer a workflow output type, so please use the type kwarg "
-            "when instantiating an output."
-        )
-
-    @property
-    def name(self):
-        """
-        :rtype: Text
-        """
-        return self._name
-
-    @property
-    def binding_data(self):
-        """
-        :rtype: flytekit.models.literals.BindingData
-        """
-        return self._binding_data
-
-    @property
-    def var(self):
-        """
-        :rtype: flytekit.models.interface.Variable
-        """
-        return self._var
 
 
 class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity, _registerable.RegisterableEntity):
@@ -168,8 +109,6 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
 
     @property
     def upstream_entities(self):
-        # TODO: Should we re-evaluate every time?
-        # return set(n.executable_sdk_object for n in self.nodes)
         return self._upstream_entities
 
     @property
@@ -196,6 +135,13 @@ class PythonWorkflow(_hash_mixin.HashOnReferenceMixin, _registerable.LocalEntity
         :rtype: list[flytekit.common.promise.Input]
         """
         return self._user_inputs
+
+    @property
+    def entity_type_text(self) -> str:
+        """
+        :rtype: Text
+        """
+        return "Python Workflow"
 
     def create_launch_plan(
         self,

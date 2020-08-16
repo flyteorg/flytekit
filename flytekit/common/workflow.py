@@ -1,7 +1,7 @@
 import datetime as _datetime
 import uuid as _uuid
 
-from flytekit.common import constants as _constants
+from flytekit.common import constants as _constants, interface as _interface
 from flytekit.common import interface as _interface
 from flytekit.common import nodes as _nodes
 from flytekit.common import sdk_bases as _sdk_bases
@@ -11,13 +11,71 @@ from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.mixins import registerable as _registerable
+from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models import literals as _literal_models
+from flytekit.models import literals as _literal_models, interface as _interface_models
 from flytekit.models.admin import workflow as _admin_workflow_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
+
+
+# This doesn't belong in this file. It should be in the local_workflow file, but is placed here for backwards
+# compatibility only. This is a local-only wrapper around binding data and variables.
+class Output(object):
+    def __init__(self, name, value, sdk_type=None, help=None):
+        """
+        :param Text name:
+        :param T value:
+        :param U sdk_type: If specified, the value provided must cast to this type.  Normally should be an instance of
+            flytekit.common.types.base_sdk_types.FlyteSdkType.  But could also be something like:
+
+            list[flytekit.common.types.base_sdk_types.FlyteSdkType],
+            dict[flytekit.common.types.base_sdk_types.FlyteSdkType,flytekit.common.types.base_sdk_types.FlyteSdkType],
+            (flytekit.common.types.base_sdk_types.FlyteSdkType, flytekit.common.types.base_sdk_types.FlyteSdkType, ...)
+        """
+        if sdk_type is None:
+            # This syntax didn't work for some reason: sdk_type = sdk_type or Output._infer_type(value)
+            sdk_type = Output._infer_type(value)
+        sdk_type = _type_helpers.python_std_to_sdk_type(sdk_type)
+
+        self._binding_data = _interface.BindingData.from_python_std(sdk_type.to_flyte_literal_type(), value)
+        self._var = _interface_models.Variable(sdk_type.to_flyte_literal_type(), help or "")
+        self._name = name
+
+    def rename_and_return_reference(self, new_name):
+        self._name = new_name
+        return self
+
+    @staticmethod
+    def _infer_type(value):
+        # TODO: Infer types
+        raise NotImplementedError(
+            "Currently the SDK cannot infer a workflow output type, so please use the type kwarg "
+            "when instantiating an output."
+        )
+
+    @property
+    def name(self):
+        """
+        :rtype: Text
+        """
+        return self._name
+
+    @property
+    def binding_data(self):
+        """
+        :rtype: flytekit.models.literals.BindingData
+        """
+        return self._binding_data
+
+    @property
+    def var(self):
+        """
+        :rtype: flytekit.models.interface.Variable
+        """
+        return self._var
 
 
 class SdkWorkflow(
