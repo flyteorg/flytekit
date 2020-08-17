@@ -1647,10 +1647,14 @@ def update_launch_plan_meta(description, host, insecure, project, domain, name):
 def update_cluster_resource_attributes(host, insecure, project, domain, name, attributes):
     """
     Sets matchable cluster resource attributes for a project, domain and optionally, workflow name.
+    The attribute names should match the templatized values you use to configure these resource
+    attributes in your flyteadmin deployment. See
+    https://lyft.github.io/flyte/administrator/install/managing_customizable_resources.html#cluster-resources
+    for more documentation.
 
     e.g.
         $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-cluster-resource-attributes \
-            --attributes cpu 1 --attributes memory 500M
+            --attributes projectQuotaCpu 1 --attributes projectQuotaMemory 500M
     """
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
