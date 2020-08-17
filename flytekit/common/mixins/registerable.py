@@ -55,10 +55,10 @@ class FlyteEntity(object, metaclass=_sdk_bases.ExtendedSdkType):
         pass
 
 
-class LocalEntity(FlyteEntity, metaclass=_InstanceTracker):
+class TrackableEntity(FlyteEntity, metaclass=_InstanceTracker):
     def __init__(self, *args, **kwargs):
         self._platform_valid_name = None
-        super(LocalEntity, self).__init__(*args, **kwargs)
+        super(TrackableEntity, self).__init__(*args, **kwargs)
 
     @property
     def instantiated_in(self):
@@ -142,7 +142,7 @@ class LocalEntity(FlyteEntity, metaclass=_InstanceTracker):
         raise _system_exceptions.FlyteSystemException("Error looking for object while auto-assigning name.")
 
 
-class RegisterableEntity(LocalEntity):
+class RegisterableEntity(TrackableEntity):
     def __init__(self, *args, **kwargs):
         self._has_registered = False
         super(RegisterableEntity, self).__init__(*args, **kwargs)
@@ -185,7 +185,7 @@ class HasDependencies(object):
     def upstream_entities(self):
         """
         Task, workflow, and launch plan that need to be registered in advance of this workflow.
-        :rtype: set[LocalEntity]
+        :rtype: set[TrackableEntity]
         """
         return self._upstream_entities
 
