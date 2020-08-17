@@ -3,6 +3,52 @@ from flyteidl.admin import matchable_resource_pb2 as _matchable_resource
 from flytekit.models import common as _common
 
 
+class MatchableResource(object):
+    TASK_RESOURCE = _matchable_resource.TASK_RESOURCE
+    CLUSTER_RESOURCE = _matchable_resource.CLUSTER_RESOURCE
+    EXECUTION_QUEUE = _matchable_resource.EXECUTION_QUEUE
+    EXECUTION_CLUSTER_LABEL = _matchable_resource.EXECUTION_CLUSTER_LABEL
+    QUALITY_OF_SERVICE_SPECIFICATION = _matchable_resource.QUALITY_OF_SERVICE_SPECIFICATION
+
+    @classmethod
+    def enum_to_string(cls, val):
+        """
+        :param int val:
+        :rtype: Text
+        """
+        if val == cls.TASK_RESOURCE:
+            return "TASK_RESOURCE"
+        elif val == cls.CLUSTER_RESOURCE:
+            return "CLUSTER_RESOURCE"
+        elif val == cls.EXECUTION_QUEUE:
+            return "EXECUTION_QUEUE"
+        elif val == cls.EXECUTION_CLUSTER_LABEL:
+            return "EXECUTION_CLUSTER_LABEL"
+        elif val == cls.QUALITY_OF_SERVICE_SPECIFICATION:
+            return "QUALITY_OF_SERVICE_SPECIFICATION"
+        else:
+            return "<UNKNOWN>"
+
+    @classmethod
+    def string_to_enum(cls, val):
+        """
+        :param Text val:
+        :rtype: int
+        """
+        if val == "TASK_RESOURCE":
+            return cls.TASK_RESOURCE
+        elif val == "CLUSTER_RESOURCE":
+            return cls.CLUSTER_RESOURCE
+        elif val == "EXECUTION_QUEUE":
+            return cls.EXECUTION_QUEUE
+        elif val == "EXECUTION_CLUSTER_LABEL":
+            return cls.EXECUTION_CLUSTER_LABEL
+        elif val == cls.QUALITY_OF_SERVICE_SPECIFICATION:
+            return "QUALITY_OF_SERVICE_SPECIFICATION"
+        else:
+            return "<UNKNOWN>"
+
+
 class ClusterResourceAttributes(_common.FlyteIdlEntity):
     def __init__(self, attributes):
         """
