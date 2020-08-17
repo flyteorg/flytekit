@@ -17,7 +17,7 @@ from flytekit.configuration.common import CONFIGURATION_SINGLETON
 from flytekit.models import interface as _interface_models, literals as _literal_models
 from flytekit.models import task as _task_model, types as _type_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
-from flytekit.annotated.type_engine import SIMPLE_TYPE_LOOKUP_TABLE
+from flytekit.annotated.type_engine import SIMPLE_TYPE_LOOKUP_TABLE, outputs, Outputs
 
 # Set this to 11 or higher if you don't want to see debug output
 logger.setLevel(10)
@@ -54,7 +54,7 @@ class PythonWorkflow(object):
             print(f"compilation mode. Args are: {args}")
             print(f"Locals: {locals()}")
 
-            logger.debug(f"Compiling workflow... ")
+            # logger.debug(f"Compiling workflow... ")
 
         else:
             # Can we relax this in the future?  People are used to this right now, so it's okay.
@@ -64,7 +64,7 @@ class PythonWorkflow(object):
             return self._workflow_function(*args, **kwargs)
 
 
-class WorkflowOutputs(object):
+class WorkflowOutputs(tuple):
     def __init__(self, *args, **kwargs):
         if len(kwargs) > 0:
             raise Exception("nope, can't do this")
@@ -80,11 +80,11 @@ class WorkflowOutputs(object):
             #     a = t1()  # This produces a promise.NodeOutput which contains a node
             #     b = t2(a)
             #     return WorkflowOutputs(b)
-            # the 'a' node should have it's id already by virtue of being handled in t2's call. However, 'b' itself
+            # the 'a' node should have its id already by virtue of being handled in t2's call. However, 'b' itself
             # isn't assigned yet. This will loop through and make sure that they're all assigned.
             # Unlike in the task case however, if it doesn't find a node name we will raise an Exception. For now at
             # least, we're not going to allow people to write
-            #    return WorkflowOutputs(t2())
+            #    return WorkflowOutputs(t2(a))
             for promise_node_output in args:
                 n = promise_node_output.sdk_node
                 if n.id is None:
@@ -154,7 +154,7 @@ def workflow(
             # the type engine)... in the constructor, it again turns it back to the literal type when creating the
             # Parameter model.
             sdk_type = _type_helpers.get_sdk_type_from_literal_type(input_variable_obj.type)
-            logger.debug(f"Converting literal type {input_variable_obj.type} to sdk type {sdk_type}")
+            # logger.debug(f"Converting literal type {input_variable_obj.type} to sdk type {sdk_type}")
             arg_map = {'default': default_inputs[input_name]} if input_name in default_inputs else {}
             input_parameters.append(_WorkflowInput(name=input_name, type=sdk_type, **arg_map))
 
@@ -173,7 +173,7 @@ def workflow(
         all_nodes = []
         # These should line up with the output input argument
         # TODO: Add length checks.
-        logger.debug(f"Workflow outputs: {outputs}")
+        # logger.debug(f"Workflow outputs: {outputs}")
 
         # Construct the output portion of the interface
         # Only works when all outputs are promise.NodeOutput's
@@ -190,8 +190,8 @@ def workflow(
         for i, out in enumerate(workflow_outputs.args):
             output_name = out.var
             output_literal_type = out.sdk_type.to_flyte_literal_type()
-            logger.debug(f"Got output wrapper: {out}")
-            logger.debug(f"Var name {output_name} wf output name {outputs[i]} type: {output_literal_type}")
+            # logger.debug(f"Got output wrapper: {out}")
+            # logger.debug(f"Var name {output_name} wf output name {outputs[i]} type: {output_literal_type}")
             binding_data = _literal_models.BindingData(promise=out)
             binding = _literal_models.Binding(var=outputs[i], binding=binding_data)
             bindings.append(binding)
@@ -208,18 +208,18 @@ def workflow(
         # TODO: Again, at this point, we should be able to identify the name of the workflow
         workflow_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW,
                                                    "proj", "dom", "moreblah", "1")
-        print("+++++++++++++++++++++++++++++++++++++")
-        print(f"Inputs {input_parameters}")
-        print(f"Output objects {workflow_output_objs}")
-        print(f"Nodes {all_nodes}")
+        # logger.debug("+++++++++++++++++++++++++++++++++++++")
+        # logger.debug(f"Inputs {input_parameters}")
+        # logger.debug(f"Output objects {workflow_output_objs}")
+        # logger.debug(f"Nodes {all_nodes}")
 
         # Create a FlyteWorkflow object. We call this like how promote_from_model would call this, by ignoring the
         # fancy arguments and supplying just the raw elements manually. Alternatively we can construct the
         # WorkflowTemplate object, and then call promote_from_model.
         sdk_workflow = _SdkWorkflow(inputs=None, outputs=None, nodes=all_nodes, id=workflow_id, metadata=None,
                                     metadata_defaults=None, interface=interface_model, output_bindings=bindings)
-        print(f"SdkWorkflow {sdk_workflow}")
-        print("+++++++++++++++++++++++++++++++++++++")
+        # logger.debug(f"SdkWorkflow {sdk_workflow}")
+        # logger.debug("+++++++++++++++++++++++++++++++++++++")
 
         workflow_instance = PythonWorkflow(fn)
         workflow_instance.id = workflow_id
@@ -272,12 +272,11 @@ def get_all_upstream_nodes(sdk_node: _nodes.SdkNode):
 class PythonTask(object):
     task_type = _common_constants.SdkTaskType.PYTHON_TASK
 
-    def __init__(self, task_function, interface, metadata: _task_model.TaskMetadata, outputs: List[str], info):
+    def __init__(self, task_function, interface, metadata: _task_model.TaskMetadata, info):
         self._task_function = task_function
         self._interface = interface
         self._metadata = metadata
         self._info = info
-        self._outputs = outputs
 
     def __call__(self, *args, **kwargs):
         # Instead of calling the function, scan the inputs, if any, construct a node of inputs and outputs
@@ -301,7 +300,7 @@ class PythonTask(object):
             # and no longer promise.NodeOutputs
             for n in upstream_nodes:
                 if n._id is None:
-                    logger.debug(f"Upstream node {n} is still missing a text id, moving up the call stack to find")
+                    # logger.debug(f"Upstream node {n} is still missing a text id, moving up the call stack to find")
                     n._id = get_earliest_promise_name(n)
 
             # TODO: Make the metadata name the full name of the (function)?
@@ -321,13 +320,13 @@ class PythonTask(object):
             ppp = OutputParameterMapper(self.interface.outputs, sdk_node)
             # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
-            if len(self._outputs) > 1:
+            if len(self.interface.outputs) > 1:
                 # Why do we need to do this? Just for proper binding downstream, nothing else. This is
                 # basically what happens when you call my_task_node.outputs.foo, but we're doing it for the user.
-                wrapped_nodes = [ppp[self._outputs[i]] for i in range(0, len(self._outputs))]
+                wrapped_nodes = [ppp[k] for k in self.interface.outputs.keys()]
                 return tuple(wrapped_nodes)
             else:
-                return ppp[self._outputs[0]]
+                return ppp[list(self.interface.outputs.keys())[0]]
 
         else:
             return self._task_function(*args, **kwargs)
@@ -343,7 +342,6 @@ class PythonTask(object):
 
 def task(
         _task_function=None,
-        outputs: List[str]=None,
         cache_version='',
         retries=0,
         interruptible=None,
@@ -390,9 +388,9 @@ def task(
             deprecated
         )
 
-        interface = get_interface_from_task_info(fn.__annotations__, outputs or [])
+        interface = get_interface_from_task_info(fn.__annotations__)
 
-        task_instance = PythonTask(fn, interface, metadata, outputs, task_obj)
+        task_instance = PythonTask(fn, interface, metadata, task_obj)
         # TODO: One of the things I want to make sure to do is better naming support. At this point, we should already
         #       be able to determine the name of the task right? Can anyone think of situations where we can't?
         #       Where does the current instance tracker come into play?
@@ -406,7 +404,7 @@ def task(
         return wrapper
 
 
-def get_interface_from_task_info(task_annotations: Dict[str, type], output_names: List[str]) -> interface.TypedInterface:
+def get_interface_from_task_info(task_annotations: Dict[str, type]) -> interface.TypedInterface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
     for each output parameter, construct the TypedInterface object
@@ -417,24 +415,22 @@ def get_interface_from_task_info(task_annotations: Dict[str, type], output_names
     :param output_names:
     """
 
-    if 'return' not in task_annotations and len(output_names) != 0:
-        raise Exception('1fkdsa39mlsda')
-
     return_types: Tuple[type]
 
-    if type(task_annotations['return']) != tuple:
+    if not issubclass(task_annotations['return'], Outputs):
+        logger.debug(f'Task returns a single output of type {task_annotations["return"]}')
         # If there's just one return value, the return type is not a tuple so let's make it a tuple
-        return_types = (task_annotations['return'],)
+        return_types = outputs(output=task_annotations['return'])
     else:
         return_types = task_annotations['return']
 
-    if len(output_names) != len(return_types):
-        raise Exception(f"Output length mismatch expected {output_names} got {return_types}")
+    # if len(output_names) != len(return_types):
+    #     raise Exception(f"Output length mismatch expected {output_names} got {return_types}")
 
     inputs = {k: v for k, v in task_annotations.items() if k != 'return'}
 
     inputs_map = get_variable_map(inputs)
-    outputs_map = get_variable_map_from_lists(output_names, return_types)
+    outputs_map = get_variable_map_from_lists(return_types)
     # print(f"Inputs map is {inputs_map}")
     # print(f"Outputs map is {outputs_map}")
     interface_model = _interface_models.TypedInterface(inputs_map, outputs_map)
@@ -443,8 +439,8 @@ def get_interface_from_task_info(task_annotations: Dict[str, type], output_names
     return interface.TypedInterface.promote_from_model(interface_model)
 
 
-def get_variable_map_from_lists(variable_names: List[str], python_types: Tuple[type]) -> Dict[str, _interface_models.Variable]:
-    return get_variable_map(dict(zip(variable_names, python_types)))
+def get_variable_map_from_lists(python_types: Outputs) -> Dict[str, _interface_models.Variable]:
+    return get_variable_map(python_types.typed_outputs(python_types))
 
 
 def get_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interface_models.Variable]:
@@ -479,9 +475,9 @@ def get_earliest_promise_name(node_object):
                 # entities compares the to_flyte_idl() output.  For nodes that have upstream nodes that are still
                 # missing ids, calling to_flyte_idl() throws an Exception.
                 if v.sdk_node is node_object:
-                    print(f"Got key {k} at {frame.f_lineno}")
+                    # logger.debug(f"Got key {k} at {frame.f_lineno}")
                     var_name = k
         frame = frame.f_back
 
-    logger.debug(f"For node {node_object.id} returning text label {var_name}")
+    # logger.debug(f"For node {node_object.id} returning text label {var_name}")
     return var_name

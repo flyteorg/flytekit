@@ -16,6 +16,7 @@ from flytekit.configuration import sdk as _sdk_config, internal as _internal_con
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import literals as _literal_models, task as _task_models
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
+from flytekit.annotated.stuff import get_interface_from_task_info as _get_interface_from_task_info
 
 
 class ExecutionParameters(object):
@@ -216,7 +217,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 discovery_version,
                 deprecated
             ),
-            _interface.TypedInterface({}, {}),
+            _get_interface_from_task_info(task_function.__annotations__),
             custom,
             container=self._get_container_definition(
                 storage_request=storage_request,
