@@ -23,6 +23,7 @@ from flytekit.models.core import workflow as _workflow_models
 class SdkWorkflow(
     _hash_mixin.HashOnReferenceMixin,
     _workflow_models.WorkflowTemplate,
+    _registerable.HasDependencies,
     _registerable.RegisterableEntity,
     metaclass=_sdk_bases.ExtendedSdkType,
 ):

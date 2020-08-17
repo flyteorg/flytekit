@@ -38,6 +38,7 @@ class SdkLaunchPlan(
         _sdk_bases.ExtendedSdkType,
         _launch_plan_models.LaunchPlanSpec,
         _launchable_mixin.LaunchableEntity,
+        _registerable.HasDependencies,
         _registerable.RegisterableEntity,
     )
 ):

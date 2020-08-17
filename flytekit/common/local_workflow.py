@@ -80,7 +80,7 @@ class Output(object):
         return self._var
 
 
-class PythonWorkflow(_registerable.LocalEntity, SdkWorkflow, _hash_mixin.HashOnReferenceMixin):
+class PythonWorkflow(SdkWorkflow, _hash_mixin.HashOnReferenceMixin):
     """
     Wrapper class for locally defined Python workflows
     """

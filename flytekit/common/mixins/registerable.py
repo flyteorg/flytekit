@@ -55,44 +55,10 @@ class FlyteEntity(object, metaclass=_sdk_bases.ExtendedSdkType):
         pass
 
 
-# Think of Registerable more as a "Control Plane" entity, as opposed to the "LocalEntity" one below.
-class RegisterableEntity(FlyteEntity):
-    def __init__(self, *args, **kwargs):
-        super(RegisterableEntity, self).__init__(*args, **kwargs)
-
-    @_abc.abstractmethod
-    def register(self, project, domain, name, version):
-        """
-        :param Text project: The project in which to register this task.
-        :param Text domain: The domain in which to register this task.
-        :param Text name: The name to give this task.
-        :param Text version: The version in which to register this task.
-        """
-        pass
-
-    @_abc.abstractmethod
-    def serialize(self):
-        """
-        Registerable entities also are required to be serialized. This allows flytekit to separate serialization from
-        the network call to Admin (mostly at least, if a Launch Plan is fetched for instance as part of another
-        workflow, it will still hit Admin).
-        """
-        pass
-
-
 class LocalEntity(FlyteEntity, metaclass=_InstanceTracker):
     def __init__(self, *args, **kwargs):
         self._platform_valid_name = None
-        self._upstream_entities = set()
         super(LocalEntity, self).__init__(*args, **kwargs)
-
-    @property
-    def upstream_entities(self):
-        """
-        Task, workflow, and launch plan that need to be registered in advance of this workflow.
-        :rtype: set[LocalEntity]
-        """
-        return self._upstream_entities
 
     @property
     def instantiated_in(self):
@@ -174,3 +140,52 @@ class LocalEntity(FlyteEntity, metaclass=_InstanceTracker):
 
         _logging.error("Could not auto-assign name")
         raise _system_exceptions.FlyteSystemException("Error looking for object while auto-assigning name.")
+
+
+class RegisterableEntity(LocalEntity):
+    def __init__(self, *args, **kwargs):
+        self._has_registered = False
+        super(RegisterableEntity, self).__init__(*args, **kwargs)
+
+    @_abc.abstractmethod
+    def register(self, project, domain, name, version):
+        """
+        :param Text project: The project in which to register this task.
+        :param Text domain: The domain in which to register this task.
+        :param Text name: The name to give this task.
+        :param Text version: The version in which to register this task.
+        """
+        pass
+
+    @_abc.abstractmethod
+    def serialize(self):
+        """
+        Registerable entities also are required to be serialized. This allows flytekit to separate serialization from
+        the network call to Admin (mostly at least, if a Launch Plan is fetched for instance as part of another
+        workflow, it will still hit Admin).
+        """
+        pass
+
+    @property
+    def has_registered(self) -> bool:
+        return self._has_registered
+
+
+class HasDependencies(object):
+    """
+    This interface is meant to describe Flyte entities that can have upstream dependencies. For instance, currently a
+    launch plan depends on the underlying workflow, and a workflow is dependent on its tasks, and other launch plans,
+    and subworkflows.
+    """
+    def __init__(self, *args, **kwargs):
+        self._upstream_entities = set()
+        super(HasDependencies, self).__init__(*args, **kwargs)
+
+    @property
+    def upstream_entities(self):
+        """
+        Task, workflow, and launch plan that need to be registered in advance of this workflow.
+        :rtype: set[LocalEntity]
+        """
+        return self._upstream_entities
+
