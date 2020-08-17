@@ -23,8 +23,8 @@ from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
 
 
-# TODO: This will break everyone because it's a user-facing object and people will have imported it.
-#       Can move it back pretty easily, won't cause a circular import.
+# Local-only wrapper around binding data and variables. Note that the Output object used by the end user is a yet
+# another layer on top of this.
 class Output(object):
     def __init__(self, name, value, sdk_type=None, help=None):
         """
