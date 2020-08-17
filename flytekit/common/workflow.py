@@ -33,7 +33,7 @@ class SdkWorkflow(
     """
 
     def __init__(
-        self, nodes, interface, output_bindings, id=None, metadata=None, metadata_defaults=None,
+        self, nodes, interface, output_bindings, id, metadata, metadata_defaults,
     ):
         """
         :param list[flytekit.common.nodes.SdkNode] nodes:
@@ -59,23 +59,6 @@ class SdkWorkflow(
                         "list, dict, or tuple which is stored as an attribute in the class."
                     )
 
-        # Allow overrides if specified for all the arguments to the parent class constructor
-        id = (
-            id
-            if id is not None
-            else _identifier.Identifier(
-                _identifier_model.ResourceType.WORKFLOW,
-                _internal_config.PROJECT.get(),
-                _internal_config.DOMAIN.get(),
-                _uuid.uuid4().hex,
-                _internal_config.VERSION.get(),
-            )
-        )
-        metadata = metadata if metadata is not None else _workflow_models.WorkflowMetadata()
-        metadata_defaults = (
-            metadata_defaults if metadata_defaults is not None else _workflow_models.WorkflowMetadataDefaults()
-        )
-
         super(SdkWorkflow, self).__init__(
             id=id,
             metadata=metadata,
@@ -84,6 +67,12 @@ class SdkWorkflow(
             nodes=nodes,
             outputs=output_bindings,
         )
+
+        self._sdk_nodes = nodes
+
+    @property
+    def upstream_entities(self):
+        return set(n.executable_sdk_object for n in self._sdk_nodes)
 
     @property
     def interface(self):

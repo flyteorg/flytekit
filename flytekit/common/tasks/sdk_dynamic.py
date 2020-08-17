@@ -199,9 +199,8 @@ class SdkDynamicTaskMixin(object):
                 _append_node(generated_files, node, nodes, sub_task_node)
                 # Add the workflow itself to the yielded sub-workflows
                 sub_workflows.add(sub_task_node.executable_sdk_object)
-                if isinstance(sub_task_node.executable_sdk_object, _workflow.SdkWorkflow):
-                    # Recursively discover statically defined upstream entities (tasks, wfs)
-                    SdkDynamicTask._add_upstream_entities(sub_task_node.executable_sdk_object, sub_workflows, tasks)
+                # Recursively discover statically defined upstream entities (tasks, wfs)
+                SdkDynamicTask._add_upstream_entities(sub_task_node.executable_sdk_object, sub_workflows, tasks)
             # Handling tasks
             else:
                 # If the task can run as an array job, group its instances together. Otherwise, keep each
