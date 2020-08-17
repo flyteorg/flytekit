@@ -3,7 +3,6 @@ from __future__ import absolute_import
 import pytest as _pytest
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 
-import flytekit.common.workflow
 from flytekit.common import constants, interface
 from flytekit.common import local_workflow as _local_workflow
 from flytekit.common import nodes, promise, workflow
@@ -17,7 +16,7 @@ from flytekit.sdk.tasks import inputs, outputs, python_task
 
 
 def test_output():
-    o = flytekit.common.workflow.Output("name", 1, sdk_type=primitives.Integer, help="blah")
+    o = _local_workflow.Output("name", 1, sdk_type=primitives.Integer, help="blah")
     assert o.name == "name"
     assert o.var.description == "blah"
     assert o.var.type == primitives.Integer.to_flyte_literal_type()
@@ -60,7 +59,7 @@ def test_workflow():
 
     w = _local_workflow.PythonWorkflow.construct_from_class_definition(
         inputs=input_list,
-        outputs=[flytekit.common.workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)],
+        outputs=[_local_workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)],
         nodes=nodes,
     )
 
@@ -136,7 +135,7 @@ def test_workflow_decorator():
         n5 = my_list_task(a=[input_1, input_2, n3.outputs.b, 100])
         n6 = my_list_task(a=n5.outputs.b)
         n1 >> n6
-        a = flytekit.common.workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)
+        a = _local_workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)
 
     w = _local_workflow.build_sdk_workflow_from_metaclass(
         my_workflow, on_failure=_workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE,
@@ -222,10 +221,10 @@ def test_workflow_node():
     nodes = [n1, n2, n3, n4, n5, n6]
 
     wf_out = [
-        flytekit.common.workflow.Output(
+        _local_workflow.Output(
             "nested_out", [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]], sdk_type=[[primitives.Integer]],
         ),
-        flytekit.common.workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
+        _local_workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
     ]
 
     w = _local_workflow.PythonWorkflow.construct_from_class_definition(inputs=input_list, outputs=wf_out, nodes=nodes)
@@ -346,10 +345,10 @@ def test_workflow_serialization():
     nodes = [n1, n2, n3, n4, n5, n6]
 
     wf_out = [
-        flytekit.common.workflow.Output(
+        _local_workflow.Output(
             "nested_out", [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]], sdk_type=[[primitives.Integer]],
         ),
-        flytekit.common.workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
+        _local_workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
     ]
 
     w = _local_workflow.PythonWorkflow.construct_from_class_definition(inputs=input_list, outputs=wf_out, nodes=nodes)

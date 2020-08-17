@@ -48,9 +48,8 @@ def _topo_sort_helper(
             "Cycle path was:\n\n\t{}".format("\n\t".join(p for p in recursion_stack[recursion_set[obj] :]))
         )
     recursion_set[obj] = len(recursion_stack) - 1
-    print(f"Topo helper - Object is {obj.__class__} {type(obj)} {obj.entity_type_text}")
+
     for upstream in obj.upstream_entities:
-        print(f"  Upstream {upstream.entity_type_text} {type(upstream)}")
         if upstream not in visited:
             for m1, k1, o1 in _topo_sort_helper(
                 upstream,
@@ -115,9 +114,6 @@ def iterate_registerable_entities_in_order(
                         # SDK should create a default launch plan for a workflow.  This is a special-case to simplify
                         # authoring of workflows.
                         entity_to_module_key[o.create_launch_plan()] = (m, k)
-
-    for k, v in entity_to_module_key.items():
-        print(f"Type: {k.entity_type_text} Value: {v}")
 
     visited = set()
     for o in six.iterkeys(entity_to_module_key):
