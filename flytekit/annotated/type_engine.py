@@ -38,12 +38,6 @@ def type_to_literal_type(t: type) -> _type_models.LiteralType:
     )
 
 
-class Outputs(type):
-    @_abc.abstractmethod
-    def typed_outputs(self) -> Dict[str, type]:
-        pass
-
-
 def outputs(**kwargs) -> tuple:
     """
     Returns an outputs object that strongly binds the types of the outputs retruned by any executable unit (e.g. task,

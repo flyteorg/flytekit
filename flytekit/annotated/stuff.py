@@ -1,6 +1,6 @@
 import datetime as _datetime
 import inspect
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, NamedTuple
 
 from flytekit import logger
 from flytekit.common import constants as _common_constants
@@ -17,7 +17,7 @@ from flytekit.configuration.common import CONFIGURATION_SINGLETON
 from flytekit.models import interface as _interface_models, literals as _literal_models
 from flytekit.models import task as _task_model, types as _type_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
-from flytekit.annotated.type_engine import SIMPLE_TYPE_LOOKUP_TABLE, outputs, Outputs, type_to_literal_type as _type_to_literal_type
+from flytekit.annotated.type_engine import SIMPLE_TYPE_LOOKUP_TABLE, outputs, type_to_literal_type as _type_to_literal_type
 
 # Set this to 11 or higher if you don't want to see debug output
 logger.setLevel(10)
@@ -437,7 +437,7 @@ def get_interface_from_task_info(task_annotations: Dict[str, type]) -> interface
     return interface.TypedInterface.promote_from_model(interface_model)
 
 
-def get_variable_map_from_lists(python_types: Outputs) -> Dict[str, _interface_models.Variable]:
+def get_variable_map_from_lists(python_types: NamedTuple) -> Dict[str, _interface_models.Variable]:
     return get_variable_map(python_types._field_types)
 
 
