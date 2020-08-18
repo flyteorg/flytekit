@@ -17,7 +17,7 @@ from flytekit.configuration.common import CONFIGURATION_SINGLETON
 from flytekit.models import interface as _interface_models, literals as _literal_models
 from flytekit.models import task as _task_model, types as _type_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
-from flytekit.annotated.type_engine import SIMPLE_TYPE_LOOKUP_TABLE, outputs, Outputs
+from flytekit.annotated.type_engine import SIMPLE_TYPE_LOOKUP_TABLE, outputs, Outputs, type_to_literal_type as _type_to_literal_type
 
 # Set this to 11 or higher if you don't want to see debug output
 logger.setLevel(10)
@@ -415,24 +415,22 @@ def get_interface_from_task_info(task_annotations: Dict[str, type]) -> interface
     :param output_names:
     """
 
-    return_types: Tuple[type]
+    outputs_map = {}
+    if "return" in task_annotations:
+        return_types: Tuple[type]
 
-    if not issubclass(task_annotations['return'], Outputs):
-        logger.debug(f'Task returns a single output of type {task_annotations["return"]}')
-        # If there's just one return value, the return type is not a tuple so let's make it a tuple
-        return_types = outputs(output=task_annotations['return'])
-    else:
-        return_types = task_annotations['return']
-
-    # if len(output_names) != len(return_types):
-    #     raise Exception(f"Output length mismatch expected {output_names} got {return_types}")
+        if not issubclass(task_annotations['return'], tuple):
+            logger.debug(f'Task returns a single output of type {task_annotations["return"]}')
+            # If there's just one return value, the return type is not a tuple so let's make it a tuple
+            return_types = outputs(output=task_annotations['return'])
+        else:
+            return_types = task_annotations['return']
+            
+        outputs_map = get_variable_map_from_lists(return_types)
 
     inputs = {k: v for k, v in task_annotations.items() if k != 'return'}
 
     inputs_map = get_variable_map(inputs)
-    outputs_map = get_variable_map_from_lists(return_types)
-    # print(f"Inputs map is {inputs_map}")
-    # print(f"Outputs map is {outputs_map}")
     interface_model = _interface_models.TypedInterface(inputs_map, outputs_map)
 
     # Maybe in the future we can just use the model
@@ -440,7 +438,7 @@ def get_interface_from_task_info(task_annotations: Dict[str, type]) -> interface
 
 
 def get_variable_map_from_lists(python_types: Outputs) -> Dict[str, _interface_models.Variable]:
-    return get_variable_map(python_types.typed_outputs(python_types))
+    return get_variable_map(python_types._field_types)
 
 
 def get_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interface_models.Variable]:
@@ -452,8 +450,7 @@ def get_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interface_mode
     for k, v in variable_map.items():
         if v not in SIMPLE_TYPE_LOOKUP_TABLE:
             raise Exception(f"Python type {v} not yet supported.")
-        flyte_literal_type = SIMPLE_TYPE_LOOKUP_TABLE[v]
-        res[k] = _interface_models.Variable(type=flyte_literal_type, description=k)
+        res[k] = _interface_models.Variable(type=_type_to_literal_type(v), description=k)
 
     return res
 

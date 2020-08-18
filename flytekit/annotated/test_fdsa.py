@@ -1,9 +1,7 @@
 from flytekit import logger
-from flytekit.annotated.sample import x
-from flytekit.configuration.common import CONFIGURATION_SINGLETON
-from tests.flytekit.common.workflows.simple import add_one
+from flytekit.annotated.stuff import task
 from flytekit.annotated.type_engine import outputs
-from flytekit.annotated.stuff import task, workflow, WorkflowOutputs
+from flytekit.configuration.common import CONFIGURATION_SINGLETON
 
 CONFIGURATION_SINGLETON.x = 0
 
@@ -26,4 +24,10 @@ CONFIGURATION_SINGLETON.x = 0
 def test_outputs(a: int, b: str) -> outputs(x_str=str, y_int=int):
     return "hello world", 5
 
-logger.debug(f'test_outputs: {test_outputs.to_flyte_idl()}')
+
+# @task
+# def test_file(a: file) -> file:
+#     return a
+#
+
+logger.debug(f'test_outputs: {test_outputs}')

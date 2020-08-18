@@ -359,15 +359,28 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
             for name, variable in _six.iteritems(self.interface.outputs)
         }
-        inputs_dict.update(outputs_dict)
 
-        self._execute_user_code(context, inputs_dict)
+        # backcompat, if annotations are used to define outputs, do not append outputs to the inputs dict
+        if not self.task_function.__annotations__ or "return" not in self.task_function.__annotations__:
+            inputs_dict.update(outputs_dict)
+            self._execute_user_code(context, inputs_dict)
+            return {
+                _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
+                    literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
+                )
+            }
+        else:
+            outputs = self._execute_user_code(context, inputs_dict)
+            sdk_types = {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in self.interface.outputs.items()}
+            expected_output_names = list(self.interface.outputs.keys())
+            if len(expected_output_names) == 1:
+                literals = {expected_output_names[0]: outputs}
+            else:
+                literals = {expected_output_names[i]: outputs[i] for i, _ in enumerate(outputs)} 
+            return {
+                _constants.OUTPUT_FILE_NAME: _type_helpers.pack_python_std_map_to_literal_map(literals, sdk_types),
+            }
 
-        return {
-            _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
-                literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
-            )
-        }
 
     def _get_container_definition(
             self,
