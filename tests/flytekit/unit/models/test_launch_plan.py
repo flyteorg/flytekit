@@ -87,7 +87,7 @@ def test_launch_plan_spec():
     assert obj2 == lp_spec_no_prefix
 
 
-def test_launch_plan_spec():
+def test_old_style_role():
     identifier_model = identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version")
 
     s = schedule.Schedule("asdf", "1 3 4 5 6 7")
