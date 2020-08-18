@@ -43,6 +43,7 @@ from flytekit.models.execution import ExecutionSpec as _ExecutionSpec
 from flytekit.models.matchable_resource import ClusterResourceAttributes as _ClusterResourceAttributes
 from flytekit.models.matchable_resource import ExecutionClusterLabel as _ExecutionClusterLabel
 from flytekit.models.matchable_resource import ExecutionQueueAttributes as _ExecutionQueueAttributes
+from flytekit.models.matchable_resource import MatchableResource as _MatchableResource
 from flytekit.models.matchable_resource import MatchingAttributes as _MatchingAttributes
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
@@ -1646,10 +1647,14 @@ def update_launch_plan_meta(description, host, insecure, project, domain, name):
 def update_cluster_resource_attributes(host, insecure, project, domain, name, attributes):
     """
     Sets matchable cluster resource attributes for a project, domain and optionally, workflow name.
+    The attribute names should match the templatized values you use to configure these resource
+    attributes in your flyteadmin deployment. See
+    https://lyft.github.io/flyte/administrator/install/managing_customizable_resources.html#cluster-resources
+    for more documentation.
 
     e.g.
         $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-cluster-resource-attributes \
-            --attributes cpu 1 --attributes memory 500M
+            --attributes projectQuotaCpu 1 --attributes projectQuotaMemory 500M
     """
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
@@ -1736,6 +1741,85 @@ def update_execution_cluster_label(host, insecure, project, domain, name, value)
         _click.echo(
             "Successfully updated execution cluster label for project: {} and domain: {}".format(project, domain)
         )
+
+
+@_flyte_cli.command("get-matching-attributes", cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+@_project_option
+@_domain_option
+@_optional_name_option
+@_click.option(
+    "--resource-type",
+    help="Resource type",
+    required=True,
+    type=_click.Choice(
+        [
+            "task_resource",
+            "cluster_resource",
+            "execution_queue",
+            "execution_cluster_label",
+            "quality_of_service_specification",
+        ]
+    ),
+)
+def get_matching_attributes(host, insecure, project, domain, name, resource_type):
+    """
+    Fetches the matchable resource of the given resource type for this project, domain and optionally workflow name
+    combination.
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+
+    if name is not None:
+        attributes = client.get_workflow_attributes(
+            project, domain, name, _MatchableResource.string_to_enum(resource_type.upper())
+        )
+        _click.echo("{}".format(attributes))
+    else:
+        attributes = client.get_project_domain_attributes(
+            project, domain, _MatchableResource.string_to_enum(resource_type.upper())
+        )
+        _click.echo("{}".format(attributes))
+
+
+@_flyte_cli.command("list-matching-attributes", cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+@_click.option(
+    "--resource-type",
+    help="Resource type",
+    required=True,
+    type=_click.Choice(
+        [
+            "task_resource",
+            "cluster_resource",
+            "execution_queue",
+            "execution_cluster_label",
+            "quality_of_service_specification",
+        ]
+    ),
+)
+def list_matching_attributes(host, insecure, resource_type):
+    """
+    Fetches all matchable resources of the given resource type.
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+
+    attributes = client.list_matchable_attributes(_MatchableResource.string_to_enum(resource_type.upper()))
+    for configuration in attributes.configurations:
+        _click.secho(
+            "{:20} {:20} {:20} {:20}\n".format(
+                _tt(configuration.project),
+                _tt(configuration.domain),
+                _tt(configuration.workflow),
+                _tt(configuration.launch_plan),
+            ),
+            fg="blue",
+            nl=False,
+        )
+        _click.echo("{}".format(configuration.attributes))
 
 
 @_flyte_cli.command("setup-config", cls=_click.Command)
