@@ -106,7 +106,7 @@ def test_old_style_role():
 
     raw_data_output_config = common.RawOutputDataConfig("s3://bucket")
 
-    old_role = _launch_plan_idl.Auth(assumable_iam_role="my:role")
+    old_role = _launch_plan_idl.Auth(kubernetes_service_account="my:service:account")
 
     old_style_spec = _launch_plan_idl.LaunchPlanSpec(
         workflow_id=identifier_model.to_flyte_idl(),
@@ -121,4 +121,4 @@ def test_old_style_role():
 
     lp_spec = launch_plan.LaunchPlanSpec.from_flyte_idl(old_style_spec)
 
-    assert lp_spec.auth_role.assumable_iam_role == "my:role"
+    assert lp_spec.auth_role.assumable_iam_role == "my:service:account"

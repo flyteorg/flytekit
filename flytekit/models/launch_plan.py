@@ -235,13 +235,11 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         """
         auth_role = None
         # First check the newer field, auth_role.
-        if pb2.auth_role is not None and (
-            pb2.auth_role.HasField("assumable_iam_role") or pb2.auth_role.HasField("kubernetes_service_account")
-        ):
+        if pb2.auth_role is not None and (pb2.auth_role.assumable_iam_role or pb2.auth_role.kubernetes_service_account):
             auth_role = _common.AuthRole.from_flyte_idl(pb2.auth_role)
         # Fallback to the deprecated field.
         elif pb2.auth is not None:
-            if pb2.auth.HasField("assumable_iam_role"):
+            if pb2.auth.assumable_iam_role:
                 auth_role = _common.AuthRole(assumable_iam_role=pb2.auth.assumable_iam_role)
             else:
                 auth_role = _common.AuthRole(assumable_iam_role=pb2.auth.kubernetes_service_account)
