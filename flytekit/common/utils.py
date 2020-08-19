@@ -3,8 +3,10 @@ from __future__ import absolute_import
 import logging as _logging
 import os as _os
 import shutil as _shutil
-from hashlib import sha224 as _sha224
 import tempfile as _tempfile
+import typing
+from hashlib import sha224 as _sha224
+
 import time as _time
 
 import flytekit as _flytekit
@@ -203,6 +205,30 @@ class ExitStack(object):
         if first_exception is not None:
             raise first_exception
         return False
+
+
+T = typing.TypeVar('T')
+
+
+class StackableContext(typing.Generic[T]):
+    __contexts__ = {}
+
+    def __init__(self, context_object: T):
+        self._context_object = context_object
+
+    def __enter__(self):
+        if T not in StackableContext.__contexts__:
+            StackableContext.__contexts__[T] = []
+        StackableContext.__contexts__[T].append(self._context_object)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        StackableContext.__contexts__[T].pop()
+
+    @classmethod
+    def current(cls) -> T:
+        return StackableContext.__contexts__[T][len(StackableContext.__contexts__[T]) - 1] if len(
+            StackableContext.__contexts__[T]) > 0 else None
 
 
 def fqdn(module, name, entity_type=None):

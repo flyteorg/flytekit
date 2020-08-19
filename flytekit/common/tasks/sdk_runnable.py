@@ -6,9 +6,11 @@ except ImportError:
     from inspect import getargspec as _getargspec
 
 import six as _six
+import enum
 
 from flytekit import __version__
-from flytekit.common import interface as _interface, constants as _constants, sdk_bases as _sdk_bases
+from flytekit.common import utils as _utils
+from flytekit.common import constants as _constants, sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
 from flytekit.common.tasks import task as _base_task, output as _task_output
 from flytekit.common.types import helpers as _type_helpers
@@ -150,6 +152,16 @@ class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task
         return env
 
 
+class ExecutionParametersContext(_utils.StackableContext[ExecutionParameters]):
+    def __init__(self, params):
+        super(ExecutionParametersContext, self).__init__(params)
+
+
+class SdkRunnableTaskStyle(enum.Enum):
+    V0 = 0
+    V1 = 1
+
+
 class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task.SdkTask)):
     """
     This class includes the additional logic for building a task that executes in Python code.  It has even more
@@ -232,6 +244,8 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             )
         )
         self.id._name = "{}.{}".format(self.task_module, self.task_function_name)
+        self._task_style = SdkRunnableTaskStyle.V1 if len(self.interface.inputs) + len(
+            self.interface.outputs) > 0 else SdkRunnableTaskStyle.V0
 
     _banned_inputs = {}
     _banned_outputs = {}
@@ -246,11 +260,15 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         """
         self._validate_inputs(inputs)
         self.interface.inputs.update(inputs)
-        
+
     @classmethod
     def promote_from_model(cls, base_model):
         # TODO: If the task exists in this container, we should be able to retrieve it.
         raise _user_exceptions.FlyteAssertion("Cannot promote a base object to a runnable task.")
+
+    @property
+    def task_style(self):
+        return self._task_style
 
     @property
     def task_function(self):
@@ -328,17 +346,30 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
 
-        return _exception_scopes.user_entry_point(self.task_function)(
-            ExecutionParameters(
-                execution_date=context.execution_date,
-                # TODO: it might be better to consider passing the full struct
-                execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
-                stats=context.stats,
-                logging=context.logging,
-                tmp_dir=context.working_directory
-            ),
-            **inputs
-        )
+        if self.task_style == SdkRunnableTaskStyle.V0:
+            return _exception_scopes.user_entry_point(self.task_function)(
+                ExecutionParameters(
+                    execution_date=context.execution_date,
+                    # TODO: it might be better to consider passing the full struct
+                    execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
+                    stats=context.stats,
+                    logging=context.logging,
+                    tmp_dir=context.working_directory
+                ),
+                **inputs
+            )
+        else:
+            with ExecutionParametersContext(ExecutionParameters(
+                    execution_date=context.execution_date,
+                    # TODO: it might be better to consider passing the full struct
+                    execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
+                    stats=context.stats,
+                    logging=context.logging,
+                    tmp_dir=context.working_directory
+            )):
+                return _exception_scopes.user_entry_point(self.task_function)(
+                    **inputs
+                )
 
     @_exception_scopes.system_entry_point
     def execute(self, context, inputs):
