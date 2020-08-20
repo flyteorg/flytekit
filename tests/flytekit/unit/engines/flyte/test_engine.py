@@ -256,9 +256,7 @@ def test_fetch_active_launch_plan(mock_client_factory):
 def test_get_full_execution_inputs(mock_client_factory):
     mock_client = MagicMock()
     mock_client.get_execution_data = MagicMock(
-        return_value=_execution_models.WorkflowExecutionGetDataResponse(
-            None, None, _INPUT_MAP, _OUTPUT_MAP,
-        )
+        return_value=_execution_models.WorkflowExecutionGetDataResponse(None, None, _INPUT_MAP, _OUTPUT_MAP,)
     )
     mock_client_factory.return_value = mock_client
 
@@ -298,9 +296,7 @@ def test_get_execution_inputs(mock_client_factory, execution_data_locations):
 def test_get_full_execution_outputs(mock_client_factory):
     mock_client = MagicMock()
     mock_client.get_execution_data = MagicMock(
-        return_value=_execution_models.WorkflowExecutionGetDataResponse(
-            None, None, _INPUT_MAP, _OUTPUT_MAP
-        )
+        return_value=_execution_models.WorkflowExecutionGetDataResponse(None, None, _INPUT_MAP, _OUTPUT_MAP)
     )
     mock_client_factory.return_value = mock_client
 
@@ -340,9 +336,7 @@ def test_get_execution_outputs(mock_client_factory, execution_data_locations):
 def test_get_full_node_execution_inputs(mock_client_factory):
     mock_client = MagicMock()
     mock_client.get_node_execution_data = MagicMock(
-        return_value=_execution_models.NodeExecutionGetDataResponse(
-            None, None, _INPUT_MAP, _OUTPUT_MAP,
-        )
+        return_value=_execution_models.NodeExecutionGetDataResponse(None, None, _INPUT_MAP, _OUTPUT_MAP,)
     )
     mock_client_factory.return_value = mock_client
 
@@ -394,9 +388,7 @@ def test_get_node_execution_inputs(mock_client_factory, execution_data_locations
 def test_get_full_node_execution_outputs(mock_client_factory):
     mock_client = MagicMock()
     mock_client.get_node_execution_data = MagicMock(
-        return_value=_execution_models.NodeExecutionGetDataResponse(
-            None, None, _INPUT_MAP, _OUTPUT_MAP
-        )
+        return_value=_execution_models.NodeExecutionGetDataResponse(None, None, _INPUT_MAP, _OUTPUT_MAP)
     )
     mock_client_factory.return_value = mock_client
 
@@ -448,9 +440,7 @@ def test_get_node_execution_outputs(mock_client_factory, execution_data_location
 def test_get_full_task_execution_inputs(mock_client_factory):
     mock_client = MagicMock()
     mock_client.get_task_execution_data = MagicMock(
-        return_value=_execution_models.TaskExecutionGetDataResponse(
-            None, None, _INPUT_MAP, _OUTPUT_MAP
-        )
+        return_value=_execution_models.TaskExecutionGetDataResponse(None, None, _INPUT_MAP, _OUTPUT_MAP)
     )
     mock_client_factory.return_value = mock_client
 
@@ -518,9 +508,7 @@ def test_get_task_execution_inputs(mock_client_factory, execution_data_locations
 def test_get_full_task_execution_outputs(mock_client_factory):
     mock_client = MagicMock()
     mock_client.get_task_execution_data = MagicMock(
-        return_value=_execution_models.TaskExecutionGetDataResponse(
-            None, None, _INPUT_MAP, _OUTPUT_MAP
-        )
+        return_value=_execution_models.TaskExecutionGetDataResponse(None, None, _INPUT_MAP, _OUTPUT_MAP)
     )
     mock_client_factory.return_value = mock_client
 

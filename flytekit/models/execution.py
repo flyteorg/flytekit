@@ -443,8 +443,10 @@ class WorkflowExecutionGetDataResponse(_CommonDataResponse):
         :rtype: _execution_pb2.WorkflowExecutionGetDataResponse
         """
         return _execution_pb2.WorkflowExecutionGetDataResponse(
-            inputs=self.inputs.to_flyte_idl(), outputs=self.outputs.to_flyte_idl(),
-            full_inputs=self.full_inputs.to_flyte_idl(), full_outputs=self.full_outputs.to_flyte_idl(),
+            inputs=self.inputs.to_flyte_idl(),
+            outputs=self.outputs.to_flyte_idl(),
+            full_inputs=self.full_inputs.to_flyte_idl(),
+            full_outputs=self.full_outputs.to_flyte_idl(),
         )
 
 
@@ -467,8 +469,10 @@ class TaskExecutionGetDataResponse(_CommonDataResponse):
         :rtype: _task_execution_pb2.TaskExecutionGetDataResponse
         """
         return _task_execution_pb2.TaskExecutionGetDataResponse(
-            inputs=self.inputs.to_flyte_idl(), outputs=self.outputs.to_flyte_idl(),
-            full_inputs=self.full_inputs.to_flyte_idl(), full_outputs=self.full_outputs.to_flyte_idl(),
+            inputs=self.inputs.to_flyte_idl(),
+            outputs=self.outputs.to_flyte_idl(),
+            full_inputs=self.full_inputs.to_flyte_idl(),
+            full_outputs=self.full_outputs.to_flyte_idl(),
         )
 
 
@@ -491,6 +495,8 @@ class NodeExecutionGetDataResponse(_CommonDataResponse):
         :rtype: _node_execution_pb2.NodeExecutionGetDataResponse
         """
         return _node_execution_pb2.NodeExecutionGetDataResponse(
-            inputs=self.inputs.to_flyte_idl(), outputs=self.outputs.to_flyte_idl(),
-            full_inputs=self.full_inputs.to_flyte_idl(), full_outputs=self.full_outputs.to_flyte_idl(),
+            inputs=self.inputs.to_flyte_idl(),
+            outputs=self.outputs.to_flyte_idl(),
+            full_inputs=self.full_inputs.to_flyte_idl(),
+            full_outputs=self.full_outputs.to_flyte_idl(),
         )
