@@ -194,7 +194,7 @@ class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.Extended
         return _task_models.Resources(limits=limits, requests=requests)
 
 
-class SdkRunnableTask(_base_task.SdkTask, _registerable.TrackableEntity, metaclass=_sdk_bases.ExtendedSdkType):
+class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
     """
     This class includes the additional logic for building a task that executes in Python code.  It has even more
     validation checks to ensure proper behavior than it's superclasses.
@@ -272,8 +272,6 @@ class SdkRunnableTask(_base_task.SdkTask, _registerable.TrackableEntity, metacla
                 environment=environment,
             ),
         )
-        # Constructor is not called since SdkTask's gets called.
-        _registerable.TrackableEntity.__init__(self)
         self.id._name = "{}.{}".format(self.task_module, self.task_function_name)
 
     _banned_inputs = {}

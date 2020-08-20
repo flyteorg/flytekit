@@ -33,9 +33,9 @@ from flytekit.models.core import workflow as _workflow_model
 
 class SdkTask(
     _hash_mixin.HashOnReferenceMixin,
-    _task_model.TaskTemplate,
     _registerable.RegisterableEntity,
     _launchable_mixin.LaunchableEntity,
+    _task_model.TaskTemplate,
     metaclass=_sdk_bases.ExtendedSdkType,
 ):
     def __init__(self, type, metadata, interface, custom, container=None):
@@ -163,6 +163,7 @@ class SdkTask(
             self._id = id_to_register
             client.create_task(id_to_register, _task_model.TaskSpec(self))
             self._id = old_id
+            self._has_registered = True
             return str(id_to_register)
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             pass
@@ -195,6 +196,7 @@ class SdkTask(
 
         sdk_task = cls.promote_from_model(admin_task.closure.compiled_task.template)
         sdk_task._id = task_id
+        sdk_task._has_registered = True
         return sdk_task
 
     @classmethod

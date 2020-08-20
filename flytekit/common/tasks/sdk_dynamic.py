@@ -169,7 +169,7 @@ class SdkDynamicTaskMixin(object):
             # If the executable object that we're dealing with is registerable (ie, SdkRunnableLaunchPlan, SdkWorkflow
             # SdkTask, or SdkRunnableTask), then it should have the ability to give itself a name. After assigning
             # itself the name, also make sure the id is properly set according to current config values.
-            if isinstance(executable, _registerable.TrackableEntity):
+            if isinstance(executable, _registerable.TrackableEntity) and not executable.has_valid_name:
                 executable.auto_assign_name()
                 executable._id = _identifier.Identifier(
                     executable.resource_type,

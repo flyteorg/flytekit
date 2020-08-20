@@ -22,9 +22,9 @@ from flytekit.models.core import workflow as _workflow_models
 
 class SdkWorkflow(
     _hash_mixin.HashOnReferenceMixin,
-    _workflow_models.WorkflowTemplate,
     _registerable.HasDependencies,
     _registerable.RegisterableEntity,
+    _workflow_models.WorkflowTemplate,
     metaclass=_sdk_bases.ExtendedSdkType,
 ):
     """
@@ -140,6 +140,7 @@ class SdkWorkflow(
         task_map = {t.template.id: t.template for t in cwc.tasks}
         sdk_workflow = cls.promote_from_model(primary_template, sub_workflow_map, task_map)
         sdk_workflow._id = workflow_id
+        sdk_workflow._has_registered = True
         return sdk_workflow
 
     @classmethod
@@ -205,6 +206,7 @@ class SdkWorkflow(
             sub_workflows = self.get_sub_workflows()
             client.create_workflow(id_to_register, _admin_workflow_model.WorkflowSpec(self, sub_workflows,))
             self._id = id_to_register
+            self._has_registered = True
             return str(id_to_register)
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             pass

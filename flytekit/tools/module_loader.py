@@ -62,7 +62,8 @@ def _topo_sort_helper(
                     ignore_entities,
                     detect_unreferenced_entities,
                 ):
-                    yield m1, k1, o1
+                    if not o1.has_registered:
+                        yield m1, k1, o1
 
     recursion_stack.pop()
     del recursion_set[obj]

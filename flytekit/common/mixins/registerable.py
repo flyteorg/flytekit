@@ -2,6 +2,7 @@ import abc as _abc
 import importlib as _importlib
 import inspect as _inspect
 import logging as _logging
+from typing import Set
 
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _utils
@@ -66,7 +67,7 @@ class TrackableEntity(FlyteEntity, metaclass=_InstanceTracker):
         If found, we try to specify the module where the task was first instantiated.
         :rtype: Optional[Text]
         """
-        return self._instantiated_in
+        return self._instantiated_in  # Set in metaclass
 
     @property
     def has_valid_name(self):
@@ -182,10 +183,10 @@ class HasDependencies(object):
         super(HasDependencies, self).__init__(*args, **kwargs)
 
     @property
-    def upstream_entities(self):
+    def upstream_entities(self) -> Set[RegisterableEntity]:
         """
         Task, workflow, and launch plan that need to be registered in advance of this workflow.
-        :rtype: set[TrackableEntity]
+        :rtype: set[RegisterableEntity]
         """
         return self._upstream_entities
 
