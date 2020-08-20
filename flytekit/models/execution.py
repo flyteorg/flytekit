@@ -6,6 +6,7 @@ import flyteidl.admin.task_execution_pb2 as _task_execution_pb2
 import pytz as _pytz
 
 from flytekit.models import common as _common_models
+from flytekit.models import literals as _literals_models
 from flytekit.models.core import execution as _core_execution
 from flytekit.models.core import identifier as _identifier
 
@@ -382,13 +383,17 @@ class _CommonDataResponse(_common_models.FlyteIdlEntity):
     superclass to reduce code duplication until things diverge in the future.
     """
 
-    def __init__(self, inputs, outputs):
+    def __init__(self, inputs, outputs, full_inputs, full_outputs):
         """
         :param _common_models.UrlBlob inputs:
         :param _common_models.UrlBlob outputs:
+        :param _literals_pb2.LiteralMap full_inputs:
+        :param _literals_pb2.LiteralMap full_outputs:
         """
         self._inputs = inputs
         self._outputs = outputs
+        self._full_inputs = full_inputs
+        self._full_outputs = full_outputs
 
     @property
     def inputs(self):
@@ -404,6 +409,20 @@ class _CommonDataResponse(_common_models.FlyteIdlEntity):
         """
         return self._outputs
 
+    @property
+    def full_inputs(self):
+        """
+        :rtype: _literals_pb2.LiteralMap
+        """
+        return self._full_inputs
+
+    @property
+    def full_outputs(self):
+        """
+        :rtype: _literals_pb2.LiteralMap
+        """
+        return self._full_outputs
+
 
 class WorkflowExecutionGetDataResponse(_CommonDataResponse):
     @classmethod
@@ -415,6 +434,8 @@ class WorkflowExecutionGetDataResponse(_CommonDataResponse):
         return cls(
             inputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.inputs),
             outputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.outputs),
+            full_inputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_inputs),
+            full_outputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_outputs),
         )
 
     def to_flyte_idl(self):
@@ -423,6 +444,7 @@ class WorkflowExecutionGetDataResponse(_CommonDataResponse):
         """
         return _execution_pb2.WorkflowExecutionGetDataResponse(
             inputs=self.inputs.to_flyte_idl(), outputs=self.outputs.to_flyte_idl(),
+            full_inputs=self.full_inputs.to_flyte_idl(), full_outputs=self.full_outputs.to_flyte_idl(),
         )
 
 
@@ -436,6 +458,8 @@ class TaskExecutionGetDataResponse(_CommonDataResponse):
         return cls(
             inputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.inputs),
             outputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.outputs),
+            full_inputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_inputs),
+            full_outputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_outputs),
         )
 
     def to_flyte_idl(self):
@@ -444,6 +468,7 @@ class TaskExecutionGetDataResponse(_CommonDataResponse):
         """
         return _task_execution_pb2.TaskExecutionGetDataResponse(
             inputs=self.inputs.to_flyte_idl(), outputs=self.outputs.to_flyte_idl(),
+            full_inputs=self.full_inputs.to_flyte_idl(), full_outputs=self.full_outputs.to_flyte_idl(),
         )
 
 
@@ -457,6 +482,8 @@ class NodeExecutionGetDataResponse(_CommonDataResponse):
         return cls(
             inputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.inputs),
             outputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.outputs),
+            full_inputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_inputs),
+            full_outputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_outputs),
         )
 
     def to_flyte_idl(self):
@@ -465,4 +492,5 @@ class NodeExecutionGetDataResponse(_CommonDataResponse):
         """
         return _node_execution_pb2.NodeExecutionGetDataResponse(
             inputs=self.inputs.to_flyte_idl(), outputs=self.outputs.to_flyte_idl(),
+            full_inputs=self.full_inputs.to_flyte_idl(), full_outputs=self.full_outputs.to_flyte_idl(),
         )

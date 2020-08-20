@@ -25,6 +25,7 @@ _INPUT_MAP = literals.LiteralMap(
 _OUTPUT_MAP = literals.LiteralMap(
     {"b": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=2)))}
 )
+_EMPTY_LITERAL_MAP = literals.LiteralMap(literals={})
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -252,11 +253,11 @@ def test_fetch_active_launch_plan(mock_client_factory):
 
 
 @patch.object(engine._FlyteClientManager, "_CLIENT", new_callable=PropertyMock)
-def test_get_execution_inputs(mock_client_factory, execution_data_locations):
+def test_get_full_execution_inputs(mock_client_factory):
     mock_client = MagicMock()
     mock_client.get_execution_data = MagicMock(
         return_value=_execution_models.WorkflowExecutionGetDataResponse(
-            execution_data_locations[0], execution_data_locations[1]
+            None, None, _INPUT_MAP, _OUTPUT_MAP,
         )
     )
     mock_client_factory.return_value = mock_client
@@ -273,11 +274,53 @@ def test_get_execution_inputs(mock_client_factory, execution_data_locations):
 
 
 @patch.object(engine._FlyteClientManager, "_CLIENT", new_callable=PropertyMock)
+def test_get_execution_inputs(mock_client_factory, execution_data_locations):
+    mock_client = MagicMock()
+    mock_client.get_execution_data = MagicMock(
+        return_value=_execution_models.WorkflowExecutionGetDataResponse(
+            execution_data_locations[0], execution_data_locations[1], _EMPTY_LITERAL_MAP, _EMPTY_LITERAL_MAP
+        )
+    )
+    mock_client_factory.return_value = mock_client
+
+    m = MagicMock()
+    type(m).id = PropertyMock(return_value=identifier.WorkflowExecutionIdentifier("project", "domain", "name",))
+
+    inputs = engine.FlyteWorkflowExecution(m).get_inputs()
+    assert len(inputs.literals) == 1
+    assert inputs.literals["a"].scalar.primitive.integer == 1
+    mock_client.get_execution_data.assert_called_once_with(
+        identifier.WorkflowExecutionIdentifier("project", "domain", "name")
+    )
+
+
+@patch.object(engine._FlyteClientManager, "_CLIENT", new_callable=PropertyMock)
+def test_get_full_execution_outputs(mock_client_factory):
+    mock_client = MagicMock()
+    mock_client.get_execution_data = MagicMock(
+        return_value=_execution_models.WorkflowExecutionGetDataResponse(
+            None, None, _INPUT_MAP, _OUTPUT_MAP
+        )
+    )
+    mock_client_factory.return_value = mock_client
+
+    m = MagicMock()
+    type(m).id = PropertyMock(return_value=identifier.WorkflowExecutionIdentifier("project", "domain", "name",))
+
+    outputs = engine.FlyteWorkflowExecution(m).get_outputs()
+    assert len(outputs.literals) == 1
+    assert outputs.literals["b"].scalar.primitive.integer == 2
+    mock_client.get_execution_data.assert_called_once_with(
+        identifier.WorkflowExecutionIdentifier("project", "domain", "name")
+    )
+
+
+@patch.object(engine._FlyteClientManager, "_CLIENT", new_callable=PropertyMock)
 def test_get_execution_outputs(mock_client_factory, execution_data_locations):
     mock_client = MagicMock()
     mock_client.get_execution_data = MagicMock(
         return_value=_execution_models.WorkflowExecutionGetDataResponse(
-            execution_data_locations[0], execution_data_locations[1]
+            execution_data_locations[0], execution_data_locations[1], _EMPTY_LITERAL_MAP, _EMPTY_LITERAL_MAP
         )
     )
     mock_client_factory.return_value = mock_client
@@ -294,11 +337,11 @@ def test_get_execution_outputs(mock_client_factory, execution_data_locations):
 
 
 @patch.object(engine._FlyteClientManager, "_CLIENT", new_callable=PropertyMock)
-def test_get_node_execution_inputs(mock_client_factory, execution_data_locations):
+def test_get_full_node_execution_inputs(mock_client_factory):
     mock_client = MagicMock()
     mock_client.get_node_execution_data = MagicMock(
         return_value=_execution_models.NodeExecutionGetDataResponse(
-            execution_data_locations[0], execution_data_locations[1]
+            None, None, _INPUT_MAP, _OUTPUT_MAP,
         )
     )
     mock_client_factory.return_value = mock_client
@@ -321,11 +364,65 @@ def test_get_node_execution_inputs(mock_client_factory, execution_data_locations
 
 
 @patch.object(engine._FlyteClientManager, "_CLIENT", new_callable=PropertyMock)
+def test_get_node_execution_inputs(mock_client_factory, execution_data_locations):
+    mock_client = MagicMock()
+    mock_client.get_node_execution_data = MagicMock(
+        return_value=_execution_models.NodeExecutionGetDataResponse(
+            execution_data_locations[0], execution_data_locations[1], _EMPTY_LITERAL_MAP, _EMPTY_LITERAL_MAP
+        )
+    )
+    mock_client_factory.return_value = mock_client
+
+    m = MagicMock()
+    type(m).id = PropertyMock(
+        return_value=identifier.NodeExecutionIdentifier(
+            "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+        )
+    )
+
+    inputs = engine.FlyteNodeExecution(m).get_inputs()
+    assert len(inputs.literals) == 1
+    assert inputs.literals["a"].scalar.primitive.integer == 1
+    mock_client.get_node_execution_data.assert_called_once_with(
+        identifier.NodeExecutionIdentifier(
+            "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+        )
+    )
+
+
+@patch.object(engine._FlyteClientManager, "_CLIENT", new_callable=PropertyMock)
+def test_get_full_node_execution_outputs(mock_client_factory):
+    mock_client = MagicMock()
+    mock_client.get_node_execution_data = MagicMock(
+        return_value=_execution_models.NodeExecutionGetDataResponse(
+            None, None, _INPUT_MAP, _OUTPUT_MAP
+        )
+    )
+    mock_client_factory.return_value = mock_client
+
+    m = MagicMock()
+    type(m).id = PropertyMock(
+        return_value=identifier.NodeExecutionIdentifier(
+            "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+        )
+    )
+
+    outputs = engine.FlyteNodeExecution(m).get_outputs()
+    assert len(outputs.literals) == 1
+    assert outputs.literals["b"].scalar.primitive.integer == 2
+    mock_client.get_node_execution_data.assert_called_once_with(
+        identifier.NodeExecutionIdentifier(
+            "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+        )
+    )
+
+
+@patch.object(engine._FlyteClientManager, "_CLIENT", new_callable=PropertyMock)
 def test_get_node_execution_outputs(mock_client_factory, execution_data_locations):
     mock_client = MagicMock()
     mock_client.get_node_execution_data = MagicMock(
         return_value=_execution_models.NodeExecutionGetDataResponse(
-            execution_data_locations[0], execution_data_locations[1]
+            execution_data_locations[0], execution_data_locations[1], _EMPTY_LITERAL_MAP, _EMPTY_LITERAL_MAP
         )
     )
     mock_client_factory.return_value = mock_client
@@ -348,11 +445,11 @@ def test_get_node_execution_outputs(mock_client_factory, execution_data_location
 
 
 @patch.object(engine._FlyteClientManager, "_CLIENT", new_callable=PropertyMock)
-def test_get_task_execution_inputs(mock_client_factory, execution_data_locations):
+def test_get_full_task_execution_inputs(mock_client_factory):
     mock_client = MagicMock()
     mock_client.get_task_execution_data = MagicMock(
         return_value=_execution_models.TaskExecutionGetDataResponse(
-            execution_data_locations[0], execution_data_locations[1]
+            None, None, _INPUT_MAP, _OUTPUT_MAP
         )
     )
     mock_client_factory.return_value = mock_client
@@ -383,11 +480,81 @@ def test_get_task_execution_inputs(mock_client_factory, execution_data_locations
 
 
 @patch.object(engine._FlyteClientManager, "_CLIENT", new_callable=PropertyMock)
+def test_get_task_execution_inputs(mock_client_factory, execution_data_locations):
+    mock_client = MagicMock()
+    mock_client.get_task_execution_data = MagicMock(
+        return_value=_execution_models.TaskExecutionGetDataResponse(
+            execution_data_locations[0], execution_data_locations[1], _EMPTY_LITERAL_MAP, _EMPTY_LITERAL_MAP
+        )
+    )
+    mock_client_factory.return_value = mock_client
+
+    m = MagicMock()
+    type(m).id = PropertyMock(
+        return_value=identifier.TaskExecutionIdentifier(
+            identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "task-name", "version",),
+            identifier.NodeExecutionIdentifier(
+                "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+            ),
+            0,
+        )
+    )
+
+    inputs = engine.FlyteTaskExecution(m).get_inputs()
+    assert len(inputs.literals) == 1
+    assert inputs.literals["a"].scalar.primitive.integer == 1
+    mock_client.get_task_execution_data.assert_called_once_with(
+        identifier.TaskExecutionIdentifier(
+            identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "task-name", "version",),
+            identifier.NodeExecutionIdentifier(
+                "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+            ),
+            0,
+        )
+    )
+
+
+@patch.object(engine._FlyteClientManager, "_CLIENT", new_callable=PropertyMock)
+def test_get_full_task_execution_outputs(mock_client_factory):
+    mock_client = MagicMock()
+    mock_client.get_task_execution_data = MagicMock(
+        return_value=_execution_models.TaskExecutionGetDataResponse(
+            None, None, _INPUT_MAP, _OUTPUT_MAP
+        )
+    )
+    mock_client_factory.return_value = mock_client
+
+    m = MagicMock()
+    type(m).id = PropertyMock(
+        return_value=identifier.TaskExecutionIdentifier(
+            identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "task-name", "version",),
+            identifier.NodeExecutionIdentifier(
+                "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+            ),
+            0,
+        )
+    )
+
+    outputs = engine.FlyteTaskExecution(m).get_outputs()
+    assert len(outputs.literals) == 1
+    assert outputs.literals["b"].scalar.primitive.integer == 2
+    mock_client.get_task_execution_data.assert_called_once_with(
+        identifier.TaskExecutionIdentifier(
+            identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "task-name", "version",),
+            identifier.NodeExecutionIdentifier(
+                "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+            ),
+            0,
+        )
+    )
+
+
+@patch.object(engine._FlyteClientManager, "_CLIENT", new_callable=PropertyMock)
 def test_get_task_execution_outputs(mock_client_factory, execution_data_locations):
     mock_client = MagicMock()
     mock_client.get_task_execution_data = MagicMock(
         return_value=_execution_models.TaskExecutionGetDataResponse(
-            execution_data_locations[0], execution_data_locations[1]
+            execution_data_locations[0], execution_data_locations[1], _EMPTY_LITERAL_MAP, _EMPTY_LITERAL_MAP
         )
     )
     mock_client_factory.return_value = mock_client
