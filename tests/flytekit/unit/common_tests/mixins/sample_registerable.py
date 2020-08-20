@@ -7,7 +7,7 @@ from flytekit.common.mixins import registerable as _registerable
 
 
 class ExampleRegisterable(
-    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _registerable.RegisterableEntity, _registerable.TrackableEntity, )
+    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _registerable.RegisterableEntity, _registerable.TrackableEntity,)
 ):
     def __init__(self, *args, **kwargs):
         super(ExampleRegisterable, self).__init__(*args, **kwargs)

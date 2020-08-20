@@ -1,5 +1,4 @@
 import datetime as _datetime
-import uuid as _uuid
 
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface

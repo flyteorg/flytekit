@@ -9,7 +9,6 @@ from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import task as _base_task
 from flytekit.common.types import helpers as _type_helpers

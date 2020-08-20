@@ -178,6 +178,7 @@ class HasDependencies(object):
     launch plan depends on the underlying workflow, and a workflow is dependent on its tasks, and other launch plans,
     and subworkflows.
     """
+
     def __init__(self, *args, **kwargs):
         self._upstream_entities = set()
         super(HasDependencies, self).__init__(*args, **kwargs)
@@ -189,4 +190,3 @@ class HasDependencies(object):
         :rtype: set[RegisterableEntity]
         """
         return self._upstream_entities
-

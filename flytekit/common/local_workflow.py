@@ -2,7 +2,6 @@ import uuid as _uuid
 from typing import Any, Dict, List
 
 import six as _six
-from flyteidl.core import workflow_pb2 as _core_workflow_pb2
 from six.moves import queue as _queue
 
 from flytekit.common import interface as _interface
@@ -11,8 +10,6 @@ from flytekit.common import nodes as _nodes
 from flytekit.common import promise as _promise
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.mixins import hash as _hash_mixin
-from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.workflow import SdkWorkflow
 from flytekit.configuration import internal as _internal_config
@@ -86,7 +83,14 @@ class PythonWorkflow(SdkWorkflow):
     """
 
     def __init__(
-            self, inputs: List[_promise.Input], nodes: List[_nodes.SdkNode], interface, output_bindings, id=None, metadata=None, metadata_defaults=None,
+        self,
+        inputs: List[_promise.Input],
+        nodes: List[_nodes.SdkNode],
+        interface,
+        output_bindings,
+        id=None,
+        metadata=None,
+        metadata_defaults=None,
     ):
         """
         :param list[flytekit.common.nodes.SdkNode] nodes:
@@ -123,8 +127,14 @@ class PythonWorkflow(SdkWorkflow):
             metadata_defaults if metadata_defaults is not None else _workflow_models.WorkflowMetadataDefaults()
         )
 
-        super(PythonWorkflow, self).__init__(nodes=nodes, interface=interface, output_bindings=output_bindings, id=id,
-                                             metadata=metadata, metadata_defaults=metadata_defaults)
+        super(PythonWorkflow, self).__init__(
+            nodes=nodes,
+            interface=interface,
+            output_bindings=output_bindings,
+            id=id,
+            metadata=metadata,
+            metadata_defaults=metadata_defaults,
+        )
 
         # Set this last as it's set in constructor
         self._upstream_entities = set(n.executable_sdk_object for n in nodes)
