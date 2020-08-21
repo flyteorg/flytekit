@@ -131,3 +131,17 @@ def pack_python_std_map_to_literal_map(std_map, type_map):
             k: v.from_python_std(std_map[k]) for k, v in _six.iteritems(type_map)
         }
     )
+
+
+def pack_python_string_map_to_literal_map(str_map, type_map):
+    """
+    :param dict[Text, Text] str_map:
+    :param dict[Text, flytekit.common.types.base_sdk_types.FlyteSdkType] type_map:
+    :rtype: flytekit.models.literals.LiteralMap
+    :raises: flytekit.common.exceptions.user.FlyteTypeException
+    """
+    return _literal_models.LiteralMap(
+        literals={
+            k: v.from_string(str_map[k]) for k, v in _six.iteritems(type_map)
+        }
+    )

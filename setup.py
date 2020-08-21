@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'pyflyte-execute=flytekit.bin.entrypoint:execute_task_cmd',
+            'pyflyte-execute-alternative=flytekit.bin.entrypoint_alternative:execute_task_cmd',
             'pyflyte=flytekit.clis.sdk_in_container.pyflyte:main',
             'flyte-cli=flytekit.clis.flyte_cli.main:_flyte_cli'
         ]
