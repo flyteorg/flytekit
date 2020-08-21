@@ -52,7 +52,7 @@ def _pass_through():
     pass
 
 
-@_pass_through.command('pyflyte-execute-alternative', context_settings=dict(ignore_unknown_options=True))
+@_pass_through.command('pyflyte-execute-alt', context_settings=dict(ignore_unknown_options=True))
 @_click.option('--task-module', required=True)
 @_click.option('--task-name', required=True)
 @_click.option('--output-prefix', required=True)
