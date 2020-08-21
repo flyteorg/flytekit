@@ -5,14 +5,15 @@ import re as _re
 import string as _string
 import sys as _sys
 import uuid as _uuid
-from six import moves as _six_moves, text_type as _text_type
 
+from six import moves as _six_moves
+from six import text_type as _text_type
+
+from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserException
 from flytekit.configuration import aws as _aws_config
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import common as _common_data
 from flytekit.tools import subprocess as _subprocess
-from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserException
-
 
 if _sys.version_info >= (3,):
     from shutil import which as _which
@@ -46,7 +47,7 @@ class AwsS3Proxy(_common_data.DataProxy):
         Make sure that the AWS cli is present
         """
         if not _which(AwsS3Proxy._AWS_CLI):
-            raise _FlyteUserException('AWS CLI not found at Please install.')
+            raise _FlyteUserException("AWS CLI not found at Please install.")
 
     @staticmethod
     def _split_s3_path_to_bucket_and_key(path):
@@ -54,9 +55,9 @@ class AwsS3Proxy(_common_data.DataProxy):
         :param Text path:
         :rtype: (Text, Text)
         """
-        path = path[len("s3://"):]
-        first_slash = path.index('/')
-        return path[:first_slash], path[first_slash + 1:]
+        path = path[len("s3://") :]
+        first_slash = path.index("/")
+        return path[:first_slash], path[first_slash + 1 :]
 
     def exists(self, remote_path):
         """
@@ -69,7 +70,15 @@ class AwsS3Proxy(_common_data.DataProxy):
             raise ValueError("Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://...")
 
         bucket, file_path = self._split_s3_path_to_bucket_and_key(remote_path)
-        cmd = [AwsS3Proxy._AWS_CLI, "s3api", "head-object", "--bucket", bucket, "--key", file_path]
+        cmd = [
+            AwsS3Proxy._AWS_CLI,
+            "s3api",
+            "head-object",
+            "--bucket",
+            bucket,
+            "--key",
+            file_path,
+        ]
         try:
             _update_cmd_config_and_execute(cmd)
             return True
@@ -78,7 +87,7 @@ class AwsS3Proxy(_common_data.DataProxy):
             # the http status code: "An error occurred (404) when calling the HeadObject operation: Not Found"
             #  This is a best effort for returning if the object does not exist by searching
             # for existence of (404) in the error message. This should not be needed when we get off the cli and use lib
-            if _re.search('(404)', _text_type(ex)):
+            if _re.search("(404)", _text_type(ex)):
                 return False
             else:
                 raise ex
@@ -116,7 +125,7 @@ class AwsS3Proxy(_common_data.DataProxy):
         AwsS3Proxy._check_binary()
 
         extra_args = {
-            'ACL': 'bucket-owner-full-control',
+            "ACL": "bucket-owner-full-control",
         }
 
         cmd = [AwsS3Proxy._AWS_CLI, "s3", "cp"]
@@ -136,7 +145,7 @@ class AwsS3Proxy(_common_data.DataProxy):
         :param Text remote_path:
         """
         extra_args = {
-            'ACL': 'bucket-owner-full-control',
+            "ACL": "bucket-owner-full-control",
         }
 
         if not remote_path.startswith("s3://"):

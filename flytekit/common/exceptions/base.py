@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 import six as _six
 
 
@@ -9,7 +10,7 @@ class _FlyteCodedExceptionMetaclass(type):
 
 
 class FlyteException(_six.with_metaclass(_FlyteCodedExceptionMetaclass, Exception)):
-    _ERROR_CODE = 'UnknownFlyteException'
+    _ERROR_CODE = "UnknownFlyteException"
 
 
 class FlyteRecoverableException(FlyteException):

@@ -1,12 +1,14 @@
 from __future__ import absolute_import
-from flytekit.models import common as _common, types as _types, literals as _literals
-from flyteidl.core import interface_pb2 as _interface_pb2
 
 import six as _six
+from flyteidl.core import interface_pb2 as _interface_pb2
+
+from flytekit.models import common as _common
+from flytekit.models import literals as _literals
+from flytekit.models import types as _types
 
 
 class Variable(_common.FlyteIdlEntity):
-
     def __init__(self, type, description):
         """
         :param flytekit.models.types.LiteralType type: This describes the type of value that must be provided to
@@ -37,10 +39,7 @@ class Variable(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.interface_pb2.Variable
         """
-        return _interface_pb2.Variable(
-            type=self.type.to_flyte_idl(),
-            description=self.description
-        )
+        return _interface_pb2.Variable(type=self.type.to_flyte_idl(), description=self.description)
 
     @classmethod
     def from_flyte_idl(cls, variable_proto):
@@ -48,14 +47,10 @@ class Variable(_common.FlyteIdlEntity):
         :param flyteidl.core.interface_pb2.Variable variable_proto:
         :rtype: Variable
         """
-        return cls(
-            type=_types.LiteralType.from_flyte_idl(variable_proto.type),
-            description=variable_proto.description
-        )
+        return cls(type=_types.LiteralType.from_flyte_idl(variable_proto.type), description=variable_proto.description,)
 
 
 class VariableMap(_common.FlyteIdlEntity):
-
     def __init__(self, variables):
         """
         A map of Variables
@@ -75,9 +70,7 @@ class VariableMap(_common.FlyteIdlEntity):
         """
         :rtype: dict[Text, Variable]
         """
-        return _interface_pb2.VariableMap(
-            variables={k: v.to_flyte_idl() for k, v in _six.iteritems(self.variables)}
-        )
+        return _interface_pb2.VariableMap(variables={k: v.to_flyte_idl() for k, v in _six.iteritems(self.variables)})
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -85,12 +78,10 @@ class VariableMap(_common.FlyteIdlEntity):
         :param dict[Text, Variable] pb2_object:
         :rtype: VariableMap
         """
-        return cls({k: Variable.from_flyte_idl(v)
-                    for k, v in _six.iteritems(pb2_object.variables)})
+        return cls({k: Variable.from_flyte_idl(v) for k, v in _six.iteritems(pb2_object.variables)})
 
 
 class TypedInterface(_common.FlyteIdlEntity):
-
     def __init__(self, inputs, outputs):
         """
         Please note that this model is slightly incorrect, but is more user-friendly. The underlying inputs and
@@ -121,12 +112,10 @@ class TypedInterface(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.interface_pb2.TypedInterface
         """
         return _interface_pb2.TypedInterface(
-            inputs=_interface_pb2.VariableMap(
-                variables={k: v.to_flyte_idl() for k, v in _six.iteritems(self.inputs)}
-            ),
+            inputs=_interface_pb2.VariableMap(variables={k: v.to_flyte_idl() for k, v in _six.iteritems(self.inputs)}),
             outputs=_interface_pb2.VariableMap(
                 variables={k: v.to_flyte_idl() for k, v in _six.iteritems(self.outputs)}
-            )
+            ),
         )
 
     @classmethod
@@ -137,12 +126,11 @@ class TypedInterface(_common.FlyteIdlEntity):
         """
         return cls(
             inputs={k: Variable.from_flyte_idl(v) for k, v in _six.iteritems(proto.inputs.variables)},
-            outputs={k: Variable.from_flyte_idl(v) for k, v in _six.iteritems(proto.outputs.variables)}
+            outputs={k: Variable.from_flyte_idl(v) for k, v in _six.iteritems(proto.outputs.variables)},
         )
 
 
 class Parameter(_common.FlyteIdlEntity):
-
     def __init__(self, var, default=None, required=None):
         """
         Declares an input parameter.  A parameter is used as input to a launch plan and has
@@ -206,12 +194,11 @@ class Parameter(_common.FlyteIdlEntity):
         return cls(
             Variable.from_flyte_idl(pb2_object.var),
             _literals.Literal.from_flyte_idl(pb2_object.default) if pb2_object.HasField("default") else None,
-            pb2_object.required if pb2_object.HasField("required") else None
+            pb2_object.required if pb2_object.HasField("required") else None,
         )
 
 
 class ParameterMap(_common.FlyteIdlEntity):
-
     def __init__(self, parameters):
         """
         A map of Parameters

@@ -4,27 +4,34 @@ import logging as _logging
 import os as _os
 import traceback as _traceback
 from datetime import datetime as _datetime
-from deprecated import deprecated as _deprecated
 
 import six as _six
+from deprecated import deprecated as _deprecated
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import __version__ as _api_version
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
-from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions, iterate_task_executions as \
-    _iterate_task_executions
-from flytekit.common import utils as _common_utils, constants as _constants
-from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
-from flytekit.configuration import (
-    platform as _platform_config, internal as _internal_config, sdk as _sdk_config, auth as _auth_config,
-)
+from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions
+from flytekit.clients.helpers import iterate_task_executions as _iterate_task_executions
+from flytekit.common import constants as _constants
+from flytekit.common import utils as _common_utils
+from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.configuration import auth as _auth_config
+from flytekit.configuration import internal as _internal_config
+from flytekit.configuration import platform as _platform_config
+from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines import common as _common_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
-from flytekit.models import task as _task_models, execution as _execution_models, \
-    literals as _literals, common as _common_models
-from flytekit.models.admin import common as _common, workflow as _workflow_model
-from flytekit.models.core import errors as _error_models, identifier as _identifier
+from flytekit.models import common as _common_models
+from flytekit.models import execution as _execution_models
+from flytekit.models import literals as _literals
+from flytekit.models import task as _task_models
+from flytekit.models.admin import common as _common
+from flytekit.models.admin import workflow as _workflow_model
+from flytekit.models.core import errors as _error_models
+from flytekit.models.core import identifier as _identifier
 
 
 class _FlyteClientManager(object):
@@ -46,7 +53,6 @@ class _FlyteClientManager(object):
 
 
 class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
-
     def get_workflow(self, sdk_workflow):
         """
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
@@ -95,8 +101,7 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         :rtype: flytekit.models.execution.Execution
         """
         return _FlyteClientManager(
-            _platform_config.URL.get(),
-            insecure=_platform_config.INSECURE.get()
+            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
         ).client.get_execution(wf_exec_id)
 
     def fetch_task(self, task_id):
@@ -106,8 +111,7 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         :rtype: flytekit.models.task.Task
         """
         return _FlyteClientManager(
-            _platform_config.URL.get(),
-            insecure=_platform_config.INSECURE.get()
+            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
         ).client.get_task(task_id)
 
     def fetch_latest_task(self, named_task):
@@ -119,9 +123,7 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         task_list, _ = _FlyteClientManager(
             _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
         ).client.list_tasks_paginated(
-            named_task,
-            limit=1,
-            sort_by=_common.Sort("created_at", _common.Sort.Direction.DESCENDING),
+            named_task, limit=1, sort_by=_common.Sort("created_at", _common.Sort.Direction.DESCENDING),
         )
         return task_list[0] if task_list else None
 
@@ -133,18 +135,14 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         """
         if launch_plan_id.version:
             return _FlyteClientManager(
-                _platform_config.URL.get(),
-                insecure=_platform_config.INSECURE.get()
+                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
             ).client.get_launch_plan(launch_plan_id)
         else:
             named_entity_id = _common_models.NamedEntityIdentifier(
-                launch_plan_id.project,
-                launch_plan_id.domain,
-                launch_plan_id.name
+                launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name
             )
             return _FlyteClientManager(
-                _platform_config.URL.get(),
-                insecure=_platform_config.INSECURE.get()
+                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
             ).client.get_active_launch_plan(named_entity_id)
 
     def fetch_workflow(self, workflow_id):
@@ -154,33 +152,46 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         :rtype: flytekit.models.admin.workflow.Workflow
         """
         return _FlyteClientManager(
-            _platform_config.URL.get(),
-            insecure=_platform_config.INSECURE.get()
+            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
         ).client.get_workflow(workflow_id)
 
 
 class FlyteLaunchPlan(_common_engine.BaseLaunchPlanLauncher):
-
     def register(self, identifier):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
         try:
-            client.create_launch_plan(
-                identifier,
-                self.sdk_launch_plan
-            )
+            client.create_launch_plan(identifier, self.sdk_launch_plan)
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             pass
 
-    @_deprecated(reason="Use launch instead", version='0.9.0')
-    def execute(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
-                annotation_overrides=None):
+    @_deprecated(reason="Use launch instead", version="0.9.0")
+    def execute(
+        self,
+        project,
+        domain,
+        name,
+        inputs,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+    ):
         """
         Deprecated. Use launch instead.
         """
-        return self.launch(project, domain, name, inputs, notification_overrides, label_overrides, annotation_overrides)
+        return self.launch(
+            project, domain, name, inputs, notification_overrides, label_overrides, annotation_overrides,
+        )
 
-    def launch(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
-               annotation_overrides=None):
+    def launch(
+        self,
+        project,
+        domain,
+        name,
+        inputs,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+    ):
         """
         Creates a workflow execution using parameters specified in the launch plan.
         :param Text project:
@@ -193,13 +204,11 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanLauncher):
         :param flytekit.models.common.Annotations annotation_overrides:
         :rtype: flytekit.models.execution.Execution
         """
-        disable_all = (notification_overrides == [])
+        disable_all = notification_overrides == []
         if disable_all:
             notification_overrides = None
         else:
-            notification_overrides = _execution_models.NotificationList(
-                notification_overrides or []
-            )
+            notification_overrides = _execution_models.NotificationList(notification_overrides or [])
             disable_all = None
 
         try:
@@ -212,8 +221,8 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanLauncher):
                     self.sdk_launch_plan.id,
                     _execution_models.ExecutionMetadata(
                         _execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
-                        'sdk',  # TODO: get principle
-                        0  # TODO: Detect nesting
+                        "sdk",  # TODO: get principle
+                        0,  # TODO: Detect nesting
                     ),
                     notifications=notification_overrides,
                     disable_all=disable_all,
@@ -232,39 +241,25 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanLauncher):
         :param int state: Enum value from flytekit.models.launch_plan.LaunchPlanState
         """
         return _FlyteClientManager(
-            _platform_config.URL.get(),
-            insecure=_platform_config.INSECURE.get()
+            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
         ).client.update_launch_plan(identifier, state)
 
 
 class FlyteWorkflow(_common_engine.BaseWorkflowExecutor):
-
     def register(self, identifier):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
         try:
             sub_workflows = self.sdk_workflow.get_sub_workflows()
-            return client.create_workflow(
-                identifier,
-                _workflow_model.WorkflowSpec(
-                    self.sdk_workflow,
-                    sub_workflows,
-                )
-            )
+            return client.create_workflow(identifier, _workflow_model.WorkflowSpec(self.sdk_workflow, sub_workflows,),)
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             pass
 
 
 class FlyteTask(_common_engine.BaseTaskExecutor):
-
     def register(self, identifier):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
         try:
-            client.create_task(
-                identifier,
-                _task_models.TaskSpec(
-                    self.sdk_task
-                )
-            )
+            client.create_task(identifier, _task_models.TaskSpec(self.sdk_task))
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             pass
 
@@ -294,7 +289,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                                     execution_id=_identifier.WorkflowExecutionIdentifier(
                                         project=_internal_config.EXECUTION_PROJECT.get(),
                                         domain=_internal_config.EXECUTION_DOMAIN.get(),
-                                        name=_internal_config.EXECUTION_NAME.get()
+                                        name=_internal_config.EXECUTION_NAME.get(),
                                     ),
                                     execution_date=_datetime.utcnow(),
                                     stats=_get_stats(
@@ -304,29 +299,25 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                                         "{}.{}.{}.user_stats".format(
                                             _internal_config.TASK_PROJECT.get() or _internal_config.PROJECT.get(),
                                             _internal_config.TASK_DOMAIN.get() or _internal_config.DOMAIN.get(),
-                                            _internal_config.TASK_NAME.get() or _internal_config.NAME.get()
+                                            _internal_config.TASK_NAME.get() or _internal_config.NAME.get(),
                                         ),
                                         tags={
-                                            'exec_project': _internal_config.EXECUTION_PROJECT.get(),
-                                            'exec_domain': _internal_config.EXECUTION_DOMAIN.get(),
-                                            'exec_workflow': _internal_config.EXECUTION_WORKFLOW.get(),
-                                            'exec_launchplan': _internal_config.EXECUTION_LAUNCHPLAN.get(),
-                                            'api_version': _api_version
-                                        }
+                                            "exec_project": _internal_config.EXECUTION_PROJECT.get(),
+                                            "exec_domain": _internal_config.EXECUTION_DOMAIN.get(),
+                                            "exec_workflow": _internal_config.EXECUTION_WORKFLOW.get(),
+                                            "exec_launchplan": _internal_config.EXECUTION_LAUNCHPLAN.get(),
+                                            "api_version": _api_version,
+                                        },
                                     ),
                                     logging=_logging,
-                                    tmp_dir=task_dir
+                                    tmp_dir=task_dir,
                                 ),
-                                inputs
+                                inputs,
                             )
                         except _exception_scopes.FlyteScopedException as e:
                             _logging.error("!!! Begin Error Captured by Flyte !!!")
                             output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
-                                _error_models.ContainerError(
-                                    e.error_code,
-                                    e.verbose_message,
-                                    e.kind
-                                )
+                                _error_models.ContainerError(e.error_code, e.verbose_message, e.kind)
                             )
                             _logging.error(e.verbose_message)
                             _logging.error("!!! End Error Captured by Flyte !!!")
@@ -335,23 +326,29 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                             exc_str = _traceback.format_exc()
                             output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
                                 _error_models.ContainerError(
-                                    "SYSTEM:Unknown",
-                                    exc_str,
-                                    _error_models.ContainerError.Kind.RECOVERABLE
+                                    "SYSTEM:Unknown", exc_str, _error_models.ContainerError.Kind.RECOVERABLE,
                                 )
                             )
                             _logging.error(exc_str)
                             _logging.error("!!! End Error Captured by Flyte !!!")
                         finally:
                             for k, v in _six.iteritems(output_file_dict):
-                                _common_utils.write_proto_to_file(
-                                    v.to_flyte_idl(),
-                                    _os.path.join(temp_dir.name, k)
-                                )
-                            _data_proxy.Data.put_data(temp_dir.name, context['output_prefix'], is_multipart=True)
+                                _common_utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(temp_dir.name, k))
+                            _data_proxy.Data.put_data(
+                                temp_dir.name, context["output_prefix"], is_multipart=True,
+                            )
 
-    def launch(self, project, domain, name=None, inputs=None, notification_overrides=None, label_overrides=None,
-               annotation_overrides=None, auth_role=None):
+    def launch(
+        self,
+        project,
+        domain,
+        name=None,
+        inputs=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+        auth_role=None,
+    ):
         """
         Executes the task as a single task execution and returns the identifier.
         :param Text project:
@@ -365,13 +362,11 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
         :param flytekit.models.common.AuthRole auth_role:
         :rtype: flytekit.models.execution.Execution
         """
-        disable_all = (notification_overrides == [])
+        disable_all = notification_overrides == []
         if disable_all:
             notification_overrides = None
         else:
-            notification_overrides = _execution_models.NotificationList(
-                notification_overrides or []
-            )
+            notification_overrides = _execution_models.NotificationList(notification_overrides or [])
             disable_all = None
 
         if not auth_role:
@@ -379,11 +374,14 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
             kubernetes_service_account = _auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
 
             if not (assumable_iam_role or kubernetes_service_account):
-                _logging.warning("Using deprecated `role` from config. "
-                                 "Please update your config to use `assumable_iam_role` instead")
+                _logging.warning(
+                    "Using deprecated `role` from config. "
+                    "Please update your config to use `assumable_iam_role` instead"
+                )
                 assumable_iam_role = _sdk_config.ROLE.get()
-            auth_role = _common_models.AuthRole(assumable_iam_role=assumable_iam_role,
-                                                kubernetes_service_account=kubernetes_service_account)
+            auth_role = _common_models.AuthRole(
+                assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
+            )
 
         try:
             # TODO(katrogan): Add handling to register the underlying task if it's not already.
@@ -396,8 +394,8 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                     self.sdk_task.id,
                     _execution_models.ExecutionMetadata(
                         _execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
-                        'sdk',  # TODO: get principle
-                        0  # TODO: Detect nesting
+                        "sdk",  # TODO: get principle
+                        0,  # TODO: Detect nesting
                     ),
                     notifications=notification_overrides,
                     disable_all=disable_all,
@@ -413,7 +411,6 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
 
 
 class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
-
     def get_node_executions(self, filters=None):
         """
         :param list[flytekit.models.filters.Filter] filters:
@@ -421,8 +418,7 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
         """
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
         return {
-            v.id.node_id: v
-            for v in _iterate_node_executions(client, self.sdk_workflow_execution.id, filters=filters)
+            v.id.node_id: v for v in _iterate_node_executions(client, self.sdk_workflow_execution.id, filters=filters)
         }
 
     def sync(self):
@@ -437,11 +433,16 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
         :rtype: flytekit.models.literals.LiteralMap
         """
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
-        url_blob = client.get_execution_data(self.sdk_workflow_execution.id)
-        if url_blob.inputs.bytes > 0:
+        execution_data = client.get_execution_data(self.sdk_workflow_execution.id)
+
+        # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
+        if bool(execution_data.full_inputs.literals):
+            return execution_data.full_inputs
+
+        if execution_data.inputs.bytes > 0:
             with _common_utils.AutoDeletingTempDir() as t:
                 tmp_name = _os.path.join(t.name, "inputs.pb")
-                _data_proxy.Data.get_data(url_blob.inputs.url, tmp_name)
+                _data_proxy.Data.get_data(execution_data.inputs.url, tmp_name)
                 return _literals.LiteralMap.from_flyte_idl(
                     _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                 )
@@ -452,11 +453,16 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
         :rtype: flytekit.models.literals.LiteralMap
         """
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
-        url_blob = client.get_execution_data(self.sdk_workflow_execution.id)
-        if url_blob.outputs.bytes > 0:
+        execution_data = client.get_execution_data(self.sdk_workflow_execution.id)
+
+        # Outputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
+        if bool(execution_data.full_outputs.literals):
+            return execution_data.full_outputs
+
+        if execution_data.outputs.bytes > 0:
             with _common_utils.AutoDeletingTempDir() as t:
                 tmp_name = _os.path.join(t.name, "outputs.pb")
-                _data_proxy.Data.get_data(url_blob.outputs.url, tmp_name)
+                _data_proxy.Data.get_data(execution_data.outputs.url, tmp_name)
                 return _literals.LiteralMap.from_flyte_idl(
                     _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                 )
@@ -467,13 +473,11 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
         :param Text cause:
         """
         _FlyteClientManager(
-            _platform_config.URL.get(),
-            insecure=_platform_config.INSECURE.get()
+            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
         ).client.terminate_execution(self.sdk_workflow_execution.id, cause)
 
 
 class FlyteNodeExecution(_common_engine.BaseNodeExecution):
-
     def get_task_executions(self):
         """
         :rtype: list[flytekit.common.tasks.executions.SdkTaskExecution]
@@ -492,11 +496,16 @@ class FlyteNodeExecution(_common_engine.BaseNodeExecution):
         :rtype: flytekit.models.literals.LiteralMap
         """
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
-        url_blob = client.get_node_execution_data(self.sdk_node_execution.id)
-        if url_blob.inputs.bytes > 0:
+        execution_data = client.get_node_execution_data(self.sdk_node_execution.id)
+
+        # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
+        if bool(execution_data.full_inputs.literals):
+            return execution_data.full_inputs
+
+        if execution_data.inputs.bytes > 0:
             with _common_utils.AutoDeletingTempDir() as t:
                 tmp_name = _os.path.join(t.name, "inputs.pb")
-                _data_proxy.Data.get_data(url_blob.inputs.url, tmp_name)
+                _data_proxy.Data.get_data(execution_data.inputs.url, tmp_name)
                 return _literals.LiteralMap.from_flyte_idl(
                     _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                 )
@@ -507,11 +516,16 @@ class FlyteNodeExecution(_common_engine.BaseNodeExecution):
         :rtype: flytekit.models.literals.LiteralMap
         """
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
-        url_blob = client.get_node_execution_data(self.sdk_node_execution.id)
-        if url_blob.outputs.bytes > 0:
+        execution_data = client.get_node_execution_data(self.sdk_node_execution.id)
+
+        # Outputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
+        if bool(execution_data.full_outputs.literals):
+            return execution_data.full_outputs
+
+        if execution_data.outputs.bytes > 0:
             with _common_utils.AutoDeletingTempDir() as t:
                 tmp_name = _os.path.join(t.name, "outputs.pb")
-                _data_proxy.Data.get_data(url_blob.outputs.url, tmp_name)
+                _data_proxy.Data.get_data(execution_data.outputs.url, tmp_name)
                 return _literals.LiteralMap.from_flyte_idl(
                     _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                 )
@@ -526,17 +540,21 @@ class FlyteNodeExecution(_common_engine.BaseNodeExecution):
 
 
 class FlyteTaskExecution(_common_engine.BaseTaskExecution):
-
     def get_inputs(self):
         """
         :rtype: flytekit.models.literals.LiteralMap
         """
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
-        url_blob = client.get_task_execution_data(self.sdk_task_execution.id)
-        if url_blob.inputs.bytes > 0:
+        execution_data = client.get_task_execution_data(self.sdk_task_execution.id)
+
+        # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
+        if bool(execution_data.full_inputs.literals):
+            return execution_data.full_inputs
+
+        if execution_data.inputs.bytes > 0:
             with _common_utils.AutoDeletingTempDir() as t:
                 tmp_name = _os.path.join(t.name, "inputs.pb")
-                _data_proxy.Data.get_data(url_blob.inputs.url, tmp_name)
+                _data_proxy.Data.get_data(execution_data.inputs.url, tmp_name)
                 return _literals.LiteralMap.from_flyte_idl(
                     _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                 )
@@ -547,11 +565,16 @@ class FlyteTaskExecution(_common_engine.BaseTaskExecution):
         :rtype: flytekit.models.literals.LiteralMap
         """
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
-        url_blob = client.get_task_execution_data(self.sdk_task_execution.id)
-        if url_blob.outputs.bytes > 0:
+        execution_data = client.get_task_execution_data(self.sdk_task_execution.id)
+
+        # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
+        if bool(execution_data.full_outputs.literals):
+            return execution_data.full_outputs
+
+        if execution_data.outputs.bytes > 0:
             with _common_utils.AutoDeletingTempDir() as t:
                 tmp_name = _os.path.join(t.name, "outputs.pb")
-                _data_proxy.Data.get_data(url_blob.outputs.url, tmp_name)
+                _data_proxy.Data.get_data(execution_data.outputs.url, tmp_name)
                 return _literals.LiteralMap.from_flyte_idl(
                     _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                 )
@@ -573,8 +596,6 @@ class FlyteTaskExecution(_common_engine.BaseTaskExecution):
         return {
             v.id.node_id: v
             for v in _iterate_node_executions(
-                client,
-                task_execution_identifier=self.sdk_task_execution.id,
-                filters=filters
+                client, task_execution_identifier=self.sdk_task_execution.id, filters=filters,
             )
         }

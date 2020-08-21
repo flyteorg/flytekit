@@ -1,26 +1,31 @@
 from __future__ import absolute_import
 
+import hashlib as _hashlib
+import json as _json
 import uuid as _uuid
 
 import six as _six
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
 
-from google.protobuf import json_format as _json_format, struct_pb2 as _struct
-
-import hashlib as _hashlib
-import json as _json
-
-from flytekit.common import (
-    interface as _interfaces, nodes as _nodes, sdk_bases as _sdk_bases, workflow_execution as _workflow_execution
-)
+from flytekit.common import interface as _interfaces
+from flytekit.common import nodes as _nodes
+from flytekit.common import sdk_bases as _sdk_bases
+from flytekit.common import workflow_execution as _workflow_execution
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, launchable as _launchable_mixin
+from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.mixins import hash as _hash_mixin
+from flytekit.common.mixins import launchable as _launchable_mixin
+from flytekit.common.mixins import registerable as _registerable
+from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
-from flytekit.models import common as _common_model, task as _task_model
-from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
-from flytekit.common.exceptions import user as _user_exceptions, system as _system_exceptions
-from flytekit.common.types import helpers as _type_helpers
+from flytekit.models import common as _common_model
+from flytekit.models import task as _task_model
+from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import workflow as _workflow_model
 
 
 class SdkTask(
@@ -32,7 +37,6 @@ class SdkTask(
         _launchable_mixin.LaunchableEntity,
     )
 ):
-
     def __init__(self, type, metadata, interface, custom, container=None):
         """
         :param Text type: This is used to define additional extensions for use by Propeller or SDK.
@@ -49,13 +53,13 @@ class SdkTask(
                 _internal_config.PROJECT.get(),
                 _internal_config.DOMAIN.get(),
                 _uuid.uuid4().hex,
-                _internal_config.VERSION.get()
+                _internal_config.VERSION.get(),
             ),
             type,
             metadata,
             interface,
             custom,
-            container=container
+            container=container,
         )
 
     @property
@@ -99,7 +103,7 @@ class SdkTask(
             metadata=base_model.metadata,
             interface=_interfaces.TypedInterface.promote_from_model(base_model.interface),
             custom=base_model.custom,
-            container=base_model.container
+            container=base_model.container,
         )
         # Override the newly generated name if one exists in the base model
         if not base_model.id.is_empty:
@@ -133,10 +137,12 @@ class SdkTask(
         # TODO: Remove DEADBEEF
         return _nodes.SdkNode(
             id=None,
-            metadata=_workflow_model.NodeMetadata("DEADBEEF", self.metadata.timeout, self.metadata.retries, self.metadata.interruptible),
+            metadata=_workflow_model.NodeMetadata(
+                "DEADBEEF", self.metadata.timeout, self.metadata.retries, self.metadata.interruptible,
+            ),
             bindings=sorted(bindings, key=lambda b: b.var),
             upstream_nodes=upstream_nodes,
-            sdk_task=self
+            sdk_task=self,
         )
 
     @_exception_scopes.system_entry_point
@@ -154,7 +160,7 @@ class SdkTask(
             self._id = id_to_register
             _engine_loader.get_engine().get_task(self).register(id_to_register)
             return _six.text_type(self.id)
-        except:
+        except Exception:
             self._id = old_id
             raise
 
@@ -257,10 +263,7 @@ class SdkTask(
                 )
 
     def __repr__(self):
-        return "Flyte {task_type}: {interface}".format(
-            task_type=self.type,
-            interface=self.interface
-        )
+        return "Flyte {task_type}: {interface}".format(task_type=self.type, interface=self.interface)
 
     def _python_std_input_map_to_literal_map(self, inputs):
         """
@@ -268,10 +271,10 @@ class SdkTask(
             to a LiteralMap
         :rtype: flytekit.models.literals.LiteralMap
         """
-        return _type_helpers.pack_python_std_map_to_literal_map(inputs, {
-            k: _type_helpers.get_sdk_type_from_literal_type(v.type)
-            for k, v in _six.iteritems(self.interface.inputs)
-        })
+        return _type_helpers.pack_python_std_map_to_literal_map(
+            inputs,
+            {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)},
+        )
 
     def _produce_deterministic_version(self, version=None):
         """
@@ -291,9 +294,13 @@ class SdkTask(
         # 1) this method is used to compute the version portion of the identifier and
         # 2 ) the SDK will actually generate a unique name on every task instantiation which is not great for
         # the reproducibility this method attempts.
-        task_body = (self.type, self.metadata.to_flyte_idl().SerializeToString(deterministic=True),
-                     self.interface.to_flyte_idl().SerializeToString(deterministic=True), custom)
-        return _hashlib.md5(str(task_body).encode('utf-8')).hexdigest()
+        task_body = (
+            self.type,
+            self.metadata.to_flyte_idl().SerializeToString(deterministic=True),
+            self.interface.to_flyte_idl().SerializeToString(deterministic=True),
+            custom,
+        )
+        return _hashlib.md5(str(task_body).encode("utf-8")).hexdigest()
 
     @_exception_scopes.system_entry_point
     def register_and_launch(self, project, domain, name=None, version=None, inputs=None):
@@ -323,14 +330,22 @@ class SdkTask(
         try:
             self._id = id_to_register
             _engine_loader.get_engine().get_task(self).register(id_to_register)
-        except:
+        except Exception:
             self._id = old_id
             raise
         return self.launch(project, domain, inputs=inputs)
 
     @_exception_scopes.system_entry_point
-    def launch_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
-                             label_overrides=None, annotation_overrides=None):
+    def launch_with_literals(
+        self,
+        project,
+        domain,
+        literal_inputs,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+    ):
         """
         Launches a single task execution and returns the execution identifier.
         :param Text project:
@@ -345,13 +360,17 @@ class SdkTask(
         :param flytekit.models.common.Annotations annotation_overrides:
         :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
         """
-        execution = _engine_loader.get_engine().get_task(self).launch(
-            project,
-            domain,
-            name=name,
-            inputs=literal_inputs,
-            notification_overrides=notification_overrides,
-            label_overrides=label_overrides,
-            annotation_overrides=annotation_overrides,
+        execution = (
+            _engine_loader.get_engine()
+            .get_task(self)
+            .launch(
+                project,
+                domain,
+                name=name,
+                inputs=literal_inputs,
+                notification_overrides=notification_overrides,
+                label_overrides=label_overrides,
+                annotation_overrides=annotation_overrides,
+            )
         )
         return _workflow_execution.SdkWorkflowExecution.promote_from_model(execution)

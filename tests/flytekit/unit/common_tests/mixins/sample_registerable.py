@@ -1,8 +1,9 @@
 from __future__ import absolute_import
 
-from flytekit.common.mixins import registerable as _registerable
-from flytekit.common import interface as _interface, nodes as _nodes, sdk_bases as _sdk_bases
 import six as _six
+
+from flytekit.common import sdk_bases as _sdk_bases
+from flytekit.common.mixins import registerable as _registerable
 
 
 class ExampleRegisterable(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _registerable.RegisterableEntity)):

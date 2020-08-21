@@ -1,6 +1,9 @@
 from __future__ import absolute_import
-from flytekit.common.types import helpers as _type_helpers, base_sdk_types as _base_sdk_types
-from flytekit.models import literals as _literals, types as _model_types
+
+from flytekit.common.types import base_sdk_types as _base_sdk_types
+from flytekit.common.types import helpers as _type_helpers
+from flytekit.models import literals as _literals
+from flytekit.models import types as _model_types
 from flytekit.sdk import types as _sdk_types
 
 
@@ -30,20 +33,17 @@ def test_infer_sdk_type_from_literal():
 
 
 def test_get_sdk_value_from_literal():
-    o = _type_helpers.get_sdk_value_from_literal(
-        _literals.Literal(scalar=_literals.Scalar(none_type=_literals.Void()))
-    )
+    o = _type_helpers.get_sdk_value_from_literal(_literals.Literal(scalar=_literals.Scalar(none_type=_literals.Void())))
     assert o.to_python_std() is None
 
     o = _type_helpers.get_sdk_value_from_literal(
-        _literals.Literal(scalar=_literals.Scalar(none_type=_literals.Void())),
-        sdk_type=_sdk_types.Types.Integer
+        _literals.Literal(scalar=_literals.Scalar(none_type=_literals.Void())), sdk_type=_sdk_types.Types.Integer,
     )
     assert o.to_python_std() is None
 
     o = _type_helpers.get_sdk_value_from_literal(
         _literals.Literal(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=1))),
-        sdk_type=_sdk_types.Types.Integer
+        sdk_type=_sdk_types.Types.Integer,
     )
     assert o.to_python_std() == 1
 

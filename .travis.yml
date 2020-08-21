@@ -2,10 +2,9 @@ language: python
 python:
     - "3.6"
 install:
-  - pip install -r requirements.txt
-  - pip install -U .[all]
-  - pip install codecov
+  - make setup
 script:
+  - make lint
   - coverage run -m pytest tests/flytekit/unit
   - shellcheck **/*.sh
 after_success:

@@ -1,13 +1,13 @@
 from __future__ import absolute_import, division, print_function
 
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class, Input
-from tests.flytekit.loadtests.python import FlytePythonLoadTestWorkflow
-from tests.flytekit.loadtests.hive import FlyteHiveLoadTestWorkflow
-from tests.flytekit.loadtests.spark import FlyteSparkLoadTestWorkflow
-from tests.flytekit.loadtests.dynamic_job import FlyteDJOLoadTestWorkflow
-
 from six.moves import range
+
+from flytekit.sdk.types import Types
+from flytekit.sdk.workflow import Input, workflow_class
+from tests.flytekit.loadtests.dynamic_job import FlyteDJOLoadTestWorkflow
+from tests.flytekit.loadtests.hive import FlyteHiveLoadTestWorkflow
+from tests.flytekit.loadtests.python import FlytePythonLoadTestWorkflow
+from tests.flytekit.loadtests.spark import FlyteSparkLoadTestWorkflow
 
 # launch plans for individual load tests.
 python_loadtest_lp = FlytePythonLoadTestWorkflow.create_launch_plan()

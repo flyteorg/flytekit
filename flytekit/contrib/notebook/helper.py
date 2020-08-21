@@ -1,8 +1,11 @@
-from flytekit.common.types.helpers import pack_python_std_map_to_literal_map as _packer
-from flytekit.contrib.notebook.supported_types import notebook_types_map as _notebook_types_map
+import os as _os
+
 import six as _six
 from pyspark import SparkConf, SparkContext
-import os as _os
+
+from flytekit.common.types.helpers import pack_python_std_map_to_literal_map as _packer
+from flytekit.contrib.notebook.supported_types import notebook_types_map as _notebook_types_map
+
 
 def record_outputs(outputs=None):
     """
@@ -15,7 +18,10 @@ def record_outputs(outputs=None):
         t = type(v)
         if t not in _notebook_types_map:
             raise ValueError(
-                "Currently only primitive types {} are supported for recording from notebook".format(_notebook_types_map))
+                "Currently only primitive types {} are supported for recording from notebook".format(
+                    _notebook_types_map
+                )
+            )
         tm[k] = _notebook_types_map[t]
     return _packer(outputs, tm).to_flyte_idl()
 

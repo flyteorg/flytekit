@@ -41,8 +41,7 @@ def parse_args_into_dict(input_arguments):
     :rtype: dict[Text, Text]
     """
 
-    return {split_arg[0]: split_arg[1] for split_arg in
-            [input_arg.split('=', 1) for input_arg in input_arguments]}
+    return {split_arg[0]: split_arg[1] for split_arg in [input_arg.split("=", 1) for input_arg in input_arguments]}
 
 
 def construct_literal_map_from_parameter_map(parameter_map, text_args):
@@ -65,7 +64,7 @@ def construct_literal_map_from_parameter_map(parameter_map, text_args):
             if var_name in text_args and text_args[var_name] is not None:
                 inputs[var_name] = sdk_type.from_string(text_args[var_name])
             else:
-                raise Exception('Missing required parameter {}'.format(var_name))
+                raise Exception("Missing required parameter {}".format(var_name))
         else:
             if var_name in text_args and text_args[var_name] is not None:
                 inputs[var_name] = sdk_type.from_string(text_args[var_name])
@@ -81,4 +80,4 @@ def str2bool(str):
     :param Text str:
     :rtype: bool
     """
-    return not str.lower() in ['false', '0', 'off', 'no']
+    return not str.lower() in ["false", "0", "off", "no"]

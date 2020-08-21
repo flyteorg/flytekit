@@ -13,11 +13,9 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
     number of instances to launch, and the size of the ML storage volume the user wants to provision
     Refer to SageMaker official doc for more details: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTrainingJob.html
     """
+
     def __init__(
-            self,
-            instance_count: int,
-            instance_type: str,
-            volume_size_in_gb: int,
+        self, instance_count: int, instance_type: str, volume_size_in_gb: int,
     ):
         self._instance_count = instance_count
         self._instance_type = instance_type
@@ -74,9 +72,7 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
 
 class MetricDefinition(_common.FlyteIdlEntity):
     def __init__(
-            self,
-            name: str,
-            regex: str,
+        self, name: str, regex: str,
     ):
         self._name = name
         self._regex = regex
@@ -103,10 +99,7 @@ class MetricDefinition(_common.FlyteIdlEntity):
 
         :rtype: _training_job_pb2.MetricDefinition
         """
-        return _training_job_pb2.MetricDefinition(
-            name=self.name,
-            regex=self.regex,
-        )
+        return _training_job_pb2.MetricDefinition(name=self.name, regex=self.regex,)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _training_job_pb2.MetricDefinition):
@@ -115,10 +108,7 @@ class MetricDefinition(_common.FlyteIdlEntity):
         :param pb2_object: _training_job_pb2.MetricDefinition
         :rtype: MetricDefinition
         """
-        return cls(
-            name=pb2_object.name,
-            regex=pb2_object.regex,
-        )
+        return cls(name=pb2_object.name, regex=pb2_object.regex,)
 
 
 class InputMode(object):
@@ -127,6 +117,7 @@ class InputMode(object):
     See https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
     https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html
     """
+
     PIPE = _training_job_pb2.InputMode.PIPE
     FILE = _training_job_pb2.InputMode.FILE
 
@@ -138,6 +129,7 @@ class AlgorithmName(object):
     While we currently only support a subset of the algorithms, more will be added to the list.
     See: https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html
     """
+
     CUSTOM = _training_job_pb2.AlgorithmName.CUSTOM
     XGBOOST = _training_job_pb2.AlgorithmName.XGBOOST
 
@@ -148,6 +140,7 @@ class InputContentType(object):
     See https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
     https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html
     """
+
     TEXT_CSV = _training_job_pb2.InputContentType.TEXT_CSV
 
 
@@ -161,13 +154,14 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
     For pass-through use cases: refer to this AWS official document for more details
     https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_AlgorithmSpecification.html
     """
+
     def __init__(
-            self,
-            algorithm_name: int,
-            algorithm_version: str,
-            input_mode: int,
-            metric_definitions: List[MetricDefinition] = None,
-            input_content_type: int = InputContentType.TEXT_CSV,
+        self,
+        algorithm_name: int,
+        algorithm_version: str,
+        input_mode: int,
+        metric_definitions: List[MetricDefinition] = None,
+        input_content_type: int = InputContentType.TEXT_CSV,
     ):
         self._input_mode = input_mode
         self._input_content_type = input_content_type
@@ -249,9 +243,7 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
 
 class TrainingJob(_common.FlyteIdlEntity):
     def __init__(
-            self,
-            algorithm_specification: AlgorithmSpecification,
-            training_job_resource_config: TrainingJobResourceConfig,
+        self, algorithm_specification: AlgorithmSpecification, training_job_resource_config: TrainingJobResourceConfig,
     ):
         self._algorithm_specification = algorithm_specification
         self._training_job_resource_config = training_job_resource_config

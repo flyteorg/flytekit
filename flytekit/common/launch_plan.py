@@ -1,29 +1,39 @@
 from __future__ import absolute_import
 
-from flytekit.common import sdk_bases as _sdk_bases, promise as _promises, interface as _interface, nodes as _nodes, \
-    workflow_execution as _workflow_execution
-from flytekit.common.core import identifier as _identifier
-from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
-
-from flytekit.common.mixins import registerable as _registerable, hash as _hash_mixin, launchable as _launchable_mixin
-from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import sdk as _sdk_config, auth as _auth_config
-from flytekit.engines import loader as _engine_loader
-from flytekit.models import launch_plan as _launch_plan_models, schedule as _schedule_model, interface as \
-    _interface_models, literals as _literal_models, common as _common_models
-from flytekit.models.core import identifier as _identifier_model, workflow as _workflow_models
 import datetime as _datetime
-from deprecated import deprecated as _deprecated
 import logging as _logging
-import six as _six
 import uuid as _uuid
+
+import six as _six
+from deprecated import deprecated as _deprecated
+
+from flytekit.common import interface as _interface
+from flytekit.common import nodes as _nodes
+from flytekit.common import promise as _promises
+from flytekit.common import sdk_bases as _sdk_bases
+from flytekit.common import workflow_execution as _workflow_execution
+from flytekit.common.core import identifier as _identifier
+from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.mixins import hash as _hash_mixin
+from flytekit.common.mixins import launchable as _launchable_mixin
+from flytekit.common.mixins import registerable as _registerable
+from flytekit.common.types import helpers as _type_helpers
+from flytekit.configuration import auth as _auth_config
+from flytekit.configuration import sdk as _sdk_config
+from flytekit.engines import loader as _engine_loader
+from flytekit.models import common as _common_models
+from flytekit.models import interface as _interface_models
+from flytekit.models import launch_plan as _launch_plan_models
+from flytekit.models import literals as _literal_models
+from flytekit.models import schedule as _schedule_model
+from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import workflow as _workflow_models
 
 
 class SdkLaunchPlan(
     _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType,
-        _launch_plan_models.LaunchPlanSpec,
-        _launchable_mixin.LaunchableEntity,
+        _sdk_bases.ExtendedSdkType, _launch_plan_models.LaunchPlanSpec, _launchable_mixin.LaunchableEntity,
     )
 ):
     def __init__(self, *args, **kwargs):
@@ -53,6 +63,7 @@ class SdkLaunchPlan(
             labels=model.labels,
             annotations=model.annotations,
             auth_role=model.auth_role,
+            raw_output_data_config=model.raw_output_data_config,
         )
 
     @classmethod
@@ -68,6 +79,7 @@ class SdkLaunchPlan(
         :rtype: SdkLaunchPlan
         """
         from flytekit.common import workflow as _workflow
+
         launch_plan_id = _identifier.Identifier(
             _identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version
         )
@@ -106,19 +118,22 @@ class SdkLaunchPlan(
         :rtype: flytekit.models.common.AuthRole
         """
         fixed_auth = super(SdkLaunchPlan, self).auth_role
-        if fixed_auth is not None and\
-                (fixed_auth.assumable_iam_role is not None or fixed_auth.kubernetes_service_account is not None):
-                return fixed_auth
+        if fixed_auth is not None and (
+            fixed_auth.assumable_iam_role is not None or fixed_auth.kubernetes_service_account is not None
+        ):
+            return fixed_auth
 
         assumable_iam_role = _auth_config.ASSUMABLE_IAM_ROLE.get()
         kubernetes_service_account = _auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
 
         if not (assumable_iam_role or kubernetes_service_account):
-            _logging.warning("Using deprecated `role` from config. "
-                             "Please update your config to use `assumable_iam_role` instead")
+            _logging.warning(
+                "Using deprecated `role` from config. " "Please update your config to use `assumable_iam_role` instead"
+            )
             assumable_iam_role = _sdk_config.ROLE.get()
-        return _common_models.AuthRole(assumable_iam_role=assumable_iam_role,
-                                       kubernetes_service_account=kubernetes_service_account)
+        return _common_models.AuthRole(
+            assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
+        )
 
     @property
     def interface(self):
@@ -141,6 +156,18 @@ class SdkLaunchPlan(
         :rtype: Text
         """
         return "Launch Plan"
+
+    @property
+    def raw_output_data_config(self):
+        """
+        :rtype: flytekit.models.common.RawOutputDataConfig
+        """
+        raw_output_data_config = super(SdkLaunchPlan, self).raw_output_data_config
+        if raw_output_data_config is not None and raw_output_data_config.output_location_prefix != "":
+            return raw_output_data_config
+
+        # If it was not set explicitly then let's use the value found in the configuration.
+        return _common_models.RawOutputDataConfig(_auth_config.RAW_OUTPUT_DATA_PREFIX.get())
 
     @_exception_scopes.system_entry_point
     def validate(self):
@@ -167,24 +194,38 @@ class SdkLaunchPlan(
         """
         return _type_helpers.pack_python_std_map_to_literal_map(
             inputs,
-            {
-                k: user_input.sdk_type
-                for k, user_input in _six.iteritems(self.default_inputs.parameters) if k in inputs
-            }
+            {k: user_input.sdk_type for k, user_input in _six.iteritems(self.default_inputs.parameters) if k in inputs},
         )
 
-    @_deprecated(reason="Use launch_with_literals instead", version='0.9.0')
-    def execute_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
-                              label_overrides=None, annotation_overrides=None):
+    @_deprecated(reason="Use launch_with_literals instead", version="0.9.0")
+    def execute_with_literals(
+        self,
+        project,
+        domain,
+        literal_inputs,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+    ):
         """
         Deprecated.
         """
-        return self.launch_with_literals(project, domain, literal_inputs, name, notification_overrides, label_overrides,
-                                         annotation_overrides)
+        return self.launch_with_literals(
+            project, domain, literal_inputs, name, notification_overrides, label_overrides, annotation_overrides,
+        )
 
     @_exception_scopes.system_entry_point
-    def launch_with_literals(self, project, domain, literal_inputs, name=None, notification_overrides=None,
-                             label_overrides=None, annotation_overrides=None):
+    def launch_with_literals(
+        self,
+        project,
+        domain,
+        literal_inputs,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+    ):
         """
         Executes the launch plan and returns the execution identifier.  This version of execution is meant for when
         you already have a LiteralMap of inputs.
@@ -203,14 +244,18 @@ class SdkLaunchPlan(
         """
         # Kubernetes requires names starting with an alphabet for some resources.
         name = name or "f" + _uuid.uuid4().hex[:19]
-        execution = _engine_loader.get_engine().get_launch_plan(self).launch(
-            project,
-            domain,
-            name,
-            literal_inputs,
-            notification_overrides=notification_overrides,
-            label_overrides=label_overrides,
-            annotation_overrides=annotation_overrides,
+        execution = (
+            _engine_loader.get_engine()
+            .get_launch_plan(self)
+            .launch(
+                project,
+                domain,
+                name,
+                literal_inputs,
+                notification_overrides=notification_overrides,
+                label_overrides=label_overrides,
+                annotation_overrides=annotation_overrides,
+            )
         )
         return _workflow_execution.SdkWorkflowExecution.promote_from_model(execution)
 
@@ -224,14 +269,11 @@ class SdkLaunchPlan(
         if len(args) > 0:
             raise _user_exceptions.FlyteAssertion(
                 "When adding a launchplan as a node in a workflow, all inputs must be specified with kwargs only.  We "
-                "detected {} positional args.".format(self, len(args))
+                "detected {} positional args.".format(len(args))
             )
 
         # Take the default values from the launch plan
-        default_inputs = {
-            k: v.sdk_default
-            for k, v in _six.iteritems(self.default_inputs.parameters) if not v.required
-        }
+        default_inputs = {k: v.sdk_default for k, v in _six.iteritems(self.default_inputs.parameters) if not v.required}
         default_inputs.update(input_map)
 
         bindings, upstream_nodes = self.interface.create_bindings_for_inputs(default_inputs)
@@ -241,7 +283,7 @@ class SdkLaunchPlan(
             metadata=_workflow_models.NodeMetadata("", _datetime.timedelta(), _literal_models.RetryStrategy(0)),
             bindings=sorted(bindings, key=lambda b: b.var),
             upstream_nodes=upstream_nodes,
-            sdk_launch_plan=self
+            sdk_launch_plan=self,
         )
 
     def __repr__(self):
@@ -254,21 +296,20 @@ class SdkLaunchPlan(
 # The difference between this and the SdkLaunchPlan class is that this runnable class is supposed to only be used for
 # launch plans loaded alongside the current Python interpreter.
 class SdkRunnableLaunchPlan(
-    _hash_mixin.HashOnReferenceMixin,
-    SdkLaunchPlan,
-    _registerable.RegisterableEntity,
+    _hash_mixin.HashOnReferenceMixin, SdkLaunchPlan, _registerable.RegisterableEntity,
 ):
     def __init__(
-            self,
-            sdk_workflow,
-            default_inputs=None,
-            fixed_inputs=None,
-            role=None,
-            schedule=None,
-            notifications=None,
-            labels=None,
-            annotations=None,
-            auth_role=None,
+        self,
+        sdk_workflow,
+        default_inputs=None,
+        fixed_inputs=None,
+        role=None,
+        schedule=None,
+        notifications=None,
+        labels=None,
+        annotations=None,
+        auth_role=None,
+        raw_output_data_config=None,
     ):
         """
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
@@ -284,6 +325,7 @@ class SdkRunnableLaunchPlan(
             executed by this launch plan.
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
         :param flytekit.models.common.Authrole auth_role: The auth method with which to execute the workflow.
+        :param flytekit.models.common.RawOutputDataConfig raw_output_data_config: Config for offloading data
         """
         if role and auth_role:
             raise ValueError("Cannot set both role and auth. Role is deprecated, use auth instead.")
@@ -303,24 +345,24 @@ class SdkRunnableLaunchPlan(
         super(SdkRunnableLaunchPlan, self).__init__(
             None,
             _launch_plan_models.LaunchPlanMetadata(
-                schedule=schedule or _schedule_model.Schedule(''),
-                notifications=notifications or []
+                schedule=schedule or _schedule_model.Schedule(""), notifications=notifications or [],
             ),
             _interface_models.ParameterMap(default_inputs),
             _type_helpers.pack_python_std_map_to_literal_map(
                 fixed_inputs,
                 {
                     k: _type_helpers.get_sdk_type_from_literal_type(var.type)
-                    for k, var in _six.iteritems(sdk_workflow.interface.inputs) if k in fixed_inputs
-                }
+                    for k, var in _six.iteritems(sdk_workflow.interface.inputs)
+                    if k in fixed_inputs
+                },
             ),
             labels or _common_models.Labels({}),
             annotations or _common_models.Annotations({}),
             auth_role,
+            raw_output_data_config or _common_models.RawOutputDataConfig(""),
         )
         self._interface = _interface.TypedInterface(
-            {k: v.var for k, v in _six.iteritems(default_inputs)},
-            sdk_workflow.interface.outputs
+            {k: v.var for k, v in _six.iteritems(default_inputs)}, sdk_workflow.interface.outputs,
         )
         self._upstream_entities = {sdk_workflow}
         self._sdk_workflow = sdk_workflow
@@ -335,11 +377,7 @@ class SdkRunnableLaunchPlan(
         """
         self.validate()
         id_to_register = _identifier.Identifier(
-            _identifier_model.ResourceType.LAUNCH_PLAN,
-            project,
-            domain,
-            name,
-            version
+            _identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version
         )
         _engine_loader.get_engine().get_launch_plan(self).register(id_to_register)
         self._id = id_to_register

@@ -1,7 +1,9 @@
 from __future__ import absolute_import
 
 import abc as _abc
+
 import six as _six
+
 from flytekit.models import common as _common_models
 
 
@@ -10,6 +12,7 @@ class BaseWorkflowExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, obje
     This class must be implemented for any engine to create, interact with, and execute workflows using the
     FlyteKit SDK.
     """
+
     def __init__(self, sdk_workflow):
         """
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
@@ -88,7 +91,6 @@ class BaseWorkflowExecution(_six.with_metaclass(_common_models.FlyteABCMeta, obj
 
 
 class BaseNodeExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
-
     def __init__(self, node_execution):
         """
         :param flytekit.common.nodes.SdkNodeExecution node_execution:
@@ -139,7 +141,6 @@ class BaseNodeExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)
 
 
 class BaseTaskExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
-
     def __init__(self, task_exec):
         """
         :param flytekit.common.tasks.executions.SdkTaskExecution task_exec:
@@ -184,7 +185,6 @@ class BaseTaskExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)
 
 
 class BaseLaunchPlanLauncher(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
-
     def __init__(self, sdk_launch_plan):
         """
         :param flytekit.common.launch_plan.SdkLaunchPlan sdk_launch_plan:
@@ -207,8 +207,16 @@ class BaseLaunchPlanLauncher(_six.with_metaclass(_common_models.FlyteABCMeta, ob
         pass
 
     @_abc.abstractmethod
-    def launch(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
-               annotation_overrides=None):
+    def launch(
+        self,
+        project,
+        domain,
+        name,
+        inputs,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+    ):
         """
         Registers the launch plan and returns the identifier.
         :param Text project:
@@ -262,8 +270,17 @@ class BaseTaskExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, object))
         pass
 
     @_abc.abstractmethod
-    def launch(self, project, domain, name=None, inputs=None, notification_overrides=None,
-               label_overrides=None, annotation_overrides=None, auth_role=None):
+    def launch(
+        self,
+        project,
+        domain,
+        name=None,
+        inputs=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+        auth_role=None,
+    ):
         """
         Executes the task as a single task execution and returns the identifier.
         :param Text project:
