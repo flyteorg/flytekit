@@ -36,7 +36,6 @@ def _execute_task(task_module, task_name, output_prefix, test, sagemaker_args):
                 # map_of_literal_types[k] = v.type
                 map_of_sdk_types[k] = _type_helpers.get_sdk_type_from_literal_type(v.type)
 
-
             input_literal_map = _type_helpers.pack_python_string_map_to_literal_map(
                 map_of_input_values,
                 map_of_sdk_types,
