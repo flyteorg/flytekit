@@ -30,10 +30,10 @@ def _execute_task(task_module, task_name, output_prefix, test, sagemaker_args):
                 for i in sagemaker_args[::2]:
                     map_of_input_values[sagemaker_args[i]] = sagemaker_args[i+1]
 
-                map_of_literal_types = {}
+                # map_of_literal_types = {}
                 map_of_sdk_types = {}
                 for k, v in task_def.interface.inputs.items():
-                    map_of_literal_types[k] = v.type
+                    # map_of_literal_types[k] = v.type
                     map_of_sdk_types[k] = _type_helpers.get_sdk_type_from_literal_type(v.type)
 
                 input_literal_map = _type_helpers.pack_python_string_map_to_literal_map(
