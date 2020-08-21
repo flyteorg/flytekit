@@ -20,10 +20,7 @@ def _execute_task(task_module, task_name, output_prefix, test, sagemaker_args):
 
         if not test:
 
-            # TODO: parse the unknown arguments, and create a litealmap out from the task definition
-            #  to replace these two lines:
-            # _data_proxy.Data.get_data(inputs, local_inputs_file)
-            # input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+            # Parse the unknown arguments, and create a litealmap out from the task definition
             map_of_input_values = {}
             # Here we have an assumption that each option key will come with a value right after the key
             for i in range(0, len(sagemaker_args), 2):
@@ -31,11 +28,14 @@ def _execute_task(task_module, task_name, output_prefix, test, sagemaker_args):
                 # We need to remove them
                 map_of_input_values[sagemaker_args[i][2:]] = sagemaker_args[i+1]
 
-            # map_of_literal_types = {}
+            # TODO: we might need to do some special handling of the blob-typed inputs, i.e., read them from predefined
+            #       locations in the container
+
             map_of_sdk_types = {}
             for k, v in task_def.interface.inputs.items():
                 # map_of_literal_types[k] = v.type
                 map_of_sdk_types[k] = _type_helpers.get_sdk_type_from_literal_type(v.type)
+
 
             input_literal_map = _type_helpers.pack_python_string_map_to_literal_map(
                 map_of_input_values,
@@ -53,6 +53,9 @@ def _pass_through():
     pass
 
 
+# pyflyte-execute-alt is an alternative pyflyte entrypoint specifically designed for SageMaker (currently)
+# This entrypoint assumes no --inputs command-line option, and therefore it doesn't accept the input.pb file
+# All the inputs will be passed into the entrypoint as unknown arguments
 @_pass_through.command('pyflyte-execute-alt', context_settings=dict(ignore_unknown_options=True))
 @_click.option('--task-module', required=True)
 @_click.option('--task-name', required=True)
