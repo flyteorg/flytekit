@@ -1,21 +1,14 @@
 from __future__ import absolute_import
 
 import importlib as _importlib
-import os as _os
 
 import click as _click
-import datetime as _datetime
-import random as _random
-from flyteidl.core import literals_pb2 as _literals_pb2
 
+import flytekit.common.types.helpers as _type_helpers
 from flytekit.common import utils as _utils
-from flytekit.common.exceptions import scopes as _scopes, system as _system_exceptions
+from flytekit.common.exceptions import scopes as _scopes
 from flytekit.configuration import internal as _internal_config, TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.engines import loader as _engine_loader
-from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.interfaces import random as _flyte_random
-from flytekit.models import literals as _literal_models
-import flytekit.common.types.helpers as _type_helpers
 
 
 @_scopes.system_entry_point
@@ -27,7 +20,6 @@ def _execute_task(task_module, task_name, output_prefix, test, sagemaker_args):
             task_def = getattr(task_module, task_name)
 
             if not test:
-                local_inputs_file = input_dir.get_named_tempfile('inputs.pb')
 
                 # TODO: parse the unknown arguments, and create a litealmap out from the task definition
                 #  to replace these two lines:
@@ -70,7 +62,7 @@ def execute_task_cmd(task_module, task_name, output_prefix, test, sagemaker_args
     _click.echo(_utils.get_version_message())
     _click.echo('unknown_args : {}'.format(sagemaker_args))
     _click.echo(type(sagemaker_args))
-    _execute_task(task_module, task_name, inputs, output_prefix, test, sagemaker_args)
+    _execute_task(task_module, task_name, output_prefix, test, sagemaker_args)
 
 
 if __name__ == '__main__':
