@@ -14,7 +14,8 @@ from flytekit.engines import loader as _engine_loader
 @_scopes.system_entry_point
 def _execute_task(task_module, task_name, output_prefix, test, sagemaker_args):
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        with _utils.AutoDeletingTempDir('input_dir') as input_dir:
+        with _utils.AutoDeletingTempDir("input_dir") as input_dir:
+
             # Load user code
             task_module = _importlib.import_module(task_module)
             task_def = getattr(task_module, task_name)
@@ -27,8 +28,10 @@ def _execute_task(task_module, task_name, output_prefix, test, sagemaker_args):
                 # input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
                 map_of_input_values = {}
                 # Here we have an assumption that each option key will come with a value right after the key
-                for i in sagemaker_args[::2]:
-                    map_of_input_values[sagemaker_args[i]] = sagemaker_args[i+1]
+                for i in range(0, len(sagemaker_args), 2):
+                    # Since the sagemaker_args are unprocessed, each of the option keys comes with a leading "--"
+                    # We need to remove them
+                    map_of_input_values[sagemaker_args[i][2:]] = sagemaker_args[i+1]
 
                 # map_of_literal_types = {}
                 map_of_sdk_types = {}
@@ -60,8 +63,8 @@ def _pass_through():
 @_click.argument('sagemaker_args', nargs=-1, type=_click.UNPROCESSED)
 def execute_task_cmd(task_module, task_name, output_prefix, test, sagemaker_args):
     _click.echo(_utils.get_version_message())
-    _click.echo('unknown_args : {}'.format(sagemaker_args))
-    _click.echo(type(sagemaker_args))
+    _click.echo('sagemaker_args : {}'.format(sagemaker_args))
+    # Note that the unknown arguments are entirely unprocessed, so the leading "--" are still there
     _execute_task(task_module, task_name, output_prefix, test, sagemaker_args)
 
 
