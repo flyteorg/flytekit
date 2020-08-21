@@ -15,6 +15,7 @@ from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces import random as _flyte_random
 from flytekit.models import literals as _literal_models
+import flytekit.common.types.helpers as _type_helpers
 
 
 @_scopes.system_entry_point
@@ -25,17 +26,31 @@ def _execute_task(task_module, task_name, output_prefix, test, sagemaker_args):
             task_module = _importlib.import_module(task_module)
             task_def = getattr(task_module, task_name)
 
-
             if not test:
                 local_inputs_file = input_dir.get_named_tempfile('inputs.pb')
 
-                # TODO: parse the unknown arguments, and create a litealmap out from the task definition to replace these two lines:
+                # TODO: parse the unknown arguments, and create a litealmap out from the task definition
+                #  to replace these two lines:
                 # _data_proxy.Data.get_data(inputs, local_inputs_file)
                 # input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+                map_of_input_values = {}
+                # Here we have an assumption that each option key will come with a value right after the key
+                for i in sagemaker_args[::2]:
+                    map_of_input_values[sagemaker_args[i]] = sagemaker_args[i+1]
 
-                input_proto = createLiteralMap(sagemaker_args, task_def)
+                map_of_literal_types = {}
+                map_of_sdk_types = {}
+                for k, v in task_def.interface.inputs.items():
+                    map_of_literal_types[k] = v.type
+                    map_of_sdk_types[k] = _type_helpers.get_sdk_type_from_literal_type(v.type)
+
+                input_literal_map = _type_helpers.pack_python_string_map_to_literal_map(
+                    map_of_input_values,
+                    map_of_sdk_types,
+                )
+
                 _engine_loader.get_engine().get_task(task_def).execute(
-                    _literal_models.LiteralMap.from_flyte_idl(input_proto),
+                    input_literal_map,
                     context={'output_prefix': output_prefix}
                 )
 
@@ -55,7 +70,7 @@ def execute_task_cmd(task_module, task_name, output_prefix, test, sagemaker_args
     _click.echo(_utils.get_version_message())
     _click.echo('unknown_args : {}'.format(sagemaker_args))
     _click.echo(type(sagemaker_args))
-    # _execute_task(task_module, task_name, inputs, output_prefix, test, sagemaker_args)
+    _execute_task(task_module, task_name, inputs, output_prefix, test, sagemaker_args)
 
 
 if __name__ == '__main__':
