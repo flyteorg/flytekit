@@ -7,7 +7,8 @@ import click as _click
 import flytekit.common.types.helpers as _type_helpers
 from flytekit.common import utils as _utils
 from flytekit.common.exceptions import scopes as _scopes
-from flytekit.configuration import internal as _internal_config, TemporaryConfiguration as _TemporaryConfiguration
+from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
+from flytekit.configuration import internal as _internal_config
 from flytekit.engines import loader as _engine_loader
 
 SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX = "/opt/ml/input/data"

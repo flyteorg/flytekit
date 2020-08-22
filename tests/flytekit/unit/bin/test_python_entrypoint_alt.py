@@ -7,7 +7,7 @@ from click.testing import CliRunner
 from dateutil import parser
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit.bin.entrypoint_alt import _execute_task, execute_task_cmd, SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX
+from flytekit.bin.entrypoint_alt import SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX, _execute_task, execute_task_cmd
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _utils
 from flytekit.common.types import helpers as _type_helpers
