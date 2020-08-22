@@ -28,7 +28,7 @@ def _execute_task(task_module, task_name, output_prefix, test, sagemaker_args):
             for i in range(0, len(sagemaker_args), 2):
                 # Since the sagemaker_args are unprocessed, each of the option keys comes with a leading "--"
                 # We need to remove them
-                map_of_input_values[sagemaker_args[i][2:]] = sagemaker_args[i+1]
+                map_of_input_values[sagemaker_args[i][2:]] = sagemaker_args[i + 1]
 
             map_of_sdk_types = {}
             blob_and_schema_local_path_map = {}
@@ -43,13 +43,11 @@ def _execute_task(task_module, task_name, output_prefix, test, sagemaker_args):
             map_of_input_values.update(blob_and_schema_local_path_map)
 
             input_literal_map = _type_helpers.pack_python_string_map_to_literal_map(
-                map_of_input_values,
-                map_of_sdk_types,
+                map_of_input_values, map_of_sdk_types,
             )
 
             _engine_loader.get_engine().get_task(task_def).execute(
-                input_literal_map,
-                context={'output_prefix': output_prefix}
+                input_literal_map, context={"output_prefix": output_prefix}
             )
 
 
@@ -61,18 +59,18 @@ def _pass_through():
 # pyflyte-execute-alt is an alternative pyflyte entrypoint specifically designed for SageMaker (currently)
 # This entrypoint assumes no --inputs command-line option, and therefore it doesn't accept the input.pb file
 # All the inputs will be passed into the entrypoint as unknown arguments
-@_pass_through.command('pyflyte-execute-alt', context_settings=dict(ignore_unknown_options=True))
-@_click.option('--task-module', required=True)
-@_click.option('--task-name', required=True)
-@_click.option('--output-prefix', required=True)
-@_click.option('--test', is_flag=True)
-@_click.argument('sagemaker_args', nargs=-1, type=_click.UNPROCESSED)
+@_pass_through.command("pyflyte-execute-alt", context_settings=dict(ignore_unknown_options=True))
+@_click.option("--task-module", required=True)
+@_click.option("--task-name", required=True)
+@_click.option("--output-prefix", required=True)
+@_click.option("--test", is_flag=True)
+@_click.argument("sagemaker_args", nargs=-1, type=_click.UNPROCESSED)
 def execute_task_cmd(task_module, task_name, output_prefix, test, sagemaker_args):
     _click.echo(_utils.get_version_message())
-    _click.echo('sagemaker_args : {}'.format(sagemaker_args))
+    _click.echo("sagemaker_args : {}".format(sagemaker_args))
     # Note that the unknown arguments are entirely unprocessed, so the leading "--" are still there
     _execute_task(task_module, task_name, output_prefix, test, sagemaker_args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     _pass_through()

@@ -26,13 +26,21 @@ def test_single_step_entrypoint_in_proc():
         internal_overrides={"project": "test", "domain": "development"},
     ):
         raw_args = (
-            "--train", "/local/host",
-            "--validation", "s3://dummy",
-            "--a", "1",
-            "--b", "0.5",
-            "--c", "val",
-            "--d", "0",
-            "--e", "20180612T09:55:22Z")
+            "--train",
+            "/local/host",
+            "--validation",
+            "s3://dummy",
+            "--a",
+            "1",
+            "--b",
+            "0.5",
+            "--c",
+            "val",
+            "--d",
+            "0",
+            "--e",
+            "20180612T09:55:22Z",
+        )
         with _utils.AutoDeletingTempDir("out") as output_dir:
             _execute_task(
                 task_module=_task_defs.dummy_for_entrypoint_alt.task_module,
@@ -56,7 +64,9 @@ def test_single_step_entrypoint_in_proc():
 
             assert len(raw_map) == 7
             assert raw_map["otrain"].uri.rstrip("/") == "{}/{}".format(SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX, "train")
-            assert raw_map["ovalidation"].uri.rstrip("/") == "{}/{}".format(SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX, "validation")
+            assert raw_map["ovalidation"].uri.rstrip("/") == "{}/{}".format(
+                SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX, "validation"
+            )
             assert raw_map["oa"] == 1
             assert raw_map["ob"] == 0.5
             assert raw_map["oc"] == "val"
@@ -77,13 +87,21 @@ def test_single_step_entrypoint_out_of_proc():
             _utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
 
             raw_args = (
-                "--train", "s3://dummy",
-                "--validation", "s3://dummy",
-                "--a", "1",
-                "--b", "0.5",
-                "--c", "val",
-                "--d", "0",
-                "--e", "20180612T09:55:22Z")
+                "--train",
+                "s3://dummy",
+                "--validation",
+                "s3://dummy",
+                "--a",
+                "1",
+                "--b",
+                "0.5",
+                "--c",
+                "val",
+                "--d",
+                "0",
+                "--e",
+                "20180612T09:55:22Z",
+            )
 
             with _utils.AutoDeletingTempDir("out") as output_dir:
                 cmd = []
@@ -109,9 +127,11 @@ def test_single_step_entrypoint_out_of_proc():
 
                 assert len(raw_map) == 7
                 assert raw_map["otrain"].uri.rstrip("/") == "{}/{}".format(
-                    SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX, "train")
+                    SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX, "train"
+                )
                 assert raw_map["ovalidation"].uri.rstrip("/") == "{}/{}".format(
-                    SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX, "validation")
+                    SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX, "validation"
+                )
                 assert raw_map["oa"] == 1
                 assert raw_map["ob"] == 0.5
                 assert raw_map["oc"] == "val"
