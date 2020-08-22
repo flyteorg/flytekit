@@ -7,7 +7,7 @@ from click.testing import CliRunner
 from dateutil import parser
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit.bin.entrypoint_alt import _execute_task, execute_task_cmd
+from flytekit.bin.entrypoint_alt import _execute_task, execute_task_cmd, SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _utils
 from flytekit.common.types import helpers as _type_helpers
@@ -26,7 +26,7 @@ def test_single_step_entrypoint_in_proc():
         internal_overrides={"project": "test", "domain": "development"},
     ):
         raw_args = (
-            "--train", "s3://dummy",
+            "--train", "/local/host",
             "--validation", "s3://dummy",
             "--a", "1",
             "--b", "0.5",
@@ -55,8 +55,8 @@ def test_single_step_entrypoint_in_proc():
             )
 
             assert len(raw_map) == 7
-            assert raw_map["otrain"].uri.rstrip("/") == raw_args_map["train"].rstrip("/")
-            assert raw_map["ovalidation"].uri.rstrip("/") == raw_args_map["validation"].rstrip("/")
+            assert raw_map["otrain"].uri.rstrip("/") == "{}/{}".format(SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX, "train")
+            assert raw_map["ovalidation"].uri.rstrip("/") == "{}/{}".format(SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX, "validation")
             assert raw_map["oa"] == 1
             assert raw_map["ob"] == 0.5
             assert raw_map["oc"] == "val"
@@ -108,8 +108,10 @@ def test_single_step_entrypoint_out_of_proc():
                 )
 
                 assert len(raw_map) == 7
-                assert raw_map["otrain"].uri.rstrip("/") == raw_args_map["train"].rstrip("/")
-                assert raw_map["ovalidation"].uri.rstrip("/") == raw_args_map["validation"].rstrip("/")
+                assert raw_map["otrain"].uri.rstrip("/") == "{}/{}".format(
+                    SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX, "train")
+                assert raw_map["ovalidation"].uri.rstrip("/") == "{}/{}".format(
+                    SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX, "validation")
                 assert raw_map["oa"] == 1
                 assert raw_map["ob"] == 0.5
                 assert raw_map["oc"] == "val"
