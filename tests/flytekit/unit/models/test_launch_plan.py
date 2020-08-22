@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
 from flytekit.models import common, interface, launch_plan, literals, schedule, types
 from flytekit.models.core import identifier
@@ -85,3 +85,40 @@ def test_launch_plan_spec():
 
     obj2 = launch_plan.LaunchPlanSpec.from_flyte_idl(lp_spec_no_prefix.to_flyte_idl())
     assert obj2 == lp_spec_no_prefix
+
+
+def test_old_style_role():
+    identifier_model = identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version")
+
+    s = schedule.Schedule("asdf", "1 3 4 5 6 7")
+    launch_plan_metadata_model = launch_plan.LaunchPlanMetadata(schedule=s, notifications=[])
+
+    v = interface.Variable(types.LiteralType(simple=types.SimpleType.BOOLEAN), "asdf asdf asdf")
+    p = interface.Parameter(var=v)
+    parameter_map = interface.ParameterMap({"ppp": p})
+
+    fixed_inputs = literals.LiteralMap(
+        {"a": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=1)))}
+    )
+
+    labels_model = common.Labels({})
+    annotations_model = common.Annotations({"my": "annotation"})
+
+    raw_data_output_config = common.RawOutputDataConfig("s3://bucket")
+
+    old_role = _launch_plan_idl.Auth(kubernetes_service_account="my:service:account")
+
+    old_style_spec = _launch_plan_idl.LaunchPlanSpec(
+        workflow_id=identifier_model.to_flyte_idl(),
+        entity_metadata=launch_plan_metadata_model.to_flyte_idl(),
+        default_inputs=parameter_map.to_flyte_idl(),
+        fixed_inputs=fixed_inputs.to_flyte_idl(),
+        labels=labels_model.to_flyte_idl(),
+        annotations=annotations_model.to_flyte_idl(),
+        raw_output_data_config=raw_data_output_config.to_flyte_idl(),
+        auth=old_role,
+    )
+
+    lp_spec = launch_plan.LaunchPlanSpec.from_flyte_idl(old_style_spec)
+
+    assert lp_spec.auth_role.assumable_iam_role == "my:service:account"

@@ -4,9 +4,17 @@ import pytest
 
 from flytekit.models import common as _common_models
 from flytekit.models import execution as _execution
+from flytekit.models import literals as _literals
 from flytekit.models.core import execution as _core_exec
 from flytekit.models.core import identifier as _identifier
 from tests.flytekit.common import parameterizers as _parameterizers
+
+_INPUT_MAP = _literals.LiteralMap(
+    {"a": _literals.Literal(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=1)))}
+)
+_OUTPUT_MAP = _literals.LiteralMap(
+    {"b": _literals.Literal(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=2)))}
+)
 
 
 def test_execution_metadata():
@@ -104,28 +112,34 @@ def test_execution_spec(literal_value_pair):
 def test_workflow_execution_data_response():
     input_blob = _common_models.UrlBlob("in", 1)
     output_blob = _common_models.UrlBlob("out", 2)
-    obj = _execution.WorkflowExecutionGetDataResponse(input_blob, output_blob)
+    obj = _execution.WorkflowExecutionGetDataResponse(input_blob, output_blob, _INPUT_MAP, _OUTPUT_MAP)
     obj2 = _execution.WorkflowExecutionGetDataResponse.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
     assert obj2.inputs == input_blob
     assert obj2.outputs == output_blob
+    assert obj2.full_inputs == _INPUT_MAP
+    assert obj2.full_outputs == _OUTPUT_MAP
 
 
 def test_node_execution_data_response():
     input_blob = _common_models.UrlBlob("in", 1)
     output_blob = _common_models.UrlBlob("out", 2)
-    obj = _execution.NodeExecutionGetDataResponse(input_blob, output_blob)
+    obj = _execution.NodeExecutionGetDataResponse(input_blob, output_blob, _INPUT_MAP, _OUTPUT_MAP)
     obj2 = _execution.NodeExecutionGetDataResponse.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
     assert obj2.inputs == input_blob
     assert obj2.outputs == output_blob
+    assert obj2.full_inputs == _INPUT_MAP
+    assert obj2.full_outputs == _OUTPUT_MAP
 
 
 def test_task_execution_data_response():
     input_blob = _common_models.UrlBlob("in", 1)
     output_blob = _common_models.UrlBlob("out", 2)
-    obj = _execution.TaskExecutionGetDataResponse(input_blob, output_blob)
+    obj = _execution.TaskExecutionGetDataResponse(input_blob, output_blob, _INPUT_MAP, _OUTPUT_MAP)
     obj2 = _execution.TaskExecutionGetDataResponse.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
     assert obj2.inputs == input_blob
     assert obj2.outputs == output_blob
+    assert obj2.full_inputs == _INPUT_MAP
+    assert obj2.full_outputs == _OUTPUT_MAP
