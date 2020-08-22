@@ -9,6 +9,24 @@ from flytekit.common import utils as _utils
 from flytekit.common.exceptions import scopes as _scopes
 from flytekit.configuration import internal as _internal_config, TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.engines import loader as _engine_loader
+from flytekit.sdk.types import Types
+from flytekit.common.types import base_sdk_types as _base_sdk_types
+
+SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX = "/opt/ml/input"
+
+
+def _get_blob_inputs_local_paths(map_of_sdk_types):
+    """
+    :param dict[Text, Any] map_of_sdk_types:
+    :rtype dict[Text, Text]:
+    """
+    ret = {}
+    for k, v in map_of_sdk_types.items():
+        try:
+            if isinstance(v, _base_sdk_types.InstantiableType):
+                ret[k] = "{}/{}".format(SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX, k)
+
+    return ret
 
 
 @_scopes.system_entry_point
@@ -28,13 +46,14 @@ def _execute_task(task_module, task_name, output_prefix, test, sagemaker_args):
                 # We need to remove them
                 map_of_input_values[sagemaker_args[i][2:]] = sagemaker_args[i+1]
 
-            # TODO: we might need to do some special handling of the blob-typed inputs, i.e., read them from predefined
-            #       locations in the container
-
             map_of_sdk_types = {}
             for k, v in task_def.interface.inputs.items():
                 # map_of_literal_types[k] = v.type
                 map_of_sdk_types[k] = _type_helpers.get_sdk_type_from_literal_type(v.type)
+
+            # TODO: we might need to do some special handling of the blob-typed inputs, i.e., read them from predefined
+            #       locations in the container
+            map_of_input_values.update(_get_blob_inputs_local_paths(map_of_sdk_types))
 
             input_literal_map = _type_helpers.pack_python_string_map_to_literal_map(
                 map_of_input_values,
