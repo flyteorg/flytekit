@@ -1,10 +1,8 @@
-import abc as _abc
 import datetime as _datetime
 import typing
 from io import FileIO
 from typing import Dict
-
-import six as _six
+from abc import ABCMeta
 
 from flytekit.common.types import primitives as _primitives
 from flytekit.models import types as _type_models

@@ -6,6 +6,8 @@ from flytekit.sdk.test_utils import flyte_test
 from flytekit.sdk.tasks import python_task, current_context, inputs
 from flytekit.sdk.types import Types
 from flytekit.annotated.type_engine import outputs
+from flytekit import typing as flytekit_typing
+
 
 @flyte_test
 def test_old_style_task():
@@ -47,6 +49,12 @@ def test_single_output():
     
     assert my_task.unit_test() == {'output': 'Hello world'}
 
+
+# def test_normal_path():
+#     def t1(in1: flytekit_typing.FlyteFilePath) -> str:
+#         with open(in1, 'r') as fh:
+#             lines = fh.readlines()
+#             return "".join(lines)
 
 # @flyte_test
 # def test_single_output():
