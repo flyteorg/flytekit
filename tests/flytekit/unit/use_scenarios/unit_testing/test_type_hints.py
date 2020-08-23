@@ -52,18 +52,6 @@ def test_single_output():
     assert my_task.unit_test() == {'output': 'Hello world'}
 
 
-def test_type_engine():
-    e = type_engine.BaseEngine()
-
-    t = int
-    lt = e.native_type_to_literal_type(t)
-    assert lt.simple == model_types.SimpleType.INTEGER
-
-    t = typing.Dict[str, typing.List[typing.Dict[str, timedelta]]]
-    lt = e.native_type_to_literal_type(t)
-    assert lt.map_value_type.collection_type.map_value_type.simple == model_types.SimpleType.DURATION
-
-
 # def test_normal_path():
 #     def t1(in1: flytekit_typing.FlyteFilePath) -> str:
 #         with open(in1, 'r') as fh:

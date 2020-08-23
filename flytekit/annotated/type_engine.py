@@ -6,7 +6,7 @@ from flytekit.common.exceptions import system as system_exceptions, user as user
 import abc
 
 from flytekit.common.types import primitives as _primitives
-from flytekit.models import types as _type_models
+from flytekit.models import types as _type_models, interface as _interface_models
 from flytekit.models.core import types as _core_types
 
 # This is now in three different places. This here, the one that the notebook task uses, and the main in that meshes
@@ -75,25 +75,8 @@ def outputs(**kwargs) -> tuple:
     return typing.NamedTuple("Outputs", **kwargs)
 
 
-class TypeEngine(metaclass=abc.ABCMeta):
-    @abc.abstractmethod
-    def literal_map_to_python_native(self): ...
-
-    @abc.abstractmethod
-    def get_literal_map_from_python_values_with_python_types(self): ...
-
-    @abc.abstractmethod
-    def infer_literal_map_from_python_values(self): ...
-
-    @abc.abstractmethod
-    def native_type_to_literal_type(self): ...
-
-    @abc.abstractmethod
-    def get_python_values_from_literal_map(self): ...
-
-
+# This only goes one way for now, is there any need to go the other way?
 class BaseEngine(object):
-
     def native_type_to_literal_type(self, native_type: type) -> _type_models.LiteralType:
         if native_type in BASE_TYPES:
             return BASE_TYPES[native_type]
@@ -129,3 +112,10 @@ class BaseEngine(object):
 
         sub_type = self.native_type_to_literal_type(t.__args__[0])
         return _type_models.LiteralType(collection_type=sub_type)
+
+    def named_tuple_to_variable_map(self, t: typing.NamedTuple) -> _interface_models.VariableMap:
+        variables = {}
+        for var_name, var_type in t._field_types.item():
+            literal_type = self.native_type_to_literal_type(var_type)
+            variables[var_name] = _interface_models.Variable(type=literal_type)
+        return _interface_models.VariableMap(variables=variables)
