@@ -17,7 +17,8 @@ from flytekit.configuration.common import CONFIGURATION_SINGLETON
 from flytekit.models import interface as _interface_models, literals as _literal_models
 from flytekit.models import task as _task_model, types as _type_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
-from flytekit.annotated.type_engine import SIMPLE_TYPE_LOOKUP_TABLE, outputs, type_to_literal_type as _type_to_literal_type
+from flytekit.annotated.type_engine import BASE_TYPES, outputs
+from flytekit.annotated import type_engine
 
 # Set this to 11 or higher if you don't want to see debug output
 logger.setLevel(10)
@@ -447,10 +448,9 @@ def get_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interface_mode
     Flyte Variable object with that type.
     """
     res = {}
+    e = type_engine.BaseEngine()
     for k, v in variable_map.items():
-        if v not in SIMPLE_TYPE_LOOKUP_TABLE:
-            raise Exception(f"Python type {v} not yet supported.")
-        res[k] = _interface_models.Variable(type=_type_to_literal_type(v), description=k)
+        res[k] = _interface_models.Variable(type=e.native_type_to_literal_type(v), description=k)
 
     return res
 

@@ -1,7 +1,7 @@
 import os
 from flytekit import logger
 from enum import Enum
-
+import typing
 
 """
 Since there is no native equivalent of the int type for files and directories, we need to create one so that users
@@ -72,6 +72,9 @@ class FlyteFileFormats(Enum):
     CSV = "csv"
 
 
+def noop(): ...
+
+
 class FlyteFilePath(os.PathLike):
     @classmethod
     def format(cls) -> str:
@@ -81,13 +84,22 @@ class FlyteFilePath(os.PathLike):
         """
         return FlyteFileFormats.BASE_FORMAT.value
 
-    def __init__(self, path, remote_path=None):
+    def __init__(self, path: str, downloader: typing.Callable = noop, remote_path=None):
+        """
+
+        :param path: The local path that users are expected to call open() on
+        :param downloader: Optional function that can be passed that used to delay downloading of the actual fil
+            until a user actually calls open().
+        :param remote_path: Just in case the user wants it for some reason.
+        """
         self._abspath = os.path.abspath(path)
+        self._downloader = downloader
         self._remote_path = remote_path
         logger.debug(f"Path is: {self._abspath}")
 
     def __fspath__(self):
         # This is where a delayed downloading of the file will happen
+        self._downloader()
         logger.debug(f"A in fspath!!!")
         return self._abspath
 

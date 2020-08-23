@@ -1,12 +1,14 @@
 import pytest
 import typing
 from io import BufferedWriter
+from datetime import timedelta
 
 from flytekit.sdk.test_utils import flyte_test
 from flytekit.sdk.tasks import python_task, current_context, inputs
 from flytekit.sdk.types import Types
-from flytekit.annotated.type_engine import outputs
+from flytekit.annotated import type_engine
 from flytekit import typing as flytekit_typing
+from flytekit.models import types as model_types
 
 
 @flyte_test
@@ -23,7 +25,7 @@ def test_old_style_task():
 @flyte_test
 def test_simple_input_output():
     @python_task
-    def my_task(a: int) -> outputs(b=int, c=str):
+    def my_task(a: int) -> type_engine.outputs(b=int, c=str):
         ctx = current_context()
         print(ctx)
         assert ctx.execution_id == 'ex:unit_test:unit_test:unit_test'
@@ -48,6 +50,18 @@ def test_single_output():
         return "Hello world"
     
     assert my_task.unit_test() == {'output': 'Hello world'}
+
+
+def test_type_engine():
+    e = type_engine.BaseEngine()
+
+    t = int
+    lt = e.native_type_to_literal_type(t)
+    assert lt.simple == model_types.SimpleType.INTEGER
+
+    t = typing.Dict[str, typing.List[typing.Dict[str, timedelta]]]
+    lt = e.native_type_to_literal_type(t)
+    assert lt.map_value_type.collection_type.map_value_type.simple == model_types.SimpleType.DURATION
 
 
 # def test_normal_path():

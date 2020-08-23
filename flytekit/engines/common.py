@@ -379,12 +379,21 @@ class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta
 
 
 class EngineContext(object):
-    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging):
+    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, raw_data_output_path):
+        """
+        :param execution_date:
+        :param tmp_dir:
+        :param stats:
+        :param execution_id:
+        :param logging:
+        :param raw_data_output_path: This is the prefix for S3 or
+        """
         self._stats = stats
         self._execution_date = execution_date
         self._working_directory = tmp_dir
         self._execution_id = execution_id
         self._logging = logging
+        self._raw_data_output_path = raw_data_output_path
 
     @property
     def stats(self):
@@ -420,3 +429,7 @@ class EngineContext(object):
         :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier
         """
         return self._execution_id
+
+    @property
+    def raw_data_output_path(self) -> str:
+        return self._raw_data_output_path
