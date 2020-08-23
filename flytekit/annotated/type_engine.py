@@ -115,7 +115,7 @@ class BaseEngine(object):
 
     def named_tuple_to_variable_map(self, t: typing.NamedTuple) -> _interface_models.VariableMap:
         variables = {}
-        for var_name, var_type in t._field_types.item():
+        for idx, (var_name, var_type) in enumerate(t._field_types.items()):
             literal_type = self.native_type_to_literal_type(var_type)
-            variables[var_name] = _interface_models.Variable(type=literal_type)
+            variables[var_name] = _interface_models.Variable(type=literal_type, description=f"{idx}")
         return _interface_models.VariableMap(variables=variables)
