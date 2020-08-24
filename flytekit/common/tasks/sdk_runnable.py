@@ -386,13 +386,12 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(inputs, {
             k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)
         })
-        new_style_inputs = flyte_engine.idl_literal_map_to_python_value(context, inputs)
         outputs_dict = {
             name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
             for name, variable in _six.iteritems(self.interface.outputs)
         }
 
-        # backcompat, if annotations are used to define outputs, do not append outputs to the inputs dict
+        # Old style - V0: If annotations are used to define outputs, do not append outputs to the inputs dict
         if not self.task_function.__annotations__ or "return" not in self.task_function.__annotations__:
             inputs_dict.update(outputs_dict)
             self._execute_user_code(context, inputs_dict)
@@ -401,7 +400,9 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                     literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
                 )
             }
+        # New style - V1: inputs are just inputs
         else:
+            new_style_inputs = flyte_engine.idl_literal_map_to_python_value(context, inputs)
             outputs = self._execute_user_code(context, new_style_inputs)
             expected_output_names = list(self.interface.outputs.keys())
             if len(expected_output_names) == 1:

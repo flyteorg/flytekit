@@ -56,7 +56,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, test):
             task_module = _importlib.import_module(task_module)
             task_def = getattr(task_module, task_name)
 
-            if not test:
+            if not test and not hasattr(task_def, "_task_style"):
                 local_inputs_file = input_dir.get_named_tempfile('inputs.pb')
 
                 # Handle inputs/outputs for array job.
@@ -86,6 +86,17 @@ def _execute_task(task_module, task_name, inputs, output_prefix, test):
                     _literal_models.LiteralMap.from_flyte_idl(input_proto),
                     context={'output_prefix': output_prefix}
                 )
+            elif not test and hasattr(task_def, "_task_style"):
+                local_inputs_file = input_dir.get_named_tempfile('inputs.pb')
+
+                _data_proxy.Data.get_data(inputs, local_inputs_file)
+                raw_inputs = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+                from flytekit.engine import ExecutionContextProvider
+                contextProvider = ExecutionContextProvider()
+                additional_context = {'output_prefix': output_prefix}
+                with contextProvider.get_execution_environment(raw_inputs, additional_context) as task_execution_context:
+                    task_def.execute(task_execution_context, raw_inputs)
+
 
 
 @_click.group()

@@ -2,6 +2,7 @@ import logging as _logging
 import typing
 import uuid as _uuid
 from datetime import datetime, timedelta
+from contextlib import contextmanager
 
 from flytekit import __version__ as _api_version
 from flytekit import typing as flyte_typing
@@ -26,6 +27,7 @@ class ExecutionContext(object):
         :param execution_id:
         :param logging:
         :param raw_data_output_path: This is the prefix for S3 or
+        :param idl_inputs:
         """
         self._stats = stats
         self._execution_date = execution_date
@@ -34,6 +36,13 @@ class ExecutionContext(object):
         self._logging = logging
         self._raw_data_output_path = raw_data_output_path
         self._idl_inputs = idl_inputs
+
+    @property
+    def idl_inputs(self):
+        """
+        :rtype: LiteralMap
+        """
+        return self._idl_inputs
 
     @property
     def stats(self):
@@ -75,8 +84,9 @@ class ExecutionContext(object):
         return self._raw_data_output_path
 
 
-class ExecutionEngine(object):
+class ExecutionContextProvider(object):
 
+    @contextmanager
     def get_execution_environment(self, inputs: _literals_models.LiteralMap, context: typing.Dict[str, str] = None):
         with _common_utils.AutoDeletingTempDir("engine_dir") as temp_dir:
             with _common_utils.AutoDeletingTempDir("task_dir") as task_dir:
@@ -116,6 +126,8 @@ class ExecutionEngine(object):
                             raw_data_output_path="/tmp/flyte/raw_output/",
                             idl_inputs=inputs,
                         )
+                        yield execution_context
+
 
 
 def _generate_local_path():
