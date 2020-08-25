@@ -13,9 +13,11 @@ from flytekit.engines import loader as _engine_loader
 
 SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX = "/opt/ml/input/data"
 
+def build_sdk_type_map_from_typed_interface(interface):
+
 
 @_scopes.system_entry_point
-def _execute_task(task_module, task_name, output_prefix, test, sagemaker_args):
+def _execute_task(task_module, task_name, inputs, output_prefix, test, sagemaker_args):
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         # Load user code
         task_module = _importlib.import_module(task_module)
@@ -33,10 +35,8 @@ def _execute_task(task_module, task_name, output_prefix, test, sagemaker_args):
 
             map_of_sdk_types = {}
             blob_and_schema_local_path_map = {}
+
             for k, v in task_def.interface.inputs.items():
-                # map_of_literal_types[k] = v.type
-                if v.type.blob is not None or v.type.schema is not None:
-                    blob_and_schema_local_path_map[k] = "{}/{}".format(SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX, k)
                 map_of_sdk_types[k] = _type_helpers.get_sdk_type_from_literal_type(v.type)
 
             # We need to do some special handling of the blob-typed inputs, i.e., read them from predefined
@@ -46,6 +46,12 @@ def _execute_task(task_module, task_name, output_prefix, test, sagemaker_args):
             input_literal_map = _type_helpers.pack_python_string_map_to_literal_map(
                 map_of_input_values, map_of_sdk_types,
             )
+
+            # TODO 1. need to handle the case of "collection of blobs" or even "hierarchical collection of blobs"
+            # TODO 2. replace the blob uris with local
+            for k, v in task_def.interface.inputs.items():
+                if v.type.blob is not None or v.type.schema is not None:
+                    blob_and_schema_local_path_map[k] = "{}/{}".format(SAGEMAKER_CONTAINER_LOCAL_INPUT_PREFIX, k)
 
             _engine_loader.get_engine().get_task(task_def).execute(
                 input_literal_map, context={"output_prefix": output_prefix}
@@ -63,14 +69,15 @@ def _pass_through():
 @_pass_through.command("pyflyte-execute-alt", context_settings=dict(ignore_unknown_options=True))
 @_click.option("--task-module", required=True)
 @_click.option("--task-name", required=True)
+@_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--test", is_flag=True)
 @_click.argument("sagemaker_args", nargs=-1, type=_click.UNPROCESSED)
-def execute_task_cmd(task_module, task_name, output_prefix, test, sagemaker_args):
+def execute_task_cmd(task_module, task_name, inputs, output_prefix, test, sagemaker_args):
     _click.echo(_utils.get_version_message())
     _click.echo("sagemaker_args : {}".format(sagemaker_args))
     # Note that the unknown arguments are entirely unprocessed, so the leading "--" are still there
-    _execute_task(task_module, task_name, output_prefix, test, sagemaker_args)
+    _execute_task(task_module, task_name, inputs, output_prefix, test, sagemaker_args)
 
 
 if __name__ == "__main__":
