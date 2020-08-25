@@ -32,7 +32,7 @@ class LazyLoadPlugin(object):
             if k != "spark3":
                 all_plugins.extend(d[k])
             if k != "spark":
-                all_plugins3.extend(d[k])               
+                all_plugins3.extend(d[k])
 
         d["all"] = all_plugins
         d["all3"] = all_plugins3
