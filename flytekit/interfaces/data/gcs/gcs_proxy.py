@@ -28,6 +28,19 @@ def _amend_path(path):
 class GCSProxy(_common_data.DataProxy):
     _GS_UTIL_CLI = "gsutil"
 
+    def __init__(self, raw_output_data_prefix_override: str = None):
+        """
+        :param raw_output_data_prefix_override: Instead of relying on the AWS or GCS configuration (see
+            S3_SHARD_FORMATTER for AWS and GCS_PREFIX for GCP) setting when computing the shard
+            path (_get_shard_path), use this prefix instead as a base. This code assumes that the
+            path passed in is correct. That is, an S3 path won't be passed in when running on GCP.
+        """
+        self._raw_output_data_prefix_override = raw_output_data_prefix_override
+
+    @property
+    def raw_output_data_prefix_override(self) -> str:
+        return self._raw_output_data_prefix_override
+
     @staticmethod
     def _check_binary():
         """
@@ -124,7 +137,8 @@ class GCSProxy(_common_data.DataProxy):
         :rtype: Text
         """
         key = _uuid.UUID(int=_flyte_random.random.getrandbits(128)).hex
-        return _os.path.join(_gcp_config.GCS_PREFIX.get(), key)
+        prefix = self.raw_output_data_prefix_override or _gcp_config.GCS_PREFIX.get()
+        return _os.path.join(prefix, key)
 
     def get_random_directory(self):
         """

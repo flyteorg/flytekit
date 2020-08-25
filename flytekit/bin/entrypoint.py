@@ -53,7 +53,7 @@ def _map_job_index_to_child_index(local_input_dir, datadir, index):
 
 
 @_scopes.system_entry_point
-def _execute_task(task_module, task_name, inputs, output_prefix, test):
+def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with _utils.AutoDeletingTempDir("input_dir") as input_dir:
             # Load user code
@@ -83,7 +83,10 @@ def _execute_task(task_module, task_name, inputs, output_prefix, test):
                 _data_proxy.Data.get_data(inputs, local_inputs_file)
                 input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
                 _engine_loader.get_engine().get_task(task_def).execute(
-                    _literal_models.LiteralMap.from_flyte_idl(input_proto), context={"output_prefix": output_prefix},
+                    _literal_models.LiteralMap.from_flyte_idl(input_proto), context={
+                        "output_prefix": output_prefix,
+                        "raw_output_data_prefix": raw_output_data_prefix,
+                    },
                 )
 
 
@@ -97,10 +100,11 @@ def _pass_through():
 @_click.option("--task-name", required=True)
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
+@_click.option("--raw-data-output-prefix", required=False)
 @_click.option("--test", is_flag=True)
-def execute_task_cmd(task_module, task_name, inputs, output_prefix, test):
+def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
     _click.echo(_utils.get_version_message())
-    _execute_task(task_module, task_name, inputs, output_prefix, test)
+    _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
 
 
 if __name__ == "__main__":

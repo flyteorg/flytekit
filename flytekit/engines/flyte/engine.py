@@ -270,11 +270,11 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
         :param dict[Text, Text] context:
         :rtype: dict[Text, flytekit.models.common.FlyteIdlEntity]
         """
-
         with _common_utils.AutoDeletingTempDir("engine_dir") as temp_dir:
             with _common_utils.AutoDeletingTempDir("task_dir") as task_dir:
                 with _data_proxy.LocalWorkingDirectoryContext(task_dir):
-                    with _data_proxy.RemoteDataContext():
+                    raw_output_data_prefix = context.get("raw_output_data_prefix", None)
+                    with _data_proxy.RemoteDataContext(raw_output_data_prefix_override=raw_output_data_prefix):
                         output_file_dict = dict()
 
                         # This sets the logging level for user code and is the only place an sdk setting gets
@@ -311,6 +311,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                                     ),
                                     logging=_logging,
                                     tmp_dir=task_dir,
+                                    raw_output_data_prefix=context['raw_output_data_prefix'] if "raw_output_data_prefix" in context else None,
                                 ),
                                 inputs,
                             )
