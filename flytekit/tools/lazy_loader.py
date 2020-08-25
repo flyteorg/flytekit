@@ -26,12 +26,16 @@ class LazyLoadPlugin(object):
         """
         d = cls.LAZY_LOADING_PLUGINS.copy()
         all_plugins = []
+        all_plugins3 = []
         for k in d:
-            # Default to Spark 2.4.x .
+            # Default to Spark 2.4.x in all and Spark 3.x in all3.
             if k != "spark3":
                 all_plugins.extend(d[k])
+            if k != "spark":
+                all_plugins3.extend(d[k])               
 
         d["all"] = all_plugins
+        d["all3"] = all_plugins3
         return d
 
 
