@@ -132,9 +132,10 @@ class GCSProxy(_common_data.DataProxy):
         )
         return _update_cmd_config_and_execute(cmd)
 
-    def get_random_path(self):
+    def get_random_path(self) -> str:
         """
-        :rtype: Text
+        If this object was created with a raw output data prefix, usually set by Propeller/Plugins at execution time
+        and piped all the way here, it will be used instead of referencing the GCS_PREFIX configuration.
         """
         key = _uuid.UUID(int=_flyte_random.random.getrandbits(128)).hex
         prefix = self.raw_output_data_prefix_override or _gcp_config.GCS_PREFIX.get()

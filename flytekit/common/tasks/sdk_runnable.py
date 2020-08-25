@@ -32,13 +32,12 @@ class ExecutionParameters(object):
     decorated function.
     """
 
-    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, raw_output_data_prefix=None):
+    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging):
         self._stats = stats
         self._execution_date = execution_date
         self._working_directory = tmp_dir
         self._execution_id = execution_id
         self._logging = logging
-        self._raw_output_data_prefix = raw_output_data_prefix
 
     @property
     def stats(self):
@@ -102,16 +101,6 @@ class ExecutionParameters(object):
         :rtype: Text
         """
         return self._execution_id
-
-    @property
-    def raw_output_data_prefix(self) -> str:
-        """
-        This is the prefix/location that offloaded data structures like Blobs and Schemas will use to store data. You
-        shouldn't need to access this from within a task, but it's here just in case
-
-        :rtype: Text
-        """
-        return self._raw_output_data_prefix
 
 
 class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task_models.Container)):
@@ -349,7 +338,6 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 stats=context.stats,
                 logging=context.logging,
                 tmp_dir=context.working_directory,
-                raw_output_data_prefix=context.raw_output_data_prefix,
             ),
             **inputs
         )
