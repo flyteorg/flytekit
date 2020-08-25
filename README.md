@@ -75,7 +75,7 @@ To install all or multiple available plugins, one can specify them individually:
 pip install "flytekit[sidecar,spark,schema]"
 ```
 
-Or install them with the `all` or `all3` directives: `all` defaults to Spark 2.4.x while `all3` defaults to Spark 3.x currently.
+Or install them with the `all` or `all-spark3` directives: `all` defaults to Spark 2.4.x while `all-spark3` defaults to Spark 3.x currently.
 In a future release (starting 0.15.x), support for Spark 2.4 will be deprecated and `all` will be switched to use Spark 3.x.
 
 

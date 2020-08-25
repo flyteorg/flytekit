@@ -35,7 +35,7 @@ class LazyLoadPlugin(object):
                 all_plugins3.extend(d[k])
 
         d["all"] = all_plugins
-        d["all3"] = all_plugins3
+        d["all-spark3"] = all_plugins3
         return d
 
 
