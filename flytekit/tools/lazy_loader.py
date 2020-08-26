@@ -25,13 +25,19 @@ class LazyLoadPlugin(object):
         :rtype: dict[Text,list[Text]]
         """
         d = cls.LAZY_LOADING_PLUGINS.copy()
-        all_plugins = []
+        all_plugins_spark2 = []
+        all_plugins_spark3 = []
         for k in d:
-            # Default to Spark 2.4.x .
+            # Default to Spark 2.4.x in all-spark2 and Spark 3.x in all-spark3.
             if k != "spark3":
-                all_plugins.extend(d[k])
+                all_plugins_spark2.extend(d[k])
+            if k != "spark":
+                all_plugins_spark3.extend(d[k])
 
-        d["all"] = all_plugins
+        d["all-spark2.4"] = all_plugins_spark2
+        d["all-spark3"] = all_plugins_spark3
+        # all points to Spark 2.4
+        d["all"] = all_plugins_spark2
         return d
 
 
