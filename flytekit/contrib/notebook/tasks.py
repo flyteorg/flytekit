@@ -329,7 +329,7 @@ class SdkNotebookTask(_base_tasks.SdkTask):
             "{{.input}}",
             "--output-prefix",
             "{{.outputPrefix}}",
-            "--raw-data-output-prefix",
+            "--raw-output-data-prefix",
             "{{.rawOutputDataPrefix}}",
         ]
         return self._container
