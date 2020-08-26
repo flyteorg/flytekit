@@ -152,8 +152,8 @@ def test_backwards_compatible_replacement(mock_execute_task):
         os.path.join(os.path.dirname(__file__), "fake.config"),
         internal_overrides={"project": "test", "domain": "development"},
     ):
-        with _utils.AutoDeletingTempDir("in") as input_dir:
-            with _utils.AutoDeletingTempDir("out") as output_dir:
+        with _utils.AutoDeletingTempDir("in"):
+            with _utils.AutoDeletingTempDir("out"):
                 cmd = []
                 cmd.extend(["--task-module", "fake"])
                 cmd.extend(["--task-name", "fake"])

@@ -1,8 +1,4 @@
-import os as _os
-
 import mock as _mock
-import pytest as _pytest
-from flytekit.configuration import aws as _aws_config
 
 from flytekit.interfaces.data.s3.s3proxy import AwsS3Proxy as _AwsS3Proxy
 

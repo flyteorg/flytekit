@@ -84,7 +84,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                 input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
                 _engine_loader.get_engine().get_task(task_def).execute(
                     _literal_models.LiteralMap.from_flyte_idl(input_proto),
-                    context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix,},
+                    context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
                 )
 
 
