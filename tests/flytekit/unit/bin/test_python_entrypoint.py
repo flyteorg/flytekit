@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import os
 
+import mock
 import six
 from click.testing import CliRunner
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -37,6 +38,7 @@ def test_single_step_entrypoint_in_proc():
                     _task_defs.add_one.task_module,
                     _task_defs.add_one.task_function_name,
                     input_file,
+                    output_dir.name,
                     output_dir.name,
                     False,
                 )
@@ -113,7 +115,12 @@ def test_arrayjob_entrypoint_in_proc():
             os.environ["AWS_BATCH_JOB_ARRAY_INDEX"] = "0"
 
             _execute_task(
-                _task_defs.add_one.task_module, _task_defs.add_one.task_function_name, dir.name, dir.name, False,
+                _task_defs.add_one.task_module,
+                _task_defs.add_one.task_function_name,
+                dir.name,
+                dir.name,
+                dir.name,
+                False,
             )
 
             raw_map = _type_helpers.unpack_literal_map_to_sdk_python_std(
@@ -132,3 +139,26 @@ def test_arrayjob_entrypoint_in_proc():
                 os.environ["BATCH_JOB_ARRAY_INDEX_VAR_NAME"] = orig_env_index_var_name
             if orig_env_array_index:
                 os.environ["AWS_BATCH_JOB_ARRAY_INDEX"] = orig_env_array_index
+
+
+@mock.patch("flytekit.bin.entrypoint._execute_task")
+def test_backwards_compatible_replacement(mock_execute_task):
+    def return_args(*args, **kwargs):
+        assert args[4] is None
+
+    mock_execute_task.side_effect = return_args
+
+    with _TemporaryConfiguration(
+        os.path.join(os.path.dirname(__file__), "fake.config"),
+        internal_overrides={"project": "test", "domain": "development"},
+    ):
+        with _utils.AutoDeletingTempDir("in") as input_dir:
+            with _utils.AutoDeletingTempDir("out") as output_dir:
+                cmd = []
+                cmd.extend(["--task-module", "fake"])
+                cmd.extend(["--task-name", "fake"])
+                cmd.extend(["--inputs", "fake"])
+                cmd.extend(["--output-prefix", "fake"])
+                cmd.extend(["--raw-output-data-prefix", "{{.rawOutputDataPrefix}}"])
+                result = CliRunner().invoke(execute_task_cmd, cmd)
+                assert result.exit_code == 0

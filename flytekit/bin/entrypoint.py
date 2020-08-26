@@ -83,10 +83,8 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                 _data_proxy.Data.get_data(inputs, local_inputs_file)
                 input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
                 _engine_loader.get_engine().get_task(task_def).execute(
-                    _literal_models.LiteralMap.from_flyte_idl(input_proto), context={
-                        "output_prefix": output_prefix,
-                        "raw_output_data_prefix": raw_output_data_prefix,
-                    },
+                    _literal_models.LiteralMap.from_flyte_idl(input_proto),
+                    context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix,},
                 )
 
 
@@ -100,10 +98,16 @@ def _pass_through():
 @_click.option("--task-name", required=True)
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
-@_click.option("--raw-data-output-prefix", required=False)
+@_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--test", is_flag=True)
 def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
     _click.echo(_utils.get_version_message())
+    # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
+    # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
+    # to the original shard formatter/prefix config.
+    if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
+        raw_output_data_prefix = None
+
     _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
 
 

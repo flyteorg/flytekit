@@ -311,7 +311,9 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                                     ),
                                     logging=_logging,
                                     tmp_dir=task_dir,
-                                    raw_output_data_prefix=context['raw_output_data_prefix'] if "raw_output_data_prefix" in context else None,
+                                    raw_output_data_prefix=context["raw_output_data_prefix"]
+                                    if "raw_output_data_prefix" in context
+                                    else None,
                                 ),
                                 inputs,
                             )
