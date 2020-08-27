@@ -12,9 +12,11 @@ parser.add_argument('--__FLYTE_ENV_VAR__', dest='flyte_env_var', type=str, nargs
                     help='Specifies an environment variable.')
 args, unknowns = parser.parse_known_args()
 
+flyte_cmd = [param.strip("'") for param in args.flyte_cmd]
+
 # Defer to click to parse the command
-ctx = execute_task_cmd.make_context(args.flyte_sagmaker_cmd[1], args=args.flyte_sagmaker_cmd[2:])
-execute_task_cmd.parse_args(ctx=ctx, args=args.flyte_sagmaker_cmd[2:])
+ctx = execute_task_cmd.make_context(flyte_cmd[1], args=flyte_cmd[2:])
+execute_task_cmd.parse_args(ctx=ctx, args=flyte_cmd[2:])
 
 # Rewrite output_prefix by appending the training job name. SageMaker populates TRAINING_JOB_NAME env var.
 # The real value in doing this shows in HPO jobs. In HPO case, SageMaker runs the same container with pretty
