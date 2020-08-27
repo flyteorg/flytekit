@@ -50,6 +50,7 @@ setup(
         "urllib3>=1.22,<2.0.0",
         "wrapt>=1.0.0,<2.0.0",
         "papermill>=1.2.0",
+        "ipykernel>=5.0.0"
     ],
     extras_require=extras_require,
     scripts=[
