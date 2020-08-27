@@ -447,6 +447,8 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 "{{.input}}",
                 "--output-prefix",
                 "{{.outputPrefix}}",
+                "--raw-output-data-prefix",
+                "{{.rawOutputDataPrefix}}",
             ],
             resources=_task_models.Resources(limits=limits, requests=requests),
             env=environment,

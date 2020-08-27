@@ -41,6 +41,19 @@ class AwsS3Proxy(_common_data.DataProxy):
     _AWS_CLI = "aws"
     _SHARD_CHARACTERS = [_text_type(x) for x in _six_moves.range(10)] + list(_string.ascii_lowercase)
 
+    def __init__(self, raw_output_data_prefix_override: str = None):
+        """
+        :param raw_output_data_prefix_override: Instead of relying on the AWS or GCS configuration (see
+            S3_SHARD_FORMATTER for AWS and GCS_PREFIX for GCP) setting when computing the shard
+            path (_get_shard_path), use this prefix instead as a base. This code assumes that the
+            path passed in is correct. That is, an S3 path won't be passed in when running on GCP.
+        """
+        self._raw_output_data_prefix_override = raw_output_data_prefix_override
+
+    @property
+    def raw_output_data_prefix_override(self) -> str:
+        return self._raw_output_data_prefix_override
+
     @staticmethod
     def _check_binary():
         """
@@ -179,10 +192,14 @@ class AwsS3Proxy(_common_data.DataProxy):
         """
         return self.get_random_path() + "/"
 
-    def _get_shard_path(self):
+    def _get_shard_path(self) -> str:
         """
-        :rtype: Text
+        If this object was created with a raw output data prefix, usually set by Propeller/Plugins at execution time
+        and piped all the way here, it will be used instead of referencing the S3 shard configuration.
         """
+        if self.raw_output_data_prefix_override:
+            return self.raw_output_data_prefix_override
+
         shard = ""
         for _ in _six_moves.range(_aws_config.S3_SHARD_STRING_LENGTH.get()):
             shard += _flyte_random.random.choice(self._SHARD_CHARACTERS)
