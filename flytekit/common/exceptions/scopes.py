@@ -161,7 +161,9 @@ def system_entry_point(wrapped, instance, args, kwargs):
             except _user_exceptions.FlyteUserException:
                 # Re-raise from here.
                 _reraise(
-                    FlyteScopedUserException, FlyteScopedUserException(*_exc_info()), _exc_info()[2],
+                    FlyteScopedUserException,
+                    FlyteScopedUserException(*_exc_info()),
+                    _exc_info()[2],
                 )
             except Exception:
                 # System error, raise full stack-trace all the way up the chain.
@@ -200,17 +202,23 @@ def user_entry_point(wrapped, instance, args, kwargs):
                 _reraise(*_exc_info())
             except _user_exceptions.FlyteUserException:
                 _reraise(
-                    FlyteScopedUserException, FlyteScopedUserException(*_exc_info()), _exc_info()[2],
+                    FlyteScopedUserException,
+                    FlyteScopedUserException(*_exc_info()),
+                    _exc_info()[2],
                 )
             except _system_exceptions.FlyteSystemException:
                 _reraise(
-                    FlyteScopedSystemException, FlyteScopedSystemException(*_exc_info()), _exc_info()[2],
+                    FlyteScopedSystemException,
+                    FlyteScopedSystemException(*_exc_info()),
+                    _exc_info()[2],
                 )
             except Exception:
                 # Any non-platform raised exception is a user exception.
                 # This will also catch FlyteUserException re-raised by the system_entry_point handler
                 _reraise(
-                    FlyteScopedUserException, FlyteScopedUserException(*_exc_info()), _exc_info()[2],
+                    FlyteScopedUserException,
+                    FlyteScopedUserException(*_exc_info()),
+                    _exc_info()[2],
                 )
     finally:
         _CONTEXT_STACK.pop()
