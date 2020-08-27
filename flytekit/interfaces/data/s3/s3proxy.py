@@ -7,6 +7,7 @@ import string as _string
 import sys as _sys
 import time
 import uuid as _uuid
+from typing import List, Dict
 
 from six import moves as _six_moves
 from six import text_type as _text_type
@@ -23,7 +24,7 @@ else:
     from distutils.spawn import find_executable as _which
 
 
-def _update_cmd_config_and_execute(cmd: list[str]):
+def _update_cmd_config_and_execute(cmd: List[str]):
     env = _os.environ.copy()
 
     if _aws_config.ENABLE_DEBUG.get():
@@ -53,7 +54,7 @@ def _update_cmd_config_and_execute(cmd: list[str]):
         logging.info("Retrying again")
 
 
-def _extra_args(extra_args: dict[str, str]) -> list[str]:
+def _extra_args(extra_args: Dict[str, str]) -> List[str]:
     cmd = []
     if "ContentType" in extra_args:
         cmd += ["--content-type", extra_args["ContentType"]]
