@@ -270,8 +270,10 @@ class TrainingJob(_common.FlyteIdlEntity):
         """
 
         return _training_job_pb2.TrainingJob(
-            algorithm_specification=self.algorithm_specification.to_flyte_idl(),
-            training_job_resource_config=self.training_job_resource_config.to_flyte_idl(),
+            algorithm_specification=
+            self.algorithm_specification.to_flyte_idl() if self._algorithm_specification else None,
+            training_job_resource_config=
+            self.training_job_resource_config.to_flyte_idl() if self.training_job_resource_config else None,
         )
 
     @classmethod
