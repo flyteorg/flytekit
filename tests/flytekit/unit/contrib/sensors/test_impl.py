@@ -34,7 +34,9 @@ def test_HiveNamedPartitionSensor():
             assert interval is None
 
         with mock.patch.object(
-            HMSClient, "get_partition_by_name", side_effect=_ttypes.NoSuchObjectException(),
+            HMSClient,
+            "get_partition_by_name",
+            side_effect=_ttypes.NoSuchObjectException(),
         ):
             success, interval = hive_named_partition_sensor._do_poll()
             assert not success

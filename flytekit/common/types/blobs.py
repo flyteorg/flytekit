@@ -172,7 +172,8 @@ class MultiPartBlob(_six.with_metaclass(MultiPartBlobInstantiator, _base_sdk_typ
         """
         if not string_value:
             _user_exceptions.FlyteValueException(
-                string_value, "Cannot create a MultiPartBlob from the provided path " "value.",
+                string_value,
+                "Cannot create a MultiPartBlob from the provided path " "value.",
             )
         return cls(_blob_impl.MultiPartBlob.from_string(string_value, mode="rb"))
 
@@ -205,7 +206,10 @@ class MultiPartBlob(_six.with_metaclass(MultiPartBlobInstantiator, _base_sdk_typ
         :rtype: flytekit.models.types.LiteralType
         """
         return _idl_types.LiteralType(
-            blob=_core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,)
+            blob=_core_types.BlobType(
+                format="",
+                dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
+            )
         )
 
     @classmethod
@@ -325,7 +329,10 @@ class CSV(_six.with_metaclass(CsvInstantiator, Blob)):
         :rtype: flytekit.models.types.LiteralType
         """
         return _idl_types.LiteralType(
-            blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
+            blob=_core_types.BlobType(
+                format="csv",
+                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            )
         )
 
     @classmethod
@@ -395,7 +402,8 @@ class MultiPartCSV(_six.with_metaclass(MultiPartCsvInstantiator, MultiPartBlob))
         """
         if not string_value:
             _user_exceptions.FlyteValueException(
-                string_value, "Cannot create a MultiPartCSV from the provided path value.",
+                string_value,
+                "Cannot create a MultiPartCSV from the provided path value.",
             )
         return cls(_blob_impl.MultiPartBlob.from_string(string_value, format="csv", mode="r"))
 
@@ -432,7 +440,10 @@ class MultiPartCSV(_six.with_metaclass(MultiPartCsvInstantiator, MultiPartBlob))
         :rtype: flytekit.models.types.LiteralType
         """
         return _idl_types.LiteralType(
-            blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,)
+            blob=_core_types.BlobType(
+                format="csv",
+                dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
+            )
         )
 
     @classmethod

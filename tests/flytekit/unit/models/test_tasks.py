@@ -86,7 +86,11 @@ def test_task_metadata():
 
 @pytest.mark.parametrize(
     "in_tuple",
-    product(parameterizers.LIST_OF_TASK_METADATA, parameterizers.LIST_OF_INTERFACES, parameterizers.LIST_OF_RESOURCES,),
+    product(
+        parameterizers.LIST_OF_TASK_METADATA,
+        parameterizers.LIST_OF_INTERFACES,
+        parameterizers.LIST_OF_RESOURCES,
+    ),
 )
 def test_task_template(in_tuple):
     task_metadata, interfaces, resources = in_tuple
@@ -97,7 +101,12 @@ def test_task_template(in_tuple):
         interfaces,
         {"a": 1, "b": {"c": 2, "d": 3}},
         container=task.Container(
-            "my_image", ["this", "is", "a", "cmd"], ["this", "is", "an", "arg"], resources, {"a": "b"}, {"d": "e"},
+            "my_image",
+            ["this", "is", "a", "cmd"],
+            ["this", "is", "an", "arg"],
+            resources,
+            {"a": "b"},
+            {"d": "e"},
         ),
     )
     assert obj.id.resource_type == identifier.ResourceType.TASK
@@ -119,7 +128,8 @@ def test_task_template(in_tuple):
 @pytest.mark.parametrize("task_closure", parameterizers.LIST_OF_TASK_CLOSURES)
 def test_task(task_closure):
     obj = task.Task(
-        identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"), task_closure,
+        identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
+        task_closure,
     )
     assert obj.id.project == "project"
     assert obj.id.domain == "domain"
@@ -132,7 +142,12 @@ def test_task(task_closure):
 @pytest.mark.parametrize("resources", parameterizers.LIST_OF_RESOURCES)
 def test_container(resources):
     obj = task.Container(
-        "my_image", ["this", "is", "a", "cmd"], ["this", "is", "an", "arg"], resources, {"a": "b"}, {"d": "e"},
+        "my_image",
+        ["this", "is", "a", "cmd"],
+        ["this", "is", "an", "arg"],
+        resources,
+        {"a": "b"},
+        {"d": "e"},
     )
     obj.image == "my_image"
     obj.command == ["this", "is", "a", "cmd"]
@@ -158,7 +173,10 @@ def test_sidecar_task():
 
 def test_dataloadingconfig():
     dlc = task.DataLoadingConfig(
-        "s3://input/path", "s3://output/path", True, task.DataLoadingConfig.LITERALMAP_FORMAT_YAML,
+        "s3://input/path",
+        "s3://output/path",
+        True,
+        task.DataLoadingConfig.LITERALMAP_FORMAT_YAML,
     )
     dlc2 = task.DataLoadingConfig.from_flyte_idl(dlc.to_flyte_idl())
     assert dlc2 == dlc

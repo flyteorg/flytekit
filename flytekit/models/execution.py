@@ -64,7 +64,11 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
         :param flyteidl.admin.execution_pb2.ExecutionMetadata pb2_object:
         :return: ExecutionMetadata
         """
-        return cls(mode=pb2_object.mode, principal=pb2_object.principal, nesting=pb2_object.nesting,)
+        return cls(
+            mode=pb2_object.mode,
+            principal=pb2_object.principal,
+            nesting=pb2_object.nesting,
+        )
 
 
 class ExecutionSpec(_common_models.FlyteIdlEntity):
@@ -205,7 +209,8 @@ class LiteralMapBlob(_common_models.FlyteIdlEntity):
         :rtype: flyteidl.admin.execution_pb2.LiteralMapBlob
         """
         return _execution_pb2.LiteralMapBlob(
-            values=self.values.to_flyte_idl() if self.values is not None else None, uri=self.uri,
+            values=self.values.to_flyte_idl() if self.values is not None else None,
+            uri=self.uri,
         )
 
     @classmethod
@@ -258,7 +263,9 @@ class Execution(_common_models.FlyteIdlEntity):
         :rtype: flyteidl.admin.execution_pb2.Execution
         """
         return _execution_pb2.Execution(
-            id=self.id.to_flyte_idl(), closure=self.closure.to_flyte_idl(), spec=self.spec.to_flyte_idl(),
+            id=self.id.to_flyte_idl(),
+            closure=self.closure.to_flyte_idl(),
+            spec=self.spec.to_flyte_idl(),
         )
 
     @classmethod

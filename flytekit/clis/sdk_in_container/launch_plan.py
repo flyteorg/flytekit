@@ -53,7 +53,9 @@ class LaunchPlanAbstractGroup(click.Group):
             launch_plan = ctx.obj["lps"][lp_argument]
         else:
             for m, k, lp in iterate_registerable_entities_in_order(
-                pkgs, include_entities={_SdkLaunchPlan}, detect_unreferenced_entities=False,
+                pkgs,
+                include_entities={_SdkLaunchPlan},
+                detect_unreferenced_entities=False,
             ):
                 safe_name = _utils.fqdn(m.__name__, k, entity_type=lp.resource_type)
                 if lp_argument == safe_name:
@@ -104,7 +106,10 @@ class LaunchPlanExecuteGroup(LaunchPlanAbstractGroup):
                 notification_overrides=ctx.obj.get(_constants.CTX_NOTIFICATIONS, None),
             )
             click.echo(
-                click.style("Workflow scheduled, execution_id={}".format(_six.text_type(execution.id)), fg="blue",)
+                click.style(
+                    "Workflow scheduled, execution_id={}".format(_six.text_type(execution.id)),
+                    fg="blue",
+                )
             )
 
         command = click.Command(name=cmd_name, callback=_execute_lp)
@@ -120,7 +125,12 @@ class LaunchPlanExecuteGroup(LaunchPlanAbstractGroup):
 
             if param.required:
                 # If it's a required input, add the required flag
-                wrapper = click.option("--{}".format(var_name), required=True, type=_six.text_type, help=help_msg,)
+                wrapper = click.option(
+                    "--{}".format(var_name),
+                    required=True,
+                    type=_six.text_type,
+                    help=help_msg,
+                )
             else:
                 # If it's not a required input, it should have a default
                 # Use to_python_std so that the text of the default ends up being parseable, if not, the click
@@ -194,7 +204,8 @@ def activate_all_schedules(ctx, version=None):
     The behavior of this command is identical to activate-all.
     """
     click.secho(
-        "activate-all-schedules is deprecated, please use activate-all instead.", color="yellow",
+        "activate-all-schedules is deprecated, please use activate-all instead.",
+        color="yellow",
     )
     project = ctx.obj[_constants.CTX_PROJECT]
     domain = ctx.obj[_constants.CTX_DOMAIN]
@@ -211,7 +222,9 @@ def activate_all_schedules(ctx, version=None):
     help="Version to register tasks with. This is normally parsed from the" "image, but you can override here.",
 )
 @click.option(
-    "--ignore-schedules", is_flag=True, help="Activate all except for launch plans with schedules.",
+    "--ignore-schedules",
+    is_flag=True,
+    help="Activate all except for launch plans with schedules.",
 )
 @click.pass_context
 def activate_all(ctx, version=None, ignore_schedules=False):

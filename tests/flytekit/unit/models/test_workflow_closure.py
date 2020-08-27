@@ -19,7 +19,8 @@ def test_workflow_closure():
     )
 
     b0 = _literals.Binding(
-        "a", _literals.BindingData(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=5))),
+        "a",
+        _literals.BindingData(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=5))),
     )
     b1 = _literals.Binding("b", _literals.BindingData(promise=_types.OutputReference("my_node", "b")))
     b2 = _literals.Binding("c", _literals.BindingData(promise=_types.OutputReference("my_node", "c")))
@@ -48,13 +49,23 @@ def test_workflow_closure():
         typed_interface,
         {"a": 1, "b": {"c": 2, "d": 3}},
         container=_task.Container(
-            "my_image", ["this", "is", "a", "cmd"], ["this", "is", "an", "arg"], resources, {}, {},
+            "my_image",
+            ["this", "is", "a", "cmd"],
+            ["this", "is", "an", "arg"],
+            resources,
+            {},
+            {},
         ),
     )
 
     task_node = _workflow.TaskNode(task.id)
     node = _workflow.Node(
-        id="my_node", metadata=node_metadata, inputs=[b0], upstream_node_ids=[], output_aliases=[], task_node=task_node,
+        id="my_node",
+        metadata=node_metadata,
+        inputs=[b0],
+        upstream_node_ids=[],
+        output_aliases=[],
+        task_node=task_node,
     )
 
     template = _workflow.WorkflowTemplate(

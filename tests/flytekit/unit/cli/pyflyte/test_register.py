@@ -8,11 +8,15 @@ def test_register_workflows(mock_clirunner, monkeypatch):
     monkeypatch.setattr(engine.FlyteEngineFactory, "get_task", MagicMock(return_value=mock_get_task))
     mock_get_workflow = MagicMock()
     monkeypatch.setattr(
-        engine.FlyteEngineFactory, "get_workflow", MagicMock(return_value=mock_get_workflow),
+        engine.FlyteEngineFactory,
+        "get_workflow",
+        MagicMock(return_value=mock_get_workflow),
     )
     mock_get_launch_plan = MagicMock()
     monkeypatch.setattr(
-        engine.FlyteEngineFactory, "get_launch_plan", MagicMock(return_value=mock_get_launch_plan),
+        engine.FlyteEngineFactory,
+        "get_launch_plan",
+        MagicMock(return_value=mock_get_launch_plan),
     )
 
     result = mock_clirunner("register", "workflows")
@@ -32,11 +36,15 @@ def test_register_workflows_with_test_switch(mock_clirunner, monkeypatch):
     monkeypatch.setattr(engine.FlyteEngineFactory, "get_task", MagicMock(return_value=mock_get_task))
     mock_get_workflow = MagicMock()
     monkeypatch.setattr(
-        engine.FlyteEngineFactory, "get_workflow", MagicMock(return_value=mock_get_workflow),
+        engine.FlyteEngineFactory,
+        "get_workflow",
+        MagicMock(return_value=mock_get_workflow),
     )
     mock_get_launch_plan = MagicMock()
     monkeypatch.setattr(
-        engine.FlyteEngineFactory, "get_launch_plan", MagicMock(return_value=mock_get_launch_plan),
+        engine.FlyteEngineFactory,
+        "get_launch_plan",
+        MagicMock(return_value=mock_get_launch_plan),
     )
 
     result = mock_clirunner("register", "--test", "workflows")

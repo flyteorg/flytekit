@@ -99,7 +99,8 @@ class Resources(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.tasks_pb2.Resources
         """
         return _core_task.Resources(
-            requests=[r.to_flyte_idl() for r in self.requests], limits=[r.to_flyte_idl() for r in self.limits],
+            requests=[r.to_flyte_idl() for r in self.requests],
+            limits=[r.to_flyte_idl() for r in self.limits],
         )
 
     @classmethod
@@ -171,7 +172,14 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
 
 class TaskMetadata(_common.FlyteIdlEntity):
     def __init__(
-        self, discoverable, runtime, timeout, retries, interruptible, discovery_version, deprecated_error_message,
+        self,
+        discoverable,
+        runtime,
+        timeout,
+        retries,
+        interruptible,
+        discovery_version,
+        deprecated_error_message,
     ):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
@@ -449,7 +457,10 @@ class Task(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.task_pb2.Task
         """
-        return _admin_task.Task(closure=self.closure.to_flyte_idl(), id=self.id.to_flyte_idl(),)
+        return _admin_task.Task(
+            closure=self.closure.to_flyte_idl(),
+            id=self.id.to_flyte_idl(),
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -523,7 +534,13 @@ class CompiledTask(_common.FlyteIdlEntity):
 
 class SparkJob(_common.FlyteIdlEntity):
     def __init__(
-        self, spark_type, application_file, main_class, spark_conf, hadoop_conf, executor_path,
+        self,
+        spark_type,
+        application_file,
+        main_class,
+        spark_conf,
+        hadoop_conf,
+        executor_path,
     ):
         """
         This defines a SparkJob target.  It will execute the appropriate SparkJob.
@@ -574,8 +591,8 @@ class SparkJob(_common.FlyteIdlEntity):
     @property
     def spark_conf(self):
         """
-       A definition of key-value pairs for spark config for the job.
-        :rtype: dict[Text, Text]
+        A definition of key-value pairs for spark config for the job.
+         :rtype: dict[Text, Text]
         """
         return self._spark_conf
 
@@ -665,7 +682,10 @@ class IOStrategy(_common.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object: _core_task.IOStrategy):
         if pb2_object is None:
             return None
-        return cls(download_mode=pb2_object.download_mode, upload_mode=pb2_object.upload_mode,)
+        return cls(
+            download_mode=pb2_object.download_mode,
+            upload_mode=pb2_object.upload_mode,
+        )
 
 
 class DataLoadingConfig(_common.FlyteIdlEntity):
@@ -718,17 +738,17 @@ class DataLoadingConfig(_common.FlyteIdlEntity):
 class Container(_common.FlyteIdlEntity):
     def __init__(self, image, command, args, resources, env, config, data_loading_config=None):
         """
-           This defines a container target.  It will execute the appropriate command line on the appropriate image with
-           the given configurations.
+        This defines a container target.  It will execute the appropriate command line on the appropriate image with
+        the given configurations.
 
-           :param Text image: The fully-qualified identifier for the image.
-           :param list[Text] command: A list of 'words' for the command.  i.e. ['aws', 's3', 'ls']
-           :param list[Text] args: A list of arguments for the command.  i.e. ['s3://some/path', '/tmp/local/path']
-           :param Resources resources: A definition of requisite compute resources.
-           :param dict[Text, Text] env: A definition of key-value pairs for environment variables.
-           :param dict[Text, Text] config: A definition of configuration key-value pairs.
-           :type DataLoadingConfig data_loading_config: object
-           """
+        :param Text image: The fully-qualified identifier for the image.
+        :param list[Text] command: A list of 'words' for the command.  i.e. ['aws', 's3', 'ls']
+        :param list[Text] args: A list of arguments for the command.  i.e. ['s3://some/path', '/tmp/local/path']
+        :param Resources resources: A definition of requisite compute resources.
+        :param dict[Text, Text] env: A definition of key-value pairs for environment variables.
+        :param dict[Text, Text] config: A definition of configuration key-value pairs.
+        :type DataLoadingConfig data_loading_config: object
+        """
         self._data_loading_config = data_loading_config
         self._image = image
         self._command = command
@@ -867,7 +887,10 @@ class SidecarJob(_common.FlyteIdlEntity):
         :param flyteidl.admin.task_pb2.Task pb2_object:
         :rtype: Container
         """
-        return cls(pod_spec=pb2_object.pod_spec, primary_container_name=pb2_object.primary_container_name,)
+        return cls(
+            pod_spec=pb2_object.pod_spec,
+            primary_container_name=pb2_object.primary_container_name,
+        )
 
 
 class PyTorchJob(_common.FlyteIdlEntity):
@@ -879,8 +902,12 @@ class PyTorchJob(_common.FlyteIdlEntity):
         return self._workers_count
 
     def to_flyte_idl(self):
-        return _pytorch_task.DistributedPyTorchTrainingTask(workers=self.workers_count,)
+        return _pytorch_task.DistributedPyTorchTrainingTask(
+            workers=self.workers_count,
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
-        return cls(workers_count=pb2_object.workers,)
+        return cls(
+            workers_count=pb2_object.workers,
+        )

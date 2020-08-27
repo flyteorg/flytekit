@@ -37,7 +37,8 @@ class WorkflowSpec(_common.FlyteIdlEntity):
         :rtype: flyteidl.admin.workflow_pb2.WorkflowSpec
         """
         return _admin_workflow.WorkflowSpec(
-            template=self._template.to_flyte_idl(), sub_workflows=[s.to_flyte_idl() for s in self._sub_workflows],
+            template=self._template.to_flyte_idl(),
+            sub_workflows=[s.to_flyte_idl() for s in self._sub_workflows],
         )
 
     @classmethod

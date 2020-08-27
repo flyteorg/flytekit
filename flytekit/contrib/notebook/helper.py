@@ -29,8 +29,8 @@ def record_outputs(outputs=None):
 # TODO: Support Client Mode
 def get_spark_context(spark_conf):
     """
-       outputs: SparkContext
-       Returns appropriate SparkContext based on whether invoked via a Notebook or a Flyte workflow.
+    outputs: SparkContext
+    Returns appropriate SparkContext based on whether invoked via a Notebook or a Flyte workflow.
     """
     # We run in cluster-mode in Flyte.
     # Ref https://github.com/lyft/flyteplugins/blob/master/go/tasks/v1/flytek8s/k8s_resource_adds.go#L46

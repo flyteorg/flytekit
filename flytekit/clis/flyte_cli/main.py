@@ -102,7 +102,11 @@ def _get_io_string(literal_map, verbose=False):
     if value_dict:
         return "\n" + "\n".join(
             "{:30}: {}".format(
-                k, _prefix_lines("{:30}  ".format(""), v.verbose_string() if verbose else v.short_string(),),
+                k,
+                _prefix_lines(
+                    "{:30}  ".format(""),
+                    v.verbose_string() if verbose else v.short_string(),
+                ),
             )
             for k, v in _six.iteritems(value_dict)
         )
@@ -191,7 +195,10 @@ def _secho_node_execution_status(status, nl=True):
         fg = "blue"
 
     _click.secho(
-        "{:10} ".format(_tt(_core_execution_models.NodeExecutionPhase.enum_to_string(status))), bold=True, fg=fg, nl=nl,
+        "{:10} ".format(_tt(_core_execution_models.NodeExecutionPhase.enum_to_string(status))),
+        bold=True,
+        fg=fg,
+        nl=nl,
     )
 
 
@@ -216,7 +223,10 @@ def _secho_task_execution_status(status, nl=True):
         fg = "blue"
 
     _click.secho(
-        "{:10} ".format(_tt(_core_execution_models.TaskExecutionPhase.enum_to_string(status))), bold=True, fg=fg, nl=nl,
+        "{:10} ".format(_tt(_core_execution_models.TaskExecutionPhase.enum_to_string(status))),
+        bold=True,
+        fg=fg,
+        nl=nl,
     )
 
 
@@ -233,7 +243,8 @@ def _secho_one_execution(ex, urns_only):
         _secho_workflow_status(ex.closure.phase)
     else:
         _click.echo(
-            "{:100}".format(_tt(_identifier.WorkflowExecutionIdentifier.promote_from_model(ex.id))), nl=True,
+            "{:100}".format(_tt(_identifier.WorkflowExecutionIdentifier.promote_from_model(ex.id))),
+            nl=True,
         )
 
 
@@ -292,19 +303,33 @@ _INSECURE_FLAGS = ["-i", "--insecure"]
 
 _project_option = _click.option(*_PROJECT_FLAGS, required=True, help="The project namespace to query.")
 _optional_project_option = _click.option(
-    *_PROJECT_FLAGS, required=False, default=None, help="[Optional] The project namespace to query.",
+    *_PROJECT_FLAGS,
+    required=False,
+    default=None,
+    help="[Optional] The project namespace to query.",
 )
 _domain_option = _click.option(*_DOMAIN_FLAGS, required=True, help="The domain namespace to query.")
 _optional_domain_option = _click.option(
-    *_DOMAIN_FLAGS, required=False, default=None, help="[Optional] The domain namespace to query.",
+    *_DOMAIN_FLAGS,
+    required=False,
+    default=None,
+    help="[Optional] The domain namespace to query.",
 )
 _name_option = _click.option(*_NAME_FLAGS, required=True, help="The name to query.")
 _optional_name_option = _click.option(
-    *_NAME_FLAGS, required=False, type=str, default=None, help="[Optional] The name to query.",
+    *_NAME_FLAGS,
+    required=False,
+    type=str,
+    default=None,
+    help="[Optional] The name to query.",
 )
 _principal_option = _click.option(*_PRINCIPAL_FLAGS, required=True, help="Your team name, or your name")
 _optional_principal_option = _click.option(
-    *_PRINCIPAL_FLAGS, required=False, type=str, default=None, help="[Optional] Your team name, or your name",
+    *_PRINCIPAL_FLAGS,
+    required=False,
+    type=str,
+    default=None,
+    help="[Optional] Your team name, or your name",
 )
 _insecure_option = _click.option(*_INSECURE_FLAGS, is_flag=True, required=True, help="Do not use SSL")
 _urn_option = _click.option("-u", "--urn", required=True, help="The unique identifier for an entity.")
@@ -327,10 +352,19 @@ _token_option = _click.option(
     help="Pagination token from which to start listing in the list of results.",
 )
 _limit_option = _click.option(
-    "-l", "--limit", required=False, default=100, type=int, help="Maximum number of results to return for this call.",
+    "-l",
+    "--limit",
+    required=False,
+    default=100,
+    type=int,
+    help="Maximum number of results to return for this call.",
 )
 _show_all_option = _click.option(
-    "-a", "--show-all", is_flag=True, default=False, help="Set this flag to page through and list all results.",
+    "-a",
+    "--show-all",
+    is_flag=True,
+    default=False,
+    help="Set this flag to page through and list all results.",
 )
 # TODO: Provide documentation on filter format
 _filter_option = _click.option(
@@ -352,7 +386,10 @@ _named_entity_state_choice = _click.option(
     help="The state change to apply to a named entity",
 )
 _named_entity_description_option = _click.option(
-    "--description", required=False, type=str, help="Concise description for the entity.",
+    "--description",
+    required=False,
+    type=str,
+    help="Concise description for the entity.",
 )
 _sort_by_option = _click.option(
     "--sort-by",
@@ -367,7 +404,10 @@ _show_io_option = _click.option(
     " inputs and outputs.",
 )
 _verbose_option = _click.option(
-    "--verbose", is_flag=True, default=False, help="Set this flag to view the full textual description of all fields.",
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="Set this flag to view the full textual description of all fields.",
 )
 
 _filename_option = _click.option("-f", "--filename", required=True, help="File path of pb file")
@@ -378,7 +418,10 @@ _idl_class_option = _click.option(
     help="Dot (.) separated path to Python IDL class. (e.g. flyteidl.core.workflow_closure_pb2.WorkflowClosure)",
 )
 _cause_option = _click.option(
-    "-c", "--cause", required=True, help="The message signaling the cause of the termination of the execution(s)",
+    "-c",
+    "--cause",
+    required=True,
+    help="The message signaling the cause of the termination of the execution(s)",
 )
 _optional_urns_only_option = _click.option(
     "--urns-only",
@@ -388,13 +431,25 @@ _optional_urns_only_option = _click.option(
     help="[Optional] Set the flag if you want to output the urn(s) only. Setting this will override the verbose flag",
 )
 _project_identifier_option = _click.option(
-    "-p", "--identifier", required=True, type=str, help="Unique identifier for the project.",
+    "-p",
+    "--identifier",
+    required=True,
+    type=str,
+    help="Unique identifier for the project.",
 )
 _project_name_option = _click.option(
-    "-n", "--name", required=True, type=str, help="The human-readable name for the project.",
+    "-n",
+    "--name",
+    required=True,
+    type=str,
+    help="The human-readable name for the project.",
 )
 _project_description_option = _click.option(
-    "-d", "--description", required=True, type=str, help="Concise description for the project.",
+    "-d",
+    "--description",
+    required=True,
+    type=str,
+    help="Concise description for the project.",
 )
 _watch_option = _click.option(
     "-w",
@@ -584,7 +639,12 @@ def list_task_versions(project, domain, name, host, insecure, token, limit, show
             sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None,
         )
         for t in task_list:
-            _click.echo("{:50} {:40}".format(_tt(t.id.version), _tt(_identifier.Identifier.promote_from_model(t.id)),))
+            _click.echo(
+                "{:50} {:40}".format(
+                    _tt(t.id.version),
+                    _tt(_identifier.Identifier.promote_from_model(t.id)),
+                )
+            )
 
         if show_all is not True:
             if next_token:
@@ -731,7 +791,12 @@ def list_workflow_versions(project, domain, name, host, insecure, token, limit, 
             sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None,
         )
         for w in wf_list:
-            _click.echo("{:50} {:40}".format(_tt(w.id.version), _tt(_identifier.Identifier.promote_from_model(w.id)),))
+            _click.echo(
+                "{:50} {:40}".format(
+                    _tt(w.id.version),
+                    _tt(_identifier.Identifier.promote_from_model(w.id)),
+                )
+            )
 
         if show_all is not True:
             if next_token:
@@ -873,7 +938,17 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
 @_sort_by_option
 @_optional_urns_only_option
 def list_launch_plan_versions(
-    project, domain, name, host, insecure, token, limit, show_all, filter, sort_by, urns_only,
+    project,
+    domain,
+    name,
+    host,
+    insecure,
+    token,
+    limit,
+    show_all,
+    filter,
+    sort_by,
+    urns_only,
 ):
     """
     List the versions of all the launch plans under the scope specified by {project, domain}.
@@ -898,7 +973,10 @@ def list_launch_plan_versions(
                 _click.echo(_tt(_identifier.Identifier.promote_from_model(l.id)))
             else:
                 _click.echo(
-                    "{:50} {:80} ".format(_tt(l.id.version), _tt(_identifier.Identifier.promote_from_model(l.id)),),
+                    "{:50} {:80} ".format(
+                        _tt(l.id.version),
+                        _tt(_identifier.Identifier.promote_from_model(l.id)),
+                    ),
                     nl=False,
                 )
                 if l.spec.entity_metadata.schedule.cron_expression or l.spec.entity_metadata.schedule.rate:
@@ -1260,21 +1338,27 @@ def _get_io(node_executions, wf_execution, show_io, verbose):
 def _render_workflow_execution(wf_execution, uri_to_message_map, show_io, verbose):
     _click.echo(
         "\nExecution {project}:{domain}:{name}\n".format(
-            project=_tt(wf_execution.id.project), domain=_tt(wf_execution.id.domain), name=_tt(wf_execution.id.name),
+            project=_tt(wf_execution.id.project),
+            domain=_tt(wf_execution.id.domain),
+            name=_tt(wf_execution.id.name),
         )
     )
     _click.echo("\t{:15} ".format("State:"), nl=False)
     _secho_workflow_status(wf_execution.closure.phase)
     _click.echo(
         "\t{:15} {}".format(
-            "Launch Plan:", _tt(_identifier.Identifier.promote_from_model(wf_execution.spec.launch_plan)),
+            "Launch Plan:",
+            _tt(_identifier.Identifier.promote_from_model(wf_execution.spec.launch_plan)),
         )
     )
 
     if show_io:
         _click.secho(
             "\tInputs: {}\n".format(
-                _prefix_lines("\t\t", _get_io_string(wf_execution.closure.computed_inputs, verbose=verbose),)
+                _prefix_lines(
+                    "\t\t",
+                    _get_io_string(wf_execution.closure.computed_inputs, verbose=verbose),
+                )
             )
         )
         if wf_execution.closure.outputs is not None:
@@ -1283,14 +1367,20 @@ def _render_workflow_execution(wf_execution, uri_to_message_map, show_io, verbos
                     "\tOutputs: {}\n".format(
                         _prefix_lines(
                             "\t\t",
-                            uri_to_message_map.get(wf_execution.closure.outputs.uri, wf_execution.closure.outputs.uri,),
+                            uri_to_message_map.get(
+                                wf_execution.closure.outputs.uri,
+                                wf_execution.closure.outputs.uri,
+                            ),
                         )
                     )
                 )
             elif wf_execution.closure.outputs.values is not None:
                 _click.secho(
                     "\tOutputs: {}\n".format(
-                        _prefix_lines("\t\t", _get_io_string(wf_execution.closure.outputs.values, verbose=verbose),)
+                        _prefix_lines(
+                            "\t\t",
+                            _get_io_string(wf_execution.closure.outputs.values, verbose=verbose),
+                        )
                     )
                 )
             else:
@@ -1298,7 +1388,9 @@ def _render_workflow_execution(wf_execution, uri_to_message_map, show_io, verbos
 
     if wf_execution.closure.error is not None:
         _click.secho(
-            _prefix_lines("\t", _render_error(wf_execution.closure.error)), fg="red", bold=True,
+            _prefix_lines("\t", _render_error(wf_execution.closure.error)),
+            fg="red",
+            bold=True,
         )
 
 
@@ -1317,7 +1409,9 @@ def _get_all_task_executions_for_node(client, node_execution_identifier):
     while True:
         num_to_fetch = 100
         task_execs, next_token = client.list_task_executions_paginated(
-            node_execution_identifier=node_execution_identifier, limit=num_to_fetch, token=token,
+            node_execution_identifier=node_execution_identifier,
+            limit=num_to_fetch,
+            token=token,
         )
         for te in task_execs:
             fetched_task_execs.append(te)
@@ -1336,11 +1430,15 @@ def _get_all_node_executions(client, workflow_execution_identifier=None, task_ex
         num_to_fetch = 100
         if workflow_execution_identifier:
             node_execs, next_token = client.list_node_executions(
-                workflow_execution_identifier=workflow_execution_identifier, limit=num_to_fetch, token=token,
+                workflow_execution_identifier=workflow_execution_identifier,
+                limit=num_to_fetch,
+                token=token,
             )
         else:
             node_execs, next_token = client.list_node_executions_for_task_paginated(
-                task_execution_identifier=task_execution_identifier, limit=num_to_fetch, token=token,
+                task_execution_identifier=task_execution_identifier,
+                limit=num_to_fetch,
+                token=token,
             )
         all_node_execs.extend(node_execs)
         if not next_token:
@@ -1369,7 +1467,11 @@ def _render_node_executions(client, node_execs, show_io, verbose, host, insecure
         _click.echo("\t\t\t{:15} {:60} ".format("Duration:", _tt(ne.closure.duration)))
         _click.echo(
             "\t\t\t{:15} {}".format(
-                "Input:", _prefix_lines("\t\t\t{:15} ".format(""), uri_to_message_map.get(ne.input_uri, ne.input_uri),),
+                "Input:",
+                _prefix_lines(
+                    "\t\t\t{:15} ".format(""),
+                    uri_to_message_map.get(ne.input_uri, ne.input_uri),
+                ),
             )
         )
         if ne.closure.output_uri:
@@ -1377,13 +1479,16 @@ def _render_node_executions(client, node_execs, show_io, verbose, host, insecure
                 "\t\t\t{:15} {}".format(
                     "Output:",
                     _prefix_lines(
-                        "\t\t\t{:15} ".format(""), uri_to_message_map.get(ne.closure.output_uri, ne.closure.output_uri),
+                        "\t\t\t{:15} ".format(""),
+                        uri_to_message_map.get(ne.closure.output_uri, ne.closure.output_uri),
                     ),
                 )
             )
         if ne.closure.error is not None:
             _click.secho(
-                _prefix_lines("\t\t\t", _render_error(ne.closure.error)), bold=True, fg="red",
+                _prefix_lines("\t\t\t", _render_error(ne.closure.error)),
+                bold=True,
+                fg="red",
             )
 
         task_executions = node_executions_to_task_executions.get(ne.id, [])
@@ -1407,7 +1512,9 @@ def _render_node_executions(client, node_execs, show_io, verbose, host, insecure
 
                 if te.closure.error is not None:
                     _click.secho(
-                        _prefix_lines("\t\t\t\t\t", _render_error(te.closure.error)), bold=True, fg="red",
+                        _prefix_lines("\t\t\t\t\t", _render_error(te.closure.error)),
+                        bold=True,
+                        fg="red",
                     )
 
                 if te.is_parent:
@@ -1454,7 +1561,8 @@ def get_child_executions(urn, host, insecure, show_io, verbose):
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     node_execs = _get_all_node_executions(
-        client, task_execution_identifier=_identifier.TaskExecutionIdentifier.from_python_std(urn),
+        client,
+        task_execution_identifier=_identifier.TaskExecutionIdentifier.from_python_std(urn),
     )
     _render_node_executions(client, node_execs, show_io, verbose, host, insecure)
 
@@ -1519,7 +1627,9 @@ def _extract_files(file_paths):
 @_host_option
 @_insecure_option
 @_click.argument(
-    "files", type=_click.Path(exists=True), nargs=-1,
+    "files",
+    type=_click.Path(exists=True),
+    nargs=-1,
 )
 def register_files(host, insecure, files):
     """
@@ -1840,7 +1950,8 @@ def setup_config(host, insecure):
     config_dir = _os.path.join(_get_user_filepath_home(), _default_config_file_dir)
     if not _os.path.isdir(config_dir):
         _click.secho(
-            "Creating default Flyte configuration directory at {}".format(_tt(config_dir)), fg="blue",
+            "Creating default Flyte configuration directory at {}".format(_tt(config_dir)),
+            fg="blue",
         )
         _os.mkdir(config_dir)
 

@@ -134,14 +134,17 @@ class SdkSidecarTask(_sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.Extende
         pod_spec.containers.extend(final_containers)
 
         sidecar_job_plugin = _task_models.SidecarJob(
-            pod_spec=pod_spec, primary_container_name=primary_container_name,
+            pod_spec=pod_spec,
+            primary_container_name=primary_container_name,
         ).to_flyte_idl()
 
         self.assign_custom_and_return(_MessageToDict(sidecar_job_plugin))
 
 
 class SdkDynamicSidecarTask(
-    _sdk_dynamic.SdkDynamicTaskMixin, SdkSidecarTask, metaclass=_sdk_bases.ExtendedSdkType,
+    _sdk_dynamic.SdkDynamicTaskMixin,
+    SdkSidecarTask,
+    metaclass=_sdk_bases.ExtendedSdkType,
 ):
 
     """

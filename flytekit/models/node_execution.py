@@ -123,7 +123,9 @@ class NodeExecution(_common_models.FlyteIdlEntity):
         :rtype: flyteidl.admin.node_execution_pb2.NodeExecution
         """
         return _node_execution_pb2.NodeExecution(
-            id=self.id.to_flyte_idl(), input_uri=self.input_uri, closure=self.closure.to_flyte_idl(),
+            id=self.id.to_flyte_idl(),
+            input_uri=self.input_uri,
+            closure=self.closure.to_flyte_idl(),
         )
 
     @classmethod

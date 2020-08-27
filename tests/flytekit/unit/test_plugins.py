@@ -28,7 +28,10 @@ def test_schema_plugin():
 @pytest.mark.run(order=2)
 def test_sidecar_plugin():
     assert isinstance(plugins.k8s.io.api.core.v1.generated_pb2, lazy_loader._LazyLoadModule)
-    assert isinstance(plugins.k8s.io.apimachinery.pkg.api.resource.generated_pb2, lazy_loader._LazyLoadModule,)
+    assert isinstance(
+        plugins.k8s.io.apimachinery.pkg.api.resource.generated_pb2,
+        lazy_loader._LazyLoadModule,
+    )
     import k8s.io.api.core.v1.generated_pb2
     import k8s.io.apimachinery.pkg.api.resource.generated_pb2
 

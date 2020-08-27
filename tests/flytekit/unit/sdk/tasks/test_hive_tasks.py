@@ -38,7 +38,9 @@ def sample_hive_task_no_queries(wf_params):
 
 
 @qubole_hive_task(
-    cache_version="1", cluster_label=_six.text_type("cluster_label"), tags=[],
+    cache_version="1",
+    cluster_label=_six.text_type("cluster_label"),
+    tags=[],
 )
 def sample_qubole_hive_task_no_input(wf_params):
     return _six.text_type("select 5")
@@ -46,7 +48,9 @@ def sample_qubole_hive_task_no_input(wf_params):
 
 @inputs(in1=Types.Integer)
 @qubole_hive_task(
-    cache_version="1", cluster_label=_six.text_type("cluster_label"), tags=[_six.text_type("tag1")],
+    cache_version="1",
+    cluster_label=_six.text_type("cluster_label"),
+    tags=[_six.text_type("tag1")],
 )
 def sample_qubole_hive_task(wf_params, in1):
     return _six.text_type("select ") + _six.text_type(in1)

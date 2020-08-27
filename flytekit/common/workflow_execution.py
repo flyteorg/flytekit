@@ -14,7 +14,11 @@ from flytekit.models.core import execution as _core_execution_models
 
 
 class SdkWorkflowExecution(
-    _six.with_metaclass(_sdk_bases.ExtendedSdkType, _execution_models.Execution, _artifact.ExecutionArtifact,)
+    _six.with_metaclass(
+        _sdk_bases.ExtendedSdkType,
+        _execution_models.Execution,
+        _artifact.ExecutionArtifact,
+    )
 ):
     def __init__(self, *args, **kwargs):
         super(SdkWorkflowExecution, self).__init__(*args, **kwargs)

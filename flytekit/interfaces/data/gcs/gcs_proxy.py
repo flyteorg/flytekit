@@ -128,7 +128,10 @@ class GCSProxy(_common_data.DataProxy):
         GCSProxy._check_binary()
 
         cmd = self._maybe_with_gsutil_parallelism(
-            "cp", "-r", _amend_path(local_path), remote_path if remote_path.endswith("/") else remote_path + "/",
+            "cp",
+            "-r",
+            _amend_path(local_path),
+            remote_path if remote_path.endswith("/") else remote_path + "/",
         )
         return _update_cmd_config_and_execute(cmd)
 

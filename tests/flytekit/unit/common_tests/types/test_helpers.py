@@ -37,7 +37,8 @@ def test_get_sdk_value_from_literal():
     assert o.to_python_std() is None
 
     o = _type_helpers.get_sdk_value_from_literal(
-        _literals.Literal(scalar=_literals.Scalar(none_type=_literals.Void())), sdk_type=_sdk_types.Types.Integer,
+        _literals.Literal(scalar=_literals.Scalar(none_type=_literals.Void())),
+        sdk_type=_sdk_types.Types.Integer,
     )
     assert o.to_python_std() is None
 

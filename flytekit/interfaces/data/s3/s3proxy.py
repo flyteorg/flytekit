@@ -7,7 +7,7 @@ import string as _string
 import sys as _sys
 import time
 import uuid as _uuid
-from typing import List, Dict
+from typing import Dict, List
 
 from six import moves as _six_moves
 from six import text_type as _text_type
@@ -96,9 +96,9 @@ class AwsS3Proxy(_common_data.DataProxy):
         :param Text path:
         :rtype: (Text, Text)
         """
-        path = path[len("s3://"):]
+        path = path[len("s3://") :]
         first_slash = path.index("/")
-        return path[:first_slash], path[first_slash + 1:]
+        return path[:first_slash], path[first_slash + 1 :]
 
     def exists(self, remote_path):
         """

@@ -31,7 +31,10 @@ _EMPTY_LITERAL_MAP = literals.LiteralMap(literals={})
 @pytest.fixture(scope="function", autouse=True)
 def temp_config():
     with TemporaryConfiguration(
-        os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../../common/configs/local.config",),
+        os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            "../../../common/configs/local.config",
+        ),
         internal_overrides={
             "image": "myflyteimage:{}".format(os.environ.get("IMAGE_VERSION", "sha")),
             "project": "myflyteproject",
@@ -73,7 +76,10 @@ def test_task_system_failure():
         engine.FlyteTask(m).execute(None, {"output_prefix": tmp.name})
 
         doc = errors.ErrorDocument.from_flyte_idl(
-            utils.load_proto_from_file(errors_pb2.ErrorDocument, os.path.join(tmp.name, constants.ERROR_FILE_NAME),)
+            utils.load_proto_from_file(
+                errors_pb2.ErrorDocument,
+                os.path.join(tmp.name, constants.ERROR_FILE_NAME),
+            )
         )
         assert doc.error.code == "SYSTEM:Unknown"
         assert doc.error.kind == errors.ContainerError.Kind.RECOVERABLE
@@ -89,7 +95,10 @@ def test_task_user_failure():
         engine.FlyteTask(m).execute(None, {"output_prefix": tmp.name})
 
         doc = errors.ErrorDocument.from_flyte_idl(
-            utils.load_proto_from_file(errors_pb2.ErrorDocument, os.path.join(tmp.name, constants.ERROR_FILE_NAME),)
+            utils.load_proto_from_file(
+                errors_pb2.ErrorDocument,
+                os.path.join(tmp.name, constants.ERROR_FILE_NAME),
+            )
         )
         assert doc.error.code == "USER:Unknown"
         assert doc.error.kind == errors.ContainerError.Kind.NON_RECOVERABLE
@@ -114,7 +123,13 @@ def test_execution_notification_overrides(mock_client_factory):
         "xd",
         "xn",
         _execution_models.ExecutionSpec(
-            identifier.Identifier(identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version",),
+            identifier.Identifier(
+                identifier.ResourceType.LAUNCH_PLAN,
+                "project",
+                "domain",
+                "name",
+                "version",
+            ),
             _execution_models.ExecutionMetadata(_execution_models.ExecutionMetadata.ExecutionMode.MANUAL, "sdk", 0),
             disable_all=True,
         ),
@@ -142,7 +157,13 @@ def test_execution_notification_soft_overrides(mock_client_factory):
         "xd",
         "xn",
         _execution_models.ExecutionSpec(
-            identifier.Identifier(identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version",),
+            identifier.Identifier(
+                identifier.ResourceType.LAUNCH_PLAN,
+                "project",
+                "domain",
+                "name",
+                "version",
+            ),
             _execution_models.ExecutionMetadata(_execution_models.ExecutionMetadata.ExecutionMode.MANUAL, "sdk", 0),
             notifications=_execution_models.NotificationList([notification]),
         ),
@@ -163,7 +184,12 @@ def test_execution_label_overrides(mock_client_factory):
 
     labels = _common_models.Labels({"my": "label"})
     engine.FlyteLaunchPlan(m).execute(
-        "xp", "xd", "xn", literals.LiteralMap({}), notification_overrides=[], label_overrides=labels,
+        "xp",
+        "xd",
+        "xn",
+        literals.LiteralMap({}),
+        notification_overrides=[],
+        label_overrides=labels,
     )
 
     mock_client.create_execution.assert_called_once_with(
@@ -171,7 +197,13 @@ def test_execution_label_overrides(mock_client_factory):
         "xd",
         "xn",
         _execution_models.ExecutionSpec(
-            identifier.Identifier(identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version",),
+            identifier.Identifier(
+                identifier.ResourceType.LAUNCH_PLAN,
+                "project",
+                "domain",
+                "name",
+                "version",
+            ),
             _execution_models.ExecutionMetadata(_execution_models.ExecutionMetadata.ExecutionMode.MANUAL, "sdk", 0),
             disable_all=True,
             labels=labels,
@@ -193,7 +225,12 @@ def test_execution_annotation_overrides(mock_client_factory):
 
     annotations = _common_models.Annotations({"my": "annotation"})
     engine.FlyteLaunchPlan(m).launch(
-        "xp", "xd", "xn", literals.LiteralMap({}), notification_overrides=[], annotation_overrides=annotations,
+        "xp",
+        "xd",
+        "xn",
+        literals.LiteralMap({}),
+        notification_overrides=[],
+        annotation_overrides=annotations,
     )
 
     mock_client.create_execution.assert_called_once_with(
@@ -201,7 +238,13 @@ def test_execution_annotation_overrides(mock_client_factory):
         "xd",
         "xn",
         _execution_models.ExecutionSpec(
-            identifier.Identifier(identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version",),
+            identifier.Identifier(
+                identifier.ResourceType.LAUNCH_PLAN,
+                "project",
+                "domain",
+                "name",
+                "version",
+            ),
             _execution_models.ExecutionMetadata(_execution_models.ExecutionMetadata.ExecutionMode.MANUAL, "sdk", 0),
             disable_all=True,
             annotations=annotations,
@@ -256,12 +299,23 @@ def test_fetch_active_launch_plan(mock_client_factory):
 def test_get_full_execution_inputs(mock_client_factory):
     mock_client = MagicMock()
     mock_client.get_execution_data = MagicMock(
-        return_value=_execution_models.WorkflowExecutionGetDataResponse(None, None, _INPUT_MAP, _OUTPUT_MAP,)
+        return_value=_execution_models.WorkflowExecutionGetDataResponse(
+            None,
+            None,
+            _INPUT_MAP,
+            _OUTPUT_MAP,
+        )
     )
     mock_client_factory.return_value = mock_client
 
     m = MagicMock()
-    type(m).id = PropertyMock(return_value=identifier.WorkflowExecutionIdentifier("project", "domain", "name",))
+    type(m).id = PropertyMock(
+        return_value=identifier.WorkflowExecutionIdentifier(
+            "project",
+            "domain",
+            "name",
+        )
+    )
 
     inputs = engine.FlyteWorkflowExecution(m).get_inputs()
     assert len(inputs.literals) == 1
@@ -282,7 +336,13 @@ def test_get_execution_inputs(mock_client_factory, execution_data_locations):
     mock_client_factory.return_value = mock_client
 
     m = MagicMock()
-    type(m).id = PropertyMock(return_value=identifier.WorkflowExecutionIdentifier("project", "domain", "name",))
+    type(m).id = PropertyMock(
+        return_value=identifier.WorkflowExecutionIdentifier(
+            "project",
+            "domain",
+            "name",
+        )
+    )
 
     inputs = engine.FlyteWorkflowExecution(m).get_inputs()
     assert len(inputs.literals) == 1
@@ -301,7 +361,13 @@ def test_get_full_execution_outputs(mock_client_factory):
     mock_client_factory.return_value = mock_client
 
     m = MagicMock()
-    type(m).id = PropertyMock(return_value=identifier.WorkflowExecutionIdentifier("project", "domain", "name",))
+    type(m).id = PropertyMock(
+        return_value=identifier.WorkflowExecutionIdentifier(
+            "project",
+            "domain",
+            "name",
+        )
+    )
 
     outputs = engine.FlyteWorkflowExecution(m).get_outputs()
     assert len(outputs.literals) == 1
@@ -322,7 +388,13 @@ def test_get_execution_outputs(mock_client_factory, execution_data_locations):
     mock_client_factory.return_value = mock_client
 
     m = MagicMock()
-    type(m).id = PropertyMock(return_value=identifier.WorkflowExecutionIdentifier("project", "domain", "name",))
+    type(m).id = PropertyMock(
+        return_value=identifier.WorkflowExecutionIdentifier(
+            "project",
+            "domain",
+            "name",
+        )
+    )
 
     inputs = engine.FlyteWorkflowExecution(m).get_outputs()
     assert len(inputs.literals) == 1
@@ -336,14 +408,24 @@ def test_get_execution_outputs(mock_client_factory, execution_data_locations):
 def test_get_full_node_execution_inputs(mock_client_factory):
     mock_client = MagicMock()
     mock_client.get_node_execution_data = MagicMock(
-        return_value=_execution_models.NodeExecutionGetDataResponse(None, None, _INPUT_MAP, _OUTPUT_MAP,)
+        return_value=_execution_models.NodeExecutionGetDataResponse(
+            None,
+            None,
+            _INPUT_MAP,
+            _OUTPUT_MAP,
+        )
     )
     mock_client_factory.return_value = mock_client
 
     m = MagicMock()
     type(m).id = PropertyMock(
         return_value=identifier.NodeExecutionIdentifier(
-            "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+            "node-a",
+            identifier.WorkflowExecutionIdentifier(
+                "project",
+                "domain",
+                "name",
+            ),
         )
     )
 
@@ -352,7 +434,12 @@ def test_get_full_node_execution_inputs(mock_client_factory):
     assert inputs.literals["a"].scalar.primitive.integer == 1
     mock_client.get_node_execution_data.assert_called_once_with(
         identifier.NodeExecutionIdentifier(
-            "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+            "node-a",
+            identifier.WorkflowExecutionIdentifier(
+                "project",
+                "domain",
+                "name",
+            ),
         )
     )
 
@@ -370,7 +457,12 @@ def test_get_node_execution_inputs(mock_client_factory, execution_data_locations
     m = MagicMock()
     type(m).id = PropertyMock(
         return_value=identifier.NodeExecutionIdentifier(
-            "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+            "node-a",
+            identifier.WorkflowExecutionIdentifier(
+                "project",
+                "domain",
+                "name",
+            ),
         )
     )
 
@@ -379,7 +471,12 @@ def test_get_node_execution_inputs(mock_client_factory, execution_data_locations
     assert inputs.literals["a"].scalar.primitive.integer == 1
     mock_client.get_node_execution_data.assert_called_once_with(
         identifier.NodeExecutionIdentifier(
-            "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+            "node-a",
+            identifier.WorkflowExecutionIdentifier(
+                "project",
+                "domain",
+                "name",
+            ),
         )
     )
 
@@ -395,7 +492,12 @@ def test_get_full_node_execution_outputs(mock_client_factory):
     m = MagicMock()
     type(m).id = PropertyMock(
         return_value=identifier.NodeExecutionIdentifier(
-            "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+            "node-a",
+            identifier.WorkflowExecutionIdentifier(
+                "project",
+                "domain",
+                "name",
+            ),
         )
     )
 
@@ -404,7 +506,12 @@ def test_get_full_node_execution_outputs(mock_client_factory):
     assert outputs.literals["b"].scalar.primitive.integer == 2
     mock_client.get_node_execution_data.assert_called_once_with(
         identifier.NodeExecutionIdentifier(
-            "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+            "node-a",
+            identifier.WorkflowExecutionIdentifier(
+                "project",
+                "domain",
+                "name",
+            ),
         )
     )
 
@@ -422,7 +529,12 @@ def test_get_node_execution_outputs(mock_client_factory, execution_data_location
     m = MagicMock()
     type(m).id = PropertyMock(
         return_value=identifier.NodeExecutionIdentifier(
-            "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+            "node-a",
+            identifier.WorkflowExecutionIdentifier(
+                "project",
+                "domain",
+                "name",
+            ),
         )
     )
 
@@ -431,7 +543,12 @@ def test_get_node_execution_outputs(mock_client_factory, execution_data_location
     assert inputs.literals["b"].scalar.primitive.integer == 2
     mock_client.get_node_execution_data.assert_called_once_with(
         identifier.NodeExecutionIdentifier(
-            "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+            "node-a",
+            identifier.WorkflowExecutionIdentifier(
+                "project",
+                "domain",
+                "name",
+            ),
         )
     )
 
@@ -447,9 +564,20 @@ def test_get_full_task_execution_inputs(mock_client_factory):
     m = MagicMock()
     type(m).id = PropertyMock(
         return_value=identifier.TaskExecutionIdentifier(
-            identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "task-name", "version",),
+            identifier.Identifier(
+                identifier.ResourceType.TASK,
+                "project",
+                "domain",
+                "task-name",
+                "version",
+            ),
             identifier.NodeExecutionIdentifier(
-                "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+                "node-a",
+                identifier.WorkflowExecutionIdentifier(
+                    "project",
+                    "domain",
+                    "name",
+                ),
             ),
             0,
         )
@@ -460,9 +588,20 @@ def test_get_full_task_execution_inputs(mock_client_factory):
     assert inputs.literals["a"].scalar.primitive.integer == 1
     mock_client.get_task_execution_data.assert_called_once_with(
         identifier.TaskExecutionIdentifier(
-            identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "task-name", "version",),
+            identifier.Identifier(
+                identifier.ResourceType.TASK,
+                "project",
+                "domain",
+                "task-name",
+                "version",
+            ),
             identifier.NodeExecutionIdentifier(
-                "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+                "node-a",
+                identifier.WorkflowExecutionIdentifier(
+                    "project",
+                    "domain",
+                    "name",
+                ),
             ),
             0,
         )
@@ -482,9 +621,20 @@ def test_get_task_execution_inputs(mock_client_factory, execution_data_locations
     m = MagicMock()
     type(m).id = PropertyMock(
         return_value=identifier.TaskExecutionIdentifier(
-            identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "task-name", "version",),
+            identifier.Identifier(
+                identifier.ResourceType.TASK,
+                "project",
+                "domain",
+                "task-name",
+                "version",
+            ),
             identifier.NodeExecutionIdentifier(
-                "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+                "node-a",
+                identifier.WorkflowExecutionIdentifier(
+                    "project",
+                    "domain",
+                    "name",
+                ),
             ),
             0,
         )
@@ -495,9 +645,20 @@ def test_get_task_execution_inputs(mock_client_factory, execution_data_locations
     assert inputs.literals["a"].scalar.primitive.integer == 1
     mock_client.get_task_execution_data.assert_called_once_with(
         identifier.TaskExecutionIdentifier(
-            identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "task-name", "version",),
+            identifier.Identifier(
+                identifier.ResourceType.TASK,
+                "project",
+                "domain",
+                "task-name",
+                "version",
+            ),
             identifier.NodeExecutionIdentifier(
-                "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+                "node-a",
+                identifier.WorkflowExecutionIdentifier(
+                    "project",
+                    "domain",
+                    "name",
+                ),
             ),
             0,
         )
@@ -515,9 +676,20 @@ def test_get_full_task_execution_outputs(mock_client_factory):
     m = MagicMock()
     type(m).id = PropertyMock(
         return_value=identifier.TaskExecutionIdentifier(
-            identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "task-name", "version",),
+            identifier.Identifier(
+                identifier.ResourceType.TASK,
+                "project",
+                "domain",
+                "task-name",
+                "version",
+            ),
             identifier.NodeExecutionIdentifier(
-                "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+                "node-a",
+                identifier.WorkflowExecutionIdentifier(
+                    "project",
+                    "domain",
+                    "name",
+                ),
             ),
             0,
         )
@@ -528,9 +700,20 @@ def test_get_full_task_execution_outputs(mock_client_factory):
     assert outputs.literals["b"].scalar.primitive.integer == 2
     mock_client.get_task_execution_data.assert_called_once_with(
         identifier.TaskExecutionIdentifier(
-            identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "task-name", "version",),
+            identifier.Identifier(
+                identifier.ResourceType.TASK,
+                "project",
+                "domain",
+                "task-name",
+                "version",
+            ),
             identifier.NodeExecutionIdentifier(
-                "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+                "node-a",
+                identifier.WorkflowExecutionIdentifier(
+                    "project",
+                    "domain",
+                    "name",
+                ),
             ),
             0,
         )
@@ -550,9 +733,20 @@ def test_get_task_execution_outputs(mock_client_factory, execution_data_location
     m = MagicMock()
     type(m).id = PropertyMock(
         return_value=identifier.TaskExecutionIdentifier(
-            identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "task-name", "version",),
+            identifier.Identifier(
+                identifier.ResourceType.TASK,
+                "project",
+                "domain",
+                "task-name",
+                "version",
+            ),
             identifier.NodeExecutionIdentifier(
-                "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+                "node-a",
+                identifier.WorkflowExecutionIdentifier(
+                    "project",
+                    "domain",
+                    "name",
+                ),
             ),
             0,
         )
@@ -563,9 +757,20 @@ def test_get_task_execution_outputs(mock_client_factory, execution_data_location
     assert inputs.literals["b"].scalar.primitive.integer == 2
     mock_client.get_task_execution_data.assert_called_once_with(
         identifier.TaskExecutionIdentifier(
-            identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "task-name", "version",),
+            identifier.Identifier(
+                identifier.ResourceType.TASK,
+                "project",
+                "domain",
+                "task-name",
+                "version",
+            ),
             identifier.NodeExecutionIdentifier(
-                "node-a", identifier.WorkflowExecutionIdentifier("project", "domain", "name",),
+                "node-a",
+                identifier.WorkflowExecutionIdentifier(
+                    "project",
+                    "domain",
+                    "name",
+                ),
             ),
             0,
         )
@@ -575,7 +780,12 @@ def test_get_task_execution_outputs(mock_client_factory, execution_data_location
 @pytest.mark.parametrize(
     "tasks",
     [
-        [_task_models.Task(identifier.Identifier(identifier.ResourceType.TASK, "p1", "d1", "n1", "v1"), MagicMock(),)],
+        [
+            _task_models.Task(
+                identifier.Identifier(identifier.ResourceType.TASK, "p1", "d1", "n1", "v1"),
+                MagicMock(),
+            )
+        ],
         [],
     ],
 )

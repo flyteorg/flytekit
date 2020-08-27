@@ -31,7 +31,10 @@ def sum_non_none(workflow_parameters, value1_to_print, value2_to_print, out):
 
 
 @inputs(
-    value1_to_add=Types.Integer, value2_to_add=Types.Integer, value3_to_add=Types.Integer, value4_to_add=Types.Integer,
+    value1_to_add=Types.Integer,
+    value2_to_add=Types.Integer,
+    value3_to_add=Types.Integer,
+    value4_to_add=Types.Integer,
 )
 @outputs(out=Types.Integer)
 @python_task(cache_version="1")

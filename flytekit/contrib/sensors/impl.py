@@ -98,7 +98,10 @@ class HiveFilteredPartitionSensor(_HiveSensor):
         """
         with self._hive_metastore_client as client:
             partitions = client.get_partitions_by_filter(
-                db_name=self._schema, tbl_name=self._table_name, filter=self._partition_filter, max_parts=1,
+                db_name=self._schema,
+                tbl_name=self._table_name,
+                filter=self._partition_filter,
+                max_parts=1,
             )
             if partitions:
                 return True, None

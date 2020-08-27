@@ -12,7 +12,8 @@ class SensorTask(_sdk_runnable.SdkRunnableTask):
         if sensor is not None:
             if not isinstance(sensor, _Sensor):
                 raise _user_exceptions.FlyteTypeException(
-                    received_type=type(sensor), expected_type=_Sensor,
+                    received_type=type(sensor),
+                    expected_type=_Sensor,
                 )
             succeeded = sensor.sense()
             if not succeeded:

@@ -89,7 +89,8 @@ class UnitTestEngineTask(_common_engine.BaseTaskExecutor):
         :rtype: dict[Text,flytekit.models.common.FlyteIdlEntity]
         """
         with _TemporaryConfiguration(
-            _os.path.join(_os.path.dirname(__file__), "unit.config"), internal_overrides={"image": "unit_image"},
+            _os.path.join(_os.path.dirname(__file__), "unit.config"),
+            internal_overrides={"image": "unit_image"},
         ):
             with _common_utils.AutoDeletingTempDir("unit_test_dir") as working_directory:
                 with _data_proxy.LocalWorkingDirectoryContext(working_directory):
@@ -148,7 +149,8 @@ class ReturnOutputsTask(UnitTestEngineTask):
         literal_map = outputs[_sdk_constants.OUTPUT_FILE_NAME]
         return {
             name: _type_helpers.get_sdk_value_from_literal(
-                literal_map.literals[name], sdk_type=_type_helpers.get_sdk_type_from_literal_type(variable.type),
+                literal_map.literals[name],
+                sdk_type=_type_helpers.get_sdk_type_from_literal_type(variable.type),
             ).to_python_std()
             for name, variable in _six.iteritems(self.sdk_task.interface.outputs)
         }
@@ -233,7 +235,11 @@ class DynamicTask(ReturnOutputsTask):
         array_job = _array_job.ArrayJob.from_dict(task.custom)
         outputs = {}
         for job_index in _six_moves.range(0, array_job.size):
-            inputs_path = _os.path.join(root_input_path, _six.text_type(job_index), _sdk_constants.INPUT_FILE_NAME,)
+            inputs_path = _os.path.join(
+                root_input_path,
+                _six.text_type(job_index),
+                _sdk_constants.INPUT_FILE_NAME,
+            )
             if inputs_path not in array_inputs:
                 raise _system_exception.FlyteSystemAssertion(
                     "dynamic task hasn't generated expected inputs document [{}].".format(inputs_path)

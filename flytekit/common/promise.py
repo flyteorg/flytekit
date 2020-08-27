@@ -113,7 +113,13 @@ class Input(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.Pa
 
         if model.default is not None:
             default_value = sdk_type.from_flyte_idl(model.default.to_flyte_idl()).to_python_std()
-            return cls("", sdk_type, help=model.var.description, required=False, default=default_value,)
+            return cls(
+                "",
+                sdk_type,
+                help=model.var.description,
+                required=False,
+                default=default_value,
+            )
         else:
             return cls("", sdk_type, help=model.var.description, required=True)
 

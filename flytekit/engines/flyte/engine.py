@@ -123,7 +123,9 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         task_list, _ = _FlyteClientManager(
             _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
         ).client.list_tasks_paginated(
-            named_task, limit=1, sort_by=_common.Sort("created_at", _common.Sort.Direction.DESCENDING),
+            named_task,
+            limit=1,
+            sort_by=_common.Sort("created_at", _common.Sort.Direction.DESCENDING),
         )
         return task_list[0] if task_list else None
 
@@ -179,7 +181,13 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanLauncher):
         Deprecated. Use launch instead.
         """
         return self.launch(
-            project, domain, name, inputs, notification_overrides, label_overrides, annotation_overrides,
+            project,
+            domain,
+            name,
+            inputs,
+            notification_overrides,
+            label_overrides,
+            annotation_overrides,
         )
 
     def launch(
@@ -250,7 +258,13 @@ class FlyteWorkflow(_common_engine.BaseWorkflowExecutor):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
         try:
             sub_workflows = self.sdk_workflow.get_sub_workflows()
-            return client.create_workflow(identifier, _workflow_model.WorkflowSpec(self.sdk_workflow, sub_workflows,),)
+            return client.create_workflow(
+                identifier,
+                _workflow_model.WorkflowSpec(
+                    self.sdk_workflow,
+                    sub_workflows,
+                ),
+            )
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             pass
 
@@ -329,7 +343,9 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                             exc_str = _traceback.format_exc()
                             output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
                                 _error_models.ContainerError(
-                                    "SYSTEM:Unknown", exc_str, _error_models.ContainerError.Kind.RECOVERABLE,
+                                    "SYSTEM:Unknown",
+                                    exc_str,
+                                    _error_models.ContainerError.Kind.RECOVERABLE,
                                 )
                             )
                             _logging.error(exc_str)
@@ -338,7 +354,9 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                             for k, v in _six.iteritems(output_file_dict):
                                 _common_utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(temp_dir.name, k))
                             _data_proxy.Data.put_data(
-                                temp_dir.name, context["output_prefix"], is_multipart=True,
+                                temp_dir.name,
+                                context["output_prefix"],
+                                is_multipart=True,
                             )
 
     def launch(
@@ -383,7 +401,8 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                 )
                 assumable_iam_role = _sdk_config.ROLE.get()
             auth_role = _common_models.AuthRole(
-                assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
+                assumable_iam_role=assumable_iam_role,
+                kubernetes_service_account=kubernetes_service_account,
             )
 
         try:
@@ -599,6 +618,8 @@ class FlyteTaskExecution(_common_engine.BaseTaskExecution):
         return {
             v.id.node_id: v
             for v in _iterate_node_executions(
-                client, task_execution_identifier=self.sdk_task_execution.id, filters=filters,
+                client,
+                task_execution_identifier=self.sdk_task_execution.id,
+                filters=filters,
             )
         }
