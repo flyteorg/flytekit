@@ -17,3 +17,5 @@ S3_ACCESS_KEY_ID_ENV_NAME = "AWS_ACCESS_KEY_ID"
 S3_SECRET_ACCESS_KEY_ENV_NAME = "AWS_SECRET_ACCESS_KEY"
 
 S3_ENDPOINT_ARG_NAME = "--endpoint-url"
+
+ENABLE_DEBUG = _config_common.FlyteBoolConfigurationEntry("aws", "enable_debug", default=False)

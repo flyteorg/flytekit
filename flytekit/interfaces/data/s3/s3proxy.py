@@ -24,6 +24,9 @@ else:
 def _update_cmd_config_and_execute(cmd):
     env = _os.environ.copy()
 
+    if _aws_config.ENABLE_DEBUG.get():
+        cmd.insert(1, "--debug")
+
     if _aws_config.S3_ENDPOINT.get() is not None:
         cmd.insert(1, _aws_config.S3_ENDPOINT.get())
         cmd.insert(1, _aws_config.S3_ENDPOINT_ARG_NAME)
@@ -35,6 +38,17 @@ def _update_cmd_config_and_execute(cmd):
         env[_aws_config.S3_SECRET_ACCESS_KEY_ENV_NAME] = _aws_config.S3_SECRET_ACCESS_KEY.get()
 
     return _subprocess.check_call(cmd, env=env)
+
+
+def _extra_args(extra_args: dict[str, str]) -> list[str]:
+    cmd = []
+    if "ContentType" in extra_args:
+        cmd += ["--content-type", extra_args["ContentType"]]
+    if "ContentEncoding" in extra_args:
+        cmd += ["--content-encoding", extra_args["ContentEncoding"]]
+    if "ACL" in extra_args:
+        cmd += ["--acl", extra_args["ACL"]]
+    return cmd
 
 
 class AwsS3Proxy(_common_data.DataProxy):
@@ -68,9 +82,9 @@ class AwsS3Proxy(_common_data.DataProxy):
         :param Text path:
         :rtype: (Text, Text)
         """
-        path = path[len("s3://") :]
+        path = path[len("s3://"):]
         first_slash = path.index("/")
-        return path[:first_slash], path[first_slash + 1 :]
+        return path[:first_slash], path[first_slash + 1:]
 
     def exists(self, remote_path):
         """
@@ -127,7 +141,7 @@ class AwsS3Proxy(_common_data.DataProxy):
             raise ValueError("Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://...")
 
         AwsS3Proxy._check_binary()
-        cmd = [AwsS3Proxy._AWS_CLI, "s3", "--debug", "cp", remote_path, local_path]
+        cmd = [AwsS3Proxy._AWS_CLI, "s3", "cp", remote_path, local_path]
         return _update_cmd_config_and_execute(cmd)
 
     def upload(self, file_path, to_path):
@@ -142,12 +156,7 @@ class AwsS3Proxy(_common_data.DataProxy):
         }
 
         cmd = [AwsS3Proxy._AWS_CLI, "s3", "cp"]
-        if "ContentType" in extra_args:
-            cmd += ["--content-type", extra_args["ContentType"]]
-        if "ContentEncoding" in extra_args:
-            cmd += ["--content-encoding", extra_args["ContentEncoding"]]
-        if "ACL" in extra_args:
-            cmd += ["--acl", extra_args["ACL"]]
+        cmd.extend(_extra_args(extra_args))
         cmd += [file_path, to_path]
 
         return _update_cmd_config_and_execute(cmd)
@@ -166,12 +175,7 @@ class AwsS3Proxy(_common_data.DataProxy):
 
         AwsS3Proxy._check_binary()
         cmd = [AwsS3Proxy._AWS_CLI, "s3", "cp", "--recursive"]
-        if "ContentType" in extra_args:
-            cmd += ["--content-type", extra_args["ContentType"]]
-        if "ContentEncoding" in extra_args:
-            cmd += ["--content-encoding", extra_args["ContentEncoding"]]
-        if "ACL" in extra_args:
-            cmd += ["--acl", extra_args["ACL"]]
+        cmd.extend(_extra_args(extra_args))
         cmd += [local_path, remote_path]
         return _update_cmd_config_and_execute(cmd)
 
