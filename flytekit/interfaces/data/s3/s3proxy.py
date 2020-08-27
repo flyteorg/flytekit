@@ -127,7 +127,7 @@ class AwsS3Proxy(_common_data.DataProxy):
             raise ValueError("Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://...")
 
         AwsS3Proxy._check_binary()
-        cmd = [AwsS3Proxy._AWS_CLI, "s3", "cp", remote_path, local_path]
+        cmd = [AwsS3Proxy._AWS_CLI, "s3", "--debug", "cp", remote_path, local_path]
         return _update_cmd_config_and_execute(cmd)
 
     def upload(self, file_path, to_path):
