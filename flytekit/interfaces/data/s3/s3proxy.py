@@ -21,7 +21,7 @@ else:
     from distutils.spawn import find_executable as _which
 
 
-def _update_cmd_config_and_execute(cmd):
+def _update_cmd_config_and_execute(cmd: list[str]):
     env = _os.environ.copy()
 
     if _aws_config.ENABLE_DEBUG.get():
