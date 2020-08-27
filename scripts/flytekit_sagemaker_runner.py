@@ -5,8 +5,10 @@ import logging
 import subprocess
 from os import environ
 
-FLYTE_ARGS_PREFIX = "--__FLYTE_"
-FLYTE_ARGS_SUFFIX = "__"
+FLYTE_ARG_PREFIX = "--__FLYTE"
+FLYTE_ENV_VAR_PREFIX = "{}_ENV_VAR_".format(FLYTE_ARG_PREFIX)
+FLYTE_CMD_ARG_PREFIX = "{}_CMD_ARG_".format(FLYTE_ARG_PREFIX)
+FLYTE_ARG_SUFFIX = "__"
 
 parser = argparse.ArgumentParser(description="Running sagemaker task")
 parser.add_argument("--__FLYTE_SAGEMAKER_CMD__", dest="flyte_sagemaker_cmd", help="The entrypoint selector argument")
@@ -17,25 +19,40 @@ subprocess_cmd = []
 if args.flyte_sagemaker_cmd is not None:
     subprocess_cmd = args.flyte_sagemaker_cmd.split("+")
 
-for i in range(len(unknowns)):
-    if unknowns[i].startswith(FLYTE_ARGS_PREFIX) and unknowns[i].endswith(FLYTE_ARGS_SUFFIX):
-        unknowns[i] = unknowns[i][len(FLYTE_ARGS_PREFIX) :]
-        unknowns[i] = unknowns[i].replace("_", "-")
-        unknowns[i] = "--" + unknowns[i][: -len(FLYTE_ARGS_SUFFIX)]
+pass_through_cmd_args = []
+env_vars = []
+i = 0
 
-flyte_sagemaker_cmd_parser = argparse.ArgumentParser(
-    description="Parse pyflyte execute command to replace output prefix location."
-)
+while i < len(unknowns):
+    print(unknowns[i])
+    if unknowns[i].startswith(FLYTE_CMD_ARG_PREFIX) and unknowns[i].endswith(FLYTE_ARG_SUFFIX):
+        processed = unknowns[i][len(FLYTE_CMD_ARG_PREFIX):][:-len(FLYTE_ARG_SUFFIX)].replace("_", "-")
+        pass_through_cmd_args.append("--" + processed)
+        i += 1
+        if unknowns[i].startswith(FLYTE_ARG_PREFIX) is False:
+            pass_through_cmd_args.append(unknowns[i])
+            i += 1
+    elif unknowns[i].startswith(FLYTE_ENV_VAR_PREFIX) and unknowns[i].endswith(FLYTE_ARG_SUFFIX):
+        processed = unknowns[i][len(FLYTE_ENV_VAR_PREFIX):][:-len(FLYTE_ARG_SUFFIX)]
+        # Note that in env var we must not replace _ with -
+        env_vars.append(processed)
+        i += 1
+        if unknowns[i].startswith(FLYTE_ARG_PREFIX) is False:
+            env_vars.append(unknowns[i])
+            i += 1
+    else:
+        i += 1
 
-if args.flyte_sagemaker_cmd is not None:
-    flyte_sagemaker_cmd_parser.add_argument("--output-prefix", dest="output_prefix", required=True)
-    args, unknowns = flyte_sagemaker_cmd_parser.parse_known_args(args=unknowns)
-    args.output_prefix = "{}/{}".format(args.output_prefix, environ.get("TRAINING_JOB_NAME", ""))
-    unknowns.extend(["--output-prefix", args.output_prefix])
+print("Pass-through cmd args:", pass_through_cmd_args)
+print("Env vars:", env_vars)
 
-logging.info("Launching a subprocess with: {}".format(unknowns))
+for i in range(0, len(env_vars), 2):
+    environ[env_vars[i]] = env_vars[i+1]
+
+logging.info("Launching a subprocess with: {}".format(pass_through_cmd_args))
 
 # Launching a subprocess with the selected entrypoint script and the rest of the arguments
 # subprocess_cmd = []
-subprocess_cmd.extend(unknowns)
+subprocess_cmd.extend(pass_through_cmd_args)
+print("Running a subprocess with the following command: {}".format(subprocess_cmd))
 subprocess.run(subprocess_cmd)
