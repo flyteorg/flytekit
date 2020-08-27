@@ -30,6 +30,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             cache,
             timeout,
             environment,
+            algorithm_specification: _training_job_models.AlgorithmSpecification,
             training_job_resource_config: _training_job_models.TrainingJobResourceConfig,
     ):
         """
@@ -48,11 +49,13 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         :param bool cache:
         :param datetime.timedelta timeout:
         :param dict[Text, Text] environment:
+        :param _training_job_models.AlgorithmSpecification algorithm_specification:
+        :param _training_job_models.TrainingJobResourceConfig training_job_resource_config:
         """
 
         # Use the training job model as a measure of type checking
         self._training_job_model = _training_job_models.TrainingJob(
-            algorithm_specification=None,
+            algorithm_specification=algorithm_specification,
             training_job_resource_config=training_job_resource_config
         )
 
