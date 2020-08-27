@@ -25,8 +25,8 @@ ctx.params["output_prefix"] = "{}/{}".format(ctx.params["output_prefix"], enviro
 
 # Set environment variables passed in through command line argument.
 for env_var in args.flyte_env_var:
-    env_var_parts = env_var.split('=')
-    environ[env_var_parts[0]] = env_var_parts[1]
+    env_var_parts = env_var.split('=', maxsplit=1)
+    environ[env_var_parts[0]] = env_var_parts[1:]
 
 # Finally, invoke the command with the updated params.
 res = execute_task_cmd.invoke(ctx)
