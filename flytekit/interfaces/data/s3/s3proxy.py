@@ -1,9 +1,11 @@
 from __future__ import absolute_import
 
+import logging
 import os as _os
 import re as _re
 import string as _string
 import sys as _sys
+import time
 import uuid as _uuid
 
 from six import moves as _six_moves
@@ -37,7 +39,18 @@ def _update_cmd_config_and_execute(cmd: list[str]):
     if _aws_config.S3_SECRET_ACCESS_KEY.get() is not None:
         env[_aws_config.S3_SECRET_ACCESS_KEY_ENV_NAME] = _aws_config.S3_SECRET_ACCESS_KEY.get()
 
-    return _subprocess.check_call(cmd, env=env)
+    retry = 0
+    try:
+        return _subprocess.check_call(cmd, env=env)
+    except Exception as e:
+        logging.error("Exception when trying to execute {}, reason: {}", cmd, str(e))
+        retry += 1
+        if retry > _aws_config.RETRIES:
+            raise
+        secs = _aws_config.BACKOFF_SECONDS
+        logging.info("Sleeping before retrying again, after {} seconds".format(secs))
+        time.sleep(secs)
+        logging.info("Retrying again")
 
 
 def _extra_args(extra_args: dict[str, str]) -> list[str]:
