@@ -45,11 +45,16 @@ class SdkWorkflowExecution(
             client = _flyte_engine._FlyteClientManager(
                 _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
             ).client
-            url_blob = client.get_execution_data(self.id)
-            if url_blob.inputs.bytes > 0:
+            execution_data = client.get_execution_data(self.id)
+
+            # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
+            if bool(execution_data.full_inputs.literals):
+                return execution_data.full_inputs
+
+            if execution_data.inputs.bytes > 0:
                 with _common_utils.AutoDeletingTempDir() as t:
                     tmp_name = _os.path.join(t.name, "inputs.pb")
-                    _data_proxy.Data.get_data(url_blob.inputs.url, tmp_name)
+                    _data_proxy.Data.get_data(execution_data.inputs.url, tmp_name)
                     input_map = _literal_models.LiteralMap.from_flyte_idl(
                         _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
@@ -77,16 +82,22 @@ class SdkWorkflowExecution(
             client = _flyte_engine._FlyteClientManager(
                 _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
             ).client
-            url_blob = client.get_execution_data(self.id)
-            if url_blob.outputs.bytes > 0:
+
+            execution_data = client.get_execution_data(self.id)
+            # Outputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
+            if bool(execution_data.full_outputs.literals):
+                return execution_data.full_outputs
+
+            if execution_data.outputs.bytes > 0:
                 with _common_utils.AutoDeletingTempDir() as t:
                     tmp_name = _os.path.join(t.name, "outputs.pb")
-                    _data_proxy.Data.get_data(url_blob.outputs.url, tmp_name)
+                    _data_proxy.Data.get_data(execution_data.outputs.url, tmp_name)
                     output_map = _literal_models.LiteralMap.from_flyte_idl(
                         _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
             else:
                 output_map = _literal_models.LiteralMap({})
+
             self._outputs = _type_helpers.unpack_literal_map_to_sdk_python_std(output_map)
         return self._outputs
 

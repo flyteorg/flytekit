@@ -64,22 +64,23 @@ class LocalDataContext(_OutputDataContext):
 class RemoteDataContext(_OutputDataContext):
 
     _CLOUD_PROVIDER_TO_PROXIES = {
-        _constants.CloudProvider.AWS: _s3proxy.AwsS3Proxy(),
-        _constants.CloudProvider.GCP: _gcs_proxy.GCSProxy(),
+        _constants.CloudProvider.AWS: _s3proxy.AwsS3Proxy,
+        _constants.CloudProvider.GCP: _gcs_proxy.GCSProxy,
     }
 
-    def __init__(self, cloud_provider=None):
+    def __init__(self, cloud_provider=None, raw_output_data_prefix_override=None):
         """
         :param Optional[Text] cloud_provider: From flytekit.common.constants.CloudProvider enum
         """
         cloud_provider = cloud_provider or _platform_config.CLOUD_PROVIDER.get()
-        proxy = type(self)._CLOUD_PROVIDER_TO_PROXIES.get(cloud_provider, None)
-        if proxy is None:
+        proxy_class = type(self)._CLOUD_PROVIDER_TO_PROXIES.get(cloud_provider, None)
+        if proxy_class is None:
             raise _user_exception.FlyteAssertion(
                 "Configured cloud provider is not supported for data I/O.  Received: {}, expected one of: {}".format(
                     cloud_provider, list(type(self)._CLOUD_PROVIDER_TO_PROXIES.keys())
                 )
             )
+        proxy = proxy_class(raw_output_data_prefix_override)
         super(RemoteDataContext, self).__init__(proxy)
 
 

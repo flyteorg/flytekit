@@ -58,6 +58,8 @@ def test_sidecar_task():
         "{{.input}}",
         "--output-prefix",
         "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
     ]
     assert primary_container["volumeMounts"] == [{"mountPath": "some/where", "name": "volume mount"}]
     assert {"name": "foo", "value": "bar"} in primary_container["env"]

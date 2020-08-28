@@ -370,12 +370,13 @@ class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta
 
 
 class EngineContext(object):
-    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging):
+    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, raw_output_data_prefix=None):
         self._stats = stats
         self._execution_date = execution_date
         self._working_directory = tmp_dir
         self._execution_id = execution_id
         self._logging = logging
+        self._raw_output_data_prefix = raw_output_data_prefix
 
     @property
     def stats(self):
@@ -411,3 +412,7 @@ class EngineContext(object):
         :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier
         """
         return self._execution_id
+
+    @property
+    def raw_output_data_prefix(self) -> str:
+        return self._raw_output_data_prefix

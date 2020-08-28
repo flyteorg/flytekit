@@ -472,6 +472,8 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
                 "{{.input}}",
                 "--output-prefix",
                 "{{.outputPrefix}}",
+                "--raw-output-data-prefix",
+                "{{.rawOutputDataPrefix}}",
             ],
             resources=resources,
             env=environment,

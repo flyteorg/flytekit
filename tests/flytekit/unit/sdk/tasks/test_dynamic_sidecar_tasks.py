@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import mock
 from k8s.io.api.core.v1 import generated_pb2
 
@@ -62,6 +60,8 @@ def test_dynamic_sidecar_task():
         "{{.input}}",
         "--output-prefix",
         "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
     ]
     assert primary_container["volumeMounts"] == [{"mountPath": "/scratch", "name": "scratch"}]
     assert {"name": "foo", "value": "bar"} in primary_container["env"]
