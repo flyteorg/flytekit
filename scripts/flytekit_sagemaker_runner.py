@@ -11,10 +11,10 @@ FLYTE_CMD_PREFIX = f"{FLYTE_ARG_PREFIX}_CMD_"
 FLYTE_ARG_SUFFIX = "__"
 
 # An example for a valid command:
-# --__FLYTE_ENV_VAR_env1=val1__ --__FLYTE_ENV_VAR_env2=val2__ --__FLYTE_CMD_service_venv__
-# --__FLYTE_CMD_pyflyte-execute__ --__FLYTE_CMD_--task-module__ --__FLYTE_CMD_blah__ --__FLYTE_CMD_--task-name__
-# --__FLYTE_CMD_bloh__ --__FLYTE_CMD_--output-prefix__ --__FLYTE_CMD_s3://fake-bucket__ --__FLYTE_CMD_--inputs__
-# --__FLYTE_CMD_s3://fake-bucket__
+# --__FLYTE_ENV_VAR_env1__ val1 --__FLYTE_ENV_VAR_env2__ val2 --__FLYTE_CMD_0_service_venv__
+# --__FLYTE_CMD_1_pyflyte-execute__ --__FLYTE_CMD_2_--task-module__ --__FLYTE_CMD_3_blah__ --__FLYTE_CMD_4_--task-name__
+# --__FLYTE_CMD_5_bloh__ --__FLYTE_CMD_6_--output-prefix__ --__FLYTE_CMD_7_s3://fake-bucket__ --__FLYTE_CMD_8_--inputs__
+# --__FLYTE_CMD_9_s3://fake-bucket__
 
 parser = argparse.ArgumentParser(description="Running sagemaker task")
 args, unknowns = parser.parse_known_args()
@@ -22,15 +22,29 @@ args, unknowns = parser.parse_known_args()
 # Parse the command line and env vars
 flyte_cmd = []
 env_vars = {}
+i = 0
 
-for unknown in unknowns:
+while i < len(unknowns):
+    unknown = unknowns[i]
     logging.info(f'Processing argument {unknown}')
     if unknown.startswith(FLYTE_CMD_PREFIX) and unknown.endswith(FLYTE_ARG_SUFFIX):
         processed = unknown[len(FLYTE_CMD_PREFIX):][: -len(FLYTE_ARG_SUFFIX)]
-        flyte_cmd.append(processed)
+        # Parse the format `1_--task-module`
+        parts = processed.split('_', maxsplit=1)
+        flyte_cmd.append((parts[0], parts[1]))
+        i += 1
     elif unknown.startswith(FLYTE_ENV_VAR_PREFIX) and unknown.endswith(FLYTE_ARG_SUFFIX):
-        processed = unknown[len(FLYTE_ENV_VAR_PREFIX):][: -len(FLYTE_ARG_SUFFIX)].split('=', maxsplit=2)
-        env_vars[processed[0]] = processed[1]
+        processed = unknown[len(FLYTE_ENV_VAR_PREFIX):][: -len(FLYTE_ARG_SUFFIX)]
+        i += 1
+        if unknowns[i].startswith(FLYTE_ARG_PREFIX) is False:
+            env_vars[processed] = unknowns[i]
+            i += 1
+    else:
+        i += 1
+
+# Order the cmd using the index (the first element in each tuple)
+flyte_cmd.sort(key=lambda x: x[0])
+flyte_cmd = [x[1] for x in flyte_cmd]
 
 logging.info(f"Cmd:{flyte_cmd}")
 logging.info(f"Env vars:{env_vars}")
