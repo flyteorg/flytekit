@@ -36,7 +36,10 @@ class FlyteTypeException(FlyteUserException, TypeError):
     def __init__(self, received_type, expected_type, additional_msg=None, received_value=None):
         super(FlyteTypeException, self).__init__(
             self._create_verbose_message(
-                received_type, expected_type, received_value=received_value, additional_msg=additional_msg,
+                received_type,
+                expected_type,
+                received_value=received_value,
+                additional_msg=additional_msg,
             )
         )
 

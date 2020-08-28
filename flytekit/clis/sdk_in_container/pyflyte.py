@@ -34,10 +34,18 @@ from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
     help="Flyte project to use. You can have more than one project per repo",
 )
 @click.option(
-    "-d", "--domain", required=True, type=str, help="This is usually development, staging, or production",
+    "-d",
+    "--domain",
+    required=True,
+    type=str,
+    help="This is usually development, staging, or production",
 )
 @click.option(
-    "-c", "--config", required=False, type=str, help="Path to config file for use within container",
+    "-c",
+    "--config",
+    required=False,
+    type=str,
+    help="Path to config file for use within container",
 )
 @click.option(
     "-k",
@@ -48,10 +56,18 @@ from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
     "option will override the option specified in the configuration file, or environment variable",
 )
 @click.option(
-    "-v", "--version", required=False, type=str, help="This is the version to apply globally for this " "context",
+    "-v",
+    "--version",
+    required=False,
+    type=str,
+    help="This is the version to apply globally for this " "context",
 )
 @click.option(
-    "-i", "--insecure", required=False, type=bool, help="Do not use SSL to connect to Admin",
+    "-i",
+    "--insecure",
+    required=False,
+    type=bool,
+    help="Do not use SSL to connect to Admin",
 )
 @click.pass_context
 def main(ctx, project, domain, config=None, pkgs=None, version=None, insecure=None):
@@ -99,7 +115,8 @@ def update_configuration_file(config_file_path):
     configuration_file = Path(config_file_path or CONFIGURATION_PATH.get())
     if configuration_file.is_file():
         click.secho(
-            "Using configuration file at {}".format(configuration_file.absolute().as_posix()), fg="green",
+            "Using configuration file at {}".format(configuration_file.absolute().as_posix()),
+            fg="green",
         )
         set_flyte_config_file(configuration_file.as_posix())
     else:
