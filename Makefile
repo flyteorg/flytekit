@@ -16,6 +16,7 @@ _install-piptools:
 .PHONY: setup
 setup: _install-piptools ## Install requirements
 	pip-sync requirements.txt dev-requirements.txt
+	pip install -U .[all]
 
 .PHONY: fmt
 fmt: ## Format code with black and isort
