@@ -23,23 +23,19 @@ def test_binding_data_primitive_static():
 
     with pytest.raises(_user_exceptions.FlyteTypeException):
         interface.BindingData.from_python_std(
-            primitives.Float.to_flyte_literal_type(),
-            "abc",
+            primitives.Float.to_flyte_literal_type(), "abc",
         )
 
     with pytest.raises(_user_exceptions.FlyteTypeException):
         interface.BindingData.from_python_std(
-            primitives.Float.to_flyte_literal_type(),
-            [1.0, 2.0, 3.0],
+            primitives.Float.to_flyte_literal_type(), [1.0, 2.0, 3.0],
         )
 
 
 def test_binding_data_list_static():
     upstream_nodes = set()
     bd = interface.BindingData.from_python_std(
-        containers.List(primitives.String).to_flyte_literal_type(),
-        ["abc", "cde"],
-        upstream_nodes=upstream_nodes,
+        containers.List(primitives.String).to_flyte_literal_type(), ["abc", "cde"], upstream_nodes=upstream_nodes,
     )
 
     assert len(upstream_nodes) == 0
@@ -53,8 +49,7 @@ def test_binding_data_list_static():
 
     with pytest.raises(_user_exceptions.FlyteTypeException):
         interface.BindingData.from_python_std(
-            containers.List(primitives.String).to_flyte_literal_type(),
-            "abc",
+            containers.List(primitives.String).to_flyte_literal_type(), "abc",
         )
 
     with pytest.raises(_user_exceptions.FlyteTypeException):

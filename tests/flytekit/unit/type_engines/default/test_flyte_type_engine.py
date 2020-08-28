@@ -46,11 +46,7 @@ def test_infer_proto_from_literal():
         _literal_models.Literal(
             scalar=_literal_models.Scalar(
                 binary=_literal_models.Binary(
-                    value="",
-                    tag="{}{}".format(
-                        _proto.Protobuf.TAG_PREFIX,
-                        "flyteidl.core.errors_pb2.ContainerError",
-                    ),
+                    value="", tag="{}{}".format(_proto.Protobuf.TAG_PREFIX, "flyteidl.core.errors_pb2.ContainerError",),
                 )
             )
         )

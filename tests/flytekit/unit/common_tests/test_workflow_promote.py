@@ -41,12 +41,7 @@ def get_sample_container():
     resources = _task_model.Resources(requests=[cpu_resource], limits=[cpu_resource])
 
     return _task_model.Container(
-        "my_image",
-        ["this", "is", "a", "cmd"],
-        ["this", "is", "an", "arg"],
-        resources,
-        {},
-        {},
+        "my_image", ["this", "is", "a", "cmd"], ["this", "is", "an", "arg"], resources, {}, {},
     )
 
 

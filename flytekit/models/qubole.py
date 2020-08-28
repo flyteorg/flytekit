@@ -53,11 +53,7 @@ class HiveQuery(_common.FlyteIdlEntity):
         :param _qubole.HiveQuery pb2_object:
         :return: HiveQuery
         """
-        return cls(
-            query=pb2_object.query,
-            timeout_sec=pb2_object.timeout_sec,
-            retry_count=pb2_object.retryCount,
-        )
+        return cls(query=pb2_object.query, timeout_sec=pb2_object.timeout_sec, retry_count=pb2_object.retryCount,)
 
 
 class HiveQueryCollection(_common.FlyteIdlEntity):

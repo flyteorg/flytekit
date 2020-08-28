@@ -167,8 +167,7 @@ class Operand(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.condition_pb2.Operand
         """
         return _condition.Operand(
-            primitive=self.primitive.to_flyte_idl() if self.primitive else None,
-            var=self.var if self.var else None,
+            primitive=self.primitive.to_flyte_idl() if self.primitive else None, var=self.var if self.var else None,
         )
 
     @classmethod

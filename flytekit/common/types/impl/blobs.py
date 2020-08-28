@@ -351,8 +351,7 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
                         "path is specified."
                     )
                 self._directory = _utils.AutoDeletingTempDir(
-                    _uuid.uuid4().hex,
-                    tmp_dir=_data_proxy.LocalWorkingDirectoryContext.get().name,
+                    _uuid.uuid4().hex, tmp_dir=_data_proxy.LocalWorkingDirectoryContext.get().name,
                 )
                 self._is_managed = True
                 self._directory.__enter__()
@@ -364,10 +363,7 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
             self._blobs = []
             file_handles = []
             for local_path in sorted(self._directory.list_dir(), key=lambda x: x.lower()):
-                b = Blob(
-                    _os.path.join(self.remote_location, _os.path.basename(local_path)),
-                    mode=self.mode,
-                )
+                b = Blob(_os.path.join(self.remote_location, _os.path.basename(local_path)), mode=self.mode,)
                 b._local_path = local_path
                 file_handles.append(b.__enter__())
                 self._blobs.append(b)
@@ -432,13 +428,10 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
             name = _uuid.uuid4().hex
         if ":" in name or "/" in name:
             raise _user_exceptions.FlyteAssertion(
-                name,
-                "Cannot create a part of a multi-part object with ':' or '/' in the name.",
+                name, "Cannot create a part of a multi-part object with ':' or '/' in the name.",
             )
         return Blob.create_at_known_location(
-            _os.path.join(self.remote_location, name),
-            mode=self.mode,
-            format=self.metadata.type.format,
+            _os.path.join(self.remote_location, name), mode=self.mode, format=self.metadata.type.format,
         )
 
     @_exception_scopes.system_entry_point

@@ -28,8 +28,7 @@ def test_single_step_entrypoint_in_proc():
     ):
         with _utils.AutoDeletingTempDir("in") as input_dir:
             literal_map = _type_helpers.pack_python_std_map_to_literal_map(
-                {"a": 9},
-                _type_map_from_variable_map(_task_defs.add_one.interface.inputs),
+                {"a": 9}, _type_map_from_variable_map(_task_defs.add_one.interface.inputs),
             )
             input_file = os.path.join(input_dir.name, "inputs.pb")
             _utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
@@ -45,8 +44,7 @@ def test_single_step_entrypoint_in_proc():
                 )
 
                 p = _utils.load_proto_from_file(
-                    _literals_pb2.LiteralMap,
-                    os.path.join(output_dir.name, _constants.OUTPUT_FILE_NAME),
+                    _literals_pb2.LiteralMap, os.path.join(output_dir.name, _constants.OUTPUT_FILE_NAME),
                 )
                 raw_map = _type_helpers.unpack_literal_map_to_sdk_python_std(
                     _literal_models.LiteralMap.from_flyte_idl(p),
@@ -63,8 +61,7 @@ def test_single_step_entrypoint_out_of_proc():
     ):
         with _utils.AutoDeletingTempDir("in") as input_dir:
             literal_map = _type_helpers.pack_python_std_map_to_literal_map(
-                {"a": 9},
-                _type_map_from_variable_map(_task_defs.add_one.interface.inputs),
+                {"a": 9}, _type_map_from_variable_map(_task_defs.add_one.interface.inputs),
             )
             input_file = os.path.join(input_dir.name, "inputs.pb")
             _utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
@@ -79,8 +76,7 @@ def test_single_step_entrypoint_out_of_proc():
 
                 assert result.exit_code == 0
                 p = _utils.load_proto_from_file(
-                    _literals_pb2.LiteralMap,
-                    os.path.join(output_dir.name, _constants.OUTPUT_FILE_NAME),
+                    _literals_pb2.LiteralMap, os.path.join(output_dir.name, _constants.OUTPUT_FILE_NAME),
                 )
                 raw_map = _type_helpers.unpack_literal_map_to_sdk_python_std(
                     _literal_models.LiteralMap.from_flyte_idl(p),
@@ -97,8 +93,7 @@ def test_arrayjob_entrypoint_in_proc():
     ):
         with _utils.AutoDeletingTempDir("dir") as dir:
             literal_map = _type_helpers.pack_python_std_map_to_literal_map(
-                {"a": 9},
-                _type_map_from_variable_map(_task_defs.add_one.interface.inputs),
+                {"a": 9}, _type_map_from_variable_map(_task_defs.add_one.interface.inputs),
             )
 
             input_dir = os.path.join(dir.name, "1")
@@ -131,8 +126,7 @@ def test_arrayjob_entrypoint_in_proc():
             raw_map = _type_helpers.unpack_literal_map_to_sdk_python_std(
                 _literal_models.LiteralMap.from_flyte_idl(
                     _utils.load_proto_from_file(
-                        _literals_pb2.LiteralMap,
-                        os.path.join(input_dir, _constants.OUTPUT_FILE_NAME),
+                        _literals_pb2.LiteralMap, os.path.join(input_dir, _constants.OUTPUT_FILE_NAME),
                     )
                 ),
                 _type_map_from_variable_map(_task_defs.add_one.interface.outputs),

@@ -35,10 +35,7 @@ def test_node_execution_identifier():
 def test_task_execution_identifier():
     task_id = identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version")
     wf_exec_id = identifier.WorkflowExecutionIdentifier("project", "domain", "name")
-    node_exec_id = identifier.NodeExecutionIdentifier(
-        "node_id",
-        wf_exec_id,
-    )
+    node_exec_id = identifier.NodeExecutionIdentifier("node_id", wf_exec_id,)
     obj = identifier.TaskExecutionIdentifier(task_id, node_exec_id, 3)
     assert obj.retry_attempt == 3
     assert obj.task_id == task_id

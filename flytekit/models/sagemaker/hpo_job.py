@@ -21,9 +21,7 @@ class HyperparameterTuningObjective(_common.FlyteIdlEntity):
     """
 
     def __init__(
-        self,
-        objective_type: int,
-        metric_name: str,
+        self, objective_type: int, metric_name: str,
     ):
         self._objective_type = objective_type
         self._metric_name = metric_name
@@ -49,17 +47,13 @@ class HyperparameterTuningObjective(_common.FlyteIdlEntity):
     def to_flyte_idl(self) -> _pb2_hpo_job.HyperparameterTuningObjective:
 
         return _pb2_hpo_job.HyperparameterTuningObjective(
-            objective_type=self.objective_type,
-            metric_name=self._metric_name,
+            objective_type=self.objective_type, metric_name=self._metric_name,
         )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _pb2_hpo_job.HyperparameterTuningObjective):
 
-        return cls(
-            objective_type=pb2_object.objective_type,
-            metric_name=pb2_object.metric_name,
-        )
+        return cls(objective_type=pb2_object.objective_type, metric_name=pb2_object.metric_name,)
 
 
 class HyperparameterTuningStrategy:

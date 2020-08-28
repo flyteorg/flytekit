@@ -47,11 +47,7 @@ class Project(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.project_pb2.Project
         """
-        return _project_pb2.Project(
-            id=self.id,
-            name=self.name,
-            description=self.description,
-        )
+        return _project_pb2.Project(id=self.id, name=self.name, description=self.description,)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -59,8 +55,4 @@ class Project(_common.FlyteIdlEntity):
         :param flyteidl.admin.project_pb2.Project pb2_object:
         :rtype: Project
         """
-        return cls(
-            id=pb2_object.id,
-            name=pb2_object.name,
-            description=pb2_object.description,
-        )
+        return cls(id=pb2_object.id, name=pb2_object.name, description=pb2_object.description,)

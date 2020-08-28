@@ -12,18 +12,9 @@ from flytekit.sdk.types import Types
 def get_pod_spec():
     a_container = generated_pb2.Container(name="main")
     a_container.command.extend(["foo", "bar"])
-    a_container.volumeMounts.extend(
-        [
-            generated_pb2.VolumeMount(
-                name="scratch",
-                mountPath="/scratch",
-            )
-        ]
-    )
+    a_container.volumeMounts.extend([generated_pb2.VolumeMount(name="scratch", mountPath="/scratch",)])
 
-    pod_spec = generated_pb2.PodSpec(
-        restartPolicy="Never",
-    )
+    pod_spec = generated_pb2.PodSpec(restartPolicy="Never",)
     pod_spec.containers.extend([a_container, generated_pb2.Container(name="sidecar")])
     return pod_spec
 

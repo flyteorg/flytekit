@@ -317,8 +317,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         super(SynchronousFlyteClient, self).create_launch_plan(
             _launch_plan_pb2.LaunchPlanCreateRequest(
-                id=launch_plan_identifer.to_flyte_idl(),
-                spec=launch_plan_spec.to_flyte_idl(),
+                id=launch_plan_identifer.to_flyte_idl(), spec=launch_plan_spec.to_flyte_idl(),
             )
         )
 
@@ -508,9 +507,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         super(SynchronousFlyteClient, self).update_named_entity(
             _common_pb2.NamedEntityUpdateRequest(
-                resource_type=resource_type,
-                id=id.to_flyte_idl(),
-                metadata=metadata.to_flyte_idl(),
+                resource_type=resource_type, id=id.to_flyte_idl(), metadata=metadata.to_flyte_idl(),
             )
         )
 
@@ -665,12 +662,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
 
     def list_node_executions(
-        self,
-        workflow_execution_identifier,
-        limit=100,
-        token=None,
-        filters=None,
-        sort_by=None,
+        self, workflow_execution_identifier, limit=100, token=None, filters=None, sort_by=None,
     ):
         """
         TODO: Comment
@@ -698,12 +690,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
 
     def list_node_executions_for_task_paginated(
-        self,
-        task_execution_identifier,
-        limit=100,
-        token=None,
-        filters=None,
-        sort_by=None,
+        self, task_execution_identifier, limit=100, token=None, filters=None, sort_by=None,
     ):
         """
         This returns nodes spawned by a specific task execution.  This is generally from things like dynamic tasks.
@@ -761,12 +748,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
 
     def list_task_executions_paginated(
-        self,
-        node_execution_identifier,
-        limit=100,
-        token=None,
-        filters=None,
-        sort_by=None,
+        self, node_execution_identifier, limit=100, token=None, filters=None, sort_by=None,
     ):
         """
         :param flytekit.models.core.identifier.NodeExecutionIdentifier node_execution_identifier:
@@ -805,9 +787,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :rtype: flyteidl.admin.project_pb2.ProjectRegisterResponse
         """
         super(SynchronousFlyteClient, self).register_project(
-            _project_pb2.ProjectRegisterRequest(
-                project=project.to_flyte_idl(),
-            )
+            _project_pb2.ProjectRegisterRequest(project=project.to_flyte_idl(),)
         )
 
     ####################################################################################################################
@@ -827,9 +807,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         super(SynchronousFlyteClient, self).update_project_domain_attributes(
             _project_domain_attributes_pb2.ProjectDomainAttributesUpdateRequest(
                 attributes=_project_domain_attributes_pb2.ProjectDomainAttributes(
-                    project=project,
-                    domain=domain,
-                    matching_attributes=matching_attributes.to_flyte_idl(),
+                    project=project, domain=domain, matching_attributes=matching_attributes.to_flyte_idl(),
                 )
             )
         )
@@ -864,9 +842,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return super(SynchronousFlyteClient, self).get_project_domain_attributes(
             _project_domain_attributes_pb2.ProjectDomainAttributesGetRequest(
-                project=project,
-                domain=domain,
-                resource_type=resource_type,
+                project=project, domain=domain, resource_type=resource_type,
             )
         )
 
@@ -881,10 +857,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return super(SynchronousFlyteClient, self).get_workflow_attributes(
             _workflow_attributes_pb2.WorkflowAttributesGetRequest(
-                project=project,
-                domain=domain,
-                workflow=workflow,
-                resource_type=resource_type,
+                project=project, domain=domain, workflow=workflow, resource_type=resource_type,
             )
         )
 
@@ -895,7 +868,5 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :return:
         """
         return super(SynchronousFlyteClient, self).list_matchable_attributes(
-            _matchable_resource_pb2.ListMatchableAttributesRequest(
-                resource_type=resource_type,
-            )
+            _matchable_resource_pb2.ListMatchableAttributesRequest(resource_type=resource_type,)
         )

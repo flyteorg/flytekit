@@ -12,22 +12,11 @@ from flytekit.sdk.types import Types
 
 
 def get_pod_spec():
-    a_container = generated_pb2.Container(
-        name="a container",
-    )
+    a_container = generated_pb2.Container(name="a container",)
     a_container.command.extend(["fee", "fi", "fo", "fum"])
-    a_container.volumeMounts.extend(
-        [
-            generated_pb2.VolumeMount(
-                name="volume mount",
-                mountPath="some/where",
-            )
-        ]
-    )
+    a_container.volumeMounts.extend([generated_pb2.VolumeMount(name="volume mount", mountPath="some/where",)])
 
-    pod_spec = generated_pb2.PodSpec(
-        restartPolicy="OnFailure",
-    )
+    pod_spec = generated_pb2.PodSpec(restartPolicy="OnFailure",)
     pod_spec.containers.extend([a_container, generated_pb2.Container(name="another container")])
     return pod_spec
 

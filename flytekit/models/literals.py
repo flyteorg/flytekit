@@ -46,13 +46,7 @@ class RetryStrategy(_common.FlyteIdlEntity):
 
 class Primitive(_common.FlyteIdlEntity):
     def __init__(
-        self,
-        integer=None,
-        float_value=None,
-        string_value=None,
-        boolean=None,
-        datetime=None,
-        duration=None,
+        self, integer=None, float_value=None, string_value=None, boolean=None, datetime=None, duration=None,
     ):
         """
         This object proxies the primitives supported by the Flyte IDL system.  Only one value can be set.
@@ -141,10 +135,7 @@ class Primitive(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.literals_pb2.Primitive
         """
         primitive = _literals_pb2.Primitive(
-            integer=self.integer,
-            float_value=self.float_value,
-            string_value=self.string_value,
-            boolean=self.boolean,
+            integer=self.integer, float_value=self.float_value, string_value=self.string_value, boolean=self.boolean,
         )
         if self.datetime is not None:
             # Convert to UTC and remove timezone so protobuf behaves.
@@ -209,14 +200,7 @@ class Binary(_common.FlyteIdlEntity):
 
 class Scalar(_common.FlyteIdlEntity):
     def __init__(
-        self,
-        primitive=None,
-        blob=None,
-        binary=None,
-        schema=None,
-        none_type=None,
-        error=None,
-        generic=None,
+        self, primitive=None, blob=None, binary=None, schema=None, none_type=None, error=None, generic=None,
     ):
         """
         Scalar wrapper around Flyte types.  Only one can be specified.
@@ -564,8 +548,7 @@ class BindingData(_common.FlyteIdlEntity):
         """
         if self.promise:
             raise _user_exceptions.FlyteValueException(
-                self.promise,
-                "Cannot convert BindingData to a Literal because " "it has a promise.",
+                self.promise, "Cannot convert BindingData to a Literal because " "it has a promise.",
             )
         elif self.scalar:
             return Literal(scalar=self.scalar)

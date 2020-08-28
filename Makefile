@@ -40,4 +40,4 @@ dev-requirements.txt: dev-requirements.in requirements.txt _install-piptools
 	$(call PIP_COMPILE,dev-requirements.in)
 
 .PHONY: requirements
-requirements: requirements.txt dev-requirements.txt ## Compile requirements
+requirements: dev-requirements.txt ## Compile requirements

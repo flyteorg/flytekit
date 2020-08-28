@@ -33,11 +33,7 @@ class SchemaInstantiator(_base_sdk_types.InstantiableType):
         return _schema_impl.Schema.create_at_any_location(mode="wb", schema_type=cls.schema_type)
 
     def create_from_hive_query(
-        cls,
-        select_query,
-        stage_query=None,
-        schema_to_table_name_map=None,
-        known_location=None,
+        cls, select_query, stage_query=None, schema_to_table_name_map=None, known_location=None,
     ):
         """
         Returns a query that can be submitted to Hive and produce the desired output.  It also returns a properly-typed
@@ -158,9 +154,7 @@ class Schema(_six.with_metaclass(SchemaInstantiator, _base_sdk_types.FlyteSdkVal
         """
         :rtype: Text
         """
-        return "{}".format(
-            self.scalar.schema,
-        )
+        return "{}".format(self.scalar.schema,)
 
 
 def schema_instantiator(columns=None):

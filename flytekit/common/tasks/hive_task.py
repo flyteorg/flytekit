@@ -113,9 +113,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
 
         for q in queries_from_task:
             hive_query = _qubole.HiveQuery(
-                query=q,
-                timeout_sec=self.metadata.timeout.seconds,
-                retry_count=self.metadata.retries.retries,
+                query=q, timeout_sec=self.metadata.timeout.seconds, retry_count=self.metadata.retries.retries,
             )
 
             # TODO: Remove this after all users of older SDK versions that did the single node, multi-query pattern are
@@ -125,12 +123,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
             query_collection = _qubole.HiveQueryCollection([hive_query])
 
             plugin_objects.append(
-                _qubole.QuboleHiveJob(
-                    hive_query,
-                    self._cluster_label,
-                    self._tags,
-                    query_collection=query_collection,
-                )
+                _qubole.QuboleHiveJob(hive_query, self._cluster_label, self._tags, query_collection=query_collection,)
             )
 
         return plugin_objects
@@ -154,13 +147,11 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
                 )
             if len(tags) > ALLOWED_TAGS_COUNT:
                 raise _FlyteValueException(
-                    len(tags),
-                    "number of tags must be less than {}".format(ALLOWED_TAGS_COUNT),
+                    len(tags), "number of tags must be less than {}".format(ALLOWED_TAGS_COUNT),
                 )
             if not all(len(tag) for tag in tags):
                 raise _FlyteValueException(
-                    tags,
-                    "length of a tag must be less than {} chars".format(MAX_TAG_LENGTH),
+                    tags, "length of a tag must be less than {} chars".format(MAX_TAG_LENGTH),
                 )
 
     @staticmethod
@@ -201,8 +192,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         # Create output bindings always - this has to happen after user code has run
         output_bindings = [
             _literal_models.Binding(
-                var=name,
-                binding=_interface.BindingData.from_python_std(b.sdk_type.to_flyte_literal_type(), b.value),
+                var=name, binding=_interface.BindingData.from_python_std(b.sdk_type.to_flyte_literal_type(), b.value),
             )
             for name, b in _six.iteritems(outputs_dict)
         ]
@@ -215,11 +205,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
             i += 1
 
         dynamic_job_spec = _dynamic_job.DynamicJobSpec(
-            min_successes=len(nodes),
-            tasks=tasks,
-            nodes=nodes,
-            outputs=output_bindings,
-            subworkflows=[],
+            min_successes=len(nodes), tasks=tasks, nodes=nodes, outputs=output_bindings, subworkflows=[],
         )
 
         return dynamic_job_spec
@@ -279,9 +265,7 @@ class SdkHiveJob(_base_task.SdkTask):
     """
 
     def __init__(
-        self,
-        hive_job,
-        metadata,
+        self, hive_job, metadata,
     ):
         """
         :param _qubole.QuboleHiveJob hive_job: Hive job spec

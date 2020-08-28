@@ -22,18 +22,11 @@ LIST_OF_DYNAMIC_TASKS = [
         interfaces,
         _array_job.ArrayJob(2, 2, 2).to_dict(),
         container=_task.Container(
-            "my_image",
-            ["this", "is", "a", "cmd"],
-            ["this", "is", "an", "arg"],
-            resources,
-            {"a": "b"},
-            {"d": "e"},
+            "my_image", ["this", "is", "a", "cmd"], ["this", "is", "an", "arg"], resources, {"a": "b"}, {"d": "e"},
         ),
     )
     for task_metadata, interfaces, resources in product(
-        parameterizers.LIST_OF_TASK_METADATA,
-        parameterizers.LIST_OF_INTERFACES,
-        parameterizers.LIST_OF_RESOURCES,
+        parameterizers.LIST_OF_TASK_METADATA, parameterizers.LIST_OF_INTERFACES, parameterizers.LIST_OF_RESOURCES,
     )
 ]
 
@@ -43,12 +36,7 @@ def test_future_task_document(task):
     rs = _literals.RetryStrategy(0)
     nm = _workflow.NodeMetadata("node-name", _timedelta(minutes=10), rs)
     n = _workflow.Node(
-        id="id",
-        metadata=nm,
-        inputs=[],
-        upstream_node_ids=[],
-        output_aliases=[],
-        task_node=_workflow.TaskNode(task.id),
+        id="id", metadata=nm, inputs=[], upstream_node_ids=[], output_aliases=[], task_node=_workflow.TaskNode(task.id),
     )
     n.to_flyte_idl()
     doc = _dynamic_job.DynamicJobSpec(

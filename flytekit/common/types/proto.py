@@ -109,10 +109,7 @@ class Protobuf(_six.with_metaclass(ProtobufType, _base_sdk_types.FlyteSdkValue))
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return _idl_types.LiteralType(
-            simple=_idl_types.SimpleType.BINARY,
-            metadata={cls.PB_FIELD_KEY: cls.descriptor},
-        )
+        return _idl_types.LiteralType(simple=_idl_types.SimpleType.BINARY, metadata={cls.PB_FIELD_KEY: cls.descriptor},)
 
     @classmethod
     def promote_from_model(cls, literal_model):

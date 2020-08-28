@@ -39,10 +39,7 @@ def test_blob_promote_from_model():
         scalar=_literal_models.Scalar(
             blob=_literal_models.Blob(
                 _literal_models.BlobMetadata(
-                    _core_types.BlobType(
-                        format="f",
-                        dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
-                    )
+                    _core_types.BlobType(format="f", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
                 ),
                 "some/path",
             )

@@ -319,10 +319,7 @@ class SdkWorkflow(
         :rtype: flyteidl.admin.workflow_pb2.WorkflowSpec
         """
         sub_workflows = self.get_sub_workflows()
-        return _admin_workflow_model.WorkflowSpec(
-            self,
-            sub_workflows,
-        ).to_flyte_idl()
+        return _admin_workflow_model.WorkflowSpec(self, sub_workflows,).to_flyte_idl()
 
     @_exception_scopes.system_entry_point
     def validate(self):
@@ -371,8 +368,7 @@ class SdkWorkflow(
         if role:
             assumable_iam_role = role
         auth_role = _common_models.AuthRole(
-            assumable_iam_role=assumable_iam_role,
-            kubernetes_service_account=kubernetes_service_account,
+            assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
         )
 
         raw_output_config = _common_models.RawOutputDataConfig(raw_output_data_prefix or "")
@@ -457,15 +453,13 @@ def _discover_workflow_components(workflow_class):
         elif isinstance(current_obj, _promise.Input):
             if attribute_name is None or attribute_name not in top_level_attributes:
                 raise _user_exceptions.FlyteValueException(
-                    attribute_name,
-                    "Detected workflow input specified outside of top level.",
+                    attribute_name, "Detected workflow input specified outside of top level.",
                 )
             inputs.append(current_obj.rename_and_return_reference(attribute_name))
         elif isinstance(current_obj, Output):
             if attribute_name is None or attribute_name not in top_level_attributes:
                 raise _user_exceptions.FlyteValueException(
-                    attribute_name,
-                    "Detected workflow output specified outside of top level.",
+                    attribute_name, "Detected workflow output specified outside of top level.",
                 )
             outputs.append(current_obj.rename_and_return_reference(attribute_name))
         elif isinstance(current_obj, list) or isinstance(current_obj, set) or isinstance(current_obj, tuple):

@@ -123,9 +123,7 @@ class SdkNotebookTask(_base_tasks.SdkTask):
             _task_models.TaskMetadata(
                 discoverable,
                 _task_models.RuntimeMetadata(
-                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
-                    __version__,
-                    "notebook",
+                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "notebook",
                 ),
                 timeout,
                 _literal_models.RetryStrategy(retries),

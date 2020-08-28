@@ -71,10 +71,7 @@ class CronSchedule(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _ExtendedSche
         :param flytekit.models.schedule.Schedule base_model:
         :rtype: CronSchedule
         """
-        return cls(
-            base_model.cron_expression,
-            kickoff_time_input_arg=base_model.kickoff_time_input_arg,
-        )
+        return cls(base_model.cron_expression, kickoff_time_input_arg=base_model.kickoff_time_input_arg,)
 
 
 class FixedRate(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _ExtendedSchedule)):
@@ -103,18 +100,15 @@ class FixedRate(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _ExtendedSchedul
             )
         elif int(duration.total_seconds()) % _SECONDS_TO_DAYS == 0:
             return _schedule_models.Schedule.FixedRate(
-                int(duration.total_seconds() / _SECONDS_TO_DAYS),
-                _schedule_models.Schedule.FixedRateUnit.DAY,
+                int(duration.total_seconds() / _SECONDS_TO_DAYS), _schedule_models.Schedule.FixedRateUnit.DAY,
             )
         elif int(duration.total_seconds()) % _SECONDS_TO_HOURS == 0:
             return _schedule_models.Schedule.FixedRate(
-                int(duration.total_seconds() / _SECONDS_TO_HOURS),
-                _schedule_models.Schedule.FixedRateUnit.HOUR,
+                int(duration.total_seconds() / _SECONDS_TO_HOURS), _schedule_models.Schedule.FixedRateUnit.HOUR,
             )
         else:
             return _schedule_models.Schedule.FixedRate(
-                int(duration.total_seconds() / _SECONDS_TO_MINUTES),
-                _schedule_models.Schedule.FixedRateUnit.MINUTE,
+                int(duration.total_seconds() / _SECONDS_TO_MINUTES), _schedule_models.Schedule.FixedRateUnit.MINUTE,
             )
 
     @classmethod

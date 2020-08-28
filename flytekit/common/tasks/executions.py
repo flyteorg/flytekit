@@ -13,9 +13,7 @@ from flytekit.models.core import execution as _execution_models
 
 class SdkTaskExecution(
     _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType,
-        _task_execution_model.TaskExecution,
-        _artifact_mixin.ExecutionArtifact,
+        _sdk_bases.ExtendedSdkType, _task_execution_model.TaskExecution, _artifact_mixin.ExecutionArtifact,
     )
 ):
     def __init__(self, *args, **kwargs):

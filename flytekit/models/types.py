@@ -102,13 +102,7 @@ class SchemaType(_common.FlyteIdlEntity):
 
 class LiteralType(_common.FlyteIdlEntity):
     def __init__(
-        self,
-        simple=None,
-        schema=None,
-        collection_type=None,
-        map_value_type=None,
-        blob=None,
-        metadata=None,
+        self, simple=None, schema=None, collection_type=None, map_value_type=None, blob=None, metadata=None,
     ):
         """
         Only one of the kwargs may be set.

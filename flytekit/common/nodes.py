@@ -106,13 +106,7 @@ class OutputParameterMapper(ParameterMapper):
         return _promise.NodeOutput(sdk_node, sdk_type, name)
 
 
-class SdkNode(
-    _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType,
-        _hash_mixin.HashOnReferenceMixin,
-        _workflow_model.Node,
-    )
-):
+class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOnReferenceMixin, _workflow_model.Node,)):
     def __init__(
         self,
         id,
@@ -307,9 +301,7 @@ class SdkNode(
 
 class SdkNodeExecution(
     _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType,
-        _node_execution_models.NodeExecution,
-        _artifact_mixin.ExecutionArtifact,
+        _sdk_bases.ExtendedSdkType, _node_execution_models.NodeExecution, _artifact_mixin.ExecutionArtifact,
     )
 ):
     def __init__(self, *args, **kwargs):

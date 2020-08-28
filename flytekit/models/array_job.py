@@ -64,11 +64,7 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
         :rtype: dict[T, Text]
         """
         return _json_format.MessageToDict(
-            _array_job.ArrayJob(
-                parallelism=self.parallelism,
-                size=self.size,
-                min_successes=self.min_successes,
-            )
+            _array_job.ArrayJob(parallelism=self.parallelism, size=self.size, min_successes=self.min_successes,)
         )
 
     @classmethod
@@ -79,8 +75,4 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
         """
         pb2_object = _json_format.Parse(_json.dumps(idl_dict), _array_job.ArrayJob())
 
-        return cls(
-            parallelism=pb2_object.parallelism,
-            size=pb2_object.size,
-            min_successes=pb2_object.min_successes,
-        )
+        return cls(parallelism=pb2_object.parallelism, size=pb2_object.size, min_successes=pb2_object.min_successes,)

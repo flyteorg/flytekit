@@ -56,9 +56,7 @@ def test_workflow():
     nodes = [n1, n2, n3, n4, n5, n6]
 
     w = workflow.SdkWorkflow(
-        inputs=input_list,
-        outputs=[workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)],
-        nodes=nodes,
+        inputs=input_list, outputs=[workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)], nodes=nodes,
     )
 
     assert w.interface.inputs["input_1"].type == primitives.Integer.to_flyte_literal_type()
@@ -136,8 +134,7 @@ def test_workflow_decorator():
         a = workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)
 
     w = workflow.build_sdk_workflow_from_metaclass(
-        my_workflow,
-        on_failure=_workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE,
+        my_workflow, on_failure=_workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE,
     )
 
     assert w.interface.inputs["input_1"].type == primitives.Integer.to_flyte_literal_type()
@@ -221,9 +218,7 @@ def test_workflow_node():
 
     wf_out = [
         workflow.Output(
-            "nested_out",
-            [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]],
-            sdk_type=[[primitives.Integer]],
+            "nested_out", [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]], sdk_type=[[primitives.Integer]],
         ),
         workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
     ]
@@ -297,8 +292,7 @@ def test_non_system_nodes():
         [],
         [
             _literals.Binding(
-                "a",
-                interface.BindingData.from_python_std(_types.Types.Integer.to_flyte_literal_type(), 3),
+                "a", interface.BindingData.from_python_std(_types.Types.Integer.to_flyte_literal_type(), 3),
             )
         ],
         None,
@@ -348,9 +342,7 @@ def test_workflow_serialization():
 
     wf_out = [
         workflow.Output(
-            "nested_out",
-            [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]],
-            sdk_type=[[primitives.Integer]],
+            "nested_out", [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]], sdk_type=[[primitives.Integer]],
         ),
         workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
     ]

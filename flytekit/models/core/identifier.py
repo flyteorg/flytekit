@@ -81,13 +81,7 @@ class Identifier(_common_models.FlyteIdlEntity):
         :param flyteidl.core.identifier_pb2.Identifier p:
         :rtype: Identifier
         """
-        return cls(
-            resource_type=p.resource_type,
-            project=p.project,
-            domain=p.domain,
-            name=p.name,
-            version=p.version,
-        )
+        return cls(resource_type=p.resource_type, project=p.project, domain=p.domain, name=p.name, version=p.version,)
 
 
 class WorkflowExecutionIdentifier(_common_models.FlyteIdlEntity):
@@ -126,11 +120,7 @@ class WorkflowExecutionIdentifier(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.identifier_pb2.WorkflowExecutionIdentifier
         """
-        return _identifier_pb2.WorkflowExecutionIdentifier(
-            project=self.project,
-            domain=self.domain,
-            name=self.name,
-        )
+        return _identifier_pb2.WorkflowExecutionIdentifier(project=self.project, domain=self.domain, name=self.name,)
 
     @classmethod
     def from_flyte_idl(cls, p):
@@ -138,11 +128,7 @@ class WorkflowExecutionIdentifier(_common_models.FlyteIdlEntity):
         :param flyteidl.core.identifier_pb2.WorkflowExecutionIdentifier p:
         :rtype: WorkflowExecutionIdentifier
         """
-        return cls(
-            project=p.project,
-            domain=p.domain,
-            name=p.name,
-        )
+        return cls(project=p.project, domain=p.domain, name=p.name,)
 
 
 class NodeExecutionIdentifier(_common_models.FlyteIdlEntity):
@@ -173,8 +159,7 @@ class NodeExecutionIdentifier(_common_models.FlyteIdlEntity):
         :rtype: flyteidl.core.identifier_pb2.NodeExecutionIdentifier
         """
         return _identifier_pb2.NodeExecutionIdentifier(
-            node_id=self.node_id,
-            execution_id=self.execution_id.to_flyte_idl(),
+            node_id=self.node_id, execution_id=self.execution_id.to_flyte_idl(),
         )
 
     @classmethod
@@ -183,10 +168,7 @@ class NodeExecutionIdentifier(_common_models.FlyteIdlEntity):
         :param flyteidl.core.identifier_pb2.NodeExecutionIdentifier p:
         :rtype: NodeExecutionIdentifier
         """
-        return cls(
-            node_id=p.node_id,
-            execution_id=WorkflowExecutionIdentifier.from_flyte_idl(p.execution_id),
-        )
+        return cls(node_id=p.node_id, execution_id=WorkflowExecutionIdentifier.from_flyte_idl(p.execution_id),)
 
 
 class TaskExecutionIdentifier(_common_models.FlyteIdlEntity):

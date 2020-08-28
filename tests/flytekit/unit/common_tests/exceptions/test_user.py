@@ -24,10 +24,7 @@ def test_flyte_type_exception():
 
     try:
         raise user.FlyteTypeException(
-            "int",
-            ("list", "set"),
-            received_value=1,
-            additional_msg="That was a bad idea!",
+            "int", ("list", "set"), received_value=1, additional_msg="That was a bad idea!",
         )
     except Exception as e:
         assert (

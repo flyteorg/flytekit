@@ -83,9 +83,7 @@ class SdkDynamicTaskMixin(object):
         :rtype: _array_job.ArrayJob
         """
         return _array_job.ArrayJob(
-            parallelism=self._max_concurrency if self._max_concurrency else 0,
-            size=1,
-            min_successes=1,
+            parallelism=self._max_concurrency if self._max_concurrency else 0, size=1, min_successes=1,
         )
 
     @staticmethod
@@ -137,9 +135,7 @@ class SdkDynamicTaskMixin(object):
             _literal_models.Binding(
                 var=name,
                 binding=_interface.BindingData.from_python_std(
-                    b.sdk_type.to_flyte_literal_type(),
-                    b.raw_value,
-                    upstream_nodes=upstream_nodes,
+                    b.sdk_type.to_flyte_literal_type(), b.raw_value, upstream_nodes=upstream_nodes,
                 ),
             )
             for name, b in _six.iteritems(outputs_dict)
@@ -286,9 +282,7 @@ class SdkDynamicTaskMixin(object):
 
 
 class SdkDynamicTask(
-    SdkDynamicTaskMixin,
-    _sdk_runnable.SdkRunnableTask,
-    metaclass=_sdk_bases.ExtendedSdkType,
+    SdkDynamicTaskMixin, _sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.ExtendedSdkType,
 ):
 
     """

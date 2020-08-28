@@ -54,9 +54,7 @@ example_hyperparams = {
 
 builtin_algorithm_training_job_task = SdkBuiltinAlgorithmTrainingJobTask(
     training_job_resource_config=TrainingJobResourceConfig(
-        instance_type="ml.m4.xlarge",
-        instance_count=1,
-        volume_size_in_gb=25,
+        instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
     ),
     algorithm_specification=AlgorithmSpecification(
         input_mode=InputMode.FILE,
@@ -76,10 +74,7 @@ def test_builtin_algorithm_training_job_task():
     assert isinstance(builtin_algorithm_training_job_task, _sdk_task.SdkTask)
     assert builtin_algorithm_training_job_task.interface.inputs["train"].description == ""
     assert builtin_algorithm_training_job_task.interface.inputs["train"].type == _idl_types.LiteralType(
-        blob=_core_types.BlobType(
-            format="csv",
-            dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
-        )
+        blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,)
     )
     assert (
         builtin_algorithm_training_job_task.interface.inputs["train"].type
@@ -91,10 +86,7 @@ def test_builtin_algorithm_training_job_task():
         == _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
     )
     assert builtin_algorithm_training_job_task.interface.inputs["train"].type == _idl_types.LiteralType(
-        blob=_core_types.BlobType(
-            format="csv",
-            dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
-        )
+        blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,)
     )
     assert builtin_algorithm_training_job_task.interface.inputs["static_hyperparameters"].description == ""
     assert (
@@ -115,16 +107,13 @@ def test_builtin_algorithm_training_job_task():
     assert "metricDefinitions" not in builtin_algorithm_training_job_task.custom["algorithmSpecification"].keys()
 
     ParseDict(
-        builtin_algorithm_training_job_task.custom["trainingJobResourceConfig"],
-        _pb2_TrainingJobResourceConfig,
+        builtin_algorithm_training_job_task.custom["trainingJobResourceConfig"], _pb2_TrainingJobResourceConfig,
     )  # fails the test if it cannot be parsed
 
 
 builtin_algorithm_training_job_task2 = SdkBuiltinAlgorithmTrainingJobTask(
     training_job_resource_config=TrainingJobResourceConfig(
-        instance_type="ml.m4.xlarge",
-        instance_count=1,
-        volume_size_in_gb=25,
+        instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
     ),
     algorithm_specification=AlgorithmSpecification(
         input_mode=InputMode.FILE,
@@ -159,10 +148,7 @@ def test_simple_hpo_job_task():
         == _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
     )
     assert simple_xgboost_hpo_job_task.interface.inputs["train"].type == _idl_types.LiteralType(
-        blob=_core_types.BlobType(
-            format="csv",
-            dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
-        )
+        blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,)
     )
     assert simple_xgboost_hpo_job_task.interface.inputs["validation"].description == ""
     assert (
@@ -170,10 +156,7 @@ def test_simple_hpo_job_task():
         == _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
     )
     assert simple_xgboost_hpo_job_task.interface.inputs["validation"].type == _idl_types.LiteralType(
-        blob=_core_types.BlobType(
-            format="csv",
-            dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
-        )
+        blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,)
     )
     assert simple_xgboost_hpo_job_task.interface.inputs["static_hyperparameters"].description == ""
     assert (

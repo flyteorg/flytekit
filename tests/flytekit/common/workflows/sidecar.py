@@ -12,16 +12,10 @@ from flytekit.sdk.workflow import Input, workflow_class
 
 def generate_pod_spec_for_task():
     pod_spec = generated_pb2.PodSpec()
-    secondary_container = generated_pb2.Container(
-        name="secondary",
-        image="alpine",
-    )
+    secondary_container = generated_pb2.Container(name="secondary", image="alpine",)
     secondary_container.command.extend(["/bin/sh"])
     secondary_container.args.extend(["-c", "echo hi sidecar world > /data/message.txt"])
-    shared_volume_mount = generated_pb2.VolumeMount(
-        name="shared-data",
-        mountPath="/data",
-    )
+    shared_volume_mount = generated_pb2.VolumeMount(name="shared-data", mountPath="/data",)
     secondary_container.volumeMounts.extend([shared_volume_mount])
 
     primary_container = generated_pb2.Container(name="primary")
@@ -31,11 +25,7 @@ def generate_pod_spec_for_task():
         [
             generated_pb2.Volume(
                 name="shared-data",
-                volumeSource=generated_pb2.VolumeSource(
-                    emptyDir=generated_pb2.EmptyDirVolumeSource(
-                        medium="Memory",
-                    )
-                ),
+                volumeSource=generated_pb2.VolumeSource(emptyDir=generated_pb2.EmptyDirVolumeSource(medium="Memory",)),
             )
         ]
     )
@@ -44,8 +34,7 @@ def generate_pod_spec_for_task():
 
 
 @sidecar_task(
-    pod_spec=generate_pod_spec_for_task(),
-    primary_container_name="primary",
+    pod_spec=generate_pod_spec_for_task(), primary_container_name="primary",
 )
 def a_sidecar_task(wfparams):
     while not os.path.isfile("/data/message.txt"):

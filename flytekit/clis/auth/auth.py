@@ -118,12 +118,7 @@ class OAuthHTTPServer(_BaseHTTPServer.HTTPServer):
     """
 
     def __init__(
-        self,
-        server_address,
-        RequestHandlerClass,
-        bind_and_activate=True,
-        redirect_path=None,
-        queue=None,
+        self, server_address, RequestHandlerClass, bind_and_activate=True, redirect_path=None, queue=None,
     ):
         _BaseHTTPServer.HTTPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
         self._redirect_path = redirect_path
@@ -238,10 +233,7 @@ class AuthorizationClient(object):
             {"code": auth_code.code, "code_verifier": self._code_verifier, "grant_type": "authorization_code"}
         )
         resp = _requests.post(
-            url=self._token_endpoint,
-            data=self._params,
-            headers=self._headers,
-            allow_redirects=False,
+            url=self._token_endpoint, data=self._params, headers=self._headers, allow_redirects=False,
         )
         if resp.status_code != _StatusCodes.OK:
             # TODO: handle expected (?) error cases:

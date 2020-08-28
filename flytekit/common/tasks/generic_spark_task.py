@@ -78,11 +78,7 @@ class SdkGenericSparkTask(_base_tasks.SdkTask):
             task_type,
             _task_models.TaskMetadata(
                 discoverable,
-                _task_models.RuntimeMetadata(
-                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
-                    __version__,
-                    "spark",
-                ),
+                _task_models.RuntimeMetadata(_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "spark",),
                 timeout,
                 _literal_models.RetryStrategy(retries),
                 interruptible,
@@ -127,8 +123,7 @@ class SdkGenericSparkTask(_base_tasks.SdkTask):
         self.interface.inputs.update(inputs)
 
     def _get_container_definition(
-        self,
-        environment=None,
+        self, environment=None,
     ):
         """
         :rtype: Container

@@ -149,11 +149,7 @@ class ExecutionError(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.execution_pb2.ExecutionError
         """
-        return _execution_pb2.ExecutionError(
-            code=self.code,
-            message=self.message,
-            error_uri=self.error_uri,
-        )
+        return _execution_pb2.ExecutionError(code=self.code, message=self.message, error_uri=self.error_uri,)
 
     @classmethod
     def from_flyte_idl(cls, p):
@@ -161,11 +157,7 @@ class ExecutionError(_common.FlyteIdlEntity):
         :param flyteidl.core.execution_pb2.ExecutionError p:
         :rtype: ExecutionError
         """
-        return cls(
-            code=p.code,
-            message=p.message,
-            error_uri=p.error_uri,
-        )
+        return cls(code=p.code, message=p.message, error_uri=p.error_uri,)
 
 
 class TaskLog(_common.FlyteIdlEntity):
@@ -229,9 +221,4 @@ class TaskLog(_common.FlyteIdlEntity):
         :param flyteidl.core.execution_pb2.TaskLog p:
         :rtype: TaskLog
         """
-        return cls(
-            uri=p.uri,
-            name=p.name,
-            message_format=p.message_format,
-            ttl=p.ttl.ToTimedelta(),
-        )
+        return cls(uri=p.uri, name=p.name, message_format=p.message_format, ttl=p.ttl.ToTimedelta(),)

@@ -23,10 +23,7 @@ def _fake_module_load(names):
 @pytest.yield_fixture(
     scope="function",
     params=[
-        os.path.join(
-            os.path.dirname(os.path.realpath(__file__)),
-            "../../../common/configs/local.config",
-        ),
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../../common/configs/local.config",),
         "/foo/bar",
         None,
     ],

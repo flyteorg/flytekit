@@ -15,8 +15,7 @@ def test_configuration_file():
 
 def test_internal_overrides():
     with _TemporaryConfiguration(
-        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "configs/good.config"),
-        {"foo": "bar"},
+        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "configs/good.config"), {"foo": "bar"},
     ):
         assert _os.environ.get("FLYTE_INTERNAL_FOO") == "bar"
     assert _os.environ.get("FLYTE_INTERNAL_FOO") is None

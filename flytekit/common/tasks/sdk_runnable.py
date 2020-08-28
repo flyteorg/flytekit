@@ -105,12 +105,7 @@ class ExecutionParameters(object):
 
 class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task_models.Container)):
     def __init__(
-        self,
-        command,
-        args,
-        resources,
-        env,
-        config,
+        self, command, args, resources, env, config,
     ):
         super(SdkRunnableContainer, self).__init__("", command, args, resources, env or {}, config)
 
@@ -205,9 +200,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             _task_models.TaskMetadata(
                 discoverable,
                 _task_models.RuntimeMetadata(
-                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
-                    __version__,
-                    "python",
+                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python",
                 ),
                 timeout,
                 _literal_models.RetryStrategy(retries),

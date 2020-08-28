@@ -159,11 +159,7 @@ class SdkRawContainerTask(_base_task.SdkTask):
         metadata = _task_models.TaskMetadata(
             discoverable,
             # This needs to have the proper version reflected in it
-            _task_models.RuntimeMetadata(
-                _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
-                __version__,
-                "python",
-            ),
+            _task_models.RuntimeMetadata(_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python",),
             timeout or _datetime.timedelta(seconds=0),
             _literals.RetryStrategy(retries),
             interruptible,

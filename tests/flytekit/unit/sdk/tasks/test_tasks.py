@@ -45,10 +45,7 @@ def test_default_python_task():
 
 def test_default_resources():
     with _configuration.TemporaryConfiguration(
-        _os.path.join(
-            _os.path.dirname(_os.path.realpath(__file__)),
-            "../../configuration/configs/good.config",
-        )
+        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../configuration/configs/good.config",)
     ):
 
         @inputs(in1=Types.Integer)
@@ -74,10 +71,7 @@ def test_default_resources():
 
 def test_overriden_resources():
     with _configuration.TemporaryConfiguration(
-        _os.path.join(
-            _os.path.dirname(_os.path.realpath(__file__)),
-            "../../configuration/configs/good.config",
-        )
+        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../configuration/configs/good.config",)
     ):
 
         @inputs(in1=Types.Integer)

@@ -107,10 +107,4 @@ class SimpleWorkflow(object):
     c = subtract_one(a=input_1)
 
     d = write_special_types()
-    e = read_special_types(
-        a=d.outputs.a,
-        b=d.outputs.b,
-        c=d.outputs.c,
-        d=d.outputs.d,
-        e=d.outputs.e,
-    )
+    e = read_special_types(a=d.outputs.a, b=d.outputs.b, c=d.outputs.c, d=d.outputs.d, e=d.outputs.e,)

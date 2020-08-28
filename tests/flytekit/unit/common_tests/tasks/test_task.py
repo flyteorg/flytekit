@@ -21,8 +21,7 @@ from flytekit.sdk.types import Types
 @_patch("flytekit.engines.loader.get_engine")
 def test_fetch_latest(mock_get_engine):
     admin_task = _task_models.Task(
-        _identifier.Identifier(_identifier.ResourceType.TASK, "p1", "d1", "n1", "v1"),
-        _MagicMock(),
+        _identifier.Identifier(_identifier.ResourceType.TASK, "p1", "d1", "n1", "v1"), _MagicMock(),
     )
     mock_engine = _MagicMock()
     mock_engine.fetch_latest_task = _MagicMock(return_value=admin_task)
@@ -57,10 +56,7 @@ def get_sample_task():
 def test_task_serialization():
     t = get_sample_task()
     with TemporaryConfiguration(
-        _os.path.join(
-            _os.path.dirname(_os.path.realpath(__file__)),
-            "../../../common/configs/local.config",
-        ),
+        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../../common/configs/local.config",),
         internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
     ):
         s = t.serialize()
