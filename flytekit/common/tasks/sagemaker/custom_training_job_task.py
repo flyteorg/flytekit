@@ -60,7 +60,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
 
         super().__init__(
             task_function=task_function,
-            task_type=SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK,
+            task_type=SdkTaskType.SAGEMAKER_CUSTOM_TRAINING_JOB_TASK,
             discovery_version=cache_version,
             retries=retries,
             interruptible=False,
