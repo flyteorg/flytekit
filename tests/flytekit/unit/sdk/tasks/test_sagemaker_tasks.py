@@ -4,6 +4,7 @@ import datetime as _datetime
 
 from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import HyperparameterTuningJobConfig as _pb2_HPOJobConfig
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
+
 # from flytekit.sdk.sagemaker.types import InputMode, AlgorithmName
 from google.protobuf.json_format import ParseDict
 
@@ -77,29 +78,29 @@ def test_builtin_algorithm_training_job_task():
     assert isinstance(builtin_algorithm_training_job_task, _sdk_task.SdkTask)
     assert builtin_algorithm_training_job_task.interface.inputs["train"].description == ""
     assert builtin_algorithm_training_job_task.interface.inputs["train"].type == _idl_types.LiteralType(
-        blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART, )
+        blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,)
     )
     assert (
-            builtin_algorithm_training_job_task.interface.inputs["train"].type
-            == _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
+        builtin_algorithm_training_job_task.interface.inputs["train"].type
+        == _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
     )
     assert builtin_algorithm_training_job_task.interface.inputs["validation"].description == ""
     assert (
-            builtin_algorithm_training_job_task.interface.inputs["validation"].type
-            == _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
+        builtin_algorithm_training_job_task.interface.inputs["validation"].type
+        == _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
     )
     assert builtin_algorithm_training_job_task.interface.inputs["train"].type == _idl_types.LiteralType(
-        blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART, )
+        blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,)
     )
     assert builtin_algorithm_training_job_task.interface.inputs["static_hyperparameters"].description == ""
     assert (
-            builtin_algorithm_training_job_task.interface.inputs["static_hyperparameters"].type
-            == _sdk_types.Types.Generic.to_flyte_literal_type()
+        builtin_algorithm_training_job_task.interface.inputs["static_hyperparameters"].type
+        == _sdk_types.Types.Generic.to_flyte_literal_type()
     )
     assert builtin_algorithm_training_job_task.interface.outputs["model"].description == ""
     assert (
-            builtin_algorithm_training_job_task.interface.outputs["model"].type
-            == _sdk_types.Types.Blob.to_flyte_literal_type()
+        builtin_algorithm_training_job_task.interface.outputs["model"].type
+        == _sdk_types.Types.Blob.to_flyte_literal_type()
     )
     assert builtin_algorithm_training_job_task.type == _common_constants.SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK
     assert builtin_algorithm_training_job_task.metadata.timeout == _datetime.timedelta(seconds=0)
@@ -147,31 +148,31 @@ def test_simple_hpo_job_task():
     # Checking if the input of the underlying SdkTrainingJobTask has been embedded
     assert simple_xgboost_hpo_job_task.interface.inputs["train"].description == ""
     assert (
-            simple_xgboost_hpo_job_task.interface.inputs["train"].type
-            == _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
+        simple_xgboost_hpo_job_task.interface.inputs["train"].type
+        == _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
     )
     assert simple_xgboost_hpo_job_task.interface.inputs["train"].type == _idl_types.LiteralType(
-        blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART, )
+        blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,)
     )
     assert simple_xgboost_hpo_job_task.interface.inputs["validation"].description == ""
     assert (
-            simple_xgboost_hpo_job_task.interface.inputs["validation"].type
-            == _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
+        simple_xgboost_hpo_job_task.interface.inputs["validation"].type
+        == _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
     )
     assert simple_xgboost_hpo_job_task.interface.inputs["validation"].type == _idl_types.LiteralType(
-        blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART, )
+        blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,)
     )
     assert simple_xgboost_hpo_job_task.interface.inputs["static_hyperparameters"].description == ""
     assert (
-            simple_xgboost_hpo_job_task.interface.inputs["static_hyperparameters"].type
-            == _sdk_types.Types.Generic.to_flyte_literal_type()
+        simple_xgboost_hpo_job_task.interface.inputs["static_hyperparameters"].type
+        == _sdk_types.Types.Generic.to_flyte_literal_type()
     )
 
     # Checking if the hpo-specific input is defined
     assert simple_xgboost_hpo_job_task.interface.inputs["hyperparameter_tuning_job_config"].description == ""
     assert (
-            simple_xgboost_hpo_job_task.interface.inputs["hyperparameter_tuning_job_config"].type
-            == _sdk_types.Types.Proto(_pb2_HPOJobConfig).to_flyte_literal_type()
+        simple_xgboost_hpo_job_task.interface.inputs["hyperparameter_tuning_job_config"].type
+        == _sdk_types.Types.Proto(_pb2_HPOJobConfig).to_flyte_literal_type()
     )
     assert simple_xgboost_hpo_job_task.interface.outputs["model"].description == ""
     assert simple_xgboost_hpo_job_task.interface.outputs["model"].type == _sdk_types.Types.Blob.to_flyte_literal_type()
@@ -200,9 +201,11 @@ def test_simple_hpo_job_task():
 def test_custom_training_job():
     @inputs(input_1=Types.Integer)
     @outputs(model=Types.Blob)
-    @custom_task(training_job_config=TrainingJobResourceConfig(
-        instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
-    ))
+    @custom_task(
+        training_job_config=TrainingJobResourceConfig(
+            instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
+        )
+    )
     def my_task(wf_params, input_1, model):
         pass
 

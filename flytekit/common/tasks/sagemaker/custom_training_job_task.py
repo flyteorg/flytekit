@@ -14,24 +14,24 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
     """
 
     def __init__(
-            self,
-            task_function,
-            cache_version,
-            retries,
-            deprecated,
-            storage_request,
-            cpu_request,
-            gpu_request,
-            memory_request,
-            storage_limit,
-            cpu_limit,
-            gpu_limit,
-            memory_limit,
-            cache,
-            timeout,
-            environment,
-            algorithm_specification: _training_job_models.AlgorithmSpecification,
-            training_job_resource_config: _training_job_models.TrainingJobResourceConfig,
+        self,
+        task_function,
+        cache_version,
+        retries,
+        deprecated,
+        storage_request,
+        cpu_request,
+        gpu_request,
+        memory_request,
+        storage_limit,
+        cpu_limit,
+        gpu_limit,
+        memory_limit,
+        cache,
+        timeout,
+        environment,
+        algorithm_specification: _training_job_models.AlgorithmSpecification,
+        training_job_resource_config: _training_job_models.TrainingJobResourceConfig,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -55,8 +55,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
 
         # Use the training job model as a measure of type checking
         self._training_job_model = _training_job_models.TrainingJob(
-            algorithm_specification=algorithm_specification,
-            training_job_resource_config=training_job_resource_config
+            algorithm_specification=algorithm_specification, training_job_resource_config=training_job_resource_config
         )
 
         super().__init__(

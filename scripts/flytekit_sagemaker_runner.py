@@ -26,14 +26,14 @@ i = 0
 while i < len(unknowns):
     print(unknowns[i])
     if unknowns[i].startswith(FLYTE_CMD_ARG_PREFIX) and unknowns[i].endswith(FLYTE_ARG_SUFFIX):
-        processed = unknowns[i][len(FLYTE_CMD_ARG_PREFIX):][:-len(FLYTE_ARG_SUFFIX)].replace("_", "-")
+        processed = unknowns[i][len(FLYTE_CMD_ARG_PREFIX) :][: -len(FLYTE_ARG_SUFFIX)].replace("_", "-")
         pass_through_cmd_args.append("--" + processed)
         i += 1
         if unknowns[i].startswith(FLYTE_ARG_PREFIX) is False:
             pass_through_cmd_args.append(unknowns[i])
             i += 1
     elif unknowns[i].startswith(FLYTE_ENV_VAR_PREFIX) and unknowns[i].endswith(FLYTE_ARG_SUFFIX):
-        processed = unknowns[i][len(FLYTE_ENV_VAR_PREFIX):][:-len(FLYTE_ARG_SUFFIX)]
+        processed = unknowns[i][len(FLYTE_ENV_VAR_PREFIX) :][: -len(FLYTE_ARG_SUFFIX)]
         # Note that in env var we must not replace _ with -
         env_vars.append(processed)
         i += 1
@@ -47,7 +47,7 @@ print("Pass-through cmd args:", pass_through_cmd_args)
 print("Env vars:", env_vars)
 
 for i in range(0, len(env_vars), 2):
-    environ[env_vars[i]] = env_vars[i+1]
+    environ[env_vars[i]] = env_vars[i + 1]
 
 logging.info("Launching a subprocess with: {}".format(pass_through_cmd_args))
 

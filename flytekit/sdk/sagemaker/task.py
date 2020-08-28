@@ -6,7 +6,8 @@ from flytekit.models.sagemaker import training_job as _training_job_models
 
 def custom_trainin_job_task(
     _task_function=None,
-    training_job_config=None,
+    algorithm_specification=None,
+    training_job_resource_config=None,
     cache_version="",
     retries=0,
     deprecated="",
@@ -38,7 +39,9 @@ def custom_trainin_job_task(
         take a first argument, and then named arguments matching those defined in @inputs and @outputs.  No keyword
         arguments are allowed for wrapped task functions.
 
-    :param _training_job_models.TrainingJobResourceConfig training_job_config: This represents the training job config.
+    :param _training_job_models.AlgorithmSpecification algorithm_specification: This represents the algorithm specification
+
+    :param _training_job_models.TrainingJobResourceConfig training_job_resource_config: This represents the training job config.
 
     :param Text cache_version: [optional] string representing logical version for discovery.  This field should be
         updated whenever the underlying algorithm changes.
@@ -132,7 +135,8 @@ def custom_trainin_job_task(
             cache=cache,
             timeout=timeout or _datetime.timedelta(seconds=0),
             environment=environment,
-            training_job_resource_config=training_job_config,
+            algorithm_specification=algorithm_specification,
+            training_job_resource_config=training_job_resource_config,
         )
 
     if _task_function:

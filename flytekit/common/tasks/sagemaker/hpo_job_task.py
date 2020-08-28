@@ -23,13 +23,13 @@ from flytekit.sdk import types as _sdk_types
 
 class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
     def __init__(
-            self,
-            max_number_of_training_jobs: int,
-            max_parallel_training_jobs: int,
-            training_job: typing.Union[SdkBuiltinAlgorithmTrainingJobTask, CustomTrainingJobTask],
-            retries: int = 0,
-            cacheable: bool = False,
-            cache_version: str = "",
+        self,
+        max_number_of_training_jobs: int,
+        max_parallel_training_jobs: int,
+        training_job: typing.Union[SdkBuiltinAlgorithmTrainingJobTask, CustomTrainingJobTask],
+        retries: int = 0,
+        cacheable: bool = False,
+        cache_version: str = "",
     ):
         """
 

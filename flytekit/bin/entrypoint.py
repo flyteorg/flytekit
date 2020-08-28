@@ -105,4 +105,3 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, test):
 
 if __name__ == "__main__":
     _pass_through()
-
