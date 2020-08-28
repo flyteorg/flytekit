@@ -4,7 +4,7 @@ from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrain
 from flytekit.models.sagemaker import training_job as _training_job_models
 
 
-def custom_trainin_job_task(
+def custom_training_job_task(
     _task_function=None,
     algorithm_specification=None,
     training_job_resource_config=None,
