@@ -46,9 +46,7 @@ class DiscoveryClient(object):
     def get_authorization_endpoints(self):
         if self.authorization_endpoints is not None:
             return self.authorization_endpoints
-        resp = _requests.get(
-            url=self._discovery_url,
-        )
+        resp = _requests.get(url=self._discovery_url,)
 
         response_body = resp.json()
 

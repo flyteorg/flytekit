@@ -33,9 +33,7 @@ from flytekit.models.core import workflow as _workflow_models
 
 class SdkLaunchPlan(
     _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType,
-        _launch_plan_models.LaunchPlanSpec,
-        _launchable_mixin.LaunchableEntity,
+        _sdk_bases.ExtendedSdkType, _launch_plan_models.LaunchPlanSpec, _launchable_mixin.LaunchableEntity,
     )
 ):
     def __init__(self, *args, **kwargs):
@@ -134,8 +132,7 @@ class SdkLaunchPlan(
             )
             assumable_iam_role = _sdk_config.ROLE.get()
         return _common_models.AuthRole(
-            assumable_iam_role=assumable_iam_role,
-            kubernetes_service_account=kubernetes_service_account,
+            assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
         )
 
     @property
@@ -215,13 +212,7 @@ class SdkLaunchPlan(
         Deprecated.
         """
         return self.launch_with_literals(
-            project,
-            domain,
-            literal_inputs,
-            name,
-            notification_overrides,
-            label_overrides,
-            annotation_overrides,
+            project, domain, literal_inputs, name, notification_overrides, label_overrides, annotation_overrides,
         )
 
     @_exception_scopes.system_entry_point
@@ -305,9 +296,7 @@ class SdkLaunchPlan(
 # The difference between this and the SdkLaunchPlan class is that this runnable class is supposed to only be used for
 # launch plans loaded alongside the current Python interpreter.
 class SdkRunnableLaunchPlan(
-    _hash_mixin.HashOnReferenceMixin,
-    SdkLaunchPlan,
-    _registerable.RegisterableEntity,
+    _hash_mixin.HashOnReferenceMixin, SdkLaunchPlan, _registerable.RegisterableEntity,
 ):
     def __init__(
         self,
@@ -356,8 +345,7 @@ class SdkRunnableLaunchPlan(
         super(SdkRunnableLaunchPlan, self).__init__(
             None,
             _launch_plan_models.LaunchPlanMetadata(
-                schedule=schedule or _schedule_model.Schedule(""),
-                notifications=notifications or [],
+                schedule=schedule or _schedule_model.Schedule(""), notifications=notifications or [],
             ),
             _interface_models.ParameterMap(default_inputs),
             _type_helpers.pack_python_std_map_to_literal_map(
@@ -374,8 +362,7 @@ class SdkRunnableLaunchPlan(
             raw_output_data_config or _common_models.RawOutputDataConfig(""),
         )
         self._interface = _interface.TypedInterface(
-            {k: v.var for k, v in _six.iteritems(default_inputs)},
-            sdk_workflow.interface.outputs,
+            {k: v.var for k, v in _six.iteritems(default_inputs)}, sdk_workflow.interface.outputs,
         )
         self._upstream_entities = {sdk_workflow}
         self._sdk_workflow = sdk_workflow
