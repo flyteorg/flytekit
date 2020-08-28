@@ -1,34 +1,58 @@
 from __future__ import absolute_import
 
 import argparse
+import logging
+import subprocess
 from os import environ
 
-from flytekit.bin.entrypoint import execute_task_cmd
+FLYTE_ARG_PREFIX = "--__FLYTE"
+FLYTE_ENV_VAR_PREFIX = "{}_ENV_VAR_".format(FLYTE_ARG_PREFIX)
+FLYTE_CMD_ARG_PREFIX = "{}_CMD_ARG_".format(FLYTE_ARG_PREFIX)
+FLYTE_ARG_SUFFIX = "__"
 
 parser = argparse.ArgumentParser(description="Running sagemaker task")
-parser.add_argument('--__FLYTE_CMD__', dest='flyte_cmd', type=str, nargs='+',
-                    help='The entrypoint selector argument')
-parser.add_argument('--__FLYTE_ENV_VAR__', dest='flyte_env_var', type=str, nargs='+',
-                    help='Specifies an environment variable.')
+parser.add_argument("--__FLYTE_SAGEMAKER_CMD__", dest="flyte_sagemaker_cmd", help="The entrypoint selector argument")
 args, unknowns = parser.parse_known_args()
 
-flyte_cmd = [param.strip("'") for param in args.flyte_cmd]
+# Extending the command with the rest of the command-line arguments
+subprocess_cmd = []
+if args.flyte_sagemaker_cmd is not None:
+    subprocess_cmd = args.flyte_sagemaker_cmd.split("+")
 
-# Defer to click to parse the command
-ctx = execute_task_cmd.make_context(flyte_cmd[1], args=flyte_cmd[2:])
-execute_task_cmd.parse_args(ctx=ctx, args=flyte_cmd[2:])
+pass_through_cmd_args = []
+env_vars = []
+i = 0
 
-# Rewrite output_prefix by appending the training job name. SageMaker populates TRAINING_JOB_NAME env var.
-# The real value in doing this shows in HPO jobs. In HPO case, SageMaker runs the same container with pretty
-# much the same arguments with the exception of TRAINING_JOB_NAME and the hyper parameter it's optimizing.
-# Since, at least for now, flytekit will continue to write its outputs.pb, we need to make sure the target
-# output directory is unique hence why we use the TRAINING_JOB_NAME as a subdirectory.
-ctx.params["output_prefix"] = "{}/{}".format(ctx.params["output_prefix"], environ.get("TRAINING_JOB_NAME"))
+while i < len(unknowns):
+    print(unknowns[i])
+    if unknowns[i].startswith(FLYTE_CMD_ARG_PREFIX) and unknowns[i].endswith(FLYTE_ARG_SUFFIX):
+        processed = unknowns[i][len(FLYTE_CMD_ARG_PREFIX):][:-len(FLYTE_ARG_SUFFIX)].replace("_", "-")
+        pass_through_cmd_args.append("--" + processed)
+        i += 1
+        if unknowns[i].startswith(FLYTE_ARG_PREFIX) is False:
+            pass_through_cmd_args.append(unknowns[i])
+            i += 1
+    elif unknowns[i].startswith(FLYTE_ENV_VAR_PREFIX) and unknowns[i].endswith(FLYTE_ARG_SUFFIX):
+        processed = unknowns[i][len(FLYTE_ENV_VAR_PREFIX):][:-len(FLYTE_ARG_SUFFIX)]
+        # Note that in env var we must not replace _ with -
+        env_vars.append(processed)
+        i += 1
+        if unknowns[i].startswith(FLYTE_ARG_PREFIX) is False:
+            env_vars.append(unknowns[i])
+            i += 1
+    else:
+        i += 1
 
-# Set environment variables passed in through command line argument.
-for env_var in args.flyte_env_var:
-    env_var_parts = env_var.split('=', maxsplit=1)
-    environ[env_var_parts[0]] = env_var_parts[1]
+print("Pass-through cmd args:", pass_through_cmd_args)
+print("Env vars:", env_vars)
 
-# Finally, invoke the command with the updated params.
-res = execute_task_cmd.invoke(ctx)
+for i in range(0, len(env_vars), 2):
+    environ[env_vars[i]] = env_vars[i+1]
+
+logging.info("Launching a subprocess with: {}".format(pass_through_cmd_args))
+
+# Launching a subprocess with the selected entrypoint script and the rest of the arguments
+# subprocess_cmd = []
+subprocess_cmd.extend(pass_through_cmd_args)
+print("Running a subprocess with the following command: {}".format(subprocess_cmd))
+subprocess.run(subprocess_cmd)
