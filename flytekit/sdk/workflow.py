@@ -42,7 +42,7 @@ class Output(_common_workflow.Output):
         )
 
 
-def workflow_class(_workflow_metaclass=None, cls=None, on_failure=None):
+def workflow_class(_workflow_metaclass=None, on_failure=None, disable_default_launch_plan=False, cls=None):
     """
     This is a decorator for wrapping class definitions into workflows.
 
@@ -62,12 +62,16 @@ def workflow_class(_workflow_metaclass=None, cls=None, on_failure=None):
     :param cls: This is the class that will be instantiated from the inputs, outputs, and nodes. This will be used
         by users extending the base Flyte programming model. If set, it must be a subclass of
         :py:class:`flytekit.common.workflow.SdkWorkflow`.
-    :param on_failure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
+    :param flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy on_failure: [Optional] The execution policy
+        when the workflow detects a failure.
+    :param bool disable_default_launch_plan: Determines whether to create a default launch plan for the workflow or not.
+
     :rtype: flytekit.common.workflow.SdkWorkflow
     """
 
     def wrapper(metaclass):
-        wf = _common_workflow.build_sdk_workflow_from_metaclass(metaclass, cls=cls, on_failure=on_failure)
+        wf = _common_workflow.build_sdk_workflow_from_metaclass(
+            metaclass, on_failure=on_failure, disable_default_launch_plan=disable_default_launch_plan, cls=cls)
         return wf
 
     if _workflow_metaclass is not None:

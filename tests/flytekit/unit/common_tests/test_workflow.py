@@ -137,6 +137,8 @@ def test_workflow_decorator():
         my_workflow, on_failure=_workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE,
     )
 
+    assert w.should_create_default_launch_plan == True
+
     assert w.interface.inputs["input_1"].type == primitives.Integer.to_flyte_literal_type()
     assert w.interface.inputs["input_2"].type == primitives.Integer.to_flyte_literal_type()
     assert w.nodes[0].inputs[0].var == "a"
@@ -353,3 +355,15 @@ def test_workflow_serialization():
     assert len(serialized.template.nodes) == 6
     assert len(serialized.template.interface.inputs.variables.keys()) == 2
     assert len(serialized.template.interface.outputs.variables.keys()) == 2
+
+
+def test_workflow_disable_default_launch_plan():
+    class MyWorkflow(object):
+        input_1 = promise.Input("input_1", primitives.Integer)
+        input_2 = promise.Input("input_2", primitives.Integer, default=5, help="Not required.")
+
+    w = workflow.build_sdk_workflow_from_metaclass(
+        MyWorkflow, disable_default_launch_plan=True,
+    )
+
+    assert w.should_create_default_launch_plan == False
