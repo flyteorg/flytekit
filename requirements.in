@@ -1,0 +1,2 @@
+.[all]
+-e file:.#egg=flytekit

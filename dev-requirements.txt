@@ -4,31 +4,31 @@
 #
 #    make dev-requirements.txt
 #
-appdirs==1.4.4            # via black
-attrs==20.1.0             # via black, pytest
-black==19.10b0            # via -r dev-requirements.in, flake8-black
-click==7.1.2              # via black
+appdirs==1.4.4            # via -c requirements.txt, black
+attrs==20.1.0             # via -c requirements.txt, black, pytest
+black==19.10b0            # via -c requirements.txt, -r dev-requirements.in, flake8-black
+click==7.1.2              # via -c requirements.txt, black
 coverage==5.2.1           # via -r dev-requirements.in
 flake8-black==0.2.1       # via -r dev-requirements.in
 flake8-isort==4.0.0       # via -r dev-requirements.in
 flake8==3.8.3             # via -r dev-requirements.in, flake8-black, flake8-isort
-importlib-metadata==1.7.0  # via flake8, pluggy, pytest
+importlib-metadata==1.7.0  # via -c requirements.txt, flake8, pluggy, pytest
 iniconfig==1.0.1          # via pytest
 isort==5.4.2              # via -r dev-requirements.in, flake8-isort
 mccabe==0.6.1             # via flake8
 mock==4.0.2               # via -r dev-requirements.in
 more-itertools==8.5.0     # via pytest
 packaging==20.4           # via pytest
-pathspec==0.8.0           # via black
+pathspec==0.8.0           # via -c requirements.txt, black
 pluggy==0.13.1            # via pytest
 py==1.9.0                 # via pytest
 pycodestyle==2.6.0        # via flake8
 pyflakes==2.2.0           # via flake8
 pyparsing==2.4.7          # via packaging
 pytest==6.0.1             # via -r dev-requirements.in
-regex==2020.7.14          # via black
-six==1.15.0               # via packaging
+regex==2020.7.14          # via -c requirements.txt, black
+six==1.15.0               # via -c requirements.txt, packaging
 testfixtures==6.14.1      # via flake8-isort
-toml==0.10.1              # via black, pytest
-typed-ast==1.4.1          # via black
-zipp==3.1.0               # via importlib-metadata
+toml==0.10.1              # via -c requirements.txt, black, pytest
+typed-ast==1.4.1          # via -c requirements.txt, black
+zipp==3.1.0               # via -c requirements.txt, importlib-metadata
