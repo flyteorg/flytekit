@@ -14,7 +14,7 @@ jobs:
       before_install:
         - make install-piptools
         - pip install -U .[all]
-        - pip install dev-requirements.in
+        - pip install -r dev-requirements.in
 install: pip freeze
 script:
   - make lint
