@@ -59,9 +59,6 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             algorithm_specification=algorithm_specification, training_job_resource_config=training_job_resource_config
         )
 
-        # Injecting this environment variable because our container does not have access to statsd in SageMaker
-        environment[format_section_key("statsd", "disabled")] = True
-
         super().__init__(
             task_function=task_function,
             task_type=SdkTaskType.SAGEMAKER_CUSTOM_TRAINING_JOB_TASK,
