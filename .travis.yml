@@ -5,11 +5,16 @@ jobs:
       python: 3.7
       before_install:
         - make setup
+    # We're running this separately with a separate installation process because most of us use 3.7 locally. When
+    # we run pip-compile with 3.7, it will sometimes pick up packages that do not work in 3.6. Since the `make setup`
+    # command uses the strict version numbers, it'll fail under 3.6, so for this version, we install everything just
+    # from the ranges found in setup.py and the dev .in file.
     - name: "Python 3.6"
       python: 3.6
       before_install:
+        - make install-piptools
         - pip install -U .[all]
-        - pip install codecov
+        - pip install dev-requirements.in
 install: pip freeze
 script:
   - make lint
