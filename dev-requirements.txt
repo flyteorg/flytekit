@@ -5,7 +5,7 @@
 #    make dev-requirements.txt
 #
 appdirs==1.4.4            # via -c requirements.txt, black
-attrs==19.3.0             # via -c requirements.txt, black, pytest
+attrs==20.1.0             # via -c requirements.txt, black, pytest
 black==19.10b0            # via -c requirements.txt, -r dev-requirements.in, flake8-black
 click==7.1.2              # via -c requirements.txt, black
 coverage==5.2.1           # via -r dev-requirements.in
@@ -14,10 +14,10 @@ flake8-isort==4.0.0       # via -r dev-requirements.in
 flake8==3.8.3             # via -r dev-requirements.in, flake8-black, flake8-isort
 importlib-metadata==1.7.0  # via -c requirements.txt, flake8, pluggy, pytest
 iniconfig==1.0.1          # via pytest
-isort==5.3.2              # via -r dev-requirements.in, flake8-isort
+isort==5.4.2              # via -r dev-requirements.in, flake8-isort
 mccabe==0.6.1             # via flake8
 mock==4.0.2               # via -r dev-requirements.in
-more-itertools==8.4.0     # via pytest
+more-itertools==8.5.0     # via pytest
 packaging==20.4           # via pytest
 pathspec==0.8.0           # via -c requirements.txt, black
 pluggy==0.13.1            # via pytest
