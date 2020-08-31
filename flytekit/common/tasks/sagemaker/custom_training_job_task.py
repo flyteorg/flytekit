@@ -4,6 +4,7 @@ from google.protobuf.json_format import MessageToDict
 
 from flytekit.common.constants import SdkTaskType
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.configuration.common import format_section_key
 from flytekit.models.sagemaker import training_job as _training_job_models
 
 
@@ -57,6 +58,9 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         self._training_job_model = _training_job_models.TrainingJob(
             algorithm_specification=algorithm_specification, training_job_resource_config=training_job_resource_config
         )
+
+        # Injecting this environment variable because our container does not have access to statsd in SageMaker
+        environment[format_section_key("statsd", "disabled")] = True
 
         super().__init__(
             task_function=task_function,
