@@ -1,7 +1,6 @@
 import datetime as _datetime
 
 from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
-from flytekit.models.sagemaker import training_job as _training_job_models
 
 
 def custom_training_job_task(
