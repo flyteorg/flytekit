@@ -149,7 +149,7 @@ def get_stats(prefix):
 
 
 class DummyStatsClient(statsd.StatsClient):
-    """A client for statsd."""
+    """A dummy client for statsd."""
 
     def __init__(self, host='localhost', port=8125, prefix=None,
                  maxudpsize=512, ipv6=False):
