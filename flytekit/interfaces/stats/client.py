@@ -134,7 +134,7 @@ class StatsClientProxy(ScopeableStatsProxy):
 def _get_stats_client():
     global _stats_client
     if _statsd_config.DISABLED.get() is True:
-        _stats_client = DummyStatsClient(_statsd_config.HOST.get(), _statsd_config.PORT.get())
+        _stats_client = DummyStatsClient()
     if _stats_client is None:
         _stats_client = statsd.StatsClient(_statsd_config.HOST.get(), _statsd_config.PORT.get())
     return _stats_client
