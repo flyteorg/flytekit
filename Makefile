@@ -9,12 +9,12 @@ help:
 	cat $(MAKEFILE_LIST) | grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' | awk 'BEGIN { FS = ":.*?## " } { cnt++; a[cnt] = $$1; b[cnt] = $$2; if (length($$1) > max) max = length($$1) } END { for (i = 1; i <= cnt; i++) printf "  $(shell tput setaf 6)%-*s$(shell tput setaf 0) %s\n", max, a[i], b[i] }'
 	tput sgr0
 
-.PHONY: _install-piptools
-_install-piptools:
+.PHONY: install-piptools
+install-piptools:
 	pip install -U pip-tools
 
 .PHONY: setup
-setup: _install-piptools ## Install requirements
+setup: install-piptools ## Install requirements
 	pip-sync requirements.txt dev-requirements.txt
 
 .PHONY: fmt
