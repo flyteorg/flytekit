@@ -4,7 +4,7 @@ import argparse
 import logging
 import subprocess
 from os import environ
-
+logging.basicConfig(level=logging.DEBUG)
 FLYTE_ARG_PREFIX = "--__FLYTE"
 FLYTE_ENV_VAR_PREFIX = f"{FLYTE_ARG_PREFIX}_ENV_VAR_"
 FLYTE_CMD_PREFIX = f"{FLYTE_ARG_PREFIX}_CMD_"
@@ -59,7 +59,7 @@ flyte_cmd = [x[1] for x in flyte_cmd]
 logging.info(f"Cmd:{flyte_cmd}")
 logging.info(f"Env vars:{env_vars}")
 
-for key, val in env_vars:
+for key, val in env_vars.items():
     environ[key] = val
 
 # Launching a subprocess with the selected entrypoint script and the rest of the arguments
