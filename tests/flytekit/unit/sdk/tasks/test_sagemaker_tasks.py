@@ -196,13 +196,6 @@ def test_simple_hpo_job_task():
     """
 
 
-o = TrainingJobResourceConfig(
-    instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
-)
-
-print(o.to_flyte_idl())
-
-
 def test_custom_training_job():
     @inputs(input_1=Types.Integer)
     @outputs(model=Types.Blob)
