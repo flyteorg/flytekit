@@ -574,8 +574,8 @@ class SparkJob(_common.FlyteIdlEntity):
     @property
     def spark_conf(self):
         """
-       A definition of key-value pairs for spark config for the job.
-        :rtype: dict[Text, Text]
+        A definition of key-value pairs for spark config for the job.
+         :rtype: dict[Text, Text]
         """
         return self._spark_conf
 
@@ -718,17 +718,17 @@ class DataLoadingConfig(_common.FlyteIdlEntity):
 class Container(_common.FlyteIdlEntity):
     def __init__(self, image, command, args, resources, env, config, data_loading_config=None):
         """
-           This defines a container target.  It will execute the appropriate command line on the appropriate image with
-           the given configurations.
+        This defines a container target.  It will execute the appropriate command line on the appropriate image with
+        the given configurations.
 
-           :param Text image: The fully-qualified identifier for the image.
-           :param list[Text] command: A list of 'words' for the command.  i.e. ['aws', 's3', 'ls']
-           :param list[Text] args: A list of arguments for the command.  i.e. ['s3://some/path', '/tmp/local/path']
-           :param Resources resources: A definition of requisite compute resources.
-           :param dict[Text, Text] env: A definition of key-value pairs for environment variables.
-           :param dict[Text, Text] config: A definition of configuration key-value pairs.
-           :type DataLoadingConfig data_loading_config: object
-           """
+        :param Text image: The fully-qualified identifier for the image.
+        :param list[Text] command: A list of 'words' for the command.  i.e. ['aws', 's3', 'ls']
+        :param list[Text] args: A list of arguments for the command.  i.e. ['s3://some/path', '/tmp/local/path']
+        :param Resources resources: A definition of requisite compute resources.
+        :param dict[Text, Text] env: A definition of key-value pairs for environment variables.
+        :param dict[Text, Text] config: A definition of configuration key-value pairs.
+        :type DataLoadingConfig data_loading_config: object
+        """
         self._data_loading_config = data_loading_config
         self._image = image
         self._command = command

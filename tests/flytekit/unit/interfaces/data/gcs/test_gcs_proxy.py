@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import os as _os
 
 import mock as _mock
@@ -69,3 +67,14 @@ def test_upload_directory_with_parallelism(mock_update_cmd_config_and_execute, g
     local_path, remote_path = "/foo/*", "gs://bar/0/"
     gcs_proxy.upload_directory(local_path, remote_path)
     mock_update_cmd_config_and_execute.assert_called_once_with(["gsutil", "-m", "cp", "-r", local_path, remote_path])
+
+
+def test_raw_prefix_property(mock_update_cmd_config_and_execute, gsutil_parallelism, gcs_proxy):
+    gcs_with_raw_prefix = _gcs_proxy.GCSProxy("gcs://stuff")
+    assert gcs_with_raw_prefix.raw_output_data_prefix_override == "gcs://stuff"
+
+
+def test_random_path(mock_update_cmd_config_and_execute, gsutil_parallelism, gcs_proxy):
+    gcs_with_raw_prefix = _gcs_proxy.GCSProxy("gcs://stuff")
+    result = gcs_with_raw_prefix.get_random_path()
+    assert result.startswith("gcs://stuff")

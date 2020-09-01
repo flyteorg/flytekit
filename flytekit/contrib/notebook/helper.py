@@ -1,10 +1,10 @@
 import os as _os
 
 import six as _six
-from pyspark import SparkConf, SparkContext
 
 from flytekit.common.types.helpers import pack_python_std_map_to_literal_map as _packer
 from flytekit.contrib.notebook.supported_types import notebook_types_map as _notebook_types_map
+from flytekit.plugins import pyspark as _pyspark
 
 
 def record_outputs(outputs=None):
@@ -35,9 +35,9 @@ def get_spark_context(spark_conf):
     # We run in cluster-mode in Flyte.
     # Ref https://github.com/lyft/flyteplugins/blob/master/go/tasks/v1/flytek8s/k8s_resource_adds.go#L46
     if "FLYTE_INTERNAL_EXECUTION_ID" in _os.environ:
-        return SparkContext()
+        return _pyspark.SparkContext()
 
     # Add system spark-conf for local/notebook based execution.
     spark_conf.add(("spark.master", "local"))
-    conf = SparkConf().setAll(spark_conf)
-    return SparkContext(conf=conf)
+    conf = _pyspark.SparkConf().setAll(spark_conf)
+    return _pyspark.SparkContext(conf=conf)
