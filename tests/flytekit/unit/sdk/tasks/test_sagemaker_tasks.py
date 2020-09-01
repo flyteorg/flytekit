@@ -56,24 +56,39 @@ example_hyperparams = {
     "updater": "grow_colmaker,prune",
 }
 
-builtin_algorithm_training_job_task = SdkBuiltinAlgorithmTrainingJobTask(
-    training_job_resource_config=TrainingJobResourceConfig(
-        instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
-    ),
-    algorithm_specification=AlgorithmSpecification(
-        input_mode=InputMode.FILE,
-        input_content_type=InputContentType.TEXT_CSV,
-        algorithm_name=AlgorithmName.XGBOOST,
-        algorithm_version="0.72",
-    ),
-)
-
-builtin_algorithm_training_job_task._id = _identifier.Identifier(
-    _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version"
-)
+# builtin_algorithm_training_job_task = SdkBuiltinAlgorithmTrainingJobTask(
+#     training_job_resource_config=TrainingJobResourceConfig(
+#         instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
+#     ),
+#     algorithm_specification=AlgorithmSpecification(
+#         input_mode=InputMode.FILE,
+#         input_content_type=InputContentType.TEXT_CSV,
+#         algorithm_name=AlgorithmName.XGBOOST,
+#         algorithm_version="0.72",
+#     ),
+# )
+#
+# builtin_algorithm_training_job_task._id = _identifier.Identifier(
+#     _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version"
+# )
 
 
 def test_builtin_algorithm_training_job_task():
+    builtin_algorithm_training_job_task = SdkBuiltinAlgorithmTrainingJobTask(
+        training_job_resource_config=TrainingJobResourceConfig(
+            instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
+        ),
+        algorithm_specification=AlgorithmSpecification(
+            input_mode=InputMode.FILE,
+            input_content_type=InputContentType.TEXT_CSV,
+            algorithm_name=AlgorithmName.XGBOOST,
+            algorithm_version="0.72",
+        ),
+    )
+
+    builtin_algorithm_training_job_task._id = _identifier.Identifier(
+        _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version"
+    )
     assert isinstance(builtin_algorithm_training_job_task, SdkBuiltinAlgorithmTrainingJobTask)
     assert isinstance(builtin_algorithm_training_job_task, _sdk_task.SdkTask)
     assert builtin_algorithm_training_job_task.interface.inputs["train"].description == ""
