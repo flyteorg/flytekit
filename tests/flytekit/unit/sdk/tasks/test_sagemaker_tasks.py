@@ -109,7 +109,7 @@ def test_builtin_algorithm_training_job_task():
     assert "metricDefinitions" not in builtin_algorithm_training_job_task.custom["algorithmSpecification"].keys()
 
     ParseDict(
-        builtin_algorithm_training_job_task.custom["trainingJobResourceConfig"], _pb2_TrainingJobResourceConfig,
+        builtin_algorithm_training_job_task.custom["trainingJobResourceConfig"], _pb2_TrainingJobResourceConfig(),
     )  # fails the test if it cannot be parsed
 
 
