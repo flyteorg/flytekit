@@ -26,7 +26,7 @@ from flytekit.models.sagemaker.training_job import (
     TrainingJobResourceConfig,
 )
 from flytekit.sdk import types as _sdk_types
-from flytekit.sdk.sagemaker.task import custom_task
+from flytekit.sdk.sagemaker.task import custom_training_job_task
 from flytekit.sdk.tasks import inputs, outputs
 from flytekit.sdk.types import Types
 
@@ -201,8 +201,8 @@ def test_simple_hpo_job_task():
 def test_custom_training_job():
     @inputs(input_1=Types.Integer)
     @outputs(model=Types.Blob)
-    @custom_task(
-        training_job_config=TrainingJobResourceConfig(
+    @custom_training_job_task(
+        training_job_resource_config=TrainingJobResourceConfig(
             instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
         )
     )
