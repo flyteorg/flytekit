@@ -4,7 +4,6 @@ from google.protobuf.json_format import MessageToDict
 
 from flytekit.common.constants import SdkTaskType
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
-from flytekit.configuration.common import format_section_key
 from flytekit.models.sagemaker import training_job as _training_job_models
 
 
