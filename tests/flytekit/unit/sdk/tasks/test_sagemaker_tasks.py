@@ -4,7 +4,6 @@ import datetime as _datetime
 
 from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import HyperparameterTuningJobConfig as _pb2_HPOJobConfig
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
-
 # from flytekit.sdk.sagemaker.types import InputMode, AlgorithmName
 from google.protobuf.json_format import ParseDict
 
@@ -55,22 +54,6 @@ example_hyperparams = {
     "tweedie_variance_power": "1.5",
     "updater": "grow_colmaker,prune",
 }
-
-# builtin_algorithm_training_job_task = SdkBuiltinAlgorithmTrainingJobTask(
-#     training_job_resource_config=TrainingJobResourceConfig(
-#         instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
-#     ),
-#     algorithm_specification=AlgorithmSpecification(
-#         input_mode=InputMode.FILE,
-#         input_content_type=InputContentType.TEXT_CSV,
-#         algorithm_name=AlgorithmName.XGBOOST,
-#         algorithm_version="0.72",
-#     ),
-# )
-#
-# builtin_algorithm_training_job_task._id = _identifier.Identifier(
-#     _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version"
-# )
 
 
 def test_builtin_algorithm_training_job_task():
@@ -211,6 +194,13 @@ def test_simple_hpo_job_task():
     assert simple_xgboost_hpo_job_task.task_module == __name__
     assert simple_xgboost_hpo_job_task._get_container_definition().args[0] == 'pyflyte-execute'
     """
+
+
+o = TrainingJobResourceConfig(
+    instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
+)
+
+print(o.to_flyte_idl())
 
 
 def test_custom_training_job():

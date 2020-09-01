@@ -1,27 +1,29 @@
 import datetime as _datetime
+import typing
 
 from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
+from flytekit.models.sagemaker import training_job as _training_job_models
 
 
 def custom_training_job_task(
-    _task_function=None,
-    algorithm_specification=None,
-    training_job_resource_config=None,
-    cache_version="",
-    retries=0,
-    deprecated="",
-    storage_request=None,
-    cpu_request=None,
-    gpu_request=None,
-    memory_request=None,
-    storage_limit=None,
-    cpu_limit=None,
-    gpu_limit=None,
-    memory_limit=None,
-    cache=False,
-    timeout=None,
-    environment=None,
-    cls=None,
+        _task_function=None,
+        algorithm_specification: _training_job_models.AlgorithmSpecification = None,
+        training_job_resource_config: _training_job_models.TrainingJobResourceConfig = None,
+        cache_version: str = "",
+        retries: int = 0,
+        deprecated: str = "",
+        storage_request: str = None,
+        cpu_request: str = None,
+        gpu_request: str = None,
+        memory_request: str = None,
+        storage_limit: str = None,
+        cpu_limit: str = None,
+        gpu_limit: str = None,
+        memory_limit: str = None,
+        cache: bool = False,
+        timeout: _datetime.timedelta = None,
+        environment: typing.Dict[str, str] = None,
+        cls: typing.Type = None,
 ):
     """
     Decorator to create a Custom Training Job definition.  This task will run as a single unit of work on the platform.
