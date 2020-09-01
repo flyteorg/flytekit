@@ -219,7 +219,14 @@ def test_custom_training_job():
     @custom_training_job_task(
         training_job_resource_config=TrainingJobResourceConfig(
             instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
-        )
+        ),
+        algorithm_specification=AlgorithmSpecification(
+            input_mode=InputMode.FILE,
+            input_content_type=InputContentType.TEXT_CSV,
+            algorithm_name=AlgorithmName.CUSTOM,
+            algorithm_version="",
+            metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")],
+        ),
     )
     def my_task(wf_params, input_1, model):
         pass
