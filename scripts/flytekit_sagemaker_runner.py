@@ -1,9 +1,8 @@
 import argparse
 import logging
+import os
 import subprocess
-import sys as _sys
-from os import environ as _environ
-
+import sys
 
 FLYTE_ARG_PREFIX = "--__FLYTE"
 FLYTE_ENV_VAR_PREFIX = f"{FLYTE_ARG_PREFIX}_ENV_VAR_"
@@ -73,7 +72,7 @@ def sort_flyte_cmd(flyte_cmd):
 
 def set_env_vars(env_vars):
     for key, val in env_vars.items():
-        _environ[key] = val
+        os.environ[key] = val
 
 
 def run(cli_args):
@@ -90,4 +89,4 @@ def run(cli_args):
 
 
 if __name__ == "__main__":
-    run(_sys.argv)
+    run(sys.argv)
