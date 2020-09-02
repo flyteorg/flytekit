@@ -1,18 +1,24 @@
-from __future__ import absolute_import
-
 import argparse
 import logging
 import subprocess
-import sys
 from os import environ
+
+import sys
 
 FLYTE_ARG_PREFIX = "--__FLYTE"
 FLYTE_ENV_VAR_PREFIX = f"{FLYTE_ARG_PREFIX}_ENV_VAR_"
 FLYTE_CMD_PREFIX = f"{FLYTE_ARG_PREFIX}_CMD_"
 FLYTE_ARG_SUFFIX = "__"
 
+
+# This script is the "entrypoint" script for SageMaker. An environment variable must be set on the container (typically
+# in the Dockerfile) of SAGEMAKER_PROGRAM=flytekit_sagemaker_runner.py. When the container is launched in SageMaker,
+# it'll run `train flytekit_sagemaker_runner.py <hyperparameters>`, the responsibility of this script is then to decode
+# the known hyperparameters (passed as command line args) to recreate the original command that will actually run the
+# virtual environment and execute the intended task (e.g. `service_venv pyflyte-execute --task-module ....`)
+
 # An example for a valid command:
-# --__FLYTE_ENV_VAR_env1__ val1 --__FLYTE_ENV_VAR_env2__ val2
+# python flytekit_sagemaker_runner.py --__FLYTE_ENV_VAR_env1__ val1 --__FLYTE_ENV_VAR_env2__ val2
 # --__FLYTE_CMD_0_service_venv__ __FLYTE_CMD_DUMMY_VALUE__
 # --__FLYTE_CMD_1_pyflyte-execute__ __FLYTE_CMD_DUMMY_VALUE__
 # --__FLYTE_CMD_2_--task-module__ __FLYTE_CMD_DUMMY_VALUE__
@@ -38,13 +44,13 @@ def parse_args(cli_args):
         unknown = unknowns[i]
         logging.info(f"Processing argument {unknown}")
         if unknown.startswith(FLYTE_CMD_PREFIX) and unknown.endswith(FLYTE_ARG_SUFFIX):
-            processed = unknown[len(FLYTE_CMD_PREFIX) :][: -len(FLYTE_ARG_SUFFIX)]
+            processed = unknown[len(FLYTE_CMD_PREFIX):][: -len(FLYTE_ARG_SUFFIX)]
             # Parse the format `1_--task-module`
             parts = processed.split("_", maxsplit=1)
             flyte_cmd.append((parts[0], parts[1]))
             i += 1
         elif unknown.startswith(FLYTE_ENV_VAR_PREFIX) and unknown.endswith(FLYTE_ARG_SUFFIX):
-            processed = unknown[len(FLYTE_ENV_VAR_PREFIX) :][: -len(FLYTE_ARG_SUFFIX)]
+            processed = unknown[len(FLYTE_ENV_VAR_PREFIX):][: -len(FLYTE_ARG_SUFFIX)]
             i += 1
             if unknowns[i].startswith(FLYTE_ARG_PREFIX) is False:
                 env_vars[processed] = unknowns[i]

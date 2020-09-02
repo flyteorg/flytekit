@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.common.constants import SdkTaskType
