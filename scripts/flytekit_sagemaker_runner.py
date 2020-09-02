@@ -1,8 +1,9 @@
 import argparse
 import logging
 import subprocess
-from os import environ as _environ
 import sys as _sys
+from os import environ as _environ
+
 
 FLYTE_ARG_PREFIX = "--__FLYTE"
 FLYTE_ENV_VAR_PREFIX = f"{FLYTE_ARG_PREFIX}_ENV_VAR_"
