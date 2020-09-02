@@ -206,8 +206,6 @@ def test_custom_training_job():
         algorithm_specification=AlgorithmSpecification(
             input_mode=InputMode.FILE,
             input_content_type=InputContentType.TEXT_CSV,
-            algorithm_name=AlgorithmName.CUSTOM,
-            algorithm_version="",
             metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")],
         ),
     )
