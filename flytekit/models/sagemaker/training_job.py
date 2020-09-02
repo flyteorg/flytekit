@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from typing import List
 
 from flyteidl.plugins.sagemaker import training_job_pb2 as _training_job_pb2
@@ -157,9 +155,9 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
 
     def __init__(
         self,
-        algorithm_name: int,
-        algorithm_version: str,
-        input_mode: int,
+        algorithm_name: int = AlgorithmName.CUSTOM,
+        algorithm_version: str = "",
+        input_mode: int = InputMode.FILE,
         metric_definitions: List[MetricDefinition] = None,
         input_content_type: int = InputContentType.TEXT_CSV,
     ):
@@ -270,8 +268,12 @@ class TrainingJob(_common.FlyteIdlEntity):
         """
 
         return _training_job_pb2.TrainingJob(
-            algorithm_specification=self.algorithm_specification.to_flyte_idl(),
-            training_job_resource_config=self.training_job_resource_config.to_flyte_idl(),
+            algorithm_specification=self.algorithm_specification.to_flyte_idl()
+            if self.algorithm_specification
+            else None,
+            training_job_resource_config=self.training_job_resource_config.to_flyte_idl()
+            if self.training_job_resource_config
+            else None,
         )
 
     @classmethod

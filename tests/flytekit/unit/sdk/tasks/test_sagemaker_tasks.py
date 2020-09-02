@@ -1,18 +1,15 @@
-from __future__ import absolute_import
-
 import datetime as _datetime
 
 from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import HyperparameterTuningJobConfig as _pb2_HPOJobConfig
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
-
-# from flytekit.sdk.sagemaker.types import InputMode, AlgorithmName
 from google.protobuf.json_format import ParseDict
 
 from flytekit.common import constants as _common_constants
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.tasks.sagemaker import hpo_job_task
+from flytekit.common.tasks.sagemaker.built_in_training_job_task import SdkBuiltinAlgorithmTrainingJobTask
+from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
 from flytekit.common.tasks.sagemaker.hpo_job_task import SdkSimpleHyperparameterTuningJobTask
-from flytekit.common.tasks.sagemaker.training_job_task import SdkBuiltinAlgorithmTrainingJobTask
 from flytekit.models import types as _idl_types
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import types as _core_types
@@ -25,6 +22,9 @@ from flytekit.models.sagemaker.training_job import (
     TrainingJobResourceConfig,
 )
 from flytekit.sdk import types as _sdk_types
+from flytekit.sdk.sagemaker.task import custom_training_job_task
+from flytekit.sdk.tasks import inputs, outputs
+from flytekit.sdk.types import Types
 
 example_hyperparams = {
     "base_score": "0.5",
@@ -52,24 +52,23 @@ example_hyperparams = {
     "updater": "grow_colmaker,prune",
 }
 
-builtin_algorithm_training_job_task = SdkBuiltinAlgorithmTrainingJobTask(
-    training_job_resource_config=TrainingJobResourceConfig(
-        instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
-    ),
-    algorithm_specification=AlgorithmSpecification(
-        input_mode=InputMode.FILE,
-        input_content_type=InputContentType.TEXT_CSV,
-        algorithm_name=AlgorithmName.XGBOOST,
-        algorithm_version="0.72",
-    ),
-)
-
-builtin_algorithm_training_job_task._id = _identifier.Identifier(
-    _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version"
-)
-
 
 def test_builtin_algorithm_training_job_task():
+    builtin_algorithm_training_job_task = SdkBuiltinAlgorithmTrainingJobTask(
+        training_job_resource_config=TrainingJobResourceConfig(
+            instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
+        ),
+        algorithm_specification=AlgorithmSpecification(
+            input_mode=InputMode.FILE,
+            input_content_type=InputContentType.TEXT_CSV,
+            algorithm_name=AlgorithmName.XGBOOST,
+            algorithm_version="0.72",
+        ),
+    )
+
+    builtin_algorithm_training_job_task._id = _identifier.Identifier(
+        _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version"
+    )
     assert isinstance(builtin_algorithm_training_job_task, SdkBuiltinAlgorithmTrainingJobTask)
     assert isinstance(builtin_algorithm_training_job_task, _sdk_task.SdkTask)
     assert builtin_algorithm_training_job_task.interface.inputs["train"].description == ""
@@ -107,7 +106,7 @@ def test_builtin_algorithm_training_job_task():
     assert "metricDefinitions" not in builtin_algorithm_training_job_task.custom["algorithmSpecification"].keys()
 
     ParseDict(
-        builtin_algorithm_training_job_task.custom["trainingJobResourceConfig"], _pb2_TrainingJobResourceConfig,
+        builtin_algorithm_training_job_task.custom["trainingJobResourceConfig"], _pb2_TrainingJobResourceConfig(),
     )  # fails the test if it cannot be parsed
 
 
@@ -192,3 +191,22 @@ def test_simple_hpo_job_task():
     assert simple_xgboost_hpo_job_task.task_module == __name__
     assert simple_xgboost_hpo_job_task._get_container_definition().args[0] == 'pyflyte-execute'
     """
+
+
+def test_custom_training_job():
+    @inputs(input_1=Types.Integer)
+    @outputs(model=Types.Blob)
+    @custom_training_job_task(
+        training_job_resource_config=TrainingJobResourceConfig(
+            instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
+        ),
+        algorithm_specification=AlgorithmSpecification(
+            input_mode=InputMode.FILE,
+            input_content_type=InputContentType.TEXT_CSV,
+            metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")],
+        ),
+    )
+    def my_task(wf_params, input_1, model):
+        pass
+
+    assert type(my_task) == CustomTrainingJobTask
