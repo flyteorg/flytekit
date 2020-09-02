@@ -110,7 +110,7 @@ def iterate_registerable_entities_in_order(
             if isinstance(o, _registerable.RegisterableEntity):
                 if o.instantiated_in == m.__name__:
                     entity_to_module_key[o] = (m, k)
-                    if isinstance(o, _SdkWorkflow):
+                    if isinstance(o, _SdkWorkflow) and o.should_create_default_launch_plan:
                         # SDK should create a default launch plan for a workflow.  This is a special-case to simplify
                         # authoring of workflows.
                         entity_to_module_key[o.create_launch_plan()] = (m, k)
