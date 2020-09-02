@@ -102,6 +102,7 @@ class SdkWorkflow(
         metadata_defaults=None,
         interface=None,
         output_bindings=None,
+        disable_default_launch_plan=False,
     ):
         """
         :param list[flytekit.common.promise.Input] inputs:
@@ -117,6 +118,7 @@ class SdkWorkflow(
             the interface field must be bound
             in order for the workflow to be validated. A workflow has an implicit dependency on all of its nodes
             to execute successfully in order to bind final outputs.
+        :param bool disable_default_launch_plan: Determines whether to create a default launch plan for the workflow.
 
         """
         for n in nodes:
@@ -164,6 +166,15 @@ class SdkWorkflow(
         )
         self._user_inputs = inputs
         self._upstream_entities = set(n.executable_sdk_object for n in nodes)
+        self._should_create_default_launch_plan = not disable_default_launch_plan
+
+    @property
+    def should_create_default_launch_plan(self):
+        """
+        Determines whether registration flow should create a default launch plan for this workflow or not.
+        :rtype: bool
+        """
+        return self._should_create_default_launch_plan
 
     @property
     def upstream_entities(self):
@@ -475,12 +486,14 @@ def _discover_workflow_components(workflow_class):
     return inputs, outputs, nodes
 
 
-def build_sdk_workflow_from_metaclass(metaclass, on_failure=None, cls=None):
+def build_sdk_workflow_from_metaclass(metaclass, on_failure=None, disable_default_launch_plan=False, cls=None):
     """
     :param T metaclass:
     :param cls: This is the class that will be instantiated from the inputs, outputs, and nodes.  This will be used
         by users extending the base Flyte programming model. If set, it must be a subclass of SdkWorkflow.
-    :param on_failure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
+    :param flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy on_failure: [Optional] The execution policy
+        when the workflow detects a failure.
+    :param bool disable_default_launch_plan: Determines whether to create a default launch plan for the workflow or not.
     :rtype: SdkWorkflow
     """
     inputs, outputs, nodes = _discover_workflow_components(metaclass)
@@ -490,4 +503,5 @@ def build_sdk_workflow_from_metaclass(metaclass, on_failure=None, cls=None):
         outputs=[o for o in sorted(outputs, key=lambda x: x.name)],
         nodes=[n for n in sorted(nodes, key=lambda x: x.id)],
         metadata=metadata,
+        disable_default_launch_plan=disable_default_launch_plan,
     )
