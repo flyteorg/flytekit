@@ -71,7 +71,8 @@ def workflow_class(_workflow_metaclass=None, on_failure=None, disable_default_la
 
     def wrapper(metaclass):
         wf = _common_workflow.build_sdk_workflow_from_metaclass(
-            metaclass, on_failure=on_failure, disable_default_launch_plan=disable_default_launch_plan, cls=cls)
+            metaclass, on_failure=on_failure, disable_default_launch_plan=disable_default_launch_plan, cls=cls
+        )
         return wf
 
     if _workflow_metaclass is not None:
