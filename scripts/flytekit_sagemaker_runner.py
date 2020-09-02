@@ -6,7 +6,6 @@ import subprocess
 import sys
 from os import environ
 
-logging.basicConfig(level=logging.DEBUG)
 FLYTE_ARG_PREFIX = "--__FLYTE"
 FLYTE_ENV_VAR_PREFIX = f"{FLYTE_ARG_PREFIX}_ENV_VAR_"
 FLYTE_CMD_PREFIX = f"{FLYTE_ARG_PREFIX}_CMD_"
