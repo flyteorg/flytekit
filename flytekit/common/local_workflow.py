@@ -271,16 +271,20 @@ class PythonWorkflow(SdkWorkflow):
         )
 
 
-def build_sdk_workflow_from_metaclass(metaclass, on_failure=None):
+def build_sdk_workflow_from_metaclass(metaclass, on_failure=None, cls=None):
     """
     :param T metaclass: This is the user-defined workflow class, prior to decoration.
-    :param on_failure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
+    :param on_failure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy
+    when the workflow detects a failure.
+    :param cls: This is the class that will be instantiated from the inputs, outputs, and nodes.  This will be used
+        by users extending the base Flyte programming model. If set, it must be a subclass of PythonWorkflow.
+
     :rtype: SdkWorkflow
     """
     inputs, outputs, nodes = _discover_workflow_components(metaclass)
     metadata = _workflow_models.WorkflowMetadata(on_failure=on_failure if on_failure else None)
 
-    return PythonWorkflow.construct_from_class_definition(
+    return (cls or PythonWorkflow).construct_from_class_definition(
         inputs=[i for i in sorted(inputs, key=lambda x: x.name)],
         outputs=[o for o in sorted(outputs, key=lambda x: x.name)],
         nodes=[n for n in sorted(nodes, key=lambda x: x.id)],
