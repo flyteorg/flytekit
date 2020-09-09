@@ -80,3 +80,5 @@ PARQUET_ENGINE = _config_common.FlyteStringConfigurationEntry("sdk", "parquet_en
 """
 This is the parquet engine to use when reading data from parquet files.
 """
+
+PICKLE = _config_common.FlyteBoolConfigurationEntry("sdk", "pickle", default=True)

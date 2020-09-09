@@ -6,6 +6,7 @@ import os as _os
 import random as _random
 
 import click as _click
+import cloudpickle as _cloudpickle
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.common import utils as _utils
@@ -53,12 +54,15 @@ def _map_job_index_to_child_index(local_input_dir, datadir, index):
 
 
 @_scopes.system_entry_point
-def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
+def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, pickled, test):
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with _utils.AutoDeletingTempDir("input_dir") as input_dir:
-            # Load user code
-            task_module = _importlib.import_module(task_module)
-            task_def = getattr(task_module, task_name)
+            if pickled:
+                task_def = _cloudpickle.loads(pickled)
+            else:
+                # Load user code
+                task_module = _importlib.import_module(task_module)
+                task_def = getattr(task_module, task_name)
 
             if not test:
                 local_inputs_file = input_dir.get_named_tempfile("inputs.pb")
@@ -84,7 +88,10 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                 input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
                 _engine_loader.get_engine().get_task(task_def).execute(
                     _literal_models.LiteralMap.from_flyte_idl(input_proto),
-                    context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
+                    context={
+                        "output_prefix": output_prefix,
+                        "raw_output_data_prefix": raw_output_data_prefix,
+                    },
                 )
 
 
@@ -99,6 +106,7 @@ def _pass_through():
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--pickled", type=str, required=False)
 @_click.option("--test", is_flag=True)
 def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
     _click.echo(_utils.get_version_message())

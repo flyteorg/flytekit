@@ -7,6 +7,8 @@ except ImportError:
 
 import six as _six
 
+import cloudpickle as _cloudpickle
+
 from flytekit import __version__
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
@@ -26,7 +28,6 @@ from flytekit.models import task as _task_models
 
 
 class ExecutionParameters(object):
-
     """
     This is the parameter object that will be provided as the first parameter for every execution of any @*_task
     decorated function.
@@ -105,7 +106,7 @@ class ExecutionParameters(object):
 
 class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task_models.Container)):
     def __init__(
-        self, command, args, resources, env, config,
+            self, command, args, resources, env, config,
     ):
         super(SdkRunnableContainer, self).__init__("", command, args, resources, env or {}, config)
 
@@ -153,25 +154,25 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
     """
 
     def __init__(
-        self,
-        task_function,
-        task_type,
-        discovery_version,
-        retries,
-        interruptible,
-        deprecated,
-        storage_request,
-        cpu_request,
-        gpu_request,
-        memory_request,
-        storage_limit,
-        cpu_limit,
-        gpu_limit,
-        memory_limit,
-        discoverable,
-        timeout,
-        environment,
-        custom,
+            self,
+            task_function,
+            task_type,
+            discovery_version,
+            retries,
+            interruptible,
+            deprecated,
+            storage_request,
+            cpu_request,
+            gpu_request,
+            memory_request,
+            storage_limit,
+            cpu_limit,
+            gpu_limit,
+            memory_limit,
+            discoverable,
+            timeout,
+            environment,
+            custom,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -280,8 +281,8 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         """
         return (
             _engine_loader.get_engine("unit")
-            .get_task(self)
-            .execute(
+                .get_task(self)
+                .execute(
                 _type_helpers.pack_python_std_map_to_literal_map(
                     input_map,
                     {
@@ -302,8 +303,8 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         """
         return (
             _engine_loader.get_engine("local")
-            .get_task(self)
-            .execute(
+                .get_task(self)
+                .execute(
                 _type_helpers.pack_python_std_map_to_literal_map(
                     input_map,
                     {
@@ -373,17 +374,17 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         }
 
     def _get_container_definition(
-        self,
-        storage_request=None,
-        cpu_request=None,
-        gpu_request=None,
-        memory_request=None,
-        storage_limit=None,
-        cpu_limit=None,
-        gpu_limit=None,
-        memory_limit=None,
-        environment=None,
-        cls=None,
+            self,
+            storage_request=None,
+            cpu_request=None,
+            gpu_request=None,
+            memory_request=None,
+            storage_limit=None,
+            cpu_limit=None,
+            gpu_limit=None,
+            memory_limit=None,
+            environment=None,
+            cls=None,
     ):
         """
         :param Text storage_request:
@@ -435,21 +436,26 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit)
             )
 
+        args = [
+            "pyflyte-execute",
+            "--task-module",
+            self.task_module,
+            "--task-name",
+            self.task_function_name,
+            "--inputs",
+            "{{.input}}",
+            "--output-prefix",
+            "{{.outputPrefix}}",
+            "--raw-output-data-prefix",
+            "{{.rawOutputDataPrefix}}",
+        ]
+
+        if _sdk_config.PICKLE:
+            args.extend(["--pickled", _cloudpickle.dumps(self)])
+
         return (cls or SdkRunnableContainer)(
             command=[],
-            args=[
-                "pyflyte-execute",
-                "--task-module",
-                self.task_module,
-                "--task-name",
-                self.task_function_name,
-                "--inputs",
-                "{{.input}}",
-                "--output-prefix",
-                "{{.outputPrefix}}",
-                "--raw-output-data-prefix",
-                "{{.rawOutputDataPrefix}}",
-            ],
+            args=args,
             resources=_task_models.Resources(limits=limits, requests=requests),
             env=environment,
             config={},
