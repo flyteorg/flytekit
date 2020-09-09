@@ -82,7 +82,7 @@ def workflow_class(_workflow_metaclass=None, on_failure=None, disable_default_la
     return wrapper
 
 
-def workflow(nodes: Dict[str, _nodes.SdkNode], inputs=None, outputs=None, on_failure=None):
+def workflow(nodes: Dict[str, _nodes.SdkNode], inputs=None, outputs=None, cls=None, on_failure=None):
     """
     This function provides a user-friendly interface for authoring workflows.
 
@@ -114,12 +114,13 @@ def workflow(nodes: Dict[str, _nodes.SdkNode], inputs=None, outputs=None, on_fai
     :param dict[Text,Output] outputs: [Optional] A dictionary of output descriptors for a workflow.
     :param T cls: This is the class that will be instantiated from the inputs, outputs, and nodes. This will be used
         by users extending the base Flyte programming model. If set, it must be a subclass of
-        :py:class:`flytekit.common.workflow.SdkWorkflow`.
+        :py:class:`flytekit.common.local_workflow.PythonWorkflow`.
     :param flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy on_failure: [Optional] The execution policy when the workflow detects a failure.
-    :rtype: flytekit.common.workflow.SdkWorkflow
+
+    :rtype: flytekit.common.local_workflow.PythonWorkflow
     """
     # TODO: Why does Pycharm complain about nodes?
-    wf = flytekit.common.local_workflow.PythonWorkflow.construct_from_class_definition(
+    wf = (cls or flytekit.common.local_workflow.PythonWorkflow).construct_from_class_definition(
         inputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(inputs or {}))],
         outputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(outputs or {}))],
         nodes=[v.assign_id_and_return(k) for k, v in sorted(_six.iteritems(nodes))],
