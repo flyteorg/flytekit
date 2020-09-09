@@ -10,6 +10,8 @@ from flytekit.models import types as _idl_types
 
 
 class SchemaInstantiator(_base_sdk_types.InstantiableType):
+    _schema_type = None
+
     def create_at_known_location(cls, location):
         """
         :param Text location:
