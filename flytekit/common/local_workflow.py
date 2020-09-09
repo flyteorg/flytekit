@@ -91,6 +91,7 @@ class PythonWorkflow(SdkWorkflow):
         id=None,
         metadata=None,
         metadata_defaults=None,
+        disable_default_launch_plan=False,
     ):
         """
         :param list[flytekit.common.nodes.SdkNode] nodes:
@@ -106,6 +107,7 @@ class PythonWorkflow(SdkWorkflow):
         :param WorkflowMetadata metadata: This contains information on how to run the workflow.
         :param flytekit.models.core.workflow.WorkflowMetadataDefaults metadata_defaults: Defaults to be passed
             to nodes contained within workflow.
+        :param bool disable_default_launch_plan: Determines whether to create a default launch plan for the workflow.
         """
         # Save the promise.Input objects for future use.
         self._user_inputs = inputs
@@ -138,6 +140,15 @@ class PythonWorkflow(SdkWorkflow):
 
         # Set this last as it's set in constructor
         self._upstream_entities = set(n.executable_sdk_object for n in nodes)
+        self._should_create_default_launch_plan = not disable_default_launch_plan
+
+    @property
+    def should_create_default_launch_plan(self):
+        """
+        Determines whether registration flow should create a default launch plan for this workflow or not.
+        :rtype: bool
+        """
+        return self._should_create_default_launch_plan
 
     def __call__(self, *args, **input_map):
         # Take the default values from the Inputs
@@ -154,6 +165,7 @@ class PythonWorkflow(SdkWorkflow):
         nodes: List[_nodes.SdkNode],
         metadata: _workflow_models.WorkflowMetadata = None,
         metadata_defaults: _workflow_models.WorkflowMetadataDefaults = None,
+        disable_default_launch_plan: bool = False,
     ) -> "PythonWorkflow":
         """
         This constructor is here to provide backwards-compatibility for class-defined Workflows
@@ -164,6 +176,8 @@ class PythonWorkflow(SdkWorkflow):
         :param WorkflowMetadata metadata: This contains information on how to run the workflow.
         :param flytekit.models.core.workflow.WorkflowMetadataDefaults metadata_defaults: Defaults to be passed
             to nodes contained within workflow.
+        :param bool disable_default_launch_plan: Determines whether to create a default launch plan for the workflow or not.
+
         :rtype: PythonWorkflow
         """
         for n in nodes:
@@ -194,6 +208,7 @@ class PythonWorkflow(SdkWorkflow):
             id=id,
             metadata=metadata,
             metadata_defaults=metadata_defaults,
+            disable_default_launch_plan=disable_default_launch_plan,
         )
 
     @property
@@ -271,15 +286,16 @@ class PythonWorkflow(SdkWorkflow):
         )
 
 
-def build_sdk_workflow_from_metaclass(metaclass, on_failure=None, cls=None):
+def build_sdk_workflow_from_metaclass(metaclass, on_failure=None, disable_default_launch_plan=False, cls=None):
     """
     :param T metaclass: This is the user-defined workflow class, prior to decoration.
     :param on_failure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy
     when the workflow detects a failure.
+    :param bool disable_default_launch_plan: Determines whether to create a default launch plan for the workflow or not.
     :param cls: This is the class that will be instantiated from the inputs, outputs, and nodes.  This will be used
         by users extending the base Flyte programming model. If set, it must be a subclass of PythonWorkflow.
 
-    :rtype: SdkWorkflow
+    :rtype: PythonWorkflow
     """
     inputs, outputs, nodes = _discover_workflow_components(metaclass)
     metadata = _workflow_models.WorkflowMetadata(on_failure=on_failure if on_failure else None)
@@ -289,6 +305,7 @@ def build_sdk_workflow_from_metaclass(metaclass, on_failure=None, cls=None):
         outputs=[o for o in sorted(outputs, key=lambda x: x.name)],
         nodes=[n for n in sorted(nodes, key=lambda x: x.id)],
         metadata=metadata,
+        disable_default_launch_plan=disable_default_launch_plan,
     )
 
 

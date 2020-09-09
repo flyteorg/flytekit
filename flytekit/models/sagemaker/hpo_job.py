@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
 
 from flytekit.models import common as _common

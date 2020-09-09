@@ -31,7 +31,7 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl>=0.18.2,<1.0.0",
+        "flyteidl>=0.18.4,<1.0.0",
         "click>=6.6,<8.0",
         "croniter>=0.3.20,<4.0.0",
         "deprecated>=1.0,<2.0",
@@ -59,6 +59,7 @@ setup(
         "scripts/flytekit_install_spark3.sh",
         "scripts/flytekit_build_image.sh",
         "scripts/flytekit_venv",
+        "scripts/flytekit_sagemaker_runner.py",
     ],
     license="apache2",
     python_requires=">=3.6",

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import datetime as _datetime
 
 from google.protobuf.json_format import MessageToDict

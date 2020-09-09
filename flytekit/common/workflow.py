@@ -67,7 +67,6 @@ class SdkWorkflow(
             nodes=nodes,
             outputs=output_bindings,
         )
-
         self._sdk_nodes = nodes
 
     @property

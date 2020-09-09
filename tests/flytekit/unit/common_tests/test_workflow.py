@@ -13,6 +13,7 @@ from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow_models
 from flytekit.sdk import types as _types
 from flytekit.sdk.tasks import inputs, outputs, python_task
+from flytekit.common.local_workflow import build_sdk_workflow_from_metaclass
 
 
 def test_output():
@@ -140,6 +141,8 @@ def test_workflow_decorator():
     w = _local_workflow.build_sdk_workflow_from_metaclass(
         my_workflow, on_failure=_workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE,
     )
+
+    assert w.should_create_default_launch_plan is True
 
     assert w.interface.inputs["input_1"].type == primitives.Integer.to_flyte_literal_type()
     assert w.interface.inputs["input_2"].type == primitives.Integer.to_flyte_literal_type()
@@ -357,3 +360,13 @@ def test_workflow_serialization():
     assert len(serialized.template.nodes) == 6
     assert len(serialized.template.interface.inputs.variables.keys()) == 2
     assert len(serialized.template.interface.outputs.variables.keys()) == 2
+
+
+def test_workflow_disable_default_launch_plan():
+    class MyWorkflow(object):
+        input_1 = promise.Input("input_1", primitives.Integer)
+        input_2 = promise.Input("input_2", primitives.Integer, default=5, help="Not required.")
+
+    w = build_sdk_workflow_from_metaclass(MyWorkflow, disable_default_launch_plan=True,)
+
+    assert w.should_create_default_launch_plan is False
