@@ -31,7 +31,7 @@ LIST_OF_DYNAMIC_TASKS = [
 ]
 
 
-@pytest.mark.parametrize("task", LIST_OF_DYNAMIC_TASKS[0:10])
+@pytest.mark.parametrize("task", LIST_OF_DYNAMIC_TASKS)
 def test_future_task_document(task):
     rs = _literals.RetryStrategy(0)
     nm = _workflow.NodeMetadata("node-name", _timedelta(minutes=10), rs)

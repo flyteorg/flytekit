@@ -20,7 +20,7 @@ def test_resource_entry():
     assert obj.value == "blah"
 
 
-@pytest.mark.parametrize("resource_list", parameterizers.LIST_OF_RESOURCE_ENTRY_LISTS[0:10])
+@pytest.mark.parametrize("resource_list", parameterizers.LIST_OF_RESOURCE_ENTRY_LISTS)
 def test_resources(resource_list):
     obj = task.Resources(resource_list, resource_list)
     obj1 = task.Resources([], resource_list)
@@ -84,12 +84,7 @@ def test_task_metadata():
 
 @pytest.mark.parametrize(
     "in_tuple",
-    [
-        x
-        for x in product(
-            parameterizers.LIST_OF_TASK_METADATA, parameterizers.LIST_OF_INTERFACES, parameterizers.LIST_OF_RESOURCES,
-        )
-    ][0:10],
+    product(parameterizers.LIST_OF_TASK_METADATA, parameterizers.LIST_OF_INTERFACES, parameterizers.LIST_OF_RESOURCES,),
 )
 def test_task_template(in_tuple):
     task_metadata, interfaces, resources = in_tuple
@@ -119,7 +114,7 @@ def test_task_template(in_tuple):
     )
 
 
-@pytest.mark.parametrize("task_closure", parameterizers.LIST_OF_TASK_CLOSURES[0:10])
+@pytest.mark.parametrize("task_closure", parameterizers.LIST_OF_TASK_CLOSURES)
 def test_task(task_closure):
     obj = task.Task(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"), task_closure,
@@ -132,7 +127,7 @@ def test_task(task_closure):
     assert obj == task.Task.from_flyte_idl(obj.to_flyte_idl())
 
 
-@pytest.mark.parametrize("resources", parameterizers.LIST_OF_RESOURCES[0:5])
+@pytest.mark.parametrize("resources", parameterizers.LIST_OF_RESOURCES)
 def test_container(resources):
     obj = task.Container(
         "my_image", ["this", "is", "a", "cmd"], ["this", "is", "an", "arg"], resources, {"a": "b"}, {"d": "e"},
