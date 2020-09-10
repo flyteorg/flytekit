@@ -7,6 +7,7 @@ import random as _random
 
 import click as _click
 import cloudpickle as _cloudpickle
+import base64
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.common import utils as _utils
@@ -58,7 +59,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with _utils.AutoDeletingTempDir("input_dir") as input_dir:
             if pickled:
-                task_def = _cloudpickle.loads(pickled)
+                task_def = _cloudpickle.loads(base64.b64decode(pickled))
             else:
                 # Load user code
                 task_module = _importlib.import_module(task_module)

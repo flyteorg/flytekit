@@ -8,6 +8,7 @@ except ImportError:
 import six as _six
 
 import cloudpickle as _cloudpickle
+import base64
 
 from flytekit import __version__
 from flytekit.common import constants as _constants
@@ -451,7 +452,9 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         ]
 
         if _sdk_config.PICKLE:
-            args.extend(["--pickled", _cloudpickle.dumps(self)])
+            pkl = _cloudpickle.dumps(self)
+            s = base64.b64encode(pkl)
+            args.extend(["--pickled", s])
 
         return (cls or SdkRunnableContainer)(
             command=[],
