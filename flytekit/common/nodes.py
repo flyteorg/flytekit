@@ -393,9 +393,9 @@ class SdkNodeExecution(
 
             # Outputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
             if bool(execution_data.full_outputs.literals):
-                return execution_data.full_outputs
+                output_map = execution_data.full_outputs
 
-            if execution_data.outputs.bytes > 0:
+            elif execution_data.outputs.bytes > 0:
                 with _common_utils.AutoDeletingTempDir() as t:
                     tmp_name = _os.path.join(t.name, "outputs.pb")
                     _data_proxy.Data.get_data(execution_data.outputs.url, tmp_name)
