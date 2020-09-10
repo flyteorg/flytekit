@@ -49,9 +49,8 @@ class SdkWorkflowExecution(
 
             # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
             if bool(execution_data.full_inputs.literals):
-                return execution_data.full_inputs
-
-            if execution_data.inputs.bytes > 0:
+                input_map = execution_data.full_inputs
+            elif execution_data.inputs.bytes > 0:
                 with _common_utils.AutoDeletingTempDir() as t:
                     tmp_name = _os.path.join(t.name, "inputs.pb")
                     _data_proxy.Data.get_data(execution_data.inputs.url, tmp_name)
