@@ -109,7 +109,7 @@ def _pass_through():
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--pickled", type=str, required=False)
 @_click.option("--test", is_flag=True)
-def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
+def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, pickled, test):
     _click.echo(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
     # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
@@ -117,7 +117,7 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
     if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
         raw_output_data_prefix = None
 
-    _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
+    _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, pickled, test)
 
 
 if __name__ == "__main__":
