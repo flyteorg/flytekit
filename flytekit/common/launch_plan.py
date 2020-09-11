@@ -84,9 +84,7 @@ class SdkLaunchPlan(
         id_to_register = _identifier.Identifier(
             _identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version
         )
-        client = _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client
+        client = _flyte_engine.get_client()
         try:
             client.create_launch_plan(id_to_register, self)
         except _user_exceptions.FlyteEntityAlreadyExistsException:
@@ -114,16 +112,12 @@ class SdkLaunchPlan(
         )
 
         if launch_plan_id.version:
-            lp = _flyte_engine._FlyteClientManager(
-                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-            ).client.get_launch_plan(launch_plan_id)
+            lp = _flyte_engine.get_client().get_launch_plan(launch_plan_id)
         else:
             named_entity_id = _common_models.NamedEntityIdentifier(
                 launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name
             )
-            lp = _flyte_engine._FlyteClientManager(
-                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-            ).client.get_active_launch_plan(named_entity_id)
+            lp = _flyte_engine.get_client().get_active_launch_plan(named_entity_id)
 
         sdk_lp = cls.promote_from_model(lp.spec)
         sdk_lp._id = lp.id
@@ -244,9 +238,7 @@ class SdkLaunchPlan(
                 "Failed to update launch plan because the launch plan's ID is not set. Please call register to fetch "
                 "or register the identifier first"
             )
-        return _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client.update_launch_plan(self.id, state)
+        return _flyte_engine.get_client().update_launch_plan(self.id, state)
 
     def _python_std_input_map_to_literal_map(self, inputs):
         """
@@ -313,9 +305,7 @@ class SdkLaunchPlan(
             notification_overrides = _execution_models.NotificationList(notification_overrides or [])
             disable_all = None
 
-        client = _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client
+        client = _flyte_engine.get_client()
         try:
             exec_id = client.create_execution(
                 project,

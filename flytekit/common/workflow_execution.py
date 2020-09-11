@@ -42,9 +42,7 @@ class SdkWorkflowExecution(
         :rtype:  dict[Text, T]
         """
         if self._inputs is None:
-            client = _flyte_engine._FlyteClientManager(
-                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-            ).client
+            client = _flyte_engine.get_client()
             execution_data = client.get_execution_data(self.id)
 
             # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
@@ -78,9 +76,7 @@ class SdkWorkflowExecution(
             raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
 
         if self._outputs is None:
-            client = _flyte_engine._FlyteClientManager(
-                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-            ).client
+            client = _flyte_engine.get_client()
 
             execution_data = client.get_execution_data(self.id)
             # Outputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
@@ -147,9 +143,7 @@ class SdkWorkflowExecution(
         :rtype: SdkWorkflowExecution
         """
         wf_exec_id = _core_identifier.WorkflowExecutionIdentifier(project=project, domain=domain, name=name)
-        admin_exec = _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client.get_execution(wf_exec_id)
+        admin_exec = _flyte_engine.get_client().get_execution(wf_exec_id)
 
         return cls.promote_from_model(admin_exec)
 
@@ -168,9 +162,7 @@ class SdkWorkflowExecution(
         :rtype: None
         """
         if not self.is_complete:
-            client = _flyte_engine._FlyteClientManager(
-                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-            ).client
+            client = _flyte_engine.get_client()
             self._closure = client.get_execution(self.id).closure
 
     def get_node_executions(self, filters=None):
@@ -178,9 +170,7 @@ class SdkWorkflowExecution(
         :param list[flytekit.models.filters.Filter] filters:
         :rtype: dict[Text, flytekit.common.nodes.SdkNodeExecution]
         """
-        client = _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client
+        client = _flyte_engine.get_client()
         node_exec_models = {v.id.node_id: v for v in _iterate_node_executions(client, self.id, filters=filters)}
 
         return {k: _nodes.SdkNodeExecution.promote_from_model(v) for k, v in _six.iteritems(node_exec_models)}
@@ -189,6 +179,4 @@ class SdkWorkflowExecution(
         """
         :param Text cause:
         """
-        _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client.terminate_execution(self.id, cause)
+        _flyte_engine.get_client().terminate_execution(self.id, cause)

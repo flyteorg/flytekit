@@ -45,9 +45,7 @@ class SdkTaskExecution(
         :rtype: dict[Text, T]
         """
         if self._inputs is None:
-            client = _flyte_engine._FlyteClientManager(
-                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-            ).client
+            client = _flyte_engine.get_client()
             execution_data = client.get_task_execution_data(self.id)
 
             # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
@@ -82,9 +80,7 @@ class SdkTaskExecution(
             raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
 
         if self._outputs is None:
-            client = _flyte_engine._FlyteClientManager(
-                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-            ).client
+            client = _flyte_engine.get_client()
             execution_data = client.get_task_execution_data(self.id)
 
             # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
@@ -125,9 +121,7 @@ class SdkTaskExecution(
 
         if not self.is_parent:
             raise _user_exceptions.FlyteAssertion("Only task executions marked with 'is_parent' have child executions.")
-        client = _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client
+        client = _flyte_engine.get_client()
         models = {
             v.id.node_id: v
             for v in _iterate_node_executions(client, task_execution_identifier=self.id, filters=filters)
@@ -156,7 +150,5 @@ class SdkTaskExecution(
         Syncs the closure of the underlying execution artifact with the state observed by the platform.
         :rtype: None
         """
-        client = _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client
+        client = _flyte_engine.get_client()
         self._closure = client.get_task_execution(self.id).closure

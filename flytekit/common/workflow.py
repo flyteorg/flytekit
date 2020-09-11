@@ -129,9 +129,7 @@ class SdkWorkflow(
         """
         version = version or _internal_config.VERSION.get()
         workflow_id = _identifier.Identifier(_identifier_model.ResourceType.WORKFLOW, project, domain, name, version)
-        admin_workflow = _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client.get_workflow(workflow_id)
+        admin_workflow = _flyte_engine.get_client().get_workflow(workflow_id)
         cwc = admin_workflow.closure.compiled_workflow
         primary_template = cwc.primary.template
         sub_workflow_map = {sw.template.id: sw.template for sw in cwc.sub_workflows}
@@ -198,9 +196,7 @@ class SdkWorkflow(
         old_id = self.id
         self._id = id_to_register
         try:
-            client = _flyte_engine._FlyteClientManager(
-                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-            ).client
+            client = _flyte_engine.get_client()
             sub_workflows = self.get_sub_workflows()
             client.create_workflow(id_to_register, _admin_workflow_model.WorkflowSpec(self, sub_workflows,))
             self._id = id_to_register

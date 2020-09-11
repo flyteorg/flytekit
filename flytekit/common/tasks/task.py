@@ -156,9 +156,7 @@ class SdkTask(
         id_to_register = _identifier.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, version)
         old_id = self.id
 
-        client = _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client
+        client = _flyte_engine.get_client()
         try:
             self._id = id_to_register
             client.create_task(id_to_register, _task_model.TaskSpec(self))
@@ -190,9 +188,7 @@ class SdkTask(
         :rtype: SdkTask
         """
         task_id = _identifier.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, version)
-        admin_task = _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client.get_task(task_id)
+        admin_task = _flyte_engine.get_client().get_task(task_id)
 
         sdk_task = cls.promote_from_model(admin_task.closure.compiled_task.template)
         sdk_task._id = task_id
@@ -210,9 +206,7 @@ class SdkTask(
         :rtype: SdkTask
         """
         named_task = _common_model.NamedEntityIdentifier(project, domain, name)
-        client = _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client
+        client = _flyte_engine.get_client()
         task_list, _ = client.list_tasks_paginated(
             named_task, limit=1, sort_by=_admin_common.Sort("created_at", _admin_common.Sort.Direction.DESCENDING),
         )
@@ -381,9 +375,7 @@ class SdkTask(
             assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
         )
 
-        client = _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client
+        client = _flyte_engine.get_client()
         try:
             # TODO(katrogan): Add handling to register the underlying task if it's not already.
             exec_id = client.create_execution(

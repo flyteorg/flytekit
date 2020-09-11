@@ -349,9 +349,7 @@ class SdkNodeExecution(
         :rtype: dict[Text, T]
         """
         if self._inputs is None:
-            client = _flyte_engine._FlyteClientManager(
-                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-            ).client
+            client = _flyte_engine.get_client()
             execution_data = client.get_node_execution_data(self.id)
 
             # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
@@ -385,9 +383,7 @@ class SdkNodeExecution(
             raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
 
         if self._outputs is None:
-            client = _flyte_engine._FlyteClientManager(
-                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-            ).client
+            client = _flyte_engine.get_client()
             execution_data = client.get_node_execution_data(self.id)
 
             # Outputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
@@ -448,9 +444,7 @@ class SdkNodeExecution(
         :rtype: None
         """
         if not self.is_complete or self.task_executions is not None:
-            client = _flyte_engine._FlyteClientManager(
-                _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-            ).client
+            client = _flyte_engine.get_client()
             self._closure = client.get_node_execution(self.id).closure
             task_executions = list(_iterate_task_executions(client, self.id))
             self._task_executions = [_task_executions.SdkTaskExecution.promote_from_model(te) for te in task_executions]
@@ -461,7 +455,5 @@ class SdkNodeExecution(
         Syncs the closure of the underlying execution artifact with the state observed by the platform.
         :rtype: None
         """
-        client = _flyte_engine._FlyteClientManager(
-            _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-        ).client
+        client = _flyte_engine.get_client()
         self._closure = client.get_node_execution(self.id).closure
