@@ -13,7 +13,7 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.workflow import SdkWorkflow
 from flytekit.configuration import internal as _internal_config
-from flytekit.models import common as _common_models
+from flytekit.models import common as _common_models, schedule as _schedule_models
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import identifier as _identifier_model
@@ -230,14 +230,14 @@ class PythonWorkflow(SdkWorkflow):
         self,
         default_inputs: Dict[str, _promise.Input] = None,
         fixed_inputs: Dict[str, Any] = None,
-        schedule=None,
-        role=None,
-        notifications=None,
-        labels=None,
-        annotations=None,
-        assumable_iam_role=None,
-        kubernetes_service_account=None,
-        raw_output_data_prefix=None,
+        schedule: _schedule_models.Schedule = None,
+        role: str = None,
+        notifications: List[_common_models.Notification] = None,
+        labels: _common_models.Labels = None,
+        annotations: _common_models.Annotations = None,
+        assumable_iam_role: str = None,
+        kubernetes_service_account:str = None,
+        raw_output_data_prefix: str = None,
     ):
         """
         This method will create a launch plan object that can execute this workflow.
