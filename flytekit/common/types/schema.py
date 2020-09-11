@@ -1,5 +1,3 @@
-import six as _six
-
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 from flytekit.common.types.impl import schema as _schema_impl
@@ -79,7 +77,7 @@ class SchemaInstantiator(_base_sdk_types.InstantiableType):
         return cls.schema_type.sdk_columns
 
 
-class Schema(_six.with_metaclass(SchemaInstantiator, _base_sdk_types.FlyteSdkValue)):
+class Schema(_base_sdk_types.FlyteSdkValue, metaclass=SchemaInstantiator):
     @classmethod
     def from_string(cls, string_value):
         """
@@ -167,7 +165,7 @@ def schema_instantiator(columns=None):
             "When specifying a Schema type with a known set of columns, a non-empty list must be provided as " "inputs",
         )
 
-    class _Schema(_six.with_metaclass(SchemaInstantiator, Schema)):
+    class _Schema(Schema, metaclass=SchemaInstantiator):
         _schema_type = _schema_impl.SchemaType(columns=columns)
 
     return _Schema
@@ -179,7 +177,7 @@ def schema_instantiator_from_proto(schema_type):
     :rtype: SchemaInstantiator
     """
 
-    class _Schema(_six.with_metaclass(SchemaInstantiator, Schema)):
+    class _Schema(Schema, metaclass=SchemaInstantiator):
         _schema_type = _schema_impl.SchemaType.promote_from_model(schema_type)
 
     return _Schema
