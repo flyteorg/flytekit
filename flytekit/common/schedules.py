@@ -18,7 +18,7 @@ class _ExtendedSchedule(_schedule_models.Schedule):
         return cls.promote_from_model(_schedule_models.Schedule.from_flyte_idl(proto))
 
 
-class CronSchedule(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _ExtendedSchedule)):
+class CronSchedule(_ExtendedSchedule, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(self, cron_expression, kickoff_time_input_arg=None):
         """
         :param Text cron_expression:
@@ -72,7 +72,7 @@ class CronSchedule(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _ExtendedSche
         return cls(base_model.cron_expression, kickoff_time_input_arg=base_model.kickoff_time_input_arg,)
 
 
-class FixedRate(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _ExtendedSchedule)):
+class FixedRate(_ExtendedSchedule, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(self, duration, kickoff_time_input_arg=None):
         """
         :param datetime.timedelta duration:

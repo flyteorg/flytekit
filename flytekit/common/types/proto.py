@@ -50,7 +50,7 @@ class ProtobufType(_base_sdk_types.FlyteSdkType):
         return "{}{}".format(Protobuf.TAG_PREFIX, cls.descriptor)
 
 
-class Protobuf(_six.with_metaclass(ProtobufType, _base_sdk_types.FlyteSdkValue)):
+class Protobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
 
     PB_FIELD_KEY = "pb_type"
     TAG_PREFIX = "{}=".format(PB_FIELD_KEY)
