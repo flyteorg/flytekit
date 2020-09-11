@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flyteidl.admin import launch_plan_pb2 as _launch_plan
 
 from flytekit.models import common as _common

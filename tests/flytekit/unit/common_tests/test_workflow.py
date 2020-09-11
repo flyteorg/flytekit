@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import pytest as _pytest
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 

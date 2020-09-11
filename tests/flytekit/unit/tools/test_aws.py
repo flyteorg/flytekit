@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flytekit.interfaces.data.s3.s3proxy import AwsS3Proxy
 
 

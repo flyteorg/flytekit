@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import abc as _abc
 import datetime as _datetime
 import time as _time

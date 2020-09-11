@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 from flytekit.sdk.spark_types import SparkType
 from flytekit.sdk.tasks import generic_spark_task, inputs, python_task
 from flytekit.sdk.types import Types

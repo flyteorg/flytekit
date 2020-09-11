@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import re
 from multiprocessing import Queue as _Queue
 

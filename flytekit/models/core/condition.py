@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flyteidl.core import condition_pb2 as _condition
 
 from flytekit.models import common as _common

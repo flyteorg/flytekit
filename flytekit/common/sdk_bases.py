@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import abc as _abc
 
 from flytekit.models import common as _common

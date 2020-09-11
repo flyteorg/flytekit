@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import itertools as _itertools
 import math
 import os as _os

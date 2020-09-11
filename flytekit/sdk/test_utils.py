@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from wrapt import decorator as _decorator
 
 from flytekit.common import utils as _utils

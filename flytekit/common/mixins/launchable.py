@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import abc as _abc
 
 from deprecated import deprecated as _deprecated

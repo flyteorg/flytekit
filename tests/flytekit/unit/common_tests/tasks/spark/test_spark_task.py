@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from six.moves import range
 
 from flytekit.sdk.tasks import outputs, spark_task

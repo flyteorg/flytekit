@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flyteidl.admin import workflow_pb2 as _admin_workflow
 
 from flytekit.models import common as _common

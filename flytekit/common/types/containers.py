@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import json as _json
 
 import six as _six

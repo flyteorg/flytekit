@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flytekit.common.tasks.presto_task import SdkPrestoTask
 from flytekit.sdk.tasks import inputs
 from flytekit.sdk.types import Types

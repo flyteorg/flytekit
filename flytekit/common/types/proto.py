@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import base64 as _base64
 
 import six as _six

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import os as _os
 import shutil as _shutil
 import sys as _sys

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import logging as _logging
 import os as _os
 from datetime import datetime as _datetime

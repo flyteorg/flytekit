@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import abc as _abc
 import logging as _logging
 import os as _os

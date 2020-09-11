@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import pytest
 
 from flytekit.configuration.internal import look_up_version_from_image_tag

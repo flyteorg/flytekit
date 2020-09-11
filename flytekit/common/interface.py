@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import six as _six
 
 from flytekit.common import promise as _promise

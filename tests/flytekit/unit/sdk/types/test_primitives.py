@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import pytest
 
 from flytekit.sdk import types as _sdk_types
