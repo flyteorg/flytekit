@@ -56,7 +56,7 @@ def test_workflow():
 
     nodes = [n1, n2, n3, n4, n5, n6]
 
-    w = _local_workflow.PythonWorkflow.construct_from_class_definition(
+    w = _local_workflow.SdkRunnableWorkflow.construct_from_class_definition(
         inputs=input_list,
         outputs=[_local_workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)],
         nodes=nodes,
@@ -228,7 +228,9 @@ def test_workflow_node():
         _local_workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
     ]
 
-    w = _local_workflow.PythonWorkflow.construct_from_class_definition(inputs=input_list, outputs=wf_out, nodes=nodes)
+    w = _local_workflow.SdkRunnableWorkflow.construct_from_class_definition(
+        inputs=input_list, outputs=wf_out, nodes=nodes
+    )
 
     # Test that required input isn't set
     with _pytest.raises(_user_exceptions.FlyteAssertion):
@@ -352,7 +354,9 @@ def test_workflow_serialization():
         _local_workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
     ]
 
-    w = _local_workflow.PythonWorkflow.construct_from_class_definition(inputs=input_list, outputs=wf_out, nodes=nodes)
+    w = _local_workflow.SdkRunnableWorkflow.construct_from_class_definition(
+        inputs=input_list, outputs=wf_out, nodes=nodes
+    )
     serialized = w.serialize()
     assert isinstance(serialized, _workflow_pb2.WorkflowSpec)
     assert len(serialized.template.nodes) == 6

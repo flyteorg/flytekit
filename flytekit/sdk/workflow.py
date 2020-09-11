@@ -117,10 +117,10 @@ def workflow(nodes: Dict[str, _nodes.SdkNode], inputs=None, outputs=None, cls=No
         :py:class:`flytekit.common.local_workflow.PythonWorkflow`.
     :param flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy on_failure: [Optional] The execution policy when the workflow detects a failure.
 
-    :rtype: flytekit.common.local_workflow.PythonWorkflow
+    :rtype: flytekit.common.local_workflow.SdkRunnableWorkflow
     """
     # TODO: Why does Pycharm complain about nodes?
-    wf = (cls or flytekit.common.local_workflow.PythonWorkflow).construct_from_class_definition(
+    wf = (cls or flytekit.common.local_workflow.SdkRunnableWorkflow).construct_from_class_definition(
         inputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(inputs or {}))],
         outputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(outputs or {}))],
         nodes=[v.assign_id_and_return(k) for k, v in sorted(_six.iteritems(nodes))],

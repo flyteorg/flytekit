@@ -4,7 +4,7 @@ import pkgutil
 import six
 
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.local_workflow import PythonWorkflow as _PythonWorkflow
+from flytekit.common.local_workflow import SdkRunnableWorkflow as _PythonWorkflow
 from flytekit.common.mixins import registerable as _registerable
 
 

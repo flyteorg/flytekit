@@ -78,9 +78,22 @@ class Output(object):
         return self._var
 
 
-class PythonWorkflow(SdkWorkflow):
+class SdkRunnableWorkflow(SdkWorkflow):
     """
-    Wrapper class for locally defined Python workflows
+    Wrapper class for workflows defined using Python, written in a Flyte workflow repo. This class is misnamed. It is
+    more appropriately called PythonWorkflow. The reason we are calling it SdkRunnableWorkflow instead is merely in
+    keeping with the established convention in other parts of this codebase. We will likely change this naming scheme
+    entirely before a 1.0 release.
+
+    Being "runnable" or not "runnable" is not a distinction we care to make at this point. Do not read into it,
+    pretend it's not there. The purpose of this class is merely to differentiate between
+      i) A workflow object, as created by a user's workflow code, using the @workflow_class decorator for instance. If
+         you have one of these classes, it means you have the actual Python code available in the Python process you
+         are running.
+      ii) The SdkWorkflow object, which represents a workflow as retrieved from Flyte Admin. Anyone with access
+          to Admin, can instantiate an SdkWorkflow object by 'fetch'ing it. You don't need to have any of
+          the actual code checked out. SdkWorkflow's are effectively then the control plane model of a workflow,
+          represented as a Python object.
     """
 
     def __init__(
@@ -130,7 +143,7 @@ class PythonWorkflow(SdkWorkflow):
             metadata_defaults if metadata_defaults is not None else _workflow_models.WorkflowMetadataDefaults()
         )
 
-        super(PythonWorkflow, self).__init__(
+        super(SdkRunnableWorkflow, self).__init__(
             nodes=nodes,
             interface=interface,
             output_bindings=output_bindings,
@@ -167,7 +180,7 @@ class PythonWorkflow(SdkWorkflow):
         metadata: _workflow_models.WorkflowMetadata = None,
         metadata_defaults: _workflow_models.WorkflowMetadataDefaults = None,
         disable_default_launch_plan: bool = False,
-    ) -> "PythonWorkflow":
+    ) -> "SdkRunnableWorkflow":
         """
         This constructor is here to provide backwards-compatibility for class-defined Workflows
 
@@ -179,7 +192,7 @@ class PythonWorkflow(SdkWorkflow):
             to nodes contained within workflow.
         :param bool disable_default_launch_plan: Determines whether to create a default launch plan for the workflow or not.
 
-        :rtype: PythonWorkflow
+        :rtype: SdkRunnableWorkflow
         """
         for n in nodes:
             for upstream in n.upstream_nodes:
@@ -296,12 +309,12 @@ def build_sdk_workflow_from_metaclass(metaclass, on_failure=None, disable_defaul
     :param cls: This is the class that will be instantiated from the inputs, outputs, and nodes.  This will be used
         by users extending the base Flyte programming model. If set, it must be a subclass of PythonWorkflow.
 
-    :rtype: PythonWorkflow
+    :rtype: SdkRunnableWorkflow
     """
     inputs, outputs, nodes = _discover_workflow_components(metaclass)
     metadata = _workflow_models.WorkflowMetadata(on_failure=on_failure if on_failure else None)
 
-    return (cls or PythonWorkflow).construct_from_class_definition(
+    return (cls or SdkRunnableWorkflow).construct_from_class_definition(
         inputs=[i for i in sorted(inputs, key=lambda x: x.name)],
         outputs=[o for o in sorted(outputs, key=lambda x: x.name)],
         nodes=[n for n in sorted(nodes, key=lambda x: x.id)],
