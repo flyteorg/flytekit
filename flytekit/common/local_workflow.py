@@ -13,9 +13,10 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.workflow import SdkWorkflow
 from flytekit.configuration import internal as _internal_config
-from flytekit.models import common as _common_models, schedule as _schedule_models
+from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
+from flytekit.models import schedule as _schedule_models
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
 
@@ -236,7 +237,7 @@ class PythonWorkflow(SdkWorkflow):
         labels: _common_models.Labels = None,
         annotations: _common_models.Annotations = None,
         assumable_iam_role: str = None,
-        kubernetes_service_account:str = None,
+        kubernetes_service_account: str = None,
         raw_output_data_prefix: str = None,
     ):
         """

@@ -11,7 +11,6 @@ from flytekit.common.core import identifier as _core_identifier
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import artifact as _artifact
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import platform as _platform_config
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import execution as _execution_models

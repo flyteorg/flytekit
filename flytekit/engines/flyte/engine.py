@@ -55,9 +55,7 @@ class _FlyteClientManager(object):
 # This is a simple helper function that ties the client together with the configuration construct.
 # This will be refactored away when we move to a heavier context object.
 def get_client() -> _SynchronousFlyteClient:
-    return _FlyteClientManager(
-        _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
-    ).client
+    return _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
 
 
 class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):

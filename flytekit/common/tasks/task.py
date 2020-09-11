@@ -20,7 +20,6 @@ from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import internal as _internal_config
-from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import common as _common_model

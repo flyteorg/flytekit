@@ -11,7 +11,6 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.mixins import registerable as _registerable
 from flytekit.configuration import internal as _internal_config
-from flytekit.configuration import platform as _platform_config
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import literals as _literal_models
 from flytekit.models.admin import workflow as _admin_workflow_model
