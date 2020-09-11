@@ -1,9 +1,7 @@
 import abc as _abc
 
-import six as _six
 
-
-class DataProxy(_six.with_metaclass(_abc.ABCMeta, object)):
+class DataProxy(object, metaclass=_abc.ABCMeta):
     def exists(self, path):
         """
         :param path:

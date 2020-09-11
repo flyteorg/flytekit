@@ -29,7 +29,7 @@ from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import workflow as _workflow_model
 
 
-class ParameterMapper(_six.with_metaclass(_common_models.FlyteABCMeta, _SortedDict)):
+class ParameterMapper(_SortedDict, metaclass=_common_models.FlyteABCMeta):
     """
     This abstract class provides functionality to reference specific inputs and outputs for a task instance. This
     allows for syntax such as:

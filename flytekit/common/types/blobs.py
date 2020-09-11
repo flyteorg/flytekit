@@ -43,7 +43,7 @@ class BlobInstantiator(_base_sdk_types.InstantiableType):
 
 
 # TODO: Make blobs and schemas pluggable
-class Blob(_six.with_metaclass(BlobInstantiator, _base_sdk_types.FlyteSdkValue)):
+class Blob(_base_sdk_types.FlyteSdkValue, metaclass=BlobInstantiator):
     @classmethod
     def from_string(cls, string_value):
         """
@@ -161,7 +161,7 @@ class MultiPartBlobInstantiator(_base_sdk_types.InstantiableType):
             return super(MultiPartBlobInstantiator, cls).__call__(*args, **kwargs)
 
 
-class MultiPartBlob(_six.with_metaclass(MultiPartBlobInstantiator, _base_sdk_types.FlyteSdkValue)):
+class MultiPartBlob(_base_sdk_types.FlyteSdkValue, metaclass=MultiPartBlobInstantiator):
     @classmethod
     def from_string(cls, string_value):
         """
@@ -281,7 +281,7 @@ class CsvInstantiator(BlobInstantiator):
             return super(CsvInstantiator, cls).__call__(*args, **kwargs)
 
 
-class CSV(_six.with_metaclass(CsvInstantiator, Blob)):
+class CSV(Blob, metaclass=CsvInstantiator):
     @classmethod
     def from_string(cls, string_value):
         """
@@ -384,7 +384,7 @@ class MultiPartCsvInstantiator(MultiPartBlobInstantiator):
             return super(MultiPartCsvInstantiator, cls).__call__(*args, **kwargs)
 
 
-class MultiPartCSV(_six.with_metaclass(MultiPartCsvInstantiator, MultiPartBlob)):
+class MultiPartCSV(MultiPartBlob, metaclass=MultiPartCsvInstantiator):
     @classmethod
     def from_string(cls, string_value):
         """

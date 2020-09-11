@@ -114,7 +114,7 @@ class Input(_interface_models.Parameter, metaclass=_sdk_bases.ExtendedSdkType):
             return cls("", sdk_type, help=model.var.description, required=True)
 
 
-class NodeOutput(_sdk_bases.ExtendedSdkType, _type_models.OutputReference, metaclass=_sdk_bases.ExtendedSdkType):
+class NodeOutput(_type_models.OutputReference, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(self, sdk_node, sdk_type, var):
         """
         :param flytekit.common.nodes.SdkNode sdk_node:
