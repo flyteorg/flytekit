@@ -31,13 +31,11 @@ from flytekit.models.core import workflow as _workflow_models
 
 
 class SdkLaunchPlan(
-    _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType,
-        _launchable_mixin.LaunchableEntity,
-        _registerable.HasDependencies,
-        _registerable.RegisterableEntity,
-        _launch_plan_models.LaunchPlanSpec,
-    )
+    _launchable_mixin.LaunchableEntity,
+    _registerable.HasDependencies,
+    _registerable.RegisterableEntity,
+    _launch_plan_models.LaunchPlanSpec,
+    metaclass=_sdk_bases.ExtendedSdkType,
 ):
     def __init__(self, *args, **kwargs):
         super(SdkLaunchPlan, self).__init__(*args, **kwargs)

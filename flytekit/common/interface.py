@@ -10,7 +10,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 
 
-class BindingData(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.BindingData)):
+class BindingData(_literal_models.BindingData, metaclass=_sdk_bases.ExtendedSdkType):
     @staticmethod
     def _has_sub_bindings(m):
         """
@@ -94,7 +94,7 @@ class BindingData(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_model
         return cls(scalar=scalar, collection=collection, map=map, promise=promise)
 
 
-class TypedInterface(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.TypedInterface)):
+class TypedInterface(_interface_models.TypedInterface, metaclass=_sdk_bases.ExtendedSdkType):
     @classmethod
     def promote_from_model(cls, model):
         """

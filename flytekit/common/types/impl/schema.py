@@ -393,7 +393,7 @@ class _SchemaBackingMpBlob(_blob_impl.MultiPartBlob):
         return super(_SchemaBackingMpBlob, self).__exit__(exc_type, exc_val, exc_tb)
 
 
-class SchemaType(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.SchemaType)):
+class SchemaType(_type_models.SchemaType, metaclass=_sdk_bases.ExtendedSdkType):
     _LITERAL_TYPE_TO_PROTO_ENUM = {
         _primitives.Integer.to_flyte_literal_type(): _type_models.SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
         _primitives.Float.to_flyte_literal_type(): _type_models.SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
@@ -508,7 +508,7 @@ class SchemaType(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.Sc
         self._sdk_columns = _collections.OrderedDict(columns)
 
 
-class Schema(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Schema)):
+class Schema(_literal_models.Schema, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(self, remote_path, mode="rb", schema_type=None):
         """
         :param Text remote_path:

@@ -1,5 +1,3 @@
-import six as _six
-
 from flytekit.common import constants as _constants
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
@@ -8,7 +6,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 
 
-class Input(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.Parameter)):
+class Input(_interface_models.Parameter, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(self, name, sdk_type, help=None, **kwargs):
         """
         :param Text name:
@@ -116,7 +114,7 @@ class Input(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.Pa
             return cls("", sdk_type, help=model.var.description, required=True)
 
 
-class NodeOutput(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.OutputReference)):
+class NodeOutput(_sdk_bases.ExtendedSdkType, _type_models.OutputReference, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(self, sdk_node, sdk_type, var):
         """
         :param flytekit.common.nodes.SdkNode sdk_node:
