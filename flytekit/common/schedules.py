@@ -1,7 +1,6 @@
 import datetime as _datetime
 
 import croniter as _croniter
-import six as _six
 
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions

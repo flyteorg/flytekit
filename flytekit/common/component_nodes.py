@@ -1,7 +1,5 @@
 import logging as _logging
 
-import six as _six
-
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.models.core import workflow as _workflow_model
