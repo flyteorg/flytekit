@@ -402,8 +402,8 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             }
         # New style - V1: inputs are just inputs
         else:
-            new_style_inputs = flyte_engine.idl_literal_map_to_python_value(context, inputs)
-            outputs = self._execute_user_code(context, new_style_inputs)
+            native_inputs = flyte_engine.idl_literal_map_to_python_value(context, inputs)
+            outputs = self._execute_user_code(context, native_inputs)
             expected_output_names = list(self.interface.outputs.keys())
             if len(expected_output_names) == 1:
                 literals = {expected_output_names[0]: outputs}
