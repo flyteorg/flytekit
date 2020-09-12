@@ -1,6 +1,7 @@
 import datetime as _datetime
 import inspect
-from typing import List, Dict, Tuple, NamedTuple
+from typing import List, Dict, Tuple, NamedTuple, Generator
+from collections import OrderedDict
 
 from flytekit import logger
 from flytekit.common import constants as _common_constants
@@ -17,7 +18,7 @@ from flytekit.configuration.common import CONFIGURATION_SINGLETON
 from flytekit.models import interface as _interface_models, literals as _literal_models
 from flytekit.models import task as _task_model, types as _type_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
-from flytekit.annotated.type_engine import BASE_TYPES, outputs
+from flytekit.annotated.type_engine import BASE_TYPES
 from flytekit.annotated import type_engine
 
 # Set this to 11 or higher if you don't want to see debug output
@@ -405,6 +406,70 @@ def task(
         return wrapper
 
 
+def output_name_generator(length: int) -> Generator[str, None, None]:
+    for x in range(0, length):
+        yield f"out_{x}"
+
+
+def get_output_variable_map(task_annotations: Dict[str, type]) -> Dict[str, _interface_models.Variable]:
+    """
+    Outputs can have various signatures, and we need to handle all of them:
+
+        # Option 1
+        nt1 = typing.NamedTuple("NT1", x_str=str, y_int=int)
+        def t(a: int, b: str) -> nt1: ...
+
+        # Option 2
+        def t(a: int, b: str) -> typing.NamedTuple("NT1", x_str=str, y_int=int): ...
+
+        # Option 3
+        def t(a: int, b: str) -> typing.Tuple[int, str]: ...
+
+        # Option 4
+        def t(a: int, b: str) -> (int, str): ...
+
+        # Option 5
+        def t(a: int, b: str) -> str: ...
+
+    Note that Options 1 and 2 are identical, just syntactic sugar. In the NamedTuple case, we'll use the names in the
+    definition. In all other cases, we'll automatically generate output names, indexed starting at 0.
+
+    :param task_annotations: the __annotations__ attribute of a type hinted function.
+    """
+    if "return" in task_annotations:
+        incoming_rt = task_annotations['return']
+
+        # Handle options 1 and 2 first. The only way to check if the return type is a typing.NamedTuple, is to check
+        # for this field. Using isinstance or issubclass doesn't work.
+        if hasattr(incoming_rt, '_field_types'):
+            logger.debug(f'Task returns named tuple {incoming_rt}')
+            return_map = incoming_rt._field_types
+
+        # Handle option 3
+        elif hasattr(incoming_rt, '__origin__') and incoming_rt.__origin__ is tuple:
+            logger.debug(f'Task returns unnamed typing.Tuple {incoming_rt}')
+            return_types = incoming_rt.__args__
+            return_names = [x for x in output_name_generator(len(incoming_rt.__args__))]
+            return_map = OrderedDict(zip(return_names, return_types))
+
+        # Handle option 4
+        elif type(incoming_rt) is tuple:
+            logger.debug(f'Task returns unnamed native tuple {incoming_rt}')
+            return_names = [x for x in output_name_generator(len(incoming_rt))]
+            return_map = OrderedDict(zip(return_names, incoming_rt))
+
+        # Assume option 5
+        else:
+            logger.debug(f'Task returns a single output of type {incoming_rt}')
+            return_map = {"out_0": incoming_rt}
+
+        return get_variable_map(return_map)
+    else:
+        logger.debug(f'No return type found in annotations, returning empty map')
+        # In the case where a task doesn't have a return type specified, assume that there are no outputs
+        return {}
+
+
 def get_interface_from_task_info(task_annotations: Dict[str, type]) -> interface.TypedInterface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
@@ -415,31 +480,18 @@ def get_interface_from_task_info(task_annotations: Dict[str, type]) -> interface
     :param task_annotations:
     :param output_names:
     """
+    outputs_map = get_output_variable_map(task_annotations)
 
-    outputs_map = {}
-    if "return" in task_annotations:
-        return_types: Tuple[type]
-
-        if not issubclass(task_annotations['return'], tuple):
-            logger.debug(f'Task returns a single output of type {task_annotations["return"]}')
-            # If there's just one return value, the return type is not a tuple so let's make it a tuple
-            return_types = outputs(output=task_annotations['return'])
-        else:
-            return_types = task_annotations['return']
-            
-        outputs_map = get_variable_map_from_lists(return_types)
-
-    inputs = {k: v for k, v in task_annotations.items() if k != 'return'}
+    inputs = OrderedDict()
+    for k, v in task_annotations.items():
+        if k != 'return':
+            inputs[k] = v
 
     inputs_map = get_variable_map(inputs)
     interface_model = _interface_models.TypedInterface(inputs_map, outputs_map)
 
     # Maybe in the future we can just use the model
     return interface.TypedInterface.promote_from_model(interface_model)
-
-
-def get_variable_map_from_lists(python_types: NamedTuple) -> Dict[str, _interface_models.Variable]:
-    return get_variable_map(python_types._field_types)
 
 
 def get_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interface_models.Variable]:

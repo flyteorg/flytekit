@@ -22,10 +22,11 @@ def test_old_style_task():
 
     assert my_task.unit_test(a=3) == {}
 
+
 @flyte_test
 def test_simple_input_output():
     @python_task
-    def my_task(a: int) -> type_engine.outputs(b=int, c=str):
+    def my_task(a: int) -> typing.NamedTuple("OutputsBC", b=int, c=str):
         ctx = current_context()
         print(ctx)
         assert ctx.execution_id == 'ex:unit_test:unit_test:unit_test'

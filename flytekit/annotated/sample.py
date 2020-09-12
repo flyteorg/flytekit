@@ -1,10 +1,14 @@
-from flytekit.annotated.stuff import task, workflow, WorkflowOutputs
-from flytekit.annotated.type_engine import outputs
+import typing
+
+from flytekit.annotated.stuff import task
+
+
+foo_int = typing.NamedTuple("foo_int", foo_int=int)
 
 
 @task
-def x(s: int) -> outputs(s_out=int):
-    return s + 1
+def x(s: int) -> foo_int:
+    return s + 1,
 
 
 # @workflow

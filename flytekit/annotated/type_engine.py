@@ -59,22 +59,6 @@ CONTAINER_TYPES = [typing.Dict, typing.List]
 UNSUPPORTED_CONTAINERS = [tuple, list, dict, typing.Tuple, typing.NamedTuple]
 
 
-def outputs(**kwargs) -> tuple:
-    """
-    Returns an outputs object that strongly binds the types of the outputs retruned by any executable unit (e.g. task,
-    workflow).
-
-    :param kwargs:
-    :return:
-
-    >>> @task
-    >>> def my_task() -> outputs(a=int, b=str):
-    >>>    pass
-    """
-
-    return typing.NamedTuple("Outputs", **kwargs)
-
-
 # This only goes one way for now, is there any need to go the other way?
 class BaseEngine(object):
     def native_type_to_literal_type(self, native_type: type) -> _type_models.LiteralType:
