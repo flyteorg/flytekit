@@ -28,18 +28,3 @@ logger.debug(f'test_outputs: {t_with_named_tuple}')
 
 
 
-# Turn these into unit tests of stuff.get_output_variable_map
-#
-# def x(a: int, b: str) -> typing.NamedTuple("NT1", x_str=str, y_int=int):
-#     return ("hello world", 5)
-#
-#
-# def y(a: int, b: str) -> nt1:
-#     return nt1("hello world", 5)
-#
-#
-# def z(a: int, b: str) -> typing.Tuple[int, str]:
-#     return 5, "hello world"
-#
-# def q(a: int, b: str) -> (int, str):
-#     return 5, "hello world"

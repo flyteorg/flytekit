@@ -287,13 +287,13 @@ def python_value_to_idl_literal(execution_context: ExecutionContext, native_valu
     # we return Void? Or a literal map with a "my key" pointing to a Void?
 
     if idl_type.simple is not None:
-        python_simple_value_to_idl_literal(native_value, idl_type.simple)
+        return python_simple_value_to_idl_literal(native_value, idl_type.simple)
 
     elif idl_type.schema is not None:
         raise Exception("not yet implemented python std to idl - schema")
 
     elif idl_type.blob is not None:
-        python_file_esque_to_idl_blob(execution_context, native_value, idl_type.blob)
+        return python_file_esque_to_idl_blob(execution_context, native_value, idl_type.blob)
 
     elif idl_type.collection_type is not None:
         if type(native_value) != list:
