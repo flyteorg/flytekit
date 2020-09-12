@@ -56,6 +56,10 @@ CONTAINER_TYPES = [typing.Dict, typing.List]
 # These are not supported in the context of Flyte's type management, because there is no way to peek into what the
 # inner type is. Also unsupported are typing's Tuples. Even though you can look inside them, Flyte's type system
 # doesn't support these currently.
+# Confusing note: typing.NamedTuple is in here even though task functions themselves can return them. We just mean
+# that the return signature of a task can be a NamedTuple that contains another NamedTuple inside it.
+# Also, it's not entirely true that Flyte IDL doesn't support tuples. We can always fake them as structs, but we'll
+# hold off on doing that for now, as we may amend the IDL formally to support tuples.
 UNSUPPORTED_CONTAINERS = [tuple, list, dict, typing.Tuple, typing.NamedTuple]
 
 

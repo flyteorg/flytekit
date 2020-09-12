@@ -94,19 +94,24 @@ class FlyteFilePath(os.PathLike):
         """
         self._abspath = os.path.abspath(path)
         self._downloader = downloader
+        self._downloaded = False
         self._remote_path = remote_path
         logger.debug(f"Path is: {self._abspath}")
 
     def __fspath__(self):
         # This is where a delayed downloading of the file will happen
         self._downloader()
-        logger.debug(f"A in fspath!!!")
+        self._downloaded = True
         return self._abspath
 
     def __eq__(self, other):
         if self.format() != other.format():
             return False
         return self._abspath == other._abspath and self._remote_path == other._remote_path
+
+    @property
+    def downloaded(self) -> bool:
+        return self._downloaded
 
 
 class FlyteCSVFilePath(FlyteFilePath):
