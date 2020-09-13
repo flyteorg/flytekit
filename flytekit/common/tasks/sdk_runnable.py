@@ -383,8 +383,11 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
+        xxx = {
+            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in self.interface.inputs.items()
+        }
         inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(inputs, {
-            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)
+            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in self.interface.inputs.items()
         })
         outputs_dict = {
             name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))

@@ -75,10 +75,10 @@ class BaseEngine(object):
         #   t in [typing.List]  # False
         #   isinstance(t, typing.List)  # False
         # so we have to look inside the type's hidden attributes
-        if hasattr(native_type, '__origin__') and native_type.__origin__ == list:
+        if hasattr(native_type, '__origin__') and native_type.__origin__ is list:
             return self._type_unpack_list(native_type)
 
-        if hasattr(native_type, '__origin__') and native_type.__origin__ == dict:
+        if hasattr(native_type, '__origin__') and native_type.__origin__ is dict:
             return self._type_unpack_dict(native_type)
 
         raise user_exceptions.FlyteTypeException(f"Python type {native_type} is not supported")
