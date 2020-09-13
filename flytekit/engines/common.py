@@ -379,7 +379,7 @@ class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta
 
 
 class EngineContext(object):
-    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, raw_data_output_path):
+    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, raw_data_output_path=None):
         """
         :param execution_date:
         :param tmp_dir:

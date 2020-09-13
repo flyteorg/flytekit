@@ -81,21 +81,21 @@ class BaseEngine(object):
         if hasattr(native_type, '__origin__') and native_type.__origin__ is dict:
             return self._type_unpack_dict(native_type)
 
-        raise user_exceptions.FlyteTypeException(f"Python type {native_type} is not supported")
+        raise user_exceptions.FlyteUserException(f"Python type {native_type} is not supported")
 
     def _type_unpack_dict(self, t) -> _type_models.LiteralType:
         if t.__origin__ != dict:
-            raise user_exceptions.FlyteTypeException(f"Attempting to analyze dict but non-dict "
+            raise user_exceptions.FlyteUserException(f"Attempting to analyze dict but non-dict "
                                                      f"type given {t.__origin__}")
         if t.__args__[0] != str:
-            raise user_exceptions.FlyteTypeException(f"Key type for hash tables must be of type str, given: {t}")
+            raise user_exceptions.FlyteUserException(f"Key type for hash tables must be of type str, given: {t}")
 
         sub_type = self.native_type_to_literal_type(t.__args__[1])
         return _type_models.LiteralType(map_value_type=sub_type)
 
     def _type_unpack_list(self, t) -> _type_models.LiteralType:
         if t.__origin__ != list:
-            raise user_exceptions.FlyteTypeException(f"Attempting to analyze list but non-list "
+            raise user_exceptions.FlyteUserException(f"Attempting to analyze list but non-list "
                                                      f"type given {t.__origin__}")
 
         sub_type = self.native_type_to_literal_type(t.__args__[0])
