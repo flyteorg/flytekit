@@ -1,12 +1,14 @@
 import pytest
 import typing
 from io import BufferedWriter
+from datetime import timedelta
 
 from flytekit.sdk.test_utils import flyte_test
 from flytekit.sdk.tasks import python_task, current_context, inputs
 from flytekit.sdk.types import Types
-from flytekit.annotated.type_engine import outputs
+from flytekit.annotated import type_engine, stuff
 from flytekit import typing as flytekit_typing
+from flytekit.models import types as model_types
 
 
 @flyte_test
@@ -20,10 +22,11 @@ def test_old_style_task():
 
     assert my_task.unit_test(a=3) == {}
 
+
 @flyte_test
 def test_simple_input_output():
     @python_task
-    def my_task(a: int) -> outputs(b=int, c=str):
+    def my_task(a: int) -> typing.NamedTuple("OutputsBC", b=int, c=str):
         ctx = current_context()
         print(ctx)
         assert ctx.execution_id == 'ex:unit_test:unit_test:unit_test'
@@ -47,7 +50,51 @@ def test_single_output():
     def my_task() -> str:
         return "Hello world"
     
-    assert my_task.unit_test() == {'output': 'Hello world'}
+    assert my_task.unit_test() == {'out_0': 'Hello world'}
+
+
+def test_named_tuples():
+    nt1 = typing.NamedTuple("NT1", x_str=str, y_int=int)
+    def x(a: int, b: str) -> typing.NamedTuple("NT1", x_str=str, y_int=int):
+        return ("hello world", 5)
+
+    def y(a: int, b: str) -> nt1:
+        return nt1("hello world", 5)
+
+    result = stuff.get_output_variable_map(x.__annotations__)
+    assert result['x_str'].type.simple == 3
+    assert result['y_int'].type.simple == 1
+
+    result = stuff.get_output_variable_map(y.__annotations__)
+    assert result['x_str'].type.simple == 3
+    assert result['y_int'].type.simple == 1
+
+
+def test_unnamed_typing_tuple():
+
+    def z(a: int, b: str) -> typing.Tuple[int, str]:
+        return 5, "hello world"
+
+    result = stuff.get_output_variable_map(z.__annotations__)
+    assert result['out_0'].type.simple == 1
+    assert result['out_1'].type.simple == 3
+
+
+def test_regular_tuple():
+    def q(a: int, b: str) -> (int, str):
+        return 5, "hello world"
+
+    result = stuff.get_output_variable_map(q.__annotations__)
+    assert result['out_0'].type.simple == 1
+    assert result['out_1'].type.simple == 3
+
+
+def test_single_output_new_decorator():
+    def q(a: int, b: str) -> int:
+        return 5
+
+    result = stuff.get_output_variable_map(q.__annotations__)
+    assert result['out_0'].type.simple == 1
 
 
 # def test_normal_path():

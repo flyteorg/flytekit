@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import importlib as _importlib
 import os as _os
 
@@ -15,7 +13,8 @@ from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces import random as _flyte_random
 from flytekit.models import literals as _literal_models
-
+from flytekit.engine import ExecutionContextProvider
+from flytekit.common.tasks.sdk_runnable import SdkRunnableTaskStyle
 
 def _compute_array_job_index():
     # type () -> int
@@ -56,7 +55,8 @@ def _execute_task(task_module, task_name, inputs, output_prefix, test):
             task_module = _importlib.import_module(task_module)
             task_def = getattr(task_module, task_name)
 
-            if not test:
+            if not test and (not hasattr(task_def, "_task_style") or (
+                    hasattr(task_def, "_task_style") and task_def._task_style == SdkRunnableTaskStyle.V0)):
                 local_inputs_file = input_dir.get_named_tempfile('inputs.pb')
 
                 # Handle inputs/outputs for array job.
@@ -86,6 +86,16 @@ def _execute_task(task_module, task_name, inputs, output_prefix, test):
                     _literal_models.LiteralMap.from_flyte_idl(input_proto),
                     context={'output_prefix': output_prefix}
                 )
+            elif not test and hasattr(task_def, "_task_style") and task_def._task_style == SdkRunnableTaskStyle.V1:
+                local_inputs_file = input_dir.get_named_tempfile('inputs.pb')
+
+                _data_proxy.Data.get_data(inputs, local_inputs_file)
+                raw_inputs = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+                contextProvider = ExecutionContextProvider()
+                additional_context = {'output_prefix': output_prefix}
+                with contextProvider.get_execution_environment(raw_inputs, additional_context) as task_execution_context:
+                    task_def.execute(task_execution_context, raw_inputs)
+
 
 
 @_click.group()

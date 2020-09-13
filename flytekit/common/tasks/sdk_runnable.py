@@ -19,10 +19,10 @@ from flytekit.engines import loader as _engine_loader
 from flytekit.models import literals as _literal_models, task as _task_models
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
 from flytekit.annotated.stuff import get_interface_from_task_info as _get_interface_from_task_info
+from flytekit import engine as flyte_engine
 
 
 class ExecutionParameters(object):
-
     """
     This is the parameter object that will be provided as the first parameter for every execution of any @*_task
     decorated function.
@@ -102,12 +102,12 @@ class ExecutionParameters(object):
 class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task_models.Container)):
 
     def __init__(
-        self,
-        command,
-        args,
-        resources,
-        env,
-        config,
+            self,
+            command,
+            args,
+            resources,
+            env,
+            config,
     ):
         super(SdkRunnableContainer, self).__init__(
             "",
@@ -383,15 +383,18 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
+        xxx = {
+            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in self.interface.inputs.items()
+        }
         inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(inputs, {
-            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)
+            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in self.interface.inputs.items()
         })
         outputs_dict = {
             name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
             for name, variable in _six.iteritems(self.interface.outputs)
         }
 
-        # backcompat, if annotations are used to define outputs, do not append outputs to the inputs dict
+        # Old style - V0: If annotations are used to define outputs, do not append outputs to the inputs dict
         if not self.task_function.__annotations__ or "return" not in self.task_function.__annotations__:
             inputs_dict.update(outputs_dict)
             self._execute_user_code(context, inputs_dict)
@@ -400,18 +403,29 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                     literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
                 )
             }
+        # New style - V1: inputs are just inputs
         else:
-            outputs = self._execute_user_code(context, inputs_dict)
-            sdk_types = {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in self.interface.outputs.items()}
+            native_inputs = flyte_engine.idl_literal_map_to_python_value(context, inputs)
+            outputs = self._execute_user_code(context, native_inputs)
             expected_output_names = list(self.interface.outputs.keys())
             if len(expected_output_names) == 1:
                 literals = {expected_output_names[0]: outputs}
             else:
-                literals = {expected_output_names[i]: outputs[i] for i, _ in enumerate(outputs)} 
-            return {
-                _constants.OUTPUT_FILE_NAME: _type_helpers.pack_python_std_map_to_literal_map(literals, sdk_types),
-            }
+                # Question: How do you know you're going to enumerate them in the correct order? Even if autonamed, will
+                # output2 come before output100 if there's a hundred outputs? We don't! We'll have to circle back to
+                # the Python task instance and inspect annotations again. Or we change the Python model representation
+                # of the interface to be an ordered dict and we fill it in correctly to begin with.
+                literals = {expected_output_names[i]: outputs[i] for i, _ in enumerate(outputs)}
 
+            # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
+            # built into the IDL that all the values of a literal map are of the same type.
+            outputs_literal_map = _literal_models.LiteralMap(literals={
+                k: flyte_engine.python_value_to_idl_literal(context, v, self.interface.outputs[k].type) for k, v in
+                literals.items()
+            })
+            return {
+                _constants.OUTPUT_FILE_NAME: outputs_literal_map,
+            }
 
     def _get_container_definition(
             self,

@@ -710,7 +710,7 @@ class LiteralMap(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.literals_pb2.LiteralMap
         """
         return _literals_pb2.LiteralMap(
-            literals={k: v.to_flyte_idl() for k, v in _six.iteritems(self.literals)}
+            literals={k: v.to_flyte_idl() for k, v in self.literals.items()}
         )
 
     @classmethod
@@ -719,7 +719,7 @@ class LiteralMap(_common.FlyteIdlEntity):
         :param flyteidl.core.literals_pb2.LiteralMap pb2_object:
         :rtype: LiteralMap
         """
-        return cls({k: Literal.from_flyte_idl(v) for k, v in _six.iteritems(pb2_object.literals)})
+        return cls({k: Literal.from_flyte_idl(v) for k, v in pb2_object.literals.items()})
 
 
 class Literal(_common.FlyteIdlEntity):

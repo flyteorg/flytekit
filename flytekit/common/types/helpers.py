@@ -103,7 +103,7 @@ def unpack_literal_map_to_sdk_object(literal_map, type_map=None):
     type_map = type_map or {}
     return {
         k: get_sdk_value_from_literal(v, sdk_type=type_map.get(k, None))
-        for k, v in _six.iteritems(literal_map.literals)
+        for k, v in literal_map.literals.items()
     }
 
 
@@ -115,7 +115,7 @@ def unpack_literal_map_to_sdk_python_std(literal_map, type_map=None):
     """
     return {
         k: v.to_python_std()
-        for k, v in _six.iteritems(unpack_literal_map_to_sdk_object(literal_map, type_map=type_map))
+        for k, v in unpack_literal_map_to_sdk_object(literal_map, type_map=type_map).items()
     }
 
 
