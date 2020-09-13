@@ -115,7 +115,7 @@ def unpack_literal_map_to_sdk_python_std(literal_map, type_map=None):
     """
     return {
         k: v.to_python_std()
-        for k,` v in unpack_literal_map_to_sdk_object(literal_map, type_map=type_map).items()
+        for k, v in unpack_literal_map_to_sdk_object(literal_map, type_map=type_map).items()
     }
 
 

@@ -89,7 +89,7 @@ def test_regular_tuple():
     assert result['out_1'].type.simple == 3
 
 
-def test_single_output():
+def test_single_output_new_decorator():
     def q(a: int, b: str) -> int:
         return 5
 
