@@ -50,7 +50,7 @@ def test_single_output():
     def my_task() -> str:
         return "Hello world"
     
-    assert my_task.unit_test() == {'output': 'Hello world'}
+    assert my_task.unit_test() == {'out_0': 'Hello world'}
 
 
 def test_named_tuples():
