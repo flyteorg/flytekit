@@ -4,7 +4,7 @@ import pkgutil
 import six
 
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.local_workflow import SdkRunnableWorkflow as _PythonWorkflow
+from flytekit.common.local_workflow import SdkRunnableWorkflow as _SdkRunnableWorkflow
 from flytekit.common.mixins import registerable as _registerable
 
 
@@ -110,7 +110,7 @@ def iterate_registerable_entities_in_order(
             if isinstance(o, _registerable.RegisterableEntity):
                 if o.instantiated_in == m.__name__:
                     entity_to_module_key[o] = (m, k)
-                    if isinstance(o, _PythonWorkflow) and o.should_create_default_launch_plan:
+                    if isinstance(o, _SdkRunnableWorkflow) and o.should_create_default_launch_plan:
                         # SDK should create a default launch plan for a workflow.  This is a special-case to simplify
                         # authoring of workflows.
                         entity_to_module_key[o.create_launch_plan()] = (m, k)
