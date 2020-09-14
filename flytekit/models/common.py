@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import abc as _abc
 import json as _json
 
@@ -40,7 +38,7 @@ class FlyteType(FlyteABCMeta):
         pass
 
 
-class FlyteIdlEntity(_six.with_metaclass(FlyteType, object)):
+class FlyteIdlEntity(object, metaclass=FlyteType):
     def __eq__(self, other):
         return isinstance(other, FlyteIdlEntity) and other.to_flyte_idl() == self.to_flyte_idl()
 

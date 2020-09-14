@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import json as _json
 
 from flyteidl.plugins import array_job_pb2 as _array_job

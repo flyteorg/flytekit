@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import itertools as _itertools
 import math
 import os as _os
@@ -97,10 +95,14 @@ class SdkDynamicTaskMixin(object):
 
     @staticmethod
     def _add_upstream_entities(executable_sdk_object, sub_workflows, tasks):
-        for upstream_entity in executable_sdk_object.upstream_entities:
+        upstream_entities = []
+        if isinstance(executable_sdk_object, _workflow.SdkWorkflow):
+            upstream_entities = [n.executable_sdk_object for n in executable_sdk_object.nodes]
+
+        for upstream_entity in upstream_entities:
             # If the upstream entity is either a Workflow or a Task, yield them in the
             # dynamic job spec. Otherwise (e.g. a LaunchPlan), we will assume it already
-            # is registered (can't be dynamically created). Thi will cause a runtime error
+            # is registered (can't be dynamically created). This will cause a runtime error
             # if it's not already registered with the control plane.
             if isinstance(upstream_entity, _workflow.SdkWorkflow):
                 sub_workflows.add(upstream_entity)
@@ -165,7 +167,7 @@ class SdkDynamicTaskMixin(object):
             # If the executable object that we're dealing with is registerable (ie, SdkRunnableLaunchPlan, SdkWorkflow
             # SdkTask, or SdkRunnableTask), then it should have the ability to give itself a name. After assigning
             # itself the name, also make sure the id is properly set according to current config values.
-            if isinstance(executable, _registerable.RegisterableEntity):
+            if isinstance(executable, _registerable.TrackableEntity) and not executable.has_valid_name:
                 executable.auto_assign_name()
                 executable._id = _identifier.Identifier(
                     executable.resource_type,

@@ -1,7 +1,6 @@
-from __future__ import absolute_import
-
 import hashlib as _hashlib
 import json as _json
+import logging as _logging
 import uuid as _uuid
 
 import six as _six
@@ -14,28 +13,29 @@ from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import workflow_execution as _workflow_execution
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.mixins import launchable as _launchable_mixin
 from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.types import helpers as _type_helpers
+from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import internal as _internal_config
-from flytekit.engines import loader as _engine_loader
+from flytekit.configuration import sdk as _sdk_config
+from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import common as _common_model
+from flytekit.models import execution as _admin_execution_models
 from flytekit.models import task as _task_model
+from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
 
 
 class SdkTask(
-    _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType,
-        _hash_mixin.HashOnReferenceMixin,
-        _task_model.TaskTemplate,
-        _registerable.RegisterableEntity,
-        _launchable_mixin.LaunchableEntity,
-    )
+    _hash_mixin.HashOnReferenceMixin,
+    _registerable.RegisterableEntity,
+    _launchable_mixin.LaunchableEntity,
+    _task_model.TaskTemplate,
+    metaclass=_sdk_bases.ExtendedSdkType,
 ):
     def __init__(self, type, metadata, interface, custom, container=None):
         """
@@ -47,6 +47,7 @@ class SdkTask(
         :param Container container: Provides the necessary entrypoint information for execution.  For instance,
             a Container might be specified with the necessary command line arguments.
         """
+        # TODO: Remove the identifier portion and fill in with local values.
         super(SdkTask, self).__init__(
             _identifier.Identifier(
                 _identifier_model.ResourceType.TASK,
@@ -68,14 +69,6 @@ class SdkTask(
         :rtype: flytekit.common.interface.TypedInterface
         """
         return super(SdkTask, self).interface
-
-    @property
-    def upstream_entities(self):
-        """
-        Task, workflow, and launch plan that need to be registered in advance of this workflow.
-        :rtype: set[T]
-        """
-        return set()
 
     @property
     def resource_type(self):
@@ -135,6 +128,9 @@ class SdkTask(
         bindings, upstream_nodes = self.interface.create_bindings_for_inputs(input_map)
 
         # TODO: Remove DEADBEEF
+        # One thing to note - this function is not overloaded at the SdkRunnableTask layer, which means 'self' here
+        # will sometimes refer to an object that can be executed locally, and other times will refer to something
+        # that cannot (ie a pure SdkTask object, fetched from Admin for instance).
         return _nodes.SdkNode(
             id=None,
             metadata=_workflow_model.NodeMetadata(
@@ -153,13 +149,21 @@ class SdkTask(
         :param Text name: The name to give this task.
         :param Text version: The version in which to register this task.
         """
+        # TODO: Revisit the notion of supplying the project, domain, name, version, as opposed to relying on the
+        #       current ID.
         self.validate()
         id_to_register = _identifier.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, version)
         old_id = self.id
+
+        client = _flyte_engine.get_client()
         try:
             self._id = id_to_register
-            _engine_loader.get_engine().get_task(self).register(id_to_register)
-            return _six.text_type(self.id)
+            client.create_task(id_to_register, _task_model.TaskSpec(self))
+            self._id = old_id
+            self._has_registered = True
+            return str(id_to_register)
+        except _user_exceptions.FlyteEntityAlreadyExistsException:
+            pass
         except Exception:
             self._id = old_id
             raise
@@ -183,9 +187,11 @@ class SdkTask(
         :rtype: SdkTask
         """
         task_id = _identifier.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, version)
-        admin_task = _engine_loader.get_engine().fetch_task(task_id=task_id)
+        admin_task = _flyte_engine.get_client().get_task(task_id)
+
         sdk_task = cls.promote_from_model(admin_task.closure.compiled_task.template)
         sdk_task._id = task_id
+        sdk_task._has_registered = True
         return sdk_task
 
     @classmethod
@@ -199,7 +205,12 @@ class SdkTask(
         :rtype: SdkTask
         """
         named_task = _common_model.NamedEntityIdentifier(project, domain, name)
-        admin_task = _engine_loader.get_engine().fetch_latest_task(named_task)
+        client = _flyte_engine.get_client()
+        task_list, _ = client.list_tasks_paginated(
+            named_task, limit=1, sort_by=_admin_common.Sort("created_at", _admin_common.Sort.Direction.DESCENDING),
+        )
+        admin_task = task_list[0] if task_list else None
+
         if not admin_task:
             raise _user_exceptions.FlyteEntityNotExistException("Named task {} not found".format(named_task))
         sdk_task = cls.promote_from_model(admin_task.closure.compiled_task.template)
@@ -303,7 +314,7 @@ class SdkTask(
         return _hashlib.md5(str(task_body).encode("utf-8")).hexdigest()
 
     @_exception_scopes.system_entry_point
-    def register_and_launch(self, project, domain, name=None, version=None, inputs=None):
+    def register_and_launch(self, project, domain, name, version=None, inputs=None):
         """
         :param Text project: The project in which to register and launch this task.
         :param Text domain: The domain in which to register and launch this task.
@@ -316,23 +327,7 @@ class SdkTask(
         """
         self.validate()
         version = self._produce_deterministic_version(version)
-
-        if name is None:
-            try:
-                self.auto_assign_name()
-                generated_name = self._platform_valid_name
-            except _system_exceptions.FlyteSystemException:
-                # If we're not able to assign a platform valid name, use the deterministically-produced version instead.
-                generated_name = version
-        name = name if name else generated_name
-        id_to_register = _identifier.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, version)
-        old_id = self.id
-        try:
-            self._id = id_to_register
-            _engine_loader.get_engine().get_task(self).register(id_to_register)
-        except Exception:
-            self._id = old_id
-            raise
+        self.register(project, domain, name, version)
         return self.launch(project, domain, inputs=inputs)
 
     @_exception_scopes.system_entry_point
@@ -360,17 +355,48 @@ class SdkTask(
         :param flytekit.models.common.Annotations annotation_overrides:
         :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
         """
-        execution = (
-            _engine_loader.get_engine()
-            .get_task(self)
-            .launch(
+        disable_all = notification_overrides == []
+        if disable_all:
+            notification_overrides = None
+        else:
+            notification_overrides = _admin_execution_models.NotificationList(notification_overrides or [])
+            disable_all = None
+
+        assumable_iam_role = _auth_config.ASSUMABLE_IAM_ROLE.get()
+        kubernetes_service_account = _auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
+
+        if not (assumable_iam_role or kubernetes_service_account):
+            _logging.warning(
+                "Using deprecated `role` from config. " "Please update your config to use `assumable_iam_role` instead"
+            )
+            assumable_iam_role = _sdk_config.ROLE.get()
+        auth_role = _common_model.AuthRole(
+            assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
+        )
+
+        client = _flyte_engine.get_client()
+        try:
+            # TODO(katrogan): Add handling to register the underlying task if it's not already.
+            exec_id = client.create_execution(
                 project,
                 domain,
-                name=name,
-                inputs=literal_inputs,
-                notification_overrides=notification_overrides,
-                label_overrides=label_overrides,
-                annotation_overrides=annotation_overrides,
+                name,
+                _admin_execution_models.ExecutionSpec(
+                    self.id,
+                    _admin_execution_models.ExecutionMetadata(
+                        _admin_execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
+                        "sdk",  # TODO: get principle
+                        0,  # TODO: Detect nesting
+                    ),
+                    notifications=notification_overrides,
+                    disable_all=disable_all,
+                    labels=label_overrides,
+                    annotations=annotation_overrides,
+                    auth_role=auth_role,
+                ),
+                literal_inputs,
             )
-        )
+        except _user_exceptions.FlyteEntityAlreadyExistsException:
+            exec_id = _identifier.WorkflowExecutionIdentifier(project, domain, name)
+        execution = client.get_execution(exec_id)
         return _workflow_execution.SdkWorkflowExecution.promote_from_model(execution)

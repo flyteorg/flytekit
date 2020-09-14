@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import json as _json
 
 import six as _six
@@ -43,12 +41,12 @@ def List(sdk_type):
     return TList
 
 
-class ListImpl(_six.with_metaclass(CollectionType, _base_sdk_types.FlyteSdkValue)):
+class ListImpl(_base_sdk_types.FlyteSdkValue, metaclass=CollectionType):
     def __len__(self):
         return len(self.collection.literals)
 
 
-class TypedListImpl(_six.with_metaclass(TypedCollectionType, ListImpl)):
+class TypedListImpl(ListImpl, metaclass=TypedCollectionType):
     @classmethod
     def from_string(cls, string_value):
         """

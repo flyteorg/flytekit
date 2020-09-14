@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import mock
 from hmsclient import HMSClient
 from hmsclient.genthrift.hive_metastore import ttypes as _ttypes

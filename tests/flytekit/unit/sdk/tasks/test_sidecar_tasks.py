@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import mock
 from k8s.io.api.core.v1 import generated_pb2
 

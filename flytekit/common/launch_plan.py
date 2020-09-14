@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import datetime as _datetime
 import logging as _logging
 import uuid as _uuid
@@ -21,8 +19,9 @@ from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import sdk as _sdk_config
-from flytekit.engines import loader as _engine_loader
+from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import common as _common_models
+from flytekit.models import execution as _execution_models
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals as _literal_models
@@ -32,9 +31,11 @@ from flytekit.models.core import workflow as _workflow_models
 
 
 class SdkLaunchPlan(
-    _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType, _launch_plan_models.LaunchPlanSpec, _launchable_mixin.LaunchableEntity,
-    )
+    _launchable_mixin.LaunchableEntity,
+    _registerable.HasDependencies,
+    _registerable.RegisterableEntity,
+    _launch_plan_models.LaunchPlanSpec,
+    metaclass=_sdk_bases.ExtendedSdkType,
 ):
     def __init__(self, *args, **kwargs):
         super(SdkLaunchPlan, self).__init__(*args, **kwargs)
@@ -45,7 +46,7 @@ class SdkLaunchPlan(
         self._interface = None
 
     @classmethod
-    def promote_from_model(cls, model):
+    def promote_from_model(cls, model) -> "SdkLaunchPlan":
         """
         :param flytekit.models.launch_plan.LaunchPlanSpec model:
         :rtype: SdkLaunchPlan
@@ -66,6 +67,27 @@ class SdkLaunchPlan(
             raw_output_data_config=model.raw_output_data_config,
         )
 
+    @_exception_scopes.system_entry_point
+    def register(self, project, domain, name, version):
+        """
+        :param Text project:
+        :param Text domain:
+        :param Text name:
+        :param Text version:
+        """
+        self.validate()
+        id_to_register = _identifier.Identifier(
+            _identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version
+        )
+        client = _flyte_engine.get_client()
+        try:
+            client.create_launch_plan(id_to_register, self)
+        except _user_exceptions.FlyteEntityAlreadyExistsException:
+            pass
+
+        self._id = id_to_register
+        return str(self.id)
+
     @classmethod
     @_exception_scopes.system_entry_point
     def fetch(cls, project, domain, name, version=None):
@@ -83,7 +105,15 @@ class SdkLaunchPlan(
         launch_plan_id = _identifier.Identifier(
             _identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version
         )
-        lp = _engine_loader.get_engine().fetch_launch_plan(launch_plan_id)
+
+        if launch_plan_id.version:
+            lp = _flyte_engine.get_client().get_launch_plan(launch_plan_id)
+        else:
+            named_entity_id = _common_models.NamedEntityIdentifier(
+                launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name
+            )
+            lp = _flyte_engine.get_client().get_active_launch_plan(named_entity_id)
+
         sdk_lp = cls.promote_from_model(lp.spec)
         sdk_lp._id = lp.id
 
@@ -91,7 +121,16 @@ class SdkLaunchPlan(
         wf_id = sdk_lp.workflow_id
         lp_wf = _workflow.SdkWorkflow.fetch(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
         sdk_lp._interface = lp_wf.interface
+        sdk_lp._has_registered = True
         return sdk_lp
+
+    @_exception_scopes.system_entry_point
+    def serialize(self):
+        """
+        Unlike the SdkWorkflow serialize call, nothing special needs to be done here.
+        :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
+        """
+        return self.to_flyte_idl()
 
     @property
     def id(self):
@@ -128,7 +167,7 @@ class SdkLaunchPlan(
 
         if not (assumable_iam_role or kubernetes_service_account):
             _logging.warning(
-                "Using deprecated `role` from config. " "Please update your config to use `assumable_iam_role` instead"
+                "Using deprecated `role` from config. Please update your config to use `assumable_iam_role` instead"
             )
             assumable_iam_role = _sdk_config.ROLE.get()
         return _common_models.AuthRole(
@@ -136,8 +175,18 @@ class SdkLaunchPlan(
         )
 
     @property
+    def workflow_id(self):
+        """
+        :rtype: flytekit.common.core.identifier.Identifier
+        """
+        return self._workflow_id
+
+    @property
     def interface(self):
         """
+        The interface is not technically part of the admin.LaunchPlanSpec in the IDL, however the workflow ID is, and
+        from the workflow ID, fetch will fill in the interface. This is nice because then you can __call__ the=
+        object and get a node.
         :rtype: flytekit.common.interface.TypedInterface
         """
         return self._interface
@@ -184,7 +233,7 @@ class SdkLaunchPlan(
                 "Failed to update launch plan because the launch plan's ID is not set. Please call register to fetch "
                 "or register the identifier first"
             )
-        return _engine_loader.get_engine().get_launch_plan(self).update(self.id, state)
+        return _flyte_engine.get_client().update_launch_plan(self.id, state)
 
     def _python_std_input_map_to_literal_map(self, inputs):
         """
@@ -244,19 +293,36 @@ class SdkLaunchPlan(
         """
         # Kubernetes requires names starting with an alphabet for some resources.
         name = name or "f" + _uuid.uuid4().hex[:19]
-        execution = (
-            _engine_loader.get_engine()
-            .get_launch_plan(self)
-            .launch(
+        disable_all = notification_overrides == []
+        if disable_all:
+            notification_overrides = None
+        else:
+            notification_overrides = _execution_models.NotificationList(notification_overrides or [])
+            disable_all = None
+
+        client = _flyte_engine.get_client()
+        try:
+            exec_id = client.create_execution(
                 project,
                 domain,
                 name,
+                _execution_models.ExecutionSpec(
+                    self.id,
+                    _execution_models.ExecutionMetadata(
+                        _execution_models.ExecutionMetadata.ExecutionMode.MANUAL,
+                        "sdk",  # TODO: get principle
+                        0,  # TODO: Detect nesting
+                    ),
+                    notifications=notification_overrides,
+                    disable_all=disable_all,
+                    labels=label_overrides,
+                    annotations=annotation_overrides,
+                ),
                 literal_inputs,
-                notification_overrides=notification_overrides,
-                label_overrides=label_overrides,
-                annotation_overrides=annotation_overrides,
             )
-        )
+        except _user_exceptions.FlyteEntityAlreadyExistsException:
+            exec_id = _identifier.WorkflowExecutionIdentifier(project, domain, name)
+        execution = client.get_execution(exec_id)
         return _workflow_execution.SdkWorkflowExecution.promote_from_model(execution)
 
     @_exception_scopes.system_entry_point
@@ -295,9 +361,7 @@ class SdkLaunchPlan(
 
 # The difference between this and the SdkLaunchPlan class is that this runnable class is supposed to only be used for
 # launch plans loaded alongside the current Python interpreter.
-class SdkRunnableLaunchPlan(
-    _hash_mixin.HashOnReferenceMixin, SdkLaunchPlan, _registerable.RegisterableEntity,
-):
+class SdkRunnableLaunchPlan(_hash_mixin.HashOnReferenceMixin, SdkLaunchPlan):
     def __init__(
         self,
         sdk_workflow,
@@ -312,7 +376,7 @@ class SdkRunnableLaunchPlan(
         raw_output_data_config=None,
     ):
         """
-        :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
+        :param flytekit.common.local_workflow.SdkRunnableWorkflow sdk_workflow:
         :param dict[Text,flytekit.common.promise.Input] default_inputs:
         :param dict[Text,Any] fixed_inputs: These inputs will be fixed and not need to be set when executing this
             launch plan.
@@ -367,30 +431,6 @@ class SdkRunnableLaunchPlan(
         self._upstream_entities = {sdk_workflow}
         self._sdk_workflow = sdk_workflow
 
-    @_exception_scopes.system_entry_point
-    def register(self, project, domain, name, version):
-        """
-        :param Text project:
-        :param Text domain:
-        :param Text name:
-        :param Text version:
-        """
-        self.validate()
-        id_to_register = _identifier.Identifier(
-            _identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version
-        )
-        _engine_loader.get_engine().get_launch_plan(self).register(id_to_register)
-        self._id = id_to_register
-        return _six.text_type(self.id)
-
-    @_exception_scopes.system_entry_point
-    def serialize(self):
-        """
-        Unlike the SdkWorkflow serialize call, nothing special needs to be done here.
-        :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
-        """
-        return self.to_flyte_idl()
-
     @classmethod
     def from_flyte_idl(cls, _):
         raise _user_exceptions.FlyteAssertion(
@@ -399,10 +439,6 @@ class SdkRunnableLaunchPlan(
 
     @classmethod
     def promote_from_model(cls, model):
-        """
-        :param flytekit.models.launch_plan.LaunchPlanSpec model:
-        :rtype: SdkRunnableLaunchPlan
-        """
         raise _user_exceptions.FlyteAssertion(
             "An SdkRunnableLaunchPlan must be created from a reference to local Python code only."
         )
@@ -421,21 +457,6 @@ class SdkRunnableLaunchPlan(
         raise _user_exceptions.FlyteAssertion(
             "An SdkRunnableLaunchPlan must be created from a reference to local Python code only."
         )
-
-    @property
-    def interface(self):
-        """
-        :rtype: flytekit.common.interface.TypedInterface
-        """
-        return self._interface
-
-    @property
-    def upstream_entities(self):
-        """
-        Task, workflow, and launch plan that need to be registered in advance of this workflow.
-        :rtype: set[_registerable.RegisterableEntity]
-        """
-        return self._upstream_entities
 
     @property
     def workflow_id(self):

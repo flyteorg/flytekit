@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flytekit.configuration import common as _config_common
 
 WORKFLOW_PACKAGES = _config_common.FlyteStringListConfigurationEntry("sdk", "workflow_packages", default=[])

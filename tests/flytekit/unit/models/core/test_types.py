@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flyteidl.core import types_pb2 as _types_pb2
 
 from flytekit.models.core import types as _types

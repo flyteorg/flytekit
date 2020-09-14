@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 INPUT_FILE_NAME = "inputs.pb"
 OUTPUT_FILE_NAME = "outputs.pb"
 FUTURES_FILE_NAME = "futures.pb"

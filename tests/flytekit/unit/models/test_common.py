@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flytekit.models import common as _common
 from flytekit.models.core import execution as _execution
 

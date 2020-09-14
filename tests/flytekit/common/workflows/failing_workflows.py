@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 from flytekit.models.core.workflow import WorkflowMetadata
 from flytekit.sdk.tasks import python_task
 from flytekit.sdk.workflow import workflow_class

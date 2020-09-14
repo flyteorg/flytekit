@@ -1,14 +1,10 @@
-from __future__ import absolute_import
-
-import six as _six
-
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import common as _common_model
 from flytekit.models.core import execution as _execution_model
 
 
-class Notification(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _common_model.Notification)):
+class Notification(_common_model.Notification, metaclass=_sdk_bases.ExtendedSdkType):
 
     VALID_PHASES = {
         _execution_model.WorkflowExecutionPhase.ABORTED,

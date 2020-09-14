@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from sys import exc_info as _exc_info
 from traceback import format_tb as _format_tb
 

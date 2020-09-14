@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import sys as _sys
 
 import six as _six

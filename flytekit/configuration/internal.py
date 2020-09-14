@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import re
 
 from flytekit.configuration import common as _common_config

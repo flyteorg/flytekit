@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import importlib as _importlib
 import sys as _sys
 import types as _types

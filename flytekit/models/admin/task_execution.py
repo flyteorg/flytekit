@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 
 from flytekit.models import common as _common

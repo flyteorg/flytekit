@@ -1,5 +1,3 @@
-from __future__ import absolute_import, print_function
-
 from flytekit.common import notifications as _notifications
 from flytekit.models.core import execution as _execution
 from flytekit.sdk.tasks import inputs, outputs, python_task

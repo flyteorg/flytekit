@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import os as _os
 
 import pytest as _pytest
@@ -297,8 +295,9 @@ def test_serialize():
             "default_input": _workflow.Input(_types.Types.Integer, default=5),
         },
     )
-    workflow_to_test._id = _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "p", "d", "n", "v")
+    workflow_to_test.id = _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "p", "d", "n", "v")
     lp = workflow_to_test.create_launch_plan(fixed_inputs={"required_input": 5}, role="iam_role",)
+
     with _configuration.TemporaryConfiguration(
         _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../common/configs/local.config",),
         internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
@@ -318,7 +317,7 @@ def test_promote_from_model():
             "default_input": _workflow.Input(_types.Types.Integer, default=5),
         },
     )
-    workflow_to_test._id = _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "p", "d", "n", "v")
+    workflow_to_test.id = _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "p", "d", "n", "v")
     lp = workflow_to_test.create_launch_plan(
         fixed_inputs={"required_input": 5},
         schedule=_schedules.CronSchedule("* * ? * * *"),

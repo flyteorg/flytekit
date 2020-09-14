@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import os as _os
 
 import pytest as _pytest

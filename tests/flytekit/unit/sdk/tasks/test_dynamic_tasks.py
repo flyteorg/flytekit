@@ -1,5 +1,3 @@
-from __future__ import absolute_import, print_function
-
 from six import moves as _six_moves
 
 from flytekit.common.tasks import sdk_dynamic as _sdk_dynamic

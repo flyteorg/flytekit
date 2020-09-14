@@ -1,10 +1,11 @@
-from __future__ import absolute_import
-
 import pytest as _pytest
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 
-from flytekit.common import constants, interface, nodes, promise, workflow
+from flytekit.common import constants, interface
+from flytekit.common import local_workflow as _local_workflow
+from flytekit.common import nodes, promise, workflow
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.local_workflow import build_sdk_workflow_from_metaclass
 from flytekit.common.types import containers, primitives
 from flytekit.models import literals as _literals
 from flytekit.models.core import identifier as _identifier
@@ -14,7 +15,7 @@ from flytekit.sdk.tasks import inputs, outputs, python_task
 
 
 def test_output():
-    o = workflow.Output("name", 1, sdk_type=primitives.Integer, help="blah")
+    o = _local_workflow.Output("name", 1, sdk_type=primitives.Integer, help="blah")
     assert o.name == "name"
     assert o.var.description == "blah"
     assert o.var.type == primitives.Integer.to_flyte_literal_type()
@@ -55,8 +56,10 @@ def test_workflow():
 
     nodes = [n1, n2, n3, n4, n5, n6]
 
-    w = workflow.SdkWorkflow(
-        inputs=input_list, outputs=[workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)], nodes=nodes,
+    w = _local_workflow.SdkRunnableWorkflow.construct_from_class_definition(
+        inputs=input_list,
+        outputs=[_local_workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)],
+        nodes=nodes,
     )
 
     assert w.interface.inputs["input_1"].type == primitives.Integer.to_flyte_literal_type()
@@ -131,9 +134,9 @@ def test_workflow_decorator():
         n5 = my_list_task(a=[input_1, input_2, n3.outputs.b, 100])
         n6 = my_list_task(a=n5.outputs.b)
         n1 >> n6
-        a = workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)
+        a = _local_workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)
 
-    w = workflow.build_sdk_workflow_from_metaclass(
+    w = _local_workflow.build_sdk_workflow_from_metaclass(
         my_workflow, on_failure=_workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE,
     )
 
@@ -151,7 +154,7 @@ def test_workflow_decorator():
     assert w.nodes[3].inputs[0].binding.promise.node_id == "n1"
 
     # Test conversion to flyte_idl and back
-    w._id = _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "fake", "faker", "fakest", "fakerest")
+    w.id = _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "fake", "faker", "fakest", "fakerest")
     w = _workflow_models.WorkflowTemplate.from_flyte_idl(w.to_flyte_idl())
     assert w.interface.inputs["input_1"].type == primitives.Integer.to_flyte_literal_type()
     assert w.interface.inputs["input_2"].type == primitives.Integer.to_flyte_literal_type()
@@ -219,13 +222,15 @@ def test_workflow_node():
     nodes = [n1, n2, n3, n4, n5, n6]
 
     wf_out = [
-        workflow.Output(
+        _local_workflow.Output(
             "nested_out", [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]], sdk_type=[[primitives.Integer]],
         ),
-        workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
+        _local_workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
     ]
 
-    w = workflow.SdkWorkflow(inputs=input_list, outputs=wf_out, nodes=nodes)
+    w = _local_workflow.SdkRunnableWorkflow.construct_from_class_definition(
+        inputs=input_list, outputs=wf_out, nodes=nodes
+    )
 
     # Test that required input isn't set
     with _pytest.raises(_user_exceptions.FlyteAssertion):
@@ -258,9 +263,9 @@ def test_workflow_node():
     assert n.inputs[1].binding.scalar.primitive.integer == 10
 
     # Test that workflow is saved in the node
-    w._id = "fake"
+    w.id = "fake"
     assert n.workflow_node.sub_workflow_ref == "fake"
-    w._id = None
+    w.id = None
 
     # Test that outputs are promised
     n.assign_id_and_return("node-id*")  # dns'ified
@@ -343,13 +348,15 @@ def test_workflow_serialization():
     nodes = [n1, n2, n3, n4, n5, n6]
 
     wf_out = [
-        workflow.Output(
+        _local_workflow.Output(
             "nested_out", [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]], sdk_type=[[primitives.Integer]],
         ),
-        workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
+        _local_workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
     ]
 
-    w = workflow.SdkWorkflow(inputs=input_list, outputs=wf_out, nodes=nodes)
+    w = _local_workflow.SdkRunnableWorkflow.construct_from_class_definition(
+        inputs=input_list, outputs=wf_out, nodes=nodes
+    )
     serialized = w.serialize()
     assert isinstance(serialized, _workflow_pb2.WorkflowSpec)
     assert len(serialized.template.nodes) == 6
@@ -362,6 +369,6 @@ def test_workflow_disable_default_launch_plan():
         input_1 = promise.Input("input_1", primitives.Integer)
         input_2 = promise.Input("input_2", primitives.Integer, default=5, help="Not required.")
 
-    w = workflow.build_sdk_workflow_from_metaclass(MyWorkflow, disable_default_launch_plan=True,)
+    w = build_sdk_workflow_from_metaclass(MyWorkflow, disable_default_launch_plan=True,)
 
     assert w.should_create_default_launch_plan is False

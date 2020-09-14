@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import pytest
 from six.moves import range as _range
 

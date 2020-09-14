@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import os as _os
 import shutil as _shutil
 import sys as _sys
@@ -16,7 +14,7 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 
 
-class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)):
+class Blob(_literal_models.Blob, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(self, remote_path, mode="rb", format=None):
         """
         :param Text remote_path: Path to location where the Blob should be synced to.
@@ -228,7 +226,7 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
             _data_proxy.Data.put_data(self.local_path, self.remote_location, is_multipart=False)
 
 
-class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)):
+class MultiPartBlob(_literal_models.Blob, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(self, remote_path, mode="rb", format=None):
         """
         :param Text remote_path: Path to location where the Blob should be synced to.
