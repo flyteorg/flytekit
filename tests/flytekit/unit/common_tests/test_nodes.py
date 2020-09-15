@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import datetime as _datetime
 
 import pytest as _pytest

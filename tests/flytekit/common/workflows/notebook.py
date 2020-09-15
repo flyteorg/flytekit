@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 from flytekit.contrib.notebook.tasks import python_notebook, spark_notebook
 from flytekit.sdk.tasks import inputs, outputs
 from flytekit.sdk.types import Types

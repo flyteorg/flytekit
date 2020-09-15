@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit.models import common as _common
@@ -40,7 +38,7 @@ class IfBlock(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.IfBlock
         """
-        return _core_workflow.IfBlock(condition=self.condition.to_flyte_idl(), then_node=self.then_node.to_flyte_idl(),)
+        return _core_workflow.IfBlock(condition=self.condition.to_flyte_idl(), then_node=self.then_node.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -248,6 +246,7 @@ class Node(_common.FlyteIdlEntity):
         self._metadata = metadata
         self._inputs = inputs
         self._upstream_node_ids = upstream_node_ids
+        # TODO: For proper graph handling, we need to keep track of the node objects themselves, not just the node IDs
         self._output_aliases = output_aliases
         self._task_node = task_node
         self._workflow_node = workflow_node
@@ -282,7 +281,7 @@ class Node(_common.FlyteIdlEntity):
     @property
     def upstream_node_ids(self):
         """
-        [Optional] Specifies execution depdendency for this node ensuring it will
+        [Optional] Specifies execution dependency for this node ensuring it will
         only get scheduled to run after all its upstream nodes have completed. This node will have
         an implicit dependency on any node that appears in inputs field.
         :rtype: list[Text]
@@ -481,7 +480,6 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
     def __init__(self, on_failure=None):
         """
         Metadata for the workflow.
-
         :param on_failure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
         """
         self._on_failure = on_failure

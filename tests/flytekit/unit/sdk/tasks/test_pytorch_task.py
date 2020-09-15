@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import datetime as _datetime
 
 from flytekit.common import constants as _common_constants

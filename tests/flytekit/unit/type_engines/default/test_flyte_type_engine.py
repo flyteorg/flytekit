@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import pytest
 from flyteidl.core import errors_pb2 as _errors_pb2
 

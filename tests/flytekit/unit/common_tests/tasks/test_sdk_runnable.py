@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import pytest as _pytest
 
 from flytekit.common import constants as _common_constants

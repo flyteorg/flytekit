@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flyteidl.admin import project_pb2 as _project_pb2
 
 from flytekit.models import common as _common

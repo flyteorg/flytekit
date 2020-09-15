@@ -1,13 +1,11 @@
-from __future__ import absolute_import
-
 import importlib
 import pkgutil
 
 import six
 
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.local_workflow import SdkRunnableWorkflow as _SdkRunnableWorkflow
 from flytekit.common.mixins import registerable as _registerable
-from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
 
 
 def iterate_modules(pkgs):
@@ -49,19 +47,21 @@ def _topo_sort_helper(
         )
     recursion_set[obj] = len(recursion_stack) - 1
 
-    for upstream in obj.upstream_entities:
-        if upstream not in visited:
-            for m1, k1, o1 in _topo_sort_helper(
-                upstream,
-                entity_to_module_key,
-                visited,
-                recursion_set,
-                recursion_stack,
-                include_entities,
-                ignore_entities,
-                detect_unreferenced_entities,
-            ):
-                yield m1, k1, o1
+    if isinstance(obj, _registerable.HasDependencies):
+        for upstream in obj.upstream_entities:
+            if upstream not in visited:
+                for m1, k1, o1 in _topo_sort_helper(
+                    upstream,
+                    entity_to_module_key,
+                    visited,
+                    recursion_set,
+                    recursion_stack,
+                    include_entities,
+                    ignore_entities,
+                    detect_unreferenced_entities,
+                ):
+                    if not o1.has_registered:
+                        yield m1, k1, o1
 
     recursion_stack.pop()
     del recursion_set[obj]
@@ -110,7 +110,7 @@ def iterate_registerable_entities_in_order(
             if isinstance(o, _registerable.RegisterableEntity):
                 if o.instantiated_in == m.__name__:
                     entity_to_module_key[o] = (m, k)
-                    if isinstance(o, _SdkWorkflow) and o.should_create_default_launch_plan:
+                    if isinstance(o, _SdkRunnableWorkflow) and o.should_create_default_launch_plan:
                         # SDK should create a default launch plan for a workflow.  This is a special-case to simplify
                         # authoring of workflows.
                         entity_to_module_key[o.create_launch_plan()] = (m, k)

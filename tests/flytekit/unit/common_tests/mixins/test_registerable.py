@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from tests.flytekit.unit.common_tests.mixins import sample_registerable as _sample_registerable
 
 

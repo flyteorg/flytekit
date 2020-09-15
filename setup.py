@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from setuptools import find_packages, setup  # noqa
 
 import flytekit  # noqa
@@ -62,7 +60,7 @@ setup(
         "scripts/flytekit_sagemaker_runner.py",
     ],
     license="apache2",
-    python_requires=">=2.7",
+    python_requires=">=3.6",
     classifiers=[
         "Intended Audience :: Developers",
         "Intended Audience :: System Administrators",

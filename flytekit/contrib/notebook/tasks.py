@@ -365,41 +365,11 @@ class SdkNotebookTask(_base_tasks.SdkTask):
         gpu_limit = gpu_limit or gpu_request
         memory_limit = memory_limit or memory_request
 
-        requests = []
-        if storage_request:
-            requests.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
-            )
-        if cpu_request:
-            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
-        if gpu_request:
-            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
-        if memory_request:
-            requests.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
-            )
-
-        limits = []
-        if storage_limit:
-            limits.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit)
-            )
-        if cpu_limit:
-            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
-        if gpu_limit:
-            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
-        if memory_limit:
-            limits.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit)
-            )
-
-        return _sdk_runnable.SdkRunnableContainer(
-            command=[],
-            args=[],
-            resources=_task_models.Resources(limits=limits, requests=requests),
-            env=environment,
-            config={},
+        resources = _sdk_runnable.SdkRunnableContainer.get_resources(
+            storage_request, cpu_request, gpu_request, memory_request, storage_limit, cpu_limit, gpu_limit, memory_limit
         )
+
+        return _sdk_runnable.SdkRunnableContainer(command=[], args=[], resources=resources, env=environment, config={},)
 
 
 def spark_notebook(

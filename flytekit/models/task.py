@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import json as _json
 
 import six as _six
@@ -702,8 +700,7 @@ class DataLoadingConfig(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2: _core_task.DataLoadingConfig):
-        # TODO use python 3.7+ only and then https://stackoverflow.com/questions/33533148/how-do-i-specify-that-the-return-type-of-a-method-is-the-same-as-the-class-itsel -> DataLoadingConfig:
+    def from_flyte_idl(cls, pb2: _core_task.DataLoadingConfig) -> "DataLoadingConfig":
         if pb2 is None:
             return None
         return cls(

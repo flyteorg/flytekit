@@ -1,14 +1,8 @@
-from __future__ import absolute_import, print_function
-
 import logging as _logging
 import os as _os
+from pathlib import Path
 
 import click
-
-try:
-    from pathlib import Path
-except ImportError:
-    from pathlib2 import Path  # python 2 backport
 
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_VERSION
 from flytekit.clis.sdk_in_container.launch_plan import launch_plans

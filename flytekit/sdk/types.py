@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flytekit.common.types import blobs as _blobs
 from flytekit.common.types import containers as _containers
 from flytekit.common.types import helpers as _helpers

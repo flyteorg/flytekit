@@ -1,9 +1,4 @@
-from __future__ import absolute_import
-
-try:
-    from inspect import getfullargspec as _getargspec
-except ImportError:
-    from inspect import getargspec as _getargspec
+from inspect import getfullargspec as _getargspec
 
 import six as _six
 
@@ -26,7 +21,6 @@ from flytekit.models import task as _task_models
 
 
 class ExecutionParameters(object):
-
     """
     This is the parameter object that will be provided as the first parameter for every execution of any @*_task
     decorated function.
@@ -114,7 +108,11 @@ class ExecutionParameters(object):
         return self._distributed_training_context
 
 
-class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task_models.Container)):
+class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.ExtendedSdkType):
+    """
+    This is not necessarily a local-only Container object. So long as configuration is present, you can use this object
+    """
+
     def __init__(
         self, command, args, resources, env, config,
     ):
@@ -153,8 +151,60 @@ class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task
         )
         return env
 
+    @classmethod
+    def get_resources(
+        cls,
+        storage_request=None,
+        cpu_request=None,
+        gpu_request=None,
+        memory_request=None,
+        storage_limit=None,
+        cpu_limit=None,
+        gpu_limit=None,
+        memory_limit=None,
+    ):
+        """
+        :param Text storage_request:
+        :param Text cpu_request:
+        :param Text gpu_request:
+        :param Text memory_request:
+        :param Text storage_limit:
+        :param Text cpu_limit:
+        :param Text gpu_limit:
+        :param Text memory_limit:
+        """
+        requests = []
+        if storage_request:
+            requests.append(
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
+            )
+        if cpu_request:
+            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
+        if gpu_request:
+            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
+        if memory_request:
+            requests.append(
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
+            )
 
-class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task.SdkTask)):
+        limits = []
+        if storage_limit:
+            limits.append(
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit)
+            )
+        if cpu_limit:
+            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
+        if gpu_limit:
+            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
+        if memory_limit:
+            limits.append(
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit)
+            )
+
+        return _task_models.Resources(limits=limits, requests=requests)
+
+
+class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
     """
     This class includes the additional logic for building a task that executes in Python code.  It has even more
     validation checks to ensure proper behavior than it's superclasses.
@@ -205,7 +255,6 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         :param dict[Text, T] custom:
         """
         self._task_function = task_function
-
         super(SdkRunnableTask, self).__init__(
             task_type,
             _task_models.TaskMetadata(
@@ -419,33 +468,9 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         memory_limit = memory_limit or _resource_config.DEFAULT_MEMORY_LIMIT.get()
         memory_request = memory_request or _resource_config.DEFAULT_MEMORY_REQUEST.get()
 
-        requests = []
-        if storage_request:
-            requests.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
-            )
-        if cpu_request:
-            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
-        if gpu_request:
-            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
-        if memory_request:
-            requests.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
-            )
-
-        limits = []
-        if storage_limit:
-            limits.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit)
-            )
-        if cpu_limit:
-            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
-        if gpu_limit:
-            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
-        if memory_limit:
-            limits.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit)
-            )
+        resources = SdkRunnableContainer.get_resources(
+            storage_request, cpu_request, gpu_request, memory_request, storage_limit, cpu_limit, gpu_limit, memory_limit
+        )
 
         return (cls or SdkRunnableContainer)(
             command=[],
@@ -462,7 +487,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 "--raw-output-data-prefix",
                 "{{.rawOutputDataPrefix}}",
             ],
-            resources=_task_models.Resources(limits=limits, requests=requests),
+            resources=resources,
             env=environment,
             config={},
         )

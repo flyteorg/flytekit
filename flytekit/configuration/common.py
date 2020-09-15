@@ -1,10 +1,6 @@
-from __future__ import absolute_import
-
 import abc as _abc
 import configparser as _configparser
 import os as _os
-
-import six as _six
 
 from flytekit.common.exceptions import user as _user_exceptions
 
@@ -132,7 +128,7 @@ def _get_file_contents(location):
     return None
 
 
-class _FlyteConfigurationEntry(_six.with_metaclass(_abc.ABCMeta, object)):
+class _FlyteConfigurationEntry(object, metaclass=_abc.ABCMeta):
     def __init__(self, section, key, default=None, validator=None, fallback=None):
         self._section = section
         self._key = key

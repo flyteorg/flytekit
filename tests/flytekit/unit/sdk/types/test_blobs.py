@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import pytest
 
 from flytekit.common.types.impl import blobs as _blob_impl

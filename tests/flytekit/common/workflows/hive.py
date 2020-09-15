@@ -1,5 +1,3 @@
-from __future__ import absolute_import, print_function
-
 import six as _six
 
 from flytekit.sdk.tasks import inputs, outputs, python_task, qubole_hive_task

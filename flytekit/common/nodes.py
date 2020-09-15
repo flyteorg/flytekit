@@ -1,15 +1,17 @@
-from __future__ import absolute_import
-
 import abc as _abc
 import logging as _logging
+import os as _os
 
 import six as _six
+from flyteidl.core import literals_pb2 as _literals_pb2
 from sortedcontainers import SortedDict as _SortedDict
 
+from flytekit.clients.helpers import iterate_task_executions as _iterate_task_executions
 from flytekit.common import component_nodes as _component_nodes
 from flytekit.common import constants as _constants
 from flytekit.common import promise as _promise
 from flytekit.common import sdk_bases as _sdk_bases
+from flytekit.common import utils as _common_utils
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
@@ -18,14 +20,16 @@ from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.tasks import executions as _task_executions
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import _dnsify
-from flytekit.engines import loader as _engine_loader
+from flytekit.engines.flyte import engine as _flyte_engine
+from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import common as _common_models
+from flytekit.models import literals as _literal_models
 from flytekit.models import node_execution as _node_execution_models
 from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import workflow as _workflow_model
 
 
-class ParameterMapper(_six.with_metaclass(_common_models.FlyteABCMeta, _SortedDict)):
+class ParameterMapper(_SortedDict, metaclass=_common_models.FlyteABCMeta):
     """
     This abstract class provides functionality to reference specific inputs and outputs for a task instance. This
     allows for syntax such as:
@@ -106,7 +110,7 @@ class OutputParameterMapper(ParameterMapper):
         return _promise.NodeOutput(sdk_node, sdk_type, name)
 
 
-class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOnReferenceMixin, _workflow_model.Node,)):
+class SdkNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(
         self,
         id,
@@ -149,6 +153,8 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
         elif sdk_launch_plan is not None:
             workflow_node = _component_nodes.SdkWorkflowNode(sdk_launch_plan=sdk_launch_plan)
 
+        # TODO: this calls the constructor which means it will set all the upstream node ids to None if at the time of
+        #       this instantiation, the upstream nodes have not had their nodes assigned yet.
         super(SdkNode, self).__init__(
             id=_dnsify(id) if id else None,
             metadata=metadata,
@@ -300,9 +306,7 @@ class SdkNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _hash_mixin.HashOn
 
 
 class SdkNodeExecution(
-    _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType, _node_execution_models.NodeExecution, _artifact_mixin.ExecutionArtifact,
-    )
+    _node_execution_models.NodeExecution, _artifact_mixin.ExecutionArtifact, metaclass=_sdk_bases.ExtendedSdkType
 ):
     def __init__(self, *args, **kwargs):
         super(SdkNodeExecution, self).__init__(*args, **kwargs)
@@ -342,9 +346,23 @@ class SdkNodeExecution(
         :rtype: dict[Text, T]
         """
         if self._inputs is None:
-            self._inputs = _type_helpers.unpack_literal_map_to_sdk_python_std(
-                _engine_loader.get_engine().get_node_execution(self).get_inputs()
-            )
+            client = _flyte_engine.get_client()
+            execution_data = client.get_node_execution_data(self.id)
+
+            # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
+            if bool(execution_data.full_inputs.literals):
+                input_map = execution_data.full_inputs
+            elif execution_data.inputs.bytes > 0:
+                with _common_utils.AutoDeletingTempDir() as t:
+                    tmp_name = _os.path.join(t.name, "inputs.pb")
+                    _data_proxy.Data.get_data(execution_data.inputs.url, tmp_name)
+                    input_map = _literal_models.LiteralMap.from_flyte_idl(
+                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                    )
+            else:
+                input_map = _literal_models.LiteralMap({})
+
+            self._inputs = _type_helpers.unpack_literal_map_to_sdk_python_std(input_map)
         return self._inputs
 
     @property
@@ -356,15 +374,30 @@ class SdkNodeExecution(
         """
         if not self.is_complete:
             raise _user_exceptions.FlyteAssertion(
-                "Please what until the node execution has completed before " "requesting the outputs."
+                "Please what until the node execution has completed before requesting the outputs."
             )
         if self.error:
             raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
 
         if self._outputs is None:
-            self._outputs = _type_helpers.unpack_literal_map_to_sdk_python_std(
-                _engine_loader.get_engine().get_node_execution(self).get_outputs()
-            )
+            client = _flyte_engine.get_client()
+            execution_data = client.get_node_execution_data(self.id)
+
+            # Outputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
+            if bool(execution_data.full_outputs.literals):
+                output_map = execution_data.full_outputs
+
+            elif execution_data.outputs.bytes > 0:
+                with _common_utils.AutoDeletingTempDir() as t:
+                    tmp_name = _os.path.join(t.name, "outputs.pb")
+                    _data_proxy.Data.get_data(execution_data.outputs.url, tmp_name)
+                    output_map = _literal_models.LiteralMap.from_flyte_idl(
+                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                    )
+            else:
+                output_map = _literal_models.LiteralMap({})
+
+            self._outputs = _type_helpers.unpack_literal_map_to_sdk_python_std(output_map)
         return self._outputs
 
     @property
@@ -376,7 +409,7 @@ class SdkNodeExecution(
         """
         if not self.is_complete:
             raise _user_exceptions.FlyteAssertion(
-                "Please what until the node execution has completed before " "requesting error information."
+                "Please what until the node execution has completed before requesting error information."
             )
         return self.closure.error
 
@@ -408,11 +441,10 @@ class SdkNodeExecution(
         :rtype: None
         """
         if not self.is_complete or self.task_executions is not None:
-            ne = _engine_loader.get_engine().get_node_execution(self)
-            ne.sync()
-            self._task_executions = [
-                _task_executions.SdkTaskExecution.promote_from_model(te) for te in ne.get_task_executions()
-            ]
+            client = _flyte_engine.get_client()
+            self._closure = client.get_node_execution(self.id).closure
+            task_executions = list(_iterate_task_executions(client, self.id))
+            self._task_executions = [_task_executions.SdkTaskExecution.promote_from_model(te) for te in task_executions]
             # TODO: Sub-workflows too once implemented
 
     def _sync_closure(self):
@@ -420,5 +452,5 @@ class SdkNodeExecution(
         Syncs the closure of the underlying execution artifact with the state observed by the platform.
         :rtype: None
         """
-        ne = _engine_loader.get_engine().get_node_execution(self)
-        ne.sync()
+        client = _flyte_engine.get_client()
+        self._closure = client.get_node_execution(self.id).closure

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import importlib as _importlib
 import os as _os
 import stat as _stat

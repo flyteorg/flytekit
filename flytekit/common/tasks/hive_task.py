@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import uuid as _uuid
 
 import six as _six

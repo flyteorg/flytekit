@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flytekit.configuration import common as _config_common
 
 DEFAULT_CPU_LIMIT = _config_common.FlyteStringConfigurationEntry("resources", "default_cpu_limit")

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from datetime import timedelta
 from os import path as _path
 
@@ -64,8 +62,6 @@ def get_workflow_template():
     """
     This function retrieves a TasKTemplate object from the pb file in the resources directory.
     It was created by reading from Flyte Admin, the following workflow, after registration.
-
-    from __future__ import absolute_import
 
     from flytekit.common.types.primitives import Integer
     from flytekit.sdk.tasks import (

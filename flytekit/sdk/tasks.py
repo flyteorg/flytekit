@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import datetime as _datetime
 
 import six as _six
@@ -1044,9 +1042,7 @@ def dynamic_sidecar_task(
     can be defined in the PodSpec by defining a container whose name matches
     the primary_container_name. These container attributes will be applied to
     the container brought up to execute the primary task definition.
-
     .. code-block:: python
-
         def generate_pod_spec_for_task():
             pod_spec = generated_pb2.PodSpec()
             secondary_container = generated_pb2.Container(
@@ -1060,10 +1056,8 @@ def dynamic_sidecar_task(
                 mountPath="/data",
             )
             secondary_container.volumeMounts.extend([shared_volume_mount])
-
             primary_container = generated_pb2.Container(name="primary")
             primary_container.volumeMounts.extend([shared_volume_mount])
-
             pod_spec.volumes.extend([generated_pb2.Volume(
                 name="shared-data",
                 volumeSource=generated_pb2.VolumeSource(
@@ -1074,12 +1068,10 @@ def dynamic_sidecar_task(
             )])
             pod_spec.containers.extend([primary_container, secondary_container])
             return pod_spec
-
         @outputs(out=Types.Integer)
         @python_task
         def my_sub_task(wf_params, out):
             out.set(randint())
-
         @outputs(out=[Types.Integer])
         @dynamic_sidecar_task(
             pod_spec=generate_pod_spec_for_task(),
@@ -1090,45 +1082,32 @@ def dynamic_sidecar_task(
             for i in xrange(100):
                 out_list.append(my_sub_task().outputs.out)
             out.set(out_list)
-
     .. note::
-
         All outputs of a batch task must be a list.  This is because the individual outputs of sub-tasks should be
         appended into a list.  There cannot be aggregation of outputs done in this task.  To accomplish aggregation,
         it is recommended that a python_task take the outputs of this task as input and do the necessary work.
         If a sub-task does not contribute an output, it must be yielded from the task with the `yield` keyword or
         returned from the task in a list.  If this isn't done, the sub-task will not be executed.
-
     :param _task_function: this is the decorated method and shouldn't be declared explicitly.  The function must
         take a first argument, and then named arguments matching those defined in @inputs and @outputs.  No keyword
         arguments are allowed.
     :param Text cache_version: [optional] string representing logical version for discovery.  This field should be
         updated whenever the underlying algorithm changes.
-
         .. note::
-
             This argument is required to be a non-empty string if `cache` is True.
-
     :param int retries: [optional] integer determining number of times task can be retried on
         :py:exc:`flytekit.sdk.exceptions.RecoverableException` or transient platform failures.  Defaults
         to 0.
-
         .. note::
-
             If retries > 0, the task must be able to recover from any remote state created within the user code.  It is
             strongly recommended that tasks are written to be idempotent.
-
     :param bool interruptible: [optional] boolean describing if the task is interruptible.
-
     :param Text deprecated: [optional] string that should be provided if this task is deprecated.  The string
         will be logged as a warning so it should contain information regarding how to update to a newer task.
     :param Text storage_request: [optional] Kubernetes resource string for lower-bound of disk storage space
         for the task to run.  Default is set by platform-level configuration.
-
         .. note::
-
             This is currently not supported by the platform.
-
     :param Text cpu_request: [optional] Kubernetes resource string for lower-bound of cores for the task to execute.
         This can be set to a fractional portion of a CPU. Default is set by platform-level configuration.
         TODO: Add links to resource string documentation for Kubernetes
@@ -1140,11 +1119,8 @@ def dynamic_sidecar_task(
         TODO: Add links to resource string documentation for Kubernetes
     :param Text storage_limit: [optional] Kubernetes resource string for upper-bound of disk storage space
         for the task to run.  This amount is not guaranteed!  If not specified, it is set equal to storage_request.
-
         .. note::
-
             This is currently not supported by the platform.
-
     :param Text cpu_limit: [optional] Kubernetes resource string for upper-bound of cores for the task to execute.
         This can be set to a fractional portion of a CPU. This amount is not guaranteed!  If not specified,
         it is set equal to cpu_request.

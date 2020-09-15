@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flyteidl.plugins import qubole_pb2 as _qubole
 
 from flytekit.models import common as _common
