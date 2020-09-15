@@ -9,6 +9,7 @@ class MatchableResource(object):
     EXECUTION_QUEUE = _matchable_resource.EXECUTION_QUEUE
     EXECUTION_CLUSTER_LABEL = _matchable_resource.EXECUTION_CLUSTER_LABEL
     QUALITY_OF_SERVICE_SPECIFICATION = _matchable_resource.QUALITY_OF_SERVICE_SPECIFICATION
+    PLUGIN_OVERRIDE = _matchable_resource.PLUGIN_OVERRIDE
 
     @classmethod
     def enum_to_string(cls, val):
@@ -145,9 +146,84 @@ class ExecutionClusterLabel(_common.FlyteIdlEntity):
         return cls(value=pb2_object.value,)
 
 
+class PluginOverride(_common.FlyteIdlEntity):
+    FAIL = _matchable_resource.PluginOverride.FAIL
+    USE_DEFAULT = _matchable_resource.PluginOverride.USE_DEFAULT
+
+    @classmethod
+    def string_to_enum(cls, val):
+        """
+        :param Text val:
+        :rtype: int
+        """
+        if val == "FAIL":
+            return cls.FAIL
+        elif val == "USE_DEFAULT":
+            return cls.USE_DEFAULT
+        else:
+            return "<UNKNOWN>"
+
+    def __init__(self, task_type, plugin_id, missing_plugin_behavior):
+        """
+        Label value to determine where the execution will be run
+
+        :param Text task_type:
+        :param: list[Text] plugin_id:
+        :param int missing_plugin_behavior
+        """
+        self._task_type = task_type
+        self._plugin_id = plugin_id
+        self._missing_plugin_behavior = missing_plugin_behavior
+
+    @property
+    def task_type(self):
+        """
+        :rtype: Text
+        """
+        return self._task_type
+
+    @property
+    def plugin_id(self):
+        """
+        :rtype: list[Text]
+        """
+        return self._plugin_id
+
+    @property
+    def missing_plugin_behavior(self):
+        """
+        :rtype: int
+        """
+        return self._missing_plugin_behavior
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin.matchable_resource_pb2.PluginOverride
+        """
+        return _matchable_resource.PluginOverride(
+            task_type=self.task_type, plugin_id=self.plugin_id, missing_plugin_behavior=self.missing_plugin_behavior,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.admin.matchable_resource_pb2.PluginOverride pb2_object:
+        :rtype: PluginOverride
+        """
+        return cls(
+            task_type=pb2_object.task_type,
+            plugin_id=pb2_object.plugin_id,
+            missing_plugin_behavior=pb2_object.missing_plugin_behavior,
+        )
+
+
 class MatchingAttributes(_common.FlyteIdlEntity):
     def __init__(
-        self, cluster_resource_attributes=None, execution_queue_attributes=None, execution_cluster_label=None,
+        self,
+        cluster_resource_attributes=None,
+        execution_queue_attributes=None,
+        execution_cluster_label=None,
+        plugin_override=None,
     ):
         """
         At most one target from cluster_resource_attributes, execution_queue_attributes or execution_cluster_label
@@ -155,16 +231,20 @@ class MatchingAttributes(_common.FlyteIdlEntity):
         :param ClusterResourceAttributes cluster_resource_attributes:
         :param ExecutionQueueAttributes execution_queue_attributes:
         :param ExecutionClusterLabel execution_cluster_label:
+        :param PluginOverride plugin_override:
         """
         if cluster_resource_attributes:
-            if execution_queue_attributes or execution_cluster_label:
+            if execution_queue_attributes or execution_cluster_label or plugin_override:
                 raise ValueError("Only one target can be set")
-        elif execution_queue_attributes and execution_cluster_label:
+        elif execution_queue_attributes and (execution_cluster_label or plugin_override):
+            raise ValueError("Only one target can be set")
+        elif execution_cluster_label and plugin_override:
             raise ValueError("Only one target can be set")
 
         self._cluster_resource_attributes = cluster_resource_attributes
         self._execution_queue_attributes = execution_queue_attributes
         self._execution_cluster_label = execution_cluster_label
+        self._plugin_override = plugin_override
 
     @property
     def cluster_resource_attributes(self):
@@ -190,6 +270,14 @@ class MatchingAttributes(_common.FlyteIdlEntity):
         """
         return self._execution_cluster_label
 
+    @property
+    def plugin_override(self):
+        """
+        Plugin implementation overrides for a specific task type.
+        :rtype: PluginOverride
+        """
+        return self._plugin_override
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.matchable_resource_pb2.MatchingAttributes
@@ -204,6 +292,7 @@ class MatchingAttributes(_common.FlyteIdlEntity):
             execution_cluster_label=self.execution_cluster_label.to_flyte_idl()
             if self.execution_cluster_label
             else None,
+            plugin_override=self.plugin_override.to_flyte_idl() if self.plugin_override else None,
         )
 
     @classmethod
@@ -221,5 +310,8 @@ class MatchingAttributes(_common.FlyteIdlEntity):
             else None,
             execution_cluster_label=ExecutionClusterLabel.from_flyte_idl(pb2_object.execution_cluster_label)
             if pb2_object.HasField("execution_cluster_label")
+            else None,
+            plugin_override=PluginOverride.from_flyte_idl(pb2_object.plugin_override)
+            if pb2_object.HasField("plugin_override")
             else None,
         )

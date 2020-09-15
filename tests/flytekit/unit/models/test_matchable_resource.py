@@ -19,6 +19,16 @@ def test_execution_cluster_label():
     assert obj == matchable_resource.ExecutionClusterLabel.from_flyte_idl(obj.to_flyte_idl())
 
 
+def test_plugin_override():
+    obj = matchable_resource.PluginOverride(
+        "task_type", ["acceptable", "override"], matchable_resource.PluginOverride.USE_DEFAULT
+    )
+    assert obj.task_type == "task_type"
+    assert obj.plugin_id == ["acceptable", "override"]
+    assert obj.missing_plugin_behavior == matchable_resource.PluginOverride.USE_DEFAULT
+    assert obj == matchable_resource.PluginOverride.from_flyte_idl(obj.to_flyte_idl())
+
+
 def test_matchable_resource():
     cluster_resource_attrs = matchable_resource.ClusterResourceAttributes({"cpu": "one million", "gpu": "just one"})
     obj = matchable_resource.MatchingAttributes(cluster_resource_attributes=cluster_resource_attrs)
@@ -34,3 +44,12 @@ def test_matchable_resource():
     obj2 = matchable_resource.MatchingAttributes(execution_cluster_label=execution_cluster_label)
     assert obj2.execution_cluster_label == execution_cluster_label
     assert obj2 == matchable_resource.MatchingAttributes.from_flyte_idl(obj2.to_flyte_idl())
+
+    plugin_override_obj = matchable_resource.PluginOverride(
+        "task_type", ["acceptable", "override"], matchable_resource.PluginOverride.USE_DEFAULT
+    )
+    plugin_override_attributes = matchable_resource.MatchingAttributes(plugin_override=plugin_override_obj)
+    assert plugin_override_attributes.plugin_override == plugin_override_obj
+    assert plugin_override_attributes == matchable_resource.MatchingAttributes.from_flyte_idl(
+        plugin_override_attributes.to_flyte_idl()
+    )
