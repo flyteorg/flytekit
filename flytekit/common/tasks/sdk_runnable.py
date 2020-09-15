@@ -398,7 +398,6 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
                 stats=context.stats,
                 logging=context.logging,
                 tmp_dir=context.working_directory,
-                distributed_training_context=context.distributed_training_context
             ),
             **inputs
         )

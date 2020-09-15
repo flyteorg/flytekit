@@ -1,8 +1,17 @@
-from google.protobuf.json_format import MessageToDict
-
-from flytekit.common.constants import SdkTaskType
+import typing as _typing
+import six as _six
+from flytekit.common.constants import SdkTaskType, DistributedTrainingContextKey
+from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.common.tasks.sdk_runnable import ExecutionParameters as _ExecutionParameters
+from flytekit.common.types import helpers as _type_helpers
 from flytekit.models.sagemaker import training_job as _training_job_models
+from google.protobuf.json_format import MessageToDict
+from flytekit.common.core.identifier import WorkflowExecutionIdentifier
+from flytekit.common import constants as _constants
+from flytekit.models import literals as _literal_models
+from flytekit.common.tasks import output as _task_output
+
 
 
 class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
@@ -30,6 +39,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         environment,
         algorithm_specification: _training_job_models.AlgorithmSpecification,
         training_job_resource_config: _training_job_models.TrainingJobResourceConfig,
+        write_output: _typing.Callable,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -49,7 +59,10 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         :param dict[Text, Text] environment:
         :param _training_job_models.AlgorithmSpecification algorithm_specification:
         :param _training_job_models.TrainingJobResourceConfig training_job_resource_config:
+        :param _typing.Callable write_output:
         """
+
+        self._write_output = write_output
 
         # Use the training job model as a measure of type checking
         self._training_job_model = _training_job_models.TrainingJob(
@@ -80,3 +93,65 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
     @property
     def training_job_model(self) -> _training_job_models.TrainingJob:
         return self._training_job_model
+
+    @_exception_scopes.system_entry_point
+    def execute(self, context, inputs):
+        """
+        :param flytekit.engines.common.EngineContext context:
+        :param flytekit.models.literals.LiteralMap inputs:
+        :rtype: dict[Text, flytekit.models.common.FlyteIdlEntity]
+        :returns: This function must return a dictionary mapping 'filenames' to Flyte Interface Entities.  These
+            entities will be used by the engine to pass data from node to node, populate metadata, etc. etc..  Each
+            engine will have different behavior.  For instance, the Flyte engine will upload the entities to a remote
+            working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
+            workflow.  Where as local engine will merely feed the outputs directly into the next node.
+        """
+        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(
+            inputs,
+            {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)},
+        )
+        outputs_dict = {
+            name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
+            for name, variable in _six.iteritems(self.interface.outputs)
+        }
+        inputs_dict.update(outputs_dict)
+
+        self._execute_user_code(context, inputs_dict)
+
+        if self._write_output(context.distributed_training_context):
+            return {
+                _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
+                    literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
+                )
+            }
+        else:
+            return {}
+
+    def _execute_user_code(self, context, inputs):
+        """
+        :param flytekit.engines.common.EngineContext context:
+        :param dict[Text, T] inputs: This variable is a bit of a misnomer, since it's both inputs and outputs. The
+            dictionary passed here will be passed to the user-defined function, and will have values that are a
+            variety of types.  The T's here are Python std values for inputs.  If there isn't a native Python type for
+            something (like Schema or Blob), they are the Flyte classes.  For outputs they are OutputReferences.
+            (Note that these are not the same OutputReferences as in BindingData's)
+        :rtype: Any: the returned object from user code.
+        :returns: This function must return a dictionary mapping 'filenames' to Flyte Interface Entities.  These
+            entities will be used by the engine to pass data from node to node, populate metadata, etc. etc..  Each
+            engine will have different behavior.  For instance, the Flyte engine will upload the entities to a remote
+            working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
+            workflow.  Where as local engine will merely feed the outputs directly into the next node.
+        """
+
+        return _exception_scopes.user_entry_point(self.task_function)(
+            _ExecutionParameters(
+                execution_date=context.execution_date,
+                # TODO: it might be better to consider passing the full struct
+                execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
+                stats=context.stats,
+                logging=context.logging,
+                tmp_dir=context.working_directory,
+                distributed_training_context=context.distributed_training_context
+            ),
+            **inputs
+        )
