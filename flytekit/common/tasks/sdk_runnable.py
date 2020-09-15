@@ -32,12 +32,13 @@ class ExecutionParameters(object):
     decorated function.
     """
 
-    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging):
+    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, distributed_training_context=None):
         self._stats = stats
         self._execution_date = execution_date
         self._working_directory = tmp_dir
         self._execution_id = execution_id
         self._logging = logging
+        self._distributed_training_context = distributed_training_context
 
     @property
     def stats(self):
@@ -101,6 +102,16 @@ class ExecutionParameters(object):
         :rtype: Text
         """
         return self._execution_id
+
+    @property
+    def distributed_training_context(self):
+        """
+        This contains the resource information for distributed training. Currently this information is only available
+        for SageMaker training jobs.
+
+        :rtype: dict
+        """
+        return self._distributed_training_context
 
 
 class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task_models.Container)):
@@ -338,6 +349,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 stats=context.stats,
                 logging=context.logging,
                 tmp_dir=context.working_directory,
+                distributed_training_context=context.distributed_training_context
             ),
             **inputs
         )
