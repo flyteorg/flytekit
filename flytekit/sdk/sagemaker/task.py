@@ -165,7 +165,7 @@ def distributed_custom_training_job_task(
     timeout: _datetime.timedelta = None,
     environment: typing.Dict[str, str] = None,
     cls: typing.Type = None,
-    write_output: typing.Callable = None,
+    output_persist_predicate: typing.Callable = None,
 ):
     """
     Decorator to create a Custom Training Job definition.  This task will run as a single unit of work on the platform.
@@ -258,7 +258,7 @@ def distributed_custom_training_job_task(
         provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  A user can use this to
         inject bespoke logic into the base Flyte programming model.
 
-    :param Callable write_output: [optional] This callable should return a boolean and is used to indicate whether
+    :param Callable output_persist_predicate: [optional] This callable should return a boolean and is used to indicate whether
         the current copy (i.e., an instance of the task running on a particular node inside the worker pool) would
         write output.
 
@@ -285,7 +285,7 @@ def distributed_custom_training_job_task(
             environment=environment,
             algorithm_specification=algorithm_specification,
             training_job_resource_config=training_job_resource_config,
-            write_output=write_output,
+            write_output=output_persist_predicate,
         )
 
     if _task_function:

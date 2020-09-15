@@ -1,17 +1,18 @@
 import typing as _typing
+
 import six as _six
-from flytekit.common.constants import SdkTaskType, DistributedTrainingContextKey
+from google.protobuf.json_format import MessageToDict
+
+from flytekit.common import constants as _constants
+from flytekit.common.constants import SdkTaskType
+from flytekit.common.core.identifier import WorkflowExecutionIdentifier
 from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters as _ExecutionParameters
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.models.sagemaker import training_job as _training_job_models
-from google.protobuf.json_format import MessageToDict
-from flytekit.common.core.identifier import WorkflowExecutionIdentifier
-from flytekit.common import constants as _constants
 from flytekit.models import literals as _literal_models
-from flytekit.common.tasks import output as _task_output
-
+from flytekit.models.sagemaker import training_job as _training_job_models
 
 
 class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
@@ -39,7 +40,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         environment,
         algorithm_specification: _training_job_models.AlgorithmSpecification,
         training_job_resource_config: _training_job_models.TrainingJobResourceConfig,
-        write_output: _typing.Callable,
+        output_persist_predicate: _typing.Callable,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -59,10 +60,10 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         :param dict[Text, Text] environment:
         :param _training_job_models.AlgorithmSpecification algorithm_specification:
         :param _training_job_models.TrainingJobResourceConfig training_job_resource_config:
-        :param _typing.Callable write_output:
+        :param _typing.Callable output_persist_predicate:
         """
 
-        self._write_output = write_output
+        self._output_persist_predicate = output_persist_predicate
 
         # Use the training job model as a measure of type checking
         self._training_job_model = _training_job_models.TrainingJob(
@@ -118,7 +119,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
 
         self._execute_user_code(context, inputs_dict)
 
-        if self._write_output(context.distributed_training_context):
+        if self._output_persist_predicate(context.distributed_training_context):
             return {
                 _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
                     literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
@@ -151,7 +152,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
                 stats=context.stats,
                 logging=context.logging,
                 tmp_dir=context.working_directory,
-                distributed_training_context=context.distributed_training_context
+                distributed_training_context=context.distributed_training_context,
             ),
             **inputs
         )
