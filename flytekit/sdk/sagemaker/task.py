@@ -182,8 +182,6 @@ def distributed_custom_training_job_task(
         take a first argument, and then named arguments matching those defined in @inputs and @outputs.  No keyword
         arguments are allowed for wrapped task functions.
 
-    :param Callable output_enabler: a callable that returns
-
     :param _training_job_models.AlgorithmSpecification algorithm_specification: This represents the algorithm specification
 
     :param _training_job_models.TrainingJobResourceConfig training_job_resource_config: This represents the training job config.

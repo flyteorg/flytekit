@@ -4,6 +4,7 @@ import datetime as _datetime
 import importlib as _importlib
 import os as _os
 import random as _random
+import time as _time
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -17,25 +18,17 @@ from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import literals as _literal_models
-
-FLYTE_DISTRIBUTED_TRAINING_CONTEXT_CURRENT_HOST = "current_host"
-FLYTE_DISTRIBUTED_TRAINING_CONTEXT_HOSTS = "hosts"
-FLYTE_DISTRIBUTED_TRAINING_CONTEXT_NETWORK_INTERFACE_NAME = "network_interface_name"
-
-SM_ENV_VAR_CURRENT_HOST = "SM_CURRENT_HOST"
-SM_ENV_VAR_HOSTS = "SM_HOSTS"
-SM_ENV_VAR_NETWORK_INTERFACE_NAME = "SM_NETWORK_INTERFACE_NAME"
+from flytekit.common.tasks.sagemaker import distribution as _sm_distribution
 
 
-def _get_sagemaker_distributed_training_context() -> dict:
-    distributed_training_context = {
-        FLYTE_DISTRIBUTED_TRAINING_CONTEXT_CURRENT_HOST: _os.environ.get(SM_ENV_VAR_CURRENT_HOST, ""),
-        FLYTE_DISTRIBUTED_TRAINING_CONTEXT_HOSTS: _os.environ.get(SM_ENV_VAR_HOSTS, ""),
-        FLYTE_DISTRIBUTED_TRAINING_CONTEXT_NETWORK_INTERFACE_NAME: _os.environ.get(
-            SM_ENV_VAR_NETWORK_INTERFACE_NAME, ""),
-    }
+def _run_with_retries(func, expected_exception, max_retries=10):
 
-    return distributed_training_context
+    for i in range(max_retries):
+        try:
+            _time.sleep(1.0)
+            return func()
+        except expected_exception:
+            continue
 
 
 def _compute_array_job_index():
@@ -101,7 +94,8 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
 
                 _data_proxy.Data.get_data(inputs, local_inputs_file)
                 input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-                _distributed_training_context = _get_sagemaker_distributed_training_context()
+                _distributed_training_context = _run_with_retries(
+                    _sm_distribution.get_sagemaker_distributed_training_context_from_env, KeyError)
                 _engine_loader.get_engine().get_task(task_def).execute(
                     _literal_models.LiteralMap.from_flyte_idl(input_proto),
                     context={
