@@ -100,8 +100,10 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         return self._training_job_model
 
     def _is_distributed(self):
-        return self.training_job_model.training_job_resource_config and \
-               self.training_job_model.training_job_resource_config.instance_count > 1
+        return (
+            self.training_job_model.training_job_resource_config
+            and self.training_job_model.training_job_resource_config.instance_count > 1
+        )
 
     @_exception_scopes.system_entry_point
     def execute(self, context, inputs):
@@ -127,8 +129,11 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
 
         self._execute_user_code(context, inputs_dict)
 
-        if self._is_distributed() and self._output_persist_predicate and \
-                self.output_persist_predicate(context.distributed_training_context):
+        if (
+            self._is_distributed()
+            and self._output_persist_predicate
+            and self.output_persist_predicate(context.distributed_training_context)
+        ):
             return {
                 _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
                     literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
