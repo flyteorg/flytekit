@@ -40,7 +40,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         environment,
         algorithm_specification: _training_job_models.AlgorithmSpecification,
         training_job_resource_config: _training_job_models.TrainingJobResourceConfig,
-        output_persist_predicate: _typing.Callable,
+        output_persist_predicate: _typing.Callable = None,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -92,8 +92,16 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         )
 
     @property
+    def output_persist_predicate(self):
+        return self._output_persist_predicate
+
+    @property
     def training_job_model(self) -> _training_job_models.TrainingJob:
         return self._training_job_model
+
+    def _is_distributed(self):
+        return self.training_job_model.training_job_resource_config and \
+               self.training_job_model.training_job_resource_config.instance_count > 1
 
     @_exception_scopes.system_entry_point
     def execute(self, context, inputs):
@@ -119,7 +127,8 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
 
         self._execute_user_code(context, inputs_dict)
 
-        if self._output_persist_predicate(context.distributed_training_context):
+        if self._is_distributed() and self._output_persist_predicate and \
+                self.output_persist_predicate(context.distributed_training_context):
             return {
                 _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
                     literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
