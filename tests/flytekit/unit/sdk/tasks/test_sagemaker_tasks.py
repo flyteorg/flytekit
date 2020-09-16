@@ -1,19 +1,28 @@
-import os
 import datetime as _datetime
-from unittest import mock
 import json
+import os
+from unittest import mock
 
 from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import HyperparameterTuningJobConfig as _pb2_HPOJobConfig
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
+from google.protobuf.json_format import ParseDict
+
+import flytekit.models.core.types as _core_types
 from flytekit.common import constants as _common_constants
+from flytekit.common import utils as _utils
+from flytekit.common.core.identifier import WorkflowExecutionIdentifier
 from flytekit.common.tasks import task as _sdk_task
+from flytekit.common.tasks.sagemaker import distribution as _sm_distribution
 from flytekit.common.tasks.sagemaker import hpo_job_task
 from flytekit.common.tasks.sagemaker.built_in_training_job_task import SdkBuiltinAlgorithmTrainingJobTask
 from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
 from flytekit.common.tasks.sagemaker.hpo_job_task import SdkSimpleHyperparameterTuningJobTask
+from flytekit.common.types import helpers as _type_helpers
+from flytekit.engines import common as _common_engine
+from flytekit.engines.unit.mock_stats import MockStats
+from flytekit.models import literals as _literals
 from flytekit.models import types as _idl_types
 from flytekit.models.core import identifier as _identifier
-from flytekit.models.core import types as _core_types
 from flytekit.models.sagemaker.training_job import (
     AlgorithmName,
     AlgorithmSpecification,
@@ -26,15 +35,6 @@ from flytekit.sdk import types as _sdk_types
 from flytekit.sdk.sagemaker.task import custom_training_job_task
 from flytekit.sdk.tasks import inputs, outputs
 from flytekit.sdk.types import Types
-from google.protobuf.json_format import ParseDict
-from flytekit.common.tasks.sagemaker import distribution as _sm_distribution
-from flytekit.models import literals as _literals
-from flytekit.engines.unit.mock_stats import MockStats
-from flytekit.engines import common as _common_engine
-from flytekit.common.core.identifier import WorkflowExecutionIdentifier
-from flytekit.common import utils as _utils
-import flytekit.models.core.types as _core_types
-from flytekit.common.types import helpers as _type_helpers
 
 example_hyperparams = {
     "base_score": "0.5",
@@ -229,19 +229,22 @@ def test_distributed_custom_training_job():
     os.environ[_sm_distribution.SM_ENV_VAR_CURRENT_HOST] = "algo-0"
 
     dist_ctx = {
-        _common_constants.DistributedTrainingContextKey.CURRENT_HOST:
-            os.environ[_sm_distribution.SM_ENV_VAR_CURRENT_HOST],
-        _common_constants.DistributedTrainingContextKey.HOSTS:
-            json.loads(os.environ[_sm_distribution.SM_ENV_VAR_HOSTS])
+        _common_constants.DistributedTrainingContextKey.CURRENT_HOST: os.environ[
+            _sm_distribution.SM_ENV_VAR_CURRENT_HOST
+        ],
+        _common_constants.DistributedTrainingContextKey.HOSTS: json.loads(
+            os.environ[_sm_distribution.SM_ENV_VAR_HOSTS]
+        ),
     }
 
-    # Defining a sample output-persist predicate
+    # Defining a output-persist predicate to indicate if the copy of the instance should persist its output
     def predicate(distributed_training_context):
         return (
-            distributed_training_context[_common_constants.DistributedTrainingContextKey.CURRENT_HOST] ==
-            distributed_training_context[_common_constants.DistributedTrainingContextKey.HOSTS][1]
+            distributed_training_context[_common_constants.DistributedTrainingContextKey.CURRENT_HOST]
+            == distributed_training_context[_common_constants.DistributedTrainingContextKey.HOSTS][1]
         )
 
+    # Defining the distributed training task
     @inputs(input_1=Types.Integer)
     @outputs(model=Types.Blob)
     @custom_training_job_task(
@@ -253,7 +256,7 @@ def test_distributed_custom_training_job():
             input_content_type=InputContentType.TEXT_CSV,
             metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")],
         ),
-        output_persist_predicate=predicate
+        output_persist_predicate=predicate,
     )
     def my_distributed_task(wf_params, input_1, model):
         pass
@@ -275,12 +278,15 @@ def test_distributed_custom_training_job():
             tmp_dir=input_dir.name,
         )
 
+        # execute the distributed task with its distributed_training_context == None
         ret = my_distributed_task.execute(context, task_input)
         assert not ret
 
+        # fill in the distributed_training_context to the context object and execute again
         context._distributed_training_context = dist_ctx
         ret = my_distributed_task.execute(context, task_input)
         assert _common_constants.OUTPUT_FILE_NAME in ret.keys()
         python_std_output_map = _type_helpers.unpack_literal_map_to_sdk_python_std(
-            ret[_common_constants.OUTPUT_FILE_NAME])
-        assert 'model' in python_std_output_map.keys()
+            ret[_common_constants.OUTPUT_FILE_NAME]
+        )
+        assert "model" in python_std_output_map.keys()
