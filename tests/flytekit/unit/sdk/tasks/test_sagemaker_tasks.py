@@ -262,6 +262,7 @@ def test_distributed_custom_training_job():
             distributed_training_context[_common_constants.DistributedTrainingContextKey.CURRENT_HOST]
             == distributed_training_context[_common_constants.DistributedTrainingContextKey.HOSTS][1]
         )
+
     my_distributed_task._output_persist_predicate = predicate
     assert my_distributed_task.output_persist_predicate(dist_ctx) is False
 
