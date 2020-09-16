@@ -118,29 +118,15 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
-        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(
-            inputs,
-            {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)},
-        )
-        outputs_dict = {
-            name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
-            for name, variable in _six.iteritems(self.interface.outputs)
-        }
-        inputs_dict.update(outputs_dict)
-
-        self._execute_user_code(context, inputs_dict)
+        ret = super().execute(context, inputs)
 
         if (
             self._is_distributed()
             and self._output_persist_predicate
             and context.distributed_training_context
-            and self.output_persist_predicate(context.distributed_training_context)
+            and self.output_persist_predicate(context.distributed_training_context) is True
         ):
-            return {
-                _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
-                    literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
-                )
-            }
+            return ret
         else:
             return {}
 

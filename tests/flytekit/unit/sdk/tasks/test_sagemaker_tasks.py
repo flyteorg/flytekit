@@ -1,6 +1,7 @@
 import datetime as _datetime
 import json
 import os
+import unittest
 from unittest import mock
 
 from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import HyperparameterTuningJobConfig as _pb2_HPOJobConfig
@@ -35,6 +36,7 @@ from flytekit.sdk import types as _sdk_types
 from flytekit.sdk.sagemaker.task import custom_training_job_task
 from flytekit.sdk.tasks import inputs, outputs
 from flytekit.sdk.types import Types
+from flytekit.common.distribution import DefaultOutputPersistPredicate
 
 example_hyperparams = {
     "base_score": "0.5",
@@ -223,72 +225,120 @@ def test_custom_training_job():
     assert type(my_task) == CustomTrainingJobTask
 
 
-@mock.patch.dict("os.environ")
-def test_distributed_custom_training_job():
-    os.environ[_sm_distribution.SM_ENV_VAR_HOSTS] = '["algo-0", "algo-1", "algo-2"]'
-    os.environ[_sm_distribution.SM_ENV_VAR_CURRENT_HOST] = "algo-0"
-
-    dist_ctx = {
-        _common_constants.DistributedTrainingContextKey.CURRENT_HOST: os.environ[
-            _sm_distribution.SM_ENV_VAR_CURRENT_HOST
-        ],
-        _common_constants.DistributedTrainingContextKey.HOSTS: json.loads(
-            os.environ[_sm_distribution.SM_ENV_VAR_HOSTS]
-        ),
-    }
-
-    # Defining the distributed training task without specifying an output-persist predicate (so it will use the default)
-    @inputs(input_1=Types.Integer)
-    @outputs(model=Types.Blob)
-    @custom_training_job_task(
-        training_job_resource_config=TrainingJobResourceConfig(
-            instance_type="ml.m4.xlarge", instance_count=2, volume_size_in_gb=25,
-        ),
-        algorithm_specification=AlgorithmSpecification(
-            input_mode=InputMode.FILE,
-            input_content_type=InputContentType.TEXT_CSV,
-            metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")],
-        ),
+# Defining a output-persist predicate to indicate if the copy of the instance should persist its output
+def predicate(distributed_training_context):
+    return (
+        distributed_training_context[_common_constants.DistributedTrainingContextKey.CURRENT_HOST]
+        == distributed_training_context[_common_constants.DistributedTrainingContextKey.HOSTS][1]
     )
-    def my_distributed_task(wf_params, input_1, model):
-        pass
 
-    assert type(my_distributed_task) == CustomTrainingJobTask
-    assert my_distributed_task.output_persist_predicate(dist_ctx) is True
 
-    # Defining a output-persist predicate to indicate if the copy of the instance should persist its output
-    def predicate(distributed_training_context):
-        return (
-            distributed_training_context[_common_constants.DistributedTrainingContextKey.CURRENT_HOST]
-            == distributed_training_context[_common_constants.DistributedTrainingContextKey.HOSTS][1]
-        )
 
-    my_distributed_task._output_persist_predicate = predicate
-    assert my_distributed_task.output_persist_predicate(dist_ctx) is False
 
-    dist_ctx.update({_common_constants.DistributedTrainingContextKey.CURRENT_HOST: "algo-1"})
-    with _utils.AutoDeletingTempDir("input_dir") as input_dir:
-        task_input = _literals.LiteralMap(
-            {"input_1": _literals.Literal(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=1)))}
-        )
 
-        context = _common_engine.EngineContext(
-            execution_id=WorkflowExecutionIdentifier(project="unit_test", domain="unit_test", name="unit_test"),
-            execution_date=_datetime.datetime.utcnow(),
-            stats=MockStats(),
-            logging=None,
-            tmp_dir=input_dir.name,
-        )
+class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
+    @mock.patch.dict("os.environ")
+    def setUp(self):
+        with _utils.AutoDeletingTempDir("input_dir") as input_dir:
+            os.environ[_sm_distribution.SM_ENV_VAR_HOSTS] = '["algo-0", "algo-1", "algo-2"]'
+            os.environ[_sm_distribution.SM_ENV_VAR_CURRENT_HOST] = "algo-0"
 
+            self._dist_ctx = {
+                _common_constants.DistributedTrainingContextKey.CURRENT_HOST: os.environ[
+                    _sm_distribution.SM_ENV_VAR_CURRENT_HOST
+                ],
+                _common_constants.DistributedTrainingContextKey.HOSTS: json.loads(
+                    os.environ[_sm_distribution.SM_ENV_VAR_HOSTS]
+                ),
+            }
+
+            self._task_input = _literals.LiteralMap(
+                {"input_1": _literals.Literal(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=1)))}
+            )
+
+            self._context = _common_engine.EngineContext(
+                execution_id=WorkflowExecutionIdentifier(project="unit_test", domain="unit_test", name="unit_test"),
+                execution_date=_datetime.datetime.utcnow(),
+                stats=MockStats(),
+                logging=None,
+                tmp_dir=input_dir.name,
+            )
+            # my_distributed_task._output_persist_predicate = DefaultOutputPersistPredicate()
+
+            # Defining the distributed training task without specifying an output-persist predicate (so it will use the default)
+            @inputs(input_1=Types.Integer)
+            @outputs(model=Types.Blob)
+            @custom_training_job_task(
+                training_job_resource_config=TrainingJobResourceConfig(
+                    instance_type="ml.m4.xlarge", instance_count=2, volume_size_in_gb=25,
+                ),
+                algorithm_specification=AlgorithmSpecification(
+                    input_mode=InputMode.FILE,
+                    input_content_type=InputContentType.TEXT_CSV,
+                    metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")],
+                ),
+            )
+            def my_distributed_task(wf_params, input_1, model):
+                pass
+
+            self._my_distributed_task = my_distributed_task
+
+    def test_with_default_predicate(self):
+        assert type(self._my_distributed_task) == CustomTrainingJobTask
+        assert self._my_distributed_task.output_persist_predicate(self._dist_ctx) is True
         # execute the distributed task with its distributed_training_context == None
-        ret = my_distributed_task.execute(context, task_input)
+        ret = self._my_distributed_task.execute(self._context, self._task_input)
         assert not ret
 
+    def test_with_custom_predicate_with_none_dist_context(self):
+        with _utils.AutoDeletingTempDir("input_dir") as input_dir:
+
+            self._my_distributed_task._output_persist_predicate = predicate
+            assert self._my_distributed_task.output_persist_predicate(self._dist_ctx) is False
+
+            self._dist_ctx.update({_common_constants.DistributedTrainingContextKey.CURRENT_HOST: "algo-1"})
+
+            # execute the distributed task with its distributed_training_context == None
+            ret = self._my_distributed_task.execute(self._context, self._task_input)
+            assert not ret
+
+    def test_with_custom_predicate_with_valid_dist_context(self):
         # fill in the distributed_training_context to the context object and execute again
-        context._distributed_training_context = dist_ctx
-        ret = my_distributed_task.execute(context, task_input)
+        self._my_distributed_task._output_persist_predicate = predicate
+        self._dist_ctx.update({_common_constants.DistributedTrainingContextKey.CURRENT_HOST: "algo-1"})
+        self._context._distributed_training_context = self._dist_ctx
+        ret = self._my_distributed_task.execute(self._context, self._task_input)
         assert _common_constants.OUTPUT_FILE_NAME in ret.keys()
         python_std_output_map = _type_helpers.unpack_literal_map_to_sdk_python_std(
             ret[_common_constants.OUTPUT_FILE_NAME]
         )
         assert "model" in python_std_output_map.keys()
+
+    def test_if_wf_param_has_dist_context(self):
+        # This test is making sure that the distributed_training_context is successfully passed into the task_function
+        # Specifically, we want to make sure the _execute_user_code() of the CustomTrainingJobTask class does the
+        # thing that it is supposed to do
+
+        @inputs(input_1=Types.Integer)
+        @outputs(model=Types.Blob)
+        @custom_training_job_task(
+            training_job_resource_config=TrainingJobResourceConfig(
+                instance_type="ml.m4.xlarge", instance_count=2, volume_size_in_gb=25,
+            ),
+            algorithm_specification=AlgorithmSpecification(
+                input_mode=InputMode.FILE,
+                input_content_type=InputContentType.TEXT_CSV,
+                metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")],
+            ),
+        )
+        def my_distributed_task_with_valid_dist_training_context(wf_params, input_1, model):
+            if wf_params.distributed_training_context is None:
+                raise ValueError
+
+        self._dist_ctx.update({_common_constants.DistributedTrainingContextKey.CURRENT_HOST: "algo-1"})
+        # Injecting into the context the distributed_training_context field
+        self._context._distributed_training_context = self._dist_ctx
+        try:
+            my_distributed_task_with_valid_dist_training_context.execute(self._context, self._task_input)
+        except ValueError:
+            self.fail("The distributed_training_context is not passed in successfully")
