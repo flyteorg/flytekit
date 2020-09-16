@@ -132,6 +132,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         if (
             self._is_distributed()
             and self._output_persist_predicate
+            and context.distributed_training_context
             and self.output_persist_predicate(context.distributed_training_context)
         ):
             return {

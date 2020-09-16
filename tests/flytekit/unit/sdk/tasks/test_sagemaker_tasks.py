@@ -1,9 +1,10 @@
+import os
 import datetime as _datetime
+from unittest import mock
+import json
 
 from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import HyperparameterTuningJobConfig as _pb2_HPOJobConfig
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
-from google.protobuf.json_format import ParseDict
-
 from flytekit.common import constants as _common_constants
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.tasks.sagemaker import hpo_job_task
@@ -25,6 +26,15 @@ from flytekit.sdk import types as _sdk_types
 from flytekit.sdk.sagemaker.task import custom_training_job_task
 from flytekit.sdk.tasks import inputs, outputs
 from flytekit.sdk.types import Types
+from google.protobuf.json_format import ParseDict
+from flytekit.common.tasks.sagemaker import distribution as _sm_distribution
+from flytekit.models import literals as _literals
+from flytekit.engines.unit.mock_stats import MockStats
+from flytekit.engines import common as _common_engine
+from flytekit.common.core.identifier import WorkflowExecutionIdentifier
+from flytekit.common import utils as _utils
+import flytekit.models.core.types as _core_types
+from flytekit.common.types import helpers as _type_helpers
 
 example_hyperparams = {
     "base_score": "0.5",
@@ -211,3 +221,66 @@ def test_custom_training_job():
         pass
 
     assert type(my_task) == CustomTrainingJobTask
+
+
+@mock.patch.dict("os.environ")
+def test_distributed_custom_training_job():
+    os.environ[_sm_distribution.SM_ENV_VAR_HOSTS] = '["algo-0", "algo-1", "algo-2"]'
+    os.environ[_sm_distribution.SM_ENV_VAR_CURRENT_HOST] = "algo-0"
+
+    dist_ctx = {
+        _common_constants.DistributedTrainingContextKey.CURRENT_HOST:
+            os.environ[_sm_distribution.SM_ENV_VAR_CURRENT_HOST],
+        _common_constants.DistributedTrainingContextKey.HOSTS:
+            json.loads(os.environ[_sm_distribution.SM_ENV_VAR_HOSTS])
+    }
+
+    # Defining a sample output-persist predicate
+    def predicate(distributed_training_context):
+        return (
+            distributed_training_context[_common_constants.DistributedTrainingContextKey.CURRENT_HOST] ==
+            distributed_training_context[_common_constants.DistributedTrainingContextKey.HOSTS][1]
+        )
+
+    @inputs(input_1=Types.Integer)
+    @outputs(model=Types.Blob)
+    @custom_training_job_task(
+        training_job_resource_config=TrainingJobResourceConfig(
+            instance_type="ml.m4.xlarge", instance_count=2, volume_size_in_gb=25,
+        ),
+        algorithm_specification=AlgorithmSpecification(
+            input_mode=InputMode.FILE,
+            input_content_type=InputContentType.TEXT_CSV,
+            metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")],
+        ),
+        output_persist_predicate=predicate
+    )
+    def my_distributed_task(wf_params, input_1, model):
+        pass
+
+    assert type(my_distributed_task) == CustomTrainingJobTask
+    assert my_distributed_task.output_persist_predicate(dist_ctx) is False
+
+    dist_ctx.update({_common_constants.DistributedTrainingContextKey.CURRENT_HOST: "algo-1"})
+    with _utils.AutoDeletingTempDir("input_dir") as input_dir:
+        task_input = _literals.LiteralMap(
+            {"input_1": _literals.Literal(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=1)))}
+        )
+
+        context = _common_engine.EngineContext(
+            execution_id=WorkflowExecutionIdentifier(project="unit_test", domain="unit_test", name="unit_test"),
+            execution_date=_datetime.datetime.utcnow(),
+            stats=MockStats(),
+            logging=None,
+            tmp_dir=input_dir.name,
+        )
+
+        ret = my_distributed_task.execute(context, task_input)
+        assert not ret
+
+        context._distributed_training_context = dist_ctx
+        ret = my_distributed_task.execute(context, task_input)
+        assert _common_constants.OUTPUT_FILE_NAME in ret.keys()
+        python_std_output_map = _type_helpers.unpack_literal_map_to_sdk_python_std(
+            ret[_common_constants.OUTPUT_FILE_NAME])
+        assert 'model' in python_std_output_map.keys()
