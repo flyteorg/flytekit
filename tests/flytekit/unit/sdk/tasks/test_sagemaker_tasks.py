@@ -237,7 +237,7 @@ def test_distributed_custom_training_job():
         ),
     }
 
-    # Defining the distributed training task
+    # Defining the distributed training task without specifying an output-persist predicate (so it will use the default)
     @inputs(input_1=Types.Integer)
     @outputs(model=Types.Blob)
     @custom_training_job_task(
