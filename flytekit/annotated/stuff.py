@@ -315,6 +315,7 @@ class PythonTask(object):
                 upstream_nodes=[],  # Set these later
                 sdk_task=self
             )
+            # Not actually sure this is necessary - can keep track of it from the wrapper object that we return.
             ctx.compilation_state.nodes.append(sdk_node)
 
             # TODO: Return multiple versions of the _same_ node, but with different output names. This is what this
@@ -334,7 +335,7 @@ class PythonTask(object):
             return self._task_function(*args, **kwargs)
 
     @property
-    def interface(self) -> interface.TypedInterface:
+    def interface(self) -> _common_interface.TypedInterface:
         return self._interface
 
     @property
