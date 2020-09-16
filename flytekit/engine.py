@@ -13,8 +13,10 @@ from flytekit.configuration import (
     internal as _internal_config, sdk as _sdk_config, )
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
-from flytekit.models import literals as _literals_models, types as _type_models
+from flytekit.models import literals as _literals_models, types as _type_models, interface as _interface_models
 from flytekit.models.core import identifier as _identifier, types as _core_type_models
+from flytekit.common import promise as _promise
+from flytekit.common.exceptions import user as _user_exceptions
 
 
 class ExecutionContext(object):
@@ -127,7 +129,6 @@ class ExecutionContextProvider(object):
                             idl_inputs=inputs,
                         )
                         yield execution_context
-
 
 
 def _generate_local_path():
@@ -315,3 +316,46 @@ def python_value_to_idl_literal(execution_context: ExecutionContext, native_valu
         idl_literals = {k: python_value_to_idl_literal(execution_context, v, idl_type.map_value_type) for k, v in
                         native_value.items()}
         return _literals_models.LiteralMap(literals=idl_literals)
+
+
+def binding_from_python_std(var_name: str, expected_literal_type, t_value) -> _literals_models.Binding:
+    # This handles the case where the incoming value is a workflow-level input
+    if isinstance(t_value, _promise.Input):
+        incoming_value_type = t_value.sdk_type.to_flyte_literal_type()
+        if not expected_literal_type == incoming_value_type:
+            _user_exceptions.FlyteTypeException(
+                incoming_value_type,
+                expected_literal_type,
+                additional_msg="When binding workflow input: {}".format(t_value)
+            )
+        promise = t_value.promise
+        binding_data = _literals_models.BindingData(promise=promise)
+
+    # This handles the case where the given value is the output of another task
+    elif isinstance(t_value, _promise.NodeOutput):
+        incoming_value_type = t_value.sdk_type.to_flyte_literal_type()
+        if not expected_literal_type == incoming_value_type:
+            _user_exceptions.FlyteTypeException(
+                incoming_value_type,
+                expected_literal_type,
+                additional_msg="When binding node output: {}".format(t_value)
+            )
+        promise = t_value
+        binding_data = _literals_models.BindingData(promise=promise)
+
+    elif isinstance(t_value, list) or isinstance(t_value, dict):
+        # I didn't really like the list implementation below so leaving both dict and list unimplemented for now
+        raise Exception("not yet handled - haytham will implement")
+
+    # This is the scalar case - e.g. my_task(in1=5)
+    else:
+        # Question: Haytham/Ketan - Is it okay for me to rely on the expected idl type, which comes from the task's
+        #   interface, to derive the scalar value?
+        # Question: The execution context here is only used for complicated things like handling files. Should we
+        #   support this? Or should we try to make this function simpler and only allow users to create bindings to
+        #   simple scalars?
+        # TODO: If using the context, actually provide a real one.
+        scalar = python_value_to_idl_literal(ExecutionContext(), t_value, expected_literal_type).scalar
+        binding_data = _literals_models.BindingData(scalar=scalar)
+
+    return _literals_models.Binding(var=var_name, binding=binding_data)

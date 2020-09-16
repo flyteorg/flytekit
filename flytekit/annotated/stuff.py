@@ -4,10 +4,10 @@ from typing import List, Dict, Tuple, NamedTuple, Generator
 from collections import OrderedDict
 
 from flytekit import logger
-from flytekit.common import constants as _common_constants
-from flytekit.common import interface
 from flytekit.common import (
-    nodes as _nodes
+    nodes as _nodes,
+    constants as _common_constants,
+    interface as _common_interface,
 )
 from flytekit.common.nodes import OutputParameterMapper
 from flytekit.common.exceptions import user as _user_exceptions
@@ -20,6 +20,9 @@ from flytekit.models import task as _task_model, types as _type_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
 from flytekit.annotated.type_engine import BASE_TYPES
 from flytekit.annotated import type_engine
+from flytekit import engine as flytekit_engine
+from flytekit.annotated.context_manager import FlyteContext
+
 
 # Set this to 11 or higher if you don't want to see debug output
 logger.setLevel(10)
@@ -264,29 +267,42 @@ class PythonTask(object):
         self._info = info
 
     def __call__(self, *args, **kwargs):
-        # Instead of calling the function, scan the inputs, if any, construct a node of inputs and outputs
-        if CONFIGURATION_SINGLETON.x == 1:
+        # When a Task is () aka __called__, there are three things we may do:
+        #  a. Task Execution Mode - just run the Python function as Python normally would. Flyte steps completely
+        #     out of the way.
+        #  b. Compilation Mode - this happens when the function is called as part of a workflow (potentially
+        #     dynamic task?). Instead of running the user function, produce promise objects and create a node.
+        #  c. Workflow Execution Mode - when a workflow is being run locally. Even though workflows are functions
+        #     and everything should be able to be passed through naturally, we'll want to wrap output values of the
+        #     function into objects, so that potential .with_cpu or other ancillary functions can be attached to do
+        #     nothing. Subsequent tasks will have to know how to unwrap these. If by chance a non-Flyte task uses a
+        #     task output as an input, things probably will fail pretty obviously.
+        ctx = FlyteContext.current_context()
+
+        if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
             if len(args) > 0:
                 raise _user_exceptions.FlyteAssertion(
                     "When adding a task as a node in a workflow, all inputs must be specified with kwargs only.  We "
                     "detected {} positional args.".format(len(args))
                 )
 
-            # TODO: Move away from this to use basic model classes instead. Don't like this create_bindings_for_inputs
-            #       function.
-            bindings, upstream_nodes = self.interface.create_bindings_for_inputs(kwargs)
+            used_inputs = set()
+            bindings = []
 
-            # Set upstream names. So for instance if we have
-            # (in a workflow...)
-            #     a = t1()  # This produces a promise.NodeOutput which contains a node
-            #     b = t2(a)  # When we're in b's __call__ we realize that a is an upstream node, so move up the stack
-            #                # to find the name 'a'
-            # Note that these upstream_nodes have been unpacked by the create_bindings_for_inputs function to be nodes
-            # and no longer promise.NodeOutputs
-            for n in upstream_nodes:
-                if n._id is None:
-                    # logger.debug(f"Upstream node {n} is still missing a text id, moving up the call stack to find")
-                    n._id = get_earliest_promise_name(n)
+            for k in sorted(self.interface.inputs):
+                var = self.interface.inputs[k]
+                if k not in kwargs:
+                    raise _user_exceptions.FlyteAssertion(
+                        "Input was not specified for: {} of type {}".format(k, var.type)
+                    )
+                bindings.append(flytekit_engine.binding_from_python_std(k, var.type, kwargs[k]))
+                used_inputs.add(k)
+
+            extra_inputs = used_inputs ^ set(kwargs.keys())
+            if len(extra_inputs) > 0:
+                raise _user_exceptions.FlyteAssertion(
+                    "Too many inputs were specified for the interface.  Extra inputs were: {}".format(extra_inputs)
+                )
 
             # TODO: Make the metadata name the full name of the (function)?
             # There should be no reason to ever assign a random node id (at least in a non-dynamic context), so we
@@ -296,9 +312,10 @@ class PythonTask(object):
                 metadata=_workflow_model.NodeMetadata(self._task_function.__name__, self.metadata.timeout, self.metadata.retries,
                                                       self.metadata.interruptible),
                 bindings=sorted(bindings, key=lambda b: b.var),
-                upstream_nodes=upstream_nodes,
+                upstream_nodes=[],  # Set these later
                 sdk_task=self
             )
+            ctx.compilation_state.nodes.append(sdk_node)
 
             # TODO: Return multiple versions of the _same_ node, but with different output names. This is what this
             #       OutputParameterMapper does for us, but should we try to move away from it?
@@ -344,7 +361,7 @@ def task(
         environment=None,
 ):
     def wrapper(fn):
-        # Just saving everything as a hash for now, will figure out what to do with this in the future.
+        # Just saving everything as a hash for now, Ketan will figure out what to do with this in the future
         task_obj = {}
         task_obj['task_type'] = _common_constants.SdkTaskType.PYTHON_TASK,
         task_obj['retries'] = retries,
@@ -413,6 +430,11 @@ def get_output_variable_map(task_annotations: Dict[str, type]) -> Dict[str, _int
 
         # Option 5
         def t(a: int, b: str) -> str: ...
+
+    TODO: We'll need to check the actual return types for in all cases as well, to make sure Flyte IDL actually
+          supports it. For instance, typing.Tuple[Optional[int]] is not something we can represent currently.
+
+    TODO: Generator[A,B,C] types are also valid, indicating dynamic tasks. Will need to implement.
 
     Note that Options 1 and 2 are identical, just syntactic sugar. In the NamedTuple case, we'll use the names in the
     definition. In all other cases, we'll automatically generate output names, indexed starting at 0.
