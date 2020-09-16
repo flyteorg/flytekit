@@ -13,6 +13,7 @@ from flytekit.common.tasks.sdk_runnable import ExecutionParameters as _Execution
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.models import literals as _literal_models
 from flytekit.models.sagemaker import training_job as _training_job_models
+from flytekit.common.distribution import DefaultOutputPersistPredicate
 
 
 class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
@@ -40,7 +41,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         environment,
         algorithm_specification: _training_job_models.AlgorithmSpecification,
         training_job_resource_config: _training_job_models.TrainingJobResourceConfig,
-        output_persist_predicate: _typing.Callable = None,
+        output_persist_predicate: _typing.Callable = DefaultOutputPersistPredicate(),
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.

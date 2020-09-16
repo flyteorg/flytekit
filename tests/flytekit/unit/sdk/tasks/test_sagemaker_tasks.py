@@ -237,13 +237,6 @@ def test_distributed_custom_training_job():
         ),
     }
 
-    # Defining a output-persist predicate to indicate if the copy of the instance should persist its output
-    def predicate(distributed_training_context):
-        return (
-            distributed_training_context[_common_constants.DistributedTrainingContextKey.CURRENT_HOST]
-            == distributed_training_context[_common_constants.DistributedTrainingContextKey.HOSTS][1]
-        )
-
     # Defining the distributed training task
     @inputs(input_1=Types.Integer)
     @outputs(model=Types.Blob)
@@ -256,12 +249,20 @@ def test_distributed_custom_training_job():
             input_content_type=InputContentType.TEXT_CSV,
             metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")],
         ),
-        output_persist_predicate=predicate,
     )
     def my_distributed_task(wf_params, input_1, model):
         pass
 
     assert type(my_distributed_task) == CustomTrainingJobTask
+    assert my_distributed_task.output_persist_predicate(dist_ctx) is True
+
+    # Defining a output-persist predicate to indicate if the copy of the instance should persist its output
+    def predicate(distributed_training_context):
+        return (
+            distributed_training_context[_common_constants.DistributedTrainingContextKey.CURRENT_HOST]
+            == distributed_training_context[_common_constants.DistributedTrainingContextKey.HOSTS][1]
+        )
+    my_distributed_task._output_persist_predicate = predicate
     assert my_distributed_task.output_persist_predicate(dist_ctx) is False
 
     dist_ctx.update({_common_constants.DistributedTrainingContextKey.CURRENT_HOST: "algo-1"})

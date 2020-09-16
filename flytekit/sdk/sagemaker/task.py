@@ -3,7 +3,7 @@ import typing
 
 from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
 from flytekit.models.sagemaker import training_job as _training_job_models
-
+from flytekit.common.distribution import DefaultOutputPersistPredicate
 
 def custom_training_job_task(
     _task_function=None,
@@ -24,7 +24,7 @@ def custom_training_job_task(
     timeout: _datetime.timedelta = None,
     environment: typing.Dict[str, str] = None,
     cls: typing.Type = None,
-    output_persist_predicate: typing.Callable = None,
+    output_persist_predicate: typing.Callable = DefaultOutputPersistPredicate(),
 ):
     """
     Decorator to create a Custom Training Job definition.  This task will run as a single unit of work on the platform.
