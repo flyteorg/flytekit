@@ -36,7 +36,6 @@ from flytekit.sdk import types as _sdk_types
 from flytekit.sdk.sagemaker.task import custom_training_job_task
 from flytekit.sdk.tasks import inputs, outputs
 from flytekit.sdk.types import Types
-from flytekit.common.distribution import DefaultOutputPersistPredicate
 
 example_hyperparams = {
     "base_score": "0.5",
@@ -233,9 +232,6 @@ def predicate(distributed_training_context):
     )
 
 
-
-
-
 class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
     @mock.patch.dict("os.environ")
     def setUp(self):
@@ -263,9 +259,9 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
                 logging=None,
                 tmp_dir=input_dir.name,
             )
-            # my_distributed_task._output_persist_predicate = DefaultOutputPersistPredicate()
 
-            # Defining the distributed training task without specifying an output-persist predicate (so it will use the default)
+            # Defining the distributed training task without specifying an output-persist
+            # predicate (so it will use the default)
             @inputs(input_1=Types.Integer)
             @outputs(model=Types.Blob)
             @custom_training_job_task(
@@ -291,16 +287,14 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
         assert not ret
 
     def test_with_custom_predicate_with_none_dist_context(self):
-        with _utils.AutoDeletingTempDir("input_dir") as input_dir:
+        self._my_distributed_task._output_persist_predicate = predicate
+        assert self._my_distributed_task.output_persist_predicate(self._dist_ctx) is False
 
-            self._my_distributed_task._output_persist_predicate = predicate
-            assert self._my_distributed_task.output_persist_predicate(self._dist_ctx) is False
+        self._dist_ctx.update({_common_constants.DistributedTrainingContextKey.CURRENT_HOST: "algo-1"})
 
-            self._dist_ctx.update({_common_constants.DistributedTrainingContextKey.CURRENT_HOST: "algo-1"})
-
-            # execute the distributed task with its distributed_training_context == None
-            ret = self._my_distributed_task.execute(self._context, self._task_input)
-            assert not ret
+        # execute the distributed task with its distributed_training_context == None
+        ret = self._my_distributed_task.execute(self._context, self._task_input)
+        assert not ret
 
     def test_with_custom_predicate_with_valid_dist_context(self):
         # fill in the distributed_training_context to the context object and execute again
