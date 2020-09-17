@@ -1,6 +1,7 @@
 import typing as _typing
 
 import six as _six
+import logging as _logging
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.common.constants import SdkTaskType
@@ -115,16 +116,19 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
+
+        context._distributed_training_context = _sm_distribution.get_sagemaker_distributed_training_context_from_env()
         ret = super().execute(context, inputs)
 
         if (
             self._is_distributed()
             and self._output_persist_predicate
-            and context.distributed_training_context
             and self.output_persist_predicate(context.distributed_training_context) is True
         ):
             return ret
         else:
+            _logging.info("Output_persist_predicate() returns False for this instance. "
+                          "The output of this task will not be persisted")
             return {}
 
     def _execute_user_code(self, context, inputs):
@@ -151,7 +155,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
                 stats=context.stats,
                 logging=context.logging,
                 tmp_dir=context.working_directory,
-                distributed_training_context=_sm_distribution.get_sagemaker_distributed_training_context_from_env()
+                distributed_training_context=context.distributed_training_context
             ),
             **inputs
         )
