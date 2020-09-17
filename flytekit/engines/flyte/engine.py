@@ -348,9 +348,6 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                                     raw_output_data_prefix=context["raw_output_data_prefix"]
                                     if "raw_output_data_prefix" in context
                                     else None,
-                                    distributed_training_context=context["distributed_training_context"]
-                                    if "distributed_training_context" in context
-                                    else None,
                                 ),
                                 inputs,
                             )

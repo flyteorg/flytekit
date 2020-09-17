@@ -8,6 +8,7 @@ from flytekit.common.core.identifier import WorkflowExecutionIdentifier
 from flytekit.common.distribution import DefaultOutputPersistPredicate
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.common.tasks.sagemaker import distribution as _sm_distribution
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters as _ExecutionParameters
 from flytekit.models.sagemaker import training_job as _training_job_models
 
@@ -150,7 +151,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
                 stats=context.stats,
                 logging=context.logging,
                 tmp_dir=context.working_directory,
-                distributed_training_context=context.distributed_training_context,
+                distributed_training_context=_sm_distribution.get_sagemaker_distributed_training_context_from_env()
             ),
             **inputs
         )

@@ -1,5 +1,6 @@
 import json as _json
 import os as _os
+import retry as _retry
 
 from flytekit.common.constants import DistributedTrainingContextKey as _DistributedTrainingContextKey
 
@@ -9,6 +10,7 @@ SM_ENV_VAR_HOSTS = "SM_HOSTS"
 SM_ENV_VAR_NETWORK_INTERFACE_NAME = "SM_NETWORK_INTERFACE_NAME"
 
 
+@_retry.retry(exceptions=KeyError, delay=1, tries=10, backoff=1)
 def get_sagemaker_distributed_training_context_from_env() -> dict:
     distributed_training_context = {}
     if (
@@ -27,6 +29,7 @@ def get_sagemaker_distributed_training_context_from_env() -> dict:
     return distributed_training_context
 
 
+@_retry.retry(exceptions=FileNotFoundError, delay=1, tries=10, backoff=1)
 def get_sagemaker_distributed_training_context_from_file() -> dict:
     with open(SM_RESOURCE_CONFIG_FILE, "r") as rc_file:
         return _json.load(rc_file)
