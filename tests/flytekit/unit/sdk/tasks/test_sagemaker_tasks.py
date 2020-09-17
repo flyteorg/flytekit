@@ -1,6 +1,4 @@
 import datetime as _datetime
-import json
-import os
 import unittest
 from unittest import mock
 
@@ -269,27 +267,36 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
             self._my_distributed_task = my_distributed_task
             assert type(self._my_distributed_task) == CustomTrainingJobTask
 
-    @mock.patch.dict("os.environ", {
-        _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-0",
-        _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-    })
+    @mock.patch.dict(
+        "os.environ",
+        {
+            _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-0",
+            _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
+        },
+    )
     def test_with_default_predicate_with_rank0_master(self):
         # execute the distributed task with its distributed_training_context == None
         ret = self._my_distributed_task.execute(self._context, self._task_input)
         assert _common_constants.OUTPUT_FILE_NAME in ret.keys()
 
-    @mock.patch.dict("os.environ", {
-        _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
-        _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-    })
+    @mock.patch.dict(
+        "os.environ",
+        {
+            _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
+            _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
+        },
+    )
     def test_with_default_predicate_with_rank1_master(self):
         ret = self._my_distributed_task.execute(self._context, self._task_input)
         assert not ret
 
-    @mock.patch.dict("os.environ", {
-        _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
-        _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-    })
+    @mock.patch.dict(
+        "os.environ",
+        {
+            _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
+            _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
+        },
+    )
     def test_with_custom_predicate_with_none_dist_context(self):
         self._my_distributed_task._output_persist_predicate = predicate
         # execute the distributed task with its distributed_training_context == None
@@ -297,10 +304,13 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
         assert ret
         assert _common_constants.OUTPUT_FILE_NAME in ret.keys()
 
-    @mock.patch.dict("os.environ", {
-        _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
-        _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-    })
+    @mock.patch.dict(
+        "os.environ",
+        {
+            _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
+            _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
+        },
+    )
     def test_with_custom_predicate_with_valid_dist_context(self):
         # fill in the distributed_training_context to the context object and execute again
         self._my_distributed_task._output_persist_predicate = predicate
@@ -311,10 +321,13 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
         )
         assert "model" in python_std_output_map.keys()
 
-    @mock.patch.dict("os.environ", {
-        _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
-        _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-    })
+    @mock.patch.dict(
+        "os.environ",
+        {
+            _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
+            _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
+        },
+    )
     def test_if_wf_param_has_dist_context(self):
         # This test is making sure that the distributed_training_context is successfully passed into the task_function
         # Specifically, we want to make sure the _execute_user_code() of the CustomTrainingJobTask class does the

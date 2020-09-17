@@ -1,7 +1,7 @@
+import logging as _logging
 import typing as _typing
 
 import six as _six
-import logging as _logging
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.common.constants import SdkTaskType
@@ -127,8 +127,10 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         ):
             return ret
         else:
-            _logging.info("Output_persist_predicate() returns False for this instance. "
-                          "The output of this task will not be persisted")
+            _logging.info(
+                "Output_persist_predicate() returns False for this instance. "
+                "The output of this task will not be persisted"
+            )
             return {}
 
     def _execute_user_code(self, context, inputs):
@@ -155,7 +157,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
                 stats=context.stats,
                 logging=context.logging,
                 tmp_dir=context.working_directory,
-                distributed_training_context=context.distributed_training_context
+                distributed_training_context=context.distributed_training_context,
             ),
             **inputs
         )
