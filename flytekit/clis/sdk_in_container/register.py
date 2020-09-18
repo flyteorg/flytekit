@@ -25,7 +25,6 @@ def register_all(project, domain, pkgs, test, version):
     # m = module (i.e. python file)
     # k = value of dir(m), type str
     # o = object (e.g. SdkWorkflow)
-    loaded_entities = []
     for m, k, o in iterate_registerable_entities_in_order(pkgs):
         name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
         _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
