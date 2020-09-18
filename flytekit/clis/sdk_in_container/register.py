@@ -30,9 +30,7 @@ def register_all(project, domain, pkgs, test, version):
         name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
         _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
         o._id = _identifier.Identifier(o.resource_type, project, domain, name, version)
-        loaded_entities.append(o)
 
-    for o in loaded_entities:
         if test:
             click.echo("Would register {:20} {}".format("{}:".format(o.entity_type_text), o.id.name))
         else:
