@@ -11,8 +11,9 @@ from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.tasks.sagemaker import distribution as _sm_distribution
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters as _ExecutionParameters
-from flytekit.models.sagemaker import training_job as _training_job_models
 from flytekit.engines import common as _common_engine
+from flytekit.models.sagemaker import training_job as _training_job_models
+
 
 class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
     """
