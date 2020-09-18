@@ -12,7 +12,7 @@ from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.tasks.sagemaker import distribution as _sm_distribution
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters as _ExecutionParameters
 from flytekit.models.sagemaker import training_job as _training_job_models
-
+from flytekit.engines import common as _common_engine
 
 class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
     """
@@ -117,13 +117,22 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
 
-        context._distributed_training_context = _sm_distribution.get_sagemaker_distributed_training_context_from_env()
-        ret = super().execute(context, inputs)
+        context_for_dist_training_task = _common_engine.EngineContext(
+            execution_date=context.execution_date,
+            tmp_dir=context.working_directory,
+            stats=context.stats,
+            execution_id=context.execution_id,
+            logging=context.logging,
+            raw_output_data_prefix=context.raw_output_data_prefix,
+            distributed_training_context=_sm_distribution.get_sagemaker_distributed_training_context_from_env(),
+        )
+
+        ret = super().execute(context_for_dist_training_task, inputs)
 
         if (
             self._is_distributed()
             and self._output_persist_predicate
-            and self.output_persist_predicate(context.distributed_training_context) is True
+            and self.output_persist_predicate(context_for_dist_training_task.distributed_training_context) is True
         ):
             return ret
         else:
