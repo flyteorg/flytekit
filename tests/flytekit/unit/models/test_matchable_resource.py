@@ -35,7 +35,7 @@ def test_plugin_overrides():
     )
     obj = matchable_resource.PluginOverrides(overrides=[plugin_override])
     assert obj.overrides == [plugin_override]
-    assert obj == matchable_resource.PluginOverride.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == matchable_resource.PluginOverrides.from_flyte_idl(obj.to_flyte_idl())
 
 
 def test_matchable_resource():
