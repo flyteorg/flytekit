@@ -12,17 +12,16 @@ async-generator==1.10     # via nbclient
 attrs==20.2.0             # via black, jsonschema
 backcall==0.2.0           # via ipython
 black==19.10b0            # via flytekit, papermill
-boto3==1.14.63            # via flytekit
-botocore==1.17.63         # via boto3, s3transfer
+boto3==1.15.2             # via flytekit
+botocore==1.18.2          # via boto3, s3transfer
 certifi==2020.6.20        # via requests
 chardet==3.0.4            # via requests
 click==7.1.2              # via black, flytekit, hmsclient, papermill
 croniter==0.3.34          # via flytekit
 decorator==4.4.2          # via ipython
 deprecated==1.2.10        # via flytekit
-docutils==0.15.2          # via botocore
 entrypoints==0.3          # via papermill
-flyteidl==0.18.5          # via flytekit
+flyteidl==0.18.6          # via flytekit
 future==0.18.2            # via torch
 grpcio==1.32.0            # via flytekit
 hmsclient==0.1.1          # via flytekit
@@ -54,7 +53,7 @@ protobuf==3.13.0          # via flyteidl, flytekit, k8s-proto
 ptyprocess==0.6.0         # via pexpect
 py4j==0.10.7              # via pyspark
 pyarrow==0.17.1           # via flytekit
-pygments==2.7.0           # via ipython
+pygments==2.7.1           # via ipython
 pyrsistent==0.17.3        # via jsonschema
 pyspark==2.4.7            # via flytekit
 python-dateutil==2.8.1    # via botocore, croniter, flytekit, jupyter-client, pandas
