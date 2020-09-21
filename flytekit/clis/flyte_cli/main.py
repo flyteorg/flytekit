@@ -44,6 +44,7 @@ from flytekit.models.matchable_resource import ExecutionQueueAttributes as _Exec
 from flytekit.models.matchable_resource import MatchableResource as _MatchableResource
 from flytekit.models.matchable_resource import MatchingAttributes as _MatchingAttributes
 from flytekit.models.matchable_resource import PluginOverride as _PluginOverride
+from flytekit.models.matchable_resource import PluginOverrides as _PluginOverrides
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
 
@@ -1766,7 +1767,7 @@ def update_plugin_override(host, insecure, project, domain, name, task_type, plu
     plugin_override = _PluginOverride(
         task_type, list(plugin_id), _PluginOverride.string_to_enum(missing_plugin_behavior.upper())
     )
-    matching_attributes = _MatchingAttributes(plugin_override=plugin_override)
+    matching_attributes = _MatchingAttributes(plugin_overrides=_PluginOverrides(overrides=[plugin_override]))
 
     if name is not None:
         client.update_workflow_attributes(project, domain, name, matching_attributes)
