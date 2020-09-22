@@ -7,12 +7,12 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import generic_spark_task as _sdk_generic_spark_task
 from flytekit.common.tasks import hive_task as _sdk_hive_tasks
 from flytekit.common.tasks import pytorch_task as _sdk_pytorch_tasks
-from flytekit.common.tasks import tensorflow_task as _sdk_tensorflow_tasks
 from flytekit.common.tasks import sdk_dynamic as _sdk_dynamic
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable_tasks
 from flytekit.common.tasks import sidecar_task as _sdk_sidecar_tasks
 from flytekit.common.tasks import spark_task as _sdk_spark_tasks
 from flytekit.common.tasks import task as _task
+from flytekit.common.tasks import tensorflow_task as _sdk_tensorflow_tasks
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.contrib.notebook import tasks as _nb_tasks
 from flytekit.models import interface as _interface_model
@@ -1338,27 +1338,28 @@ def pytorch_task(
     else:
         return wrapper
 
+
 def tensorflow_task(
-        _task_function=None,
-        cache_version='',
-        retries=0,
-        interruptible=False,
-        deprecated='',
-        cache=False,
-        timeout=None,
-        workers_count=1,
-        ps_replicas_count=None,
-        chief_replicas_count=None,
-        per_replica_storage_request="",
-        per_replica_cpu_request="",
-        per_replica_gpu_request="",
-        per_replica_memory_request="",
-        per_replica_storage_limit="",
-        per_replica_cpu_limit="",
-        per_replica_gpu_limit="",
-        per_replica_memory_limit="",
-        environment=None,
-        cls=None
+    _task_function=None,
+    cache_version="",
+    retries=0,
+    interruptible=False,
+    deprecated="",
+    cache=False,
+    timeout=None,
+    workers_count=1,
+    ps_replicas_count=None,
+    chief_replicas_count=None,
+    per_replica_storage_request="",
+    per_replica_cpu_request="",
+    per_replica_gpu_request="",
+    per_replica_memory_request="",
+    per_replica_storage_limit="",
+    per_replica_cpu_limit="",
+    per_replica_gpu_limit="",
+    per_replica_memory_limit="",
+    environment=None,
+    cls=None,
 ):
     """
     Decorator to create a Tensorflow Task definition. This task will submit TFJob (see https://github.com/kubeflow/tf-operator)
@@ -1471,6 +1472,7 @@ def tensorflow_task(
 
     :rtype: flytekit.common.tasks.sdk_runnable.SdkRunnableTask
     """
+
     def wrapper(fn):
         return (cls or _sdk_tensorflow_tasks.SdkTensorFlowTask)(
             task_function=fn,
@@ -1492,7 +1494,7 @@ def tensorflow_task(
             per_replica_cpu_limit=per_replica_cpu_limit,
             per_replica_gpu_limit=per_replica_gpu_limit,
             per_replica_memory_limit=per_replica_memory_limit,
-            environment=environment or {}
+            environment=environment or {},
         )
 
     if _task_function:
