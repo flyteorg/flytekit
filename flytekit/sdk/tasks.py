@@ -1481,7 +1481,7 @@ def tensorflow_task(
             retries=retries,
             interruptible=interruptible,
             deprecated=deprecated,
-            discoverable=cache,
+            cache=cache,
             timeout=timeout or _datetime.timedelta(seconds=0),
             workers_count=workers_count,
             ps_replicas_count=ps_replicas_count,
