@@ -1477,7 +1477,7 @@ def tensorflow_task(
         return (cls or _sdk_tensorflow_tasks.SdkTensorFlowTask)(
             task_function=fn,
             task_type=_common_constants.SdkTaskType.TENSORFLOW_TASK,
-            discovery_version=cache_version,
+            cache_version=cache_version,
             retries=retries,
             interruptible=interruptible,
             deprecated=deprecated,
