@@ -1,9 +1,4 @@
-from __future__ import absolute_import
-
-try:
-    from inspect import getfullargspec as _getargspec
-except ImportError:
-    from inspect import getargspec as _getargspec
+from inspect import getfullargspec as _getargspec
 
 import six as _six
 from flytekit.common import constants as _constants
@@ -82,3 +77,4 @@ class SdkTensorFlowTask(_sdk_runnable.SdkRunnableTask):
         :rtype: SdkRunnableTensorflowContainer
         """
         return super(SdkTensorFlowTask, self)._get_container_definition(cls=SdkRunnableTensorflowContainer, **kwargs)
+

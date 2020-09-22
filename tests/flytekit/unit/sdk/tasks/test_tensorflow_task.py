@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 from flytekit.sdk.tasks import tensorflow_task, inputs, outputs
 from flytekit.sdk.types import Types
 from flytekit.common import constants as _common_constants
