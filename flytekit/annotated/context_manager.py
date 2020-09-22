@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from typing import List, Optional
+from typing import List, Optional, Generator
 
 from flytekit.configuration import sdk as _sdk_config, platform as _platform_config
 from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
@@ -19,6 +19,14 @@ class CompilationState(object):
         self.mode = 1  # TODO: Turn into enum in the future, or remove if only one mode.
 
 
+class WorkflowExecutionState(object):
+    """
+    This class represents when flytekit is locally running a workflow. The behavior of tasks differs in this case
+    because instead of running a task's user defined function directly, it'll need to wrap the return values in
+    NodeOutput objects. This is because calling .with_cpu("2") doesn't make sense on a native Python type obviously.
+    """
+
+
 class FlyteContext(object):
     OBJS = []
 
@@ -26,19 +34,26 @@ class FlyteContext(object):
                  local_file_access: _local_file_proxy.LocalFileProxy = None,
                  remote_data_proxy: _common_data.DataProxy = None,
                  compilation_state: CompilationState = None,
+                 workflow_execution_state: WorkflowExecutionState = None,
                  flyte_client: flyte_client.SynchronousFlyteClient = None,
                  ):
         # TODO: Should we have this auto-parenting feature?
         if parent is None and len(FlyteContext.OBJS) > 0:
             parent = FlyteContext.OBJS[-1]
 
+        if compilation_state is not None and workflow_execution_state is not None:
+            raise Exception("Can't specify both")
+
         self._parent: FlyteContext = parent
         self._local_file_access = local_file_access
         self._remote_data_proxy = remote_data_proxy
         self._compilation_state = compilation_state
+        self._workflow_execution_state = workflow_execution_state
         self._flyte_client = flyte_client
 
     def __enter__(self):
+        # Should we auto-assign the parent here?
+        # Or detect if self's parent is not [-1]?
         FlyteContext.OBJS.append(self)
         return self
 
@@ -79,7 +94,7 @@ class FlyteContext(object):
             return None
 
     @contextmanager
-    def new_compilation_state(self):
+    def new_compilation_state(self) -> Generator['FlyteContext', None, None]:
         new_ctx = FlyteContext(parent=self, compilation_state=CompilationState())
         FlyteContext.OBJS.append(new_ctx)
         try:

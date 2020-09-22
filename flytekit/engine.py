@@ -321,6 +321,7 @@ def python_value_to_idl_literal(execution_context: ExecutionContext, native_valu
 def binding_from_python_std(var_name: str, expected_literal_type, t_value) -> _literals_models.Binding:
     # This handles the case where the incoming value is a workflow-level input
     if isinstance(t_value, _promise.Input):
+        # TODO: Rip out the notion of SDK types from here, from promise.Input generally
         incoming_value_type = t_value.sdk_type.to_flyte_literal_type()
         if not expected_literal_type == incoming_value_type:
             _user_exceptions.FlyteTypeException(
@@ -345,6 +346,8 @@ def binding_from_python_std(var_name: str, expected_literal_type, t_value) -> _l
 
     elif isinstance(t_value, list) or isinstance(t_value, dict):
         # I didn't really like the list implementation below so leaving both dict and list unimplemented for now
+        # When filling this part out, keep in mind detection of upstream nodes in task compilation will also need to
+        # be updated.
         raise Exception("not yet handled - haytham will implement")
 
     # This is the scalar case - e.g. my_task(in1=5)

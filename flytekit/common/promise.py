@@ -2,7 +2,9 @@ from __future__ import absolute_import
 
 import six as _six
 
-from flytekit.common import constants as _constants, sdk_bases as _sdk_bases
+from typing import Any
+
+from flytekit.common import constants as _constants, sdk_bases as _sdk_bases, nodes as _nodes
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.models import interface as _interface_models, types as _type_models
@@ -130,14 +132,19 @@ class Input(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _interface_models.Pa
 
 class NodeOutput(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.OutputReference)):
 
-    def __init__(self, sdk_node, sdk_type, var):
+    def __init__(self, sdk_node: _nodes.SdkNode, sdk_type, var: str, literal_type: _type_models.LiteralType = None, native_value: Any = None):
         """
-        :param flytekit.common.nodes.SdkNode sdk_node:
-        :param flytekit.common.types.FlyteSdkType sdk_type:
-        :param Text var:
+
+        :param sdk_node:
+        :param sdk_type: deprecated in mypy flytekit.
+        :param var:
+        :param literal_type:
+        :param native_value:
         """
         self._node = sdk_node
         self._type = sdk_type
+        self._literal_type = literal_type
+        self._native_value = native_value
         super(NodeOutput, self).__init__(
             self._node.id,
             var
@@ -174,6 +181,16 @@ class NodeOutput(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.Ou
         """
         return self._type
 
+    @property
+    def literal_type(self) -> _type_models.LiteralType:
+        return self._literal_type
+
+    @property
+    def native_value(self) -> Any:
+        return
+
     def __repr__(self):
         # TODO: fix this so that if upstream node ids have any None's in it, this still prints instead of erroring.
         return "NodeOutput({}:{})".format(self.sdk_node, self.var)
+
+    # TODO: Need to add all the .with_cpu/with_memory override functions
