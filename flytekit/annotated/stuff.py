@@ -106,18 +106,19 @@ def workflow(
 
         # These should line up with the output input argument
         # TODO: Add length checks.
-        # Check that the outputs returned type match the interface.
+
         # logger.debug(f"Workflow outputs: {outputs}")
 
         bindings = []
         output_names = outputs_variable_map.keys()
         for i, out in enumerate(workflow_outputs):
             output_name = output_names[i]
+            # TODO: Check that the outputs returned type match the interface.
             # output_literal_type = out.literal_type
             # logger.debug(f"Got output wrapper: {out}")
             # logger.debug(f"Var name {output_name} wf output name {outputs[i]} type: {output_literal_type}")
             binding_data = _literal_models.BindingData(promise=out)
-            bindings.append(_literal_models.Binding(var=output_names, binding=binding_data))
+            bindings.append(_literal_models.Binding(var=output_name, binding=binding_data))
 
         # TODO: Again, at this point, we should be able to identify the name of the workflow
         workflow_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW,
@@ -131,7 +132,7 @@ def workflow(
         # WorkflowTemplate object, and then call promote_from_model.
         sdk_workflow = _SdkWorkflow(inputs=None, outputs=None, nodes=all_nodes, id=workflow_id, metadata=None,
                                     metadata_defaults=None, interface=interface_model, output_bindings=bindings)
-        # logger.debug(f"SdkWorkflow {sdk_workflow}")
+        logger.debug(f"SdkWorkflow {sdk_workflow}")
 
         workflow_instance = PythonWorkflow(fn)
         workflow_instance.id = workflow_id
