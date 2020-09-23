@@ -23,7 +23,7 @@ class SdkTensorFlowTask(_sdk_runnable.SdkRunnableTask):
         retries,
         interruptible,
         deprecated,
-        cacheable,
+        cache,
         timeout,
         workers_count,
         ps_replicas_count,
