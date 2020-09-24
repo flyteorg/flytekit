@@ -6,7 +6,7 @@ from google.protobuf.json_format import MessageToDict
 
 from flytekit.common.constants import SdkTaskType
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
-from flytekit.common.distribution import DefaultOutputPersistPredicate
+from flytekit.common.tasks.sagemaker.distribution import DefaultOutputPersistPredicate
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.tasks.sagemaker import distribution as _sm_distribution

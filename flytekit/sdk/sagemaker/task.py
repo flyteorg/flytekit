@@ -1,7 +1,7 @@
 import datetime as _datetime
 import typing
 
-from flytekit.common.distribution import DefaultOutputPersistPredicate
+from flytekit.common.tasks.sagemaker.distribution import DefaultOutputPersistPredicate
 from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
 from flytekit.models.sagemaker import training_job as _training_job_models
 

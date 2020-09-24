@@ -3,6 +3,7 @@ import os as _os
 
 import retry as _retry
 
+from flytekit.common import constants as _common_constants
 from flytekit.common.constants import DistributedTrainingContextKey as _DistributedTrainingContextKey
 
 SM_RESOURCE_CONFIG_FILE = "/opt/ml/input/config/resourceconfig.json"
@@ -34,3 +35,13 @@ def get_sagemaker_distributed_training_context_from_env() -> dict:
 def get_sagemaker_distributed_training_context_from_file() -> dict:
     with open(SM_RESOURCE_CONFIG_FILE, "r") as rc_file:
         return _json.load(rc_file)
+
+
+# The default output-persisting predicate.
+# With this predicate, only the copy running on the first host in the list of hosts would persist its output
+class DefaultOutputPersistPredicate(object):
+    def __call__(self, distributed_training_context):
+        return (
+            distributed_training_context[_common_constants.DistributedTrainingContextKey.CURRENT_HOST]
+            == distributed_training_context[_common_constants.DistributedTrainingContextKey.HOSTS][0]
+        )
