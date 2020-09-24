@@ -11,7 +11,7 @@ class FlyteABCMeta(_abc.ABCMeta):
     def __instancecheck__(cls, instance):
         if cls in type(instance).__mro__:
             return True
-        return super(FlyteABCMeta, cls).__instancecheck__(instance)
+        return super(FlyteABCMeta, cls).__instancecheck__(cls, instance)
 
 
 class FlyteType(FlyteABCMeta):
