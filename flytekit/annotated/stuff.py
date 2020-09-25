@@ -1,28 +1,24 @@
 import datetime as _datetime
 import inspect
-from typing import List, Dict, Tuple, NamedTuple, Generator
 from collections import OrderedDict
+from typing import List, Dict, Generator
 
+from flytekit import engine as flytekit_engine
 from flytekit import logger
+from flytekit.annotated import type_engine
+from flytekit.annotated.context_manager import FlyteContext
 from flytekit.common import (
     nodes as _nodes,
     constants as _common_constants,
     interface as _common_interface,
 )
-from flytekit.common.nodes import OutputParameterMapper
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.promise import Input as _WorkflowInput, NodeOutput as _NodeOutput
-from flytekit.common.types import primitives as _primitives, helpers as _type_helpers
-from flytekit.common.workflow import Output as _WorkflowOutput, SdkWorkflow as _SdkWorkflow
+from flytekit.common.promise import NodeOutput as _NodeOutput
+from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
 from flytekit.configuration.common import CONFIGURATION_SINGLETON
 from flytekit.models import interface as _interface_models, literals as _literal_models
-from flytekit.models import task as _task_model, types as _type_models
+from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
-from flytekit.annotated.type_engine import BASE_TYPES
-from flytekit.annotated import type_engine
-from flytekit import engine as flytekit_engine
-from flytekit.annotated.context_manager import FlyteContext
-
 
 # Set this to 11 or higher if you don't want to see debug output
 logger.setLevel(10)
@@ -94,7 +90,7 @@ def workflow(
         all_nodes = []
         ctx = FlyteContext.current_context()
         with ctx.new_compilation_state() as comp_ctx:
-            # Fill in call args
+            # TODO: Fill in call args by constructing input bindings
             workflow_outputs = fn()
             all_nodes.extend(comp_ctx.compilation_state.nodes)
 
@@ -103,12 +99,8 @@ def workflow(
         #    promise.NodeOutputs (let's just focus on this one first for POC)
         #    or Input objects from above in the case of a passthrough value
         #    or outputs can be like 5, or 'hi'
-
         # These should line up with the output input argument
         # TODO: Add length checks.
-
-        # logger.debug(f"Workflow outputs: {outputs}")
-
         bindings = []
         output_names = outputs_variable_map.keys()
         for i, out in enumerate(workflow_outputs):
@@ -123,6 +115,7 @@ def workflow(
         # TODO: Again, at this point, we should be able to identify the name of the workflow
         workflow_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW,
                                                    "proj", "dom", "moreblah", "1")
+
         # logger.debug(f"Inputs {input_parameters}")
         # logger.debug(f"Output objects {workflow_output_objs}")
         # logger.debug(f"Nodes {all_nodes}")
@@ -193,7 +186,7 @@ class PythonTask(object):
                     raise _user_exceptions.FlyteAssertion(
                         "Input was not specified for: {} of type {}".format(k, var.type)
                     )
-                bindings.append(flytekit_engine.binding_from_python_std(k, var.type, kwargs[k]))
+                bindings.append(flytekit_engine.binding_from_python_std(ctx, k, var.type, kwargs[k]))
                 used_inputs.add(k)
 
             extra_inputs = used_inputs ^ set(kwargs.keys())
