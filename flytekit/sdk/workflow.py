@@ -1,7 +1,9 @@
-from __future__ import absolute_import
+from typing import Dict
 
 import six as _six
 
+import flytekit.common.local_workflow
+from flytekit.common import nodes as _nodes
 from flytekit.common import promise as _promise
 from flytekit.common import workflow as _common_workflow
 from flytekit.common.types import helpers as _type_helpers
@@ -24,7 +26,7 @@ class Input(_promise.Input):
         super(Input, self).__init__("", _type_helpers.python_std_to_sdk_type(sdk_type), help=help, **kwargs)
 
 
-class Output(_common_workflow.Output):
+class Output(flytekit.common.local_workflow.Output):
     """
     This object should be used to specify outputs. It can be used in conjunction with
     :py:meth:`flytekit.common.workflow.workflow` and :py:meth:`flytekit.common.workflow.workflow_class`
@@ -59,18 +61,18 @@ def workflow_class(_workflow_metaclass=None, on_failure=None, disable_default_la
 
     :param T _workflow_metaclass:  Do NOT specify this parameter directly.  This is the class that is being
         wrapped by this decorator.
-    :param cls: This is the class that will be instantiated from the inputs, outputs, and nodes. This will be used
-        by users extending the base Flyte programming model. If set, it must be a subclass of
-        :py:class:`flytekit.common.workflow.SdkWorkflow`.
     :param flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy on_failure: [Optional] The execution policy
         when the workflow detects a failure.
     :param bool disable_default_launch_plan: Determines whether to create a default launch plan for the workflow or not.
+    :param cls: This is the class that will be instantiated from the inputs, outputs, and nodes. This will be used
+        by users extending the base Flyte programming model. If set, it must be a subclass of
+        :py:class:`flytekit.common.local_workflow.PythonWorkflow`.
 
     :rtype: flytekit.common.workflow.SdkWorkflow
     """
 
     def wrapper(metaclass):
-        wf = _common_workflow.build_sdk_workflow_from_metaclass(
+        wf = flytekit.common.local_workflow.build_sdk_workflow_from_metaclass(
             metaclass, on_failure=on_failure, disable_default_launch_plan=disable_default_launch_plan, cls=cls
         )
         return wf
@@ -80,7 +82,7 @@ def workflow_class(_workflow_metaclass=None, on_failure=None, disable_default_la
     return wrapper
 
 
-def workflow(nodes, inputs=None, outputs=None, cls=None, on_failure=None):
+def workflow(nodes: Dict[str, _nodes.SdkNode], inputs=None, outputs=None, cls=None, on_failure=None):
     """
     This function provides a user-friendly interface for authoring workflows.
 
@@ -112,11 +114,13 @@ def workflow(nodes, inputs=None, outputs=None, cls=None, on_failure=None):
     :param dict[Text,Output] outputs: [Optional] A dictionary of output descriptors for a workflow.
     :param T cls: This is the class that will be instantiated from the inputs, outputs, and nodes. This will be used
         by users extending the base Flyte programming model. If set, it must be a subclass of
-        :py:class:`flytekit.common.workflow.SdkWorkflow`.
+        :py:class:`flytekit.common.local_workflow.PythonWorkflow`.
     :param flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy on_failure: [Optional] The execution policy when the workflow detects a failure.
-    :rtype: flytekit.common.workflow.SdkWorkflow
+
+    :rtype: flytekit.common.local_workflow.SdkRunnableWorkflow
     """
-    wf = (cls or _common_workflow.SdkWorkflow)(
+    # TODO: Why does Pycharm complain about nodes?
+    wf = (cls or flytekit.common.local_workflow.SdkRunnableWorkflow).construct_from_class_definition(
         inputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(inputs or {}))],
         outputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(outputs or {}))],
         nodes=[v.assign_id_and_return(k) for k, v in sorted(_six.iteritems(nodes))],

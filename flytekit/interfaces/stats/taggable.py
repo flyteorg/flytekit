@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flytekit.interfaces.stats import client as _stats_client
 
 

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import six as _six
 from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf.json_format import MessageToDict as _MessageToDict

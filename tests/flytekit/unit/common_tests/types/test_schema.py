@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flytekit.common.types import primitives, schema
 from flytekit.common.types.impl import schema as schema_impl
 from flytekit.sdk import test_utils

@@ -1,5 +1,3 @@
-from __future__ import absolute_import, print_function
-
 import logging
 import shlex as _schlex
 import subprocess as _subprocess

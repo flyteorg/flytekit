@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 try:
     from inspect import getfullargspec as _getargspec
 except ImportError:

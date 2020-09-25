@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import os
 
 from flytekit.configuration import resources, set_flyte_config_file

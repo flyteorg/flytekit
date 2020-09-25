@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 INPUT_FILE_NAME = "inputs.pb"
 OUTPUT_FILE_NAME = "outputs.pb"
 FUTURES_FILE_NAME = "futures.pb"
@@ -22,6 +20,7 @@ class SdkTaskType(object):
     SENSOR_TASK = "sensor-task"
     PRESTO_TASK = "presto"
     PYTORCH_TASK = "pytorch"
+    TENSORFLOW_TASK = "tensorflow"
     # Raw container task is just a name, it defaults to using the regular container task (like python etc), but sets the data_config in the container
     RAW_CONTAINER_TASK = "raw-container"
     SAGEMAKER_TRAINING_JOB_TASK = "sagemaker_training_job_task"

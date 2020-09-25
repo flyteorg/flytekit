@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flytekit.tools import lazy_loader as _lazy_loader
 
 pyspark = _lazy_loader.lazy_load_module("pyspark")  # type: _lazy_loader._LazyLoadModule
@@ -18,6 +16,8 @@ hmsclient = _lazy_loader.lazy_load_module("hmsclient")  # type: _lazy_loader._La
 type(hmsclient).add_sub_module("genthrift.hive_metastore.ttypes")
 
 torch = _lazy_loader.lazy_load_module("torch")  # type: _lazy_loader._LazyLoadModule
+
+tensorflow = _lazy_loader.lazy_load_module("tensorflow")  # type: _lazy_loader._LazyLoadModule
 
 _lazy_loader.LazyLoadPlugin("spark", ["pyspark>=2.4.0,<3.0.0"], [pyspark])
 

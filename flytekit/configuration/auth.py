@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flytekit.configuration import common as _config_common
 
 ASSUMABLE_IAM_ROLE = _config_common.FlyteStringConfigurationEntry("auth", "assumable_iam_role", default=None)

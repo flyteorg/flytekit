@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import os as _os
 
 import pytest as _pytest
@@ -18,23 +16,27 @@ from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.types import Types
 
 
-@_patch("flytekit.engines.loader.get_engine")
-def test_fetch_latest(mock_get_engine):
+@_patch("flytekit.engines.flyte.engine._FlyteClientManager")
+@_patch("flytekit.configuration.platform.URL")
+def test_fetch_latest(mock_url, mock_client_manager):
+    mock_url.get.return_value = "localhost"
     admin_task = _task_models.Task(
         _identifier.Identifier(_identifier.ResourceType.TASK, "p1", "d1", "n1", "v1"), _MagicMock(),
     )
-    mock_engine = _MagicMock()
-    mock_engine.fetch_latest_task = _MagicMock(return_value=admin_task)
-    mock_get_engine.return_value = mock_engine
+    mock_client = _MagicMock()
+    mock_client.list_tasks_paginated = _MagicMock(return_value=([admin_task], ""))
+    mock_client_manager.return_value.client = mock_client
     task = _task.SdkTask.fetch_latest("p1", "d1", "n1")
     assert task.id == admin_task.id
 
 
-@_patch("flytekit.engines.loader.get_engine")
-def test_fetch_latest_not_exist(mock_get_engine):
-    mock_engine = _MagicMock()
-    mock_engine.fetch_latest_task = _MagicMock(return_value=None)
-    mock_get_engine.return_value = mock_engine
+@_patch("flytekit.engines.flyte.engine._FlyteClientManager")
+@_patch("flytekit.configuration.platform.URL")
+def test_fetch_latest_not_exist(mock_url, mock_client_manager):
+    mock_client = _MagicMock()
+    mock_client.list_tasks_paginated = _MagicMock(return_value=(None, ""))
+    mock_client_manager.return_value.client = mock_client
+    mock_url.get.return_value = "localhost"
     with _pytest.raises(_user_exceptions.FlyteEntityNotExistException):
         _task.SdkTask.fetch_latest("p1", "d1", "n1")
 

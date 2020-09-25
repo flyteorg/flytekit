@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flytekit.contrib.sensors.base_sensor import Sensor as _Sensor
 from flytekit.plugins import hmsclient as _hmsclient
 

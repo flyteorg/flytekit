@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flytekit.clis.auth import credentials as _credentials
 
 

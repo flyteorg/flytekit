@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import importlib as _importlib
 
 from flytekit.common.exceptions import scopes as _exception_scopes

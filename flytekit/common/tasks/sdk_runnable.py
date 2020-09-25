@@ -1,9 +1,4 @@
-from __future__ import absolute_import
-
-try:
-    from inspect import getfullargspec as _getargspec
-except ImportError:
-    from inspect import getargspec as _getargspec
+from inspect import getfullargspec as _getargspec
 
 import six as _six
 
@@ -105,7 +100,11 @@ class ExecutionParameters(object):
         return self._execution_id
 
 
-class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task_models.Container)):
+class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.ExtendedSdkType):
+    """
+    This is not necessarily a local-only Container object. So long as configuration is present, you can use this object
+    """
+
     def __init__(
             self, command, args, resources, env, config,
     ):
@@ -144,8 +143,60 @@ class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task
         )
         return env
 
+    @classmethod
+    def get_resources(
+        cls,
+        storage_request=None,
+        cpu_request=None,
+        gpu_request=None,
+        memory_request=None,
+        storage_limit=None,
+        cpu_limit=None,
+        gpu_limit=None,
+        memory_limit=None,
+    ):
+        """
+        :param Text storage_request:
+        :param Text cpu_request:
+        :param Text gpu_request:
+        :param Text memory_request:
+        :param Text storage_limit:
+        :param Text cpu_limit:
+        :param Text gpu_limit:
+        :param Text memory_limit:
+        """
+        requests = []
+        if storage_request:
+            requests.append(
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
+            )
+        if cpu_request:
+            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
+        if gpu_request:
+            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
+        if memory_request:
+            requests.append(
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
+            )
 
-class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task.SdkTask)):
+        limits = []
+        if storage_limit:
+            limits.append(
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit)
+            )
+        if cpu_limit:
+            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
+        if gpu_limit:
+            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
+        if memory_limit:
+            limits.append(
+                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit)
+            )
+
+        return _task_models.Resources(limits=limits, requests=requests)
+
+
+class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
     """
     This class includes the additional logic for building a task that executes in Python code.  It has even more
     validation checks to ensure proper behavior than it's superclasses.
@@ -155,25 +206,25 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
     """
 
     def __init__(
-            self,
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            interruptible,
-            deprecated,
-            storage_request,
-            cpu_request,
-            gpu_request,
-            memory_request,
-            storage_limit,
-            cpu_limit,
-            gpu_limit,
-            memory_limit,
-            discoverable,
-            timeout,
-            environment,
-            custom,
+        self,
+        task_function,
+        task_type,
+        discovery_version,
+        retries,
+        interruptible,
+        deprecated,
+        storage_request,
+        cpu_request,
+        gpu_request,
+        memory_request,
+        storage_limit,
+        cpu_limit,
+        gpu_limit,
+        memory_limit,
+        discoverable,
+        timeout,
+        environment,
+        custom,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -196,7 +247,6 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         :param dict[Text, T] custom:
         """
         self._task_function = task_function
-
         super(SdkRunnableTask, self).__init__(
             task_type,
             _task_models.TaskMetadata(
@@ -282,8 +332,8 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         """
         return (
             _engine_loader.get_engine("unit")
-                .get_task(self)
-                .execute(
+            .get_task(self)
+            .execute(
                 _type_helpers.pack_python_std_map_to_literal_map(
                     input_map,
                     {
@@ -304,8 +354,8 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         """
         return (
             _engine_loader.get_engine("local")
-                .get_task(self)
-                .execute(
+            .get_task(self)
+            .execute(
                 _type_helpers.pack_python_std_map_to_literal_map(
                     input_map,
                     {
@@ -375,17 +425,17 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         }
 
     def _get_container_definition(
-            self,
-            storage_request=None,
-            cpu_request=None,
-            gpu_request=None,
-            memory_request=None,
-            storage_limit=None,
-            cpu_limit=None,
-            gpu_limit=None,
-            memory_limit=None,
-            environment=None,
-            cls=None,
+        self,
+        storage_request=None,
+        cpu_request=None,
+        gpu_request=None,
+        memory_request=None,
+        storage_limit=None,
+        cpu_limit=None,
+        gpu_limit=None,
+        memory_limit=None,
+        environment=None,
+        cls=None,
     ):
         """
         :param Text storage_request:
@@ -409,33 +459,9 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         memory_limit = memory_limit or _resource_config.DEFAULT_MEMORY_LIMIT.get()
         memory_request = memory_request or _resource_config.DEFAULT_MEMORY_REQUEST.get()
 
-        requests = []
-        if storage_request:
-            requests.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
-            )
-        if cpu_request:
-            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
-        if gpu_request:
-            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
-        if memory_request:
-            requests.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
-            )
-
-        limits = []
-        if storage_limit:
-            limits.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit)
-            )
-        if cpu_limit:
-            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
-        if gpu_limit:
-            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
-        if memory_limit:
-            limits.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit)
-            )
+        resources = SdkRunnableContainer.get_resources(
+            storage_request, cpu_request, gpu_request, memory_request, storage_limit, cpu_limit, gpu_limit, memory_limit
+        )
 
         args = [
             "pyflyte-execute",
@@ -459,7 +485,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         return (cls or SdkRunnableContainer)(
             command=[],
             args=args,
-            resources=_task_models.Resources(limits=limits, requests=requests),
+            resources=resources,
             env=environment,
             config={},
         )

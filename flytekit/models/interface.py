@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import six as _six
 from flyteidl.core import interface_pb2 as _interface_pb2
 

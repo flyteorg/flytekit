@@ -1,5 +1,3 @@
-from __future__ import absolute_import, print_function
-
 import pandas as _pd
 
 from flytekit.sdk.tasks import inputs, outputs, python_task

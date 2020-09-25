@@ -1,15 +1,11 @@
-from __future__ import absolute_import
-
 import logging as _logging
-
-import six as _six
 
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.models.core import workflow as _workflow_model
 
 
-class SdkTaskNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_model.TaskNode)):
+class SdkTaskNode(_workflow_model.TaskNode, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(self, sdk_task):
         """
         :param flytekit.common.tasks.task.SdkTask sdk_task:
@@ -60,7 +56,7 @@ class SdkTaskNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_mode
         return cls(sdk_task)
 
 
-class SdkWorkflowNode(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _workflow_model.WorkflowNode)):
+class SdkWorkflowNode(_workflow_model.WorkflowNode, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(self, sdk_workflow=None, sdk_launch_plan=None):
         """
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow:

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import os as _os
 import uuid as _uuid
 from distutils import dir_util as _dir_util

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import requests as _requests
 
 from flytekit.common.exceptions import user as _user_exceptions

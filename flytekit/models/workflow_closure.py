@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flyteidl.core import workflow_closure_pb2 as _workflow_closure_pb2
 
 from flytekit.models import common as _common

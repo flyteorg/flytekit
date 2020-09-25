@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 from flytekit.common.tasks.raw_container import SdkRawContainerTask
 from flytekit.sdk.types import Types
 from flytekit.sdk.workflow import Input, Output, workflow_class

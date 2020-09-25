@@ -1,13 +1,9 @@
-from __future__ import absolute_import
-
 import abc as _abc
-
-import six as _six
 
 from flytekit.models import common as _common_models
 
 
-class BaseWorkflowExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
+class BaseWorkflowExecutor(object, metaclass=_common_models.FlyteABCMeta):
     """
     This class must be implemented for any engine to create, interact with, and execute workflows using the
     FlyteKit SDK.
@@ -35,7 +31,7 @@ class BaseWorkflowExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, obje
         pass
 
 
-class BaseWorkflowExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
+class BaseWorkflowExecution(object, metaclass=_common_models.FlyteABCMeta):
     """
     This class must be implemented for any engine to track and interact with the executions of workflows.
     """
@@ -90,7 +86,7 @@ class BaseWorkflowExecution(_six.with_metaclass(_common_models.FlyteABCMeta, obj
         pass
 
 
-class BaseNodeExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
+class BaseNodeExecution(object, metaclass=_common_models.FlyteABCMeta):
     def __init__(self, node_execution):
         """
         :param flytekit.common.nodes.SdkNodeExecution node_execution:
@@ -140,7 +136,7 @@ class BaseNodeExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)
         pass
 
 
-class BaseTaskExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
+class BaseTaskExecution(object, metaclass=_common_models.FlyteABCMeta):
     def __init__(self, task_exec):
         """
         :param flytekit.common.tasks.executions.SdkTaskExecution task_exec:
@@ -184,7 +180,7 @@ class BaseTaskExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)
         pass
 
 
-class BaseLaunchPlanLauncher(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
+class BaseLaunchPlanLauncher(object, metaclass=_common_models.FlyteABCMeta):
     def __init__(self, sdk_launch_plan):
         """
         :param flytekit.common.launch_plan.SdkLaunchPlan sdk_launch_plan:
@@ -240,7 +236,7 @@ class BaseLaunchPlanLauncher(_six.with_metaclass(_common_models.FlyteABCMeta, ob
         pass
 
 
-class BaseTaskExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
+class BaseTaskExecutor(object, metaclass=_common_models.FlyteABCMeta):
     def __init__(self, sdk_task):
         """
         :param flytekit.common.tasks.task.SdkTask sdk_task:
@@ -297,18 +293,10 @@ class BaseTaskExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, object))
         pass
 
 
-class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
+class BaseExecutionEngineFactory(object, metaclass=_common_models.FlyteABCMeta):
     """
     This object should be implemented to satisfy the basic engine interface.
     """
-
-    @_abc.abstractmethod
-    def get_workflow(self, sdk_workflow):
-        """
-        :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
-        :rtype: BaseWorkflowExecutor
-        """
-        pass
 
     @_abc.abstractmethod
     def get_task(self, sdk_task):
@@ -373,24 +361,6 @@ class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta
         Fetches the latest task
         :param flytekit.models.common.NamedEntityIdentifier named_task: NamedEntityIdentifier to fetch
         :rtype: flytekit.models.task.Task
-        """
-        pass
-
-    @_abc.abstractmethod
-    def fetch_launch_plan(self, launch_plan_id):
-        """
-        :param flytekit.models.core.identifier.Identifier launch_plan_id: This identifier should have a resource
-            type of kind LaunchPlan.
-        :rtype: flytekit.models.launch_plan.LaunchPlan
-        """
-        pass
-
-    @_abc.abstractmethod
-    def fetch_workflow(self, workflow_id):
-        """
-        :param flytekit.models.core.identifier.Identifier workflow_id: This identifier should have a resource
-            type of kind workflow.
-        :rtype: flytekit.models.admin.workflow.Workflow
         """
         pass
 

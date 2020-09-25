@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import datetime as _datetime
 import os as _os
 import sys as _sys

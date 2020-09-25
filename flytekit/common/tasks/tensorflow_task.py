@@ -4,7 +4,7 @@ from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.models import task as _task_models
 
 
-class SdkRunnablePytorchContainer(_sdk_runnable.SdkRunnableContainer):
+class SdkRunnableTensorflowContainer(_sdk_runnable.SdkRunnableContainer):
     @property
     def args(self):
         """
@@ -14,18 +14,20 @@ class SdkRunnablePytorchContainer(_sdk_runnable.SdkRunnableContainer):
         return self._args
 
 
-class SdkPyTorchTask(_sdk_runnable.SdkRunnableTask):
+class SdkTensorFlowTask(_sdk_runnable.SdkRunnableTask):
     def __init__(
         self,
         task_function,
         task_type,
-        discovery_version,
+        cache_version,
         retries,
         interruptible,
         deprecated,
-        discoverable,
+        cache,
         timeout,
         workers_count,
+        ps_replicas_count,
+        chief_replicas_count,
         per_replica_storage_request,
         per_replica_cpu_request,
         per_replica_gpu_request,
@@ -36,11 +38,13 @@ class SdkPyTorchTask(_sdk_runnable.SdkRunnableTask):
         per_replica_memory_limit,
         environment,
     ):
-        pytorch_job = _task_models.PyTorchJob(workers_count=workers_count).to_flyte_idl()
-        super(SdkPyTorchTask, self).__init__(
+        tensorflow_job = _task_models.TensorFlowJob(
+            workers_count=workers_count, ps_replicas_count=ps_replicas_count, chief_replicas_count=chief_replicas_count
+        ).to_flyte_idl()
+        super(SdkTensorFlowTask, self).__init__(
             task_function=task_function,
             task_type=task_type,
-            discovery_version=discovery_version,
+            discovery_version=cache_version,
             retries=retries,
             interruptible=interruptible,
             deprecated=deprecated,
@@ -52,14 +56,14 @@ class SdkPyTorchTask(_sdk_runnable.SdkRunnableTask):
             cpu_limit=per_replica_cpu_limit,
             gpu_limit=per_replica_gpu_limit,
             memory_limit=per_replica_memory_limit,
-            discoverable=discoverable,
+            discoverable=cache,
             timeout=timeout,
             environment=environment,
-            custom=_MessageToDict(pytorch_job),
+            custom=_MessageToDict(tensorflow_job),
         )
 
     def _get_container_definition(self, **kwargs):
         """
-        :rtype: SdkRunnablePytorchContainer
+        :rtype: SdkRunnableTensorflowContainer
         """
-        return super(SdkPyTorchTask, self)._get_container_definition(cls=SdkRunnablePytorchContainer, **kwargs)
+        return super(SdkTensorFlowTask, self)._get_container_definition(cls=SdkRunnableTensorflowContainer, **kwargs)

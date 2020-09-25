@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flytekit.configuration import common as _config_common
 
 S3_SHARD_FORMATTER = _config_common.FlyteRequiredStringConfigurationEntry("aws", "s3_shard_formatter")

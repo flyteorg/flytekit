@@ -1,5 +1,3 @@
-from __future__ import absolute_import, print_function
-
 from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.types import Types
 from flytekit.sdk.workflow import Input, Output, workflow_class

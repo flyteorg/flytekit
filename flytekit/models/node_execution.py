@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import pytz as _pytz
 

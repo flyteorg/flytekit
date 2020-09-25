@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import abc as _abc
 import datetime as _datetime
 import logging as _logging
@@ -10,7 +8,7 @@ import traceback as _traceback
 import six as _six
 
 
-class Sensor(_six.with_metaclass(_abc.ABCMeta, object)):
+class Sensor(object, metaclass=_abc.ABCMeta):
     def __init__(self, evaluation_interval=None, max_failures=0):
         """
         :param datetime.timedelta evaluation_interval: This is the time to wait between evaluation attempts of this

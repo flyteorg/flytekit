@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import datetime as _datetime
 
 import six as _six
@@ -14,6 +12,7 @@ from flytekit.common.tasks import sdk_runnable as _sdk_runnable_tasks
 from flytekit.common.tasks import sidecar_task as _sdk_sidecar_tasks
 from flytekit.common.tasks import spark_task as _sdk_spark_tasks
 from flytekit.common.tasks import task as _task
+from flytekit.common.tasks import tensorflow_task as _sdk_tensorflow_tasks
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.contrib.notebook import tasks as _nb_tasks
 from flytekit.models import interface as _interface_model
@@ -1044,9 +1043,7 @@ def dynamic_sidecar_task(
     can be defined in the PodSpec by defining a container whose name matches
     the primary_container_name. These container attributes will be applied to
     the container brought up to execute the primary task definition.
-
     .. code-block:: python
-
         def generate_pod_spec_for_task():
             pod_spec = generated_pb2.PodSpec()
             secondary_container = generated_pb2.Container(
@@ -1060,10 +1057,8 @@ def dynamic_sidecar_task(
                 mountPath="/data",
             )
             secondary_container.volumeMounts.extend([shared_volume_mount])
-
             primary_container = generated_pb2.Container(name="primary")
             primary_container.volumeMounts.extend([shared_volume_mount])
-
             pod_spec.volumes.extend([generated_pb2.Volume(
                 name="shared-data",
                 volumeSource=generated_pb2.VolumeSource(
@@ -1074,12 +1069,10 @@ def dynamic_sidecar_task(
             )])
             pod_spec.containers.extend([primary_container, secondary_container])
             return pod_spec
-
         @outputs(out=Types.Integer)
         @python_task
         def my_sub_task(wf_params, out):
             out.set(randint())
-
         @outputs(out=[Types.Integer])
         @dynamic_sidecar_task(
             pod_spec=generate_pod_spec_for_task(),
@@ -1090,45 +1083,32 @@ def dynamic_sidecar_task(
             for i in xrange(100):
                 out_list.append(my_sub_task().outputs.out)
             out.set(out_list)
-
     .. note::
-
         All outputs of a batch task must be a list.  This is because the individual outputs of sub-tasks should be
         appended into a list.  There cannot be aggregation of outputs done in this task.  To accomplish aggregation,
         it is recommended that a python_task take the outputs of this task as input and do the necessary work.
         If a sub-task does not contribute an output, it must be yielded from the task with the `yield` keyword or
         returned from the task in a list.  If this isn't done, the sub-task will not be executed.
-
     :param _task_function: this is the decorated method and shouldn't be declared explicitly.  The function must
         take a first argument, and then named arguments matching those defined in @inputs and @outputs.  No keyword
         arguments are allowed.
     :param Text cache_version: [optional] string representing logical version for discovery.  This field should be
         updated whenever the underlying algorithm changes.
-
         .. note::
-
             This argument is required to be a non-empty string if `cache` is True.
-
     :param int retries: [optional] integer determining number of times task can be retried on
         :py:exc:`flytekit.sdk.exceptions.RecoverableException` or transient platform failures.  Defaults
         to 0.
-
         .. note::
-
             If retries > 0, the task must be able to recover from any remote state created within the user code.  It is
             strongly recommended that tasks are written to be idempotent.
-
     :param bool interruptible: [optional] boolean describing if the task is interruptible.
-
     :param Text deprecated: [optional] string that should be provided if this task is deprecated.  The string
         will be logged as a warning so it should contain information regarding how to update to a newer task.
     :param Text storage_request: [optional] Kubernetes resource string for lower-bound of disk storage space
         for the task to run.  Default is set by platform-level configuration.
-
         .. note::
-
             This is currently not supported by the platform.
-
     :param Text cpu_request: [optional] Kubernetes resource string for lower-bound of cores for the task to execute.
         This can be set to a fractional portion of a CPU. Default is set by platform-level configuration.
         TODO: Add links to resource string documentation for Kubernetes
@@ -1140,11 +1120,8 @@ def dynamic_sidecar_task(
         TODO: Add links to resource string documentation for Kubernetes
     :param Text storage_limit: [optional] Kubernetes resource string for upper-bound of disk storage space
         for the task to run.  This amount is not guaranteed!  If not specified, it is set equal to storage_request.
-
         .. note::
-
             This is currently not supported by the platform.
-
     :param Text cpu_limit: [optional] Kubernetes resource string for upper-bound of cores for the task to execute.
         This can be set to a fractional portion of a CPU. This amount is not guaranteed!  If not specified,
         it is set equal to cpu_request.
@@ -1345,6 +1322,170 @@ def pytorch_task(
             discoverable=cache,
             timeout=timeout or _datetime.timedelta(seconds=0),
             workers_count=workers_count,
+            per_replica_storage_request=per_replica_storage_request,
+            per_replica_cpu_request=per_replica_cpu_request,
+            per_replica_gpu_request=per_replica_gpu_request,
+            per_replica_memory_request=per_replica_memory_request,
+            per_replica_storage_limit=per_replica_storage_limit,
+            per_replica_cpu_limit=per_replica_cpu_limit,
+            per_replica_gpu_limit=per_replica_gpu_limit,
+            per_replica_memory_limit=per_replica_memory_limit,
+            environment=environment or {},
+        )
+
+    if _task_function:
+        return wrapper(_task_function)
+    else:
+        return wrapper
+
+
+def tensorflow_task(
+    _task_function=None,
+    cache_version="",
+    retries=0,
+    interruptible=False,
+    deprecated="",
+    cache=False,
+    timeout=None,
+    workers_count=1,
+    ps_replicas_count=None,
+    chief_replicas_count=None,
+    per_replica_storage_request="",
+    per_replica_cpu_request="",
+    per_replica_gpu_request="",
+    per_replica_memory_request="",
+    per_replica_storage_limit="",
+    per_replica_cpu_limit="",
+    per_replica_gpu_limit="",
+    per_replica_memory_limit="",
+    environment=None,
+    cls=None,
+):
+    """
+    Decorator to create a Tensorflow Task definition. This task will submit TFJob (see https://github.com/kubeflow/tf-operator)
+        defined by the code within the _task_function to k8s cluster.
+
+    .. code-block:: python
+
+        @inputs(int_list=[Types.Integer])
+        @outputs(result=Types.Integer
+        @tensorflow_task(
+            workers_count=2,
+            ps_replicas_count=1,
+            chief_replicas_count=1,
+            per_replica_cpu_request="500m",
+            per_replica_memory_request="4Gi",
+            per_replica_memory_limit="8Gi",
+            per_replica_gpu_limit="1",
+        )
+        def my_tensorflow_job(wf_params, int_list, result):
+            pass
+
+    :param _task_function: this is the decorated method and shouldn't be declared explicitly.  The function must
+        take a first argument, and then named arguments matching those defined in @inputs and @outputs.  No keyword
+        arguments are allowed for wrapped task functions.
+
+    :param Text cache_version: [optional] string representing logical version for discovery.  This field should be
+        updated whenever the underlying algorithm changes.
+
+        .. note::
+
+            This argument is required to be a non-empty string if `cache` is True.
+
+    :param int retries: [optional] integer determining number of times task can be retried on
+        :py:exc:`flytekit.sdk.exceptions.RecoverableException` or transient platform failures.  Defaults
+        to 0.
+
+        .. note::
+
+            If retries > 0, the task must be able to recover from any remote state created within the user code.  It is
+            strongly recommended that tasks are written to be idempotent.
+
+    :param bool interruptible: [optional] boolean describing if the task is interruptible.
+
+    :param Text deprecated: [optional] string that should be provided if this task is deprecated.  The string
+        will be logged as a warning so it should contain information regarding how to update to a newer task.
+
+    :param bool cache: [optional] boolean describing if the outputs of this task should be cached and
+        re-usable.
+
+    :param datetime.timedelta timeout: [optional] describes how long the task should be allowed to
+        run at max before triggering a retry (if retries are enabled).  By default, tasks are allowed to run
+        indefinitely.  If a null timedelta is passed (i.e. timedelta(seconds=0)), the task will not timeout.
+
+    :param int workers_count: integer determining the number of worker replicas spawned in the cluster for this job
+
+    :param int ps_replicas_count: integer determining the number of parameter server replicas spawned in the cluster for this job
+
+    :param int chief_replicas_count: integer determining the number of chief server replicas spawned in the cluster for this job
+
+    :param Text per_replica_storage_request: [optional] Kubernetes resource string for lower-bound of disk storage space
+        for each replica spawned for this job (i.e. both for parameter, chief server and workers).  Default is set by platform-level configuration.
+
+        .. note::
+
+            This is currently not supported by the platform.
+
+    :param Text per_replica_cpu_request: [optional] Kubernetes resource string for lower-bound of cores for each replica
+        spawned for this job (i.e. both for parameter, chief server and workers).
+        This can be set to a fractional portion of a CPU. Default is set by platform-level configuration.
+
+        TODO: Add links to resource string documentation for Kubernetes
+
+    :param Text per_replica_gpu_request: [optional] Kubernetes resource string for lower-bound of desired GPUs for each
+        replica spawned for this job (i.e. both for parameter, chief server and workers).
+        Default is set by platform-level configuration.
+
+        TODO: Add links to resource string documentation for Kubernetes
+
+    :param Text per_replica_memory_request: [optional]  Kubernetes resource string for lower-bound of physical memory
+        necessary for each replica spawned for this job (i.e. both for parameter, chief server and workers).  Default is set by platform-level configuration.
+
+        TODO: Add links to resource string documentation for Kubernetes
+
+    :param Text per_replica_storage_limit: [optional] Kubernetes resource string for upper-bound of disk storage space
+        for each replica spawned for this job (i.e. both for parameter, chief server and workers).
+        This amount is not guaranteed!  If not specified, it is set equal to storage_request.
+
+        .. note::
+
+            This is currently not supported by the platform.
+
+    :param Text per_replica_cpu_limit: [optional] Kubernetes resource string for upper-bound of cores for each replica
+        spawned for this job (i.e. both for parameter, chief server and workers).
+        This can be set to a fractional portion of a CPU. This amount is not guaranteed!  If not specified,
+        it is set equal to cpu_request.
+
+    :param Text per_replica_gpu_limit: [optional] Kubernetes resource string for upper-bound of desired GPUs for each
+        replica spawned for this job (i.e. both for parameter, chief server and workers).
+        This amount is not guaranteed!  If not specified, it is set equal to gpu_request.
+
+    :param Text per_replica_memory_limit: [optional]  Kubernetes resource string for upper-bound of physical memory
+        necessary for each replica spawned for this job (i.e. both for parameter, chief server and workers).
+        This amount is not guaranteed!  If not specified, it is set equal to memory_request.
+
+    :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
+
+    :param cls: This can be used to override the task implementation with a user-defined extension. The class
+        provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  A user can use this to
+        inject bespoke logic into the base Flyte programming model.
+
+    :rtype: flytekit.common.tasks.sdk_runnable.SdkRunnableTask
+    """
+
+    def wrapper(fn):
+        return (cls or _sdk_tensorflow_tasks.SdkTensorFlowTask)(
+            task_function=fn,
+            task_type=_common_constants.SdkTaskType.TENSORFLOW_TASK,
+            cache_version=cache_version,
+            retries=retries,
+            interruptible=interruptible,
+            deprecated=deprecated,
+            cache=cache,
+            timeout=timeout or _datetime.timedelta(seconds=0),
+            workers_count=workers_count,
+            ps_replicas_count=ps_replicas_count,
+            chief_replicas_count=chief_replicas_count,
             per_replica_storage_request=per_replica_storage_request,
             per_replica_cpu_request=per_replica_cpu_request,
             per_replica_gpu_request=per_replica_gpu_request,
