@@ -101,6 +101,28 @@ def test_single_output_new_decorator():
     assert result['out_0'].type.simple == 1
 
 
+def test_wf1():
+    @stuff.task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a+2, "hello world"
+
+    @stuff.task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @stuff.workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a)
+        d = t2(a=y, b=b)
+        return x, d
+
+    assert len(my_wf._sdk_workflow.nodes) == 2
+    assert my_wf._sdk_workflow.nodes[0].id == "node-0"
+
+    assert len(my_wf._sdk_workflow.outputs) == 2
+    assert my_wf._sdk_workflow.outputs[0].var == 'out_0'
+    assert my_wf._sdk_workflow.outputs[0].binding.promise.var == 't1_int_output'
+
 # def test_normal_path():
 #     def t1(in1: flytekit_typing.FlyteFilePath) -> str:
 #         with open(in1, 'r') as fh:

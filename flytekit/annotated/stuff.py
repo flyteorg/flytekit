@@ -46,8 +46,9 @@ class PythonWorkflow(object):
       be wrapper nodes.
     """
 
-    def __init__(self, workflow_function):
+    def __init__(self, workflow_function, sdk_workflow):
         self._workflow_function = workflow_function
+        self._sdk_workflow = sdk_workflow
 
     def __call__(self, *args, **kwargs):
         ctx = FlyteContext.current_context()
@@ -108,7 +109,7 @@ def workflow(_workflow_function=None):
         # These should line up with the output input argument
         # TODO: Add length checks.
         bindings = []
-        output_names = outputs_variable_map.keys()
+        output_names = list(outputs_variable_map.keys())
         for i, out in enumerate(workflow_outputs):
             output_name = output_names[i]
             # TODO: Check that the outputs returned type match the interface.
@@ -131,9 +132,9 @@ def workflow(_workflow_function=None):
         # WorkflowTemplate object, and then call promote_from_model.
         sdk_workflow = _SdkWorkflow(inputs=None, outputs=None, nodes=all_nodes, id=workflow_id, metadata=None,
                                     metadata_defaults=None, interface=interface_model, output_bindings=bindings)
-        logger.debug(f"SdkWorkflow {sdk_workflow}")
+        # logger.debug(f"SdkWorkflow {sdk_workflow}")
 
-        workflow_instance = PythonWorkflow(fn)
+        workflow_instance = PythonWorkflow(fn, sdk_workflow)
         workflow_instance.id = workflow_id
 
         return workflow_instance
