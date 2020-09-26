@@ -6,7 +6,7 @@ from typing import List, Dict, Generator
 from flytekit import engine as flytekit_engine
 from flytekit import logger
 from flytekit.annotated import type_engine
-from flytekit.annotated.context_manager import FlyteContext
+from flytekit.annotated.context_manager import FlyteContext, ExecutionState
 from flytekit.common import (
     nodes as _nodes,
     constants as _common_constants,
@@ -16,8 +16,9 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
 from flytekit.configuration.common import CONFIGURATION_SINGLETON
-from flytekit.models import interface as _interface_models, literals as _literal_models
-from flytekit.models import task as _task_model
+from flytekit.models import (
+    interface as _interface_models, literals as _literal_models,
+    task as _task_model, types as _type_models)
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
 
 # Set this to 11 or higher if you don't want to see debug output
@@ -44,11 +45,15 @@ class PythonWorkflow(object):
     * When you get the call to the constructor, keep in mind there may be duplicate nodes, because they all should
       be wrapper nodes.
     """
+
     def __init__(self, workflow_function):
         self._workflow_function = workflow_function
 
     def __call__(self, *args, **kwargs):
-        if CONFIGURATION_SINGLETON.x == 1:
+        ctx = FlyteContext.current_context()
+        # When someone wants to run the workflow function locally, not just as a Python function, but as a complete
+        # Flyte workflow.
+        if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             if len(args) > 0:
                 raise Exception('not allowed')
 
@@ -65,15 +70,13 @@ class PythonWorkflow(object):
             return self._workflow_function(*args, **kwargs)
 
 
-def workflow(
-        _workflow_function=None,
-        outputs: List[str]=None
-):
+def workflow(_workflow_function=None):
     # Unlike for tasks, where we can determine the entire structure of the task by looking at the function's signature,
     # workflows need to have the body of the function itself run at module-load time. This is because the body of the
     # workflow is what expresses the workflow structure.
     def wrapper(fn):
         workflow_annotations = fn.__annotations__
+         # TODO: Remove the copy step and jsut make the get function skip returns
         inputs = {k: v for k, v in workflow_annotations.items() if k != 'return'}
         inputs_variable_map = get_variable_map(inputs)
         outputs_variable_map = get_output_variable_map(workflow_annotations)
@@ -89,9 +92,12 @@ def workflow(
 
         all_nodes = []
         ctx = FlyteContext.current_context()
-        with ctx.new_compilation_state() as comp_ctx:
-            # TODO: Fill in call args by constructing input bindings
-            workflow_outputs = fn()
+        with ctx.new_compilation_context() as comp_ctx:
+            # Fill in call args by constructing input bindings
+            input_kwargs = {
+                k: _type_models.OutputReference(_common_constants.GLOBAL_INPUT_NODE_ID, k) for k in inputs_variable_map.keys()
+            }
+            workflow_outputs = fn(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
 
         # Iterate through the workflow outputs
@@ -168,15 +174,14 @@ class PythonTask(object):
         #     function into objects, so that potential .with_cpu or other ancillary functions can be attached to do
         #     nothing. Subsequent tasks will have to know how to unwrap these. If by chance a non-Flyte task uses a
         #     task output as an input, things probably will fail pretty obviously.
+        if len(args) > 0:
+            raise _user_exceptions.FlyteAssertion(
+                "When adding a task as a node in a workflow, all inputs must be specified with kwargs only.  We "
+                "detected {} positional args.".format(len(args))
+            )
+
         ctx = FlyteContext.current_context()
-
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
-            if len(args) > 0:
-                raise _user_exceptions.FlyteAssertion(
-                    "When adding a task as a node in a workflow, all inputs must be specified with kwargs only.  We "
-                    "detected {} positional args.".format(len(args))
-                )
-
             used_inputs = set()
             bindings = []
 
@@ -205,7 +210,8 @@ class PythonTask(object):
             sdk_node = _nodes.SdkNode(
                 # TODO
                 id=f"node-{len(ctx.compilation_state.nodes)}",
-                metadata=_workflow_model.NodeMetadata(self._task_function.__name__, self.metadata.timeout, self.metadata.retries,
+                metadata=_workflow_model.NodeMetadata(self._task_function.__name__, self.metadata.timeout,
+                                                      self.metadata.retries,
                                                       self.metadata.interruptible),
                 bindings=sorted(bindings, key=lambda b: b.var),
                 upstream_nodes=upstream_nodes,
@@ -226,9 +232,35 @@ class PythonTask(object):
 
             if len(self.interface.outputs) > 1:
                 return tuple(node_outputs)
-            else:
+            elif len(self.interface.outputs) == 1:
                 return node_outputs[0]
+            else:
+                return None
+        elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            # Ketan/Haytham - this code here feels very execution engine-y. I wonder if there's a way to move this
+            #   further away somehow
+            # Unwrap the kwargs values. If the inputs to this task were wrapped outputs of earlier tasks, then we
+            # need to extract the native value before passing to the function.
+            for k, v in kwargs.items():
+                if isinstance(v, _NodeOutput):
+                    kwargs[k] = v.native_value
 
+            results = self._task_function(*args, **kwargs)
+            output_names = self.interface.outputs.keys()
+            node_results = []
+            if len(output_names) != len(results):
+                # Length check, clean up exception
+                raise Exception(f"Length difference {len(output_names)} {len(results)}")
+
+            if len(self.interface.outputs) > 1:
+                for idx, r in enumerate(results):
+                    node_results.append(_NodeOutput(sdk_node=None, sdk_type=None,
+                                                    var=output_names[idx], native_value=r))
+                return tuple(node_results)
+            elif len(self.interface.outputs) == 1:
+                return _NodeOutput(sdk_node=None, sdk_type=None, var=output_names[0], native_value=results)
+            else:
+                return None
         else:
             return self._task_function(*args, **kwargs)
 

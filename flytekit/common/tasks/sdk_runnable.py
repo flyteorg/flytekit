@@ -8,8 +8,7 @@ except ImportError:
 import six as _six
 import enum
 
-from flytekit import __version__
-from flytekit.common import utils as _utils
+
 from flytekit.common import constants as _constants, sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
 from flytekit.common.tasks import task as _base_task, output as _task_output
@@ -18,8 +17,6 @@ from flytekit.configuration import sdk as _sdk_config, internal as _internal_con
 from flytekit.engines import loader as _engine_loader
 from flytekit.models import literals as _literal_models, task as _task_models
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
-from flytekit.annotated.stuff import get_interface_from_task_info as _get_interface_from_task_info
-from flytekit import engine as flyte_engine
 
 
 class ExecutionParameters(object):
@@ -152,11 +149,6 @@ class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task
         return env
 
 
-class ExecutionParametersContext(_utils.StackableContext[ExecutionParameters]):
-    def __init__(self, params):
-        super(ExecutionParametersContext, self).__init__(params)
-
-
 class SdkRunnableTaskStyle(enum.Enum):
     V0 = 0
     V1 = 1
@@ -212,8 +204,11 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         :param dict[Text, Text] environment:
         :param dict[Text, T] custom:
         """
-        self._task_function = task_function
+        # Circular dependency
+        from flytekit import __version__
+        from flytekit.annotated.stuff import get_interface_from_task_info as _get_interface_from_task_info
 
+        self._task_function = task_function
         super(SdkRunnableTask, self).__init__(
             task_type,
             _task_models.TaskMetadata(
@@ -229,6 +224,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 discovery_version,
                 deprecated
             ),
+            # Once we are up and running on the new decorator, this will go away since the decorator itself will set.
             _get_interface_from_task_info(task_function.__annotations__),
             custom,
             container=self._get_container_definition(

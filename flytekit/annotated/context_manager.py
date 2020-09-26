@@ -5,8 +5,8 @@ import datetime as _datetime
 import logging as _logging
 from enum import Enum
 
-from flytekit import __version__ as _api_version
 from flytekit.clients import friendly as flyte_client
+from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
 from flytekit.common import constants as _constants
 from flytekit.common.exceptions import user as _user_exception
 from flytekit.common.nodes import SdkNode
@@ -127,7 +127,7 @@ class FlyteContext(object):
             FlyteContext.OBJS.pop()
 
     @property
-    def user_space_params(self):
+    def user_space_params(self) -> Optional[ExecutionParameters]:
         if self._user_space_params is not None:
             return self._user_space_params
         elif self._parent is not None:
@@ -161,8 +161,11 @@ class FlyteContext(object):
     def new_execution_context(self, mode: ExecutionState.Mode,
                               cloud_provider: str,
                               additional_context: Dict[Any, Any] = None) -> Generator['FlyteContext', None, None]:
+        # Here to avoid circular dependency
+        from flytekit import __version__ as _api_version
+
         proxy = self._DATA_PROXIES_BY_CLOUD_PROVIDER.get(cloud_provider, None)
-        if proxy is None:
+        if proxy is None and cloud_provider != "":
             raise _user_exception.FlyteAssertion(
                 "Configured cloud provider is not supported for data I/O.  Received: {}, expected one of: {}".format(
                     cloud_provider,
@@ -239,12 +242,15 @@ class FlyteContext(object):
 
 
 # This is supplied so that tasks that rely on Flyte provided param functionality do not fail when run locally
-default_user_space_params = ExecutionParameters(
-    execution_id=_identifier.WorkflowExecutionIdentifier(
+default_execution_id = _identifier.WorkflowExecutionIdentifier(
         project='local',
         domain='local',
         name='local'
-    ),
+    )
+# Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
+# are already acquainted with
+default_user_space_params = ExecutionParameters(
+    execution_id=str(_SdkWorkflowExecutionIdentifier.promote_from_model(default_execution_id)),
     execution_date=_datetime.datetime.utcnow(),
     stats=_mock_stats.MockStats(),
     logging=_logging,

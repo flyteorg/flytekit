@@ -188,17 +188,8 @@ def python_value_to_idl_literal(ctx: _flyte_context.FlyteContext,
 
 def binding_from_python_std(ctx: _flyte_context.FlyteContext, var_name: str, expected_literal_type, t_value) -> _literals_models.Binding:
     # This handles the case where the incoming value is a workflow-level input
-    if isinstance(t_value, _promise.Input):
-        # TODO: Rip out the notion of SDK types from here, from promise.Input generally
-        incoming_value_type = t_value.sdk_type.to_flyte_literal_type()
-        if not expected_literal_type == incoming_value_type:
-            _user_exceptions.FlyteTypeException(
-                incoming_value_type,
-                expected_literal_type,
-                additional_msg="When binding workflow input: {}".format(t_value)
-            )
-        promise = t_value.promise
-        binding_data = _literals_models.BindingData(promise=promise)
+    if isinstance(t_value, _type_models.OutputReference):
+        binding_data = _literals_models.BindingData(promise=t_value)
 
     # This handles the case where the given value is the output of another task
     elif isinstance(t_value, _promise.NodeOutput):

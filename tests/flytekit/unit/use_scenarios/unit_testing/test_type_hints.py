@@ -1,56 +1,61 @@
-import pytest
 import typing
-from io import BufferedWriter
-from datetime import timedelta
 
+import flytekit
+from flytekit.annotated import stuff, context_manager
+from flytekit.sdk.tasks import python_task, inputs
 from flytekit.sdk.test_utils import flyte_test
-from flytekit.sdk.tasks import python_task, current_context, inputs
 from flytekit.sdk.types import Types
-from flytekit.annotated import type_engine, stuff
-from flytekit import typing as flytekit_typing
-from flytekit.models import types as model_types
 
 
-@flyte_test
-def test_old_style_task():
-    @inputs(a=Types.Integer)
-    @python_task
-    def my_task(wf_params, a):
-        print(wf_params)
-        print(a)
-        assert wf_params.execution_id == 'ex:unit_test:unit_test:unit_test'
-
-    assert my_task.unit_test(a=3) == {}
+def test_default_wf_params_works():
+    @stuff.task
+    def my_task(a: int):
+        wf_params = flytekit.current_context()
+        assert wf_params.execution_id == 'ex:local:local:local'
+    my_task(a=3)
 
 
-@flyte_test
 def test_simple_input_output():
-    @python_task
+    @stuff.task
     def my_task(a: int) -> typing.NamedTuple("OutputsBC", b=int, c=str):
-        ctx = current_context()
-        print(ctx)
-        assert ctx.execution_id == 'ex:unit_test:unit_test:unit_test'
+        ctx = flytekit.current_context()
+        assert ctx.execution_id == 'ex:local:local:local'
         return a+2, "hello world"
+    assert my_task(a=3) == (5, 'hello world')
 
-    assert my_task.unit_test(a=3) == {'b': 5, 'c': 'hello world'}
+    # ctx = context_manager.FlyteContext.current_context()
+    # with ctx.new_execution_context(mode=context_manager.ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION,
+    #                                cloud_provider="") as ctx:
+    #     result = my_task(a=3)
+    #     print(result)
 
 
-@flyte_test
 def test_simple_input_no_output():
-    @python_task
+    @stuff.task
     def my_task(a: int):
         pass
-    
-    assert my_task.unit_test(a=3) == {}
+
+    assert my_task(a=3) is None
+
+    ctx = context_manager.FlyteContext.current_context()
+    with ctx.new_compilation_context() as ctx:
+        outputs = my_task(a=3)
+        assert outputs is None
 
 
-@flyte_test
 def test_single_output():
-    @python_task
+    @stuff.task
     def my_task() -> str:
         return "Hello world"
-    
-    assert my_task.unit_test() == {'out_0': 'Hello world'}
+    assert my_task() =='Hello world'
+
+    ctx = context_manager.FlyteContext.current_context()
+    with ctx.new_compilation_context() as ctx:
+        outputs = my_task()
+        assert ctx.compilation_state is not None
+        nodes = ctx.compilation_state.nodes
+        assert len(nodes) == 1
+        assert outputs.sdk_node is nodes[0]
 
 
 def test_named_tuples():
@@ -71,7 +76,6 @@ def test_named_tuples():
 
 
 def test_unnamed_typing_tuple():
-
     def z(a: int, b: str) -> typing.Tuple[int, str]:
         return 5, "hello world"
 
@@ -163,3 +167,4 @@ def test_single_output_new_decorator():
 #         with open(file_path.local_path, mode='rb') as fh:
 #             lines = fh.readlines()
 #             # assert 
+# nt1 = typing.NamedTuple("NT1", x_str=str, y_int=int)
