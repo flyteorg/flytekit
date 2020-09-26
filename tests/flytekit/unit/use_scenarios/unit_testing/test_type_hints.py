@@ -104,7 +104,7 @@ def test_single_output_new_decorator():
 def test_wf1():
     @stuff.task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
-        return a+2, "hello world"
+        return a+2, "world"
 
     @stuff.task
     def t2(a: str, b: str) -> str:
@@ -122,6 +122,9 @@ def test_wf1():
     assert len(my_wf._sdk_workflow.outputs) == 2
     assert my_wf._sdk_workflow.outputs[0].var == 'out_0'
     assert my_wf._sdk_workflow.outputs[0].binding.promise.var == 't1_int_output'
+
+    x = my_wf(a=5, b="hello ")
+    assert x == (7, "hello world")
 
 # def test_normal_path():
 #     def t1(in1: flytekit_typing.FlyteFilePath) -> str:
