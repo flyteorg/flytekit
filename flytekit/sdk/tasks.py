@@ -16,16 +16,6 @@ from flytekit.models import interface as _interface_model
 from flytekit.sdk.spark_types import SparkType as _spark_type
 
 
-def current_context() -> _sdk_runnable_tasks.ExecutionParameters:
-    """
-    Retrieves the current execution context. This function should only be called for an execution that started through
-    flyte.
-    """
-
-    return _sdk_runnable_tasks.ExecutionParametersContext.current()
-
-
-
 def inputs(_task_template=None, **kwargs):
     """
     Decorator that provides input definitions to a decorated task definition.

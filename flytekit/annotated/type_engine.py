@@ -3,7 +3,6 @@ import typing
 from typing import Dict
 from flytekit import typing as flyte_typing
 from flytekit.common.exceptions import system as system_exceptions, user as user_exceptions
-import abc
 
 from flytekit.common.types import primitives as _primitives
 from flytekit.models import types as _type_models, interface as _interface_models

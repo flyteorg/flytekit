@@ -86,11 +86,10 @@ class FlyteFilePath(os.PathLike):
 
     def __init__(self, path: str, downloader: typing.Callable = noop, remote_path=None):
         """
-
         :param path: The local path that users are expected to call open() on
         :param downloader: Optional function that can be passed that used to delay downloading of the actual fil
             until a user actually calls open().
-        :param remote_path: Just in case the user wants it for some reason.
+        :param remote_path: If the user wants to return something and also specify where it should be uploaded to.
         """
         self._abspath = os.path.abspath(path)
         self._downloader = downloader
@@ -112,6 +111,10 @@ class FlyteFilePath(os.PathLike):
     @property
     def downloaded(self) -> bool:
         return self._downloaded
+
+    @property
+    def remote_path(self) -> typing.Optional[str]:
+        return self._remote_path
 
 
 class FlyteCSVFilePath(FlyteFilePath):
