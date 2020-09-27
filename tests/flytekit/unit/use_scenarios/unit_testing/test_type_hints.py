@@ -1,10 +1,10 @@
 import typing
 
 import flytekit
+from flytekit import typing as _flytekit_typing
 from flytekit.annotated import stuff, context_manager
 from flytekit.sdk.tasks import python_task, inputs
 from flytekit.sdk.test_utils import flyte_test
-from flytekit.sdk.types import Types
 
 
 def test_default_wf_params_works():
@@ -95,7 +95,7 @@ def test_regular_tuple():
 
 def test_single_output_new_decorator():
     def q(a: int, b: str) -> int:
-        return 5
+        return a + len(b)
 
     result = stuff.get_output_variable_map(q.__annotations__)
     assert result['out_0'].type.simple == 1
@@ -126,11 +126,24 @@ def test_wf1():
     x = my_wf(a=5, b="hello ")
     assert x == (7, "hello world")
 
+
 # def test_normal_path():
-#     def t1(in1: flytekit_typing.FlyteFilePath) -> str:
+#     # Write some random numbers to a file
+#     def t1():
+#         ...
+#
+#     # Read back the file and transform it
+#     def t2(in1: _flytekit_typing.FlyteFilePath) -> str:
 #         with open(in1, 'r') as fh:
 #             lines = fh.readlines()
 #             return "".join(lines)
+#
+#
+#
+#
+
+
+
 
 # @flyte_test
 # def test_single_output():
