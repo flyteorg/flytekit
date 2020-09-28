@@ -92,7 +92,7 @@ def idl_literal_to_python_value(ctx: _flyte_context.FlyteContext,
 
 
 def idl_literal_map_to_python_value(ctx: _flyte_context.FlyteContext,
-                                    idl_literal_map: _literals_models.LiteralMap) -> typing.Any:
+                                    idl_literal_map: _literals_models.LiteralMap) -> typing.Dict[str,typing.Any]:
     """
     This function is only here because often we start with a LiteralMap, not a plain Literal.
     """

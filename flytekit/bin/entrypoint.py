@@ -91,12 +91,22 @@ def _execute_task(task_module, task_name, inputs, output_prefix, test):
             elif not test and hasattr(task_def, "_task_style") and task_def._task_style == SdkRunnableTaskStyle.V1:
                 cloud_provider = _platform_config.CLOUD_PROVIDER.get()
                 additional_context = {'output_prefix': output_prefix}
-                with _flyte_context.FlyteContext.new_execution_context(mode=_flyte_context.ExecutionState.Mode.TASK_EXECUTION,
-                                                                       cloud_provider=cloud_provider,
-                                                                       additional_context=additional_context) as ctx:
-                    executor = _flyte_task_executors.get_executor(task_def)
-                    return executor.execute(ctx, task_def, inputs)
+                ctx = _flyte_context.FlyteContext.current_context()
+                with ctx.new_data_proxy_by_cloud_provider(cloud_provider=cloud_provider) as ctx:
+                    # First download the contents of the input file
+                    local_inputs_file = _os.path.join(ctx.workflow_execution_state.working_dir, 'inputs.pb')
+                    _data_proxy.Data.get_data(inputs, local_inputs_file)
+                    idl_input_literals = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
 
+                    executor = _flyte_task_executors.get_executor(task_def)
+                    outputs_literal_map = executor.execute(ctx, task_def, idl_input_literals)
+                    print("That's all folks!")
+                    print(outputs_literal_map.literals)
+
+                    # Write the output back to file and write file to S3.
+                    # return {
+                    #     _constants.OUTPUT_FILE_NAME: outputs_literal_map,
+                    # }
 
 @_click.group()
 def _pass_through():

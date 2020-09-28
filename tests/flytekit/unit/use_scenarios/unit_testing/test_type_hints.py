@@ -123,8 +123,27 @@ def test_wf1():
     assert my_wf._sdk_workflow.outputs[0].var == 'out_0'
     assert my_wf._sdk_workflow.outputs[0].binding.promise.var == 't1_int_output'
 
+
+def test_wf1_run():
+    @stuff.task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @stuff.task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @stuff.workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a)
+        d = t2(a=y, b=b)
+        return x, d
+
     x = my_wf(a=5, b="hello ")
-    assert x == (7, "hello world")
+    assert x == {
+        'out_0': 7,
+        'out_1': "hello world",
+    }
 
 
 # def test_normal_path():
