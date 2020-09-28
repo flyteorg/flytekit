@@ -44,9 +44,9 @@ def _update_cmd_config_and_execute(cmd: List[str]):
     except Exception as e:
         logging.error(f"Exception when trying to execute {cmd}, reason: {str(e)}")
         retry += 1
-        if retry > _aws_config.RETRIES:
+        if retry > _aws_config.RETRIES.get():
             raise
-        secs = _aws_config.BACKOFF_SECONDS
+        secs = _aws_config.BACKOFF_SECONDS.get()
         logging.info("Sleeping before retrying again, after {} seconds".format(secs))
         time.sleep(secs)
         logging.info("Retrying again")
