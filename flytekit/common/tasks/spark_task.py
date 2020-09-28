@@ -1,3 +1,5 @@
+import typing
+
 try:
     from inspect import getfullargspec as _getargspec
 except ImportError:
@@ -18,6 +20,8 @@ from flytekit.common.types import helpers as _type_helpers
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_models
 from flytekit.plugins import pyspark as _pyspark
+import hashlib as _hashlib
+import json as _json
 
 
 class GlobalSparkContext(object):
@@ -54,19 +58,19 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
     """
 
     def __init__(
-        self,
-        task_function,
-        task_type,
-        discovery_version,
-        retries,
-        interruptible,
-        deprecated,
-        discoverable,
-        timeout,
-        spark_type,
-        spark_conf,
-        hadoop_conf,
-        environment,
+            self,
+            task_function,
+            task_type,
+            discovery_version,
+            retries,
+            interruptible,
+            deprecated,
+            discoverable,
+            timeout,
+            spark_type,
+            spark_conf,
+            hadoop_conf,
+            environment,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -86,14 +90,14 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
         if spark_exec_path.endswith(".pyc"):
             spark_exec_path = spark_exec_path[:-1]
 
-        spark_job = _task_models.SparkJob(
+        self._spark_job = _task_models.SparkJob(
             spark_conf=spark_conf,
             hadoop_conf=hadoop_conf,
             application_file="local://" + spark_exec_path,
             executor_path=_sys.executable,
             main_class="",
             spark_type=spark_type,
-        ).to_flyte_idl()
+        )
         super(SdkSparkTask, self).__init__(
             task_function,
             task_type,
@@ -112,7 +116,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
             discoverable,
             timeout,
             environment,
-            _MessageToDict(spark_job),
+            _MessageToDict(self._spark_job.to_flyte_idl()),
         )
 
     @_exception_scopes.system_entry_point
@@ -165,3 +169,36 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
     def _get_kwarg_inputs(self):
         # Trim off first two parameters as they are reserved for workflow_parameters and spark_context
         return set(_getargspec(self.task_function).args[2:])
+
+    def with_conf(self, new_spark_conf: typing.Dict[str, str] = None,
+                  new_hadoop_conf: typing.Dict[str, str] = None):
+        """
+        Creates a new SparkJob instance with the modified configuration or timeouts
+        """
+        if not new_spark_conf:
+            new_spark_conf = self._spark_job.spark_conf
+
+        if not new_hadoop_conf:
+            new_hadoop_conf = self._spark_job.hadoop_conf
+
+        updates = {"spark": new_spark_conf, "hadoop": new_hadoop_conf}
+        salt = _hashlib.md5(_json.dumps(updates, sort_keys=True).encode("utf-8")).hexdigest()
+
+        tk = SdkSparkTask(
+            task_function=self.task_function,
+            task_type=self.type,
+            discovery_version=self._metadata.discovery_version,
+            retries=self._metadata.retries.retries if self._metadata.retries else None,
+            interruptible=self._metadata.interruptible,
+            deprecated=self._metadata.deprecated_error_message,
+            discoverable=self._metadata.discoverable,
+            timeout=self._metadata.timeout,
+            spark_type=self._spark_job.spark_type,
+            spark_conf=new_spark_conf,
+            hadoop_conf=new_hadoop_conf,
+            environment=self._container.env,
+        )
+
+        tk._id._name = "{}-{}".format(self._id.name, salt)
+
+        return tk

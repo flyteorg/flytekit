@@ -49,3 +49,16 @@ def test_default_python_task():
     pb2 = default_task.to_flyte_idl()
     assert pb2.custom["sparkConf"]["A"] == "B"
     assert pb2.custom["hadoopConf"]["C"] == "D"
+
+
+def test_overrides_spark_task():
+    assert default_task.id.name == "name"
+    new_task = default_task.with_conf(new_spark_conf={"x": "1"}, new_hadoop_conf={"y": "2"})
+    assert new_task.id.name == "name-68e80c9654c8e336f82ad1c712a1371f"
+    assert new_task.custom["sparkConf"]["x"] == "1"
+    assert new_task.custom["hadoopConf"]["y"] == "2"
+
+    assert default_task.custom["sparkConf"]["A"] == "B"
+    assert default_task.custom["hadoopConf"]["C"] == "D"
+
+    assert default_task.__hash__() != new_task.__hash__()
