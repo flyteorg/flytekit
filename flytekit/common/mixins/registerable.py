@@ -37,6 +37,9 @@ class _InstanceTracker(_sdk_bases.ExtendedSdkType):
 
 
 class FlyteEntity(object, metaclass=_sdk_bases.ExtendedSdkType):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     @property
     @_abc.abstractmethod
     def resource_type(self):
@@ -58,8 +61,8 @@ class FlyteEntity(object, metaclass=_sdk_bases.ExtendedSdkType):
 
 class TrackableEntity(FlyteEntity, metaclass=_InstanceTracker):
     def __init__(self, *args, **kwargs):
-        self._platform_valid_name = None
         super(TrackableEntity, self).__init__(*args, **kwargs)
+        self._platform_valid_name = None
 
     @property
     def instantiated_in(self):
@@ -145,8 +148,8 @@ class TrackableEntity(FlyteEntity, metaclass=_InstanceTracker):
 
 class RegisterableEntity(TrackableEntity):
     def __init__(self, *args, **kwargs):
-        self._has_registered = False
         super(RegisterableEntity, self).__init__(*args, **kwargs)
+        self._has_registered = False
 
     @_abc.abstractmethod
     def register(self, project, domain, name, version):

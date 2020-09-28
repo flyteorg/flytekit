@@ -4,6 +4,9 @@ from deprecated import deprecated as _deprecated
 
 
 class LaunchableEntity(object, metaclass=_abc.ABCMeta):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def launch(
         self,
         project,

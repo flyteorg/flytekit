@@ -1,6 +1,8 @@
 import datetime as _datetime
 import os as _os
 
+import cloudpickle
+
 from flytekit import configuration as _configuration
 from flytekit.common import constants as _common_constants
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable

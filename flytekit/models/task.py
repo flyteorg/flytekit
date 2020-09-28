@@ -289,7 +289,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
 
 
 class TaskTemplate(_common.FlyteIdlEntity):
-    def __init__(self, id, type, metadata, interface, custom, container=None):
+    def __init__(self, id, tp, metadata, interface, custom, container=None, **kwargs):
         """
         A task template represents the full set of information necessary to perform a unit of work in the Flyte system.
         It contains the metadata about what inputs and outputs are consumed or produced.  It also contains the metadata
@@ -305,8 +305,9 @@ class TaskTemplate(_common.FlyteIdlEntity):
         :param Container container: Provides the necessary entrypoint information for execution.  For instance,
             a Container might be specified with the necessary command line arguments.
         """
+        super().__init__(**kwargs)
         self._id = id
-        self._type = type
+        self._tp = tp
         self._metadata = metadata
         self._interface = interface
         self._custom = custom
@@ -326,7 +327,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         This is used to identify additional extensions for use by Propeller or SDK.
         :rtype: Text
         """
-        return self._type
+        return self._tp
 
     @property
     def metadata(self):
@@ -382,7 +383,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         """
         return cls(
             id=_identifier.Identifier.from_flyte_idl(pb2_object.id),
-            type=pb2_object.type,
+            tp=pb2_object.type,
             metadata=TaskMetadata.from_flyte_idl(pb2_object.metadata),
             interface=_interface.TypedInterface.from_flyte_idl(pb2_object.interface),
             custom=_json_format.MessageToDict(pb2_object.custom) if pb2_object else None,
