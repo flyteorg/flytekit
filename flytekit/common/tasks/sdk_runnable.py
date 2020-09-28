@@ -222,7 +222,6 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         timeout,
         environment,
         custom,
-        copy=False,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -243,7 +242,6 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         :param datetime.timedelta timeout:
         :param dict[Text, Text] environment:
         :param dict[Text, T] custom:
-        :param bool copy: Indicates if this is a copy function, in this case the name will be prefixed with a hash
         """
         self._task_function = task_function
         super(SdkRunnableTask, self).__init__(
