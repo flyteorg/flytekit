@@ -30,7 +30,7 @@ class CompilationState(object):
 
 class ExecutionState(object):
     class Mode(Enum):
-        # This is the mode that will be selected when a task is supposed to just run it's function, nothing more
+        # This is the mode that will be selected when a task is supposed to just run its function, nothing more
         TASK_EXECUTION = 1
 
         # This represents when flytekit is locally running a workflow. The behavior of tasks differs in this case

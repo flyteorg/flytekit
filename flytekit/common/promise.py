@@ -190,9 +190,8 @@ class NodeOutput(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _type_models.Ou
         return self._flyte_literal_value
 
     def __repr__(self):
-        # s = f"NodeOutput({self.sdk_node if self.sdk_node.id is not None else None}:{self.var} )"
-        s = "ddddddddd"
-        # s += f" Value {self.flyte_literal_value}" if self.flyte_literal_value is not None else ""
+        s = f"NodeOutput({self.sdk_node if self.sdk_node.id is not None else None}:{self.var} )"
+        s += f" Value {self.flyte_literal_value}" if self.flyte_literal_value is not None else ""
         return s
 
     # TODO: Need to add all the .with_cpu/with_memory override functions
