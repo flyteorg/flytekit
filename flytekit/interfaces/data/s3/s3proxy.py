@@ -42,7 +42,7 @@ def _update_cmd_config_and_execute(cmd: List[str]):
     try:
         return _subprocess.check_call(cmd, env=env)
     except Exception as e:
-        logging.error("Exception when trying to execute {}, reason: {}".format(cmd, str(e)))
+        logging.error(f"Exception when trying to execute {cmd}, reason: {str(e)}")
         retry += 1
         if retry > _aws_config.RETRIES:
             raise
