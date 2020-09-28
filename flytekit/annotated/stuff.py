@@ -1,7 +1,7 @@
 import datetime as _datetime
 import inspect
 from collections import OrderedDict
-from typing import List, Dict, Generator
+from typing import Dict, Generator
 
 from flytekit import engine as flytekit_engine
 from flytekit import logger
@@ -15,7 +15,6 @@ from flytekit.common import (
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
-from flytekit.configuration.common import CONFIGURATION_SINGLETON
 from flytekit.models import (
     interface as _interface_models, literals as _literal_models,
     task as _task_model, types as _type_models)
@@ -37,6 +36,12 @@ def get_default_args(func):
     }
 
 
+
+class A():
+    def id(self):
+        return "dummy-node"
+
+
 # Please see the comments on the PythonTask class for additional context. This object is just here as a stand-in?
 class PythonWorkflow(object):
     """
@@ -51,24 +56,52 @@ class PythonWorkflow(object):
         self._sdk_workflow = sdk_workflow
 
     def __call__(self, *args, **kwargs):
+
+        if len(args) > 0:
+            raise Exception('not allowed')
+
         ctx = FlyteContext.current_context()
-        # When someone wants to run the workflow function locally, not just as a Python function, but as a complete
-        # Flyte workflow.
-        if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            if len(args) > 0:
-                raise Exception('not allowed')
+        # Reserved for when we have subworkflows
+        if ctx.compilation_state is not None:
+            raise Exception('not implemented')
 
-            print(f"compilation mode. Args are: {args}")
-            print(f"Locals: {locals()}")
-
-            # logger.debug(f"Compiling workflow... ")
-
+        # When someone wants to run the workflow function locally
         else:
-            # Can we relax this in the future?  People are used to this right now, so it's okay.
-            if len(args) > 0:
-                raise Exception('When using the workflow decorator, all inputs must be specified with kwargs only')
+            with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
+                # Assume that the inputs given are given as Python native values
+                # Let's translate these Python native values into Flyte IDL literals - This is normally done when
+                # you run a workflow for real also.
+                try:
+                    inputs_as_dict_of_literals = {
+                        k: flytekit_engine.python_value_to_idl_literal(ctx, v, self._sdk_workflow.interface.inputs[k].type)
+                        for k, v in kwargs.items()
+                    }
+                except Exception as e:
+                    # TODO: Why doesn't this print a stack trace?
+                    logger.warning("Exception!!!")
+                    raise e
 
-            return self._workflow_function(*args, **kwargs)
+                # Wrap in NodeOutputs
+                # TODO: This is a hack - let's create a proper new wrapper object instead of using NodeOutput
+                inputs_as_wrapped_node_outputs = {
+                    k: _NodeOutput(sdk_node=A(), sdk_type=None, var=k, flyte_literal_value=v) for k, v in
+                    inputs_as_dict_of_literals.items()
+                }
+
+                # TODO: These are all assumed to be NodeOutputs for now (or whatever the new wrapper is called), but
+                #   they can be other things as well.  What if someone just returns 5? Should we disallow this?
+                function_outputs = self._workflow_function(**inputs_as_wrapped_node_outputs)
+                output_names = list(self._sdk_workflow.interface.outputs.keys())
+                output_literal_map = {}
+                if len(output_names) > 1:
+                    for idx, var_name in enumerate(output_names):
+                        output_literal_map[var_name] = function_outputs[idx].flyte_literal_value
+                elif len(output_names) == 1:
+                    output_literal_map[output_names[0]] = function_outputs.flyte_literal_value
+                else:
+                    return None
+
+                return flytekit_engine.idl_literal_map_to_python_value(ctx, _literal_models.LiteralMap(literals=output_literal_map))
 
 
 def workflow(_workflow_function=None):
@@ -77,7 +110,7 @@ def workflow(_workflow_function=None):
     # workflow is what expresses the workflow structure.
     def wrapper(fn):
         workflow_annotations = fn.__annotations__
-         # TODO: Remove the copy step and jsut make the get function skip returns
+        # TODO: Remove the copy step and jsut make the get function skip returns
         inputs = {k: v for k, v in workflow_annotations.items() if k != 'return'}
         inputs_variable_map = get_variable_map(inputs)
         outputs_variable_map = get_output_variable_map(workflow_annotations)
@@ -96,7 +129,8 @@ def workflow(_workflow_function=None):
         with ctx.new_compilation_context() as comp_ctx:
             # Fill in call args by constructing input bindings
             input_kwargs = {
-                k: _type_models.OutputReference(_common_constants.GLOBAL_INPUT_NODE_ID, k) for k in inputs_variable_map.keys()
+                k: _type_models.OutputReference(_common_constants.GLOBAL_INPUT_NODE_ID, k) for k in
+                inputs_variable_map.keys()
             }
             workflow_outputs = fn(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
@@ -176,9 +210,10 @@ class PythonTask(object):
         #     nothing. Subsequent tasks will have to know how to unwrap these. If by chance a non-Flyte task uses a
         #     task output as an input, things probably will fail pretty obviously.
         if len(args) > 0:
+            logger.warn
             raise _user_exceptions.FlyteAssertion(
-                "When adding a task as a node in a workflow, all inputs must be specified with kwargs only.  We "
-                "detected {} positional args.".format(len(args))
+                f"When adding a task as a node in a workflow, all inputs must be specified with kwargs only.  We "
+                f"detected {len(args)} positional args {args}"
             )
 
         ctx = FlyteContext.current_context()
@@ -206,8 +241,6 @@ class PythonTask(object):
             upstream_nodes = [input_val.sdk_node for input_val in kwargs.values() if isinstance(input_val, _NodeOutput)]
 
             # TODO: Make the metadata name the full name of the (function)?
-            # There should be no reason to ever assign a random node id (at least in a non-dynamic context), so we
-            # leave it empty for now.
             sdk_node = _nodes.SdkNode(
                 # TODO
                 id=f"node-{len(ctx.compilation_state.nodes)}",
@@ -237,32 +270,46 @@ class PythonTask(object):
                 return node_outputs[0]
             else:
                 return None
+
         elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            # Ketan/Haytham - this code here feels very execution engine-y. I wonder if there's a way to move this
-            #   further away somehow
-            # Unwrap the kwargs values. If the inputs to this task were wrapped outputs of earlier tasks, then we
-            # need to extract the native value before passing to the function.
+            # Unwrap the kwargs values. After this, we essentially have a LiteralMap
             for k, v in kwargs.items():
                 if isinstance(v, _NodeOutput):
-                    kwargs[k] = v.native_value
+                    kwargs[k] = v.flyte_literal_value
 
-            results = self._task_function(*args, **kwargs)
-            output_names = self.interface.outputs.keys()
+            input_literal_map = _literal_models.LiteralMap(literals=kwargs)
+
+            from flytekit.annotated import executors as _flyte_task_executors
+            executor = _flyte_task_executors.get_executor(self)
+            outputs_literal_map = executor.execute(ctx, self, input_literal_map)
+            outputs_literals = outputs_literal_map.literals
+
+            # After running, we again have to wrap the outputs, if any, back into NodeOutput objects
+            output_names = list(self.interface.outputs.keys())
             node_results = []
-            if len(output_names) != len(results):
+            if len(output_names) != len(outputs_literals):
                 # Length check, clean up exception
-                raise Exception(f"Length difference {len(output_names)} {len(results)}")
+                raise Exception(f"Length difference {len(output_names)} {len(outputs_literals)}")
 
             if len(self.interface.outputs) > 1:
-                for idx, r in enumerate(results):
-                    node_results.append(_NodeOutput(sdk_node=None, sdk_type=None,
-                                                    var=output_names[idx], native_value=r))
+                for idx, var_name in enumerate(output_names):
+                    node_results.append(_NodeOutput(sdk_node=A(), sdk_type=None,
+                                                    var=output_names[idx],
+                                                    flyte_literal_value=outputs_literals[var_name]))
                 return tuple(node_results)
             elif len(self.interface.outputs) == 1:
-                return _NodeOutput(sdk_node=None, sdk_type=None, var=output_names[0], native_value=results)
+                return _NodeOutput(sdk_node=A(), sdk_type=None, var=output_names[0],
+                                   flyte_literal_value=outputs_literals[output_names[0]])
             else:
                 return None
+
+        # This is the version called by executors.
+        elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+            return self._task_function(*args, **kwargs)
+
         else:
+            # TODO: Remove warning
+            logger.warning("task run without context - returning raw function")
             return self._task_function(*args, **kwargs)
 
     @property

@@ -30,7 +30,7 @@ class CompilationState(object):
 
 class ExecutionState(object):
     class Mode(Enum):
-        # This is the mode that will be selected when a task is being run on a Flyte cluster
+        # This is the mode that will be selected when a task is supposed to just run it's function, nothing more
         TASK_EXECUTION = 1
 
         # This represents when flytekit is locally running a workflow. The behavior of tasks differs in this case
@@ -48,7 +48,7 @@ class ExecutionState(object):
         return self._working_dir
 
     @property
-    def additional_context(self) -> Dict[Any,Any]:
+    def additional_context(self) -> Dict[Any, Any]:
         return self._additional_context
 
     @property
@@ -153,25 +153,37 @@ class FlyteContext(object):
         finally:
             FlyteContext.OBJS.pop()
 
-    @property
-    def execution_state(self) -> Optional[ExecutionState]:
-        return self._execution_state
-
     @contextmanager
-    def new_execution_context(self, mode: ExecutionState.Mode,
-                              cloud_provider: str,
-                              additional_context: Dict[Any, Any] = None) -> Generator['FlyteContext', None, None]:
-        # Here to avoid circular dependency
-        from flytekit import __version__ as _api_version
-
-        proxy = self._DATA_PROXIES_BY_CLOUD_PROVIDER.get(cloud_provider, None)
-        if proxy is None and cloud_provider != "":
+    def new_data_proxy_by_cloud_provider(self, cloud_provider: str) -> Generator['FlyteContext', None, None]:
+        if cloud_provider == _constants.CloudProvider.AWS:
+            proxy = _s3proxy.AwsS3Proxy()
+        elif cloud_provider == _constants.CloudProvider.GCP:
+            proxy = _gcs_proxy.GCSProxy()
+        else:
             raise _user_exception.FlyteAssertion(
                 "Configured cloud provider is not supported for data I/O.  Received: {}, expected one of: {}".format(
                     cloud_provider,
                     list(type(self)._DATA_PROXIES_BY_CLOUD_PROVIDER.keys())
                 )
             )
+
+        new_ctx = FlyteContext(parent=self, data_proxy=proxy)
+        FlyteContext.OBJS.append(new_ctx)
+        try:
+            yield new_ctx
+        finally:
+            FlyteContext.OBJS.pop()
+
+    @property
+    def execution_state(self) -> Optional[ExecutionState]:
+        return self._execution_state
+
+    @contextmanager
+    def new_execution_context(self, mode: ExecutionState.Mode,
+                              additional_context: Dict[Any, Any] = None) -> Generator['FlyteContext', None, None]:
+        # Here to avoid circular dependency
+        from flytekit import __version__ as _api_version
+
         # Create a working directory for the execution to use
         working_dir = self.local_file_access.get_random_path()
         exec_state = ExecutionState(mode=mode, working_dir=working_dir, additional_context=additional_context)
@@ -205,8 +217,7 @@ class FlyteContext(object):
             tmp_dir=os.path.join(working_dir, "user_space")
         )
 
-        new_ctx = FlyteContext(parent=self, data_proxy=proxy, execution_state=exec_state,
-                               user_space_params=user_space_execution_params)
+        new_ctx = FlyteContext(parent=self, execution_state=exec_state, user_space_params=user_space_execution_params)
         FlyteContext.OBJS.append(new_ctx)
         try:
             yield new_ctx
@@ -243,10 +254,10 @@ class FlyteContext(object):
 
 # This is supplied so that tasks that rely on Flyte provided param functionality do not fail when run locally
 default_execution_id = _identifier.WorkflowExecutionIdentifier(
-        project='local',
-        domain='local',
-        name='local'
-    )
+    project='local',
+    domain='local',
+    name='local'
+)
 # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
 # are already acquainted with
 default_user_space_params = ExecutionParameters(
