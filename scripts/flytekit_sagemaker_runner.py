@@ -77,7 +77,9 @@ def set_env_vars(env_vars):
 
 def run(cli_args):
     flyte_cmd, env_vars = parse_args(cli_args)
+    print(f"After parsing, cmd = [{flyte_cmd}], env_vars=[{env_vars}]")
     flyte_cmd = sort_flyte_cmd(flyte_cmd)
+    print(f"After parsing, cmd = [{flyte_cmd}]")
     set_env_vars(env_vars)
 
     logging.info(f"Cmd:{flyte_cmd}")
@@ -90,4 +92,5 @@ def run(cli_args):
 
 
 if __name__ == "__main__":
+    print("Received sys.argv: ", str(sys.argv))
     run(sys.argv)
