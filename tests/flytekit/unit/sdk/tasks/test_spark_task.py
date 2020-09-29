@@ -62,6 +62,9 @@ def test_overrides_spark_task():
     assert default_task.custom["sparkConf"]["A"] == "B"
     assert default_task.custom["hadoopConf"]["C"] == "D"
 
+    assert default_task.has_valid_name is False
+    default_task.assign_name("my-task")
+    assert default_task.has_valid_name
     assert new_task.interface == default_task.interface
 
     assert default_task.__hash__() != new_task.__hash__()

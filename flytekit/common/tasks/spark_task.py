@@ -183,5 +183,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
 
         salt = _hashlib.md5(_json.dumps(tk.custom, sort_keys=True).encode("utf-8")).hexdigest()
         tk._id._name = "{}-{}".format(self._id.name, salt)
+        # We are overriding the platform name creation to prevent problems in dynamic
+        tk.assign_name(tk._id._name)
 
         return tk
