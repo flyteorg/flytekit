@@ -54,7 +54,7 @@ def test_default_python_task():
 def test_overrides_spark_task():
     assert default_task.id.name == "name"
     new_task = default_task.with_overrides(new_spark_conf={"x": "1"}, new_hadoop_conf={"y": "2"})
-    assert new_task.id.name == "name-8f7fab3cf6805e1cf8d340b981d83942"
+    assert new_task.id.name.startswith("name-")
     assert new_task.custom["sparkConf"]["x"] == "1"
     assert new_task.custom["hadoopConf"]["y"] == "2"
 
