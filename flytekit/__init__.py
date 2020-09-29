@@ -1,10 +1,10 @@
-from __future__ import absolute_import
-
 import flytekit.plugins
+
+import logging as _logging
+from flytekit.annotated.context_manager import FlyteContext
 
 __version__ = '0.11.3'
 
-import logging as _logging
 logger = _logging.getLogger('flytekit')
 
 # create console handler and set level to debug
@@ -19,3 +19,7 @@ ch.setFormatter(formatter)
 
 # add ch to logger
 logger.addHandler(ch)
+
+
+def current_context():
+    return FlyteContext.current_context().user_space_params

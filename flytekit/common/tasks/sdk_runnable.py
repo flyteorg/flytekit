@@ -6,9 +6,10 @@ except ImportError:
     from inspect import getargspec as _getargspec
 
 import six as _six
+import enum
 
-from flytekit import __version__
-from flytekit.common import interface as _interface, constants as _constants, sdk_bases as _sdk_bases
+
+from flytekit.common import constants as _constants, sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
 from flytekit.common.tasks import task as _base_task, output as _task_output
 from flytekit.common.types import helpers as _type_helpers
@@ -19,7 +20,6 @@ from flytekit.common.core.identifier import WorkflowExecutionIdentifier
 
 
 class ExecutionParameters(object):
-
     """
     This is the parameter object that will be provided as the first parameter for every execution of any @*_task
     decorated function.
@@ -99,12 +99,12 @@ class ExecutionParameters(object):
 class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task_models.Container)):
 
     def __init__(
-        self,
-        command,
-        args,
-        resources,
-        env,
-        config,
+            self,
+            command,
+            args,
+            resources,
+            env,
+            config,
     ):
         super(SdkRunnableContainer, self).__init__(
             "",
@@ -147,6 +147,11 @@ class SdkRunnableContainer(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _task
             }
         )
         return env
+
+
+class SdkRunnableTaskStyle(enum.Enum):
+    V0 = 0
+    V1 = 1
 
 
 class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task.SdkTask)):
@@ -199,8 +204,11 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         :param dict[Text, Text] environment:
         :param dict[Text, T] custom:
         """
-        self._task_function = task_function
+        # Circular dependency
+        from flytekit import __version__
+        from flytekit.annotated.stuff import get_interface_from_task_info as _get_interface_from_task_info
 
+        self._task_function = task_function
         super(SdkRunnableTask, self).__init__(
             task_type,
             _task_models.TaskMetadata(
@@ -216,7 +224,8 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 discovery_version,
                 deprecated
             ),
-            _interface.TypedInterface({}, {}),
+            # Once we are up and running on the new decorator, this will go away since the decorator itself will set.
+            _get_interface_from_task_info(task_function.__annotations__),
             custom,
             container=self._get_container_definition(
                 storage_request=storage_request,
@@ -231,6 +240,8 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             )
         )
         self.id._name = "{}.{}".format(self.task_module, self.task_function_name)
+        self._task_style = SdkRunnableTaskStyle.V1 if len(self.interface.inputs) + len(
+            self.interface.outputs) > 0 else SdkRunnableTaskStyle.V0
 
     _banned_inputs = {}
     _banned_outputs = {}
@@ -245,11 +256,15 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         """
         self._validate_inputs(inputs)
         self.interface.inputs.update(inputs)
-        
+
     @classmethod
     def promote_from_model(cls, base_model):
         # TODO: If the task exists in this container, we should be able to retrieve it.
         raise _user_exceptions.FlyteAssertion("Cannot promote a base object to a runnable task.")
+
+    @property
+    def task_style(self):
+        return self._task_style
 
     @property
     def task_function(self):
@@ -327,17 +342,30 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
 
-        return _exception_scopes.user_entry_point(self.task_function)(
-            ExecutionParameters(
-                execution_date=context.execution_date,
-                # TODO: it might be better to consider passing the full struct
-                execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
-                stats=context.stats,
-                logging=context.logging,
-                tmp_dir=context.working_directory
-            ),
-            **inputs
-        )
+        if self.task_style == SdkRunnableTaskStyle.V0:
+            return _exception_scopes.user_entry_point(self.task_function)(
+                ExecutionParameters(
+                    execution_date=context.execution_date,
+                    # TODO: it might be better to consider passing the full struct
+                    execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
+                    stats=context.stats,
+                    logging=context.logging,
+                    tmp_dir=context.working_directory
+                ),
+                **inputs
+            )
+        # else:
+        #     with ExecutionParametersContext(ExecutionParameters(
+        #             execution_date=context.execution_date,
+        #             # TODO: it might be better to consider passing the full struct
+        #             execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
+        #             stats=context.stats,
+        #             logging=context.logging,
+        #             tmp_dir=context.working_directory
+        #     )):
+        #         return _exception_scopes.user_entry_point(self.task_function)(
+        #             **inputs
+        #         )
 
     @_exception_scopes.system_entry_point
     def execute(self, context, inputs):
@@ -352,21 +380,45 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
         inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(inputs, {
-            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)
+            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in self.interface.inputs.items()
         })
         outputs_dict = {
             name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
             for name, variable in _six.iteritems(self.interface.outputs)
         }
-        inputs_dict.update(outputs_dict)
 
-        self._execute_user_code(context, inputs_dict)
-
-        return {
-            _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
-                literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
-            )
-        }
+        # Old style - V0: If annotations are used to define outputs, do not append outputs to the inputs dict
+        if not self.task_function.__annotations__ or "return" not in self.task_function.__annotations__:
+            inputs_dict.update(outputs_dict)
+            self._execute_user_code(context, inputs_dict)
+            return {
+                _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
+                    literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
+                )
+            }
+        # New style - V1: inputs are just inputs
+        # else:
+        #     native_inputs = flyte_engine.idl_literal_map_to_python_value(context, inputs)
+        #     outputs = self._execute_user_code(context, native_inputs)
+        #     expected_output_names = list(self.interface.outputs.keys())
+        #     if len(expected_output_names) == 1:
+        #         literals = {expected_output_names[0]: outputs}
+        #     else:
+        #         # Question: How do you know you're going to enumerate them in the correct order? Even if autonamed, will
+        #         # output2 come before output100 if there's a hundred outputs? We don't! We'll have to circle back to
+        #         # the Python task instance and inspect annotations again. Or we change the Python model representation
+        #         # of the interface to be an ordered dict and we fill it in correctly to begin with.
+        #         literals = {expected_output_names[i]: outputs[i] for i, _ in enumerate(outputs)}
+        #
+        #     # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
+        #     # built into the IDL that all the values of a literal map are of the same type.
+        #     outputs_literal_map = _literal_models.LiteralMap(literals={
+        #         k: flyte_engine.python_value_to_idl_literal(context, v, self.interface.outputs[k].type) for k, v in
+        #         literals.items()
+        #     })
+        #     return {
+        #         _constants.OUTPUT_FILE_NAME: outputs_literal_map,
+        #     }
 
     def _get_container_definition(
             self,

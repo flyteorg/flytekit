@@ -101,7 +101,7 @@ def test_hive_task_query_generation():
             execution_date=_datetime.utcnow(),
             stats=None,  # TODO: A mock stats object that we can read later.
             logging=_logging,  # TODO: A mock logging object that we can read later.
-            tmp_dir=user_working_directory
+            tmp_dir=user_working_directory,
         )
         references = {
             name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))

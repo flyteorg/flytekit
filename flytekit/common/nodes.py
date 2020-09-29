@@ -7,7 +7,7 @@ import six as _six
 from sortedcontainers import SortedDict as _SortedDict
 
 from flytekit.common import constants as _constants
-from flytekit.common import sdk_bases as _sdk_bases, promise as _promise, component_nodes as _component_nodes
+from flytekit.common import sdk_bases as _sdk_bases, component_nodes as _component_nodes
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.mixins import hash as _hash_mixin, artifact as _artifact_mixin
@@ -97,6 +97,7 @@ class OutputParameterMapper(ParameterMapper):
         :param flytekit.common.types.FlyteSdkType sdk_type:
         :param Text name:
         """
+        from flytekit.common import promise as _promise
         return _promise.NodeOutput(sdk_node, sdk_type, name)
 
 

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import importlib as _importlib
 import os as _os
 
@@ -10,11 +8,13 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.common import utils as _utils
 from flytekit.common.exceptions import scopes as _scopes, system as _system_exceptions
-from flytekit.configuration import internal as _internal_config, TemporaryConfiguration as _TemporaryConfiguration
+from flytekit.configuration import internal as _internal_config, TemporaryConfiguration as _TemporaryConfiguration , platform as _platform_config
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces import random as _flyte_random
 from flytekit.models import literals as _literal_models
+from flytekit.common.tasks.sdk_runnable import SdkRunnableTaskStyle
+from flytekit.annotated import executors as _flyte_task_executors, context_manager as _flyte_context
 
 
 def _compute_array_job_index():
@@ -56,7 +56,8 @@ def _execute_task(task_module, task_name, inputs, output_prefix, test):
             task_module = _importlib.import_module(task_module)
             task_def = getattr(task_module, task_name)
 
-            if not test:
+            if not test and (not hasattr(task_def, "_task_style") or (
+                    hasattr(task_def, "_task_style") and task_def._task_style == SdkRunnableTaskStyle.V0)):
                 local_inputs_file = input_dir.get_named_tempfile('inputs.pb')
 
                 # Handle inputs/outputs for array job.
@@ -87,6 +88,25 @@ def _execute_task(task_module, task_name, inputs, output_prefix, test):
                     context={'output_prefix': output_prefix}
                 )
 
+            elif not test and hasattr(task_def, "_task_style") and task_def._task_style == SdkRunnableTaskStyle.V1:
+                cloud_provider = _platform_config.CLOUD_PROVIDER.get()
+                additional_context = {'output_prefix': output_prefix}
+                ctx = _flyte_context.FlyteContext.current_context()
+                with ctx.new_data_proxy_by_cloud_provider(cloud_provider=cloud_provider) as ctx:
+                    # First download the contents of the input file
+                    local_inputs_file = _os.path.join(ctx.workflow_execution_state.working_dir, 'inputs.pb')
+                    _data_proxy.Data.get_data(inputs, local_inputs_file)
+                    idl_input_literals = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+
+                    executor = _flyte_task_executors.get_executor(task_def)
+                    outputs_literal_map = executor.execute(ctx, task_def, idl_input_literals)
+                    print("That's all folks!")
+                    print(outputs_literal_map.literals)
+
+                    # Write the output back to file and write file to S3.
+                    # return {
+                    #     _constants.OUTPUT_FILE_NAME: outputs_literal_map,
+                    # }
 
 @_click.group()
 def _pass_through():

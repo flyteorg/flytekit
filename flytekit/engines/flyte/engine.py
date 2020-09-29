@@ -315,7 +315,8 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                                         }
                                     ),
                                     logging=_logging,
-                                    tmp_dir=task_dir
+                                    tmp_dir=task_dir,
+                                    raw_data_output_path="",
                                 ),
                                 inputs
                             )

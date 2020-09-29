@@ -111,7 +111,8 @@ class UnitTestEngineTask(_common_engine.BaseTaskExecutor):
                     execution_date=_datetime.utcnow(),
                     stats=MockStats(),
                     logging=_logging,  # TODO: A mock logging object that we can read later.
-                    tmp_dir=user_working_directory
+                    tmp_dir=user_working_directory,
+                    raw_data_output_path="",
                 ),
                 inputs
             )
