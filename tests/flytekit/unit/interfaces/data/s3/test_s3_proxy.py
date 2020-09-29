@@ -23,11 +23,13 @@ def test_random_path(mock_formatter):
     assert p.startswith("s3://raw-output")
 
 
+@_mock.patch("flytekit.interfaces.data.s3.s3proxy.AwsS3Proxy")
 @_mock.patch("flytekit.configuration.aws.BACKOFF_SECONDS")
 @_mock.patch("flytekit.interfaces.data.s3.s3proxy._subprocess")
-def test_retries(mock_subprocess, mock_delay):
+def test_retries(mock_subprocess, mock_delay, mock_proxy):
     mock_delay.get.return_value = 0
     mock_subprocess.check_call.side_effect = Exception("test exception (404)")
+    mock_proxy._check_binary.return_value = True
 
     proxy = _AwsS3Proxy()
     assert proxy.exists("s3://test/fdsa/fdsa") is False
