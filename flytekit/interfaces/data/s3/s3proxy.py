@@ -41,17 +41,18 @@ def _update_cmd_config_and_execute(cmd: List[str]):
         env[_aws_config.S3_SECRET_ACCESS_KEY_ENV_NAME] = _aws_config.S3_SECRET_ACCESS_KEY.get()
 
     retry = 0
-    try:
-        return _subprocess.check_call(cmd, env=env)
-    except Exception as e:
-        logging.error("Exception when trying to execute {}, reason: {}", cmd, str(e))
-        retry += 1
-        if retry > _aws_config.RETRIES.get():
-            raise
-        secs = _aws_config.BACKOFF_SECONDS.get()
-        logging.info("Sleeping before retrying again, after {} seconds".format(secs))
-        time.sleep(secs)
-        logging.info("Retrying again")
+    while True:
+        try:
+            return _subprocess.check_call(cmd, env=env)
+        except Exception as e:
+            logging.error(f"Exception when trying to execute {cmd}, reason: {str(e)}")
+            retry += 1
+            if retry > _aws_config.RETRIES.get():
+                raise
+            secs = _aws_config.BACKOFF_SECONDS.get()
+            logging.info("Sleeping before retrying again, after {} seconds".format(secs))
+            time.sleep(secs)
+            logging.info("Retrying again")
 
 
 def _extra_args(extra_args: Dict[str, str]) -> List[str]:
