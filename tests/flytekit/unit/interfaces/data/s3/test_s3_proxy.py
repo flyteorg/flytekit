@@ -27,7 +27,6 @@ def test_random_path(mock_formatter):
 @_mock.patch("flytekit.interfaces.data.s3.s3proxy._subprocess")
 def test_retries(mock_subprocess, mock_delay):
     mock_delay.get.return_value = 0
-    mock_subprocess.check_call = _mock.MagicMock()
     mock_subprocess.check_call.side_effect = Exception('test exception (404)')
 
     proxy = _AwsS3Proxy()
