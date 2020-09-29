@@ -22,6 +22,7 @@ from flytekit.models import task as _task_models
 from flytekit.plugins import pyspark as _pyspark
 import hashlib as _hashlib
 import json as _json
+import copy as _copy
 
 
 class GlobalSparkContext(object):
@@ -176,26 +177,9 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
         """
         Creates a new SparkJob instance with the modified configuration or timeouts
         """
-        if not new_spark_conf:
-            new_spark_conf = self._spark_job.spark_conf
-
-        if not new_hadoop_conf:
-            new_hadoop_conf = self._spark_job.hadoop_conf
-
-        tk = SdkSparkTask(
-            task_function=self.task_function,
-            task_type=self.type,
-            discovery_version=self._metadata.discovery_version,
-            retries=self._metadata.retries.retries if self._metadata.retries else None,
-            interruptible=self._metadata.interruptible,
-            deprecated=self._metadata.deprecated_error_message,
-            discoverable=self._metadata.discoverable,
-            timeout=self._metadata.timeout,
-            spark_type=self._spark_job.spark_type,
-            spark_conf=new_spark_conf,
-            hadoop_conf=new_hadoop_conf,
-            environment=self._container.env,
-        )
+        tk = _copy.deepcopy(self)
+        tk._spark_job = self._spark_job.with_overrides(new_spark_conf, new_hadoop_conf)
+        tk._custom = _MessageToDict(tk._spark_job.to_flyte_idl())
 
         salt = _hashlib.md5(_json.dumps(tk.custom, sort_keys=True).encode("utf-8")).hexdigest()
         tk._id._name = "{}-{}".format(self._id.name, salt)

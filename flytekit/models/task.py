@@ -1,6 +1,7 @@
 import json as _json
 
 import six as _six
+import typing
 from flyteidl.admin import task_pb2 as _admin_task
 from flyteidl.core import compiler_pb2 as _compiler
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -537,6 +538,24 @@ class SparkJob(_common.FlyteIdlEntity):
         self._executor_path = executor_path
         self._spark_conf = spark_conf
         self._hadoop_conf = hadoop_conf
+
+    def with_overrides(
+        self, new_spark_conf: typing.Dict[str, str] = None, new_hadoop_conf: typing.Dict[str, str] = None
+    ) -> "SparkJob":
+        if not new_spark_conf:
+            new_spark_conf = self.spark_conf
+
+        if not new_hadoop_conf:
+            new_hadoop_conf = self.hadoop_conf
+
+        return SparkJob(
+            spark_type=self.spark_type,
+            application_file=self.application_file,
+            main_class=self.main_class,
+            spark_conf=new_spark_conf,
+            hadoop_conf=new_hadoop_conf,
+            executor_path=self.executor_path,
+        )
 
     @property
     def main_class(self):
