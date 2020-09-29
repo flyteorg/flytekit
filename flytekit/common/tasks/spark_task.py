@@ -58,19 +58,19 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
     """
 
     def __init__(
-            self,
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            interruptible,
-            deprecated,
-            discoverable,
-            timeout,
-            spark_type,
-            spark_conf,
-            hadoop_conf,
-            environment,
+        self,
+        task_function,
+        task_type,
+        discovery_version,
+        retries,
+        interruptible,
+        deprecated,
+        discoverable,
+        timeout,
+        spark_type,
+        spark_conf,
+        hadoop_conf,
+        environment,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -170,9 +170,9 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
         # Trim off first two parameters as they are reserved for workflow_parameters and spark_context
         return set(_getargspec(self.task_function).args[2:])
 
-    def with_overrides(self,
-                       new_spark_conf: typing.Dict[str, str] = None,
-                       new_hadoop_conf: typing.Dict[str, str] = None):
+    def with_overrides(
+        self, new_spark_conf: typing.Dict[str, str] = None, new_hadoop_conf: typing.Dict[str, str] = None
+    ):
         """
         Creates a new SparkJob instance with the modified configuration or timeouts
         """
