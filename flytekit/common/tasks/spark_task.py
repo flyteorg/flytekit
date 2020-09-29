@@ -170,8 +170,9 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
         # Trim off first two parameters as they are reserved for workflow_parameters and spark_context
         return set(_getargspec(self.task_function).args[2:])
 
-    def with_conf(self, new_spark_conf: typing.Dict[str, str] = None,
-                  new_hadoop_conf: typing.Dict[str, str] = None):
+    def with_overrides(self,
+                       new_spark_conf: typing.Dict[str, str] = None,
+                       new_hadoop_conf: typing.Dict[str, str] = None):
         """
         Creates a new SparkJob instance with the modified configuration or timeouts
         """
@@ -180,9 +181,6 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
 
         if not new_hadoop_conf:
             new_hadoop_conf = self._spark_job.hadoop_conf
-
-        updates = {"spark": new_spark_conf, "hadoop": new_hadoop_conf}
-        salt = _hashlib.md5(_json.dumps(updates, sort_keys=True).encode("utf-8")).hexdigest()
 
         tk = SdkSparkTask(
             task_function=self.task_function,
@@ -199,6 +197,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
             environment=self._container.env,
         )
 
+        salt = _hashlib.md5(_json.dumps(tk.custom, sort_keys=True).encode("utf-8")).hexdigest()
         tk._id._name = "{}-{}".format(self._id.name, salt)
 
         return tk

@@ -53,8 +53,8 @@ def test_default_python_task():
 
 def test_overrides_spark_task():
     assert default_task.id.name == "name"
-    new_task = default_task.with_conf(new_spark_conf={"x": "1"}, new_hadoop_conf={"y": "2"})
-    assert new_task.id.name == "name-68e80c9654c8e336f82ad1c712a1371f"
+    new_task = default_task.with_overrides(new_spark_conf={"x": "1"}, new_hadoop_conf={"y": "2"})
+    assert new_task.id.name == "name-8f7fab3cf6805e1cf8d340b981d83942"
     assert new_task.custom["sparkConf"]["x"] == "1"
     assert new_task.custom["hadoopConf"]["y"] == "2"
 
@@ -62,3 +62,6 @@ def test_overrides_spark_task():
     assert default_task.custom["hadoopConf"]["C"] == "D"
 
     assert default_task.__hash__() != new_task.__hash__()
+
+    new_task2 = default_task.with_overrides(new_spark_conf={"x": "1"}, new_hadoop_conf={"y": "2"})
+    assert new_task2.id.name == new_task.id.name
