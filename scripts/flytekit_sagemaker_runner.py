@@ -92,6 +92,7 @@ def run(cli_args):
     print("stdout:")
     for line in proc.stdout.split('\n'):
         print(line)
+
     print("stderr:")
     for line in proc.stderr.split('\n'):
         print(line)
