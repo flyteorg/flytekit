@@ -1,4 +1,4 @@
-from configuration import TemporaryConfiguration
+from flytekit.configuration import TemporaryConfiguration
 from flytekit.common import constants as _sdk_constants
 from flytekit.sdk import tasks as _tasks
 from flytekit.sdk.types import Types as _Types
