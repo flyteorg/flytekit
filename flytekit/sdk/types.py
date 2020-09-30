@@ -395,6 +395,46 @@ class Types(object):
             )
     """
 
+    GenericProto = staticmethod(_proto.create_generic)
+    """
+    Use this to specify a custom protobuf type.
+
+    .. note::
+
+        The protobuf Python library should be installed on the PYTHONPATH to ensure the type engine can access the
+        appropriate Python code to deserialize the protobuf.
+
+    When used with an SDK-decorated method, expect this behavior from the default type engine:
+
+        As input:
+            1) If set, a Python protobuf object of the type specified in the definition.
+            2) If not set, a None value.
+
+        As output:
+            1) A Python protobuf object matching the type specified by the users.
+            2) Set None to null the output.
+
+        From command-line:
+            A base-64 encoded string of the serialized protobuf.
+
+    .. code-block:: python
+
+        from protos import my_protos_pb2
+
+        @inputs(a=Types.Proto(my_protos_pb2.Custom))
+        @outputs(b=Types.Proto(my_protos_pb2.Custom))
+        @python_task
+        def assert_and_create(wf_params, a, b):
+            assert a.field1 == 1
+            assert a.field2 == 'abc'
+            b.set(
+                my_protos_pb2.Custom(
+                    field1=100,
+                    field2='hello'
+                )
+            )
+    """
+
     List = staticmethod(_containers.List)
     """
     Use this to specify a list of any type--including nested lists.

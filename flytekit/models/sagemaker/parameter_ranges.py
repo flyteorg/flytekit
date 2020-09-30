@@ -1,7 +1,8 @@
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _idl_parameter_ranges
 
+from flytekit.common.exceptions import user
 from flytekit.models import common as _common
 
 
@@ -168,8 +169,11 @@ class ParameterRanges(_common.FlyteIdlEntity):
                 converted[k] = _idl_parameter_ranges.ParameterRangeOneOf(integer_parameter_range=v.to_flyte_idl())
             elif isinstance(v, ContinuousParameterRange):
                 converted[k] = _idl_parameter_ranges.ParameterRangeOneOf(continuous_parameter_range=v.to_flyte_idl())
-            else:
+            elif isinstance(v, CategoricalParameterRange):
                 converted[k] = _idl_parameter_ranges.ParameterRangeOneOf(categorical_parameter_range=v.to_flyte_idl())
+            else:
+                raise user.FlyteTypeException(received_type=type(v), expected_type=type(
+                    Union[IntegerParameterRange, ContinuousParameterRange, CategoricalParameterRange]))
 
         return _idl_parameter_ranges.ParameterRanges(parameter_range_map=converted,)
 

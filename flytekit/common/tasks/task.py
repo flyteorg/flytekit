@@ -63,6 +63,11 @@ class SdkTask(
             container=container,
         )
 
+    def _get_doc(self):
+        return "test"
+
+    __doc__ = property(_get_doc)
+
     @property
     def interface(self):
         """
