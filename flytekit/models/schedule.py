@@ -148,7 +148,9 @@ class Schedule(_common.FlyteIdlEntity):
             kickoff_time_input_arg=self.kickoff_time_input_arg,
             cron_expression=self.cron_expression,
             rate=self.rate.to_flyte_idl() if self.rate is not None else None,
-            cron_schedule_with_offset=self.cron_schedule_with_offset.to_flyte_idl() if self.cron_schedule_with_offset is not None else None,
+            cron_schedule_with_offset=self.cron_schedule_with_offset.to_flyte_idl()
+            if self.cron_schedule_with_offset is not None
+            else None,
         )
 
     @classmethod
@@ -161,5 +163,9 @@ class Schedule(_common.FlyteIdlEntity):
             pb2_object.kickoff_time_input_arg,
             cron_expression=pb2_object.cron_expression if pb2_object.HasField("cron_expression") else None,
             rate=Schedule.FixedRate.from_flyte_idl(pb2_object.rate) if pb2_object.HasField("rate") else None,
-            cron_schedule_with_offset=Schedule.CronScheduleWithOffset.from_flyte_idl(pb2_object.cron_schedule_with_offset) if pb2_object.HasField("cron_schedule_with_offset") else None,
+            cron_schedule_with_offset=Schedule.CronScheduleWithOffset.from_flyte_idl(
+                pb2_object.cron_schedule_with_offset
+            )
+            if pb2_object.HasField("cron_schedule_with_offset")
+            else None,
         )

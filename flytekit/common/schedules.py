@@ -133,7 +133,10 @@ class CronScheduleWithOffset(_ExtendedSchedule, metaclass=_sdk_bases.ExtendedSdk
         CronScheduleWithOffset._validate_schedule(schedule)
         if offset is not None:
             CronScheduleWithOffset._validate_offset(offset)
-        super(CronScheduleWithOffset, self).__init__(kickoff_time_input_arg, cron_schedule_with_offset=_schedule_models.Schedule.CronScheduleWithOffset(schedule, offset))
+        super(CronScheduleWithOffset, self).__init__(
+            kickoff_time_input_arg,
+            cron_schedule_with_offset=_schedule_models.Schedule.CronScheduleWithOffset(schedule, offset),
+        )
 
     @staticmethod
     def _validate_schedule(schedule):
@@ -149,4 +152,8 @@ class CronScheduleWithOffset(_ExtendedSchedule, metaclass=_sdk_bases.ExtendedSdk
         :param flytekit.models.schedule.Schedule base_model:
         :rtype: CronScheduleWithOffset
         """
-        return cls(base_model.cron_schedule_with_offset.schedule, base_model.cron_schedule_with_offset.offset, kickoff_time_input_arg=base_model.kickoff_time_input_arg,)
+        return cls(
+            base_model.cron_schedule_with_offset.schedule,
+            base_model.cron_schedule_with_offset.offset,
+            kickoff_time_input_arg=base_model.kickoff_time_input_arg,
+        )

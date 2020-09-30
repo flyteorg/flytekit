@@ -148,7 +148,10 @@ class SdkLaunchPlan(
             return True
         elif self.entity_metadata.schedule.rate and self.entity_metadata.schedule.rate.value:
             return True
-        elif self.entity_metadata.schedule.cron_schedule_with_offset and self.entity_metadata.schedule.cron_schedule_with_offset.schedule:
+        elif (
+            self.entity_metadata.schedule.cron_schedule_with_offset
+            and self.entity_metadata.schedule.cron_schedule_with_offset.schedule
+        ):
             return True
         else:
             return False
