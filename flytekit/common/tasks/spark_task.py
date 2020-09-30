@@ -1,8 +1,13 @@
+import typing
+
 try:
     from inspect import getfullargspec as _getargspec
 except ImportError:
     from inspect import getargspec as _getargspec
 
+import copy as _copy
+import hashlib as _hashlib
+import json as _json
 import os as _os
 import sys as _sys
 
@@ -86,14 +91,14 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
         if spark_exec_path.endswith(".pyc"):
             spark_exec_path = spark_exec_path[:-1]
 
-        spark_job = _task_models.SparkJob(
+        self._spark_job = _task_models.SparkJob(
             spark_conf=spark_conf,
             hadoop_conf=hadoop_conf,
             application_file="local://" + spark_exec_path,
             executor_path=_sys.executable,
             main_class="",
             spark_type=spark_type,
-        ).to_flyte_idl()
+        )
         super(SdkSparkTask, self).__init__(
             task_function,
             task_type,
@@ -112,7 +117,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
             discoverable,
             timeout,
             environment,
-            _MessageToDict(spark_job),
+            _MessageToDict(self._spark_job.to_flyte_idl()),
         )
 
     @_exception_scopes.system_entry_point
@@ -165,3 +170,20 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
     def _get_kwarg_inputs(self):
         # Trim off first two parameters as they are reserved for workflow_parameters and spark_context
         return set(_getargspec(self.task_function).args[2:])
+
+    def with_overrides(
+        self, new_spark_conf: typing.Dict[str, str] = None, new_hadoop_conf: typing.Dict[str, str] = None
+    ):
+        """
+        Creates a new SparkJob instance with the modified configuration or timeouts
+        """
+        tk = _copy.deepcopy(self)
+        tk._spark_job = self._spark_job.with_overrides(new_spark_conf, new_hadoop_conf)
+        tk._custom = _MessageToDict(tk._spark_job.to_flyte_idl())
+
+        salt = _hashlib.md5(_json.dumps(tk.custom, sort_keys=True).encode("utf-8")).hexdigest()
+        tk._id._name = "{}-{}".format(self._id.name, salt)
+        # We are overriding the platform name creation to prevent problems in dynamic
+        tk.assign_name(tk._id._name)
+
+        return tk

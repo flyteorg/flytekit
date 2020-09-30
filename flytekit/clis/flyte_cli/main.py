@@ -43,6 +43,8 @@ from flytekit.models.matchable_resource import ExecutionClusterLabel as _Executi
 from flytekit.models.matchable_resource import ExecutionQueueAttributes as _ExecutionQueueAttributes
 from flytekit.models.matchable_resource import MatchableResource as _MatchableResource
 from flytekit.models.matchable_resource import MatchingAttributes as _MatchingAttributes
+from flytekit.models.matchable_resource import PluginOverride as _PluginOverride
+from flytekit.models.matchable_resource import PluginOverrides as _PluginOverrides
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
 
@@ -1739,6 +1741,44 @@ def update_execution_cluster_label(host, insecure, project, domain, name, value)
         _click.echo(
             "Successfully updated execution cluster label for project: {} and domain: {}".format(project, domain)
         )
+
+
+@_flyte_cli.command("update-plugin-override", cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+@_project_option
+@_domain_option
+@_optional_name_option
+@_click.option("--task-type", help="Task type for which to apply plugin implementation overrides")
+@_click.option("--plugin-id", multiple=True, help="Plugin id(s) to be used in place of the default for the task type.")
+@_click.option(
+    "--missing-plugin-behavior", help="Behavior when no specified plugin_id has an associated handler.", default="FAIL"
+)
+def update_plugin_override(host, insecure, project, domain, name, task_type, plugin_id, missing_plugin_behavior):
+    """
+    Plugin ids designating non-default plugin handlers to be used for tasks of a certain type.
+
+    e.g.
+        $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-plugin-override --task-type python \
+            --plugin-id my_cool_plugin --plugin-id my_fallback_plugin --missing-plugin-behavior FAIL
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    plugin_override = _PluginOverride(
+        task_type, list(plugin_id), _PluginOverride.string_to_enum(missing_plugin_behavior.upper())
+    )
+    matching_attributes = _MatchingAttributes(plugin_overrides=_PluginOverrides(overrides=[plugin_override]))
+
+    if name is not None:
+        client.update_workflow_attributes(project, domain, name, matching_attributes)
+        _click.echo(
+            "Successfully updated plugin override for project: {}, domain: {}, and workflow: {}".format(
+                project, domain, name
+            )
+        )
+    else:
+        client.update_project_domain_attributes(project, domain, matching_attributes)
+        _click.echo("Successfully updated plugin override for project: {} and domain: {}".format(project, domain))
 
 
 @_flyte_cli.command("get-matching-attributes", cls=_FlyteSubCommand)

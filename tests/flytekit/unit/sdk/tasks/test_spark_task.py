@@ -16,7 +16,7 @@ from flytekit.sdk.types import Types
 @outputs(out1=Types.String)
 @spark_task(spark_conf={"A": "B"}, hadoop_conf={"C": "D"})
 def default_task(wf_params, sc, in1, out1):
-    pass
+    out1.set("hello")
 
 
 default_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, "project", "domain", "name", "version")
@@ -49,3 +49,28 @@ def test_default_python_task():
     pb2 = default_task.to_flyte_idl()
     assert pb2.custom["sparkConf"]["A"] == "B"
     assert pb2.custom["hadoopConf"]["C"] == "D"
+
+
+def test_overrides_spark_task():
+    assert default_task.id.name == "name"
+    new_task = default_task.with_overrides(new_spark_conf={"x": "1"}, new_hadoop_conf={"y": "2"})
+    assert isinstance(new_task, _spark_task.SdkSparkTask)
+    assert new_task.id.name.startswith("name-")
+    assert new_task.custom["sparkConf"]["x"] == "1"
+    assert new_task.custom["hadoopConf"]["y"] == "2"
+
+    assert default_task.custom["sparkConf"]["A"] == "B"
+    assert default_task.custom["hadoopConf"]["C"] == "D"
+
+    assert default_task.has_valid_name is False
+    default_task.assign_name("my-task")
+    assert default_task.has_valid_name
+    assert new_task.interface == default_task.interface
+
+    assert default_task.__hash__() != new_task.__hash__()
+
+    new_task2 = default_task.with_overrides(new_spark_conf={"x": "1"}, new_hadoop_conf={"y": "2"})
+    assert new_task2.id.name == new_task.id.name
+
+    t = new_task(in1=1)
+    assert t.outputs["out1"] is not None
