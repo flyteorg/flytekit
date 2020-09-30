@@ -88,11 +88,7 @@ def run(cli_args):
     # Launching a subprocess with the selected entrypoint script and the rest of the arguments
     logging.info(f"Launching command: {flyte_cmd}")
     print(f"Launching command: {flyte_cmd}")
-    proc = subprocess.run(flyte_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8')
-    print("stdout:")
-    for line in proc.stdout.split('\n'):
-        print(line)
-
+    subprocess.run(flyte_cmd, stdout=sys.stdout, stderr=sys.stderr, encoding='utf-8')
 
 
 if __name__ == "__main__":
