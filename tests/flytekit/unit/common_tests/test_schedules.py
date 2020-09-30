@@ -51,6 +51,51 @@ def test_fixed_rate_negative_duration():
     pass
 
 
+@_pytest.mark.parametrize(
+    "schedule",
+    [
+        "hourly",
+        "hours",
+        "@hourly",
+        "daily",
+        "days",
+        "@daily",
+        "weekly",
+        "weeks",
+        "@weekly",
+        "monthly",
+        "months",
+        "@monthly",
+        "annually",
+        "@annually",
+        "yearly",
+        "years",
+        "@yearly",
+    ],
+)
+def test_schedule_validation_alias(schedule):
+    obj = _schedules.CronScheduleWithOffset(schedule, kickoff_time_input_arg="abc")
+    assert obj.cron_schedule_with_offset.schedule == schedule
+
+
+def test_schedule_validation_cron_expression():
+    obj = _schedules.CronScheduleWithOffset("* * * * *", kickoff_time_input_arg="abc")
+    assert obj.cron_schedule_with_offset.schedule == "* * * * *"
+
+
+@_pytest.mark.parametrize(
+    "schedule", ["foo", "* *"],
+)
+def test_schedule_validation_invalid(schedule):
+    with _pytest.raises(_user_exceptions.FlyteAssertion):
+        _schedules.CronScheduleWithOffset(schedule, kickoff_time_input_arg="abc")
+
+
+def test_offset_validation_invalid():
+    with _pytest.raises(_user_exceptions.FlyteAssertion):
+        _schedules.CronScheduleWithOffset("days", "foo", kickoff_time_input_arg="abc")
+
+
 def test_cron_schedule_with_offset():
     obj = _schedules.CronScheduleWithOffset("days", kickoff_time_input_arg="abc")
     assert obj.cron_schedule_with_offset.schedule == "days"

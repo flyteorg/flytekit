@@ -1,4 +1,5 @@
 import datetime as _datetime
+import re as _re
 
 import croniter as _croniter
 
@@ -125,6 +126,29 @@ class FixedRate(_ExtendedSchedule, metaclass=_sdk_bases.ExtendedSdkType):
 
 
 class CronScheduleWithOffset(_ExtendedSchedule, metaclass=_sdk_bases.ExtendedSdkType):
+    _VALID_CRON_ALIASES = [
+        "hourly",
+        "hours",
+        "@hourly",
+        "daily",
+        "days",
+        "@daily",
+        "weekly",
+        "weeks",
+        "@weekly",
+        "monthly",
+        "months",
+        "@monthly",
+        "annually",
+        "@annually",
+        "yearly",
+        "years",
+        "@yearly",
+    ]
+
+    # Not a perfect regex but good enough and simple to reason about
+    _OFFSET_PATTERN = _re.compile("([-+]?)P([-+0-9YMWD]+)?(T([-+0-9HMS.,]+)?)?")
+
     def __init__(self, schedule, offset=None, kickoff_time_input_arg=None):
         """
         :param Text cron_expression:
@@ -140,11 +164,26 @@ class CronScheduleWithOffset(_ExtendedSchedule, metaclass=_sdk_bases.ExtendedSdk
 
     @staticmethod
     def _validate_schedule(schedule):
-        pass
+        if schedule is None:
+            raise _user_exceptions.FlyteAssertion(
+                "Schedule must be set to either a cron alias or valid cron expression"
+            )
+
+        if schedule not in CronScheduleWithOffset._VALID_CRON_ALIASES:
+            try:
+                _croniter.croniter(schedule)
+            except Exception:
+                raise _user_exceptions.FlyteAssertion(
+                    "Schedule is invalid. It must be set to either a cron alias or valid cron expression."
+                    " Provided schedule: {}".format(schedule)
+                )
 
     @staticmethod
     def _validate_offset(offset):
-        pass
+        if CronScheduleWithOffset._OFFSET_PATTERN.fullmatch(offset) is None:
+            raise _user_exceptions.FlyteAssertion(
+                "Offset is invalid. It must be an ISO 8601 duration. Provided offset: {}".format(offset)
+            )
 
     @classmethod
     def promote_from_model(cls, base_model):
