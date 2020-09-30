@@ -1,7 +1,7 @@
 import json as _json
+import typing
 
 import six as _six
-import typing
 from flyteidl.admin import task_pb2 as _admin_task
 from flyteidl.core import compiler_pb2 as _compiler
 from flyteidl.core import literals_pb2 as _literals_pb2

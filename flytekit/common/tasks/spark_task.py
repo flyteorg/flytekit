@@ -5,6 +5,9 @@ try:
 except ImportError:
     from inspect import getargspec as _getargspec
 
+import copy as _copy
+import hashlib as _hashlib
+import json as _json
 import os as _os
 import sys as _sys
 
@@ -20,9 +23,6 @@ from flytekit.common.types import helpers as _type_helpers
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_models
 from flytekit.plugins import pyspark as _pyspark
-import hashlib as _hashlib
-import json as _json
-import copy as _copy
 
 
 class GlobalSparkContext(object):
