@@ -59,7 +59,7 @@ class Schedule(_common.FlyteIdlEntity):
             :param flyteidl.admin.schedule_pb2.FixedRate pb2_object:
             :rtype: Schedule.FixedRate
             """
-            return cls(pb2_object.value, pb2_object.unit)\
+            return cls(pb2_object.value, pb2_object.unit)
 
     class CronScheduleWithOffset(_common.FlyteIdlEntity):
         def __init__(self, schedule, offset):

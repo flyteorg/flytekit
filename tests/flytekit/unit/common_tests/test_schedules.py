@@ -49,3 +49,15 @@ def test_fixed_rate_bad_duration():
 
 def test_fixed_rate_negative_duration():
     pass
+
+
+def test_cron_schedule_with_offset():
+    obj = _schedules.CronScheduleWithOffset("days", kickoff_time_input_arg="abc")
+    assert obj.cron_schedule_with_offset.schedule == "days"
+    assert obj.cron_schedule_with_offset.offset is None
+    assert obj == _schedules.CronScheduleWithOffset.from_flyte_idl(obj.to_flyte_idl())
+
+    obj = _schedules.CronScheduleWithOffset("days", "P1D", kickoff_time_input_arg="abc")
+    assert obj.cron_schedule_with_offset.schedule == "days"
+    assert obj.cron_schedule_with_offset.offset == "P1D"
+    assert obj == _schedules.CronScheduleWithOffset.from_flyte_idl(obj.to_flyte_idl())
