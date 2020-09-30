@@ -130,7 +130,7 @@ class Schedule(_common.FlyteIdlEntity):
         return self._rate
 
     @property
-    def cron_schedule_with_offsetrate(self):
+    def cron_schedule_with_offset(self):
         """
         :rtype: Schedule.CronScheduleWithOffset
         """
@@ -138,7 +138,7 @@ class Schedule(_common.FlyteIdlEntity):
 
     @property
     def schedule_expression(self):
-        return self.cron_expression or self.rate or self.cron_schedule_with_offsetrate
+        return self.cron_expression or self.rate or self.cron_schedule_with_offset
 
     def to_flyte_idl(self):
         """
