@@ -83,6 +83,9 @@ class TrackableEntity(FlyteEntity, metaclass=_InstanceTracker):
         """
         return self._platform_valid_name
 
+    def assign_name(self, name):
+        self._platform_valid_name = name
+
     def auto_assign_name(self):
         """
         This function is a bit of trickster Python code that goes hand in hand with the _InstanceTracker metaclass
