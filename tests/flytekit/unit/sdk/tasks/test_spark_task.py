@@ -43,6 +43,8 @@ def test_default_python_task():
     assert len(default_task.container.resources.requests) == 0
     assert default_task.custom["sparkConf"]["A"] == "B"
     assert default_task.custom["hadoopConf"]["C"] == "D"
+    assert default_task.hadoop_conf["C"] == "D"
+    assert default_task.spark_conf["A"] == "B"
     assert _os.path.abspath(_entrypoint.__file__)[:-1] in default_task.custom["mainApplicationFile"]
     assert default_task.custom["executorPath"] == _sys.executable
 
