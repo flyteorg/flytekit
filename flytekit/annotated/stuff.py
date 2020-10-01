@@ -210,7 +210,6 @@ class PythonTask(object):
         #     nothing. Subsequent tasks will have to know how to unwrap these. If by chance a non-Flyte task uses a
         #     task output as an input, things probably will fail pretty obviously.
         if len(args) > 0:
-            logger.warn
             raise _user_exceptions.FlyteAssertion(
                 f"When adding a task as a node in a workflow, all inputs must be specified with kwargs only.  We "
                 f"detected {len(args)} positional args {args}"
@@ -237,7 +236,6 @@ class PythonTask(object):
                 )
 
             # Detect upstream nodes
-            # TODO: This becomes more complicated if dealing with lists/dicts that contain NodeOutputs
             upstream_nodes = [input_val.sdk_node for input_val in kwargs.values() if isinstance(input_val, _NodeOutput)]
 
             # TODO: Make the metadata name the full name of the (function)?
