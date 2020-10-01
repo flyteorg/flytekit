@@ -161,6 +161,14 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
             )
         }
 
+    @property
+    def spark_conf(self):
+        return self._spark_job.spark_conf
+
+    @property
+    def hadoop_conf(self):
+        return self._spark_job.hadoop_conf
+
     def _get_container_definition(self, **kwargs):
         """
         :rtype: SdkRunnableSparkContainer
