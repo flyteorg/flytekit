@@ -169,7 +169,7 @@ class CronScheduleWithOffset(_ExtendedSchedule, metaclass=_sdk_bases.ExtendedSdk
                 "Schedule must be set to either a cron alias or valid cron expression"
             )
 
-        if schedule not in CronScheduleWithOffset._VALID_CRON_ALIASES:
+        if schedule.lower() not in CronScheduleWithOffset._VALID_CRON_ALIASES:
             try:
                 _croniter.croniter(schedule)
             except Exception:
