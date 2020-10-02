@@ -43,13 +43,12 @@ def test_schedule_cron_schedule(offset):
     cs = _schedule.Schedule.CronSchedule("days", offset)
     obj = _schedule.Schedule(cron_schedule=cs, kickoff_time_input_arg="fdsa")
     assert obj.cron_schedule.schedule == "days"
-    assert obj.cron_schedule.offset == offset
+    assert obj.schedule_expression == cs
     assert obj.rate is None
     assert obj.cron_expression is None
 
     obj2 = _schedule.Schedule.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
-    assert obj2.cron_schedule.schedule == "days"
-    assert obj2.cron_schedule.offset == offset
+    assert obj2.schedule_expression == cs
     assert obj.rate is None
     assert obj.cron_expression is None
