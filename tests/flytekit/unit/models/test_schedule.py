@@ -3,7 +3,7 @@ import pytest as _pytest
 from flytekit.models import schedule as _schedule
 
 
-def test_schedule():
+def test_schedule_cron_expression():
     obj = _schedule.Schedule(kickoff_time_input_arg="fdsa", cron_expression="1 2 3 4 5 6")
     assert obj.rate is None
     assert obj.cron_expression == "1 2 3 4 5 6"
@@ -39,7 +39,7 @@ def test_schedule_fixed_rate():
 @_pytest.mark.parametrize(
     "offset", [None, "P1D"],
 )
-def test_schedule(offset):
+def test_schedule_cron_schedule(offset):
     cs = _schedule.Schedule.CronSchedule("days", offset)
     obj = _schedule.Schedule(cron_schedule=cs, kickoff_time_input_arg="fdsa")
     assert obj.cron_schedule.schedule == "days"
