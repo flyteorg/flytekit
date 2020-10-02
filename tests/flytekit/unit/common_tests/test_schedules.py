@@ -89,8 +89,7 @@ def test_schedule_validation_cron_expression():
 
 
 @_pytest.mark.parametrize(
-    "schedule",
-    ["foo", "* *"],
+    "schedule", ["foo", "* *"],
 )
 def test_schedule_validation_invalid(schedule):
     with _pytest.raises(_user_exceptions.FlyteAssertion):
