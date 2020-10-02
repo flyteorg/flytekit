@@ -1,3 +1,5 @@
+import pytest as _pytest
+
 from flytekit.models import schedule as _schedule
 
 
@@ -34,17 +36,20 @@ def test_schedule_fixed_rate():
     assert obj2.schedule_expression == fr
 
 
-def test_schedule_with_offset():
-    cso = _schedule.Schedule.CronScheduleWithOffset("days", None)
-    obj = _schedule.Schedule(cron_schedule_with_offset=cso, kickoff_time_input_arg="fdsa")
-    assert obj.cron_schedule_with_offset.schedule == "days"
-    assert obj.cron_schedule_with_offset.offset is None
+@_pytest.mark.parametrize(
+    "offset", [None, "P1D"],
+)
+def test_schedule(offset):
+    cs = _schedule.Schedule.CronSchedule("days", offset)
+    obj = _schedule.Schedule(cron_schedule=cs, kickoff_time_input_arg="fdsa")
+    assert obj.cron_schedule.schedule == "days"
+    assert obj.cron_schedule.offset == offset
     assert obj.rate is None
     assert obj.cron_expression is None
 
     obj2 = _schedule.Schedule.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
-    assert obj2.cron_schedule_with_offset.schedule == "days"
-    assert obj2.cron_schedule_with_offset.offset == ""
+    assert obj2.cron_schedule.schedule == "days"
+    assert obj2.cron_schedule.offset == offset
     assert obj.rate is None
     assert obj.cron_expression is None
