@@ -27,7 +27,6 @@ from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import set_flyte_config_file
-from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import common as _common_models
 from flytekit.models import filters as _filters
