@@ -1046,13 +1046,14 @@ def watch_execution(host, insecure, urn):
     """
     _welcome_message()
 
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    ex_id = _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
+
+    execution = _workflow_execution_common.SdkWorkflowExecution.promote_from_model(client.get_execution(ex_id))
+
+    _click.echo("Waiting for the execution {} to complete ...".format(_tt(execution.id)))
+
     with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
-        client = _flyte_engine.get_client()
-        ex_id = _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
-
-        execution = _workflow_execution_common.SdkWorkflowExecution.promote_from_model(client.get_execution(ex_id))
-
-        _click.echo("Waiting for the execution {} to complete ...".format(_tt(execution.id)))
         execution.wait_for_completion()
 
 
