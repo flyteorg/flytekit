@@ -27,6 +27,7 @@ from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import set_flyte_config_file
+from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import common as _common_models
 from flytekit.models import filters as _filters
@@ -1045,13 +1046,14 @@ def watch_execution(host, insecure, urn):
     """
     _welcome_message()
 
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
-    ex_id = _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
+    with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
+        client = _flyte_engine.get_client()
+        ex_id = _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
 
-    execution = _workflow_execution_common.SdkWorkflowExecution.promote_from_model(client.get_execution(ex_id))
+        execution = _workflow_execution_common.SdkWorkflowExecution.promote_from_model(client.get_execution(ex_id))
 
-    _click.echo("Waiting for the execution {} to complete ...".format(_tt(execution.id)))
-    execution.wait_for_completion()
+        _click.echo("Waiting for the execution {} to complete ...".format(_tt(execution.id)))
+        execution.wait_for_completion()
 
 
 @_flyte_cli.command("relaunch-execution", cls=_FlyteSubCommand)
