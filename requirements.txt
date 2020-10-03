@@ -61,7 +61,7 @@ pytimeparse==1.1.8        # via flytekit
 pytz==2018.4              # via flytekit, pandas
 pyyaml==5.3.1             # via papermill
 pyzmq==19.0.2             # via jupyter-client
-regex==2020.7.14          # via black
+regex==2020.9.27          # via black
 requests==2.24.0          # via flytekit, papermill, responses
 responses==0.12.0         # via flytekit
 s3transfer==0.3.3         # via boto3
