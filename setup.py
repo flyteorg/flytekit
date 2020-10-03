@@ -5,12 +5,6 @@ from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
 
 extras_require = LazyLoadPlugin.get_extras_require()
 
-extras_require[':python_version<"3"'] = [
-    "configparser>=3.0.0,<4.0.0",
-    "futures>=3.2.0,<4.0.0",
-    "pathlib2>=2.3.2,<3.0.0",
-]
-
 setup(
     name="flytekit",
     version=flytekit.__version__,
