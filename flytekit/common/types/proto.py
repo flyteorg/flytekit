@@ -64,7 +64,7 @@ class Protobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
 
     def __init__(self, pb_object: Union[GeneratedProtocolMessageType, FlyteIdlEntity]):
         """
-        :param Union[T, FlyteIdlEntity] pb_object:
+        :param Union[GeneratedProtocolMessageType, FlyteIdlEntity] pb_object:
         """
         v = pb_object
         if isinstance(pb_object, FlyteIdlEntity):
@@ -163,11 +163,11 @@ class Protobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
 class GenericProtobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
     PB_FIELD_KEY = "pb_type"
     TAG_PREFIX = "{}=".format(PB_FIELD_KEY)
-    _pb_type = T
+    _pb_type = None
 
     def __init__(self, pb_object: Union[GeneratedProtocolMessageType, FlyteIdlEntity]):
         """
-        :param Union[T, FlyteIdlEntity] pb_object:
+        :param Union[GeneratedProtocolMessageType, FlyteIdlEntity] pb_object:
         """
         struct = Struct()
         v = pb_object
@@ -185,7 +185,7 @@ class GenericProtobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
         return isinstance(other, ProtobufType) and other.pb_type is cls.pb_type
 
     @classmethod
-    def from_python_std(cls, t_value: Union[T, FlyteIdlEntity]):
+    def from_python_std(cls, t_value: Union[GeneratedProtocolMessageType, FlyteIdlEntity]):
         """
         :param Union[T, FlyteIdlEntity] t_value: It is up to each individual object as to whether or not this value can be cast.
         :rtype: _base_sdk_types.FlyteSdkValue
@@ -261,12 +261,12 @@ class GenericProtobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
 ProtobufT = Type[_proto_reflection.GeneratedProtocolMessageType]
 
 
-def create_generic(pb_type: ProtobufT) -> Type[GenericProtobuf[ProtobufT]]:
+def create_generic(pb_type: ProtobufT) -> Type[GenericProtobuf]:
     """
     Creates a generic protobuf type that represents protobuf type ProtobufT and that will get serialized into a struct.
 
     :param ProtobufT pb_type:
-    :rtype: Type[GenericProtobuf[ProtobufT]]
+    :rtype: Type[GenericProtobuf]
     """
     if not isinstance(pb_type, _proto_reflection.GeneratedProtocolMessageType):
         raise _user_exceptions.FlyteTypeException(
@@ -275,7 +275,7 @@ def create_generic(pb_type: ProtobufT) -> Type[GenericProtobuf[ProtobufT]]:
             received_value=pb_type,
         )
 
-    class _Protobuf(GenericProtobuf[T]):
+    class _Protobuf(GenericProtobuf):
         _pb_type = pb_type
 
     return _Protobuf
