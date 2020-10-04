@@ -11,23 +11,24 @@ from flytekit.common.tasks.sagemaker import hpo_job_task
 from flytekit.common.tasks.sagemaker.built_in_training_job_task import SdkBuiltinAlgorithmTrainingJobTask
 from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
 from flytekit.common.tasks.sagemaker.hpo_job_task import (
-    SdkSimpleHyperparameterTuningJobTask,
     HyperparameterTuningJobConfig,
+    SdkSimpleHyperparameterTuningJobTask,
 )
 from flytekit.models import types as _idl_types
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import types as _core_types
+from flytekit.models.sagemaker.hpo_job import HyperparameterTuningJobConfig as _HyperparameterTuningJobConfig
 from flytekit.models.sagemaker.hpo_job import (
-    HyperparameterTuningStrategy,
-    HyperparameterTuningObjectiveType,
     HyperparameterTuningObjective,
+    HyperparameterTuningObjectiveType,
+    HyperparameterTuningStrategy,
     TrainingJobEarlyStoppingType,
-    HyperparameterTuningJobConfig as _HyperparameterTuningJobConfig,
 )
 from flytekit.models.sagemaker.parameter_ranges import (
-    IntegerParameterRange,
     ContinuousParameterRange,
-    HyperparameterScalingType, ParameterRangeOneOf,
+    HyperparameterScalingType,
+    IntegerParameterRange,
+    ParameterRangeOneOf,
 )
 from flytekit.models.sagemaker.training_job import (
     AlgorithmName,
@@ -41,7 +42,7 @@ from flytekit.sdk import types as _sdk_types
 from flytekit.sdk.sagemaker.task import custom_training_job_task
 from flytekit.sdk.tasks import inputs, outputs
 from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class, Input, Output
+from flytekit.sdk.workflow import Input, Output, workflow_class
 
 example_hyperparams = {
     "base_score": "0.5",

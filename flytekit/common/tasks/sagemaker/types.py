@@ -1,7 +1,5 @@
-from flyteidl.plugins.sagemaker import (
-    hyperparameter_tuning_job_pb2 as _pb2_hpo_job,
-    parameter_ranges_pb2 as _pb2_parameter_ranges,
-)
+from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
+from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _pb2_parameter_ranges
 
 from flytekit.sdk import types as _sdk_types
 

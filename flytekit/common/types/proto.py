@@ -1,9 +1,11 @@
 import base64 as _base64
-from typing import TypeVar, Generic, Union, Type
+from typing import Generic, Type, TypeVar, Union
 
 import six as _six
 from google.protobuf import reflection as _proto_reflection
-from google.protobuf.json_format import MessageToDict as _MessageToDict, ParseDict as _ParseDict, Error
+from google.protobuf.json_format import Error
+from google.protobuf.json_format import MessageToDict as _MessageToDict
+from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.reflection import GeneratedProtocolMessageType
 from google.protobuf.struct_pb2 import Struct
 

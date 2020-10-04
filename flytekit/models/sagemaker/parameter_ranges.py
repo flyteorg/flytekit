@@ -1,4 +1,4 @@
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Optional, Union
 
 from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _idl_parameter_ranges
 
