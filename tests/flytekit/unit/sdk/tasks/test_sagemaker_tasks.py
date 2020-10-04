@@ -25,10 +25,9 @@ from flytekit.models.sagemaker.hpo_job import (
     HyperparameterTuningJobConfig as _HyperparameterTuningJobConfig,
 )
 from flytekit.models.sagemaker.parameter_ranges import (
-    ParameterRanges,
     IntegerParameterRange,
     ContinuousParameterRange,
-    HyperparameterScalingType,
+    HyperparameterScalingType, ParameterRangeOneOf,
 )
 from flytekit.models.sagemaker.training_job import (
     AlgorithmName,
@@ -148,6 +147,7 @@ simple_xgboost_hpo_job_task = hpo_job_task.SdkSimpleHyperparameterTuningJobTask(
     cache_version="1",
     retries=2,
     cacheable=True,
+    tunable_parameters=["num_round", "gamma", "max_depth"],
 )
 
 simple_xgboost_hpo_job_task._id = _identifier.Identifier(
@@ -245,19 +245,6 @@ def test_simple_hpo_job_task_interface():
         hyperparameter_tuning_job_config = Input(
             HyperparameterTuningJobConfig,
             default=_HyperparameterTuningJobConfig(
-                hyperparameter_ranges=ParameterRanges(
-                    parameter_range_map={
-                        "num_round": IntegerParameterRange(
-                            min_value=3, max_value=10, scaling_type=HyperparameterScalingType.LINEAR
-                        ),
-                        "max_depth": IntegerParameterRange(
-                            min_value=5, max_value=7, scaling_type=HyperparameterScalingType.LINEAR
-                        ),
-                        "gamma": ContinuousParameterRange(
-                            min_value=0.0, max_value=0.3, scaling_type=HyperparameterScalingType.LINEAR
-                        ),
-                    }
-                ),
                 tuning_strategy=HyperparameterTuningStrategy.BAYESIAN,
                 tuning_objective=HyperparameterTuningObjective(
                     objective_type=HyperparameterTuningObjectiveType.MINIMIZE, metric_name="validation:error",
@@ -271,6 +258,15 @@ def test_simple_hpo_job_task_interface():
             validation=validation_dataset,
             static_hyperparameters=static_hyperparameters,
             hyperparameter_tuning_job_config=hyperparameter_tuning_job_config,
+            num_round=ParameterRangeOneOf(IntegerParameterRange(
+                min_value=3, max_value=10, scaling_type=HyperparameterScalingType.LINEAR
+            )),
+            max_depth=ParameterRangeOneOf(IntegerParameterRange(
+                min_value=5, max_value=7, scaling_type=HyperparameterScalingType.LINEAR
+            )),
+            gamma=ParameterRangeOneOf(ContinuousParameterRange(
+                min_value=0.0, max_value=0.3, scaling_type=HyperparameterScalingType.LINEAR
+            )),
         )
 
     with _configuration.TemporaryConfiguration(
