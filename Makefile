@@ -37,11 +37,11 @@ test: lint ## Run tests
 	shellcheck **/*.sh
 
 requirements.txt: export CUSTOM_COMPILE_COMMAND := make requirements.txt
-requirements.txt: requirements.in _install-piptools
+requirements.txt: requirements.in install-piptools
 	$(call PIP_COMPILE,requirements.in)
 
 dev-requirements.txt: export CUSTOM_COMPILE_COMMAND := make dev-requirements.txt
-dev-requirements.txt: dev-requirements.in requirements.txt _install-piptools
+dev-requirements.txt: dev-requirements.in requirements.txt install-piptools
 	$(call PIP_COMPILE,dev-requirements.in)
 
 .PHONY: requirements

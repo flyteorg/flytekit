@@ -8,6 +8,7 @@ from flytekit.common import notifications as _notifications
 from flytekit.common import schedules as _schedules
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import common as _common_models
+from flytekit.models import schedule as _schedule
 from flytekit.models import types as _type_models
 from flytekit.models.core import execution as _execution
 from flytekit.models.core import identifier as _identifier
@@ -127,7 +128,21 @@ def test_no_additional_inputs():
     assert lp.default_inputs.parameters["required_input"].required is True
 
 
-def test_schedule():
+@_pytest.mark.parametrize(
+    "schedule,cron_expression,cron_schedule",
+    [
+        (_schedules.CronSchedule("* * ? * * *"), "* * ? * * *", None),
+        (_schedules.CronSchedule(cron_expression="* * ? * * *"), "* * ? * * *", None),
+        (_schedules.CronSchedule(cron_expression="0/15 * * * ? *"), "0/15 * * * ? *", None),
+        (_schedules.CronSchedule(schedule="* * * * *"), None, _schedule.Schedule.CronSchedule("* * * * *", None)),
+        (
+            _schedules.CronSchedule(schedule="* * * * *", offset="P1D"),
+            None,
+            _schedule.Schedule.CronSchedule("* * * * *", "P1D"),
+        ),
+    ],
+)
+def test_schedule(schedule, cron_expression, cron_schedule):
     workflow_to_test = _workflow.workflow(
         {},
         inputs={
@@ -135,11 +150,10 @@ def test_schedule():
             "default_input": _workflow.Input(_types.Types.Integer, default=5),
         },
     )
-    lp = workflow_to_test.create_launch_plan(
-        fixed_inputs={"required_input": 5}, schedule=_schedules.CronSchedule("* * ? * * *"), role="what",
-    )
+    lp = workflow_to_test.create_launch_plan(fixed_inputs={"required_input": 5}, schedule=schedule, role="what",)
     assert lp.entity_metadata.schedule.kickoff_time_input_arg is None
-    assert lp.entity_metadata.schedule.cron_expression == "* * ? * * *"
+    assert lp.entity_metadata.schedule.cron_expression == cron_expression
+    assert lp.entity_metadata.schedule.cron_schedule == cron_schedule
     assert lp.is_scheduled
 
 
