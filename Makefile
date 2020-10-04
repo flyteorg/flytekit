@@ -17,6 +17,10 @@ install-piptools:
 setup: install-piptools ## Install requirements
 	pip-sync requirements.txt dev-requirements.txt
 
+.PHONY: setup-spark3
+setup-spark3: install-piptools ## Install requirements
+	pip-sync requirements-spark3.txt dev-requirements.txt
+
 .PHONY: fmt
 fmt: ## Format code with black and isort
 	black .
