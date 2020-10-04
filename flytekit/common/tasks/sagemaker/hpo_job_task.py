@@ -20,14 +20,14 @@ from flytekit.models.sagemaker import hpo_job as _hpo_job_model
 
 class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
     def __init__(
-            self,
-            max_number_of_training_jobs: int,
-            max_parallel_training_jobs: int,
-            training_job: typing.Union[SdkBuiltinAlgorithmTrainingJobTask, CustomTrainingJobTask],
-            retries: int = 0,
-            cacheable: bool = False,
-            cache_version: str = "",
-            tunable_parameters: typing.List[str] = None,
+        self,
+        max_number_of_training_jobs: int,
+        max_parallel_training_jobs: int,
+        training_job: typing.Union[SdkBuiltinAlgorithmTrainingJobTask, CustomTrainingJobTask],
+        retries: int = 0,
+        cacheable: bool = False,
+        cache_version: str = "",
+        tunable_parameters: typing.List[str] = None,
     ):
         """
         :param int max_number_of_training_jobs: The maximum number of training jobs that can be launched by this
