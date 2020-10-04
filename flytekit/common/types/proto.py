@@ -1,5 +1,5 @@
 import base64 as _base64
-from typing import Type, Union, TypeVar, Generic
+from typing import Generic, Type, TypeVar, Union
 
 import six as _six
 from google.protobuf import reflection as _proto_reflection
@@ -16,7 +16,7 @@ from flytekit.models import types as _idl_types
 from flytekit.models.common import FlyteIdlEntity
 from flytekit.models.types import LiteralType
 
-T = TypeVar('T')
+T = TypeVar("T")
 ProtobufT = Type[_proto_reflection.GeneratedProtocolMessageType]
 
 
@@ -178,7 +178,7 @@ class GenericProtobuf(Generic[T], _base_sdk_types.FlyteSdkValue, metaclass=Proto
         if isinstance(pb_object, FlyteIdlEntity):
             v = pb_object.to_flyte_idl()
         struct.update(_MessageToDict(v))
-        super().__init__(scalar=_literals.Scalar(generic=struct, ))
+        super().__init__(scalar=_literals.Scalar(generic=struct,))
 
     @classmethod
     def is_castable_from(cls, other):
