@@ -10,16 +10,26 @@ from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.tasks.sagemaker import hpo_job_task
 from flytekit.common.tasks.sagemaker.built_in_training_job_task import SdkBuiltinAlgorithmTrainingJobTask
 from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
-from flytekit.common.tasks.sagemaker.hpo_job_task import SdkSimpleHyperparameterTuningJobTask, \
-    HyperparameterTuningJobConfig
+from flytekit.common.tasks.sagemaker.hpo_job_task import (
+    SdkSimpleHyperparameterTuningJobTask,
+    HyperparameterTuningJobConfig,
+)
 from flytekit.models import types as _idl_types
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import types as _core_types
-from flytekit.models.sagemaker.hpo_job import HyperparameterTuningStrategy, HyperparameterTuningObjectiveType, \
-    HyperparameterTuningObjective, TrainingJobEarlyStoppingType, \
-    HyperparameterTuningJobConfig as _HyperparameterTuningJobConfig
-from flytekit.models.sagemaker.parameter_ranges import ParameterRanges, IntegerParameterRange, ContinuousParameterRange, \
-    HyperparameterScalingType
+from flytekit.models.sagemaker.hpo_job import (
+    HyperparameterTuningStrategy,
+    HyperparameterTuningObjectiveType,
+    HyperparameterTuningObjective,
+    TrainingJobEarlyStoppingType,
+    HyperparameterTuningJobConfig as _HyperparameterTuningJobConfig,
+)
+from flytekit.models.sagemaker.parameter_ranges import (
+    ParameterRanges,
+    IntegerParameterRange,
+    ContinuousParameterRange,
+    HyperparameterScalingType,
+)
 from flytekit.models.sagemaker.training_job import (
     AlgorithmName,
     AlgorithmSpecification,
@@ -174,8 +184,8 @@ def test_simple_hpo_job_task():
     # Checking if the hpo-specific input is defined
     assert simple_xgboost_hpo_job_task.interface.inputs["hyperparameter_tuning_job_config"].description == ""
     assert (
-            simple_xgboost_hpo_job_task.interface.inputs["hyperparameter_tuning_job_config"].type
-            == HyperparameterTuningJobConfig.to_flyte_literal_type()
+        simple_xgboost_hpo_job_task.interface.inputs["hyperparameter_tuning_job_config"].type
+        == HyperparameterTuningJobConfig.to_flyte_literal_type()
     )
     assert simple_xgboost_hpo_job_task.interface.outputs["model"].description == ""
     assert simple_xgboost_hpo_job_task.interface.outputs["model"].type == _sdk_types.Types.Blob.to_flyte_literal_type()
@@ -232,40 +242,40 @@ def test_simple_hpo_job_task_interface():
         train_dataset = Input(Types.Blob)
         validation_dataset = Input(Types.Blob)
         static_hyperparameters = Input(Types.Generic)
-        hyperparameter_tuning_job_config = \
-            Input(HyperparameterTuningJobConfig,
-                  default=_HyperparameterTuningJobConfig(
-                      hyperparameter_ranges=ParameterRanges(
-                          parameter_range_map={
-                              "num_round": IntegerParameterRange(min_value=3,
-                                                                 max_value=10,
-                                                                 scaling_type=HyperparameterScalingType.LINEAR),
-                              "max_depth": IntegerParameterRange(min_value=5,
-                                                                 max_value=7,
-                                                                 scaling_type=HyperparameterScalingType.LINEAR),
-                              "gamma": ContinuousParameterRange(min_value=0.0,
-                                                                max_value=0.3,
-                                                                scaling_type=HyperparameterScalingType.LINEAR),
-                          }
-                      ),
-                      tuning_strategy=HyperparameterTuningStrategy.BAYESIAN,
-                      tuning_objective=HyperparameterTuningObjective(
-                          objective_type=HyperparameterTuningObjectiveType.MINIMIZE,
-                          metric_name="validation:error",
-                      ),
-                      training_job_early_stopping_type=TrainingJobEarlyStoppingType.AUTO
-                  ))
+        hyperparameter_tuning_job_config = Input(
+            HyperparameterTuningJobConfig,
+            default=_HyperparameterTuningJobConfig(
+                hyperparameter_ranges=ParameterRanges(
+                    parameter_range_map={
+                        "num_round": IntegerParameterRange(
+                            min_value=3, max_value=10, scaling_type=HyperparameterScalingType.LINEAR
+                        ),
+                        "max_depth": IntegerParameterRange(
+                            min_value=5, max_value=7, scaling_type=HyperparameterScalingType.LINEAR
+                        ),
+                        "gamma": ContinuousParameterRange(
+                            min_value=0.0, max_value=0.3, scaling_type=HyperparameterScalingType.LINEAR
+                        ),
+                    }
+                ),
+                tuning_strategy=HyperparameterTuningStrategy.BAYESIAN,
+                tuning_objective=HyperparameterTuningObjective(
+                    objective_type=HyperparameterTuningObjectiveType.MINIMIZE, metric_name="validation:error",
+                ),
+                training_job_early_stopping_type=TrainingJobEarlyStoppingType.AUTO,
+            ),
+        )
 
         a = simple_xgboost_hpo_job_task(
             train=train_dataset,
             validation=validation_dataset,
             static_hyperparameters=static_hyperparameters,
-            hyperparameter_tuning_job_config=hyperparameter_tuning_job_config
+            hyperparameter_tuning_job_config=hyperparameter_tuning_job_config,
         )
 
     with _configuration.TemporaryConfiguration(
-            _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../../common/configs/local.config", ),
-            internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
+        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../../common/configs/local.config",),
+        internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
     ):
         idl = MyWf.to_flyte_idl()
         lp = MyWf.create_launch_plan()

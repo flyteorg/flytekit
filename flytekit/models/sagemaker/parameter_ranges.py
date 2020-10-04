@@ -172,8 +172,12 @@ class ParameterRanges(_common.FlyteIdlEntity):
             elif isinstance(v, CategoricalParameterRange):
                 converted[k] = _idl_parameter_ranges.ParameterRangeOneOf(categorical_parameter_range=v.to_flyte_idl())
             else:
-                raise user.FlyteTypeException(received_type=type(v), expected_type=type(
-                    Union[IntegerParameterRange, ContinuousParameterRange, CategoricalParameterRange]))
+                raise user.FlyteTypeException(
+                    received_type=type(v),
+                    expected_type=type(
+                        Union[IntegerParameterRange, ContinuousParameterRange, CategoricalParameterRange]
+                    ),
+                )
 
         return _idl_parameter_ranges.ParameterRanges(parameter_range_map=converted,)
 
@@ -188,7 +192,7 @@ class ParameterRanges(_common.FlyteIdlEntity):
             else:
                 converted[k] = CategoricalParameterRange.from_flyte_idl(v)
 
-        return cls(parameter_range_map=converted, )
+        return cls(parameter_range_map=converted,)
 
 
 class ParameterRangeOneOf(_common.FlyteIdlEntity):
@@ -237,9 +241,15 @@ class ParameterRangeOneOf(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self) -> _idl_parameter_ranges.ParameterRangeOneOf:
         return _idl_parameter_ranges.ParameterRangeOneOf(
-            integer_parameter_range=self.integer_parameter_range.to_flyte_idl() if self.integer_parameter_range else None,
-            continuous_parameter_range=self.continuous_parameter_range.to_flyte_idl() if self.continuous_parameter_range else None,
-            categorical_parameter_range=self.categorical_parameter_range.to_flyte_idl() if self.categorical_parameter_range else None,
+            integer_parameter_range=self.integer_parameter_range.to_flyte_idl()
+            if self.integer_parameter_range
+            else None,
+            continuous_parameter_range=self.continuous_parameter_range.to_flyte_idl()
+            if self.continuous_parameter_range
+            else None,
+            categorical_parameter_range=self.categorical_parameter_range.to_flyte_idl()
+            if self.categorical_parameter_range
+            else None,
         )
 
     @classmethod

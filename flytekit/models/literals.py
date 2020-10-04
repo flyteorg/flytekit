@@ -591,8 +591,14 @@ class LiteralMap(_common.FlyteIdlEntity):
 
 class Scalar(_common.FlyteIdlEntity):
     def __init__(
-            self, primitive: Primitive = None, blob: Blob = None, binary: Binary = None, schema: Schema = None,
-            none_type: Void = None, error=None, generic: Struct = None,
+        self,
+        primitive: Primitive = None,
+        blob: Blob = None,
+        binary: Binary = None,
+        schema: Schema = None,
+        none_type: Void = None,
+        error=None,
+        generic: Struct = None,
     ):
         """
         Scalar wrapper around Flyte types.  Only one can be specified.

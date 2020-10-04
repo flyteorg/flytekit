@@ -56,7 +56,7 @@ class ProtobufType(_base_sdk_types.FlyteSdkType):
         return "{}{}".format(Protobuf.TAG_PREFIX, cls.descriptor)
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class Protobuf(Generic[T], _base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
@@ -175,11 +175,7 @@ class GenericProtobuf(_base_sdk_types.FlyteSdkValue, Generic[T], metaclass=Proto
         if isinstance(pb_object, FlyteIdlEntity):
             v = pb_object.to_flyte_idl()
         struct.update(_MessageToDict(v))
-        super().__init__(
-            scalar=_literals.Scalar(
-                generic=struct,
-            )
-        )
+        super().__init__(scalar=_literals.Scalar(generic=struct,))
 
     @classmethod
     def is_castable_from(cls, other):
@@ -208,8 +204,7 @@ class GenericProtobuf(_base_sdk_types.FlyteSdkValue, Generic[T], metaclass=Proto
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return _idl_types.LiteralType(simple=_idl_types.SimpleType.STRUCT,
-                                      metadata={cls.PB_FIELD_KEY: cls.descriptor}, )
+        return _idl_types.LiteralType(simple=_idl_types.SimpleType.STRUCT, metadata={cls.PB_FIELD_KEY: cls.descriptor},)
 
     @classmethod
     def promote_from_model(cls, literal_model):

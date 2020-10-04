@@ -60,15 +60,21 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
 
         inputs = {}
         inputs.update(training_job.interface.inputs)
-        inputs.update({
-            "hyperparameter_tuning_job_config": _interface_model.Variable(
-                HyperparameterTuningJobConfig.to_flyte_literal_type(), "",
-            ),
-        })
-        inputs.update({
-            param: _interface_model.Variable(ParameterRange.to_flyte_literal_type(), "")
-            for param in tunable_parameters
-        })
+        inputs.update(
+            {
+                "hyperparameter_tuning_job_config": _interface_model.Variable(
+                    HyperparameterTuningJobConfig.to_flyte_literal_type(), "",
+                ),
+            }
+        )
+
+        if tunable_parameters:
+            inputs.update(
+                {
+                    param: _interface_model.Variable(ParameterRange.to_flyte_literal_type(), "")
+                    for param in tunable_parameters
+                }
+            )
 
         super().__init__(
             type=SdkTaskType.SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK,

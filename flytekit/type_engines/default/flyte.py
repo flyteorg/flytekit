@@ -108,13 +108,14 @@ class FlyteDefaultTypeEngine(object):
             return self._get_blob_impl_from_type(literal_type.blob)
         elif literal_type.simple is not None:
             if (
-                    literal_type.simple == _literal_type_models.SimpleType.BINARY
-                    and _proto.Protobuf.PB_FIELD_KEY in literal_type.metadata
+                literal_type.simple == _literal_type_models.SimpleType.BINARY
+                and _proto.Protobuf.PB_FIELD_KEY in literal_type.metadata
             ):
                 return _proto_sdk_type_from_tag(literal_type.metadata[_proto.Protobuf.PB_FIELD_KEY])
             if (
-                    literal_type.simple == _literal_type_models.SimpleType.STRUCT
-                    and literal_type.metadata and _proto.Protobuf.PB_FIELD_KEY in literal_type.metadata
+                literal_type.simple == _literal_type_models.SimpleType.STRUCT
+                and literal_type.metadata
+                and _proto.Protobuf.PB_FIELD_KEY in literal_type.metadata
             ):
                 return _generic_proto_sdk_type_from_tag(literal_type.metadata[_proto.Protobuf.PB_FIELD_KEY])
             sdk_type = self._SIMPLE_TYPE_LOOKUP_TABLE.get(literal_type.simple)

@@ -4,11 +4,19 @@ from flytekit import configuration as _configuration
 from flytekit.common.tasks.sagemaker import hpo_job_task
 from flytekit.common.tasks.sagemaker.built_in_training_job_task import SdkBuiltinAlgorithmTrainingJobTask
 from flytekit.common.tasks.sagemaker.types import HyperparameterTuningJobConfig
-from flytekit.models.sagemaker.hpo_job import HyperparameterTuningStrategy, HyperparameterTuningObjectiveType, \
-    HyperparameterTuningObjective, TrainingJobEarlyStoppingType, HyperparameterTuningJobConfig as \
-    _HyperparameterTuningJobConfig
-from flytekit.models.sagemaker.parameter_ranges import IntegerParameterRange, ContinuousParameterRange, \
-    HyperparameterScalingType, ParameterRangeOneOf
+from flytekit.models.sagemaker.hpo_job import (
+    HyperparameterTuningStrategy,
+    HyperparameterTuningObjectiveType,
+    HyperparameterTuningObjective,
+    TrainingJobEarlyStoppingType,
+    HyperparameterTuningJobConfig as _HyperparameterTuningJobConfig,
+)
+from flytekit.models.sagemaker.parameter_ranges import (
+    IntegerParameterRange,
+    ContinuousParameterRange,
+    HyperparameterScalingType,
+    ParameterRangeOneOf,
+)
 from flytekit.models.sagemaker.training_job import (
     AlgorithmName,
     AlgorithmSpecification,
@@ -64,7 +72,7 @@ simple_xgboost_hpo_job_task = hpo_job_task.SdkSimpleHyperparameterTuningJobTask(
     cache_version="1",
     retries=2,
     cacheable=True,
-    tunable_parameters=["num_round", "max_depth", "gamma"]
+    tunable_parameters=["num_round", "max_depth", "gamma"],
 )
 
 
@@ -73,39 +81,39 @@ class SageMakerHPO(object):
     train_dataset = Input(Types.MultiPartCSV, default="s3://somelocation")
     validation_dataset = Input(Types.MultiPartCSV, default="s3://somelocation")
     static_hyperparameters = Input(Types.Generic, default=example_hyperparams)
-    hyperparameter_tuning_job_config = \
-        Input(HyperparameterTuningJobConfig,
-              default=_HyperparameterTuningJobConfig(
-                  tuning_strategy=HyperparameterTuningStrategy.BAYESIAN,
-                  tuning_objective=HyperparameterTuningObjective(
-                      objective_type=HyperparameterTuningObjectiveType.MINIMIZE,
-                      metric_name="validation:error",
-                  ),
-                  training_job_early_stopping_type=TrainingJobEarlyStoppingType.AUTO
-              ))
+    hyperparameter_tuning_job_config = Input(
+        HyperparameterTuningJobConfig,
+        default=_HyperparameterTuningJobConfig(
+            tuning_strategy=HyperparameterTuningStrategy.BAYESIAN,
+            tuning_objective=HyperparameterTuningObjective(
+                objective_type=HyperparameterTuningObjectiveType.MINIMIZE, metric_name="validation:error",
+            ),
+            training_job_early_stopping_type=TrainingJobEarlyStoppingType.AUTO,
+        ),
+    )
 
     a = simple_xgboost_hpo_job_task(
         train=train_dataset,
         validation=validation_dataset,
         static_hyperparameters=static_hyperparameters,
         hyperparameter_tuning_job_config=hyperparameter_tuning_job_config,
-        num_round=ParameterRangeOneOf(IntegerParameterRange(min_value=2,
-                                                            max_value=8,
-                                                            scaling_type=HyperparameterScalingType.LINEAR)),
-        max_depth=ParameterRangeOneOf(IntegerParameterRange(min_value=5,
-                                                            max_value=7,
-                                                            scaling_type=HyperparameterScalingType.LINEAR)),
-        gamma=ParameterRangeOneOf(ContinuousParameterRange(min_value=0.0,
-                                                           max_value=0.3,
-                                                           scaling_type=HyperparameterScalingType.LINEAR)),
+        num_round=ParameterRangeOneOf(
+            IntegerParameterRange(min_value=2, max_value=8, scaling_type=HyperparameterScalingType.LINEAR)
+        ),
+        max_depth=ParameterRangeOneOf(
+            IntegerParameterRange(min_value=5, max_value=7, scaling_type=HyperparameterScalingType.LINEAR)
+        ),
+        gamma=ParameterRangeOneOf(
+            ContinuousParameterRange(min_value=0.0, max_value=0.3, scaling_type=HyperparameterScalingType.LINEAR)
+        ),
     )
 
 
 sagemaker_hpo_lp = SageMakerHPO.create_launch_plan()
 
 with _configuration.TemporaryConfiguration(
-        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../common/configs/local.config", ),
-        internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
+    _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../common/configs/local.config",),
+    internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
 ):
     print("Printing WF definition")
     print(SageMakerHPO)
