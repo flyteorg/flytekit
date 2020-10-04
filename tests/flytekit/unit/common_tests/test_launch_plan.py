@@ -133,6 +133,7 @@ def test_no_additional_inputs():
     [
         (_schedules.CronSchedule("* * ? * * *"), "* * ? * * *", None),
         (_schedules.CronSchedule(cron_expression="* * ? * * *"), "* * ? * * *", None),
+        (_schedules.CronSchedule(cron_expression="0/15 * * * ? *"), "0/15 * * * ? *", None),
         (_schedules.CronSchedule(schedule="* * * * *"), None, _schedule.Schedule.CronSchedule("* * * * *", None)),
         (
             _schedules.CronSchedule(schedule="* * * * *", offset="P1D"),
