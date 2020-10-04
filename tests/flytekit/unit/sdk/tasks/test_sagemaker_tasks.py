@@ -277,5 +277,3 @@ def test_simple_hpo_job_task_interface():
         lp = MyWf.create_launch_plan()
         print(lp)
         assert idl is not None
-
-    assert False
