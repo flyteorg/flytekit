@@ -194,7 +194,7 @@ class ParameterRanges(_common.FlyteIdlEntity):
 class ParameterRangeOneOf(_common.FlyteIdlEntity):
     def __init__(self, param: Union[IntegerParameterRange, ContinuousParameterRange, CategoricalParameterRange]):
         """
-        Initializes a new ParameterRange
+        Initializes a new ParameterRangeOneOf.
         :param Union[IntegerParameterRange, ContinuousParameterRange, CategoricalParameterRange] param: One of the
                 supported parameter ranges.
         """
@@ -204,6 +204,10 @@ class ParameterRangeOneOf(_common.FlyteIdlEntity):
 
     @property
     def integer_parameter_range(self) -> Optional[IntegerParameterRange]:
+        """
+        Retrieves the integer parameter range if one is set. None otherwise.
+        :rtype: Optional[IntegerParameterRange]
+        """
         if self._integer_parameter_range:
             return self._integer_parameter_range
 
@@ -211,6 +215,10 @@ class ParameterRangeOneOf(_common.FlyteIdlEntity):
 
     @property
     def continuous_parameter_range(self) -> Optional[ContinuousParameterRange]:
+        """
+        Retrieves the continuous parameter range if one is set. None otherwise.
+        :rtype: Optional[ContinuousParameterRange]
+        """
         if self._continuous_parameter_range:
             return self._continuous_parameter_range
 
@@ -218,6 +226,10 @@ class ParameterRangeOneOf(_common.FlyteIdlEntity):
 
     @property
     def categorical_parameter_range(self) -> Optional[CategoricalParameterRange]:
+        """
+        Retrieves the categorical parameter range if one is set. None otherwise.
+        :rtype: Optional[CategoricalParameterRange]
+        """
         if self._categorical_parameter_range:
             return self._categorical_parameter_range
 

@@ -397,7 +397,8 @@ class Types(object):
 
     GenericProto = staticmethod(_proto.create_generic)
     """
-    Use this to specify a custom protobuf type.
+    Use this to specify a custom protobuf type that will get serialized as a proto struct. This enables UX visualization
+    of data passed through.
 
     .. note::
 
@@ -421,8 +422,8 @@ class Types(object):
 
         from protos import my_protos_pb2
 
-        @inputs(a=Types.Proto(my_protos_pb2.Custom))
-        @outputs(b=Types.Proto(my_protos_pb2.Custom))
+        @inputs(a=Types.GenericProto(my_protos_pb2.Custom))
+        @outputs(b=Types.GenericProto(my_protos_pb2.Custom))
         @python_task
         def assert_and_create(wf_params, a, b):
             assert a.field1 == 1

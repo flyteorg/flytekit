@@ -264,13 +264,15 @@ class GenericProtobuf(_base_sdk_types.FlyteSdkValue, Generic[T], metaclass=Proto
         return "{}".format(self.to_python_std())
 
 
-T = Type[_proto_reflection.GeneratedProtocolMessageType]
+ProtobufT = Type[_proto_reflection.GeneratedProtocolMessageType]
 
 
-def create_generic(pb_type: T) -> Type[GenericProtobuf[T]]:
+def create_generic(pb_type: ProtobufT) -> Type[GenericProtobuf[ProtobufT]]:
     """
-    :param T pb_type:
-    :rtype: Type[GenericProtobuf]
+    Creates a generic protobuf type that represents protobuf type ProtobufT and that will get serialized into a struct.
+
+    :param ProtobufT pb_type:
+    :rtype: Type[GenericProtobuf[ProtobufT]]
     """
     if not isinstance(pb_type, _proto_reflection.GeneratedProtocolMessageType):
         raise _user_exceptions.FlyteTypeException(
