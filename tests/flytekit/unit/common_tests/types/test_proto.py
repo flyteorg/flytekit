@@ -26,15 +26,15 @@ def test_proto_to_literal_type():
 
 def test_proto():
     proto_type = _proto.create_protobuf(_errors_pb2.ContainerError)
-    test_proto_type(proto_type)
+    run_test_proto_type(proto_type)
 
 
 def test_generic_proto():
     proto_type = _proto.create_generic(_errors_pb2.ContainerError)
-    test_proto_type(proto_type)
+    run_test_proto_type(proto_type)
 
 
-def test_proto_type(proto_type: ProtobufType):
+def run_test_proto_type(proto_type: ProtobufType):
     assert proto_type.short_class_string() == "Types.Proto(flyteidl.core.errors_pb2.ContainerError)"
 
     pb = _errors_pb2.ContainerError(code="code", message="message")
