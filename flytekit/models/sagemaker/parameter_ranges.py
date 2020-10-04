@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 
 from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _idl_parameter_ranges
 
@@ -188,4 +188,56 @@ class ParameterRanges(_common.FlyteIdlEntity):
             else:
                 converted[k] = CategoricalParameterRange.from_flyte_idl(v)
 
-        return cls(parameter_range_map=converted,)
+        return cls(parameter_range_map=converted, )
+
+
+class ParameterRangeOneOf(_common.FlyteIdlEntity):
+    def __init__(self, param: Union[IntegerParameterRange, ContinuousParameterRange, CategoricalParameterRange]):
+        """
+        Initializes a new ParameterRange
+        :param Union[IntegerParameterRange, ContinuousParameterRange, CategoricalParameterRange] param: One of the
+                supported parameter ranges.
+        """
+        self._integer_parameter_range = param if isinstance(param, IntegerParameterRange) else None
+        self._continuous_parameter_range = param if isinstance(param, ContinuousParameterRange) else None
+        self._categorical_parameter_range = param if isinstance(param, CategoricalParameterRange) else None
+
+    @property
+    def integer_parameter_range(self) -> Optional[IntegerParameterRange]:
+        if self._integer_parameter_range:
+            return self._integer_parameter_range
+
+        return None
+
+    @property
+    def continuous_parameter_range(self) -> Optional[ContinuousParameterRange]:
+        if self._continuous_parameter_range:
+            return self._continuous_parameter_range
+
+        return None
+
+    @property
+    def categorical_parameter_range(self) -> Optional[CategoricalParameterRange]:
+        if self._categorical_parameter_range:
+            return self._categorical_parameter_range
+
+        return None
+
+    def to_flyte_idl(self) -> _idl_parameter_ranges.ParameterRangeOneOf:
+        return _idl_parameter_ranges.ParameterRangeOneOf(
+            integer_parameter_range=self.integer_parameter_range.to_flyte_idl() if self.integer_parameter_range else None,
+            continuous_parameter_range=self.continuous_parameter_range.to_flyte_idl() if self.continuous_parameter_range else None,
+            categorical_parameter_range=self.categorical_parameter_range.to_flyte_idl() if self.categorical_parameter_range else None,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb_object: _idl_parameter_ranges.ParameterRangeOneOf):
+        param = None
+        if pb_object.continuous_parameter_range:
+            param = ContinuousParameterRange.from_flyte_idl(pb_object.continuous_parameter_range)
+        elif pb_object.integer_parameter_range:
+            param = IntegerParameterRange.from_flyte_idl(pb_object.integer_parameter_range)
+        elif isinstance(pb_object, _idl_parameter_ranges.CategoricalParameterRange):
+            param = CategoricalParameterRange.from_flyte_idl(pb_object.categorical_parameter_range)
+
+        return cls(param=param)

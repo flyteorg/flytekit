@@ -4,6 +4,7 @@ from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import common as _common_models
 from flytekit.models import literals as _literal_models
+from flytekit.plugins import flyteidl
 
 
 class FlyteSdkType(_sdk_bases.ExtendedSdkType, metaclass=_common_models.FlyteABCMeta):
@@ -54,7 +55,7 @@ class FlyteSdkType(_sdk_bases.ExtendedSdkType, metaclass=_common_models.FlyteABC
 
 class FlyteSdkValue(_literal_models.Literal, metaclass=FlyteSdkType):
     @classmethod
-    def from_flyte_idl(cls, pb2_object):
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.literals_pb2.Literal):
         """
         :param flyteidl.core.literals_pb2.Literal pb2_object:
         :rtype: FlyteSdkValue
