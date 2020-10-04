@@ -259,15 +259,15 @@ def test_simple_hpo_job_task_interface():
             validation=validation_dataset,
             static_hyperparameters=static_hyperparameters,
             hyperparameter_tuning_job_config=hyperparameter_tuning_job_config,
-            num_round=ParameterRangeOneOf(IntegerParameterRange(
-                min_value=3, max_value=10, scaling_type=HyperparameterScalingType.LINEAR
-            )),
-            max_depth=ParameterRangeOneOf(IntegerParameterRange(
-                min_value=5, max_value=7, scaling_type=HyperparameterScalingType.LINEAR
-            )),
-            gamma=ParameterRangeOneOf(ContinuousParameterRange(
-                min_value=0.0, max_value=0.3, scaling_type=HyperparameterScalingType.LINEAR
-            )),
+            num_round=ParameterRangeOneOf(
+                IntegerParameterRange(min_value=3, max_value=10, scaling_type=HyperparameterScalingType.LINEAR)
+            ),
+            max_depth=ParameterRangeOneOf(
+                IntegerParameterRange(min_value=5, max_value=7, scaling_type=HyperparameterScalingType.LINEAR)
+            ),
+            gamma=ParameterRangeOneOf(
+                ContinuousParameterRange(min_value=0.0, max_value=0.3, scaling_type=HyperparameterScalingType.LINEAR)
+            ),
         )
 
     with _configuration.TemporaryConfiguration(
