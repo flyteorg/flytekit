@@ -35,7 +35,10 @@ def create_protobuf(pb_type):
     return _Protobuf
 
 
-class ProtobufType(_base_sdk_types.FlyteSdkType):
+T = TypeVar("T")
+
+
+class ProtobufType(Generic[T], _base_sdk_types.FlyteSdkType):
     @property
     def pb_type(cls) -> GeneratedProtocolMessageType:
         """
@@ -57,8 +60,6 @@ class ProtobufType(_base_sdk_types.FlyteSdkType):
         """
         return "{}{}".format(Protobuf.TAG_PREFIX, cls.descriptor)
 
-
-T = TypeVar("T")
 
 
 class Protobuf(Generic[T], _base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
@@ -163,7 +164,7 @@ class Protobuf(Generic[T], _base_sdk_types.FlyteSdkValue, metaclass=ProtobufType
         return "{}".format(self.to_python_std())
 
 
-class GenericProtobuf(_base_sdk_types.FlyteSdkValue, Generic[T], metaclass=ProtobufType):
+class GenericProtobuf(Generic[T], _base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
     PB_FIELD_KEY = "pb_type"
     TAG_PREFIX = "{}=".format(PB_FIELD_KEY)
     _pb_type = T
