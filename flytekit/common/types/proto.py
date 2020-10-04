@@ -1,5 +1,5 @@
 import base64 as _base64
-from typing import Generic, Type, TypeVar, Union
+from typing import Type, Union
 
 import six as _six
 from google.protobuf import reflection as _proto_reflection
@@ -35,10 +35,7 @@ def create_protobuf(pb_type):
     return _Protobuf
 
 
-T = TypeVar("T")
-
-
-class ProtobufType(Generic[T], _base_sdk_types.FlyteSdkType):
+class ProtobufType(_base_sdk_types.FlyteSdkType):
     @property
     def pb_type(cls) -> GeneratedProtocolMessageType:
         """
@@ -61,12 +58,11 @@ class ProtobufType(Generic[T], _base_sdk_types.FlyteSdkType):
         return "{}{}".format(Protobuf.TAG_PREFIX, cls.descriptor)
 
 
-
-class Protobuf(Generic[T], _base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
+class Protobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
     PB_FIELD_KEY = "pb_type"
     TAG_PREFIX = "{}=".format(PB_FIELD_KEY)
 
-    def __init__(self, pb_object: Union[T, FlyteIdlEntity]):
+    def __init__(self, pb_object: Union[GeneratedProtocolMessageType, FlyteIdlEntity]):
         """
         :param Union[T, FlyteIdlEntity] pb_object:
         """
@@ -164,12 +160,12 @@ class Protobuf(Generic[T], _base_sdk_types.FlyteSdkValue, metaclass=ProtobufType
         return "{}".format(self.to_python_std())
 
 
-class GenericProtobuf(Generic[T], _base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
+class GenericProtobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
     PB_FIELD_KEY = "pb_type"
     TAG_PREFIX = "{}=".format(PB_FIELD_KEY)
     _pb_type = T
 
-    def __init__(self, pb_object: Union[T, FlyteIdlEntity]):
+    def __init__(self, pb_object: Union[GeneratedProtocolMessageType, FlyteIdlEntity]):
         """
         :param Union[T, FlyteIdlEntity] pb_object:
         """
