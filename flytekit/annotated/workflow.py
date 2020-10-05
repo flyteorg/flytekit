@@ -1,7 +1,7 @@
 import inspect
 
-from flytekit import FlyteContext, engine as flytekit_engine, logger
-from flytekit.annotated.context_manager import ExecutionState
+from flytekit import engine as flytekit_engine, logger
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext
 from flytekit.annotated.task import A
 from flytekit.annotated.interface import transform_variable_map, extract_return_annotation, \
     transform_signature_to_typed_interface

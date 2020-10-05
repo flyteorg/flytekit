@@ -3,8 +3,8 @@ import datetime as _datetime
 from abc import abstractmethod
 from typing import Callable, Union, Dict, DefaultDict, Type
 
-from flytekit import FlyteContext, engine as flytekit_engine, logger
-from flytekit.annotated.context_manager import ExecutionState
+from flytekit import engine as flytekit_engine, logger
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext
 from flytekit.common import nodes as _nodes, interface as _common_interface
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.promise import NodeOutput as _NodeOutput
