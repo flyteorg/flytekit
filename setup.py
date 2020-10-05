@@ -5,12 +5,6 @@ from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
 
 extras_require = LazyLoadPlugin.get_extras_require()
 
-extras_require[':python_version<"3"'] = [
-    "configparser>=3.0.0,<4.0.0",
-    "futures>=3.2.0,<4.0.0",
-    "pathlib2>=2.3.2,<3.0.0",
-]
-
 setup(
     name="flytekit",
     version=flytekit.__version__,
@@ -29,7 +23,7 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl>=0.18.6,<1.0.0",
+        "flyteidl>=0.18.8,<1.0.0",
         "click>=6.6,<8.0",
         "croniter>=0.3.20,<4.0.0",
         "deprecated>=1.0,<2.0",
@@ -65,7 +59,6 @@ setup(
         "Intended Audience :: Developers",
         "Intended Audience :: System Administrators",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
