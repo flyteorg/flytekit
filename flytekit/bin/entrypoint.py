@@ -14,7 +14,6 @@ from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces import random as _flyte_random
 from flytekit.models import literals as _literal_models
 from flytekit.common.tasks.sdk_runnable import SdkRunnableTaskStyle
-from flytekit.annotated import executors as _flyte_task_executors, context_manager as _flyte_context
 
 
 def _compute_array_job_index():
@@ -97,9 +96,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, test):
                     local_inputs_file = _os.path.join(ctx.workflow_execution_state.working_dir, 'inputs.pb')
                     _data_proxy.Data.get_data(inputs, local_inputs_file)
                     idl_input_literals = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-
-                    executor = _flyte_task_executors.get_executor(task_def)
-                    outputs_literal_map = executor.execute(ctx, task_def, idl_input_literals)
+                    outputs_literal_map = task_def.dispatch_execute(ctx, idl_input_literals)
                     print("That's all folks!")
                     print(outputs_literal_map.literals)
 
@@ -107,6 +104,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, test):
                     # return {
                     #     _constants.OUTPUT_FILE_NAME: outputs_literal_map,
                     # }
+
 
 @_click.group()
 def _pass_through():

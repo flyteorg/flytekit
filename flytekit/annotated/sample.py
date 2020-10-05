@@ -1,7 +1,6 @@
 import typing
 
-from flytekit.annotated.stuff import task
-
+from flytekit.annotated.task import task
 
 foo_int = typing.NamedTuple("foo_int", foo_int=int)
 
