@@ -1,16 +1,17 @@
 import collections
 import datetime as _datetime
-from collections import OrderedDict
-from typing import Callable, Union, Dict, DefaultDict, Type, Generator
+from abc import abstractmethod
+from typing import Callable, Union, Dict, DefaultDict, Type
 
 from flytekit import FlyteContext, engine as flytekit_engine, logger
-from flytekit.annotated import type_engine
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.common import nodes as _nodes, interface as _common_interface
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.promise import NodeOutput as _NodeOutput
-from flytekit.models import task as _task_model, literals as _literal_models, interface as _interface_models
+from flytekit.models import task as _task_model, literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
+import inspect
+from flytekit.annotated.interface import transform_signature_to_typed_interface
 
 
 # Dummy SDKNode mimic
@@ -31,8 +32,9 @@ class A(object):
 # already.)
 class Task(object):
 
-    def __init__(self, task_function, interface, metadata: _task_model.TaskMetadata, *args, **kwargs):
-        self._task_function = task_function
+    def __init__(self, name: str, interface: _common_interface.TypedInterface, metadata: _task_model.TaskMetadata,
+                 *args, **kwargs):
+        self._name = name
         self._interface = interface
         self._metadata = metadata
 
@@ -62,7 +64,7 @@ class Task(object):
         sdk_node = _nodes.SdkNode(
             # TODO
             id=f"node-{len(ctx.compilation_state.nodes)}",
-            metadata=_workflow_model.NodeMetadata(self._task_function.__name__, self.metadata.timeout,
+            metadata=_workflow_model.NodeMetadata(self._name, self.metadata.timeout,
                                                   self.metadata.retries,
                                                   self.metadata.interruptible),
             bindings=sorted(bindings, key=lambda b: b.var),
@@ -89,8 +91,94 @@ class Task(object):
         else:
             return None
 
-    def dispatch_execute(self, ctx: FlyteContext,
-                          input_literal_map: _literal_models.LiteralMap) -> _literal_models.LiteralMap:
+    @abstractmethod
+    def execute(self, ctx: FlyteContext,
+                input_literal_map: _literal_models.LiteralMap) -> _literal_models.LiteralMap:
+        pass
+
+    @abstractmethod
+    def _passthrough_execute(self, **kwargs):
+        pass
+
+    def __call__(self, *args, **kwargs):
+        # When a Task is () aka __called__, there are three things we may do:
+        #  a. Task Execution Mode - just run the Python function as Python normally would. Flyte steps completely
+        #     out of the way.
+        #  b. Compilation Mode - this happens when the function is called as part of a workflow (potentially
+        #     dynamic task?). Instead of running the user function, produce promise objects and create a node.
+        #  c. Workflow Execution Mode - when a workflow is being run locally. Even though workflows are functions
+        #     and everything should be able to be passed through naturally, we'll want to wrap output values of the
+        #     function into objects, so that potential .with_cpu or other ancillary functions can be attached to do
+        #     nothing. Subsequent tasks will have to know how to unwrap these. If by chance a non-Flyte task uses a
+        #     task output as an input, things probably will fail pretty obviously.
+        if len(args) > 0:
+            raise _user_exceptions.FlyteAssertion(
+                f"When adding a task as a node in a workflow, all inputs must be specified with kwargs only.  We "
+                f"detected {len(args)} positional args {args}"
+            )
+
+        ctx = FlyteContext.current_context()
+        if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
+            return self._create_and_link_node(ctx, *args, **kwargs)
+        elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            # Unwrap the kwargs values. After this, we essentially have a LiteralMap
+            for k, v in kwargs.items():
+                if isinstance(v, _NodeOutput):
+                    kwargs[k] = v.flyte_literal_value
+
+            input_literal_map = _literal_models.LiteralMap(literals=kwargs)
+
+            outputs_literal_map = self.execute(ctx, input_literal_map)
+            outputs_literals = outputs_literal_map.literals
+
+            # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
+            #    location, otherwise we dont really need to right? The higher level execute could just handle literalMap
+            # After running, we again have to wrap the outputs, if any, back into NodeOutput objects
+            output_names = list(self.interface.outputs.keys())
+            node_results = []
+            if len(output_names) != len(outputs_literals):
+                # Length check, clean up exception
+                raise Exception(f"Length difference {len(output_names)} {len(outputs_literals)}")
+
+            if len(self.interface.outputs) > 1:
+                for idx, var_name in enumerate(output_names):
+                    node_results.append(_NodeOutput(sdk_node=A(), sdk_type=None,
+                                                    var=output_names[idx],
+                                                    flyte_literal_value=outputs_literals[var_name]))
+                return tuple(node_results)
+            elif len(self.interface.outputs) == 1:
+                return _NodeOutput(sdk_node=A(), sdk_type=None, var=output_names[0],
+                                   flyte_literal_value=outputs_literals[output_names[0]])
+            else:
+                return None
+
+        else:
+            # TODO: Remove warning
+            logger.warning("task run without context - executing raw function")
+            return self._passthrough_execute(*args, **kwargs)
+
+    @property
+    def interface(self) -> _common_interface.TypedInterface:
+        return self._interface
+
+    @property
+    def metadata(self) -> _task_model.TaskMetadata:
+        return self._metadata
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+
+class PythonFunctionTask(Task):
+
+    def __init__(self, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
+        interface = transform_signature_to_typed_interface(inspect.signature(task_function))
+        super().__init__(name=task_function.__name__, interface=interface, metadata=metadata, *args, **kwargs)
+        self._task_function = task_function
+
+    def execute(self, ctx: FlyteContext,
+                input_literal_map: _literal_models.LiteralMap) -> _literal_models.LiteralMap:
         """
         This method translates Flytes native Type system based inputs and dispatches the actual call to the executor
         TODO We need to figure out for custom types what should be passed into runtime. I feel this should only be inputs,
@@ -122,70 +210,25 @@ class Task(object):
         print(outputs_literal_map)
         return outputs_literal_map
 
-    def __call__(self, *args, **kwargs):
-        # When a Task is () aka __called__, there are three things we may do:
-        #  a. Task Execution Mode - just run the Python function as Python normally would. Flyte steps completely
-        #     out of the way.
-        #  b. Compilation Mode - this happens when the function is called as part of a workflow (potentially
-        #     dynamic task?). Instead of running the user function, produce promise objects and create a node.
-        #  c. Workflow Execution Mode - when a workflow is being run locally. Even though workflows are functions
-        #     and everything should be able to be passed through naturally, we'll want to wrap output values of the
-        #     function into objects, so that potential .with_cpu or other ancillary functions can be attached to do
-        #     nothing. Subsequent tasks will have to know how to unwrap these. If by chance a non-Flyte task uses a
-        #     task output as an input, things probably will fail pretty obviously.
-        if len(args) > 0:
-            raise _user_exceptions.FlyteAssertion(
-                f"When adding a task as a node in a workflow, all inputs must be specified with kwargs only.  We "
-                f"detected {len(args)} positional args {args}"
-            )
+    def _passthrough_execute(self, **kwargs):
+        return self._task_function(**kwargs)
 
-        ctx = FlyteContext.current_context()
-        if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
-            return self._create_and_link_node(ctx, *args, **kwargs)
-        elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            # Unwrap the kwargs values. After this, we essentially have a LiteralMap
-            for k, v in kwargs.items():
-                if isinstance(v, _NodeOutput):
-                    kwargs[k] = v.flyte_literal_value
 
-            input_literal_map = _literal_models.LiteralMap(literals=kwargs)
+TaskTypePlugins: DefaultDict[str, Type[PythonFunctionTask]] = collections.defaultdict(
+    lambda: PythonFunctionTask,
+    {
+        "python_task": PythonFunctionTask,
+        "task": PythonFunctionTask,
+    }
+)
 
-            outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
-            outputs_literals = outputs_literal_map.literals
 
-            # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
-            #    location, otherwise we dont really need to right? The higher level execute could just handle literalMap
-            # After running, we again have to wrap the outputs, if any, back into NodeOutput objects
-            output_names = list(self.interface.outputs.keys())
-            node_results = []
-            if len(output_names) != len(outputs_literals):
-                # Length check, clean up exception
-                raise Exception(f"Length difference {len(output_names)} {len(outputs_literals)}")
-
-            if len(self.interface.outputs) > 1:
-                for idx, var_name in enumerate(output_names):
-                    node_results.append(_NodeOutput(sdk_node=A(), sdk_type=None,
-                                                    var=output_names[idx],
-                                                    flyte_literal_value=outputs_literals[var_name]))
-                return tuple(node_results)
-            elif len(self.interface.outputs) == 1:
-                return _NodeOutput(sdk_node=A(), sdk_type=None, var=output_names[0],
-                                   flyte_literal_value=outputs_literals[output_names[0]])
-            else:
-                return None
-
-        else:
-            # TODO: Remove warning
-            logger.warning("task run without context - executing raw function")
-            return self._task_function(*args, **kwargs)
-
-    @property
-    def interface(self) -> _common_interface.TypedInterface:
-        return self._interface
-
-    @property
-    def metadata(self) -> _task_model.TaskMetadata:
-        return self._metadata
+class Resources(object):
+    def __init__(self, cpu, mem, gpu, storage):
+        self._cpu = cpu
+        self._mem = mem
+        self._gpu = gpu
+        self._storage = storage
 
 
 def task(
@@ -221,9 +264,7 @@ def task(
             deprecated_error_message=deprecated,
         )
 
-        interface = get_interface_from_task_info(fn.__annotations__)
-
-        task_instance = TaskTypePlugins[task_type](fn, interface, metadata, *args, **kwargs)
+        task_instance = TaskTypePlugins[task_type](fn, metadata, *args, **kwargs)
         # TODO: One of the things I want to make sure to do is better naming support. At this point, we should already
         #       be able to determine the name of the task right? Can anyone think of situations where we can't?
         #       Where does the current instance tracker come into play?
@@ -237,124 +278,3 @@ def task(
         return wrapper
 
 
-def get_interface_from_task_info(task_annotations: Dict[str, type]) -> _common_interface.TypedInterface:
-    """
-    From the annotations on a task function that the user should have provided, and the output names they want to use
-    for each output parameter, construct the TypedInterface object
-
-    For now the fancy object, maybe in the future a dumb object.
-
-    :param task_annotations:
-    :param output_names:
-    """
-    outputs_map = get_output_variable_map(task_annotations)
-
-    inputs = OrderedDict()
-    for k, v in task_annotations.items():
-        if k != 'return':
-            inputs[k] = v
-
-    inputs_map = get_variable_map(inputs)
-    interface_model = _interface_models.TypedInterface(inputs_map, outputs_map)
-
-    # Maybe in the future we can just use the model
-    return _common_interface.TypedInterface.promote_from_model(interface_model)
-
-
-def get_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interface_models.Variable]:
-    """
-    Given a map of str (names of inputs for instance) to their Python native types, return a map of the name to a
-    Flyte Variable object with that type.
-    """
-    res = OrderedDict()
-    e = type_engine.BaseEngine()
-    for k, v in variable_map.items():
-        res[k] = _interface_models.Variable(type=e.native_type_to_literal_type(v), description=k)
-
-    return res
-
-
-class Resources(object):
-    def __init__(self, cpu, mem, gpu, storage):
-        self._cpu = cpu
-        self._mem = mem
-        self._gpu = gpu
-        self._storage = storage
-
-
-TaskTypePlugins: DefaultDict[str, Type[Task]] = collections.defaultdict(
-    lambda: Task,
-    {
-        "python_task": Task,
-        "task": Task,
-    }
-)
-
-
-def output_name_generator(length: int) -> Generator[str, None, None]:
-    for x in range(0, length):
-        yield f"out_{x}"
-
-
-def get_output_variable_map(task_annotations: Dict[str, type]) -> Dict[str, _interface_models.Variable]:
-    """
-    Outputs can have various signatures, and we need to handle all of them:
-
-        # Option 1
-        nt1 = typing.NamedTuple("NT1", x_str=str, y_int=int)
-        def t(a: int, b: str) -> nt1: ...
-
-        # Option 2
-        def t(a: int, b: str) -> typing.NamedTuple("NT1", x_str=str, y_int=int): ...
-
-        # Option 3
-        def t(a: int, b: str) -> typing.Tuple[int, str]: ...
-
-        # Option 4
-        def t(a: int, b: str) -> (int, str): ...
-
-        # Option 5
-        def t(a: int, b: str) -> str: ...
-
-    TODO: We'll need to check the actual return types for in all cases as well, to make sure Flyte IDL actually
-          supports it. For instance, typing.Tuple[Optional[int]] is not something we can represent currently.
-
-    TODO: Generator[A,B,C] types are also valid, indicating dynamic tasks. Will need to implement.
-
-    Note that Options 1 and 2 are identical, just syntactic sugar. In the NamedTuple case, we'll use the names in the
-    definition. In all other cases, we'll automatically generate output names, indexed starting at 0.
-
-    :param task_annotations: the __annotations__ attribute of a type hinted function.
-    """
-    if "return" in task_annotations:
-        incoming_rt = task_annotations['return']
-
-        # Handle options 1 and 2 first. The only way to check if the return type is a typing.NamedTuple, is to check
-        # for this field. Using isinstance or issubclass doesn't work.
-        if hasattr(incoming_rt, '_field_types'):
-            logger.debug(f'Task returns named tuple {incoming_rt}')
-            return_map = incoming_rt._field_types
-
-        # Handle option 3
-        elif hasattr(incoming_rt, '__origin__') and incoming_rt.__origin__ is tuple:
-            logger.debug(f'Task returns unnamed typing.Tuple {incoming_rt}')
-            return_types = incoming_rt.__args__
-            return_names = [x for x in output_name_generator(len(incoming_rt.__args__))]
-            return_map = OrderedDict(zip(return_names, return_types))
-
-        # Handle option 4
-        elif type(incoming_rt) is tuple:
-            logger.debug(f'Task returns unnamed native tuple {incoming_rt}')
-            return_names = [x for x in output_name_generator(len(incoming_rt))]
-            return_map = OrderedDict(zip(return_names, incoming_rt))
-
-        # Assume option 5
-        else:
-            logger.debug(f'Task returns a single output of type {incoming_rt}')
-            return_map = {"out_0": incoming_rt}
-
-        return get_variable_map(return_map)
-    else:
-        logger.debug(f'No return type found in annotations, returning empty map')
-        # In the case where a task doesn't have a return type specified, assume that there are no outputs
-        return {}

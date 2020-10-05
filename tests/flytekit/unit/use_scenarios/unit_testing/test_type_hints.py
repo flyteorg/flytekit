@@ -1,11 +1,13 @@
+import inspect
 import typing
 
 import flytekit
 import flytekit.annotated.task
 import flytekit.annotated.workflow
 from flytekit.annotated import context_manager
-from flytekit.annotated.task import task, get_output_variable_map
+from flytekit.annotated.task import task
 from flytekit.annotated.workflow import workflow
+from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
 
 
 def test_default_wf_params_works():
@@ -71,11 +73,11 @@ def test_named_tuples():
     def y(a: int, b: str) -> nt1:
         return nt1("hello world", 5)
 
-    result = get_output_variable_map(x.__annotations__)
+    result = transform_variable_map(extract_return_annotation(inspect.signature(x).return_annotation))
     assert result['x_str'].type.simple == 3
     assert result['y_int'].type.simple == 1
 
-    result = get_output_variable_map(y.__annotations__)
+    result = transform_variable_map(extract_return_annotation(inspect.signature(y).return_annotation))
     assert result['x_str'].type.simple == 3
     assert result['y_int'].type.simple == 1
 
@@ -84,7 +86,7 @@ def test_unnamed_typing_tuple():
     def z(a: int, b: str) -> typing.Tuple[int, str]:
         return 5, "hello world"
 
-    result = get_output_variable_map(z.__annotations__)
+    result = transform_variable_map(extract_return_annotation(inspect.signature(z).return_annotation))
     assert result['out_0'].type.simple == 1
     assert result['out_1'].type.simple == 3
 
@@ -93,7 +95,7 @@ def test_regular_tuple():
     def q(a: int, b: str) -> (int, str):
         return 5, "hello world"
 
-    result = get_output_variable_map(q.__annotations__)
+    result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
     assert result['out_0'].type.simple == 1
     assert result['out_1'].type.simple == 3
 
@@ -102,7 +104,7 @@ def test_single_output_new_decorator():
     def q(a: int, b: str) -> int:
         return a + len(b)
 
-    result = get_output_variable_map(q.__annotations__)
+    result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
     assert result['out_0'].type.simple == 1
 
 

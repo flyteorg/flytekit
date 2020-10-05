@@ -2,7 +2,9 @@ import inspect
 
 from flytekit import FlyteContext, engine as flytekit_engine, logger
 from flytekit.annotated.context_manager import ExecutionState
-from flytekit.annotated.task import A, get_variable_map, get_output_variable_map
+from flytekit.annotated.task import A
+from flytekit.annotated.interface import transform_variable_map, extract_return_annotation, \
+    transform_signature_to_typed_interface
 from flytekit.common import constants as _common_constants
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
@@ -78,17 +80,18 @@ def workflow(_workflow_function=None):
     # workflows need to have the body of the function itself run at module-load time. This is because the body of the
     # workflow is what expresses the workflow structure.
     def wrapper(fn):
-        workflow_annotations = fn.__annotations__
-        # TODO: Remove the copy step and jsut make the get function skip returns
-        inputs = {k: v for k, v in workflow_annotations.items() if k != 'return'}
-        inputs_variable_map = get_variable_map(inputs)
-        outputs_variable_map = get_output_variable_map(workflow_annotations)
-        interface_model = _interface_models.TypedInterface(inputs=inputs_variable_map, outputs=outputs_variable_map)
+        sig = inspect.signature(fn)
+        interface = transform_signature_to_typed_interface(sig)
 
         # Create promises out of all the inputs. Check for defaults in the function definition.
-        default_inputs = get_default_args(fn)
+        default_inputs = {
+            k: v.default
+            for k, v in sig.parameters.items()
+            if v.default is not inspect.Parameter.empty
+        }
+
         input_parameter_models = []
-        for input_name, input_variable_obj in inputs_variable_map.items():
+        for input_name, input_variable_obj in interface.inputs.items():
             # TODO: Fix defaults and required
             parameter_model = _interface_models.Parameter(var=input_variable_obj, default=None, required=True)
             input_parameter_models.append(parameter_model)
@@ -99,7 +102,7 @@ def workflow(_workflow_function=None):
             # Fill in call args by constructing input bindings
             input_kwargs = {
                 k: _type_models.OutputReference(_common_constants.GLOBAL_INPUT_NODE_ID, k) for k in
-                inputs_variable_map.keys()
+                interface.inputs.keys()
             }
             workflow_outputs = fn(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
@@ -112,7 +115,7 @@ def workflow(_workflow_function=None):
         # These should line up with the output input argument
         # TODO: Add length checks.
         bindings = []
-        output_names = list(outputs_variable_map.keys())
+        output_names = list(interface.outputs.keys())
         for i, out in enumerate(workflow_outputs):
             output_name = output_names[i]
             # TODO: Check that the outputs returned type match the interface.
@@ -134,7 +137,7 @@ def workflow(_workflow_function=None):
         # fancy arguments and supplying just the raw elements manually. Alternatively we can construct the
         # WorkflowTemplate object, and then call promote_from_model.
         sdk_workflow = _SdkWorkflow(inputs=None, outputs=None, nodes=all_nodes, id=workflow_id, metadata=None,
-                                    metadata_defaults=None, interface=interface_model, output_bindings=bindings)
+                                    metadata_defaults=None, interface=interface, output_bindings=bindings)
         # logger.debug(f"SdkWorkflow {sdk_workflow}")
 
         workflow_instance = Workflow(fn, sdk_workflow)
