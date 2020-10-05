@@ -1,5 +1,5 @@
 import base64 as _base64
-from typing import Type, TypeVar, Union
+from typing import Type, Union
 
 import six as _six
 from google.protobuf import reflection as _proto_reflection
@@ -146,12 +146,9 @@ class Protobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
         return "{}".format(self.to_python_std())
 
 
-T = TypeVar("T")
-
-
-def create_protobuf(pb_type: T) -> Type[Protobuf]:
+def create_protobuf(pb_type: Type[GeneratedProtocolMessageType]) -> Type[Protobuf]:
     """
-    :param T pb_type:
+    :param Type[GeneratedProtocolMessageType] pb_type:
     :rtype: Type[Protobuf]
     """
     if not isinstance(pb_type, _proto_reflection.GeneratedProtocolMessageType):
@@ -264,11 +261,11 @@ class GenericProtobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
         return "{}".format(self.to_python_std())
 
 
-def create_generic(pb_type: T) -> Type[GenericProtobuf]:
+def create_generic(pb_type: Type[GeneratedProtocolMessageType]) -> Type[GenericProtobuf]:
     """
     Creates a generic protobuf type that represents protobuf type ProtobufT and that will get serialized into a struct.
 
-    :param T pb_type:
+    :param Type[GeneratedProtocolMessageType] pb_type:
     :rtype: Type[GenericProtobuf]
     """
     if not isinstance(pb_type, _proto_reflection.GeneratedProtocolMessageType):
