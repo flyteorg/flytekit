@@ -206,7 +206,7 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         """
         # Circular dependency
         from flytekit import __version__
-        from flytekit.annotated.stuff import get_interface_from_task_info as _get_interface_from_task_info
+        from flytekit.annotated.task import get_interface_from_task_info as _get_interface_from_task_info
 
         self._task_function = task_function
         super(SdkRunnableTask, self).__init__(
