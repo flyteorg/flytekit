@@ -24,7 +24,7 @@ setup(
     },
     install_requires=[
         #"flyteidl>=0.18.8,<1.0.0",
-        "flyteidl @ git+ssh://git@github.com/lyft/flyteidl@4251dc6f67751cf45fc64c285aceeb264468dc48#egg=flyteidl"
+        "flyteidl @ git+ssh://git@github.com/lyft/flyteidl@2efbce3a933f6c00a3c7933a07a031a091e861d7#egg=flyteidl"
         "click>=6.6,<8.0",
         "croniter>=0.3.20,<4.0.0",
         "deprecated>=1.0,<2.0",

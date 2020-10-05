@@ -5,6 +5,17 @@ from flyteidl.plugins.sagemaker import training_job_pb2 as _training_job_pb2
 from flytekit.models import common as _common
 
 
+class DistributionFramework(object):
+    """
+    The distribution framework is used for determining which underlying distributed training mechanism to use.
+    This is only required for use cases where the user wants to distributedly train its custom training job.
+    """
+
+    NONE = _training_job_pb2.DistributionFramework.NONE
+    FRAMEWORK_NATIVE = _training_job_pb2.DistributionFramework.FRAMEWORK_NATIVE
+    MPI = _training_job_pb2.DistributionFramework.MPI
+
+
 class TrainingJobResourceConfig(_common.FlyteIdlEntity):
     """
     TrainingJobResourceConfig is a pass-through, specifying the instance type to use for the training job, the
@@ -13,11 +24,16 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
     """
 
     def __init__(
-        self, instance_count: int, instance_type: str, volume_size_in_gb: int,
+        self,
+        instance_count: int,
+        instance_type: str,
+        volume_size_in_gb: int,
+        distribution_framework: int
     ):
         self._instance_count = instance_count
         self._instance_type = instance_type
         self._volume_size_in_gb = volume_size_in_gb
+        self._distribution_framework = distribution_framework
 
     @property
     def instance_count(self) -> int:
@@ -42,6 +58,15 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
         :rtype: int
         """
         return self._volume_size_in_gb
+
+    @property
+    def distribution_framework(self) -> int:
+        """
+        The distribution framework is used to determine through which mechanism the distributed training is done.
+        enum value from DistributionFramework.
+        :rtype: int
+        """
+        return self._distribution_framework
 
     def to_flyte_idl(self) -> _training_job_pb2.TrainingJobResourceConfig:
         """
