@@ -1,5 +1,5 @@
 import base64 as _base64
-from typing import Generic, Type, TypeVar, Union
+from typing import Type, TypeVar, Union
 
 import six as _six
 from google.protobuf import reflection as _proto_reflection
@@ -16,13 +16,14 @@ from flytekit.models import types as _idl_types
 from flytekit.models.common import FlyteIdlEntity
 from flytekit.models.types import LiteralType
 
-T = TypeVar("T")
 ProtobufT = Type[_proto_reflection.GeneratedProtocolMessageType]
 
 
-class ProtobufType(Generic[T], _base_sdk_types.FlyteSdkType):
+class ProtobufType(_base_sdk_types.FlyteSdkType):
+    _pb_type = Struct
+
     @property
-    def pb_type(cls) -> T:
+    def pb_type(cls) -> GeneratedProtocolMessageType:
         """
         :rtype: GeneratedProtocolMessageType
         """
@@ -43,10 +44,9 @@ class ProtobufType(Generic[T], _base_sdk_types.FlyteSdkType):
         return "{}{}".format(Protobuf.TAG_PREFIX, cls.descriptor)
 
 
-class Protobuf(Generic[T], _base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
+class Protobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
     PB_FIELD_KEY = "pb_type"
     TAG_PREFIX = "{}=".format(PB_FIELD_KEY)
-    _pb_type = T
 
     def __init__(self, pb_object: Union[GeneratedProtocolMessageType, FlyteIdlEntity]):
         """
@@ -146,10 +146,13 @@ class Protobuf(Generic[T], _base_sdk_types.FlyteSdkValue, metaclass=ProtobufType
         return "{}".format(self.to_python_std())
 
 
-def create_protobuf(pb_type: T) -> Type[Protobuf[T]]:
+T = TypeVar("T")
+
+
+def create_protobuf(pb_type: T) -> Type[Protobuf]:
     """
     :param T pb_type:
-    :rtype: ProtobufType
+    :rtype: Type[Protobuf]
     """
     if not isinstance(pb_type, _proto_reflection.GeneratedProtocolMessageType):
         raise _user_exceptions.FlyteTypeException(
@@ -158,18 +161,17 @@ def create_protobuf(pb_type: T) -> Type[Protobuf[T]]:
             received_value=pb_type,
         )
 
-    class _Protobuf(Protobuf[T]):
+    class _Protobuf(Protobuf):
         _pb_type = pb_type
 
     return _Protobuf
 
 
-class GenericProtobuf(Generic[T], _base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
+class GenericProtobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
     PB_FIELD_KEY = "pb_type"
     TAG_PREFIX = "{}=".format(PB_FIELD_KEY)
-    _pb_type = T
 
-    def __init__(self, pb_object: Union[T, FlyteIdlEntity]):
+    def __init__(self, pb_object: Union[GeneratedProtocolMessageType, FlyteIdlEntity]):
         """
         :param Union[T, FlyteIdlEntity] pb_object:
         """
@@ -189,7 +191,7 @@ class GenericProtobuf(Generic[T], _base_sdk_types.FlyteSdkValue, metaclass=Proto
         return isinstance(other, ProtobufType) and other.pb_type is cls.pb_type
 
     @classmethod
-    def from_python_std(cls, t_value: Union[T, FlyteIdlEntity]):
+    def from_python_std(cls, t_value: Union[GeneratedProtocolMessageType, FlyteIdlEntity]):
         """
         :param Union[T, FlyteIdlEntity] t_value: It is up to each individual object as to whether or not this value can be cast.
         :rtype: _base_sdk_types.FlyteSdkValue
@@ -262,12 +264,12 @@ class GenericProtobuf(Generic[T], _base_sdk_types.FlyteSdkValue, metaclass=Proto
         return "{}".format(self.to_python_std())
 
 
-def create_generic(pb_type: Generic[T]) -> Type[GenericProtobuf[T]]:
+def create_generic(pb_type: T) -> Type[GenericProtobuf]:
     """
     Creates a generic protobuf type that represents protobuf type ProtobufT and that will get serialized into a struct.
 
     :param T pb_type:
-    :rtype: Type[GenericProtobuf[T]]
+    :rtype: Type[GenericProtobuf]
     """
     if not isinstance(pb_type, _proto_reflection.GeneratedProtocolMessageType):
         raise _user_exceptions.FlyteTypeException(
@@ -276,7 +278,7 @@ def create_generic(pb_type: Generic[T]) -> Type[GenericProtobuf[T]]:
             received_value=pb_type,
         )
 
-    class _Protobuf(GenericProtobuf[T]):
+    class _Protobuf(GenericProtobuf):
         _pb_type = pb_type
 
     return _Protobuf
