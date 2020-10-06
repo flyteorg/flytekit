@@ -32,3 +32,5 @@ _lazy_loader.LazyLoadPlugin(
 _lazy_loader.LazyLoadPlugin("hive_sensor", ["hmsclient>=0.0.1,<1.0.0"], [hmsclient])
 
 _lazy_loader.LazyLoadPlugin("pytorch", ["torch>=1.0.0,<2.0.0"], [torch])
+
+_lazy_loader.LazyLoadPlugin("tensorflow", ["tensorflow>=2.0.0,<3.0.0"], [tensorflow])
