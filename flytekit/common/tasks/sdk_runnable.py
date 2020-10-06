@@ -26,13 +26,12 @@ class ExecutionParameters(object):
     decorated function.
     """
 
-    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, distributed_training_context=None):
+    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging):
         self._stats = stats
         self._execution_date = execution_date
         self._working_directory = tmp_dir
         self._execution_id = execution_id
         self._logging = logging
-        self._distributed_training_context = distributed_training_context
 
     @property
     def stats(self):
@@ -381,14 +380,9 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         """
 
         return _exception_scopes.user_entry_point(self.task_function)(
-            ExecutionParameters(
-                execution_date=context.execution_date,
-                # TODO: it might be better to consider passing the full struct
-                execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
-                stats=context.stats,
-                logging=context.logging,
-                tmp_dir=context.working_directory,
-            ),
+            ExecutionParameters(execution_date=context.execution_date, tmp_dir=context.working_directory,
+                                stats=context.stats, execution_id=_six.text_type(
+                    WorkflowExecutionIdentifier.promote_from_model(context.execution_id)), logging=context.logging),
             **inputs
         )
 

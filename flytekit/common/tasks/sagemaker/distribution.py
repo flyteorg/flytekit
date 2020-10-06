@@ -82,9 +82,8 @@ class DistributedTrainingEngineContext(_common_engine.EngineContext):
 class DistributedTrainingExecutionParam(_sdk_runnable.ExecutionParameters):
     def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, distributed_training_context):
 
-        super().__init__(
-            stats=stats, execution_date=execution_date, tmp_dir=tmp_dir, execution_id=execution_id, logging=logging,
-        )
+        super().__init__(execution_date=execution_date, tmp_dir=tmp_dir, stats=stats, execution_id=execution_id,
+                         logging=logging)
 
         self._distributed_training_context = distributed_training_context
 
