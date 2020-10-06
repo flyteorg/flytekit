@@ -1,7 +1,6 @@
 import flytekit.plugins
 
 import logging as _logging
-from flytekit.annotated.context_manager import FlyteContext
 
 __version__ = '0.11.3'
 
@@ -22,4 +21,5 @@ logger.addHandler(ch)
 
 
 def current_context():
+    from flytekit.annotated.context_manager import FlyteContext
     return FlyteContext.current_context().user_space_params

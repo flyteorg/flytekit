@@ -77,6 +77,9 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
         # Option 5
         def t(a: int, b: str) -> str: ...
 
+        # Option 6
+        def t(a: int, b: str) -> None: ...
+
     TODO: We'll need to check the actual return types for in all cases as well, to make sure Flyte IDL actually
           supports it. For instance, typing.Tuple[Optional[int]] is not something we can represent currently.
 
@@ -86,28 +89,25 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
     definition. In all other cases, we'll automatically generate output names, indexed starting at 0.
     """
 
-    if return_annotation is None:
+    # Handle Option 6
+    # We can think about whether we should add a default output name with type None in the future.
+    if return_annotation is None or return_annotation is inspect.Signature.empty:
         return {}
 
-    return_map = {}
-    # Lets test if the return type is a single Value or multiple values.
+    # This statement results in true for typing.Namedtuple, single and void return types, so this
+    # handles Options 1, 2, and 5. Even though NamedTuple for us is multi-valued, it's a single value for Python
     if isinstance(return_annotation, Type):
-        # First, lets check for a single return, void return (inspect._empty) or NamedTuple
-        # Note: This statement results in true for typing.Namedtuple as well as a single or void return type.
-        # isinstance / issubclass does not work for Namedtuple
-        # Even though NamedTuple for us is multi-valued, its actually a single value for Python
+        # isinstance / issubclass does not work for Namedtuple.
+        # Options 1 and 2
         if hasattr(return_annotation, '_field_types'):
             logger.debug(f'Task returns named tuple {return_annotation}')
             return return_annotation._field_types
-        elif return_annotation is inspect.Signature.empty:
-            # TODO @yeetong - in case of no returns I think we should be returning Void Type / NoneType. To match
-            #     your behavior and keep test ok I am commenting this line
-            #     return {default_output_name(): None}
-            return {}
+        # Option 5
         logger.debug(f'Task returns a single output of type {return_annotation}')
         return {default_output_name(): return_annotation}
 
-    # Now lets handle multi valued return
+    return_map = {}
+    # Now lets handle multi-valued return annotations
     if hasattr(return_annotation, '__origin__') and return_annotation.__origin__ is tuple:
         # Handle option 3
         logger.debug(f'Task returns unnamed typing.Tuple {return_annotation}')
@@ -116,5 +116,6 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
         # Handle option 4
         logger.debug(f'Task returns unnamed native tuple {return_annotation}')
         return_types = return_annotation
+
     return_map = OrderedDict(zip(list(output_name_generator(len(return_types))), return_types))
     return return_map
