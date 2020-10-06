@@ -21,7 +21,7 @@ croniter==0.3.34          # via flytekit
 decorator==4.4.2          # via ipython
 deprecated==1.2.10        # via flytekit
 entrypoints==0.3          # via papermill
-git+https://github.com/lyft/flyteidl@0942c33ea26544b5bd7ffbcaa51158704760e81b#egg=flyteidl  # via flytekit
+flyteidl==0.18.9b0        # via flytekit
 future==0.18.2            # via torch
 grpcio==1.32.0            # via flytekit
 hmsclient==0.1.1          # via flytekit
