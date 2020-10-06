@@ -8,8 +8,7 @@ except ImportError:
 import six as _six
 import enum
 
-
-from flytekit.common import constants as _constants, sdk_bases as _sdk_bases
+from flytekit.common import interface as _interface, constants as _constants, sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
 from flytekit.common.tasks import task as _base_task, output as _task_output
 from flytekit.common.types import helpers as _type_helpers
@@ -206,7 +205,6 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
         """
         # Circular dependency
         from flytekit import __version__
-        from flytekit.annotated.task import get_interface_from_task_info as _get_interface_from_task_info
 
         self._task_function = task_function
         super(SdkRunnableTask, self).__init__(
@@ -224,8 +222,8 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
                 discovery_version,
                 deprecated
             ),
-            # Once we are up and running on the new decorator, this will go away since the decorator itself will set.
-            _get_interface_from_task_info(task_function.__annotations__),
+            # TODO: If we end up using SdkRunnableTask for the new code, make sure this is set correctly.
+            _interface.TypedInterface({}, {}),
             custom,
             container=self._get_container_definition(
                 storage_request=storage_request,
@@ -240,6 +238,8 @@ class SdkRunnableTask(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _base_task
             )
         )
         self.id._name = "{}.{}".format(self.task_module, self.task_function_name)
+
+        # TODO: If we end up using SdkRunnableTask for the new code, make sure these are set correctly.
         self._task_style = SdkRunnableTaskStyle.V1 if len(self.interface.inputs) + len(
             self.interface.outputs) > 0 else SdkRunnableTaskStyle.V0
 

@@ -28,12 +28,6 @@ def test_simple_input_output():
 
     assert my_task(a=3) == (5, 'hello world')
 
-    # ctx = context_manager.FlyteContext.current_context()
-    # with ctx.new_execution_context(mode=context_manager.ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION,
-    #                                cloud_provider="") as ctx:
-    #     result = my_task(a=3)
-    #     print(result)
-
 
 def test_simple_input_no_output():
     @task
