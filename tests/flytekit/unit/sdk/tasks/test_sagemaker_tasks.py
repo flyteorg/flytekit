@@ -228,9 +228,11 @@ def test_custom_training_job():
 def predicate(distributed_training_context):
     return (
         distributed_training_context[
-            flytekit.common.tasks.sagemaker.distribution.DistributedTrainingContextKey.CURRENT_HOST]
+            flytekit.common.tasks.sagemaker.distribution.DistributedTrainingContextKey.CURRENT_HOST
+        ]
         == distributed_training_context[
-            flytekit.common.tasks.sagemaker.distribution.DistributedTrainingContextKey.HOSTS][1]
+            flytekit.common.tasks.sagemaker.distribution.DistributedTrainingContextKey.HOSTS
+        ][1]
     )
 
 

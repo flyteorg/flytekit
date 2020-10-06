@@ -3,8 +3,6 @@ import os as _os
 
 import retry as _retry
 
-from flytekit.common import constants as _common_constants
-
 SM_RESOURCE_CONFIG_FILE = "/opt/ml/input/config/resourceconfig.json"
 SM_ENV_VAR_CURRENT_HOST = "SM_CURRENT_HOST"
 SM_ENV_VAR_HOSTS = "SM_HOSTS"
