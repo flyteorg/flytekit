@@ -192,6 +192,11 @@ class DynamicTask(ReturnOutputsTask):
                 task = tasks_map[future_node.task_node.reference_id]
                 if task.type == _sdk_constants.SdkTaskType.CONTAINER_ARRAY_TASK:
                     sub_task_output = DynamicTask.execute_array_task(future_node.id, task, results)
+                elif task.type == _sdk_constants.SdkTaskType.SPARK_TASK:
+                    # This is required because `_transform_for_user_output` function about is invoked which
+                    # checks for outputs
+                    self._has_workflow_node = True
+                    return results
                 elif task.type == _sdk_constants.SdkTaskType.HIVE_JOB:
                     # TODO: futures.outputs should have the Schema instances.
                     # After schema is implemented, fill out random data into the random locations

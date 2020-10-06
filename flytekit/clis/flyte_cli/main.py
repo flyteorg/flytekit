@@ -1051,7 +1051,9 @@ def watch_execution(host, insecure, urn):
     execution = _workflow_execution_common.SdkWorkflowExecution.promote_from_model(client.get_execution(ex_id))
 
     _click.echo("Waiting for the execution {} to complete ...".format(_tt(execution.id)))
-    execution.wait_for_completion()
+
+    with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
+        execution.wait_for_completion()
 
 
 @_flyte_cli.command("relaunch-execution", cls=_FlyteSubCommand)

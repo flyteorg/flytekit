@@ -148,6 +148,8 @@ class SdkLaunchPlan(
             return True
         elif self.entity_metadata.schedule.rate and self.entity_metadata.schedule.rate.value:
             return True
+        elif self.entity_metadata.schedule.cron_schedule and self.entity_metadata.schedule.cron_schedule.schedule:
+            return True
         else:
             return False
 

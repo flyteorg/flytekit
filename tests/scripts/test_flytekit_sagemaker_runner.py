@@ -1,4 +1,5 @@
 import os
+import sys
 from unittest import mock
 
 from scripts.flytekit_sagemaker_runner import run as _flyte_sagemaker_run
@@ -28,5 +29,9 @@ def test(mock_subprocess_run):
     assert os.environ["env2"] == "val2"
     mock_subprocess_run.assert_called_with(
         "service_venv pyflyte-execute --task-module blah --task-name bloh "
-        "--output-prefix s3://fake-bucket --inputs s3://fake-bucket".split()
+        "--output-prefix s3://fake-bucket --inputs s3://fake-bucket".split(),
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+        encoding="utf-8",
+        check=True,
     )
