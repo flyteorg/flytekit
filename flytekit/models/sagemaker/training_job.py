@@ -22,7 +22,13 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
     Refer to SageMaker official doc for more details: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTrainingJob.html
     """
 
-    def __init__(self, instance_count: int, instance_type: str, volume_size_in_gb: int, distributed_protocol: int):
+    def __init__(
+        self,
+        instance_count: int,
+        instance_type: str,
+        volume_size_in_gb: int,
+        distributed_protocol: int = DistributedProtocol.UNSPECIFIED,
+    ):
         self._instance_count = instance_count
         self._instance_type = instance_type
         self._volume_size_in_gb = volume_size_in_gb

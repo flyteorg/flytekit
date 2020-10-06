@@ -16,12 +16,12 @@ boto3==1.15.12            # via flytekit
 botocore==1.18.12         # via boto3, s3transfer
 certifi==2020.6.20        # via requests
 chardet==3.0.4            # via requests
-click==7.1.2              # via black, hmsclient, papermill
+click==7.1.2              # via black, flytekit, hmsclient, papermill
 croniter==0.3.34          # via flytekit
 decorator==4.4.2          # via ipython
 deprecated==1.2.10        # via flytekit
 entrypoints==0.3          # via papermill
-git+ssh://git@github.com/lyft/flyteidl@0942c33ea26544b5bd7ffbcaa51158704760e81b#egg=flyteidlclick>=6.6,<8.0  # via flytekit
+git+https://github.com/lyft/flyteidl@horovod-mpi-distributed#egg=flyteidl  # via flytekit
 future==0.18.2            # via torch
 grpcio==1.32.0            # via flytekit
 hmsclient==0.1.1          # via flytekit
