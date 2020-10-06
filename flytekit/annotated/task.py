@@ -14,10 +14,34 @@ import inspect
 from flytekit.annotated.interface import transform_signature_to_typed_interface
 
 
-# Dummy SDKNode mimic
-class A(object):
-    def id(self):
-        return "dummy-node"
+class TaskCallOutput(object):
+
+    def __init__(self, var: str, node_output: _NodeOutput = None, flyte_literal_value: _literal_models.Literal = None):
+        if not ((node_output is None) ^ (flyte_literal_value is None)):
+            raise Exception(f"Exactly one of node output or flyte value must be specified, "
+                            f"{node_output}, {flyte_literal_value} given")
+        self._var = var
+        self._node_output = node_output
+        self._flyte_literal_value = flyte_literal_value
+
+    @property
+    def var(self):
+        return self._var
+
+    @property
+    def node_output(self):
+        return self._node_output
+
+    @property
+    def flyte_literal_value(self):
+        return self._flyte_literal_value
+
+    # This is where we can put all the other functions like with_cpu/memory, etc.
+
+    def with_node_name(self, name: str):
+        if self.node_output is None:
+            raise Exception("Can't call without node")
+        self.node_output.sdk_node._id = name
 
 
 # This is the least abstract task. It will have access to the loaded Python function
@@ -80,8 +104,7 @@ class Task(object):
         for output_name, output_var_model in self.interface.outputs.items():
             # TODO: If node id gets updated later, we have to make sure to update the NodeOutput model's ID, which
             #  is currently just a static str
-            node_outputs.append(_NodeOutput(sdk_node=sdk_node, sdk_type=None, var=output_name,
-                                            literal_type=output_var_model.type))
+            node_outputs.append(_NodeOutput(sdk_node=sdk_node, sdk_type=None, var=output_name))
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
         if len(self.interface.outputs) > 1:
@@ -123,7 +146,7 @@ class Task(object):
         elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             # Unwrap the kwargs values. After this, we essentially have a LiteralMap
             for k, v in kwargs.items():
-                if isinstance(v, _NodeOutput):
+                if isinstance(v, TaskCallOutput):
                     kwargs[k] = v.flyte_literal_value
 
             input_literal_map = _literal_models.LiteralMap(literals=kwargs)
@@ -142,13 +165,11 @@ class Task(object):
 
             if len(self.interface.outputs) > 1:
                 for idx, var_name in enumerate(output_names):
-                    node_results.append(_NodeOutput(sdk_node=A(), sdk_type=None,
-                                                    var=output_names[idx],
-                                                    flyte_literal_value=outputs_literals[var_name]))
+                    node_results.append(TaskCallOutput(var=output_names[idx],
+                                                       flyte_literal_value=outputs_literals[var_name]))
                 return tuple(node_results)
             elif len(self.interface.outputs) == 1:
-                return _NodeOutput(sdk_node=A(), sdk_type=None, var=output_names[0],
-                                   flyte_literal_value=outputs_literals[output_names[0]])
+                return TaskCallOutput(var=output_names[0], flyte_literal_value=outputs_literals[output_names[0]])
             else:
                 return None
 
