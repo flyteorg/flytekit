@@ -3,6 +3,7 @@ import os as _os
 
 import retry as _retry
 from flytekit.engines import common as _common_engine
+from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 
 SM_RESOURCE_CONFIG_FILE = "/opt/ml/input/config/resourceconfig.json"
 SM_ENV_VAR_CURRENT_HOST = "SM_CURRENT_HOST"
@@ -74,4 +75,28 @@ class DistributedTrainingEngineContext(_common_engine.EngineContext):
 
     @property
     def distributed_training_context(self) -> dict:
+        return self._distributed_training_context
+
+
+class DistributedTrainingExecutionParam(_sdk_runnable.ExecutionParameters):
+    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, distributed_training_context):
+
+        super().__init__(
+            stats=stats,
+            execution_date=execution_date,
+            tmp_dir=tmp_dir,
+            execution_id=execution_id,
+            logging=logging,
+        )
+
+        self._distributed_training_context = distributed_training_context
+
+    @property
+    def distributed_training_context(self):
+        """
+        This contains the resource information for distributed training. Currently this information is only available
+        for SageMaker training jobs.
+
+        :rtype: dict
+        """
         return self._distributed_training_context

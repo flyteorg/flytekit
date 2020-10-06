@@ -97,15 +97,7 @@ class ExecutionParameters(object):
         """
         return self._execution_id
 
-    @property
-    def distributed_training_context(self):
-        """
-        This contains the resource information for distributed training. Currently this information is only available
-        for SageMaker training jobs.
 
-        :rtype: dict
-        """
-        return self._distributed_training_context
 
 
 class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.ExtendedSdkType):

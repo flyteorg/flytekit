@@ -308,7 +308,6 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
             clear=True,
         ):
 
-            print(os.environ)
             self._my_distributed_task._output_persist_predicate = predicate
             # execute the distributed task with its distributed_training_context == None
             ret = self._my_distributed_task.execute(self._context, self._task_input)

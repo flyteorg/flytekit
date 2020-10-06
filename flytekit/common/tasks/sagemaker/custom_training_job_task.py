@@ -11,7 +11,6 @@ from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.tasks.sagemaker import distribution as _sm_distribution
 from flytekit.common.tasks.sagemaker.distribution import DefaultOutputPersistPredicate
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters as _ExecutionParameters
-from flytekit.engines import common as _common_engine
 from flytekit.models.sagemaker import training_job as _training_job_models
 
 
@@ -117,7 +116,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
-        dist_training_task_context = _sm_distribution.DistributedTrainingEngineContext(
+        dist_training_task_specific_engine_context = _sm_distribution.DistributedTrainingEngineContext(
             execution_date=context.execution_date,
             tmp_dir=context.working_directory,
             stats=context.stats,
@@ -127,12 +126,12 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             distributed_training_context=_sm_distribution.get_sagemaker_distributed_training_context_from_env(),
         )
 
-        ret = super().execute(dist_training_task_context, inputs)
+        ret = super().execute(dist_training_task_specific_engine_context, inputs)
 
         if (
             self._is_distributed()
             and self._output_persist_predicate
-            and self.output_persist_predicate(dist_training_task_context.distributed_training_context) is True
+            and self.output_persist_predicate(dist_training_task_specific_engine_context.distributed_training_context) is True
         ):
             return ret
         else:
@@ -159,7 +158,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         """
 
         return _exception_scopes.user_entry_point(self.task_function)(
-            _ExecutionParameters(
+            _sm_distribution.DistributedTrainingExecutionParam(
                 execution_date=context.execution_date,
                 # TODO: it might be better to consider passing the full struct
                 execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
