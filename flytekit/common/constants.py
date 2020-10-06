@@ -37,9 +37,3 @@ END_NODE_ID = "end-node"
 class CloudProvider(object):
     AWS = "aws"
     GCP = "gcp"
-
-
-class DistributedTrainingContextKey(object):
-    CURRENT_HOST = "current_host"
-    HOSTS = "hosts"
-    NETWORK_INTERFACE_NAME = "network_interface_name"

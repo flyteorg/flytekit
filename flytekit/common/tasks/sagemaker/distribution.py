@@ -4,7 +4,6 @@ import os as _os
 import retry as _retry
 
 from flytekit.common import constants as _common_constants
-from flytekit.common.constants import DistributedTrainingContextKey as _DistributedTrainingContextKey
 
 SM_RESOURCE_CONFIG_FILE = "/opt/ml/input/config/resourceconfig.json"
 SM_ENV_VAR_CURRENT_HOST = "SM_CURRENT_HOST"
@@ -22,9 +21,9 @@ def get_sagemaker_distributed_training_context_from_env() -> dict:
     ):
         raise KeyError
 
-    distributed_training_context[_DistributedTrainingContextKey.CURRENT_HOST] = _os.environ.get(SM_ENV_VAR_CURRENT_HOST)
-    distributed_training_context[_DistributedTrainingContextKey.HOSTS] = _json.loads(_os.environ.get(SM_ENV_VAR_HOSTS))
-    distributed_training_context[_DistributedTrainingContextKey.NETWORK_INTERFACE_NAME] = _os.environ.get(
+    distributed_training_context[DistributedTrainingContextKey.CURRENT_HOST] = _os.environ.get(SM_ENV_VAR_CURRENT_HOST)
+    distributed_training_context[DistributedTrainingContextKey.HOSTS] = _json.loads(_os.environ.get(SM_ENV_VAR_HOSTS))
+    distributed_training_context[DistributedTrainingContextKey.NETWORK_INTERFACE_NAME] = _os.environ.get(
         SM_ENV_VAR_NETWORK_INTERFACE_NAME
     )
 
@@ -42,6 +41,12 @@ def get_sagemaker_distributed_training_context_from_file() -> dict:
 class DefaultOutputPersistPredicate(object):
     def __call__(self, distributed_training_context):
         return (
-            distributed_training_context[_common_constants.DistributedTrainingContextKey.CURRENT_HOST]
-            == distributed_training_context[_common_constants.DistributedTrainingContextKey.HOSTS][0]
+            distributed_training_context[DistributedTrainingContextKey.CURRENT_HOST]
+            == distributed_training_context[DistributedTrainingContextKey.HOSTS][0]
         )
+
+
+class DistributedTrainingContextKey(object):
+    CURRENT_HOST = "current_host"
+    HOSTS = "hosts"
+    NETWORK_INTERFACE_NAME = "network_interface_name"

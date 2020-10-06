@@ -7,6 +7,7 @@ from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import Hyperparame
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
 from google.protobuf.json_format import ParseDict
 
+import flytekit.common.tasks.sagemaker.distribution
 import flytekit.models.core.types as _core_types
 from flytekit.common import constants as _common_constants
 from flytekit.common import utils as _utils
@@ -226,8 +227,10 @@ def test_custom_training_job():
 # Defining a output-persist predicate to indicate if the copy of the instance should persist its output
 def predicate(distributed_training_context):
     return (
-        distributed_training_context[_common_constants.DistributedTrainingContextKey.CURRENT_HOST]
-        == distributed_training_context[_common_constants.DistributedTrainingContextKey.HOSTS][1]
+        distributed_training_context[
+            flytekit.common.tasks.sagemaker.distribution.DistributedTrainingContextKey.CURRENT_HOST]
+        == distributed_training_context[
+            flytekit.common.tasks.sagemaker.distribution.DistributedTrainingContextKey.HOSTS][1]
     )
 
 
@@ -338,7 +341,8 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
             clear=True,
         ):
 
-            # This test is making sure that the distributed_training_context is successfully passed into the task_function
+            # This test is making sure that the distributed_training_context is successfully passed into the
+            # task_function.
             # Specifically, we want to make sure the _execute_user_code() of the CustomTrainingJobTask class does the
             # thing that it is supposed to do
 
