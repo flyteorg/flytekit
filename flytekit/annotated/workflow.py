@@ -1,8 +1,8 @@
 import inspect
 
-from flytekit import engine as flytekit_engine, logger
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext
-from flytekit.annotated.task import A
+from flytekit import FlyteContext, engine as flytekit_engine, logger
+from flytekit.annotated.context_manager import ExecutionState
+from flytekit.annotated.task import TaskCallOutput
 from flytekit.annotated.interface import transform_variable_map, extract_return_annotation, \
     transform_signature_to_typed_interface
 from flytekit.common import constants as _common_constants
@@ -51,15 +51,13 @@ class Workflow(object):
                     logger.warning("Exception!!!")
                     raise e
 
-                # Wrap in NodeOutputs
-                # TODO: This is a hack - let's create a proper new wrapper object instead of using NodeOutput
                 inputs_as_wrapped_node_outputs = {
-                    k: _NodeOutput(sdk_node=A(), sdk_type=None, var=k, flyte_literal_value=v) for k, v in
+                    k: TaskCallOutput(var=k, flyte_literal_value=v) for k, v in
                     inputs_as_dict_of_literals.items()
                 }
 
-                # TODO: These are all assumed to be NodeOutputs for now (or whatever the new wrapper is called), but
-                #   they can be other things as well.  What if someone just returns 5? Should we disallow this?
+                # TODO: These are all assumed to be TaskCallOutput objects, but they can
+                #   be other things as well.  What if someone just returns 5? Should we disallow this?
                 function_outputs = self._workflow_function(**inputs_as_wrapped_node_outputs)
                 output_names = list(self._sdk_workflow.interface.outputs.keys())
                 output_literal_map = {}
@@ -128,10 +126,6 @@ def workflow(_workflow_function=None):
         # TODO: Again, at this point, we should be able to identify the name of the workflow
         workflow_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW,
                                                    "proj", "dom", "moreblah", "1")
-
-        # logger.debug(f"Inputs {input_parameters}")
-        # logger.debug(f"Output objects {workflow_output_objs}")
-        # logger.debug(f"Nodes {all_nodes}")
 
         # Create a FlyteWorkflow object. We call this like how promote_from_model would call this, by ignoring the
         # fancy arguments and supplying just the raw elements manually. Alternatively we can construct the
