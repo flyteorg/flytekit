@@ -98,8 +98,6 @@ class ExecutionParameters(object):
         return self._execution_id
 
 
-
-
 class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.ExtendedSdkType):
     """
     This is not necessarily a local-only Container object. So long as configuration is present, you can use this object

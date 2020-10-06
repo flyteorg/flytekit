@@ -367,13 +367,7 @@ class BaseExecutionEngineFactory(object, metaclass=_common_models.FlyteABCMeta):
 
 class EngineContext(object):
     def __init__(
-        self,
-        execution_date,
-        tmp_dir,
-        stats,
-        execution_id,
-        logging,
-        raw_output_data_prefix=None,
+        self, execution_date, tmp_dir, stats, execution_id, logging, raw_output_data_prefix=None,
     ):
         self._stats = stats
         self._execution_date = execution_date
