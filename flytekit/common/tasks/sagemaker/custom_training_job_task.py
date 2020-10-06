@@ -8,8 +8,8 @@ from flytekit.common.constants import SdkTaskType
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
-from flytekit.common.tasks.sagemaker import distribution as _sm_distribution
-from flytekit.common.tasks.sagemaker.distribution import DefaultOutputPersistPredicate
+from flytekit.common.tasks.sagemaker import distributed_training as _sm_distribution
+from flytekit.common.tasks.sagemaker.distributed_training import DefaultOutputPersistPredicate
 from flytekit.models.sagemaker import training_job as _training_job_models
 
 

@@ -7,13 +7,13 @@ from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import Hyperparame
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
 from google.protobuf.json_format import ParseDict
 
-import flytekit.common.tasks.sagemaker.distribution
+import flytekit.common.tasks.sagemaker.distributed_training
 import flytekit.models.core.types as _core_types
 from flytekit.common import constants as _common_constants
 from flytekit.common import utils as _utils
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
 from flytekit.common.tasks import task as _sdk_task
-from flytekit.common.tasks.sagemaker import distribution as _sm_distribution
+from flytekit.common.tasks.sagemaker import distributed_training as _sm_distribution
 from flytekit.common.tasks.sagemaker import hpo_job_task
 from flytekit.common.tasks.sagemaker.built_in_training_job_task import SdkBuiltinAlgorithmTrainingJobTask
 from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
@@ -228,10 +228,10 @@ def test_custom_training_job():
 def predicate(distributed_training_context):
     return (
         distributed_training_context[
-            flytekit.common.tasks.sagemaker.distribution.DistributedTrainingContextKey.CURRENT_HOST
+            flytekit.common.tasks.sagemaker.distributed_training.DistributedTrainingContextKey.CURRENT_HOST
         ]
         == distributed_training_context[
-            flytekit.common.tasks.sagemaker.distribution.DistributedTrainingContextKey.HOSTS
+            flytekit.common.tasks.sagemaker.distributed_training.DistributedTrainingContextKey.HOSTS
         ][1]
     )
 
