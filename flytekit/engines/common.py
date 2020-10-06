@@ -374,7 +374,6 @@ class EngineContext(object):
         execution_id,
         logging,
         raw_output_data_prefix=None,
-        distributed_training_context=None,
     ):
         self._stats = stats
         self._execution_date = execution_date
@@ -382,7 +381,6 @@ class EngineContext(object):
         self._execution_id = execution_id
         self._logging = logging
         self._raw_output_data_prefix = raw_output_data_prefix
-        self._distributed_training_context = distributed_training_context
 
     @property
     def stats(self):
@@ -422,7 +420,3 @@ class EngineContext(object):
     @property
     def raw_output_data_prefix(self) -> str:
         return self._raw_output_data_prefix
-
-    @property
-    def distributed_training_context(self) -> dict:
-        return self._distributed_training_context

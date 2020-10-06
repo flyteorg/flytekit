@@ -117,8 +117,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
-
-        context_for_dist_training_task = _common_engine.EngineContext(
+        dist_training_task_context = _sm_distribution.DistributedTrainingEngineContext(
             execution_date=context.execution_date,
             tmp_dir=context.working_directory,
             stats=context.stats,
@@ -128,12 +127,12 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             distributed_training_context=_sm_distribution.get_sagemaker_distributed_training_context_from_env(),
         )
 
-        ret = super().execute(context_for_dist_training_task, inputs)
+        ret = super().execute(dist_training_task_context, inputs)
 
         if (
             self._is_distributed()
             and self._output_persist_predicate
-            and self.output_persist_predicate(context_for_dist_training_task.distributed_training_context) is True
+            and self.output_persist_predicate(dist_training_task_context.distributed_training_context) is True
         ):
             return ret
         else:
@@ -145,7 +144,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
 
     def _execute_user_code(self, context, inputs):
         """
-        :param flytekit.engines.common.EngineContext context:
+        :param flytekit.engines.common.tasks.sagemaker.distribution.DistributedTrainingEngineContext context:
         :param dict[Text, T] inputs: This variable is a bit of a misnomer, since it's both inputs and outputs. The
             dictionary passed here will be passed to the user-defined function, and will have values that are a
             variety of types.  The T's here are Python std values for inputs.  If there isn't a native Python type for

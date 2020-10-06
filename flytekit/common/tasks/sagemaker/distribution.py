@@ -2,6 +2,7 @@ import json as _json
 import os as _os
 
 import retry as _retry
+from flytekit.engines import common as _common_engine
 
 SM_RESOURCE_CONFIG_FILE = "/opt/ml/input/config/resourceconfig.json"
 SM_ENV_VAR_CURRENT_HOST = "SM_CURRENT_HOST"
@@ -48,3 +49,29 @@ class DistributedTrainingContextKey(object):
     CURRENT_HOST = "current_host"
     HOSTS = "hosts"
     NETWORK_INTERFACE_NAME = "network_interface_name"
+
+
+class DistributedTrainingEngineContext(_common_engine.EngineContext):
+    def __init__(
+        self,
+        execution_date,
+        tmp_dir,
+        stats,
+        execution_id,
+        logging,
+        raw_output_data_prefix=None,
+        distributed_training_context=None,
+    ):
+        super().__init__(
+            execution_date=execution_date,
+            tmp_dir=tmp_dir,
+            stats=stats,
+            execution_id=execution_id,
+            logging=logging,
+            raw_output_data_prefix=raw_output_data_prefix,
+        )
+        self._distributed_training_context = distributed_training_context
+
+    @property
+    def distributed_training_context(self) -> dict:
+        return self._distributed_training_context
