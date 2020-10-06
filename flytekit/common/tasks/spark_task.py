@@ -145,9 +145,13 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
 
         with GlobalSparkContext():
             _exception_scopes.user_entry_point(self.task_function)(
-                _sdk_runnable.ExecutionParameters(execution_date=context.execution_date,
-                                                  tmp_dir=context.working_directory, stats=context.stats,
-                                                  execution_id=context.execution_id, logging=context.logging),
+                _sdk_runnable.ExecutionParameters(
+                    execution_date=context.execution_date,
+                    tmp_dir=context.working_directory,
+                    stats=context.stats,
+                    execution_id=context.execution_id,
+                    logging=context.logging,
+                ),
                 GlobalSparkContext.get_spark_context(),
                 **inputs_dict
             )
