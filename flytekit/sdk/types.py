@@ -163,7 +163,10 @@ class Types(object):
 
     Generic = _helpers.get_sdk_type_from_literal_type(_primitives.Generic.to_flyte_literal_type())
     """
-    Use this to specify a simple JSON type.
+    Use this to specify a simple JSON type. The Generic type offer a flexible (but loose) extension to flyte's typing
+    system by allowing custom types/objects to be passed through. It's strongly recommended for producers & consumers of
+    entities that produce or consume a Generic type to perform their own expectations checks on the integrity of the
+    object.  
 
     When used with an SDK-decorated method, expect this behavior from the default type engine:
 
@@ -190,6 +193,23 @@ class Types(object):
             elif a['operation'] == 'merge':
                 a['value'].update(a['some']['nested'][0]['field'])
             b.set(a)
+        
+        # For better readability, it's strongly advised to leverage python's type aliasing.
+        MyTypeA = Types.Generic
+        MyTypeB = Types.Generic
+
+        # This makes it clearer that it received a certain type and produces a different one. Other tasks that consume 
+        # MyTypeB should do so in their input declaration.
+        @inputs(a=MyTypeA)
+        @outputs(b=MyTypeB)
+        @python_task
+        def operate(wf_params, a, b):
+            if a['operation'] == 'add':
+                a['value'] += a['operand']  # a['value'] is a number
+            elif a['operation'] == 'merge':
+                a['value'].update(a['some']['nested'][0]['field'])
+            b.set(a)
+        
     """
 
     Blob = _blobs.Blob
@@ -357,7 +377,13 @@ class Types(object):
 
     Proto = staticmethod(_proto.create_protobuf)
     """
-    Use this to specify a custom protobuf type.
+    Proto type wraps a protobuf type to provide interoperability between protobuf and flyte typing system. Using this
+    type, you can define custom input/output variable types of flyte entities and continue to provide strong typing
+    syntax. Proto type serializes proto objects as binary (leveraging `flyteidl's Binary literal <https://github.com/lyft/flyteidl/blob/793b09d190148236f41ad8160b5cec9a3325c16f/protos/flyteidl/core/literals.proto#L45>`_).
+    Binary serialization of protobufs is the most space-efficient serialization form. Because of the way protobufs are
+    designed, unmarshalling the serialized proto requires access to the corresponding type. In order to use/visualize
+    the serialized proto, you will generally need to write custom code in the corresponding component. 
+    
 
     .. note::
 
@@ -397,8 +423,13 @@ class Types(object):
 
     GenericProto = staticmethod(_proto.create_generic)
     """
-    Use this to specify a custom protobuf type that will get serialized as a proto struct. This enables UX visualization
-    of data passed through.
+    GenericProto type wraps a protobuf type to provide interoperability between protobuf and flyte typing system. Using
+    this type, you can define custom input/output variable types of flyte entities and continue to provide strong typing
+    syntax. Proto type serializes proto objects as binary (leveraging `flyteidl's Binary literal <https://github.com/lyft/flyteidl/blob/793b09d190148236f41ad8160b5cec9a3325c16f/protos/flyteidl/core/literals.proto#L63>`_).
+    A generic proto is a specialization of the Generic type with added convenience functions to support marshalling/
+    unmarshalling of the underlying protobuf object using the protobuf official json marshaller. While GenericProto type
+    does not produce the most space-efficient representation of protobufs, it's a suitable solution for making protobufs
+    easily accessible (i.e. humanly readable) in other flyte components (e.g. console, cli... etc.).  
 
     .. note::
 

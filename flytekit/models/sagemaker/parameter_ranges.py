@@ -255,11 +255,11 @@ class ParameterRangeOneOf(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb_object: _idl_parameter_ranges.ParameterRangeOneOf):
         param = None
-        if pb_object.continuous_parameter_range:
+        if pb_object.HasField("continuous_parameter_range"):
             param = ContinuousParameterRange.from_flyte_idl(pb_object.continuous_parameter_range)
-        elif pb_object.integer_parameter_range:
+        elif pb_object.HasField("integer_parameter_range"):
             param = IntegerParameterRange.from_flyte_idl(pb_object.integer_parameter_range)
-        elif isinstance(pb_object, _idl_parameter_ranges.CategoricalParameterRange):
+        elif pb_object.HasField("categorical_parameter_range"):
             param = CategoricalParameterRange.from_flyte_idl(pb_object.categorical_parameter_range)
 
         return cls(param=param)
