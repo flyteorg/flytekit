@@ -193,12 +193,12 @@ class Types(object):
             elif a['operation'] == 'merge':
                 a['value'].update(a['some']['nested'][0]['field'])
             b.set(a)
-        
+
         # For better readability, it's strongly advised to leverage python's type aliasing.
         MyTypeA = Types.Generic
         MyTypeB = Types.Generic
 
-        # This makes it clearer that it received a certain type and produces a different one. Other tasks that consume 
+        # This makes it clearer that it received a certain type and produces a different one. Other tasks that consume
         # MyTypeB should do so in their input declaration.
         @inputs(a=MyTypeA)
         @outputs(b=MyTypeB)
@@ -209,7 +209,6 @@ class Types(object):
             elif a['operation'] == 'merge':
                 a['value'].update(a['some']['nested'][0]['field'])
             b.set(a)
-        
     """
 
     Blob = _blobs.Blob
@@ -383,7 +382,6 @@ class Types(object):
     Binary serialization of protobufs is the most space-efficient serialization form. Because of the way protobufs are
     designed, unmarshalling the serialized proto requires access to the corresponding type. In order to use/visualize
     the serialized proto, you will generally need to write custom code in the corresponding component.
-    
 
     .. note::
 
