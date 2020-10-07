@@ -6,6 +6,7 @@ import os as _os
 import sys as _sys
 
 import papermill as _pm
+from nbconvert import HTMLExporter as _HTMLExporter
 import six as _six
 from google.protobuf import json_format as _json_format
 from google.protobuf import text_format as _text_format
@@ -30,6 +31,7 @@ from flytekit.sdk.spark_types import SparkType as _spark_type
 from flytekit.sdk.types import Types as _Types
 
 OUTPUT_NOTEBOOK = "output_notebook"
+OUTPUT_NOTEBOOK_HTML = OUTPUT_NOTEBOOK + ".html"
 
 
 def python_notebook(
@@ -155,7 +157,8 @@ class SdkNotebookTask(_base_tasks.SdkTask):
 
         # Add a Notebook output as a Blob.
         self.interface.outputs.update(
-            output_notebook=_interface.Variable(_Types.Blob.to_flyte_literal_type(), OUTPUT_NOTEBOOK)
+            output_notebook=_interface.Variable(_Types.Blob.to_flyte_literal_type(), OUTPUT_NOTEBOOK),
+            output_notebook_html=_interface.Variable(_Types.Blob.to_flyte_literal_type(), OUTPUT_NOTEBOOK_HTML),
         )
 
     def _validate_inputs(self, inputs):
@@ -279,6 +282,7 @@ class SdkNotebookTask(_base_tasks.SdkTask):
         input_notebook_path = self._notebook_path
         # Execute Notebook via Papermill.
         output_notebook_path = input_notebook_path.split(".ipynb")[0] + "-out.ipynb"
+        output_notebook_html_path = input_notebook_path.split(".ipynb")[0] + "-out.html"
         _pm.execute_notebook(input_notebook_path, output_notebook_path, parameters=inputs_dict)
 
         # Parse Outputs from Notebook.
@@ -300,8 +304,27 @@ class SdkNotebookTask(_base_tasks.SdkTask):
         )
         output_notebook.set(output_notebook_path)
 
+        # render output notebook to html
+        # We are using nbconvert htmlexporter and its classic template
+        # later about how to customize the exporter further.
+        html_exporter = _HTMLExporter()
+        html_exporter.template_name = 'classic'
+        (body, resources) = html_exporter.from_notebook_node(output_notebook_path)
+
+        with open(output_notebook_html_path, "w+") as f:
+            f.write(body)
+
+        print(f"Ignoring {resources} for now. Output html written.")
+
+        # Add output_notebook_html as an output to the task.
+        output_notebook_html = _task_output.OutputReference(
+            _type_helpers.get_sdk_type_from_literal_type(_Types.Blob.to_flyte_literal_type())
+        )
+        output_notebook_html.set(output_notebook_html_path)
+
         output_literal_map = _literal_models.LiteralMap.from_flyte_idl(dict)
         output_literal_map.literals[OUTPUT_NOTEBOOK] = output_notebook.sdk_value
+        output_literal_map.literals[OUTPUT_NOTEBOOK_HTML] = output_notebook_html.sdk_value
 
         return {_constants.OUTPUT_FILE_NAME: output_literal_map}
 
@@ -374,8 +397,8 @@ class SdkNotebookTask(_base_tasks.SdkTask):
 
 def spark_notebook(
     notebook_path,
-    inputs={},
-    outputs={},
+    inputs=None,
+    outputs=None,
     spark_conf=None,
     cache_version="",
     retries=0,
@@ -388,6 +411,8 @@ def spark_notebook(
     Decorator to create a Notebook spark task. This task will connect to a Spark cluster, configure the environment,
     and then execute the code within the notebook_path as the Spark driver program.
     """
+    inputs = {} if not inputs else inputs
+    outputs = {} if not outputs else outputs
     return SdkNotebookSparkTask(
         notebook_path=notebook_path,
         inputs=inputs,
