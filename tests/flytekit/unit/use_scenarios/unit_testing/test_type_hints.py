@@ -170,6 +170,35 @@ def test_wf1_with_overrides():
     }
 
 
+def test_wf1_with_subwf():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        a = a + 2
+        return a, "world-" + str(a)
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    def my_subwf(a: int) -> (str, str):
+        x, y = t1(a=a)
+        u, v = t1(a=x)
+        return y, v
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str, str):
+        x, y = t1(a=a)
+        u, v = my_subwf(a=x)
+        return x, u, v
+
+    x = my_wf(a=5, b="hello ")
+    assert x == {
+        'out_0': 7,
+        'out_1': "world-9",
+        'out_2': "world-11",
+    }
+
+
 def test_wf1_with_sql():
     sql = AbstractSQLTask(
         "my-query",

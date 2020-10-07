@@ -1,4 +1,5 @@
 import inspect
+from typing import Dict, Any
 
 from flytekit import engine as flytekit_engine, logger
 from flytekit.annotated.context_manager import FlyteContext, ExecutionState
@@ -24,6 +25,46 @@ class Workflow(object):
         self._workflow_function = workflow_function
         self._sdk_workflow = sdk_workflow
 
+    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Dict[str, Any]:
+        """
+        Performs local execution of a workflow
+        """
+        # Assume that the inputs given are given as Python native values
+        # Let's translate these Python native values into Flyte IDL literals - This is normally done when
+        # you run a workflow for real also.
+        try:
+            inputs_as_dict_of_literals = {
+                k: flytekit_engine.python_value_to_idl_literal(ctx, v,
+                                                               self._sdk_workflow.interface.inputs[k].type)
+                for k, v in kwargs.items()
+            }
+        except Exception as e:
+            # TODO: Why doesn't this print a stack trace?
+            logger.warning("Exception!!!")
+            raise e
+
+        inputs_as_wrapped_promises = {
+            k: Promise(var=k, val=v) for k, v in
+            inputs_as_dict_of_literals.items()
+        }
+
+        # TODO: These are all assumed to be TaskCallOutput objects, but they can
+        #   be other things as well.  What if someone just returns 5? Should we disallow this?
+        function_outputs = self._workflow_function(**inputs_as_wrapped_promises)
+        output_names = list(self._sdk_workflow.interface.outputs.keys())
+        output_literal_map = {}
+        # TODO Ketan fix this make it into a simple promise transformation
+        if len(output_names) > 1:
+            for idx, var_name in enumerate(output_names):
+                output_literal_map[var_name] = function_outputs[idx].val
+        elif len(output_names) == 1:
+            output_literal_map[output_names[0]] = function_outputs.val
+        else:
+            return None
+
+        return flytekit_engine.idl_literal_map_to_python_value(ctx, _literal_models.LiteralMap(
+            literals=output_literal_map))
+
     def __call__(self, *args, **kwargs):
 
         if len(args) > 0:
@@ -37,41 +78,7 @@ class Workflow(object):
         # When someone wants to run the workflow function locally
         else:
             with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
-                # Assume that the inputs given are given as Python native values
-                # Let's translate these Python native values into Flyte IDL literals - This is normally done when
-                # you run a workflow for real also.
-                try:
-                    inputs_as_dict_of_literals = {
-                        k: flytekit_engine.python_value_to_idl_literal(ctx, v,
-                                                                       self._sdk_workflow.interface.inputs[k].type)
-                        for k, v in kwargs.items()
-                    }
-                except Exception as e:
-                    # TODO: Why doesn't this print a stack trace?
-                    logger.warning("Exception!!!")
-                    raise e
-
-                inputs_as_wrapped_promises = {
-                    k: Promise(var=k, val=v) for k, v in
-                    inputs_as_dict_of_literals.items()
-                }
-
-                # TODO: These are all assumed to be TaskCallOutput objects, but they can
-                #   be other things as well.  What if someone just returns 5? Should we disallow this?
-                function_outputs = self._workflow_function(**inputs_as_wrapped_promises)
-                output_names = list(self._sdk_workflow.interface.outputs.keys())
-                output_literal_map = {}
-                # TODO Ketan fix this make it into a simple promise transformation
-                if len(output_names) > 1:
-                    for idx, var_name in enumerate(output_names):
-                        output_literal_map[var_name] = function_outputs[idx].val
-                elif len(output_names) == 1:
-                    output_literal_map[output_names[0]] = function_outputs.val
-                else:
-                    return None
-
-                return flytekit_engine.idl_literal_map_to_python_value(ctx, _literal_models.LiteralMap(
-                    literals=output_literal_map))
+               return self._local_execute(ctx, **kwargs)
 
 
 def workflow(_workflow_function=None):
