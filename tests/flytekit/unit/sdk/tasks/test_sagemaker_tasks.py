@@ -6,9 +6,8 @@ from unittest import mock
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
 from google.protobuf.json_format import ParseDict
 
+import flytekit.common.tasks.sagemaker.distributed_training as _sm_distribution
 from flytekit import configuration as _configuration
-import flytekit.common.tasks.sagemaker.distributed_training
-import flytekit.models.core.types as _core_types
 from flytekit.common import constants as _common_constants
 from flytekit.common import utils as _utils
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
@@ -21,6 +20,10 @@ from flytekit.common.tasks.sagemaker.hpo_job_task import (
     HyperparameterTuningJobConfig,
     SdkSimpleHyperparameterTuningJobTask,
 )
+from flytekit.common.types import helpers as _type_helpers
+from flytekit.engines import common as _common_engine
+from flytekit.engines.unit.mock_stats import MockStats
+from flytekit.models import literals as _literals
 from flytekit.models import types as _idl_types
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import types as _core_types
@@ -37,12 +40,6 @@ from flytekit.models.sagemaker.parameter_ranges import (
     IntegerParameterRange,
     ParameterRangeOneOf,
 )
-from flytekit.common.types import helpers as _type_helpers
-from flytekit.engines import common as _common_engine
-from flytekit.engines.unit.mock_stats import MockStats
-from flytekit.models import literals as _literals
-from flytekit.models import types as _idl_types
-from flytekit.models.core import identifier as _identifier
 from flytekit.models.sagemaker.training_job import (
     AlgorithmName,
     AlgorithmSpecification,
@@ -291,6 +288,7 @@ def test_simple_hpo_job_task_interface():
         lp = MyWf.create_launch_plan()
         print(lp)
         assert idl is not None
+
 
 # Defining a output-persist predicate to indicate if the copy of the instance should persist its output
 def predicate(distributed_training_context):
