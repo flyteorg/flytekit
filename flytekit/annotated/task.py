@@ -1,18 +1,20 @@
 import collections
 import datetime as _datetime
+import inspect
+import re
 from abc import abstractmethod
-from typing import Callable, Union, Dict, DefaultDict, Type
+from typing import Callable, Union, Dict, DefaultDict, Type, Any, List
 
 from flytekit import engine as flytekit_engine, logger
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext
+from flytekit.annotated.interface import Interface, transform_interface_to_typed_interface, \
+    transform_signature_to_interface
 from flytekit.annotated.promise import Promise, create_task_output
 from flytekit.common import nodes as _nodes, interface as _common_interface
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.models import task as _task_model, literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
-import inspect
-from flytekit.annotated.interface import transform_signature_to_typed_interface
 
 
 # This is the least abstract task. It will have access to the loaded Python function
@@ -80,13 +82,41 @@ class Task(object):
 
         return create_task_output(node_outputs)
 
-    @abstractmethod
-    def execute(self, ctx: FlyteContext,
-                input_literal_map: _literal_models.LiteralMap) -> _literal_models.LiteralMap:
-        pass
+    def dispatch_execute(
+            self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap) -> _literal_models.LiteralMap:
+        """
+        This method translates Flytes native Type system based inputs and dispatches the actual call to the executor
+        TODO We need to figure out for custom types what should be passed into runtime. I feel this should only be inputs,
+            though in case of local execution we should pass the information of the task too.
+        """
+        # Translate the input literals to Python native
+        native_inputs = flytekit_engine.idl_literal_map_to_python_value(ctx, input_literal_map)
+
+        native_outputs = self.execute(**native_inputs)
+
+        expected_output_names = list(self.interface.outputs.keys())
+        if len(expected_output_names) == 1:
+            native_outputs_as_map = {expected_output_names[0]: native_outputs}
+        else:
+            # Question: How do you know you're going to enumerate them in the correct order? Even if autonamed, will
+            # output2 come before output100 if there's a hundred outputs? We don't! We'll have to circle back to
+            # the Python task instance and inspect annotations again. Or we change the Python model representation
+            # of the interface to be an ordered dict and we fill it in correctly to begin with.
+            native_outputs_as_map = {expected_output_names[i]: native_outputs[i] for i, _ in
+                                     enumerate(native_outputs)}
+
+        # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
+        # built into the IDL that all the values of a literal map are of the same type.
+        outputs_literal_map = _literal_models.LiteralMap(literals={
+            k: flytekit_engine.python_value_to_idl_literal(ctx, v, self.interface.outputs[k].type) for k, v in
+            native_outputs_as_map.items()
+        })
+        print("Outputs!")
+        print(outputs_literal_map)
+        return outputs_literal_map
 
     @abstractmethod
-    def _passthrough_execute(self, **kwargs):
+    def execute(self, **kwargs) -> Any:
         pass
 
     def __call__(self, *args, **kwargs):
@@ -120,7 +150,7 @@ class Task(object):
 
             input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
-            outputs_literal_map = self.execute(ctx, input_literal_map)
+            outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
             outputs_literals = outputs_literal_map.literals
 
             # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
@@ -134,11 +164,10 @@ class Task(object):
 
             vals = [Promise(var, outputs_literals[var]) for var in output_names]
             return create_task_output(vals)
-
         else:
             # TODO: Remove warning
             logger.warning("task run without context - executing raw function")
-            return self._passthrough_execute(*args, **kwargs)
+            return self.execute(**kwargs)
 
     @property
     def interface(self) -> _common_interface.TypedInterface:
@@ -155,46 +184,74 @@ class Task(object):
 
 class PythonFunctionTask(Task):
 
-    def __init__(self, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
-        interface = transform_signature_to_typed_interface(inspect.signature(task_function))
+    def __init__(self, task_function: Callable, metadata: _task_model.TaskMetadata, ignore_input_vars: List[str] = None,
+                 *args, **kwargs):
+        self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
+        mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
+        interface = transform_interface_to_typed_interface(mutated_interface)
         super().__init__(name=task_function.__name__, interface=interface, metadata=metadata, *args, **kwargs)
         self._task_function = task_function
 
-    def execute(self, ctx: FlyteContext,
-                input_literal_map: _literal_models.LiteralMap) -> _literal_models.LiteralMap:
-        """
-        This method translates Flytes native Type system based inputs and dispatches the actual call to the executor
-        TODO We need to figure out for custom types what should be passed into runtime. I feel this should only be inputs,
-            though in case of local execution we should pass the information of the task too.
-        """
-        # Translate the input literals to Python native
-        native_inputs = flytekit_engine.idl_literal_map_to_python_value(ctx, input_literal_map)
-        # TODO maybe we should replace the call of task_function to the actual executor. Thus instead of holding on to
-        #     the function we just hold onto the executor
-        native_outputs = self._task_function(**native_inputs)
-        expected_output_names = list(self.interface.outputs.keys())
-        if len(expected_output_names) == 1:
-            native_outputs_as_map = {expected_output_names[0]: native_outputs}
-        else:
-            # Question: How do you know you're going to enumerate them in the correct order? Even if autonamed, will
-            # output2 come before output100 if there's a hundred outputs? We don't! We'll have to circle back to
-            # the Python task instance and inspect annotations again. Or we change the Python model representation
-            # of the interface to be an ordered dict and we fill it in correctly to begin with.
-            native_outputs_as_map = {expected_output_names[i]: native_outputs[i] for i, _ in
-                                     enumerate(native_outputs)}
-
-        # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
-        # built into the IDL that all the values of a literal map are of the same type.
-        outputs_literal_map = _literal_models.LiteralMap(literals={
-            k: flytekit_engine.python_value_to_idl_literal(ctx, v, self.interface.outputs[k].type) for k, v in
-            native_outputs_as_map.items()
-        })
-        print("Outputs!")
-        print(outputs_literal_map)
-        return outputs_literal_map
-
-    def _passthrough_execute(self, **kwargs):
+    def execute(self, **kwargs) -> Any:
         return self._task_function(**kwargs)
+
+    def native_interface(self) -> Interface:
+        return self._native_interface
+
+
+class PysparkFunctionTask(PythonFunctionTask):
+    def __init__(self, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
+        super(PysparkFunctionTask, self).__init__(task_function, metadata,
+                                                  ignore_input_vars=["spark_session", "spark_context"], *args, **kwargs)
+
+    def execute(self, **kwargs) -> Any:
+        if "spark_session" in self.native_interface().inputs:
+            kwargs["spark_session"] = None
+        if "spark_context" in self.native_interface().inputs:
+            kwargs["spark_context"] = None
+        return self._task_function(**kwargs)
+
+
+class AbstractSQLTask(Task):
+    """
+    Base task types for all SQL tasks
+    """
+
+    # TODO this should be replaced with Schema Type
+    _OUTPUTS = {"results": str}
+    _INPUT_REGEX = re.compile(r'({{\s*.inputs.(\w+)\s*}})', re.IGNORECASE)
+
+    def __init__(self, name: str, query_template: str, inputs: Dict[str, Type], metadata: _task_model.TaskMetadata,
+                 *args,
+                 **kwargs):
+        _interface = transform_interface_to_typed_interface(Interface(inputs=inputs, outputs=self._OUTPUTS))
+        super().__init__(name=name, interface=_interface, metadata=metadata, *args, **kwargs)
+        self._query_template = query_template
+
+    @property
+    def query_template(self) -> str:
+        return self._query_template
+
+    def execute(self, **kwargs) -> Any:
+        modified_query = self._query_template
+        matched = set()
+        for match in self._INPUT_REGEX.finditer(self._query_template):
+            expr = match.groups()[0]
+            var = match.groups()[1]
+            if var not in kwargs:
+                raise ValueError(
+                    f"Variable {var} in Query (part of {expr}) not found in inputs {kwargs.keys()}")
+            matched.add(var)
+            val = kwargs[var]
+            # str conversion should be deliberate, with right conversion for each type
+            modified_query = modified_query.replace(expr, str(val))
+
+        if len(matched) < len(kwargs.keys()):
+            diff = set(kwargs.keys()).difference(matched)
+            raise ValueError(f"Extra Inputs have not matches in query template - missing {diff}")
+
+        print(f"Evaluated Query\n {modified_query}")
+        return None
 
 
 TaskTypePlugins: DefaultDict[str, Type[PythonFunctionTask]] = collections.defaultdict(
@@ -202,6 +259,7 @@ TaskTypePlugins: DefaultDict[str, Type[PythonFunctionTask]] = collections.defaul
     {
         "python_task": PythonFunctionTask,
         "task": PythonFunctionTask,
+        "spark": PysparkFunctionTask,
     }
 )
 
@@ -212,6 +270,28 @@ class Resources(object):
         self._mem = mem
         self._gpu = gpu
         self._storage = storage
+
+
+def metadata(
+        cache: bool = False,
+        cache_version: str = "",
+        retries: int = 0,
+        interruptible: bool = False,
+        deprecated: str = "",
+        timeout: Union[_datetime.timedelta, int] = None) -> _task_model.TaskMetadata:
+    return _task_model.TaskMetadata(
+        discoverable=cache,
+        runtime=_task_model.RuntimeMetadata(
+            _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK,
+            '1.2.3',
+            'python'
+        ),
+        timeout=timeout,
+        retries=_literal_models.RetryStrategy(retries),
+        interruptible=interruptible,
+        discovery_version=cache_version,
+        deprecated_error_message=deprecated,
+    )
 
 
 def task(
@@ -233,21 +313,9 @@ def task(
             else:
                 raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
 
-        metadata = _task_model.TaskMetadata(
-            discoverable=cache,
-            runtime=_task_model.RuntimeMetadata(
-                _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK,
-                '1.2.3',
-                'python'
-            ),
-            timeout=timeout,
-            retries=_literal_models.RetryStrategy(retries),
-            interruptible=interruptible,
-            discovery_version=cache_version,
-            deprecated_error_message=deprecated,
-        )
+        _metadata = metadata(cache, cache_version, retries, interruptible, deprecated, timeout)
 
-        task_instance = TaskTypePlugins[task_type](fn, metadata, *args, **kwargs)
+        task_instance = TaskTypePlugins[task_type](fn, _metadata, *args, **kwargs)
         # TODO: One of the things I want to make sure to do is better naming support. At this point, we should already
         #       be able to determine the name of the task right? Can anyone think of situations where we can't?
         #       Where does the current instance tracker come into play?

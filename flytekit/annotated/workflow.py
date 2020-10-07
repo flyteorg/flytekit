@@ -4,7 +4,7 @@ from flytekit import engine as flytekit_engine, logger
 from flytekit.annotated.context_manager import FlyteContext, ExecutionState
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.interface import transform_variable_map, extract_return_annotation, \
-    transform_signature_to_typed_interface
+    transform_signature_to_interface, transform_interface_to_typed_interface
 from flytekit.common import constants as _common_constants
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
@@ -80,7 +80,8 @@ def workflow(_workflow_function=None):
     # workflow is what expresses the workflow structure.
     def wrapper(fn):
         sig = inspect.signature(fn)
-        interface = transform_signature_to_typed_interface(sig)
+        interface = transform_signature_to_interface(sig)
+        interface = transform_interface_to_typed_interface(interface)
 
         # Create promises out of all the inputs. Check for defaults in the function definition.
         default_inputs = {
@@ -115,14 +116,15 @@ def workflow(_workflow_function=None):
         # TODO: Add length checks.
         bindings = []
         output_names = list(interface.outputs.keys())
-        for i, out in enumerate(workflow_outputs):
-            output_name = output_names[i]
-            # TODO: Check that the outputs returned type match the interface.
-            # output_literal_type = out.literal_type
-            # logger.debug(f"Got output wrapper: {out}")
-            # logger.debug(f"Var name {output_name} wf output name {outputs[i]} type: {output_literal_type}")
-            binding_data = _literal_models.BindingData(promise=out)
-            bindings.append(_literal_models.Binding(var=output_name, binding=binding_data))
+        if len(output_names) > 0:
+            for i, out in enumerate(workflow_outputs):
+                output_name = output_names[i]
+                # TODO: Check that the outputs returned type match the interface.
+                # output_literal_type = out.literal_type
+                # logger.debug(f"Got output wrapper: {out}")
+                # logger.debug(f"Var name {output_name} wf output name {outputs[i]} type: {output_literal_type}")
+                binding_data = _literal_models.BindingData(promise=out)
+                bindings.append(_literal_models.Binding(var=output_name, binding=binding_data))
 
         # TODO: Again, at this point, we should be able to identify the name of the workflow
         workflow_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW,
