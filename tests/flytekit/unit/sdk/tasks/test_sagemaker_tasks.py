@@ -6,6 +6,7 @@ from unittest import mock
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
 from google.protobuf.json_format import ParseDict
 
+import flytekit
 import flytekit.common.tasks.sagemaker.distributed_training as _sm_distribution
 from flytekit import configuration as _configuration
 from flytekit.common import constants as _common_constants
