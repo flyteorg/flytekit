@@ -166,7 +166,7 @@ class Types(object):
     Use this to specify a simple JSON type. The Generic type offer a flexible (but loose) extension to flyte's typing
     system by allowing custom types/objects to be passed through. It's strongly recommended for producers & consumers of
     entities that produce or consume a Generic type to perform their own expectations checks on the integrity of the
-    object.  
+    object.
 
     When used with an SDK-decorated method, expect this behavior from the default type engine:
 
@@ -382,7 +382,7 @@ class Types(object):
     syntax. Proto type serializes proto objects as binary (leveraging `flyteidl's Binary literal <https://github.com/lyft/flyteidl/blob/793b09d190148236f41ad8160b5cec9a3325c16f/protos/flyteidl/core/literals.proto#L45>`_).
     Binary serialization of protobufs is the most space-efficient serialization form. Because of the way protobufs are
     designed, unmarshalling the serialized proto requires access to the corresponding type. In order to use/visualize
-    the serialized proto, you will generally need to write custom code in the corresponding component. 
+    the serialized proto, you will generally need to write custom code in the corresponding component.
     
 
     .. note::
@@ -429,7 +429,7 @@ class Types(object):
     A generic proto is a specialization of the Generic type with added convenience functions to support marshalling/
     unmarshalling of the underlying protobuf object using the protobuf official json marshaller. While GenericProto type
     does not produce the most space-efficient representation of protobufs, it's a suitable solution for making protobufs
-    easily accessible (i.e. humanly readable) in other flyte components (e.g. console, cli... etc.).  
+    easily accessible (i.e. humanly readable) in other flyte components (e.g. console, cli... etc.).
 
     .. note::
 
