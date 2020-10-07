@@ -1,6 +1,7 @@
+import copy
 import inspect
 from collections import OrderedDict
-from typing import Dict, Generator, Union, Type, Tuple
+from typing import Dict, Generator, Union, Type, Tuple, List
 
 from flytekit import logger
 from flytekit.annotated import type_engine
@@ -8,7 +9,81 @@ from flytekit.common import interface as _common_interface
 from flytekit.models import interface as _interface_models
 
 
-def transform_signature_to_typed_interface(signature: inspect.Signature) -> _common_interface.TypedInterface:
+class Interface(object):
+    """
+    A Python native interface object, like inspect.signature but simpler.
+    """
+
+    def __init__(self, inputs: Dict[str, Type] = None, outputs: Dict[str, Type] = None):
+        self._inputs = inputs
+        self._outputs = outputs
+
+    @property
+    def inputs(self):
+        return self._inputs
+
+    @property
+    def outputs(self):
+        return self._outputs
+
+    def remove_inputs(self, vars: List[str]) -> "Interface":
+        """
+        This method is useful in removing some variables from the Flyte backend inputs specification, as these are
+        implicit local only inputs or will be supplied by the library at runtime. For example, spark-session etc
+        It creates a new instance of interface with the requested variables removed
+        """
+        if vars is None:
+            return self
+        new_inputs = copy.copy(self._inputs)
+        for v in vars:
+            if v in new_inputs:
+                del new_inputs[v]
+        return Interface(new_inputs, self._outputs)
+
+    def with_inputs(self, extra_inputs: Dict[str, Type]) -> "Interface":
+        """
+        Use this to add additional inputs to the interface. This is useful for adding additional implicit inputs that
+        are added without the user requesting for them
+        """
+        if not extra_inputs:
+            return self
+        new_inputs = copy.copy(self._inputs)
+        for k, v in extra_inputs:
+            if k in new_inputs:
+                raise ValueError(f"Input {k} cannot be added as it already exists in the interface")
+            new_inputs[k] = v
+        return Interface(new_inputs, self._outputs)
+
+    def with_outputs(self, extra_outputs: Dict[str, Type]) -> "Interface":
+        """
+        This method allows addition of extra outputs are expected from a task specification
+        """
+        if not extra_outputs:
+            return self
+        new_outputs = copy.copy(self._outputs)
+        for k, v in extra_outputs:
+            if k in new_outputs:
+                raise ValueError(f"Output {k} cannot be added as it already exists in the interface")
+            new_outputs[k] = v
+        return Interface(self._inputs, new_outputs)
+
+
+def transform_interface_to_typed_interface(interface: Interface) -> _common_interface.TypedInterface:
+    """
+    Transform the given simple python native interface to FlyteIDL's interface
+    """
+    if interface is None:
+        return None
+
+    inputs_map = transform_variable_map(interface.inputs)
+    outputs_map = transform_variable_map(interface.outputs)
+    interface_model = _interface_models.TypedInterface(inputs_map, outputs_map)
+
+    # Maybe in the future we can just use the model
+    return _common_interface.TypedInterface.promote_from_model(interface_model)
+
+
+def transform_signature_to_interface(signature: inspect.Signature) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
     for each output parameter, construct the TypedInterface object
@@ -23,12 +98,7 @@ def transform_signature_to_typed_interface(signature: inspect.Signature) -> _com
         # Inputs with default values are currently ignored, we may want to look into that in the future
         inputs[k] = v.annotation
 
-    inputs_map = transform_variable_map(inputs)
-    outputs_map = transform_variable_map(outputs)
-    interface_model = _interface_models.TypedInterface(inputs_map, outputs_map)
-
-    # Maybe in the future we can just use the model
-    return _common_interface.TypedInterface.promote_from_model(interface_model)
+    return Interface(inputs, outputs)
 
 
 def transform_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interface_models.Variable]:

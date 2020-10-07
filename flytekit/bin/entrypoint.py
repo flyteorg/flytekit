@@ -6,6 +6,7 @@ import datetime as _datetime
 import random as _random
 from flyteidl.core import literals_pb2 as _literals_pb2
 
+from flytekit.annotated.context_manager import FlyteContext
 from flytekit.common import utils as _utils
 from flytekit.common.exceptions import scopes as _scopes, system as _system_exceptions
 from flytekit.configuration import internal as _internal_config, TemporaryConfiguration as _TemporaryConfiguration , platform as _platform_config
@@ -90,13 +91,13 @@ def _execute_task(task_module, task_name, inputs, output_prefix, test):
             elif not test and hasattr(task_def, "_task_style") and task_def._task_style == SdkRunnableTaskStyle.V1:
                 cloud_provider = _platform_config.CLOUD_PROVIDER.get()
                 additional_context = {'output_prefix': output_prefix}
-                ctx = _flyte_context.FlyteContext.current_context()
+                ctx = FlyteContext.current_context()
                 with ctx.new_data_proxy_by_cloud_provider(cloud_provider=cloud_provider) as ctx:
                     # First download the contents of the input file
                     local_inputs_file = _os.path.join(ctx.workflow_execution_state.working_dir, 'inputs.pb')
                     _data_proxy.Data.get_data(inputs, local_inputs_file)
                     idl_input_literals = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-                    outputs_literal_map = task_def.execute(ctx, idl_input_literals)
+                    outputs_literal_map = task_def.dispatch_execute(ctx, idl_input_literals)
                     print("That's all folks!")
                     print(outputs_literal_map.literals)
 

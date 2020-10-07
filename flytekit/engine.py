@@ -93,7 +93,7 @@ def idl_literal_to_python_value(ctx: _flyte_context.FlyteContext,
 
 
 def idl_literal_map_to_python_value(ctx: _flyte_context.FlyteContext,
-                                    idl_literal_map: _literals_models.LiteralMap) -> typing.Dict[str,typing.Any]:
+                                    idl_literal_map: _literals_models.LiteralMap) -> typing.Dict[str, typing.Any]:
     """
     This function is only here because often we start with a LiteralMap, not a plain Literal.
     """
@@ -152,7 +152,6 @@ def python_value_to_idl_literal(ctx: _flyte_context.FlyteContext,
                                 native_value: typing.Any,
                                 idl_type: _type_models.LiteralType) -> typing.Union[
     _literals_models.Literal, _literals_models.LiteralCollection, _literals_models.LiteralMap]:
-
     # If the native python std value is None, but the IDL type is a Map of {"my_key": some_primitive_type}, should
     # we return Void? Or a literal map with a "my key" pointing to a Void?
 
@@ -187,7 +186,8 @@ def python_value_to_idl_literal(ctx: _flyte_context.FlyteContext,
         return _literals_models.LiteralMap(literals=idl_literals)
 
 
-def binding_from_python_std(ctx: _flyte_context.FlyteContext, var_name: str, expected_literal_type, t_value) -> _literals_models.Binding:
+def binding_from_python_std(ctx: _flyte_context.FlyteContext, var_name: str, expected_literal_type,
+                            t_value) -> _literals_models.Binding:
     # This handles the case where the incoming value is a workflow-level input
     if isinstance(t_value, _type_models.OutputReference):
         binding_data = _literals_models.BindingData(promise=t_value)

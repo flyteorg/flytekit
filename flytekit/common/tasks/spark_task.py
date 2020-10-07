@@ -20,13 +20,22 @@ from google.protobuf.json_format import MessageToDict as _MessageToDict
 
 class GlobalSparkContext(object):
     _SPARK_CONTEXT = None
+    _SPARK_SESSION = None
 
     @classmethod
     def get_spark_context(cls):
         return cls._SPARK_CONTEXT
 
+    @classmethod
+    def get_spark_session(cls):
+        return cls._SPARK_SESSION
+
     def __enter__(self):
         GlobalSparkContext._SPARK_CONTEXT = _pyspark.SparkContext()
+        GlobalSparkContext._SPARK_SESSION = _pyspark.sql.SparkSession \
+            .builder \
+            .appName("Flyte Spark SQL Context") \
+            .getOrCreate()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -51,6 +60,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
     This class includes the additional logic for building a task that executes as a Spark Job.
 
     """
+
     def __init__(
             self,
             task_function,

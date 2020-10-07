@@ -1,11 +1,11 @@
+import datetime
 import inspect
 import typing
 
-import flytekit
 import flytekit.annotated.task
 import flytekit.annotated.workflow
 from flytekit.annotated import context_manager
-from flytekit.annotated.task import task
+from flytekit.annotated.task import task, AbstractSQLTask, metadata
 from flytekit.annotated.workflow import workflow
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
 
@@ -161,6 +161,48 @@ def test_wf1_with_overrides():
     def my_wf(a: int, b: str) -> (int, str):
         x, y = t1(a=a).with_overrides(name="x")
         d = t2(a=y, b=b).with_overrides()
+        return x, d
+
+    x = my_wf(a=5, b="hello ")
+    assert x == {
+        'out_0': 7,
+        'out_1': "hello world",
+    }
+
+
+def test_wf1_with_sql():
+    sql = AbstractSQLTask(
+        "my-query",
+        query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds}}' LIMIT 10",
+        inputs={"ds": datetime.datetime},
+        metadata=metadata(retries=2)
+    )
+
+    @task
+    def t1() -> datetime.datetime:
+        return datetime.datetime.now()
+
+    @workflow
+    def my_wf():
+        dt = t1()
+        sql(ds=dt)
+
+    my_wf()
+
+
+def test_wf1_with_spark():
+    @task(task_type="spark")
+    def my_spark(spark_session, a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = my_spark(a=a)
+        d = t2(a=y, b=b)
         return x, d
 
     x = my_wf(a=5, b="hello ")
