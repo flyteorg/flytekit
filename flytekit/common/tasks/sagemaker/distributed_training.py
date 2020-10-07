@@ -12,6 +12,9 @@ SM_ENV_VAR_HOSTS = "SM_HOSTS"
 SM_ENV_VAR_NETWORK_INTERFACE_NAME = "SM_NETWORK_INTERFACE_NAME"
 
 
+# SageMaker suggests "Hostname information might not be immediately available to the processing container.
+# We recommend adding a retry policy on hostname resolution operations as nodes become available in the cluster."
+# https://docs.aws.amazon.com/sagemaker/latest/dg/build-your-own-processing-container.html#byoc-config
 @_retry.retry(exceptions=KeyError, delay=1, tries=10, backoff=1)
 def get_sagemaker_distributed_training_context_from_env() -> dict:
     distributed_training_context = {}
