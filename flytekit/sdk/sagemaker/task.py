@@ -2,6 +2,7 @@ import datetime as _datetime
 import typing
 
 from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
+from flytekit.common.tasks.sagemaker.distributed_training import DefaultOutputPersistPredicate
 from flytekit.models.sagemaker import training_job as _training_job_models
 
 
@@ -24,6 +25,7 @@ def custom_training_job_task(
     timeout: _datetime.timedelta = None,
     environment: typing.Dict[str, str] = None,
     cls: typing.Type = None,
+    output_persist_predicate: typing.Callable = DefaultOutputPersistPredicate(),
 ):
     """
     Decorator to create a Custom Training Job definition.  This task will run as a single unit of work on the platform.
@@ -116,6 +118,10 @@ def custom_training_job_task(
         provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  A user can use this to
         inject bespoke logic into the base Flyte programming model.
 
+    :param Callable output_persist_predicate: [optional] This callable should return a boolean and is used to indicate whether
+        the current copy (i.e., an instance of the task running on a particular node inside the worker pool) would
+        write output.
+
     :rtype: flytekit.common.tasks.sagemaker.custom_training_job_task.CustomTrainingJobTask
     """
 
@@ -138,6 +144,7 @@ def custom_training_job_task(
             environment=environment,
             algorithm_specification=algorithm_specification,
             training_job_resource_config=training_job_resource_config,
+            output_persist_predicate=output_persist_predicate,
         )
 
     if _task_function:
