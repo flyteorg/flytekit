@@ -55,7 +55,8 @@ def test_single_output():
         assert ctx.compilation_state is not None
         nodes = ctx.compilation_state.nodes
         assert len(nodes) == 1
-        assert outputs.sdk_node is nodes[0]
+        assert outputs.is_ready is False
+        assert outputs.ref.sdk_node is nodes[0]
 
 
 def test_named_tuples():
@@ -138,6 +139,28 @@ def test_wf1_run():
     def my_wf(a: int, b: str) -> (int, str):
         x, y = t1(a=a)
         d = t2(a=y, b=b)
+        return x, d
+
+    x = my_wf(a=5, b="hello ")
+    assert x == {
+        'out_0': 7,
+        'out_1': "hello world",
+    }
+
+
+def test_wf1_with_overrides():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a).with_overrides(name="x")
+        d = t2(a=y, b=b).with_overrides()
         return x, d
 
     x = my_wf(a=5, b="hello ")
