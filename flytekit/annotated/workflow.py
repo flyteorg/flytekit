@@ -1,8 +1,8 @@
 import inspect
 
-from flytekit import FlyteContext, engine as flytekit_engine, logger
-from flytekit.annotated.context_manager import ExecutionState
-from flytekit.annotated.task import TaskCallOutput
+from flytekit import engine as flytekit_engine, logger
+from flytekit.annotated.context_manager import FlyteContext, ExecutionState
+from flytekit.annotated.promise import Promise
 from flytekit.annotated.interface import transform_variable_map, extract_return_annotation, \
     transform_signature_to_typed_interface
 from flytekit.common import constants as _common_constants
@@ -51,21 +51,22 @@ class Workflow(object):
                     logger.warning("Exception!!!")
                     raise e
 
-                inputs_as_wrapped_node_outputs = {
-                    k: TaskCallOutput(var=k, flyte_literal_value=v) for k, v in
+                inputs_as_wrapped_promises = {
+                    k: Promise(var=k, val=v) for k, v in
                     inputs_as_dict_of_literals.items()
                 }
 
                 # TODO: These are all assumed to be TaskCallOutput objects, but they can
                 #   be other things as well.  What if someone just returns 5? Should we disallow this?
-                function_outputs = self._workflow_function(**inputs_as_wrapped_node_outputs)
+                function_outputs = self._workflow_function(**inputs_as_wrapped_promises)
                 output_names = list(self._sdk_workflow.interface.outputs.keys())
                 output_literal_map = {}
+                # TODO Ketan fix this make it into a simple promise transformation
                 if len(output_names) > 1:
                     for idx, var_name in enumerate(output_names):
-                        output_literal_map[var_name] = function_outputs[idx].flyte_literal_value
+                        output_literal_map[var_name] = function_outputs[idx].val
                 elif len(output_names) == 1:
-                    output_literal_map[output_names[0]] = function_outputs.flyte_literal_value
+                    output_literal_map[output_names[0]] = function_outputs.val
                 else:
                     return None
 

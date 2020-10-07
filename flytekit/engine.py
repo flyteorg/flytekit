@@ -2,6 +2,7 @@ import typing
 from datetime import datetime, timedelta
 
 from flytekit import typing as flyte_typing
+from flytekit.annotated.promise import Promise
 from flytekit.common import promise as _promise
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -192,16 +193,9 @@ def binding_from_python_std(ctx: _flyte_context.FlyteContext, var_name: str, exp
         binding_data = _literals_models.BindingData(promise=t_value)
 
     # This handles the case where the given value is the output of another task
-    elif isinstance(t_value, _promise.NodeOutput):
-        incoming_value_type = t_value.sdk_type.to_flyte_literal_type()
-        if not expected_literal_type == incoming_value_type:
-            _user_exceptions.FlyteTypeException(
-                incoming_value_type,
-                expected_literal_type,
-                additional_msg="When binding node output: {}".format(t_value)
-            )
-        promise = t_value
-        binding_data = _literals_models.BindingData(promise=promise)
+    elif isinstance(t_value, Promise):
+        if not t_value.is_ready:
+            binding_data = _literals_models.BindingData(promise=t_value.ref)
 
     elif isinstance(t_value, list) or isinstance(t_value, dict):
         # I didn't really like the list implementation below so leaving both dict and list unimplemented for now

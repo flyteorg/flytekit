@@ -5,6 +5,7 @@ from typing import Callable, Union, Dict, DefaultDict, Type
 
 from flytekit import engine as flytekit_engine, logger
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext
+from flytekit.annotated.promise import Promise, create_task_output
 from flytekit.common import nodes as _nodes, interface as _common_interface
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.promise import NodeOutput as _NodeOutput
@@ -12,36 +13,6 @@ from flytekit.models import task as _task_model, literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
 import inspect
 from flytekit.annotated.interface import transform_signature_to_typed_interface
-
-
-class TaskCallOutput(object):
-
-    def __init__(self, var: str, node_output: _NodeOutput = None, flyte_literal_value: _literal_models.Literal = None):
-        if not ((node_output is None) ^ (flyte_literal_value is None)):
-            raise Exception(f"Exactly one of node output or flyte value must be specified, "
-                            f"{node_output}, {flyte_literal_value} given")
-        self._var = var
-        self._node_output = node_output
-        self._flyte_literal_value = flyte_literal_value
-
-    @property
-    def var(self):
-        return self._var
-
-    @property
-    def node_output(self):
-        return self._node_output
-
-    @property
-    def flyte_literal_value(self):
-        return self._flyte_literal_value
-
-    # This is where we can put all the other functions like with_cpu/memory, etc.
-
-    def with_node_name(self, name: str):
-        if self.node_output is None:
-            raise Exception("Can't call without node")
-        self.node_output.sdk_node._id = name
 
 
 # This is the least abstract task. It will have access to the loaded Python function
@@ -104,15 +75,10 @@ class Task(object):
         for output_name, output_var_model in self.interface.outputs.items():
             # TODO: If node id gets updated later, we have to make sure to update the NodeOutput model's ID, which
             #  is currently just a static str
-            node_outputs.append(_NodeOutput(sdk_node=sdk_node, sdk_type=None, var=output_name))
+            node_outputs.append(Promise(output_name, _NodeOutput(sdk_node=sdk_node, sdk_type=None, var=output_name)))
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
-        if len(self.interface.outputs) > 1:
-            return tuple(node_outputs)
-        elif len(self.interface.outputs) == 1:
-            return node_outputs[0]
-        else:
-            return None
+        return create_task_output(node_outputs)
 
     @abstractmethod
     def execute(self, ctx: FlyteContext,
@@ -146,8 +112,11 @@ class Task(object):
         elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             # Unwrap the kwargs values. After this, we essentially have a LiteralMap
             for k, v in kwargs.items():
-                if isinstance(v, TaskCallOutput):
-                    kwargs[k] = v.flyte_literal_value
+                if isinstance(v, Promise):
+                    if not v.is_ready:
+                        raise BrokenPipeError(
+                            f"Expected an actual value from the previous step, but received an incomplete promise {v}")
+                    kwargs[k] = v.val
 
             input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
@@ -163,15 +132,8 @@ class Task(object):
                 # Length check, clean up exception
                 raise Exception(f"Length difference {len(output_names)} {len(outputs_literals)}")
 
-            if len(self.interface.outputs) > 1:
-                for idx, var_name in enumerate(output_names):
-                    node_results.append(TaskCallOutput(var=output_names[idx],
-                                                       flyte_literal_value=outputs_literals[var_name]))
-                return tuple(node_results)
-            elif len(self.interface.outputs) == 1:
-                return TaskCallOutput(var=output_names[0], flyte_literal_value=outputs_literals[output_names[0]])
-            else:
-                return None
+            vals = [Promise(var, outputs_literals[var]) for var in output_names]
+            return create_task_output(vals)
 
         else:
             # TODO: Remove warning
@@ -245,7 +207,7 @@ TaskTypePlugins: DefaultDict[str, Type[PythonFunctionTask]] = collections.defaul
 
 
 class Resources(object):
-    def __init__(self, cpu, mem, gpu, storage):
+    def __init__(self, cpu=None, mem=None, gpu=None, storage=None):
         self._cpu = cpu
         self._mem = mem
         self._gpu = gpu
@@ -262,8 +224,8 @@ def task(
         deprecated: str = "",
         timeout: Union[_datetime.timedelta, int] = None,
         environment: Dict[str, str] = None,
-        *args, **kwargs):
-    def wrapper(fn):
+        *args, **kwargs) -> Callable:
+    def wrapper(fn) -> PythonFunctionTask:
         _timeout = timeout
         if _timeout and not isinstance(_timeout, _datetime.timedelta):
             if isinstance(_timeout, int):
@@ -297,5 +259,3 @@ def task(
         return wrapper(_task_function)
     else:
         return wrapper
-
-
