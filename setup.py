@@ -23,10 +23,7 @@ setup(
         ]
     },
     install_requires=[
-        # "flyteidl>=0.18.8,<1.0.0",
-        # "flyteidl @ git+https://github.com/lyft/flyteidl@horovod-mpi-distributed#egg=flyteidl",
-        # "flyteidl @ git+https://github.com/lyft/flyteidl@0942c33ea26544b5bd7ffbcaa51158704760e81b#egg=flyteidl",
-        "flyteidl==0.18.9",
+        "flyteidl>=0.18.9,<1.0.0",
         "click>=6.6,<8.0",
         "croniter>=0.3.20,<4.0.0",
         "deprecated>=1.0,<2.0",
