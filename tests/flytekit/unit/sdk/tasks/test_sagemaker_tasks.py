@@ -273,7 +273,7 @@ def test_simple_hpo_job_task_interface():
             ),
         )
 
-    assert MyWf.a.inputs["num_round"].binding.scalar.generic is not None
+    assert MyWf.nodes[0].inputs[2].binding.scalar.generic is not None
 
 
 # Defining a output-persist predicate to indicate if the copy of the instance should persist its output
