@@ -6,8 +6,6 @@ from unittest import mock
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
 from google.protobuf.json_format import ParseDict
 
-import flytekit
-from flytekit import configuration as _configuration
 from flytekit.common import constants as _common_constants
 from flytekit.common import utils as _utils
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
@@ -275,25 +273,14 @@ def test_simple_hpo_job_task_interface():
             ),
         )
 
-    with _configuration.TemporaryConfiguration(
-        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../../common/configs/local.config",),
-        internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
-    ):
-        idl = MyWf.to_flyte_idl()
-        lp = MyWf.create_launch_plan()
-        print(lp)
-        assert idl is not None
+    assert MyWf.a.inputs["num_round"].binding.scalar.generic is not None
 
 
 # Defining a output-persist predicate to indicate if the copy of the instance should persist its output
 def predicate(distributed_training_context):
     return (
-        distributed_training_context[
-            flytekit.common.tasks.sagemaker.distributed_training.DistributedTrainingContextKey.CURRENT_HOST
-        ]
-        == distributed_training_context[
-            flytekit.common.tasks.sagemaker.distributed_training.DistributedTrainingContextKey.HOSTS
-        ][1]
+        distributed_training_context[_sm_distribution.DistributedTrainingContextKey.CURRENT_HOST]
+        == distributed_training_context[_sm_distribution.DistributedTrainingContextKey.HOSTS][1]
     )
 
 
