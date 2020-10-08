@@ -2,8 +2,8 @@ import datetime as _datetime
 import os
 import unittest
 from unittest import mock
-import retry.api
 
+import retry.api
 from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import HyperparameterTuningJobConfig as _pb2_HPOJobConfig
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
 from google.protobuf.json_format import ParseDict
@@ -283,12 +283,12 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
             os.environ,
             {
                 _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: 'eth0'
+                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
             },
             clear=True,
         ):
             # eliminate the wait in unittest https://stackoverflow.com/a/32698175
-            with mock.patch.object(retry.api, '__retry_internal', dontretry):
+            with mock.patch.object(retry.api, "__retry_internal", dontretry):
                 self.assertRaises(KeyError, self._my_distributed_task.execute, self._context, self._task_input)
 
     def test_missing_hosts_distributed_training_context_keys_lead_to_keyerrors(self):
@@ -296,12 +296,12 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
             os.environ,
             {
                 _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
-                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: 'eth0'
+                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
             },
             clear=True,
         ):
             # eliminate the wait in unittest https://stackoverflow.com/a/32698175
-            with mock.patch.object(retry.api, '__retry_internal', dontretry):
+            with mock.patch.object(retry.api, "__retry_internal", dontretry):
                 self.assertRaises(KeyError, self._my_distributed_task.execute, self._context, self._task_input)
 
     def test_missing_network_interface_name_in_distributed_training_context_keys_lead_to_keyerrors(self):
@@ -314,7 +314,7 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
             clear=True,
         ):
             # eliminate the wait in unittest https://stackoverflow.com/a/32698175
-            with mock.patch.object(retry.api, '__retry_internal', dontretry):
+            with mock.patch.object(retry.api, "__retry_internal", dontretry):
                 self.assertRaises(KeyError, self._my_distributed_task.execute, self._context, self._task_input)
 
     def test_with_default_predicate_with_rank0_master(self):
@@ -323,7 +323,7 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
             {
                 _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-0",
                 _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: 'eth0'
+                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
             },
             clear=True,
         ):
@@ -337,7 +337,7 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
             {
                 _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
                 _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: 'eth0'
+                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
             },
             clear=True,
         ):
@@ -350,7 +350,7 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
             {
                 _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
                 _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: 'eth0'
+                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
             },
             clear=True,
         ):
@@ -367,7 +367,7 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
             {
                 _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
                 _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: 'eth0'
+                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
             },
             clear=True,
         ):
@@ -386,7 +386,7 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
             {
                 _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
                 _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: 'eth0'
+                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
             },
             clear=True,
         ):
