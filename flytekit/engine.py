@@ -84,12 +84,15 @@ def literal_scalar_to_python_value(ctx: _flyte_context.FlyteContext, scalar: _li
 
 def idl_literal_to_python_value(ctx: _flyte_context.FlyteContext,
                                 idl_literal: _literals_models.Literal) -> typing.Any:
-    if idl_literal.scalar is not None:
-        return literal_scalar_to_python_value(ctx, idl_literal.scalar)
-    elif idl_literal.collection is not None:
-        return [idl_literal_to_python_value(ctx, x) for x in idl_literal.collection.literals]
-    elif idl_literal.map is not None:
-        return {k: idl_literal_to_python_value(ctx, v) for k, v in idl_literal.map.literals.items()}
+    if isinstance(idl_literal, _literals_models.Literal):
+        if idl_literal.scalar is not None:
+            return literal_scalar_to_python_value(ctx, idl_literal.scalar)
+        elif idl_literal.collection is not None:
+            return [idl_literal_to_python_value(ctx, x) for x in idl_literal.collection.literals]
+        elif idl_literal.map is not None:
+            return {k: idl_literal_to_python_value(ctx, v) for k, v in idl_literal.map.literals.items()}
+    elif isinstance(idl_literal, _literals_models.LiteralCollection):
+        return [idl_literal_to_python_value(ctx, i) for i in idl_literal.literals]
 
 
 def idl_literal_map_to_python_value(ctx: _flyte_context.FlyteContext,
@@ -110,7 +113,7 @@ def python_simple_value_to_idl_literal(native_value: typing.Any,
         raise Exception("Can't translate non-None Python value to Void literal")
     elif simple == _type_models.SimpleType.INTEGER:
         if type(native_value) != int:
-            raise Exception(f"Can't translate Python value with type {type(native_value)} to Integer")
+            raise Exception(f"Can't translate Python value {native_value} with type {type(native_value)} to Integer")
         primitive = _literals_models.Primitive(integer=native_value)
 
     elif simple == _type_models.SimpleType.FLOAT:
@@ -148,10 +151,9 @@ def python_simple_value_to_idl_literal(native_value: typing.Any,
     return _literals_models.Literal(scalar=_literals_models.Scalar(primitive=primitive))
 
 
-def python_value_to_idl_literal(ctx: _flyte_context.FlyteContext,
-                                native_value: typing.Any,
-                                idl_type: _type_models.LiteralType) -> typing.Union[
-    _literals_models.Literal, _literals_models.LiteralCollection, _literals_models.LiteralMap]:
+def python_value_to_idl_literal(
+        ctx: _flyte_context.FlyteContext, native_value: typing.Any, idl_type: _type_models.LiteralType) \
+        -> _literals_models.Literal:
     # If the native python std value is None, but the IDL type is a Map of {"my_key": some_primitive_type}, should
     # we return Void? Or a literal map with a "my key" pointing to a Void?
 
@@ -170,7 +172,7 @@ def python_value_to_idl_literal(ctx: _flyte_context.FlyteContext,
 
         idl_literals = [python_value_to_idl_literal(ctx, x, idl_type.collection_type) for x in
                         native_value]
-        return _literals_models.LiteralCollection(literals=idl_literals)
+        return _literals_models.Literal(collection=_literals_models.LiteralCollection(literals=idl_literals))
 
     elif idl_type.map_value_type is not None:
         if type(native_value) != dict:
@@ -183,7 +185,7 @@ def python_value_to_idl_literal(ctx: _flyte_context.FlyteContext,
 
         idl_literals = {k: python_value_to_idl_literal(ctx, v, idl_type.map_value_type) for k, v in
                         native_value.items()}
-        return _literals_models.LiteralMap(literals=idl_literals)
+        return _literals_models.Literal(map=_literals_models.LiteralMap(literals=idl_literals))
 
 
 def binding_from_python_std(ctx: _flyte_context.FlyteContext, var_name: str, expected_literal_type,

@@ -28,6 +28,8 @@ class Workflow(object):
         self._interface = transform_interface_to_typed_interface(self._native_interface)
         # This will get populated on compile only
         self._sdk_workflow = None
+        # TODO do we need this - can this not be in launchplan only?
+        self._input_parameters = None
 
     def compile(self):
         # TODO should we even define it here?
