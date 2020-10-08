@@ -180,6 +180,7 @@ def test_wf1_with_subwf():
     def t2(a: str, b: str) -> str:
         return b + a
 
+    @workflow
     def my_subwf(a: int) -> (str, str):
         x, y = t1(a=a)
         u, v = t1(a=x)

@@ -1,11 +1,11 @@
 import inspect
-from typing import Dict, Any
+from typing import Dict, Any, Callable
 
 from flytekit import engine as flytekit_engine, logger
 from flytekit.annotated.context_manager import FlyteContext, ExecutionState
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.interface import transform_variable_map, extract_return_annotation, \
-    transform_signature_to_interface, transform_interface_to_typed_interface
+    transform_signature_to_interface, transform_interface_to_typed_interface, transform_inputs_to_parameters
 from flytekit.common import constants as _common_constants
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
@@ -21,37 +21,93 @@ class Workflow(object):
       be wrapper nodes.
     """
 
-    def __init__(self, workflow_function, sdk_workflow):
+    def __init__(self, workflow_function: Callable):
+        self._name = workflow_function.__name__
         self._workflow_function = workflow_function
-        self._sdk_workflow = sdk_workflow
+        self._native_interface = transform_signature_to_interface(inspect.signature(workflow_function))
+        self._interface = transform_interface_to_typed_interface(self._native_interface)
+        # This will get populated on compile only
+        self._sdk_workflow = None
 
-    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Dict[str, Any]:
+    def compile(self):
+        # TODO should we even define it here?
+        self._input_parameters = transform_inputs_to_parameters(self._native_interface)
+        all_nodes = []
+        ctx = FlyteContext.current_context()
+        with ctx.new_compilation_context() as comp_ctx:
+            # Fill in call args by constructing input bindings
+            input_kwargs = {
+                k: _type_models.OutputReference(_common_constants.GLOBAL_INPUT_NODE_ID, k)
+                for k in self._native_interface.inputs.keys()
+            }
+            workflow_outputs = self._workflow_function(**input_kwargs)
+            all_nodes.extend(comp_ctx.compilation_state.nodes)
+
+        # Iterate through the workflow outputs
+        #  Get the outputs and use them to construct the old Output objects
+        #    promise.NodeOutputs (let's just focus on this one first for POC)
+        #    or Input objects from above in the case of a passthrough value
+        #    or outputs can be like 5, or 'hi'
+        # These should line up with the output input argument
+        # TODO: Add length checks.
+        bindings = []
+        output_names = list(self._native_interface.outputs.keys())
+        if len(output_names) > 0:
+            for i, out in enumerate(workflow_outputs):
+                output_name = output_names[i]
+                # TODO: Check that the outputs returned type match the interface.
+                # output_literal_type = out.literal_type
+                # logger.debug(f"Got output wrapper: {out}")
+                # logger.debug(f"Var name {output_name} wf output name {outputs[i]} type: {output_literal_type}")
+                binding_data = _literal_models.BindingData(promise=out)
+                bindings.append(_literal_models.Binding(var=output_name, binding=binding_data))
+
+        # TODO: Again, at this point, we should be able to identify the name of the workflow
+        workflow_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW,
+                                                   "proj", "dom", "moreblah", "1")
+
+        # Create a FlyteWorkflow object. We call this like how promote_from_model would call this, by ignoring the
+        # fancy arguments and supplying just the raw elements manually. Alternatively we can construct the
+        # WorkflowTemplate object, and then call promote_from_model.
+        self._sdk_workflow = _SdkWorkflow(inputs=None, outputs=None, nodes=all_nodes, id=workflow_id, metadata=None,
+                                          metadata_defaults=None, interface=self._interface, output_bindings=bindings)
+
+    def _local_execute(self, ctx: FlyteContext, nested=False, **kwargs) -> Dict[str, Any]:
         """
         Performs local execution of a workflow
+        :param ctx: The FlyteContext
+        :param nested: boolean that indicates if this is a nested workflow execution (subworkflow)
+        :param kwargs: parameters for the workflow itself
         """
-        # Assume that the inputs given are given as Python native values
-        # Let's translate these Python native values into Flyte IDL literals - This is normally done when
-        # you run a workflow for real also.
-        try:
-            inputs_as_dict_of_literals = {
-                k: flytekit_engine.python_value_to_idl_literal(ctx, v,
-                                                               self._sdk_workflow.interface.inputs[k].type)
-                for k, v in kwargs.items()
-            }
-        except Exception as e:
-            # TODO: Why doesn't this print a stack trace?
-            logger.warning("Exception!!!")
-            raise e
-
-        inputs_as_wrapped_promises = {
-            k: Promise(var=k, val=v) for k, v in
-            inputs_as_dict_of_literals.items()
-        }
+        logger.info(f"Executing Workflow {self._name} with nested={nested}, ctx{ctx.execution_state.Mode}")
+        # There are 2 ways in which you can receive arguments to Workflow
+        # 1. The workflow arguments received directly from the user - these are in python native type system
+        # 2. In case of a subworkflow (workflow nested in another workflow) the received values will be promises instead
+        #    These promises should always be ready
+        for k, v in kwargs.items():
+            if k not in self._interface.inputs:
+                # Should we do this in strict mode?
+                raise ValueError(f"Received unexpected keyword argument {k}")
+            if isinstance(v, Promise):
+                if not v.is_ready:
+                    raise BrokenPipeError(
+                        f"Expected an actual value from the previous step, but received an incomplete promise {v}")
+                kwargs[k] = v.val
+            else:
+                # Assume it is python native, lets
+                kwargs[k] = Promise(
+                    var=k, val=flytekit_engine.python_value_to_idl_literal(ctx, v, self._interface.inputs[k].type))
 
         # TODO: These are all assumed to be TaskCallOutput objects, but they can
         #   be other things as well.  What if someone just returns 5? Should we disallow this?
-        function_outputs = self._workflow_function(**inputs_as_wrapped_promises)
-        output_names = list(self._sdk_workflow.interface.outputs.keys())
+        function_outputs = self._workflow_function(**kwargs)
+
+        if nested:
+            # If this is a subworkflow it should return promises upstream - to parent workflow
+            logger.info(f"Executing subworkfow returning promises")
+            return function_outputs
+
+        output_names = list(self._interface.outputs.keys())
         output_literal_map = {}
         # TODO Ketan fix this make it into a simple promise transformation
         if len(output_names) > 1:
@@ -75,10 +131,13 @@ class Workflow(object):
         if ctx.compilation_state is not None:
             raise Exception('not implemented')
 
-        # When someone wants to run the workflow function locally
+        elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            # We are already in a local execution, just continue the execution context
+            return self._local_execute(ctx, nested=True, **kwargs)
         else:
+            # When someone wants to run the workflow function locally
             with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
-               return self._local_execute(ctx, **kwargs)
+                return self._local_execute(ctx, **kwargs)
 
 
 def workflow(_workflow_function=None):
@@ -86,65 +145,10 @@ def workflow(_workflow_function=None):
     # workflows need to have the body of the function itself run at module-load time. This is because the body of the
     # workflow is what expresses the workflow structure.
     def wrapper(fn):
-        sig = inspect.signature(fn)
-        interface = transform_signature_to_interface(sig)
-        interface = transform_interface_to_typed_interface(interface)
-
-        # Create promises out of all the inputs. Check for defaults in the function definition.
-        default_inputs = {
-            k: v.default
-            for k, v in sig.parameters.items()
-            if v.default is not inspect.Parameter.empty
-        }
-
-        input_parameter_models = []
-        for input_name, input_variable_obj in interface.inputs.items():
-            # TODO: Fix defaults and required
-            parameter_model = _interface_models.Parameter(var=input_variable_obj, default=None, required=True)
-            input_parameter_models.append(parameter_model)
-
-        all_nodes = []
-        ctx = FlyteContext.current_context()
-        with ctx.new_compilation_context() as comp_ctx:
-            # Fill in call args by constructing input bindings
-            input_kwargs = {
-                k: _type_models.OutputReference(_common_constants.GLOBAL_INPUT_NODE_ID, k) for k in
-                interface.inputs.keys()
-            }
-            workflow_outputs = fn(**input_kwargs)
-            all_nodes.extend(comp_ctx.compilation_state.nodes)
-
-        # Iterate through the workflow outputs
-        #  Get the outputs and use them to construct the old Output objects
-        #    promise.NodeOutputs (let's just focus on this one first for POC)
-        #    or Input objects from above in the case of a passthrough value
-        #    or outputs can be like 5, or 'hi'
-        # These should line up with the output input argument
-        # TODO: Add length checks.
-        bindings = []
-        output_names = list(interface.outputs.keys())
-        if len(output_names) > 0:
-            for i, out in enumerate(workflow_outputs):
-                output_name = output_names[i]
-                # TODO: Check that the outputs returned type match the interface.
-                # output_literal_type = out.literal_type
-                # logger.debug(f"Got output wrapper: {out}")
-                # logger.debug(f"Var name {output_name} wf output name {outputs[i]} type: {output_literal_type}")
-                binding_data = _literal_models.BindingData(promise=out)
-                bindings.append(_literal_models.Binding(var=output_name, binding=binding_data))
-
         # TODO: Again, at this point, we should be able to identify the name of the workflow
         workflow_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW,
                                                    "proj", "dom", "moreblah", "1")
-
-        # Create a FlyteWorkflow object. We call this like how promote_from_model would call this, by ignoring the
-        # fancy arguments and supplying just the raw elements manually. Alternatively we can construct the
-        # WorkflowTemplate object, and then call promote_from_model.
-        sdk_workflow = _SdkWorkflow(inputs=None, outputs=None, nodes=all_nodes, id=workflow_id, metadata=None,
-                                    metadata_defaults=None, interface=interface, output_bindings=bindings)
-        # logger.debug(f"SdkWorkflow {sdk_workflow}")
-
-        workflow_instance = Workflow(fn, sdk_workflow)
+        workflow_instance = Workflow(fn)
         workflow_instance.id = workflow_id
 
         return workflow_instance

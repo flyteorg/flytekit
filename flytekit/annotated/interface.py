@@ -1,7 +1,7 @@
 import copy
 import inspect
 from collections import OrderedDict
-from typing import Dict, Generator, Union, Type, Tuple, List
+from typing import Dict, Generator, Union, Type, Tuple, List, Any
 
 from flytekit import logger
 from flytekit.annotated import type_engine
@@ -14,12 +14,29 @@ class Interface(object):
     A Python native interface object, like inspect.signature but simpler.
     """
 
-    def __init__(self, inputs: Dict[str, Type] = None, outputs: Dict[str, Type] = None):
-        self._inputs = inputs
+    def __init__(self, inputs: Dict[str, Union[Type, Tuple[Type, Any]]] = None, outputs: Dict[str, Type] = None):
+        """
+        :param outputs: Output variables and their types as a dictionary
+        :param inputs: the variable and its type only
+        """
+        self._inputs = {}
+        if inputs:
+            for k, v in inputs.items():
+                if isinstance(v, Tuple) and len(v) > 1:
+                    self._inputs[k] = v
+                else:
+                    self._inputs[k] = (v, None)
         self._outputs = outputs
 
     @property
-    def inputs(self):
+    def inputs(self) -> Dict[str, Type]:
+        r = {}
+        for k, v in self._inputs.items():
+            r[k] = v[0]
+        return r
+
+    @property
+    def inputs_with_defaults(self) -> Dict[str, Tuple[Type, Any]]:
         return self._inputs
 
     @property
@@ -68,6 +85,24 @@ class Interface(object):
         return Interface(self._inputs, new_outputs)
 
 
+def transform_inputs_to_parameters(interface: Interface) -> _interface_models.ParameterMap:
+    """
+    Transforms the given interface (with inputs) to a Parameter Map with defaults set
+    :param interface: the interface object
+    """
+    if interface is None or interface.inputs_with_defaults is None:
+        return _interface_models.ParameterMap({})
+    inputs_vars = transform_variable_map(interface.inputs)
+    params = {}
+    inputs_with_def = interface.inputs_with_defaults
+    for k, v in inputs_vars.items():
+        val, _default = inputs_with_def[k]
+        # TODO: Fix defaults and required
+        required = _default is None
+        params[k] = _interface_models.Parameter(var=v, default=_default, required=required)
+    return _interface_models.ParameterMap(params)
+
+
 def transform_interface_to_typed_interface(interface: Interface) -> _common_interface.TypedInterface:
     """
     Transform the given simple python native interface to FlyteIDL's interface
@@ -96,7 +131,7 @@ def transform_signature_to_interface(signature: inspect.Signature) -> Interface:
     inputs = OrderedDict()
     for k, v in signature.parameters.items():
         # Inputs with default values are currently ignored, we may want to look into that in the future
-        inputs[k] = v.annotation
+        inputs[k] = (v.annotation, v.default if v.default is not inspect.Parameter.empty else None)
 
     return Interface(inputs, outputs)
 
