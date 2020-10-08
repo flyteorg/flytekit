@@ -3,7 +3,7 @@ import datetime as _datetime
 import inspect
 import re
 from abc import abstractmethod
-from typing import Callable, Union, Dict, DefaultDict, Type, Any, List
+from typing import Callable, Union, Dict, DefaultDict, Type, Any, List, Tuple
 
 from flytekit import engine as flytekit_engine, logger
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext
@@ -35,7 +35,10 @@ class Task(object):
         self._interface = interface
         self._metadata = metadata
 
-    def _create_and_link_node(self, ctx: FlyteContext, *args, **kwargs):
+    def _compile(self, ctx: FlyteContext, *args, **kwargs):
+        """
+        This method is used to compile a task and generate nodes with bindings. This is not used in the execution path
+        """
         used_inputs = set()
         bindings = []
 
@@ -82,12 +85,41 @@ class Task(object):
 
         return create_task_output(node_outputs)
 
+    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, None]:
+        """
+        This code is used only in the case when we want to dispatch_execute with outputs from a previous node
+        For regular execution, dispatch_execute is invoked directly.
+        """
+        # Unwrap the kwargs values. After this, we essentially have a LiteralMap
+        for k, v in kwargs.items():
+            if isinstance(v, Promise):
+                if not v.is_ready:
+                    raise BrokenPipeError(
+                        f"Expected an actual value from the previous step, but received an incomplete promise {v}")
+                kwargs[k] = v.val
+
+        input_literal_map = _literal_models.LiteralMap(literals=kwargs)
+
+        outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
+        outputs_literals = outputs_literal_map.literals
+
+        # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
+        #    location, otherwise we dont really need to right? The higher level execute could just handle literalMap
+        # After running, we again have to wrap the outputs, if any, back into NodeOutput objects
+        output_names = list(self.interface.outputs.keys())
+        node_results = []
+        if len(output_names) != len(outputs_literals):
+            # Length check, clean up exception
+            raise Exception(f"Length difference {len(output_names)} {len(outputs_literals)}")
+
+        vals = [Promise(var, outputs_literals[var]) for var in output_names]
+        return create_task_output(vals)
+
     def dispatch_execute(
             self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap) -> _literal_models.LiteralMap:
         """
         This method translates Flytes native Type system based inputs and dispatches the actual call to the executor
-        TODO We need to figure out for custom types what should be passed into runtime. I feel this should only be inputs,
-            though in case of local execution we should pass the information of the task too.
+        NOTE: This method is also invoked during runtime
         """
         # Translate the input literals to Python native
         native_inputs = flytekit_engine.idl_literal_map_to_python_value(ctx, input_literal_map)
@@ -132,40 +164,16 @@ class Task(object):
         #     task output as an input, things probably will fail pretty obviously.
         if len(args) > 0:
             raise _user_exceptions.FlyteAssertion(
-                f"When adding a task as a node in a workflow, all inputs must be specified with kwargs only.  We "
-                f"detected {len(args)} positional args {args}"
+                f"In Flyte workflows, on keyword args are supported to pass inputs to workflows and tasks."
+                f"Aborting execution as detected {len(args)} positional args {args}"
             )
 
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
-            return self._create_and_link_node(ctx, *args, **kwargs)
+            return self._compile(ctx, *args, **kwargs)
         elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            # Unwrap the kwargs values. After this, we essentially have a LiteralMap
-            for k, v in kwargs.items():
-                if isinstance(v, Promise):
-                    if not v.is_ready:
-                        raise BrokenPipeError(
-                            f"Expected an actual value from the previous step, but received an incomplete promise {v}")
-                    kwargs[k] = v.val
-
-            input_literal_map = _literal_models.LiteralMap(literals=kwargs)
-
-            outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
-            outputs_literals = outputs_literal_map.literals
-
-            # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
-            #    location, otherwise we dont really need to right? The higher level execute could just handle literalMap
-            # After running, we again have to wrap the outputs, if any, back into NodeOutput objects
-            output_names = list(self.interface.outputs.keys())
-            node_results = []
-            if len(output_names) != len(outputs_literals):
-                # Length check, clean up exception
-                raise Exception(f"Length difference {len(output_names)} {len(outputs_literals)}")
-
-            vals = [Promise(var, outputs_literals[var]) for var in output_names]
-            return create_task_output(vals)
+            return self._local_execute(ctx, **kwargs)
         else:
-            # TODO: Remove warning
             logger.warning("task run without context - executing raw function")
             return self.execute(**kwargs)
 
