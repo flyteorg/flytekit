@@ -36,6 +36,10 @@ test: lint ## Run tests
 	pytest tests/scripts
 	shellcheck **/*.sh
 
+requirements-spark3.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark3.txt
+requirements-spark3.txt: requirements-spark3.in install-piptools
+	$(call PIP_COMPILE,requirements-spark3.in)
+
 requirements.txt: export CUSTOM_COMPILE_COMMAND := make requirements.txt
 requirements.txt: requirements.in install-piptools
 	$(call PIP_COMPILE,requirements.in)
