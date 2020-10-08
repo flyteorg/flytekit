@@ -52,7 +52,7 @@ from flytekit.sdk import types as _sdk_types
 from flytekit.sdk.sagemaker.task import custom_training_job_task
 from flytekit.sdk.tasks import inputs, outputs
 from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import Input, Output, workflow_class
+from flytekit.sdk.workflow import Input, workflow_class
 
 example_hyperparams = {
     "base_score": "0.5",
@@ -240,11 +240,6 @@ def test_custom_training_job():
         pass
 
     assert type(my_task) == CustomTrainingJobTask
-
-    @workflow_class
-    class MyWf(object):
-        a = my_task(input_1=5)
-        o = Output(sdk_type=Types.Blob, value=a.outputs.model)
 
 
 def test_simple_hpo_job_task_interface():
