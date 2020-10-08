@@ -8,7 +8,7 @@ from typing import Callable, Union, Dict, DefaultDict, Type, Any, List, Tuple
 from flytekit import engine as flytekit_engine, logger
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext
 from flytekit.annotated.interface import Interface, transform_interface_to_typed_interface, \
-    transform_signature_to_interface
+    transform_signature_to_interface, transform_typed_interface_to_collection_interface
 from flytekit.annotated.promise import Promise, create_task_output
 from flytekit.common import nodes as _nodes, interface as _common_interface
 from flytekit.common.exceptions import user as _user_exceptions
@@ -218,6 +218,67 @@ class PysparkFunctionTask(PythonFunctionTask):
         if "spark_context" in self.native_interface().inputs:
             kwargs["spark_context"] = None
         return self._task_function(**kwargs)
+
+
+class MapTask(Task):
+    """
+    TODO We might need a special entrypoint to start execution of this task type as there is possibly no instance of this
+    type and it needs to be dynamically generated at runtime. We can easily generate it by passing it the actual task
+    that is to be generated.
+
+    To do this we might have to give up on supporting lambda functions initially
+    """
+
+    def __init__(self, tk: Task, metadata: _task_model.TaskMetadata, *args, **kwargs):
+        collection_interface = transform_typed_interface_to_collection_interface(tk.interface)
+        name = "mapper_" + tk.name
+        self._run_task = tk
+        super().__init__(name, collection_interface, metadata, *args, **kwargs)
+
+    @property
+    def run_task(self) -> Task:
+        return self._run_task
+
+    def execute(self, **kwargs) -> Any:
+        all_types_are_collection = True
+        any_key = None
+        for k, v in self._run_task.interface.inputs.items():
+            any_key = k
+            if v.type.collection_type is None:
+                all_types_are_collection = False
+                break
+
+        # If all types are collection we can just handle the call as a pass through
+        if all_types_are_collection:
+            return self._run_task.execute(**kwargs)
+
+        # If all types are not collection then we need to perform batching
+        batch = {}
+
+        outputs_expected = True
+        if not self.interface.outputs:
+            outputs_expected = False
+        outputs = []
+        for k in self.interface.outputs.keys():
+            outputs.append([])
+        for i in range(len(kwargs[any_key])):
+            for k in self.interface.inputs.keys():
+                batch[k] = kwargs[k][i]
+            o = self._run_task.execute(**batch)
+            if outputs_expected:
+                for x in range(len(outputs)):
+                    outputs[x].append(o[x])
+        if len(outputs) == 1:
+            return outputs[0]
+
+        return tuple(outputs)
+
+
+def maptask(tk: Task, concurrency="auto", metadata=None):
+    if not isinstance(tk, Task):
+        raise ValueError(f"Only Flyte Task types are supported in maptask currently, received {type(tk)}")
+    # We could register in a global singleton here?
+    return MapTask(tk, metadata=metadata)
 
 
 class AbstractSQLTask(Task):

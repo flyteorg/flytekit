@@ -5,9 +5,10 @@ import typing
 import flytekit.annotated.task
 import flytekit.annotated.workflow
 from flytekit.annotated import context_manager
-from flytekit.annotated.task import task, AbstractSQLTask, metadata
+from flytekit.annotated.task import task, AbstractSQLTask, metadata, maptask
 from flytekit.annotated.workflow import workflow
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
+from flytekit.dynamic import dynamic
 
 
 def test_default_wf_params_works():
@@ -241,7 +242,62 @@ def test_wf1_with_spark():
         'out_1': "hello world",
     }
 
-# def test_normal_path():
+
+def test_wf1_with_map():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        a = a + 2
+        return a, "world-" + str(a)
+
+    @task
+    def t2(a: typing.List[int], b: typing.List[str]) -> (int, str):
+        ra = 0
+        for x in a:
+            ra += x
+        rb = ""
+        for x in b:
+            rb += x
+        return ra, rb
+
+    @workflow
+    def my_wf(a: typing.List[int]) -> (int, str):
+        x, y = maptask(t1, metadata=metadata(retries=1))(a=a)
+        return t2(a=x, b=y)
+
+    x = my_wf(a=[5, 6])
+    assert x == {'out_0': 15, 'out_1': 'world-7world-8'}
+
+
+def test_wf1_with_dynamic():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        a = a + 2
+        return a, "world-" + str(a)
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @dynamic
+    def my_subwf(a: int) -> (str, str):
+        x, y = t1(a=a)
+        u, v = t1(a=x)
+        return y, v
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str, str):
+        x, y = t1(a=a)
+        u, v = my_subwf(a=x)
+        return x, u, v
+
+    x = my_wf(a=5, b="hello ")
+    assert x == {
+        'out_0': 7,
+        'out_1': "hello world",
+        'out_2': "world-11",
+    }
+
+    # def test_normal_path():
 #     # Write some random numbers to a file
 #     def t1():
 #         ...

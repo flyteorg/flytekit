@@ -6,7 +6,7 @@ from typing import Dict, Generator, Union, Type, Tuple, List, Any
 from flytekit import logger
 from flytekit.annotated import type_engine
 from flytekit.common import interface as _common_interface
-from flytekit.models import interface as _interface_models
+from flytekit.models import interface as _interface_models, types as _type_models
 
 
 class Interface(object):
@@ -116,6 +116,42 @@ def transform_interface_to_typed_interface(interface: Interface) -> _common_inte
 
     # Maybe in the future we can just use the model
     return _common_interface.TypedInterface.promote_from_model(interface_model)
+
+
+def transform_variable_map_to_collection(
+        m: Dict[str, _interface_models.Variable]) -> Dict[str, _interface_models.Variable]:
+    """
+    Converts a given variables to be collections of their type. This is useful for array jobs / map style code.
+    It will create a collection of types even if any one these types is not a collection type
+    """
+    if m is None:
+        return {}
+
+    all_types_are_collection = True
+    for k, v in m.items():
+        if v.type.collection_type is None:
+            all_types_are_collection = False
+            break
+
+    if all_types_are_collection:
+        return m
+
+    om = {}
+    for k, v in m.items():
+        om[k] = _interface_models.Variable(type=_type_models.LiteralType(collection_type=v.type),
+                                           description=v.description)
+    return om
+
+
+def transform_typed_interface_to_collection_interface(
+        interface: _common_interface.TypedInterface) -> _common_interface.TypedInterface:
+    """
+    Takes a single task interface and interpolates it to an array interface - to allow performing distributed python map
+    like functions
+    """
+    map_inputs = transform_variable_map_to_collection(interface.inputs)
+    map_outputs = transform_variable_map_to_collection(interface.outputs)
+    return _common_interface.TypedInterface(inputs=map_inputs, outputs=map_outputs)
 
 
 def transform_signature_to_interface(signature: inspect.Signature) -> Interface:
