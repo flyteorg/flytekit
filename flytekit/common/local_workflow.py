@@ -10,7 +10,6 @@ from flytekit.common import nodes as _nodes
 from flytekit.common import promise as _promise
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.launch_plan import SdkRunnableLaunchPlan
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.workflow import SdkWorkflow
 from flytekit.configuration import internal as _internal_config
