@@ -21,7 +21,7 @@ def get_sagemaker_distributed_training_context_from_env() -> dict:
     if (
         not _os.environ.get(SM_ENV_VAR_CURRENT_HOST)
         or not _os.environ.get(SM_ENV_VAR_HOSTS)
-        or _os.environ.get(SM_ENV_VAR_NETWORK_INTERFACE_NAME)
+        or not _os.environ.get(SM_ENV_VAR_NETWORK_INTERFACE_NAME)
     ):
         raise KeyError
 

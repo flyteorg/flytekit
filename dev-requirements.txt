@@ -19,7 +19,7 @@ mock==4.0.2               # via -r dev-requirements.in
 packaging==20.4           # via pytest
 pathspec==0.8.0           # via -c requirements.txt, black
 pluggy==0.13.1            # via pytest
-py==1.9.0                 # via pytest
+py==1.9.0                 # via -c requirements.txt, pytest
 pycodestyle==2.6.0        # via flake8
 pyflakes==2.2.0           # via flake8
 pyparsing==2.4.7          # via packaging
