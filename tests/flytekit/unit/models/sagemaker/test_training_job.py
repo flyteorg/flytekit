@@ -8,7 +8,8 @@ def test_training_job_resource_config():
         instance_count=1,
         instance_type="random.instance",
         volume_size_in_gb=25,
-        distributed_protocol=training_job.DistributedProtocol.MPI)
+        distributed_protocol=training_job.DistributedProtocol.MPI,
+    )
 
     rc2 = training_job.TrainingJobResourceConfig.from_flyte_idl(rc.to_flyte_idl())
     assert rc2 == rc
@@ -17,13 +18,15 @@ def test_training_job_resource_config():
         instance_count=1,
         instance_type="random.instance",
         volume_size_in_gb=25,
-        distributed_protocol=training_job.DistributedProtocol.UNSPECIFIED)
+        distributed_protocol=training_job.DistributedProtocol.UNSPECIFIED,
+    )
 
     assert rc != training_job.TrainingJobResourceConfig(
         instance_count=1,
         instance_type="oops",
         volume_size_in_gb=25,
-        distributed_protocol=training_job.DistributedProtocol.MPI)
+        distributed_protocol=training_job.DistributedProtocol.MPI,
+    )
 
 
 def test_metric_definition():
@@ -55,15 +58,19 @@ def test_algorithm_specification():
 
 
 def test_training_job():
-    rc = training_job.TrainingJobResourceConfig(instance_type="test_type", instance_count=10, volume_size_in_gb=25,
-                                                distributed_protocol=training_job.DistributedProtocol.MPI)
-    alg = training_job.AlgorithmSpecification(algorithm_name=training_job.AlgorithmName.CUSTOM, algorithm_version="",
-                                              input_mode=training_job.InputMode.FILE,
-                                              input_content_type=training_job.InputContentType.TEXT_CSV)
-    tj = training_job.TrainingJob(
-        training_job_resource_config=rc,
-        algorithm_specification=alg,
+    rc = training_job.TrainingJobResourceConfig(
+        instance_type="test_type",
+        instance_count=10,
+        volume_size_in_gb=25,
+        distributed_protocol=training_job.DistributedProtocol.MPI,
     )
+    alg = training_job.AlgorithmSpecification(
+        algorithm_name=training_job.AlgorithmName.CUSTOM,
+        algorithm_version="",
+        input_mode=training_job.InputMode.FILE,
+        input_content_type=training_job.InputContentType.TEXT_CSV,
+    )
+    tj = training_job.TrainingJob(training_job_resource_config=rc, algorithm_specification=alg,)
 
     tj2 = training_job.TrainingJob.from_flyte_idl(tj.to_flyte_idl())
     # checking tj == tj2 would return false because we don't have the __eq__ magic method defined

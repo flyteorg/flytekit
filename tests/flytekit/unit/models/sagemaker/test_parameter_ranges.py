@@ -5,9 +5,8 @@ from flytekit.models.sagemaker import parameter_ranges
 
 def test_continuous_parameter_range():
     pr = parameter_ranges.ContinuousParameterRange(
-        max_value=10,
-        min_value=0.5,
-        scaling_type=parameter_ranges.HyperparameterScalingType.REVERSELOGARITHMIC)
+        max_value=10, min_value=0.5, scaling_type=parameter_ranges.HyperparameterScalingType.REVERSELOGARITHMIC
+    )
 
     pr2 = parameter_ranges.ContinuousParameterRange.from_flyte_idl(pr.to_flyte_idl())
     assert pr == pr2
@@ -20,9 +19,8 @@ def test_continuous_parameter_range():
 
 def test_integer_parameter_range():
     pr = parameter_ranges.IntegerParameterRange(
-        max_value=1,
-        min_value=0,
-        scaling_type=parameter_ranges.HyperparameterScalingType.LOGARITHMIC)
+        max_value=1, min_value=0, scaling_type=parameter_ranges.HyperparameterScalingType.LOGARITHMIC
+    )
 
     pr2 = parameter_ranges.IntegerParameterRange.from_flyte_idl(pr.to_flyte_idl())
     assert pr == pr2
@@ -46,13 +44,14 @@ def test_categorical_parameter_range():
 def test_parameter_ranges():
     pr = parameter_ranges.ParameterRanges(
         {
-            "a": parameter_ranges.CategoricalParameterRange(values=['a-1', 'a-2']),
+            "a": parameter_ranges.CategoricalParameterRange(values=["a-1", "a-2"]),
             "b": parameter_ranges.IntegerParameterRange(
-                min_value=1, max_value=5, scaling_type=parameter_ranges.HyperparameterScalingType.LINEAR),
+                min_value=1, max_value=5, scaling_type=parameter_ranges.HyperparameterScalingType.LINEAR
+            ),
             "c": parameter_ranges.ContinuousParameterRange(
-                min_value=0.1, max_value=1.0, scaling_type=parameter_ranges.HyperparameterScalingType.LOGARITHMIC),
+                min_value=0.1, max_value=1.0, scaling_type=parameter_ranges.HyperparameterScalingType.LOGARITHMIC
+            ),
         },
     )
     pr2 = parameter_ranges.ParameterRanges.from_flyte_idl(pr.to_flyte_idl())
     assert pr == pr2
-
