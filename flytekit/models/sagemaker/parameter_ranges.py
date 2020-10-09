@@ -182,13 +182,9 @@ class ParameterRanges(_common.FlyteIdlEntity):
             # https://developers.google.com/protocol-buffers/docs/reference/python-generated#oneof
             # and then use getattr to get the field, and use isinstance to check if that field is indeed that type
             # https://stackoverflow.com/questions/51421392/dynamically-access-oneof-value-from-a-protobuf
-            if isinstance(
-                getattr(v, v.WhichOneof("parameter_range_type")), _idl_parameter_ranges.ContinuousParameterRange
-            ):
+            if v.HasField("continuous_parameter_range"):
                 converted[k] = ContinuousParameterRange.from_flyte_idl(v.continuous_parameter_range)
-            elif isinstance(
-                getattr(v, v.WhichOneof("parameter_range_type")), _idl_parameter_ranges.IntegerParameterRange
-            ):
+            elif v.HasField("integer_parameter_range"):
                 converted[k] = IntegerParameterRange.from_flyte_idl(v.integer_parameter_range)
             else:
                 converted[k] = CategoricalParameterRange.from_flyte_idl(v.categorical_parameter_range)
