@@ -5,6 +5,16 @@ from flyteidl.plugins.sagemaker import training_job_pb2 as _training_job_pb2
 from flytekit.models import common as _common
 
 
+class DistributedProtocol(object):
+    """
+    The distribution framework is used for determining which underlying distributed training mechanism to use.
+    This is only required for use cases where the user wants to train its custom training job in a distributed manner
+    """
+
+    UNSPECIFIED = _training_job_pb2.DistributedProtocol.UNSPECIFIED
+    MPI = _training_job_pb2.DistributedProtocol.MPI
+
+
 class TrainingJobResourceConfig(_common.FlyteIdlEntity):
     """
     TrainingJobResourceConfig is a pass-through, specifying the instance type to use for the training job, the
@@ -13,11 +23,16 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
     """
 
     def __init__(
-        self, instance_count: int, instance_type: str, volume_size_in_gb: int,
+        self,
+        instance_count: int,
+        instance_type: str,
+        volume_size_in_gb: int,
+        distributed_protocol: int = DistributedProtocol.UNSPECIFIED,
     ):
         self._instance_count = instance_count
         self._instance_type = instance_type
         self._volume_size_in_gb = volume_size_in_gb
+        self._distributed_protocol = distributed_protocol
 
     @property
     def instance_count(self) -> int:
@@ -43,6 +58,15 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
         """
         return self._volume_size_in_gb
 
+    @property
+    def distributed_protocol(self) -> int:
+        """
+        The distribution framework is used to determine through which mechanism the distributed training is done.
+        enum value from DistributionFramework.
+        :rtype: int
+        """
+        return self._distributed_protocol
+
     def to_flyte_idl(self) -> _training_job_pb2.TrainingJobResourceConfig:
         """
 
@@ -52,6 +76,7 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
             instance_count=self.instance_count,
             instance_type=self.instance_type,
             volume_size_in_gb=self.volume_size_in_gb,
+            distributed_protocol=self.distributed_protocol,
         )
 
     @classmethod
@@ -65,6 +90,7 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
             instance_count=pb2_object.instance_count,
             instance_type=pb2_object.instance_type,
             volume_size_in_gb=pb2_object.volume_size_in_gb,
+            distributed_protocol=pb2_object.distributed_protocol,
         )
 
 
