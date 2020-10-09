@@ -178,10 +178,6 @@ class ParameterRanges(_common.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object: _idl_parameter_ranges.ParameterRanges):
         converted = {}
         for k, v in pb2_object.parameter_range_map.items():
-            # Use WhichOneof to find out which field in the oneof has been set
-            # https://developers.google.com/protocol-buffers/docs/reference/python-generated#oneof
-            # and then use getattr to get the field, and use isinstance to check if that field is indeed that type
-            # https://stackoverflow.com/questions/51421392/dynamically-access-oneof-value-from-a-protobuf
             if v.HasField("continuous_parameter_range"):
                 converted[k] = ContinuousParameterRange.from_flyte_idl(v.continuous_parameter_range)
             elif v.HasField("integer_parameter_range"):
