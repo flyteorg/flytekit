@@ -152,7 +152,11 @@ class CategoricalParameterRange(_common.FlyteIdlEntity):
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _idl_parameter_ranges.CategoricalParameterRange):
-        #    return cls(values=pb2_object.values)
+        """
+
+        :param pb2_object:
+        :rtype: CategoricalParameterRange
+        """
         return cls(values=[v for v in pb2_object.values])
 
 
@@ -163,6 +167,10 @@ class ParameterRanges(_common.FlyteIdlEntity):
         self._parameter_range_map = parameter_range_map
 
     def to_flyte_idl(self) -> _idl_parameter_ranges.ParameterRanges:
+        """
+
+        :rtype: _idl_parameter_ranges.ParameterRanges
+        """
         converted = {}
         for k, v in self._parameter_range_map.items():
             if isinstance(v, IntegerParameterRange):
@@ -176,6 +184,11 @@ class ParameterRanges(_common.FlyteIdlEntity):
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _idl_parameter_ranges.ParameterRanges):
+        """
+
+        :param pb2_object:
+        :rtype: ParameterRanges
+        """
         converted = {}
         for k, v in pb2_object.parameter_range_map.items():
             if v.HasField("continuous_parameter_range"):

@@ -37,7 +37,7 @@ def test_categorical_parameter_range():
 
     pr2 = parameter_ranges.CategoricalParameterRange.from_flyte_idl(pr.to_flyte_idl())
     assert pr == pr2
-    case.assertEqual(type(pr2.values), list)
+    assert isinstance(pr2.values, list)
     case.assertCountEqual(pr2.values, pr.values)
 
 
