@@ -3,13 +3,12 @@ from typing import Dict, Any, Callable
 
 from flytekit import engine as flytekit_engine, logger
 from flytekit.annotated.context_manager import FlyteContext, ExecutionState
+from flytekit.annotated.interface import transform_signature_to_interface, transform_interface_to_typed_interface, \
+    transform_inputs_to_parameters
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.interface import transform_variable_map, extract_return_annotation, \
-    transform_signature_to_interface, transform_interface_to_typed_interface, transform_inputs_to_parameters
 from flytekit.common import constants as _common_constants
-from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
-from flytekit.models import literals as _literal_models, interface as _interface_models, types as _type_models
+from flytekit.models import literals as _literal_models, types as _type_models
 from flytekit.models.core import identifier as _identifier_model
 
 
@@ -30,6 +29,18 @@ class Workflow(object):
         self._sdk_workflow = None
         # TODO do we need this - can this not be in launchplan only?
         self._input_parameters = None
+
+    @property
+    def function(self):
+        return self._workflow_function
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def interface(self):
+        return self._interface
 
     def compile(self):
         # TODO should we even define it here?
@@ -134,6 +145,7 @@ class Workflow(object):
             raise Exception('not implemented')
 
         elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            print(f"{self._name} in local execution mode")
             # We are already in a local execution, just continue the execution context
             return self._local_execute(ctx, nested=True, **kwargs)
         else:
@@ -160,14 +172,3 @@ def workflow(_workflow_function=None):
     else:
         return wrapper
 
-
-def get_default_args(func):
-    """
-    Returns the default arguments to a function as a dict. Will be empty if there are none.
-    """
-    signature = inspect.signature(func)
-    return {
-        k: v.default
-        for k, v in signature.parameters.items()
-        if v.default is not inspect.Parameter.empty
-    }

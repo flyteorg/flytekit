@@ -5,10 +5,9 @@ import typing
 import flytekit.annotated.task
 import flytekit.annotated.workflow
 from flytekit.annotated import context_manager
-from flytekit.annotated.task import task, AbstractSQLTask, metadata, maptask
+from flytekit.annotated.task import task, AbstractSQLTask, metadata, maptask, dynamic
 from flytekit.annotated.workflow import workflow
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
-from flytekit.dynamic import dynamic
 
 
 def test_default_wf_params_works():
@@ -268,34 +267,61 @@ def test_wf1_with_map():
     assert x == {'out_0': 15, 'out_1': 'world-7world-8'}
 
 
-def test_wf1_with_dynamic():
+def test_wf1_freeform_vars():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a)
+        d = t2(a="This is my way", b=b)
+        return x, d
+
+    x = my_wf(a=5, b="hello ")
+    assert x == {
+        'out_0': 7,
+        'out_1': "hello This is my way",
+    }
+
+
+def test_wf1_with_dynamic():
+    @task
+    def t1(a: int) -> str:
         a = a + 2
-        return a, "world-" + str(a)
+        return "world-" + str(a)
 
     @task
     def t2(a: str, b: str) -> str:
         return b + a
 
     @dynamic
-    def my_subwf(a: int) -> (str, str):
-        x, y = t1(a=a)
-        u, v = t1(a=x)
-        return y, v
+    def my_subwf(a: int) -> typing.List[str]:
+        s = []
+        for i in range(a):
+            s.append(t1(a=i))
+        return s
 
     @workflow
-    def my_wf(a: int, b: str) -> (int, str, str):
-        x, y = t1(a=a)
-        u, v = my_subwf(a=x)
-        return x, u, v
+    def my_wf(a: int, b: str) -> (str, typing.List[str]):
+        x = t2(a=b, b=b)
+        v = my_subwf(a=a)
+        return x, v
 
-    x = my_wf(a=5, b="hello ")
+    v = 5
+    x = my_wf(a=v, b="hello ")
     assert x == {
-        'out_0': 7,
-        'out_1': "hello world",
-        'out_2': "world-11",
+        'out_0': "hello hello ",
+        'out_1': ["world-" + str(i) for i in range(2, v+2)],
     }
+
+
+# TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!
+
 
     # def test_normal_path():
 #     # Write some random numbers to a file

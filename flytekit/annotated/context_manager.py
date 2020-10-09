@@ -20,6 +20,7 @@ from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 from flytekit.models.core import identifier as _identifier
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.engines.unit import mock_stats as _mock_stats
+from flytekit.models import interface as _interface_models
 
 
 class CompilationState(object):
@@ -92,6 +93,7 @@ class FlyteContext(object):
         self._execution_state = execution_state
         self._flyte_client = flyte_client
         self._user_space_params = user_space_params
+        self._freeform_params = []
 
     def __enter__(self):
         # Should we auto-assign the parent here?
@@ -101,6 +103,19 @@ class FlyteContext(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         FlyteContext.OBJS.pop()
+
+    def add_freeform_parameter(self, val: Any, associated_var: _interface_models.Variable):
+        # TODO @ketan This may completely break the current idea of how to do dynamic workflows
+        # @haytham / @yee ^ need inputs
+        # TODO, this has to be used in compilation and is really complicated to normalize.
+        # For example, in the case of static workflow if the same freeform parameter like e.g. int '5' is used twice
+        # should it be made into one parameter?
+        # And in the case of dynamic workflows, freeform parameters is even more complicated. As they are not really
+        # freeform, but potentially one of the inputs to the dynamic workflow (runtime inputs) or could be a
+        # transformed input.
+        # A solution to solve this could be that freeform parameters get associated as default values for the task in
+        # dynamic workflows?
+        self._freeform_params.append((val, associated_var))
 
     @classmethod
     def current_context(cls) -> 'FlyteContext':
