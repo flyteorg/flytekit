@@ -280,8 +280,8 @@ def test_simple_hpo_job_task_interface():
 # Defining a output-persist predicate to indicate if the copy of the instance should persist its output
 def predicate(distributed_training_context):
     return (
-            distributed_training_context[_sm_distribution.DistributedTrainingContextKey.CURRENT_HOST]
-            == distributed_training_context[_sm_distribution.DistributedTrainingContextKey.HOSTS][1]
+        distributed_training_context[_sm_distribution.DistributedTrainingContextKey.CURRENT_HOST]
+        == distributed_training_context[_sm_distribution.DistributedTrainingContextKey.HOSTS][1]
     )
 
 
@@ -327,12 +327,12 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
 
     def test_missing_current_host_in_distributed_training_context_keys_lead_to_keyerrors(self):
         with mock.patch.dict(
-                _os.environ,
-                {
-                    _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-                    _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
-                },
-                clear=True,
+            _os.environ,
+            {
+                _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
+                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
+            },
+            clear=True,
         ):
             # eliminate the wait in unittest https://stackoverflow.com/a/32698175
             with mock.patch.object(retry.api, "__retry_internal", dontretry):
@@ -340,12 +340,12 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
 
     def test_missing_hosts_distributed_training_context_keys_lead_to_keyerrors(self):
         with mock.patch.dict(
-                _os.environ,
-                {
-                    _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
-                    _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
-                },
-                clear=True,
+            _os.environ,
+            {
+                _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
+                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
+            },
+            clear=True,
         ):
             # eliminate the wait in unittest https://stackoverflow.com/a/32698175
             with mock.patch.object(retry.api, "__retry_internal", dontretry):
@@ -353,12 +353,12 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
 
     def test_missing_network_interface_name_in_distributed_training_context_keys_lead_to_keyerrors(self):
         with mock.patch.dict(
-                _os.environ,
-                {
-                    _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
-                    _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-                },
-                clear=True,
+            _os.environ,
+            {
+                _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
+                _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
+            },
+            clear=True,
         ):
             # eliminate the wait in unittest https://stackoverflow.com/a/32698175
             with mock.patch.object(retry.api, "__retry_internal", dontretry):
@@ -366,13 +366,13 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
 
     def test_with_default_predicate_with_rank0_master(self):
         with mock.patch.dict(
-                _os.environ,
-                {
-                    _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-0",
-                    _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-                    _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
-                },
-                clear=True,
+            _os.environ,
+            {
+                _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-0",
+                _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
+                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
+            },
+            clear=True,
         ):
             # execute the distributed task with its distributed_training_context == None
             ret = self._my_distributed_task.execute(self._context, self._task_input)
@@ -380,26 +380,26 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
 
     def test_with_default_predicate_with_rank1_master(self):
         with mock.patch.dict(
-                _os.environ,
-                {
-                    _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
-                    _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-                    _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
-                },
-                clear=True,
+            _os.environ,
+            {
+                _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
+                _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
+                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
+            },
+            clear=True,
         ):
             ret = self._my_distributed_task.execute(self._context, self._task_input)
             assert not ret
 
     def test_with_custom_predicate_with_none_dist_context(self):
         with mock.patch.dict(
-                _os.environ,
-                {
-                    _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
-                    _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-                    _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
-                },
-                clear=True,
+            _os.environ,
+            {
+                _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
+                _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
+                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
+            },
+            clear=True,
         ):
 
             self._my_distributed_task._output_persist_predicate = predicate
@@ -410,13 +410,13 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
 
     def test_with_custom_predicate_with_valid_dist_context(self):
         with mock.patch.dict(
-                _os.environ,
-                {
-                    _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
-                    _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-                    _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
-                },
-                clear=True,
+            _os.environ,
+            {
+                _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
+                _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
+                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
+            },
+            clear=True,
         ):
             # fill in the distributed_training_context to the context object and execute again
             self._my_distributed_task._output_persist_predicate = predicate
@@ -429,13 +429,13 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
 
     def test_if_wf_param_has_dist_context(self):
         with mock.patch.dict(
-                _os.environ,
-                {
-                    _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
-                    _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
-                    _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
-                },
-                clear=True,
+            _os.environ,
+            {
+                _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
+                _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
+                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
+            },
+            clear=True,
         ):
 
             # This test is making sure that the distributed_training_context is successfully passed into the

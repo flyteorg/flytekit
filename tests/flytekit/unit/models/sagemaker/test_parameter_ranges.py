@@ -65,14 +65,22 @@ def test_parameter_ranges():
 
 
 LIST_OF_PARAMETERS = [
-    (parameter_ranges.IntegerParameterRange(
-        min_value=1, max_value=5, scaling_type=parameter_ranges.HyperparameterScalingType.LINEAR
-    ), lambda param: assert_equal(param.integer_parameter_range.max_value, 5)),
-    (parameter_ranges.ContinuousParameterRange(
-        min_value=0.1, max_value=1.0, scaling_type=parameter_ranges.HyperparameterScalingType.LOGARITHMIC
-    ), lambda param: assert_equal(param.continuous_parameter_range.max_value, 1)),
-    (parameter_ranges.CategoricalParameterRange(values=["a-1", "a-2"]),
-     lambda param: assert_equal(len(param.categorical_parameter_range.values), 2)),
+    (
+        parameter_ranges.IntegerParameterRange(
+            min_value=1, max_value=5, scaling_type=parameter_ranges.HyperparameterScalingType.LINEAR
+        ),
+        lambda param: assert_equal(param.integer_parameter_range.max_value, 5),
+    ),
+    (
+        parameter_ranges.ContinuousParameterRange(
+            min_value=0.1, max_value=1.0, scaling_type=parameter_ranges.HyperparameterScalingType.LOGARITHMIC
+        ),
+        lambda param: assert_equal(param.continuous_parameter_range.max_value, 1),
+    ),
+    (
+        parameter_ranges.CategoricalParameterRange(values=["a-1", "a-2"]),
+        lambda param: assert_equal(len(param.categorical_parameter_range.values), 2),
+    ),
 ]
 
 
