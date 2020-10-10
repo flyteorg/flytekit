@@ -1,6 +1,13 @@
 import unittest
 
+import pytest
+
 from flytekit.models.sagemaker import parameter_ranges
+
+
+# assert statements cannot be written inside lambda expressions. This is a convenient function to work around that.
+def assert_equal(a, b):
+    assert a == b
 
 
 def test_continuous_parameter_range():
@@ -55,3 +62,25 @@ def test_parameter_ranges():
     )
     pr2 = parameter_ranges.ParameterRanges.from_flyte_idl(pr.to_flyte_idl())
     assert pr == pr2
+
+
+LIST_OF_PARAMETERS = [
+    (parameter_ranges.IntegerParameterRange(
+        min_value=1, max_value=5, scaling_type=parameter_ranges.HyperparameterScalingType.LINEAR
+    ), lambda param: assert_equal(param.integer_parameter_range.max_value, 5)),
+    (parameter_ranges.ContinuousParameterRange(
+        min_value=0.1, max_value=1.0, scaling_type=parameter_ranges.HyperparameterScalingType.LOGARITHMIC
+    ), lambda param: assert_equal(param.continuous_parameter_range.max_value, 1)),
+    (parameter_ranges.CategoricalParameterRange(values=["a-1", "a-2"]),
+     lambda param: assert_equal(len(param.categorical_parameter_range.values), 2)),
+]
+
+
+@pytest.mark.parametrize("param_tuple", LIST_OF_PARAMETERS)
+def test_parameter_ranges_oneof(param_tuple):
+    param, assertion = param_tuple
+    oneof = parameter_ranges.ParameterRangeOneOf(param=param)
+    oneof2 = parameter_ranges.ParameterRangeOneOf.from_flyte_idl(oneof.to_flyte_idl())
+    assert oneof2 == oneof
+    assertion(oneof)
+    assertion(oneof2)
