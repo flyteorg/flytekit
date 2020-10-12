@@ -143,8 +143,6 @@ class Task(object):
             k: flytekit_engine.python_value_to_idl_literal(ctx, v, self.interface.outputs[k].type) for k, v in
             native_outputs_as_map.items()
         })
-        print("Outputs!")
-        print(outputs_literal_map)
         return outputs_literal_map
 
     @abstractmethod
@@ -318,8 +316,6 @@ class AbstractSQLTask(Task):
         if len(matched) < len(kwargs.keys()):
             diff = set(kwargs.keys()).difference(matched)
             raise ValueError(f"Extra Inputs have not matches in query template - missing {diff}")
-
-        print(f"Evaluated Query\n {modified_query}")
         return None
 
 
@@ -348,6 +344,7 @@ def metadata(
         interruptible: bool = False,
         deprecated: str = "",
         timeout: Union[_datetime.timedelta, int] = None) -> _task_model.TaskMetadata:
+
     return _task_model.TaskMetadata(
         discoverable=cache,
         runtime=_task_model.RuntimeMetadata(

@@ -2,6 +2,8 @@ import datetime as _datetime
 from typing import Callable, Union, Dict
 
 from flytekit.annotated.task import metadata
+from flytekit.annotated.task import PythonFunctionTask, TaskTypePlugins
+from flytekit.models.core import identifier as _identifier_models
 
 
 def dynamic(
@@ -30,7 +32,7 @@ def dynamic(
         # TODO: One of the things I want to make sure to do is better naming support. At this point, we should already
         #       be able to determine the name of the task right? Can anyone think of situations where we can't?
         #       Where does the current instance tracker come into play?
-        task_instance.id = _identifier_model.Identifier(_identifier_model.ResourceType.TASK, "proj", "dom", "blah",
+        task_instance.id = _identifier_models.Identifier(_identifier_models.ResourceType.TASK, "proj", "dom", "blah",
                                                         "1")
 
         return task_instance
