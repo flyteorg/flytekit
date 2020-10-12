@@ -29,6 +29,8 @@ class Workflow(object):
         # This will get populated on compile only
         self._sdk_workflow = None
         # TODO do we need this - can this not be in launchplan only?
+        #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or
+        #    we can re-evaluate.
         self._input_parameters = None
 
     def compile(self):
@@ -151,6 +153,7 @@ def workflow(_workflow_function=None):
         workflow_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW,
                                                    "proj", "dom", "moreblah", "1")
         workflow_instance = Workflow(fn)
+        workflow_instance.compile()
         workflow_instance.id = workflow_id
 
         return workflow_instance
