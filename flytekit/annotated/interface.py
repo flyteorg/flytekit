@@ -237,8 +237,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
 
     # This statement results in true for typing.Namedtuple, single and void return types, so this
     # handles Options 1, 2, and 5. Even though NamedTuple for us is multi-valued, it's a single value for Python
-    if isinstance(return_annotation, Type) or isinstance(return_annotation, _GenericAlias) \
-            or isinstance(return_annotation, TypeVar):
+    if isinstance(return_annotation, Type) or isinstance(return_annotation, TypeVar):
         # isinstance / issubclass does not work for Namedtuple.
         # Options 1 and 2
         if hasattr(return_annotation, '_field_types'):
@@ -246,6 +245,9 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
             return return_annotation._field_types
         # Option 5
         logger.debug(f'Task returns a single output of type {return_annotation}')
+        return {default_output_name(): return_annotation}
+
+    if isinstance(return_annotation, _GenericAlias) and return_annotation.__origin__ in [list, dict]:
         return {default_output_name(): return_annotation}
 
     return_map = {}

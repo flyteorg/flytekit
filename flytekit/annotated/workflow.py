@@ -28,6 +28,8 @@ class Workflow(object):
         # This will get populated on compile only
         self._sdk_workflow = None
         # TODO do we need this - can this not be in launchplan only?
+        #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or
+        #    we can re-evaluate.
         self._input_parameters = None
 
     @property
@@ -84,6 +86,11 @@ class Workflow(object):
         # WorkflowTemplate object, and then call promote_from_model.
         self._sdk_workflow = _SdkWorkflow(inputs=None, outputs=None, nodes=all_nodes, id=workflow_id, metadata=None,
                                           metadata_defaults=None, interface=self._interface, output_bindings=bindings)
+        if not output_names:
+            return None
+        if len(output_names) == 1:
+            return bindings[0]
+        return tuple(bindings)
 
     def _local_execute(self, ctx: FlyteContext, nested=False, **kwargs) -> Dict[str, Any]:
         """
@@ -94,22 +101,13 @@ class Workflow(object):
         """
         logger.info(f"Executing Workflow {self._name} with nested={nested}, ctx{ctx.execution_state.Mode}")
         # There are 2 ways in which you can receive arguments to Workflow
-        # 1. The workflow arguments received directly from the user - these are in python native type system
         # 2. In case of a subworkflow (workflow nested in another workflow) the received values will be promises instead
         #    These promises should always be ready
         for k, v in kwargs.items():
-            if k not in self._interface.inputs:
-                # Should we do this in strict mode?
-                raise ValueError(f"Received unexpected keyword argument {k}")
             if isinstance(v, Promise):
                 if not v.is_ready:
                     raise BrokenPipeError(
                         f"Expected an actual value from the previous step, but received an incomplete promise {v}")
-                kwargs[k] = v.val
-            else:
-                # Assume it is python native, lets
-                kwargs[k] = Promise(
-                    var=k, val=flytekit_engine.python_value_to_idl_literal(ctx, v, self._interface.inputs[k].type))
 
         # TODO: These are all assumed to be TaskCallOutput objects, but they can
         #   be other things as well.  What if someone just returns 5? Should we disallow this?
@@ -142,8 +140,7 @@ class Workflow(object):
         ctx = FlyteContext.current_context()
         # Reserved for when we have subworkflows
         if ctx.compilation_state is not None:
-            raise Exception('not implemented')
-
+            return self.compile()
         elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             print(f"{self._name} in local execution mode")
             # We are already in a local execution, just continue the execution context
@@ -151,6 +148,15 @@ class Workflow(object):
         else:
             # When someone wants to run the workflow function locally
             with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
+                for k, v in kwargs.items():
+                    if k not in self._interface.inputs:
+                        # Should we do this in strict mode?
+                        raise ValueError(f"Received unexpected keyword argument {k}")
+                    if isinstance(v, Promise):
+                        raise ValueError(
+                            f"Received a promise for a workflow call, when expecting a native value for {k}")
+                    kwargs[k] = Promise(
+                        var=k, val=flytekit_engine.python_value_to_idl_literal(ctx, v, self._interface.inputs[k].type))
                 return self._local_execute(ctx, **kwargs)
 
 
@@ -163,6 +169,7 @@ def workflow(_workflow_function=None):
         workflow_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW,
                                                    "proj", "dom", "moreblah", "1")
         workflow_instance = Workflow(fn)
+        workflow_instance.compile()
         workflow_instance.id = workflow_id
 
         return workflow_instance
@@ -171,4 +178,3 @@ def workflow(_workflow_function=None):
         return wrapper(_workflow_function)
     else:
         return wrapper
-

@@ -203,7 +203,7 @@ def test_wf1_with_subwf():
 def test_wf1_with_sql():
     sql = AbstractSQLTask(
         "my-query",
-        query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds}}' LIMIT 10",
+        query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
         inputs={"ds": datetime.datetime},
         metadata=metadata(retries=2)
     )
