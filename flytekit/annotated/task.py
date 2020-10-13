@@ -1,5 +1,6 @@
 import collections
 import datetime as _datetime
+import functools
 import inspect
 import re
 from abc import abstractmethod
@@ -10,6 +11,7 @@ from flytekit.annotated.context_manager import ExecutionState, FlyteContext
 from flytekit.annotated.interface import Interface, transform_interface_to_typed_interface, \
     transform_signature_to_interface, transform_typed_interface_to_collection_interface
 from flytekit.annotated.promise import Promise, create_task_output
+from flytekit.annotated.workflow import Workflow
 from flytekit.common import nodes as _nodes, interface as _common_interface
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.promise import NodeOutput as _NodeOutput
@@ -92,11 +94,21 @@ class Task(object):
         """
         # Unwrap the kwargs values. After this, we essentially have a LiteralMap
         for k, v in kwargs.items():
+            if k not in self.interface.inputs:
+                # Should we do this in strict mode?
+                raise ValueError(f"Received unexpected keyword argument {k}")
             if isinstance(v, Promise):
                 if not v.is_ready:
                     raise BrokenPipeError(
                         f"Expected an actual value from the previous step, but received an incomplete promise {v}")
                 kwargs[k] = v.val
+            else:
+                # Assume its a native value. Lets convert it to a literal and also add it to the context as a freeform
+                # parameter
+                val = kwargs[k]
+                var = self.interface.inputs[k]
+                ctx.add_compile_time_constant(val, var)
+                kwargs[k] = flytekit_engine.python_value_to_idl_literal(ctx, val, var.type)
 
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
@@ -124,7 +136,15 @@ class Task(object):
         # Translate the input literals to Python native
         native_inputs = flytekit_engine.idl_literal_map_to_python_value(ctx, input_literal_map)
 
-        native_outputs = self.execute(**native_inputs)
+        # TODO Logger should auto inject the current context information to indicate if the task is running within
+        # a workflow or a subworkflow etc
+        logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
+        try:
+            native_outputs = self.execute(**native_inputs)
+        except Exception as e:
+            logger.exception("Exception when executing", e)
+            raise e
+        logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
 
         expected_output_names = list(self.interface.outputs.keys())
         if len(expected_output_names) == 1:
@@ -319,12 +339,30 @@ class AbstractSQLTask(Task):
         return None
 
 
+class DynamicWorkflowTask(Task):
+
+    def __init__(self, dynamic_workflow_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
+        self._workflow = Workflow(dynamic_workflow_function)
+        super().__init__(self._workflow.name, self._workflow.interface, metadata, *args, **kwargs)
+
+    def execute(self, **kwargs) -> Any:
+        ctx = FlyteContext.current_context()
+        if ctx.compilation_state is not None:
+            raise NotImplementedError(
+                "Dynamic workflow compilation is not yet implemented. This will be invoked at runtime")
+        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            with ctx.new_execution_context(ExecutionState.Mode.TASK_EXECUTION) as _inner_ctx:
+                logger.info("Executing Dynamic workflow, using raw inputs")
+                return self._workflow.function(**kwargs)
+
+
 TaskTypePlugins: DefaultDict[str, Type[PythonFunctionTask]] = collections.defaultdict(
     lambda: PythonFunctionTask,
     {
         "python_task": PythonFunctionTask,
         "task": PythonFunctionTask,
         "spark": PysparkFunctionTask,
+        "_dynamic": DynamicWorkflowTask,
     }
 )
 
@@ -393,3 +431,6 @@ def task(
         return wrapper(_task_function)
     else:
         return wrapper
+
+
+dynamic = functools.partial(task, task_type="_dynamic")

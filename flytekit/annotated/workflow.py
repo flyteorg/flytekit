@@ -3,13 +3,12 @@ from typing import Dict, Any, Callable
 
 from flytekit import engine as flytekit_engine, logger
 from flytekit.annotated.context_manager import FlyteContext, ExecutionState
+from flytekit.annotated.interface import transform_signature_to_interface, transform_interface_to_typed_interface, \
+    transform_inputs_to_parameters
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.interface import transform_variable_map, extract_return_annotation, \
-    transform_signature_to_interface, transform_interface_to_typed_interface, transform_inputs_to_parameters
 from flytekit.common import constants as _common_constants
-from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
-from flytekit.models import literals as _literal_models, interface as _interface_models, types as _type_models
+from flytekit.models import literals as _literal_models, types as _type_models
 from flytekit.models.core import identifier as _identifier_model
 
 
@@ -32,6 +31,18 @@ class Workflow(object):
         #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or
         #    we can re-evaluate.
         self._input_parameters = None
+
+    @property
+    def function(self):
+        return self._workflow_function
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def interface(self):
+        return self._interface
 
     def compile(self):
         # TODO should we even define it here?
@@ -75,6 +86,11 @@ class Workflow(object):
         # WorkflowTemplate object, and then call promote_from_model.
         self._sdk_workflow = _SdkWorkflow(inputs=None, outputs=None, nodes=all_nodes, id=workflow_id, metadata=None,
                                           metadata_defaults=None, interface=self._interface, output_bindings=bindings)
+        if not output_names:
+            return None
+        if len(output_names) == 1:
+            return bindings[0]
+        return tuple(bindings)
 
     def _local_execute(self, ctx: FlyteContext, nested=False, **kwargs) -> Dict[str, Any]:
         """
@@ -84,23 +100,13 @@ class Workflow(object):
         :param kwargs: parameters for the workflow itself
         """
         logger.info(f"Executing Workflow {self._name} with nested={nested}, ctx{ctx.execution_state.Mode}")
-        # There are 2 ways in which you can receive arguments to Workflow
-        # 1. The workflow arguments received directly from the user - these are in python native type system
-        # 2. In case of a subworkflow (workflow nested in another workflow) the received values will be promises instead
-        #    These promises should always be ready
+        # NOTE: All inputs received by Workflow in this mode should be Promises.
+        # TODO, how will this work for dynamic workflow? Ideally dynamic workflow should use dispatch_execute
         for k, v in kwargs.items():
-            if k not in self._interface.inputs:
-                # Should we do this in strict mode?
-                raise ValueError(f"Received unexpected keyword argument {k}")
             if isinstance(v, Promise):
                 if not v.is_ready:
                     raise BrokenPipeError(
                         f"Expected an actual value from the previous step, but received an incomplete promise {v}")
-                kwargs[k] = v.val
-            else:
-                # Assume it is python native, lets
-                kwargs[k] = Promise(
-                    var=k, val=flytekit_engine.python_value_to_idl_literal(ctx, v, self._interface.inputs[k].type))
 
         # TODO: These are all assumed to be TaskCallOutput objects, but they can
         #   be other things as well.  What if someone just returns 5? Should we disallow this?
@@ -133,14 +139,23 @@ class Workflow(object):
         ctx = FlyteContext.current_context()
         # Reserved for when we have subworkflows
         if ctx.compilation_state is not None:
-            raise Exception('not implemented')
-
+            return self.compile()
         elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            print(f"{self._name} in local execution mode")
             # We are already in a local execution, just continue the execution context
             return self._local_execute(ctx, nested=True, **kwargs)
         else:
             # When someone wants to run the workflow function locally
             with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
+                for k, v in kwargs.items():
+                    if k not in self._interface.inputs:
+                        # Should we do this in strict mode?
+                        raise ValueError(f"Received unexpected keyword argument {k}")
+                    if isinstance(v, Promise):
+                        raise ValueError(
+                            f"Received a promise for a workflow call, when expecting a native value for {k}")
+                    kwargs[k] = Promise(
+                        var=k, val=flytekit_engine.python_value_to_idl_literal(ctx, v, self._interface.inputs[k].type))
                 return self._local_execute(ctx, **kwargs)
 
 
@@ -162,15 +177,3 @@ def workflow(_workflow_function=None):
         return wrapper(_workflow_function)
     else:
         return wrapper
-
-
-def get_default_args(func):
-    """
-    Returns the default arguments to a function as a dict. Will be empty if there are none.
-    """
-    signature = inspect.signature(func)
-    return {
-        k: v.default
-        for k, v in signature.parameters.items()
-        if v.default is not inspect.Parameter.empty
-    }

@@ -20,6 +20,7 @@ from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 from flytekit.models.core import identifier as _identifier
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.engines.unit import mock_stats as _mock_stats
+from flytekit.models import interface as _interface_models
 
 
 class CompilationState(object):
@@ -92,6 +93,7 @@ class FlyteContext(object):
         self._execution_state = execution_state
         self._flyte_client = flyte_client
         self._user_space_params = user_space_params
+        self._freeform_params = []
 
     def __enter__(self):
         # Should we auto-assign the parent here?
@@ -101,6 +103,16 @@ class FlyteContext(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         FlyteContext.OBJS.pop()
+
+    def add_compile_time_constant(self, val: Any, associated_var: _interface_models.Variable):
+        """
+        These are constant values within the context of the workflow compilation or execution (only in the case of
+        dynamic workflows), for e.g.
+         task(a=x, b="some value")
+         here b is associated with a default constant that is bound at the compilation time of the workflow
+        We will refer to them as freeform parameters
+        """
+        self._freeform_params.append((val, associated_var))
 
     @classmethod
     def current_context(cls) -> 'FlyteContext':
