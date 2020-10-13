@@ -2,8 +2,7 @@ import collections
 from enum import Enum
 from typing import Union, Tuple, List, Any
 
-from flytekit import engine as flytekit_engine
-from flytekit.annotated.context_manager import FlyteContext
+from flytekit.annotated import type_engine
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.models import literals as _literal_models
 
@@ -17,43 +16,37 @@ class ComparisonOps(Enum):
     EQ = "="
     NE = "!="
     GT = ">"
-    GTE = ">="
+    GE = ">="
     LT = "<"
-    LTE = "<="
+    LE = "<="
 
 
 class ComparisonExpression(object):
     def __init__(self, lhs: Union['Promise', Any], op: ComparisonOps, rhs: Union['Promise', Any]):
-        _type = None
         self._op = op
         self._lhs = None
         self._rhs = None
         if isinstance(lhs, Promise):
+            self._lhs = lhs
             if lhs.is_ready:
-                raise ValueError("Comparison of completed promise is not allowed.")
-            self._lhs = lhs.ref
-            _type = self._lhs.sdk_type
+                if lhs.val.scalar is None or lhs.val.scalar.primitive is None:
+                    raise ValueError("Only primitive values can be used in comparison")
         if isinstance(rhs, Promise):
+            self._rhs = rhs
             if rhs.is_ready:
-                raise ValueError("Comparison of completed promise is not allowed.")
-            self._rhs = rhs.ref
-            if _type is not None and _type != self._rhs.sdk_type:
-                raise ValueError(f"Comparison between non comparable types {self._lhs.var} & {self._rhs.var}")
-            else:
-                _type = self._rhs.sdk_type
-        if _type is None:
-            raise ValueError("Either LHS or RHS should be a promise")
+                if rhs.val.scalar is None or rhs.val.scalar.primitive is None:
+                    raise ValueError("Only primitive values can be used in comparison")
         if self._lhs is None:
-            self._lhs = flytekit_engine.python_value_to_idl_literal(FlyteContext.current_context(), lhs, _type)
+            self._lhs = type_engine.BASE_TYPES[type(lhs)][1](lhs)
         if self._rhs is None:
-            self._rhs = flytekit_engine.python_value_to_idl_literal(FlyteContext.current_context(), rhs, _type)
+            self._rhs = type_engine.BASE_TYPES[type(rhs)][1](rhs)
 
     @property
-    def rhs(self) -> Union[_NodeOutput, _literal_models.Literal]:
+    def rhs(self) -> 'Promise':
         return self._rhs
 
     @property
-    def lhs(self) -> Union[_NodeOutput, _literal_models.Literal]:
+    def lhs(self) -> Union[_NodeOutput, _literal_models.Primitive]:
         return self._lhs
 
     @property
@@ -75,16 +68,9 @@ class ComparisonExpression(object):
 
     def __repr__(self):
         s = "Comp( "
-        if isinstance(self._lhs, _NodeOutput):
-            s += f"({self._lhs.node_id},{self._lhs.var})"
-        else:
-            s += f"{self._lhs.short_string()}"
+        s += f"{self._lhs}"
         s += f" {self._op.value} "
-        if isinstance(self._rhs, _NodeOutput):
-            s += f"({self._rhs.node_id},{self._rhs.var})"
-        else:
-            s += f"{self._rhs.short_string()}"
-        s += " )"
+        s += f"({self._rhs},{self._rhs})"
         return s
 
 

@@ -192,7 +192,7 @@ class SdkWorkflow(
                     raise _system_exceptions.FlyteSystemException(
                         "workflow node with subworkflow found but bad executable "
                         "object {}".format(n.executable_sdk_object))
-            # Ignore other node types (branch, task)
+            # Ignore other node types (branch.py, task)
 
         return result
 
