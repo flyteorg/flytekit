@@ -4,7 +4,7 @@ import typing
 
 import flytekit.annotated.task
 import flytekit.annotated.workflow
-from flytekit.annotated import context_manager
+from flytekit.annotated import context_manager, promise
 from flytekit.annotated.context_manager import FlyteContext, ExecutionState
 from flytekit.annotated.task import task, AbstractSQLTask, metadata, maptask, dynamic
 from flytekit.annotated.workflow import workflow
@@ -121,6 +121,7 @@ def test_wf1():
 
     assert len(my_wf._sdk_workflow.nodes) == 2
     assert my_wf._sdk_workflow.nodes[0].id == "node-0"
+    assert my_wf._sdk_workflow.nodes[1]._upstream[0] is my_wf._sdk_workflow.nodes[0]
 
     assert len(my_wf._sdk_workflow.outputs) == 2
     assert my_wf._sdk_workflow.outputs[0].var == 'out_0'
@@ -172,13 +173,17 @@ def test_wf1_with_overrides():
 
 
 def test_promise_return():
+    """
+    Testing that when a workflow is local executed but a local wf execution context already exists, Promise objects
+    are returned wrapping Flyte literals instead of the unpacked dict.
+    """
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         a = a + 2
         return a, "world-" + str(a)
 
     @workflow
-    def my_subwf(a: int) -> (str, str):
+    def mimic_sub_wf(a: int) -> (str, str):
         x, y = t1(a=a)
         u, v = t1(a=x)
         return y, v
@@ -186,10 +191,12 @@ def test_promise_return():
     ctx = context_manager.FlyteContext.current_context()
 
     with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
-        x, y = my_subwf(a=3)
+        a, b = mimic_sub_wf(a=3)
 
-    print(x, y)
-    # TODO: assert stuff
+    assert isinstance(a, promise.Promise)
+    assert isinstance(b, promise.Promise)
+    assert a.val.scalar.value.string_value == "world-5"
+    assert b.val.scalar.value.string_value == "world-7"
 
 
 def test_wf1_with_subwf():
@@ -309,7 +316,6 @@ def test_wf1_compile_time_constant_vars():
         'out_0': 7,
         'out_1': "hello This is my way",
     }
-
 
 # def test_wf1_with_dynamic():
 #     @task

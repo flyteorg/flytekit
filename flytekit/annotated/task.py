@@ -39,7 +39,7 @@ class Task(object):
 
     def _compile(self, ctx: FlyteContext, *args, **kwargs):
         """
-        This method is used to compile a task and generate nodes with bindings. This is not used in the execution path
+        This method is used to generate a node with bindings. This is not used in the execution path.
         """
         used_inputs = set()
         bindings = []
@@ -60,7 +60,7 @@ class Task(object):
             )
 
         # Detect upstream nodes
-        upstream_nodes = [input_val.sdk_node for input_val in kwargs.values() if isinstance(input_val, _NodeOutput)]
+        upstream_nodes = [input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)]
 
         # TODO: Make the metadata name the full name of the (function)?
         sdk_node = _nodes.SdkNode(
