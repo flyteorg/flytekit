@@ -5,6 +5,7 @@ import typing
 import flytekit.annotated.task
 import flytekit.annotated.workflow
 from flytekit.annotated import context_manager
+from flytekit.annotated.context_manager import FlyteContext, ExecutionState
 from flytekit.annotated.task import task, AbstractSQLTask, metadata, maptask, dynamic
 from flytekit.annotated.workflow import workflow
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
@@ -170,6 +171,27 @@ def test_wf1_with_overrides():
     }
 
 
+def test_promise_return():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        a = a + 2
+        return a, "world-" + str(a)
+
+    @workflow
+    def my_subwf(a: int) -> (str, str):
+        x, y = t1(a=a)
+        u, v = t1(a=x)
+        return y, v
+
+    ctx = context_manager.FlyteContext.current_context()
+
+    with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
+        x, y = my_subwf(a=3)
+
+    print(x, y)
+    # TODO: assert stuff
+
+
 def test_wf1_with_subwf():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
@@ -289,54 +311,38 @@ def test_wf1_compile_time_constant_vars():
     }
 
 
-def test_wf1_with_dynamic():
-    @task
-    def t1(a: int) -> str:
-        a = a + 2
-        return "world-" + str(a)
-
-    @task
-    def t2(a: str, b: str) -> str:
-        return b + a
-
-    @dynamic
-    def my_subwf(a: int) -> typing.List[str]:
-        s = []
-        for i in range(a):
-            s.append(t1(a=i))
-        return s
-
-    @workflow
-    def my_wf(a: int, b: str) -> (str, typing.List[str]):
-        x = t2(a=b, b=b)
-        v = my_subwf(a=a)
-        return x, v
-
-    v = 5
-    x = my_wf(a=v, b="hello ")
-    assert x == {
-        'out_0': "hello hello ",
-        'out_1': ["world-" + str(i) for i in range(2, v+2)],
-    }
+# def test_wf1_with_dynamic():
+#     @task
+#     def t1(a: int) -> str:
+#         a = a + 2
+#         return "world-" + str(a)
+#
+#     @task
+#     def t2(a: str, b: str) -> str:
+#         return b + a
+#
+#     @dynamic
+#     def my_subwf(a: int) -> typing.List[str]:
+#         s = []
+#         for i in range(a):
+#             s.append(t1(a=i))
+#         return s
+#
+#     @workflow
+#     def my_wf(a: int, b: str) -> (str, typing.List[str]):
+#         x = t2(a=b, b=b)
+#         v = my_subwf(a=a)
+#         return x, v
+#
+#     v = 5
+#     x = my_wf(a=v, b="hello ")
+#     assert x == {
+#         'out_0': "hello hello ",
+#         'out_1': ["world-" + str(i) for i in range(2, v+2)],
+#     }
 
 
 # TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!
-
-
-    # def test_normal_path():
-#     # Write some random numbers to a file
-#     def t1():
-#         ...
-#
-#     # Read back the file and transform it
-#     def t2(in1: _flytekit_typing.FlyteFilePath) -> str:
-#         with open(in1, 'r') as fh:
-#             lines = fh.readlines()
-#             return "".join(lines)
-#
-#
-#
-#
 
 
 # @flyte_test

@@ -173,7 +173,7 @@ class Parameter(_common.FlyteIdlEntity):
         return self._default
 
     @property
-    def required(self):
+    def required(self) -> bool:
         """
         If True, this parameter must be specified.  There cannot be a default value.
         :rtype: bool
