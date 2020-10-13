@@ -1,0 +1,29 @@
+
+class Case(object):
+    def __init__(self):
+        pass
+
+    def then(self):
+        pass
+
+class Branch(object):
+
+    def __init__(self):
+        pass
+
+    def _if(self):
+        pass
+
+    def branch_elif(self):
+        pass
+
+    def branch_else(self):
+        pass
+
+    def else_fail(self):
+        pass
+
+
+def branch_if():
+    pass
+

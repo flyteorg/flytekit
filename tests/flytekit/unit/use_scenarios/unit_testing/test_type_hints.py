@@ -2,12 +2,20 @@ import datetime
 import inspect
 import typing
 
+import pytest
+
 import flytekit.annotated.task
 import flytekit.annotated.workflow
 from flytekit.annotated import context_manager
+from flytekit.annotated.context_manager import FlyteContext
+from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import task, AbstractSQLTask, metadata, maptask, dynamic
 from flytekit.annotated.workflow import workflow
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
+from flytekit import engine as flytekit_engine, logger
+from flytekit.common.nodes import SdkNode
+from flytekit.common.promise import NodeOutput
+from flytekit.models.types import LiteralType, SimpleType
 
 
 def test_default_wf_params_works():
@@ -316,14 +324,56 @@ def test_wf1_with_dynamic():
     x = my_wf(a=v, b="hello ")
     assert x == {
         'out_0': "hello hello ",
-        'out_1': ["world-" + str(i) for i in range(2, v+2)],
+        'out_1': ["world-" + str(i) for i in range(2, v + 2)],
     }
 
+
+def test_comparison():
+    def dummy_node(id) -> SdkNode:
+        n = SdkNode(id, [], None, None, sdk_task=AbstractSQLTask("x", "x", [], metadata()))
+        n._id = id
+        return n
+    px = Promise("x", NodeOutput(var="x", sdk_type=LiteralType(simple=SimpleType.INTEGER), sdk_node=dummy_node("n1")))
+    py = Promise("y", NodeOutput(var="y", sdk_type=LiteralType(simple=SimpleType.INTEGER), sdk_node=dummy_node("n2")))
+    pf = Promise("y", NodeOutput(var="y", sdk_type=LiteralType(simple=SimpleType.FLOAT), sdk_node=dummy_node("n2")))
+
+    def print_expr(expr):
+        print(f"{expr} is type {type(expr)}")
+
+    print_expr(px == py)
+    print_expr(px < py)
+    print_expr((px == py) & (px < py))
+    print_expr(((px == py) & (px < py)) | (px > py))
+    with pytest.raises(ValueError):
+        print_expr(pf == px)
+    print_expr(px < 5)
+
+
+def test_wf1_branches():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: str) -> str:
+        return a
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a)
+        d = branch_if(x == 4).then(t2(a=b)).branch_elif(x >= 5).then(t2(a=y)).else_fail("Unable to pick branch")
+        return x, d
+
+    x = my_wf(a=5, b="hello ")
+    assert x == {
+        'out_0': 7,
+        'out_1': "hello This is my way",
+    }
 
 # TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!
 
 
-    # def test_normal_path():
+# def test_normal_path():
 #     # Write some random numbers to a file
 #     def t1():
 #         ...
