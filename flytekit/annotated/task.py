@@ -107,7 +107,7 @@ class Task(object):
                 # parameter
                 val = kwargs[k]
                 var = self.interface.inputs[k]
-                ctx.add_freeform_parameter(val, var)
+                ctx.add_compile_time_constant(val, var)
                 kwargs[k] = flytekit_engine.python_value_to_idl_literal(ctx, val, var.type)
 
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)

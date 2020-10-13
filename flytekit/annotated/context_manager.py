@@ -104,17 +104,14 @@ class FlyteContext(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         FlyteContext.OBJS.pop()
 
-    def add_freeform_parameter(self, val: Any, associated_var: _interface_models.Variable):
-        # TODO @ketan This may completely break the current idea of how to do dynamic workflows
-        # @haytham / @yee ^ need inputs
-        # TODO, this has to be used in compilation and is really complicated to normalize.
-        # For example, in the case of static workflow if the same freeform parameter like e.g. int '5' is used twice
-        # should it be made into one parameter?
-        # And in the case of dynamic workflows, freeform parameters is even more complicated. As they are not really
-        # freeform, but potentially one of the inputs to the dynamic workflow (runtime inputs) or could be a
-        # transformed input.
-        # A solution to solve this could be that freeform parameters get associated as default values for the task in
-        # dynamic workflows?
+    def add_compile_time_constant(self, val: Any, associated_var: _interface_models.Variable):
+        """
+        These are constant values within the context of the workflow compilation or execution (only in the case of
+        dynamic workflows), for e.g.
+         task(a=x, b="some value")
+         here b is associated with a default constant that is bound at the compilation time of the workflow
+        We will refer to them as freeform parameters
+        """
         self._freeform_params.append((val, associated_var))
 
     @classmethod

@@ -100,9 +100,8 @@ class Workflow(object):
         :param kwargs: parameters for the workflow itself
         """
         logger.info(f"Executing Workflow {self._name} with nested={nested}, ctx{ctx.execution_state.Mode}")
-        # There are 2 ways in which you can receive arguments to Workflow
-        # 2. In case of a subworkflow (workflow nested in another workflow) the received values will be promises instead
-        #    These promises should always be ready
+        # NOTE: All inputs received by Workflow in this mode should be Promises.
+        # TODO, how will this work for dynamic workflow? Ideally dynamic workflow should use dispatch_execute
         for k, v in kwargs.items():
             if isinstance(v, Promise):
                 if not v.is_ready:

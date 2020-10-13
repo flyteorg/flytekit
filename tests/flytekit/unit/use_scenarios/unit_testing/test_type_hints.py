@@ -267,7 +267,7 @@ def test_wf1_with_map():
     assert x == {'out_0': 15, 'out_1': 'world-7world-8'}
 
 
-def test_wf1_freeform_vars():
+def test_wf1_compile_time_constant_vars():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         return a + 2, "world"
