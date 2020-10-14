@@ -9,6 +9,7 @@ from flytekit.annotated.condition import branch_if
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import task, AbstractSQLTask, metadata, maptask, dynamic
+from flytekit.annotated.type_engine import BASE_TYPES
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
@@ -325,7 +326,7 @@ def test_wf1_with_dynamic():
     }
 
 
-def test_comparison():
+def test_comparison_refs():
     def dummy_node(id) -> SdkNode:
         n = SdkNode(id, [], None, None, sdk_task=AbstractSQLTask("x", "x", [], metadata()))
         n._id = id
@@ -333,7 +334,6 @@ def test_comparison():
 
     px = Promise("x", NodeOutput(var="x", sdk_type=LiteralType(simple=SimpleType.INTEGER), sdk_node=dummy_node("n1")))
     py = Promise("y", NodeOutput(var="y", sdk_type=LiteralType(simple=SimpleType.INTEGER), sdk_node=dummy_node("n2")))
-    pf = Promise("y", NodeOutput(var="y", sdk_type=LiteralType(simple=SimpleType.FLOAT), sdk_node=dummy_node("n2")))
 
     def print_expr(expr):
         print(f"{expr} is type {type(expr)}")
@@ -344,6 +344,23 @@ def test_comparison():
     print_expr(((px == py) & (px < py)) | (px > py))
     print_expr(px < 5)
     print_expr(px >= 5)
+
+
+def test_comparison_lits():
+    px = Promise("x", BASE_TYPES[int][1](5))
+    py = Promise("y", BASE_TYPES[int][1](8))
+
+    def eval_expr(expr, expected: bool):
+        print(f"{expr} evals to {expr.eval()}")
+        assert expected == expr.eval()
+
+    eval_expr(px == py, False)
+    eval_expr(px < py, True)
+    eval_expr((px == py) & (px < py), False)
+    eval_expr(((px == py) & (px < py)) | (px > py), False)
+    eval_expr(px < 5, False)
+    eval_expr(px >= 5, True)
+    eval_expr(py >= 5, True)
 
 
 def test_wf1_branches():
@@ -358,11 +375,11 @@ def test_wf1_branches():
     @workflow
     def my_wf(a: int, b: str) -> (int, str):
         x, y = t1(a=a)
-        d = branch_if(x == 4)\
-            .then(t2(a=b))\
-            .branch_elif(x >= 5)\
-            .then(t2(a=y))\
-            .branch_else()\
+        d = branch_if(x == 4) \
+            .then(t2(a=b)) \
+            .branch_elif(x >= 5) \
+            .then(t2(a=y)) \
+            .branch_else() \
             .fail("Unable to choose branch")
         return x, d
 

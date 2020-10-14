@@ -5,6 +5,21 @@ from typing import Union, Tuple, List, Any
 from flytekit.annotated import type_engine
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.models import literals as _literal_models
+from flytekit.models.literals import Primitive
+
+
+def get_primitive_val(prim: Primitive) -> Any:
+    if prim.integer:
+        return prim.integer
+    if prim.datetime:
+        return prim.datetime
+    if prim.boolean:
+        return prim.boolean
+    if prim.duration:
+        return prim.duration
+    if prim.string_value:
+        return prim.string_value
+    return prim.float_value
 
 
 class ConjunctionOps(Enum):
@@ -13,12 +28,22 @@ class ConjunctionOps(Enum):
 
 
 class ComparisonOps(Enum):
-    EQ = "="
+    EQ = "=="
     NE = "!="
     GT = ">"
     GE = ">="
     LT = "<"
     LE = "<="
+
+
+_comparators = {
+    ComparisonOps.EQ: lambda x, y: x == y,
+    ComparisonOps.NE: lambda x, y: x != y,
+    ComparisonOps.GT: lambda x, y: x > y,
+    ComparisonOps.GE: lambda x, y: x >= y,
+    ComparisonOps.LT: lambda x, y: x < y,
+    ComparisonOps.LE: lambda x, y: x <= y,
+}
 
 
 class ComparisonExpression(object):
@@ -52,6 +77,19 @@ class ComparisonExpression(object):
     @property
     def op(self) -> ComparisonOps:
         return self._op
+
+    def eval(self) -> bool:
+        if isinstance(self.lhs, Promise):
+            lhs = self.lhs.eval()
+        else:
+            lhs = get_primitive_val(self.lhs.scalar.primitive)
+
+        if isinstance(self.rhs, Promise):
+            rhs = self.rhs.eval()
+        else:
+            rhs = get_primitive_val(self.rhs.scalar.primitive)
+
+        return _comparators[self.op](lhs, rhs)
 
     def __and__(self, other):
         print("Comparison AND called")
@@ -92,6 +130,20 @@ class ConjunctionExpression(object):
     @property
     def op(self) -> ConjunctionOps:
         return self._op
+
+    def eval(self) -> bool:
+        l_eval = self.lhs.eval()
+        if self.op == ConjunctionOps.AND and l_eval is False:
+            return False
+
+        if self.op == ConjunctionOps.OR and l_eval is True:
+            return True
+
+        r_eval = self.lhs.eval()
+        if self.op == ConjunctionOps.AND:
+            return l_eval and r_eval
+
+        return l_eval or r_eval
 
     def __and__(self, other: ComparisonExpression):
         print("Conj AND called")
@@ -154,6 +206,13 @@ class Promise(object):
         Name of the variable bound with this promise
         """
         return self._var
+
+    def eval(self) -> Any:
+        if not self._promise_ready or self._val is None:
+            raise ValueError("Cannot Eval with incomplete promises")
+        if self.val.scalar is None or self.val.scalar.primitive is None:
+            raise ValueError("Eval can be invoked for primitive types only")
+        return get_primitive_val(self.val.scalar.primitive)
 
     def __eq__(self, other) -> ComparisonExpression:
         return ComparisonExpression(self, ComparisonOps.EQ, other)
