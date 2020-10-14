@@ -1,11 +1,45 @@
 import collections
 from enum import Enum
-from typing import Union, Tuple, List, Any
+from typing import Union, Tuple, List, Any, Dict
+from flytekit import engine as flytekit_engine
 
 from flytekit.annotated import type_engine
 from flytekit.common.promise import NodeOutput as _NodeOutput
-from flytekit.models import literals as _literal_models
+from flytekit.models import literals as _literal_models, interface as _interface_models
 from flytekit.models.literals import Primitive
+
+
+def translate_inputs_to_literals(ctx, input_kwargs: Dict[str, Any], interface: _interface_models.TypedInterface):
+    """
+    When calling a task inside a workflow, a user might do something like this.
+
+    def my_wf(in1: int) -> int:
+        a = task_1(in1=in1)
+        b = task_2(in1=5, in2=a)
+        return b
+
+    If this is the case, when task_2 is called in local workflow execution, we'll need to translate the Python native
+    literal 5 to a Flyte literal.
+    """
+    # TODO: Are there any pass-by-reference considerations we need to think about?  I don't think so. Write unit
+    #  tests to be sure.
+    for k, v in input_kwargs.items():
+        if k not in interface.inputs:
+            raise ValueError(f"Received unexpected keyword argument {k}")
+        # In the example above, this handles the "in2=a" type of argument
+        if isinstance(v, Promise):
+            input_kwargs[k] = v.val
+        # This handles native values, the 5 example
+        else:
+            val = input_kwargs[k]
+            var = interface.inputs[k]
+            input_kwargs[k] = flytekit_engine.python_value_to_idl_literal(ctx, val, var.type)
+
+    return input_kwargs
+
+
+# TODO: The NodeOutput object, which this Promise wraps, has an sdk_type. Since we're no longer using sdk types,
+#  we should consider adding a literal type to this object as well for downstream checking when Bindings are created.
 
 
 def get_primitive_val(prim: Primitive) -> Any:

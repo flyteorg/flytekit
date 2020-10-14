@@ -10,12 +10,12 @@ from flytekit import engine as flytekit_engine, logger
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext, BranchEvalMode
 from flytekit.annotated.interface import Interface, transform_interface_to_typed_interface, \
     transform_signature_to_interface, transform_typed_interface_to_collection_interface
-from flytekit.annotated.promise import Promise, create_task_output
+from flytekit.annotated.promise import Promise, create_task_output, translate_inputs_to_literals
 from flytekit.annotated.workflow import Workflow
-from flytekit.common import nodes as _nodes, interface as _common_interface
+from flytekit.common import nodes as _nodes
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.promise import NodeOutput as _NodeOutput
-from flytekit.models import task as _task_model, literals as _literal_models
+from flytekit.models import task as _task_model, literals as _literal_models, interface as _interface_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
 
 
@@ -31,7 +31,7 @@ from flytekit.models.core import workflow as _workflow_model, identifier as _ide
 # already.)
 class Task(object):
 
-    def __init__(self, name: str, interface: _common_interface.TypedInterface, metadata: _task_model.TaskMetadata,
+    def __init__(self, name: str, interface: _interface_models.TypedInterface, metadata: _task_model.TaskMetadata,
                  *args, **kwargs):
         self._name = name
         self._interface = interface
@@ -39,7 +39,7 @@ class Task(object):
 
     def _compile(self, ctx: FlyteContext, *args, **kwargs):
         """
-        This method is used to compile a task and generate nodes with bindings. This is not used in the execution path
+        This method is used to generate a node with bindings. This is not used in the execution path.
         """
         used_inputs = set()
         bindings = []
@@ -60,7 +60,7 @@ class Task(object):
             )
 
         # Detect upstream nodes
-        upstream_nodes = [input_val.sdk_node for input_val in kwargs.values() if isinstance(input_val, _NodeOutput)]
+        upstream_nodes = [input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)]
 
         # TODO: Make the metadata name the full name of the (function)?
         sdk_node = _nodes.SdkNode(
@@ -93,23 +93,7 @@ class Task(object):
         For regular execution, dispatch_execute is invoked directly.
         """
         # Unwrap the kwargs values. After this, we essentially have a LiteralMap
-        for k, v in kwargs.items():
-            if k not in self.interface.inputs:
-                # Should we do this in strict mode?
-                raise ValueError(f"Received unexpected keyword argument {k}")
-            if isinstance(v, Promise):
-                if not v.is_ready:
-                    raise BrokenPipeError(
-                        f"Expected an actual value from the previous step, but received an incomplete promise {v}")
-                kwargs[k] = v.val
-            else:
-                # Assume its a native value. Lets convert it to a literal and also add it to the context as a freeform
-                # parameter
-                val = kwargs[k]
-                var = self.interface.inputs[k]
-                ctx.add_compile_time_constant(val, var)
-                kwargs[k] = flytekit_engine.python_value_to_idl_literal(ctx, val, var.type)
-
+        kwargs = translate_inputs_to_literals(ctx, input_kwargs=kwargs, interface=self.interface)
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
         outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
@@ -117,9 +101,8 @@ class Task(object):
 
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
         #    location, otherwise we dont really need to right? The higher level execute could just handle literalMap
-        # After running, we again have to wrap the outputs, if any, back into NodeOutput objects
+        # After running, we again have to wrap the outputs, if any, back into Promise objects
         output_names = list(self.interface.outputs.keys())
-        node_results = []
         if len(output_names) != len(outputs_literals):
             # Length check, clean up exception
             raise Exception(f"Length difference {len(output_names)} {len(outputs_literals)}")
@@ -130,14 +113,15 @@ class Task(object):
     def dispatch_execute(
             self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap) -> _literal_models.LiteralMap:
         """
-        This method translates Flytes native Type system based inputs and dispatches the actual call to the executor
-        NOTE: This method is also invoked during runtime
+        This method translates Flyte's Type system based input values and invokes the actual call to the executor
+        This method is also invoked during runtime.
         """
+
         # Translate the input literals to Python native
         native_inputs = flytekit_engine.idl_literal_map_to_python_value(ctx, input_literal_map)
 
-        # TODO Logger should auto inject the current context information to indicate if the task is running within
-        # a workflow or a subworkflow etc
+        # TODO: Logger should auto inject the current context information to indicate if the task is running within
+        #   a workflow or a subworkflow etc
         logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
         try:
             native_outputs = self.execute(**native_inputs)
@@ -198,7 +182,7 @@ class Task(object):
             return self.execute(**kwargs)
 
     @property
-    def interface(self) -> _common_interface.TypedInterface:
+    def interface(self) -> _interface_models.TypedInterface:
         return self._interface
 
     @property
@@ -341,21 +325,36 @@ class AbstractSQLTask(Task):
         return None
 
 
-class DynamicWorkflowTask(Task):
+class DynamicWorkflowTask(PythonFunctionTask):
 
     def __init__(self, dynamic_workflow_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
-        self._workflow = Workflow(dynamic_workflow_function)
-        super().__init__(self._workflow.name, self._workflow.interface, metadata, *args, **kwargs)
+        super().__init__(dynamic_workflow_function, metadata, *args, **kwargs)
+
+    def compile_into_workflow(self, **kwargs) -> Workflow:
+        wf = Workflow(self._task_function)
+        # TODO: May need to tweak the workflow's interface since all inputs should be "bound" to static scalars. Not
+        #  sure how Admin/Propeller will react when sent throught the dj spec.
+        wf.compile(**kwargs)
+        return wf
 
     def execute(self, **kwargs) -> Any:
+        """
+        By the time this function is invoked, the _local_execute function should have unwrapped the Promises and Flyte
+        literal wrappers so that the kwargs we are working with here are now Python native literal values. This
+        function is also expected to return Python native literal values.
+
+        Since the user code within a dynamic task constitute a workflow, we have to first compile the workflow, and
+        then execute that workflow.
+
+        When running for real in production, the task would stop after the compilation step, and then create a file
+        representing that newly generated workflow, instead of executing it.
+        """
         ctx = FlyteContext.current_context()
-        if ctx.compilation_state is not None:
-            raise NotImplementedError(
-                "Dynamic workflow compilation is not yet implemented. This will be invoked at runtime")
+
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             with ctx.new_execution_context(ExecutionState.Mode.TASK_EXECUTION) as _inner_ctx:
                 logger.info("Executing Dynamic workflow, using raw inputs")
-                return self._workflow.function(**kwargs)
+                return self._task_function(**kwargs)
 
 
 TaskTypePlugins: DefaultDict[str, Type[PythonFunctionTask]] = collections.defaultdict(
@@ -409,7 +408,7 @@ def task(
         interruptible: bool = False,
         deprecated: str = "",
         timeout: Union[_datetime.timedelta, int] = None,
-        environment: Dict[str, str] = None,
+        environment: Dict[str, str] = None,  # TODO: Ketan - what do we do with this?  Not sure how to use kwargs
         *args, **kwargs) -> Callable:
     def wrapper(fn) -> PythonFunctionTask:
         _timeout = timeout

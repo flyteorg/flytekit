@@ -99,7 +99,6 @@ class FlyteContext(object):
         self._execution_state = execution_state
         self._flyte_client = flyte_client
         self._user_space_params = user_space_params
-        self._freeform_params = []
         self._branch_eval_mode = branch_eval_mode
 
     def __enter__(self):
@@ -110,16 +109,6 @@ class FlyteContext(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         FlyteContext.OBJS.pop()
-
-    def add_compile_time_constant(self, val: Any, associated_var: _interface_models.Variable):
-        """
-        These are constant values within the context of the workflow compilation or execution (only in the case of
-        dynamic workflows), for e.g.
-         task(a=x, b="some value")
-         here b is associated with a default constant that is bound at the compilation time of the workflow
-        We will refer to them as freeform parameters
-        """
-        self._freeform_params.append((val, associated_var))
 
     @classmethod
     def current_context(cls) -> 'FlyteContext':
