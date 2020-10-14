@@ -2,10 +2,12 @@ import datetime
 import inspect
 import typing
 
+import pytest
+
 import flytekit.annotated.task
 import flytekit.annotated.workflow
 from flytekit.annotated import context_manager
-from flytekit.annotated.condition import branch_if
+from flytekit.annotated.condition import conditional
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import task, AbstractSQLTask, metadata, maptask, dynamic
@@ -375,19 +377,40 @@ def test_wf1_branches():
     @workflow
     def my_wf(a: int, b: str) -> (int, str):
         x, y = t1(a=a)
-        d = branch_if(x == 4) \
-            .then(t2(a=b)) \
-            .branch_elif(x >= 5) \
-            .then(t2(a=y)) \
-            .branch_else() \
-            .fail("Unable to choose branch")
+        print(x)
+        d = conditional()\
+            .if_(x == 4).then(t2(a=b)) \
+            .elif_(x >= 5).then(t2(a=y)) \
+            .else_().fail("Unable to choose branch")
         return x, d
 
     x = my_wf(a=5, b="hello ")
     assert x == {
         'out_0': 7,
-        'out_1': "hello This is my way",
+        'out_1': "world",
     }
+
+
+def test_wf1_branches_failing():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: str) -> str:
+        return a
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a)
+        print(x)
+        d = conditional()\
+            .if_(x == 4).then(t2(a=b)) \
+            .elif_(x >= 5).then(t2(a=y)) \
+            .else_().fail("All Branches failed")
+        return x, d
+    with pytest.raises(AssertionError):
+        x = my_wf(a=1, b="hello ")
 
 # TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!
 
