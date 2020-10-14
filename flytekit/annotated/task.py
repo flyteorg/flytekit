@@ -323,11 +323,17 @@ class AbstractSQLTask(Task):
         return None
 
 
-class DynamicWorkflowTask(Task):
+class DynamicWorkflowTask(PythonFunctionTask):
 
     def __init__(self, dynamic_workflow_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
-        self._workflow = Workflow(dynamic_workflow_function)
-        super().__init__(self._workflow.name, self._workflow.interface, metadata, *args, **kwargs)
+        super().__init__(dynamic_workflow_function, metadata, *args, **kwargs)
+
+    def compile_into_workflow(self, **kwargs) -> Workflow:
+        wf = Workflow(self._task_function)
+        # TODO: May need to tweak the workflow's interface since all inputs should be "bound" to static scalars. Not
+        #  sure how Admin/Propeller will react when sent throught the dj spec.
+        wf.compile(**kwargs)
+        return wf
 
     def execute(self, **kwargs) -> Any:
         """
@@ -342,17 +348,11 @@ class DynamicWorkflowTask(Task):
         representing that newly generated workflow, instead of executing it.
         """
         ctx = FlyteContext.current_context()
-        # with ctx.new_compilation_context() as ctx:
-        # if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-        #     ...
 
-        if ctx.compilation_state is not None:
-            raise NotImplementedError(
-                "Dynamic workflow compilation is not yet implemented. This will be invoked at runtime")
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             with ctx.new_execution_context(ExecutionState.Mode.TASK_EXECUTION) as _inner_ctx:
                 logger.info("Executing Dynamic workflow, using raw inputs")
-                return self._workflow.function(**kwargs)
+                return self._task_function(**kwargs)
 
 
 TaskTypePlugins: DefaultDict[str, Type[PythonFunctionTask]] = collections.defaultdict(
@@ -406,7 +406,7 @@ def task(
         interruptible: bool = False,
         deprecated: str = "",
         timeout: Union[_datetime.timedelta, int] = None,
-        environment: Dict[str, str] = None,
+        environment: Dict[str, str] = None,  # TODO: Ketan - what do we do with this?  Not sure how to use kwargs
         *args, **kwargs) -> Callable:
     def wrapper(fn) -> PythonFunctionTask:
         _timeout = timeout

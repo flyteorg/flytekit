@@ -35,6 +35,8 @@ def translate_inputs_to_literals(ctx, input_kwargs: Dict[str, Any], interface: _
     return input_kwargs
 
 
+# TODO: The NodeOutput object, which this Promise wraps, has an sdk_type. Since we're no longer using sdk types,
+#  we should consider adding a literal type to this object as well for downstream checking when Bindings are created.
 class Promise(object):
     def __init__(self, var: str, val: Union[_NodeOutput, _literal_models.Literal]):
         self._var = var

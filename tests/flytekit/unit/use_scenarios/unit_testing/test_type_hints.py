@@ -348,6 +348,29 @@ def test_wf1_with_dynamic():
         'out_1': ["world-" + str(i) for i in range(2, v+2)],
     }
 
+    compiled_sub_wf = my_subwf.compile_into_workflow(a=5)
+    assert len(compiled_sub_wf._sdk_workflow.nodes) == 5
+
+
+def test_list_output():
+    @task
+    def t1(a: int) -> str:
+        a = a + 2
+        return "world-" + str(a)
+
+    @workflow
+    def lister() -> typing.List[str]:
+        s = []
+        # FYI: For users who happen to look at this, keep in mind this is only run once at compile time.
+        for i in range(10):
+            s.append(t1(a=i))
+        return s
+
+    assert len(lister._sdk_workflow.outputs) == 1
+    binding_data = lister._sdk_workflow.outputs[0].binding  # the property should be named binding_data
+    assert binding_data.collection is not None
+    assert len(binding_data.collection.bindings) ==  10
+
 
 # TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!
 

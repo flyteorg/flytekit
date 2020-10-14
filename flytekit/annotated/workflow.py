@@ -48,38 +48,49 @@ class Workflow(object):
     def interface(self):
         return self._interface
 
-    def compile(self):
-        # TODO should we even define it here?
+    def _construct_input_promises(self) -> Dict[str, _type_models.OutputReference]:
+        """
+        This constructs input promises for all the inputs of the workflow, binding them to the global
+        input node id which you should think about as the start node.
+        """
+        return {
+            k: _type_models.OutputReference(_common_constants.GLOBAL_INPUT_NODE_ID, k)
+            for k in self.interface.inputs.keys()
+        }
+
+    def compile(self, **kwargs):
+        """
+        Supply static Python native values in the kwargs if you want them to be used in the compilation
+        """
+        # TODO: should we even define it here?
         self._input_parameters = transform_inputs_to_parameters(self._native_interface)
         all_nodes = []
         ctx = FlyteContext.current_context()
         with ctx.new_compilation_context() as comp_ctx:
-            # Fill in call args by constructing input bindings
-            input_kwargs = {
-                k: _type_models.OutputReference(_common_constants.GLOBAL_INPUT_NODE_ID, k)
-                for k in self._native_interface.inputs.keys()
-            }
+            # Construct the default input promise bindings, but then override with the provided inputs, if any
+            input_kwargs = self._construct_input_promises()
+            input_kwargs.update(kwargs)
             workflow_outputs = self._workflow_function(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
 
         # Iterate through the workflow outputs
-        #  Get the outputs and use them to construct the old Output objects
-        #    promise.NodeOutputs (let's just focus on this one first for POC)
-        #    or Input objects from above in the case of a passthrough value
-        #    or outputs can be like 5, or 'hi'
-        # These should line up with the output input argument
-        # TODO: Add length checks.
         bindings = []
-        output_names = list(self._native_interface.outputs.keys())
-        if len(output_names) > 0:
-            for i, out in enumerate(workflow_outputs):
+        output_names = list(self.interface.outputs.keys())
+        # The reason the length 1 case is separate is because the one output might be a list. We don't want to
+        # iterate through the list here, instead we should let the binding creation unwrap it and make a binding
+        # collection/map out of it.
+        if len(output_names) == 1:
+            b = flytekit_engine.binding_from_python_std(ctx, output_names[0],
+                                                    self.interface.outputs[output_names[0]].type, workflow_outputs)
+            bindings.append(b)
+        elif len(output_names) > 1:
+            if len(output_names) != len(workflow_outputs):
+                raise Exception(f"Length mismatch {len(output_names)} vs {len(workflow_outputs)}")
+            for i, out in enumerate(output_names):
                 output_name = output_names[i]
-                # TODO: Check that the outputs returned type match the interface.
-                # output_literal_type = out.literal_type
-                # logger.debug(f"Got output wrapper: {out}")
-                # logger.debug(f"Var name {output_name} wf output name {outputs[i]} type: {output_literal_type}")
-                binding_data = _literal_models.BindingData(promise=out)
-                bindings.append(_literal_models.Binding(var=output_name, binding=binding_data))
+                b = flytekit_engine.binding_from_python_std(ctx, output_name, self.interface.outputs[output_name].type,
+                                                            workflow_outputs[i])
+                bindings.append(b)
 
         # TODO: Again, at this point, we should be able to identify the name of the workflow
         workflow_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW,
@@ -215,7 +226,7 @@ class Workflow(object):
             # TODO
             id=f"node-{len(ctx.compilation_state.nodes)}",
             metadata=_workflow_model.NodeMetadata(self._name, datetime.timedelta(),
-                                                   _literal_models.RetryStrategy(0)),
+                                                  _literal_models.RetryStrategy(0)),
             bindings=sorted(bindings, key=lambda b: b.var),
             upstream_nodes=upstream_nodes,
             sdk_workflow=self._sdk_workflow
