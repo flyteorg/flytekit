@@ -118,6 +118,12 @@ class Workflow(object):
         function_outputs = self._workflow_function(**kwargs)
 
         output_names = list(self.interface.outputs.keys())
+        if len(output_names) == 0:
+            if function_outputs is None:
+                return None
+            else:
+                raise Exception("something returned from wf but shouldn't have outputs")
+
         if len(output_names) != len(function_outputs):
             # Length check, clean up exception
             raise Exception(f"Length difference {len(output_names)} {len(function_outputs)}")
