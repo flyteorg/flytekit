@@ -2,6 +2,7 @@ import inspect
 from typing import Dict, Any, Callable
 
 from flytekit import engine as flytekit_engine, logger
+from flytekit.annotated.condition import ConditionalSection
 from flytekit.annotated.context_manager import FlyteContext, ExecutionState
 from flytekit.annotated.interface import transform_signature_to_interface, transform_interface_to_typed_interface, \
     transform_inputs_to_parameters
@@ -122,7 +123,13 @@ class Workflow(object):
         # TODO Ketan fix this make it into a simple promise transformation
         if len(output_names) > 1:
             for idx, var_name in enumerate(output_names):
-                output_literal_map[var_name] = function_outputs[idx].val
+                op = function_outputs[idx]
+                if isinstance(op, Promise):
+                    output_literal_map[var_name] = op.val
+                elif isinstance(op, ConditionalSection):
+                    raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
+                else:
+                    raise AssertionError("Illegal workflow construction detected")
         elif len(output_names) == 1:
             output_literal_map[output_names[0]] = function_outputs.val
         else:
