@@ -1,7 +1,5 @@
-from __future__ import absolute_import
-
-import logging
 import datetime as _datetime
+import logging
 
 
 class MockStats(object):

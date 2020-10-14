@@ -1,12 +1,10 @@
-from __future__ import absolute_import
-from __future__ import print_function
-
 from six import moves as _six_moves
 
-from flytekit.common.tasks import sdk_runnable as _sdk_runnable, sdk_dynamic as _sdk_dynamic
-from flytekit.sdk.tasks import inputs, outputs, dynamic_task, python_task
+from flytekit.common.tasks import sdk_dynamic as _sdk_dynamic
+from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.sdk.tasks import dynamic_task, inputs, outputs, python_task
 from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import Input, workflow, Output
+from flytekit.sdk.workflow import Input, Output, workflow
 
 
 @inputs(in1=Types.Integer)
@@ -124,20 +122,13 @@ def dynamic_wf_task(wf_params, task_input_num, out):
     node1 = sq_sub_task(in1=input_a)
 
     MyUnregisteredWorkflow = workflow(
-        inputs={
-            'a': input_a,
-        },
-        outputs={
-            'ooo': Output(node1.outputs.out1, sdk_type=Types.Integer,
-                          help='This is an integer output')
-        },
-        nodes={
-            'node_one': node1,
-        }
+        inputs={"a": input_a},
+        outputs={"ooo": Output(node1.outputs.out1, sdk_type=Types.Integer, help="This is an integer output")},
+        nodes={"node_one": node1},
     )
 
-    setattr(MyUnregisteredWorkflow, 'auto_assign_name', manual_assign_name)
-    MyUnregisteredWorkflow._platform_valid_name = 'unregistered'
+    setattr(MyUnregisteredWorkflow, "auto_assign_name", manual_assign_name)
+    MyUnregisteredWorkflow._platform_valid_name = "unregistered"
 
     unregistered_workflow_execution = MyUnregisteredWorkflow(a=task_input_num)
     out.set(unregistered_workflow_execution.outputs.ooo)
@@ -146,12 +137,20 @@ def dynamic_wf_task(wf_params, task_input_num, out):
 def test_batch_task():
     assert isinstance(sample_batch_task, _sdk_runnable.SdkRunnableTask)
     assert isinstance(sample_batch_task, _sdk_dynamic.SdkDynamicTask)
+    assert isinstance(sample_batch_task, _sdk_dynamic.SdkDynamicTaskMixin)
 
     expected = {
-        'out_str': ["I'm the first result", 'hello 0', "I'm after each sub-task result", 'hello 1',
-                    "I'm after each sub-task result", 'hello 2', "I'm after each sub-task result",
-                    "I'm the last result"],
-        'out_ints': [[0, 0, 0], [1, 2, 3], [2, 4, 6], [0, 1, 4], [0, 1, 4]]
+        "out_str": [
+            "I'm the first result",
+            "hello 0",
+            "I'm after each sub-task result",
+            "hello 1",
+            "I'm after each sub-task result",
+            "hello 2",
+            "I'm after each sub-task result",
+            "I'm the last result",
+        ],
+        "out_ints": [[0, 0, 0], [1, 2, 3], [2, 4, 6], [0, 1, 4], [0, 1, 4]],
     }
 
     res = sample_batch_task.unit_test(in1=3)
@@ -159,9 +158,7 @@ def test_batch_task():
 
 
 def test_no_future_batch_task():
-    expected = {
-        'out_str': ["res1", "res2"]
-    }
+    expected = {"out_str": ["res1", "res2"]}
 
     res = no_future_batch_task.unit_test(in1=3)
     assert expected == res
@@ -186,40 +183,26 @@ def nested_dynamic_wf_task(wf_params, task_input_num, out):
     node1 = sq_sub_task(in1=input_a)
 
     MyUnregisteredWorkflowInner = workflow(
-        inputs={
-            'a': input_a,
-        },
-        outputs={
-            'ooo': Output(node1.outputs.out1, sdk_type=Types.Integer,
-                          help='This is an integer output')
-        },
-        nodes={
-            'node_one': node1,
-        }
+        inputs={"a": input_a},
+        outputs={"ooo": Output(node1.outputs.out1, sdk_type=Types.Integer, help="This is an integer output")},
+        nodes={"node_one": node1},
     )
 
-    setattr(MyUnregisteredWorkflowInner, 'auto_assign_name', manual_assign_name)
-    MyUnregisteredWorkflowInner._platform_valid_name = 'unregistered'
+    setattr(MyUnregisteredWorkflowInner, "auto_assign_name", manual_assign_name)
+    MyUnregisteredWorkflowInner._platform_valid_name = "unregistered"
 
     # Output workflow
     input_a = Input(Types.Integer, help="Tell me something")
     node1 = MyUnregisteredWorkflowInner(a=task_input_num)
 
     MyUnregisteredWorkflowOuter = workflow(
-        inputs={
-            'a': input_a,
-        },
-        outputs={
-            'ooo': Output(node1.outputs.ooo, sdk_type=Types.Integer,
-                          help='This is an integer output')
-        },
-        nodes={
-            'node_one': node1,
-        }
+        inputs={"a": input_a},
+        outputs={"ooo": Output(node1.outputs.ooo, sdk_type=Types.Integer, help="This is an integer output")},
+        nodes={"node_one": node1},
     )
 
-    setattr(MyUnregisteredWorkflowOuter, 'auto_assign_name', manual_assign_name)
-    MyUnregisteredWorkflowOuter._platform_valid_name = 'unregistered'
+    setattr(MyUnregisteredWorkflowOuter, "auto_assign_name", manual_assign_name)
+    MyUnregisteredWorkflowOuter._platform_valid_name = "unregistered"
 
     unregistered_workflow_execution = MyUnregisteredWorkflowOuter(a=task_input_num)
     out.set(unregistered_workflow_execution.outputs.ooo)
@@ -241,18 +224,10 @@ def dynamic_wf_no_outputs_task(wf_params, task_input_num):
     input_a = Input(Types.Integer, help="Tell me something")
     node1 = sq_sub_task(in1=input_a)
 
-    MyUnregisteredWorkflow = workflow(
-        inputs={
-            'a': input_a,
-        },
-        outputs={},
-        nodes={
-            'node_one': node1,
-        }
-    )
+    MyUnregisteredWorkflow = workflow(inputs={"a": input_a}, outputs={}, nodes={"node_one": node1})
 
-    setattr(MyUnregisteredWorkflow, 'auto_assign_name', manual_assign_name)
-    MyUnregisteredWorkflow._platform_valid_name = 'unregistered'
+    setattr(MyUnregisteredWorkflow, "auto_assign_name", manual_assign_name)
+    MyUnregisteredWorkflow._platform_valid_name = "unregistered"
 
     unregistered_workflow_execution = MyUnregisteredWorkflow(a=task_input_num)
     yield unregistered_workflow_execution

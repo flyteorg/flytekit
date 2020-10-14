@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
@@ -11,8 +10,7 @@ class SensorTask(_sdk_runnable.SdkRunnableTask):
         if sensor is not None:
             if not isinstance(sensor, _Sensor):
                 raise _user_exceptions.FlyteTypeException(
-                    received_type=type(sensor),
-                    expected_type=_Sensor,
+                    received_type=type(sensor), expected_type=_Sensor,
                 )
             succeeded = sensor.sense()
             if not succeeded:
@@ -23,7 +21,7 @@ def sensor_task(
     _task_function=None,
     retries=0,
     interruptible=None,
-    deprecated='',
+    deprecated="",
     storage_request=None,
     cpu_request=None,
     gpu_request=None,
@@ -96,6 +94,7 @@ def sensor_task(
         otherwise mimic the behavior.
     :rtype: SensorTask
     """
+
     def wrapper(fn):
         return (SensorTask or cls)(
             task_function=fn,
@@ -114,7 +113,7 @@ def sensor_task(
             timeout=timeout,
             environment=environment,
             custom={},
-            discovery_version='',
+            discovery_version="",
             discoverable=False,
         )
 

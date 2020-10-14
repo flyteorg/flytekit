@@ -1,14 +1,13 @@
-from __future__ import absolute_import
-
-import pytest
 from datetime import timedelta
-from google.protobuf import text_format
 from itertools import product
 
+import pytest
 from flyteidl.core.tasks_pb2 import TaskMetadata
-from flytekit.models import task, literals
-from flytekit.models.core import identifier
+from google.protobuf import text_format
 from k8s.io.api.core.v1 import generated_pb2
+
+from flytekit.models import literals, task
+from flytekit.models.core import identifier
 from tests.flytekit.common import parameterizers
 
 
@@ -47,17 +46,18 @@ def test_task_metadata_interruptible_from_flyte_idl():
     # Interruptible not set
     idl = TaskMetadata()
     obj = task.TaskMetadata.from_flyte_idl(idl)
-    assert obj.interruptible == None
+    assert obj.interruptible is None
 
     idl = TaskMetadata()
     idl.interruptible = True
     obj = task.TaskMetadata.from_flyte_idl(idl)
-    assert obj.interruptible == True
+    assert obj.interruptible is True
 
     idl = TaskMetadata()
     idl.interruptible = False
     obj = task.TaskMetadata.from_flyte_idl(idl)
-    assert obj.interruptible == False
+    assert obj.interruptible is False
+
 
 def test_task_metadata():
     obj = task.TaskMetadata(
@@ -67,7 +67,7 @@ def test_task_metadata():
         literals.RetryStrategy(3),
         True,
         "0.1.1b0",
-        "This is deprecated!"
+        "This is deprecated!",
     )
 
     assert obj.discoverable is True
@@ -84,11 +84,7 @@ def test_task_metadata():
 
 @pytest.mark.parametrize(
     "in_tuple",
-    product(
-        parameterizers.LIST_OF_TASK_METADATA,
-        parameterizers.LIST_OF_INTERFACES,
-        parameterizers.LIST_OF_RESOURCES
-    )
+    product(parameterizers.LIST_OF_TASK_METADATA, parameterizers.LIST_OF_INTERFACES, parameterizers.LIST_OF_RESOURCES,),
 )
 def test_task_template(in_tuple):
     task_metadata, interfaces, resources = in_tuple
@@ -97,15 +93,10 @@ def test_task_template(in_tuple):
         "python",
         task_metadata,
         interfaces,
-        {'a': 1, 'b': {'c': 2, 'd': 3}},
+        {"a": 1, "b": {"c": 2, "d": 3}},
         container=task.Container(
-            "my_image",
-            ["this", "is", "a", "cmd"],
-            ["this", "is", "an", "arg"],
-            resources,
-            {'a': 'b'},
-            {'d': 'e'}
-        )
+            "my_image", ["this", "is", "a", "cmd"], ["this", "is", "an", "arg"], resources, {"a": "b"}, {"d": "e"},
+        ),
     )
     assert obj.id.resource_type == identifier.ResourceType.TASK
     assert obj.id.project == "project"
@@ -115,18 +106,18 @@ def test_task_template(in_tuple):
     assert obj.type == "python"
     assert obj.metadata == task_metadata
     assert obj.interface == interfaces
-    assert obj.custom == {'a': 1, 'b': {'c': 2, 'd': 3}}
+    assert obj.custom == {"a": 1, "b": {"c": 2, "d": 3}}
     assert obj.container.image == "my_image"
     assert obj.container.resources == resources
     assert text_format.MessageToString(obj.to_flyte_idl()) == text_format.MessageToString(
-        task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl())
+        task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
+    )
 
 
 @pytest.mark.parametrize("task_closure", parameterizers.LIST_OF_TASK_CLOSURES)
 def test_task(task_closure):
     obj = task.Task(
-        identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
-        task_closure
+        identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"), task_closure,
     )
     assert obj.id.project == "project"
     assert obj.id.domain == "domain"
@@ -139,19 +130,14 @@ def test_task(task_closure):
 @pytest.mark.parametrize("resources", parameterizers.LIST_OF_RESOURCES)
 def test_container(resources):
     obj = task.Container(
-        "my_image",
-        ["this", "is", "a", "cmd"],
-        ["this", "is", "an", "arg"],
-        resources,
-        {'a': 'b'},
-        {'d': 'e'}
+        "my_image", ["this", "is", "a", "cmd"], ["this", "is", "an", "arg"], resources, {"a": "b"}, {"d": "e"},
     )
     obj.image == "my_image"
     obj.command == ["this", "is", "a", "cmd"]
     obj.args == ["this", "is", "an", "arg"]
     obj.resources == resources
-    obj.env == {'a': 'b'}
-    obj.config == {'d': 'e'}
+    obj.env == {"a": "b"}
+    obj.config == {"d": "e"}
     assert obj == task.Container.from_flyte_idl(obj.to_flyte_idl())
 
 
@@ -169,13 +155,19 @@ def test_sidecar_task():
 
 
 def test_dataloadingconfig():
-    dlc = task.DataLoadingConfig("s3://input/path", "s3://output/path", True,
-                                 task.DataLoadingConfig.LITERALMAP_FORMAT_YAML)
+    dlc = task.DataLoadingConfig(
+        "s3://input/path", "s3://output/path", True, task.DataLoadingConfig.LITERALMAP_FORMAT_YAML,
+    )
     dlc2 = task.DataLoadingConfig.from_flyte_idl(dlc.to_flyte_idl())
     assert dlc2 == dlc
 
-    dlc = task.DataLoadingConfig("s3://input/path", "s3://output/path", True,
-                                 task.DataLoadingConfig.LITERALMAP_FORMAT_YAML, io_strategy=task.IOStrategy())
+    dlc = task.DataLoadingConfig(
+        "s3://input/path",
+        "s3://output/path",
+        True,
+        task.DataLoadingConfig.LITERALMAP_FORMAT_YAML,
+        io_strategy=task.IOStrategy(),
+    )
     dlc2 = task.DataLoadingConfig.from_flyte_idl(dlc.to_flyte_idl())
     assert dlc2 == dlc
 

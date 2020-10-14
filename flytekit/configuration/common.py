@@ -1,10 +1,6 @@
-from __future__ import absolute_import
-
 import abc as _abc
-import os as _os
-
 import configparser as _configparser
-import six as _six
+import os as _os
 
 from flytekit.common.exceptions import user as _user_exceptions
 
@@ -15,11 +11,10 @@ def format_section_key(section, key):
     :param Text key:
     :rtype: Text
     """
-    return 'FLYTE_{section}_{key}'.format(section=section.upper(), key=key.upper())
+    return "FLYTE_{section}_{key}".format(section=section.upper(), key=key.upper())
 
 
 class FlyteConfigurationFile(object):
-
     def __init__(self, location=None):
         """
         This singleton is initialized on module load with empty location. If pyflyte is called with
@@ -35,9 +30,11 @@ class FlyteConfigurationFile(object):
         if self._config is None and self._location:
             config = _configparser.ConfigParser()
             config.read(self._location)
-            if config.has_section('internal'):
-                raise _user_exceptions.FlyteAssertion("The config file '{}' cannot contain a section for internal "
-                                                      "only configurations.".format(self._location))
+            if config.has_section("internal"):
+                raise _user_exceptions.FlyteAssertion(
+                    "The config file '{}' cannot contain a section for internal "
+                    "only configurations.".format(self._location)
+                )
             self._config = config
 
     def get_string(self, section, key, default=None):
@@ -51,7 +48,7 @@ class FlyteConfigurationFile(object):
         if self._config is not None:
             try:
                 return self._config.get(section, key, fallback=default)
-            except:
+            except Exception:
                 pass
         return default
 
@@ -66,7 +63,7 @@ class FlyteConfigurationFile(object):
         if self._config is not None:
             try:
                 return self._config.getint(section, key, fallback=default)
-            except:
+            except Exception:
                 pass
         return default
 
@@ -81,7 +78,7 @@ class FlyteConfigurationFile(object):
         if self._config is not None:
             try:
                 return self._config.getboolean(section, key, fallback=default)
-            except:
+            except Exception:
                 pass
         return default
 
@@ -89,12 +86,11 @@ class FlyteConfigurationFile(object):
         """
         :param Text location:
         """
-        self._location = location or _os.environ.get('FLYTE_INTERNAL_CONFIGURATION_PATH')
+        self._location = location or _os.environ.get("FLYTE_INTERNAL_CONFIGURATION_PATH")
         self._config = None
 
 
 class _FlyteConfigurationPatcher(object):
-
     def __init__(self, new_value, config):
         """
         :param Text new_value:
@@ -127,13 +123,12 @@ def _get_file_contents(location):
     :rtype: Text
     """
     if _os.path.isfile(location):
-        with open(location, 'r') as f:
-            return f.read().replace('\n', '')
+        with open(location, "r") as f:
+            return f.read().replace("\n", "")
     return None
 
 
-class _FlyteConfigurationEntry(_six.with_metaclass(_abc.ABCMeta, object)):
-
+class _FlyteConfigurationEntry(object, metaclass=_abc.ABCMeta):
     def __init__(self, section, key, default=None, validator=None, fallback=None):
         self._section = section
         self._key = key
@@ -200,22 +195,14 @@ class _FlyteConfigurationEntry(_six.with_metaclass(_abc.ABCMeta, object)):
 
 
 class _FlyteRequiredConfigurationEntry(_FlyteConfigurationEntry):
-
     def __init__(self, section, key, validator=None):
-        super(_FlyteRequiredConfigurationEntry, self).__init__(
-            section,
-            key,
-            validator=self._validate_not_null
-        )
+        super(_FlyteRequiredConfigurationEntry, self).__init__(section, key, validator=self._validate_not_null)
         self._extra_validator = validator
 
     def _validate_not_null(self, val):
         if val is None:
             raise _user_exceptions.FlyteAssertion(
-                "No configuration set for [{}] {}.  This is a required configuration.".format(
-                    self._section,
-                    self._key
-                )
+                "No configuration set for [{}] {}.  This is a required configuration.".format(self._section, self._key)
             )
         if self._extra_validator:
             self._extra_validator(val)
@@ -247,7 +234,7 @@ class FlyteBoolConfigurationEntry(_FlyteConfigurationEntry):
             return CONFIGURATION_SINGLETON.get_bool(self._section, self._key, default=self._default)
         else:
             # Because bool('False') is True, compare to the same values that ConfigParser uses
-            if val.lower() in ['false', '0', 'off', 'no']:
+            if val.lower() in ["false", "0", "off", "no"]:
                 return False
             return True
 
@@ -259,7 +246,7 @@ class FlyteStringListConfigurationEntry(_FlyteConfigurationEntry):
             val = CONFIGURATION_SINGLETON.get_string(self._section, self._key)
         if val is None:
             return self._default
-        return val.split(',')
+        return val.split(",")
 
 
 class FlyteRequiredStringConfigurationEntry(_FlyteRequiredConfigurationEntry):
@@ -293,7 +280,7 @@ class FlyteRequiredStringListConfigurationEntry(_FlyteRequiredConfigurationEntry
             val = CONFIGURATION_SINGLETON.get_string(self._section, self._key)
         if val is None:
             return self._default
-        return val.split(',')
+        return val.split(",")
 
 
 CONFIGURATION_SINGLETON = FlyteConfigurationFile()

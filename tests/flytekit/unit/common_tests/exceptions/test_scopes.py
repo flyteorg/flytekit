@@ -1,7 +1,7 @@
-from __future__ import absolute_import
-from flytekit.common.exceptions import system, user, scopes
-from flytekit.models.core import errors as _error_models
 import pytest
+
+from flytekit.common.exceptions import scopes, system, user
+from flytekit.models.core import errors as _error_models
 
 
 @scopes.user_entry_point

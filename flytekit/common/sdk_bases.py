@@ -1,10 +1,9 @@
-from __future__ import absolute_import
-from flytekit.models import common as _common
 import abc as _abc
-import six as _six
+
+from flytekit.models import common as _common
 
 
-class ExtendedSdkType(_six.with_metaclass(_common.FlyteABCMeta, _common.FlyteType)):
+class ExtendedSdkType(_common.FlyteType, metaclass=_common.FlyteABCMeta):
     """
     Abstract class that all SDK objects must inherit from.  This provides the ability to promote a data model object
     into an actionable object.

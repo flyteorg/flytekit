@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 import importlib as _importlib
 import sys as _sys
 import types as _types
@@ -24,21 +23,28 @@ class LazyLoadPlugin(object):
         :rtype: dict[Text,list[Text]]
         """
         d = cls.LAZY_LOADING_PLUGINS.copy()
-        all_plugins = []
+        all_plugins_spark2 = []
+        all_plugins_spark3 = []
         for k in d:
-            # Default to Spark 2.4.x .
-            if k !="spark3":
-                all_plugins.extend(d[k])
+            # Default to Spark 2.4.x in all-spark2 and Spark 3.x in all-spark3.
+            if k != "spark3":
+                all_plugins_spark2.extend(d[k])
+            if k != "spark":
+                all_plugins_spark3.extend(d[k])
 
-        d['all'] = all_plugins
+        d["all-spark2.4"] = all_plugins_spark2
+        d["all-spark3"] = all_plugins_spark3
+        # all points to Spark 2.4
+        d["all"] = all_plugins_spark2
         return d
 
 
 def lazy_load_module(module):
     """
-    :param Text module: 
+    :param Text module:
     :rtype: _types.ModuleType
     """
+
     class LazyLoadModule(_LazyLoadModule):
         _module = module
         _lazy_submodules = dict()
@@ -49,11 +55,13 @@ def lazy_load_module(module):
 
 class _LazyLoadModule(_types.ModuleType):
 
-    _ERROR_MSG_FMT = "Attempting to use a plugin functionality that requires module " \
-                     "`{module}`, but it couldn't be loaded. Please pip install at least one of {plugins} or " \
-                     "`flytekit[all]` to get these dependencies.\n" \
-                     "\n" \
-                     "Original message: {msg}"
+    _ERROR_MSG_FMT = (
+        "Attempting to use a plugin functionality that requires module "
+        "`{module}`, but it couldn't be loaded. Please pip install at least one of {plugins} or "
+        "`flytekit[all]` to get these dependencies.\n"
+        "\n"
+        "Original message: {msg}"
+    )
 
     @classmethod
     def _load(cls):
@@ -62,13 +70,7 @@ class _LazyLoadModule(_types.ModuleType):
             try:
                 module = _importlib.import_module(cls._module)
             except ImportError as e:
-                raise ImportError(
-                    cls._ERROR_MSG_FMT.format(
-                        module=cls._module,
-                        plugins=cls._plugins,
-                        msg=e
-                    )
-                )
+                raise ImportError(cls._ERROR_MSG_FMT.format(module=cls._module, plugins=cls._plugins, msg=e))
         return module
 
     def __getattribute__(self, item):

@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 from flytekit.models import filters
 
 
@@ -35,9 +34,6 @@ def test_contains_filter():
 
 
 def test_filter_list():
-    fl = filters.FilterList([
-        filters.Equal("domain", "staging"),
-        filters.NotEqual("project", "FakeProject")
-    ])
+    fl = filters.FilterList([filters.Equal("domain", "staging"), filters.NotEqual("project", "FakeProject")])
 
     assert fl.to_flyte_idl() == "eq(domain,staging)+neq(project,FakeProject)"

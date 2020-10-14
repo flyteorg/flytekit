@@ -1,17 +1,17 @@
-import flytekit.plugins
-
 import logging as _logging
 
-__version__ = '0.11.3'
+import flytekit.plugins  # noqa: F401
 
-logger = _logging.getLogger('flytekit')
+__version__ = "0.99.0"
+
+logger = _logging.getLogger("flytekit")
 
 # create console handler and set level to debug
 ch = _logging.StreamHandler()
 ch.setLevel(_logging.DEBUG)
 
 # create formatter
-formatter = _logging.Formatter('%(asctime)s-%(name)s-%(levelname)s$ %(message)s')
+formatter = _logging.Formatter("%(asctime)s-%(name)s-%(levelname)s$ %(message)s")
 
 # add formatter to ch
 ch.setFormatter(formatter)

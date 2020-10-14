@@ -1,10 +1,8 @@
 from flytekit.contrib.sensors.base_sensor import Sensor as _Sensor
-
 from flytekit.contrib.sensors.task import sensor_task
 
 
 class MyMockSensor(_Sensor):
-
     def __init__(self, **kwargs):
         super(MyMockSensor, self).__init__(**kwargs)
 

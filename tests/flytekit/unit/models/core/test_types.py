@@ -1,6 +1,6 @@
-from __future__ import absolute_import
-from flytekit.models.core import types as _types
 from flyteidl.core import types_pb2 as _types_pb2
+
+from flytekit.models.core import types as _types
 
 
 def test_blob_dimensionality():
@@ -9,10 +9,7 @@ def test_blob_dimensionality():
 
 
 def test_blob_type():
-    o = _types.BlobType(
-        format="csv",
-        dimensionality=_types.BlobType.BlobDimensionality.SINGLE,
-    )
+    o = _types.BlobType(format="csv", dimensionality=_types.BlobType.BlobDimensionality.SINGLE,)
     assert o.format == "csv"
     assert o.dimensionality == _types.BlobType.BlobDimensionality.SINGLE
 

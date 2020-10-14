@@ -1,6 +1,6 @@
-from __future__ import absolute_import
-from flytekit.models.core import execution
 import datetime
+
+from flytekit.models.core import execution
 
 
 def test_task_logs():

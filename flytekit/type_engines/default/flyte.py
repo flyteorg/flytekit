@@ -1,13 +1,16 @@
-from __future__ import absolute_import
-
-from flytekit.common.exceptions import system as _system_exceptions, user as _user_exceptions
-from flytekit.common.types import primitives as _primitive_types, base_sdk_types as _base_sdk_types, containers as \
-    _container_types, schema as _schema, blobs as _blobs, proto as _proto
-from flytekit.models import types as _literal_type_models
-from flytekit.models.core import types as _core_types
 import importlib as _importer
 
+from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.types import base_sdk_types as _base_sdk_types
+from flytekit.common.types import blobs as _blobs
+from flytekit.common.types import containers as _container_types
 from flytekit.common.types import helpers as _helpers
+from flytekit.common.types import primitives as _primitive_types
+from flytekit.common.types import proto as _proto
+from flytekit.common.types import schema as _schema
+from flytekit.models import types as _literal_type_models
+from flytekit.models.core import types as _core_types
 
 
 def _proto_sdk_type_from_tag(tag):
@@ -15,26 +18,21 @@ def _proto_sdk_type_from_tag(tag):
     :param Text tag:
     :rtype: _proto.Protobuf
     """
-    if '.' not in tag:
+    if "." not in tag:
         raise _user_exceptions.FlyteValueException(
-            tag,
-            "Protobuf tag must include at least one '.' to delineate package and object name."
+            tag, "Protobuf tag must include at least one '.' to delineate package and object name.",
         )
 
-    module, name = tag.rsplit('.', 1)
+    module, name = tag.rsplit(".", 1)
     try:
         pb_module = _importer.import_module(module)
     except ImportError:
         raise _user_exceptions.FlyteAssertion(
-            "Could not resolve the protobuf definition @ {}.  Is the protobuf library installed?".format(
-                module
-            )
+            "Could not resolve the protobuf definition @ {}.  Is the protobuf library installed?".format(module)
         )
 
     if not hasattr(pb_module, name):
-        raise _user_exceptions.FlyteAssertion(
-            "Could not find the protobuf named: {} @ {}.".format(name, module)
-        )
+        raise _user_exceptions.FlyteAssertion("Could not find the protobuf named: {} @ {}.".format(name, module))
 
     return _proto.create_protobuf(getattr(pb_module, name))
 
@@ -62,7 +60,8 @@ class FlyteDefaultTypeEngine(object):
             if len(t) != 1:
                 raise _user_exceptions.FlyteAssertion(
                     "When specifying a list type, there must be exactly one element in "
-                    "the list describing the contained type.")
+                    "the list describing the contained type."
+                )
             return _container_types.List(_helpers.python_std_to_sdk_type(t[0]))
         elif isinstance(t, dict):
             raise _user_exceptions.FlyteAssertion("Map types are not yet implemented.")
@@ -73,8 +72,8 @@ class FlyteDefaultTypeEngine(object):
                 type(t),
                 _base_sdk_types.FlyteSdkType,
                 additional_msg="Should be of form similar to: Types.Integer, [Types.Integer], {Types.String: "
-                               "Types.Integer}",
-                received_value=t
+                "Types.Integer}",
+                received_value=t,
             )
 
     def get_sdk_type_from_literal_type(self, literal_type):
@@ -91,8 +90,10 @@ class FlyteDefaultTypeEngine(object):
         elif literal_type.blob is not None:
             return self._get_blob_impl_from_type(literal_type.blob)
         elif literal_type.simple is not None:
-            if literal_type.simple == _literal_type_models.SimpleType.BINARY and _proto.Protobuf.PB_FIELD_KEY in \
-                    literal_type.metadata:
+            if (
+                literal_type.simple == _literal_type_models.SimpleType.BINARY
+                and _proto.Protobuf.PB_FIELD_KEY in literal_type.metadata
+            ):
                 return _proto_sdk_type_from_tag(literal_type.metadata[_proto.Protobuf.PB_FIELD_KEY])
             sdk_type = self._SIMPLE_TYPE_LOOKUP_TABLE.get(literal_type.simple)
             if sdk_type is None:
@@ -129,7 +130,7 @@ class FlyteDefaultTypeEngine(object):
             sdk_type = _primitive_types.Generic
         elif literal.scalar.binary is not None:
             if literal.scalar.binary.tag.startswith(_proto.Protobuf.TAG_PREFIX):
-                sdk_type = _proto_sdk_type_from_tag(literal.scalar.binary.tag[len(_proto.Protobuf.TAG_PREFIX):])
+                sdk_type = _proto_sdk_type_from_tag(literal.scalar.binary.tag[len(_proto.Protobuf.TAG_PREFIX) :])
             else:
                 raise NotImplementedError("TODO: Binary is only supported for protobuf types currently")
         elif literal.scalar.primitive.boolean is not None:

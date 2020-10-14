@@ -1,20 +1,13 @@
-from __future__ import absolute_import
-from flytekit.models import common as _common_models
-from flytekit.models.core import execution as _core_execution, identifier as _identifier
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import pytz as _pytz
 
+from flytekit.models import common as _common_models
+from flytekit.models.core import execution as _core_execution
+from flytekit.models.core import identifier as _identifier
+
 
 class NodeExecutionClosure(_common_models.FlyteIdlEntity):
-
-    def __init__(
-            self,
-            phase,
-            started_at,
-            duration,
-            output_uri=None,
-            error=None
-    ):
+    def __init__(self, phase, started_at, duration, output_uri=None, error=None):
         """
         :param int phase:
         :param datetime.datetime started_at:
@@ -70,7 +63,7 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         obj = _node_execution_pb2.NodeExecutionClosure(
             phase=self.phase,
             output_uri=self.output_uri,
-            error=self.error.to_flyte_idl() if self.error is not None else None
+            error=self.error.to_flyte_idl() if self.error is not None else None,
         )
         obj.started_at.FromDatetime(self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None))
         obj.duration.FromTimedelta(self.duration)
@@ -87,18 +80,12 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
             output_uri=p.output_uri if p.HasField("output_uri") else None,
             error=_core_execution.ExecutionError.from_flyte_idl(p.error) if p.HasField("error") else None,
             started_at=p.started_at.ToDatetime().replace(tzinfo=_pytz.UTC),
-            duration=p.duration.ToTimedelta()
+            duration=p.duration.ToTimedelta(),
         )
 
 
 class NodeExecution(_common_models.FlyteIdlEntity):
-
-    def __init__(
-            self,
-            id,
-            input_uri,
-            closure
-    ):
+    def __init__(self, id, input_uri, closure):
         """
         :param flytekit.models.core.identifier.NodeExecutionIdentifier id:
         :param Text input_uri:
@@ -134,9 +121,7 @@ class NodeExecution(_common_models.FlyteIdlEntity):
         :rtype: flyteidl.admin.node_execution_pb2.NodeExecution
         """
         return _node_execution_pb2.NodeExecution(
-            id=self.id.to_flyte_idl(),
-            input_uri=self.input_uri,
-            closure=self.closure.to_flyte_idl()
+            id=self.id.to_flyte_idl(), input_uri=self.input_uri, closure=self.closure.to_flyte_idl(),
         )
 
     @classmethod
@@ -148,5 +133,5 @@ class NodeExecution(_common_models.FlyteIdlEntity):
         return cls(
             id=_identifier.NodeExecutionIdentifier.from_flyte_idl(p.id),
             input_uri=p.input_uri,
-            closure=NodeExecutionClosure.from_flyte_idl(p.closure)
+            closure=NodeExecutionClosure.from_flyte_idl(p.closure),
         )

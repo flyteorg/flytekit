@@ -67,6 +67,14 @@ If `@pytorch_task` is to be used, one should install the `pytorch` plugin.
 pip install "flytekit[pytorch]"
 ```
 
+### TensorFlow
+
+If `@tensorflow_task` is to be used, one should install the `tensorflow` plugin.
+
+```bash
+pip install flytekit[tensorflow]
+```
+
 ### Full Installation
 
 To install all or multiple available plugins, one can specify them individually:
@@ -75,29 +83,61 @@ To install all or multiple available plugins, one can specify them individually:
 pip install "flytekit[sidecar,spark,schema]"
 ```
 
-Or install them with the `all` directive. `all` defaults to Spark 2.4.x currently.
+Or install them with the `all` or `all-spark2.4` or `all-spark3` directives which will install all the plugins and a specific Spark version.
+ Please note that `all` currently defaults to Spark 2.4.x. In a future release (starting 0.15.x), `all` will be switched to use Spark 3.x.
+
 
 ```bash
 pip install "flytekit[all]"
 ```
 
-## Testing
+## Development
 
-Flytekit is Python 2.7+ compatible, so when feasible, it is recommended to test with both Python 2 and 3.
+### Recipes
 
-### Unit Testing
+```
+$ make
+Available recipes:
+  setup        Install requirements
+  fmt          Format code with black and isort
+  lint         Run linters
+  test         Run tests
+  requirements Compile requirements
+```
 
-#### Setup (Do Once)
+### Setup (Do Once)
+
 ```bash
 virtualenv ~/.virtualenvs/flytekit
 source ~/.virtualenvs/flytekit/bin/activate
-python -m pip install -r requirements.txt
-python -m pip install -U ".[all]"
+make setup
 ```
 
-#### Execute
+### Formatting
+
+We use [black](https://github.com/psf/black) and [isort](https://github.com/timothycrosley/isort) to autoformat code. Run the following command to execute the formatters:
+
 ```bash
 source ~/.virtualenvs/flytekit/bin/activate
-python -m pytest tests/flytekit/unit
-shellcheck **/*.sh
+make fmt
 ```
+
+### Testing
+
+#### Unit Testing
+
+```bash
+source ~/.virtualenvs/flytekit/bin/activate
+make test
+```
+
+### Updating requirements
+
+Update requirements in [`setup.py`](setup.py), or update requirements for development in [`dev-requirements.in`](dev-requirements.in). Then, validate, pin and freeze all requirements by running:
+
+```bash
+source ~/.virtualenvs/flytekit/bin/activate
+make requirements
+```
+
+This will re-create the [`requirements.txt`](requirements.txt) and [`dev-requirements.txt`](dev-requirements.txt) files which will be used for testing. You will have also have to re-run `make setup` to update your local environment with the updated requirements.

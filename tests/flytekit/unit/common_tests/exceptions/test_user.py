@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-from flytekit.common.exceptions import user, base
+from flytekit.common.exceptions import base, user
 
 
 def test_flyte_user_exception():
@@ -14,7 +13,7 @@ def test_flyte_user_exception():
 
 def test_flyte_type_exception():
     try:
-        raise user.FlyteTypeException('int', 'float', received_value=1, additional_msg='That was a bad idea!')
+        raise user.FlyteTypeException("int", "float", received_value=1, additional_msg="That was a bad idea!")
     except Exception as e:
         assert str(e) == "Type error!  Received: int with value: 1, Expected: float. That was a bad idea!"
         assert isinstance(e, TypeError)
@@ -22,16 +21,20 @@ def test_flyte_type_exception():
         assert isinstance(e, user.FlyteUserException)
 
     try:
-        raise user.FlyteTypeException('int', ('list', 'set'), received_value=1, additional_msg='That was a bad idea!')
+        raise user.FlyteTypeException(
+            "int", ("list", "set"), received_value=1, additional_msg="That was a bad idea!",
+        )
     except Exception as e:
-        assert str(e) == "Type error!  Received: int with value: 1, Expected one of: ('list', 'set'). That was a " \
-                         "bad idea!"
+        assert (
+            str(e) == "Type error!  Received: int with value: 1, Expected one of: ('list', 'set'). That was a "
+            "bad idea!"
+        )
         assert isinstance(e, TypeError)
         assert type(e).error_code == "USER:TypeError"
         assert isinstance(e, user.FlyteUserException)
 
     try:
-        raise user.FlyteTypeException('int', 'float', additional_msg='That was a bad idea!')
+        raise user.FlyteTypeException("int", "float", additional_msg="That was a bad idea!")
     except Exception as e:
         assert str(e) == "Type error!  Received: int, Expected: float. That was a bad idea!"
         assert isinstance(e, TypeError)
@@ -39,10 +42,9 @@ def test_flyte_type_exception():
         assert isinstance(e, user.FlyteUserException)
 
     try:
-        raise user.FlyteTypeException('int', ('list', 'set'), additional_msg='That was a bad idea!')
+        raise user.FlyteTypeException("int", ("list", "set"), additional_msg="That was a bad idea!")
     except Exception as e:
-        assert str(e) == "Type error!  Received: int, Expected one of: ('list', 'set'). That was a " \
-                         "bad idea!"
+        assert str(e) == "Type error!  Received: int, Expected one of: ('list', 'set'). That was a " "bad idea!"
         assert isinstance(e, TypeError)
         assert type(e).error_code == "USER:TypeError"
         assert isinstance(e, user.FlyteUserException)

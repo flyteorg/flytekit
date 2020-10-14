@@ -1,10 +1,8 @@
-from __future__ import absolute_import
-
 import re
+from multiprocessing import Queue as _Queue
 
 from flytekit.clis.auth import auth as _auth
 
-from multiprocessing import Queue as _Queue
 try:  # Python 3
     import http.server as _BaseHTTPServer
 except ImportError:  # Python 2
@@ -15,12 +13,12 @@ def test_generate_code_verifier():
     verifier = _auth._generate_code_verifier()
     assert verifier is not None
     assert 43 < len(verifier) < 128
-    assert not re.search(r'[^a-zA-Z0-9_\-.~]+', verifier)
+    assert not re.search(r"[^a-zA-Z0-9_\-.~]+", verifier)
 
 
 def test_generate_state_parameter():
     param = _auth._generate_state_parameter()
-    assert not re.search(r'[^a-zA-Z0-9-_.,]+', param)
+    assert not re.search(r"[^a-zA-Z0-9-_.,]+", param)
 
 
 def test_create_code_challenge():
@@ -35,4 +33,3 @@ def test_oauth_http_server():
     server.handle_authorization_code(test_auth_code)
     auth_code = queue.get()
     assert test_auth_code == auth_code
-

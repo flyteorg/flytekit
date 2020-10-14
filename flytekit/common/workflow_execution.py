@@ -1,22 +1,25 @@
-from __future__ import absolute_import
+import os as _os
 
 import six as _six
-from flytekit.common import sdk_bases as _sdk_bases, nodes as _nodes
+from flyteidl.core import literals_pb2 as _literals_pb2
+
+from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions
+from flytekit.common import nodes as _nodes
+from flytekit.common import sdk_bases as _sdk_bases
+from flytekit.common import utils as _common_utils
 from flytekit.common.core import identifier as _core_identifier
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import artifact as _artifact
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.engines import loader as _engine_loader
+from flytekit.engines.flyte import engine as _flyte_engine
+from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import execution as _execution_models
+from flytekit.models import literals as _literal_models
 from flytekit.models.core import execution as _core_execution_models
 
 
 class SdkWorkflowExecution(
-    _six.with_metaclass(
-        _sdk_bases.ExtendedSdkType,
-        _execution_models.Execution,
-        _artifact.ExecutionArtifact
-    )
+    _execution_models.Execution, _artifact.ExecutionArtifact, metaclass=_sdk_bases.ExtendedSdkType,
 ):
     def __init__(self, *args, **kwargs):
         super(SdkWorkflowExecution, self).__init__(*args, **kwargs)
@@ -38,9 +41,23 @@ class SdkWorkflowExecution(
         :rtype:  dict[Text, T]
         """
         if self._inputs is None:
-            self._inputs = _type_helpers.unpack_literal_map_to_sdk_python_std(
-                _engine_loader.get_engine().get_workflow_execution(self).get_inputs()
-            )
+            client = _flyte_engine.get_client()
+            execution_data = client.get_execution_data(self.id)
+
+            # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
+            if bool(execution_data.full_inputs.literals):
+                input_map = execution_data.full_inputs
+            elif execution_data.inputs.bytes > 0:
+                with _common_utils.AutoDeletingTempDir() as t:
+                    tmp_name = _os.path.join(t.name, "inputs.pb")
+                    _data_proxy.Data.get_data(execution_data.inputs.url, tmp_name)
+                    input_map = _literal_models.LiteralMap.from_flyte_idl(
+                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                    )
+            else:
+                input_map = _literal_models.LiteralMap({})
+
+            self._inputs = _type_helpers.unpack_literal_map_to_sdk_python_std(input_map)
         return self._inputs
 
     @property
@@ -51,15 +68,31 @@ class SdkWorkflowExecution(
         :rtype:  dict[Text, T] or None
         """
         if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion("Please what until the node execution has completed before "
-                                                  "requesting the outputs.")
+            raise _user_exceptions.FlyteAssertion(
+                "Please what until the node execution has completed before " "requesting the outputs."
+            )
         if self.error:
             raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
 
         if self._outputs is None:
-            self._outputs = _type_helpers.unpack_literal_map_to_sdk_python_std(
-                _engine_loader.get_engine().get_workflow_execution(self).get_outputs()
-            )
+            client = _flyte_engine.get_client()
+
+            execution_data = client.get_execution_data(self.id)
+            # Outputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
+            if bool(execution_data.full_outputs.literals):
+                output_map = execution_data.full_outputs
+
+            elif execution_data.outputs.bytes > 0:
+                with _common_utils.AutoDeletingTempDir() as t:
+                    tmp_name = _os.path.join(t.name, "outputs.pb")
+                    _data_proxy.Data.get_data(execution_data.outputs.url, tmp_name)
+                    output_map = _literal_models.LiteralMap.from_flyte_idl(
+                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                    )
+            else:
+                output_map = _literal_models.LiteralMap({})
+
+            self._outputs = _type_helpers.unpack_literal_map_to_sdk_python_std(output_map)
         return self._outputs
 
     @property
@@ -70,8 +103,9 @@ class SdkWorkflowExecution(
         :rtype: flytekit.models.core.execution.ExecutionError or None
         """
         if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion("Please wait until a workflow has completed before checking for an "
-                                                  "error.")
+            raise _user_exceptions.FlyteAssertion(
+                "Please wait until a workflow has completed before checking for an " "error."
+            )
         return self.closure.error
 
     @property
@@ -107,15 +141,10 @@ class SdkWorkflowExecution(
         :param Text name:
         :rtype: SdkWorkflowExecution
         """
-        return cls.promote_from_model(
-            _engine_loader.get_engine().fetch_workflow_execution(
-                _core_identifier.WorkflowExecutionIdentifier(
-                    project=project,
-                    domain=domain,
-                    name=name
-                )
-            )
-        )
+        wf_exec_id = _core_identifier.WorkflowExecutionIdentifier(project=project, domain=domain, name=name)
+        admin_exec = _flyte_engine.get_client().get_execution(wf_exec_id)
+
+        return cls.promote_from_model(admin_exec)
 
     def sync(self):
         """
@@ -132,21 +161,21 @@ class SdkWorkflowExecution(
         :rtype: None
         """
         if not self.is_complete:
-            _engine_loader.get_engine().get_workflow_execution(self).sync()
+            client = _flyte_engine.get_client()
+            self._closure = client.get_execution(self.id).closure
 
     def get_node_executions(self, filters=None):
         """
         :param list[flytekit.models.filters.Filter] filters:
         :rtype: dict[Text, flytekit.common.nodes.SdkNodeExecution]
         """
-        models = _engine_loader.get_engine().get_workflow_execution(self).get_node_executions(filters=filters)
-        return {
-            k: _nodes.SdkNodeExecution.promote_from_model(v)
-            for k, v in _six.iteritems(models)
-        }
+        client = _flyte_engine.get_client()
+        node_exec_models = {v.id.node_id: v for v in _iterate_node_executions(client, self.id, filters=filters)}
+
+        return {k: _nodes.SdkNodeExecution.promote_from_model(v) for k, v in _six.iteritems(node_exec_models)}
 
     def terminate(self, cause):
         """
         :param Text cause:
         """
-        _engine_loader.get_engine().get_workflow_execution(self).terminate(cause)
+        _flyte_engine.get_client().terminate_execution(self.id, cause)

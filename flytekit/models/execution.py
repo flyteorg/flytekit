@@ -1,15 +1,15 @@
-from __future__ import absolute_import
-
 import flyteidl.admin.execution_pb2 as _execution_pb2
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import flyteidl.admin.task_execution_pb2 as _task_execution_pb2
-
-from flytekit.models import common as _common_models
-from flytekit.models.core import execution as _core_execution, identifier as _identifier
 import pytz as _pytz
 
-class ExecutionMetadata(_common_models.FlyteIdlEntity):
+from flytekit.models import common as _common_models
+from flytekit.models import literals as _literals_models
+from flytekit.models.core import execution as _core_execution
+from flytekit.models.core import identifier as _identifier
 
+
+class ExecutionMetadata(_common_models.FlyteIdlEntity):
     class ExecutionMode(object):
         MANUAL = 0
         SCHEDULED = 1
@@ -54,11 +54,7 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionMetadata
         """
-        return _execution_pb2.ExecutionMetadata(
-            mode=self.mode,
-            principal=self.principal,
-            nesting=self.nesting
-        )
+        return _execution_pb2.ExecutionMetadata(mode=self.mode, principal=self.principal, nesting=self.nesting)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -66,17 +62,20 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
         :param flyteidl.admin.execution_pb2.ExecutionMetadata pb2_object:
         :return: ExecutionMetadata
         """
-        return cls(
-            mode=pb2_object.mode,
-            principal=pb2_object.principal,
-            nesting=pb2_object.nesting
-        )
+        return cls(mode=pb2_object.mode, principal=pb2_object.principal, nesting=pb2_object.nesting,)
 
 
 class ExecutionSpec(_common_models.FlyteIdlEntity):
-
-    def __init__(self, launch_plan, metadata, notifications=None, disable_all=None, labels=None,
-                 annotations=None, auth_role=None):
+    def __init__(
+        self,
+        launch_plan,
+        metadata,
+        notifications=None,
+        disable_all=None,
+        labels=None,
+        annotations=None,
+        auth_role=None,
+    ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
         :param ExecutionMetadata metadata: The metadata to be associated with this execution
@@ -177,7 +176,6 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
 
 
 class LiteralMapBlob(_common_models.FlyteIdlEntity):
-
     def __init__(self, values=None, uri=None):
         """
         :param flytekit.models.literals.LiteralMap values:
@@ -205,8 +203,7 @@ class LiteralMapBlob(_common_models.FlyteIdlEntity):
         :rtype: flyteidl.admin.execution_pb2.LiteralMapBlob
         """
         return _execution_pb2.LiteralMapBlob(
-            values=self.values.to_flyte_idl() if self.values is not None else None,
-            uri=self.uri
+            values=self.values.to_flyte_idl() if self.values is not None else None, uri=self.uri,
         )
 
     @classmethod
@@ -218,14 +215,10 @@ class LiteralMapBlob(_common_models.FlyteIdlEntity):
         values = None
         if pb.HasField("values"):
             values = LiteralMapBlob.from_flyte_idl(pb.values)
-        return cls(
-            values=values,
-            uri=pb.uri if pb.HasField("uri") else None
-        )
+        return cls(values=values, uri=pb.uri if pb.HasField("uri") else None)
 
 
 class Execution(_common_models.FlyteIdlEntity):
-
     def __init__(self, id, spec, closure):
         """
         :param flytekit.models.core.identifier.WorkflowExecutionIdentifier id:
@@ -263,9 +256,7 @@ class Execution(_common_models.FlyteIdlEntity):
         :rtype: flyteidl.admin.execution_pb2.Execution
         """
         return _execution_pb2.Execution(
-            id=self.id.to_flyte_idl(),
-            closure=self.closure.to_flyte_idl(),
-            spec=self.spec.to_flyte_idl()
+            id=self.id.to_flyte_idl(), closure=self.closure.to_flyte_idl(), spec=self.spec.to_flyte_idl(),
         )
 
     @classmethod
@@ -277,12 +268,11 @@ class Execution(_common_models.FlyteIdlEntity):
         return cls(
             id=_identifier.WorkflowExecutionIdentifier.from_flyte_idl(pb.id),
             closure=ExecutionClosure.from_flyte_idl(pb.closure),
-            spec=ExecutionSpec.from_flyte_idl(pb.spec)
+            spec=ExecutionSpec.from_flyte_idl(pb.spec),
         )
 
 
 class ExecutionClosure(_common_models.FlyteIdlEntity):
-
     def __init__(self, phase, started_at, error=None, outputs=None):
         """
         :param int phase: From the flytekit.models.core.execution.WorkflowExecutionPhase enum
@@ -331,7 +321,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         obj = _execution_pb2.ExecutionClosure(
             phase=self.phase,
             error=self.error.to_flyte_idl() if self.error is not None else None,
-            outputs=self.outputs.to_flyte_idl() if self.outputs is not None else None
+            outputs=self.outputs.to_flyte_idl() if self.outputs is not None else None,
         )
         obj.started_at.FromDatetime(self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None))
         return obj
@@ -374,9 +364,7 @@ class NotificationList(_common_models.FlyteIdlEntity):
         """
         :rtype:  flyteidl.admin.execution_pb2.NotificationList
         """
-        return _execution_pb2.NotificationList(
-            notifications=[n.to_flyte_idl() for n in self.notifications]
-        )
+        return _execution_pb2.NotificationList(notifications=[n.to_flyte_idl() for n in self.notifications])
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -384,9 +372,7 @@ class NotificationList(_common_models.FlyteIdlEntity):
         :param flyteidl.admin.execution_pb2.NotificationList pb2_object:
         :rtype: NotificationList
         """
-        return cls(
-            [_common_models.Notification.from_flyte_idl(p) for p in pb2_object.notifications]
-        )
+        return cls([_common_models.Notification.from_flyte_idl(p) for p in pb2_object.notifications])
 
 
 class _CommonDataResponse(_common_models.FlyteIdlEntity):
@@ -395,13 +381,17 @@ class _CommonDataResponse(_common_models.FlyteIdlEntity):
     superclass to reduce code duplication until things diverge in the future.
     """
 
-    def __init__(self, inputs, outputs):
+    def __init__(self, inputs, outputs, full_inputs, full_outputs):
         """
         :param _common_models.UrlBlob inputs:
         :param _common_models.UrlBlob outputs:
+        :param _literals_pb2.LiteralMap full_inputs:
+        :param _literals_pb2.LiteralMap full_outputs:
         """
         self._inputs = inputs
         self._outputs = outputs
+        self._full_inputs = full_inputs
+        self._full_outputs = full_outputs
 
     @property
     def inputs(self):
@@ -417,6 +407,20 @@ class _CommonDataResponse(_common_models.FlyteIdlEntity):
         """
         return self._outputs
 
+    @property
+    def full_inputs(self):
+        """
+        :rtype: _literals_pb2.LiteralMap
+        """
+        return self._full_inputs
+
+    @property
+    def full_outputs(self):
+        """
+        :rtype: _literals_pb2.LiteralMap
+        """
+        return self._full_outputs
+
 
 class WorkflowExecutionGetDataResponse(_CommonDataResponse):
     @classmethod
@@ -428,6 +432,8 @@ class WorkflowExecutionGetDataResponse(_CommonDataResponse):
         return cls(
             inputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.inputs),
             outputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.outputs),
+            full_inputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_inputs),
+            full_outputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_outputs),
         )
 
     def to_flyte_idl(self):
@@ -437,6 +443,8 @@ class WorkflowExecutionGetDataResponse(_CommonDataResponse):
         return _execution_pb2.WorkflowExecutionGetDataResponse(
             inputs=self.inputs.to_flyte_idl(),
             outputs=self.outputs.to_flyte_idl(),
+            full_inputs=self.full_inputs.to_flyte_idl(),
+            full_outputs=self.full_outputs.to_flyte_idl(),
         )
 
 
@@ -450,6 +458,8 @@ class TaskExecutionGetDataResponse(_CommonDataResponse):
         return cls(
             inputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.inputs),
             outputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.outputs),
+            full_inputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_inputs),
+            full_outputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_outputs),
         )
 
     def to_flyte_idl(self):
@@ -459,6 +469,8 @@ class TaskExecutionGetDataResponse(_CommonDataResponse):
         return _task_execution_pb2.TaskExecutionGetDataResponse(
             inputs=self.inputs.to_flyte_idl(),
             outputs=self.outputs.to_flyte_idl(),
+            full_inputs=self.full_inputs.to_flyte_idl(),
+            full_outputs=self.full_outputs.to_flyte_idl(),
         )
 
 
@@ -472,6 +484,8 @@ class NodeExecutionGetDataResponse(_CommonDataResponse):
         return cls(
             inputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.inputs),
             outputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.outputs),
+            full_inputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_inputs),
+            full_outputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_outputs),
         )
 
     def to_flyte_idl(self):
@@ -481,4 +495,6 @@ class NodeExecutionGetDataResponse(_CommonDataResponse):
         return _node_execution_pb2.NodeExecutionGetDataResponse(
             inputs=self.inputs.to_flyte_idl(),
             outputs=self.outputs.to_flyte_idl(),
+            full_inputs=self.full_inputs.to_flyte_idl(),
+            full_outputs=self.full_outputs.to_flyte_idl(),
         )

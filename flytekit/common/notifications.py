@@ -1,18 +1,16 @@
-from __future__ import absolute_import
-from flytekit.models import common as _common_model
-from flytekit.models.core import execution as _execution_model
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
-import six as _six
+from flytekit.models import common as _common_model
+from flytekit.models.core import execution as _execution_model
 
 
-class Notification(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _common_model.Notification)):
+class Notification(_common_model.Notification, metaclass=_sdk_bases.ExtendedSdkType):
 
     VALID_PHASES = {
         _execution_model.WorkflowExecutionPhase.ABORTED,
         _execution_model.WorkflowExecutionPhase.FAILED,
         _execution_model.WorkflowExecutionPhase.SUCCEEDED,
-        _execution_model.WorkflowExecutionPhase.TIMED_OUT
+        _execution_model.WorkflowExecutionPhase.TIMED_OUT,
     }
 
     def __init__(self, phases, email=None, pager_duty=None, slack=None):
@@ -34,7 +32,7 @@ class Notification(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _common_model
                 raise _user_exceptions.FlyteValueException(
                     phase,
                     self.VALID_PHASES,
-                    additional_message="Notifications can only be specified on terminal states."
+                    additional_message="Notifications can only be specified on terminal states.",
                 )
 
     @classmethod
@@ -64,10 +62,7 @@ class PagerDuty(Notification):
         :param flytekit.models.common.Notification base_model:
         :rtype: Notification
         """
-        return cls(
-            base_model.phases,
-            base_model.pager_duty.recipients_email
-        )
+        return cls(base_model.phases, base_model.pager_duty.recipients_email)
 
 
 class Email(Notification):
@@ -85,10 +80,7 @@ class Email(Notification):
         :param flytekit.models.common.Notification base_model:
         :rtype: Notification
         """
-        return cls(
-            base_model.phases,
-            base_model.email.recipients_email
-        )
+        return cls(base_model.phases, base_model.email.recipients_email)
 
 
 class Slack(Notification):
@@ -106,7 +98,4 @@ class Slack(Notification):
         :param flytekit.models.common.Notification base_model:
         :rtype: Notification
         """
-        return cls(
-            base_model.phases,
-            base_model.slack.recipients_email
-        )
+        return cls(base_model.phases, base_model.slack.recipients_email)

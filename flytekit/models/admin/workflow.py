@@ -1,11 +1,12 @@
-from __future__ import absolute_import
-from flytekit.models import common as _common
-from flytekit.models.core import compiler as _compiler_models, identifier as _identifier, workflow as _core_workflow
 from flyteidl.admin import workflow_pb2 as _admin_workflow
+
+from flytekit.models import common as _common
+from flytekit.models.core import compiler as _compiler_models
+from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import workflow as _core_workflow
 
 
 class WorkflowSpec(_common.FlyteIdlEntity):
-
     def __init__(self, template, sub_workflows):
         """
         This object fully encapsulates the specification of a workflow
@@ -34,8 +35,7 @@ class WorkflowSpec(_common.FlyteIdlEntity):
         :rtype: flyteidl.admin.workflow_pb2.WorkflowSpec
         """
         return _admin_workflow.WorkflowSpec(
-            template=self._template.to_flyte_idl(),
-            sub_workflows=[s.to_flyte_idl() for s in self._sub_workflows],
+            template=self._template.to_flyte_idl(), sub_workflows=[s.to_flyte_idl() for s in self._sub_workflows],
         )
 
     @classmethod
@@ -44,17 +44,14 @@ class WorkflowSpec(_common.FlyteIdlEntity):
         :param pb2_object: flyteidl.admin.workflow_pb2.WorkflowSpec
         :rtype: WorkflowSpec
         """
-        return cls(_core_workflow.WorkflowTemplate.from_flyte_idl(pb2_object.template),
-                   [_core_workflow.WorkflowTemplate.from_flyte_idl(s) for s in pb2_object.sub_workflows])
+        return cls(
+            _core_workflow.WorkflowTemplate.from_flyte_idl(pb2_object.template),
+            [_core_workflow.WorkflowTemplate.from_flyte_idl(s) for s in pb2_object.sub_workflows],
+        )
 
 
 class Workflow(_common.FlyteIdlEntity):
-
-    def __init__(
-        self,
-        id,
-        closure
-    ):
+    def __init__(self, id, closure):
         """
         :param flytekit.models.core.identifier.Identifier id:
         :param WorkflowClosure closure:
@@ -80,10 +77,7 @@ class Workflow(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.workflow_pb2.Workflow
         """
-        return _admin_workflow.Workflow(
-            id=self.id.to_flyte_idl(),
-            closure=self.closure.to_flyte_idl()
-        )
+        return _admin_workflow.Workflow(id=self.id.to_flyte_idl(), closure=self.closure.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -93,12 +87,11 @@ class Workflow(_common.FlyteIdlEntity):
         """
         return cls(
             id=_identifier.Identifier.from_flyte_idl(pb2_object.id),
-            closure=WorkflowClosure.from_flyte_idl(pb2_object.closure)
+            closure=WorkflowClosure.from_flyte_idl(pb2_object.closure),
         )
 
 
 class WorkflowClosure(_common.FlyteIdlEntity):
-
     def __init__(self, compiled_workflow):
         """
         :param flytekit.models.core.compiler.CompiledWorkflowClosure compiled_workflow:
@@ -116,9 +109,7 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.workflow_pb2.WorkflowClosure
         """
-        return _admin_workflow.WorkflowClosure(
-            compiled_workflow=self.compiled_workflow.to_flyte_idl()
-        )
+        return _admin_workflow.WorkflowClosure(compiled_workflow=self.compiled_workflow.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, p):
@@ -126,6 +117,4 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         :param flyteidl.admin.workflow_pb2.WorkflowClosure p:
         :rtype: WorkflowClosure
         """
-        return cls(
-            compiled_workflow=_compiler_models.CompiledWorkflowClosure.from_flyte_idl(p.compiled_workflow)
-        )
+        return cls(compiled_workflow=_compiler_models.CompiledWorkflowClosure.from_flyte_idl(p.compiled_workflow))

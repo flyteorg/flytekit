@@ -1,43 +1,41 @@
-from __future__ import absolute_import
-
 import os as _os
 import shutil as _shutil
-import six as _six
 import sys as _sys
 import uuid as _uuid
-from flytekit.common import sdk_bases as _sdk_bases, utils as _utils
-from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
+
+import six as _six
+
+from flytekit.common import sdk_bases as _sdk_bases
+from flytekit.common import utils as _utils
+from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 
 
-class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)):
-
-    def __init__(self, remote_path, mode='rb', format=None):
+class Blob(_literal_models.Blob, metaclass=_sdk_bases.ExtendedSdkType):
+    def __init__(self, remote_path, mode="rb", format=None):
         """
         :param Text remote_path: Path to location where the Blob should be synced to.
         :param Text mode: File access mode.  'a' and '+' are forbidden.  A blob can only be written or read at a time.
         :param Text format: Format
         """
-        if '+' in mode or 'a' in mode or ('w' in mode and 'r' in mode):
+        if "+" in mode or "a" in mode or ("w" in mode and "r" in mode):
             raise _user_exceptions.FlyteAssertion("A blob cannot be read and written at the same time")
         self._mode = mode
         self._local_path = None
         self._file = None
         super(Blob, self).__init__(
             _literal_models.BlobMetadata(
-                type=_core_types.BlobType(
-                    format or "",
-                    _core_types.BlobType.BlobDimensionality.SINGLE
-                )
+                type=_core_types.BlobType(format or "", _core_types.BlobType.BlobDimensionality.SINGLE)
             ),
-            remote_path
+            remote_path,
         )
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def from_python_std(cls, t_value, mode='wb', format=None):
+    def from_python_std(cls, t_value, mode="wb", format=None):
         """
         :param T t_value:
         :param Text mode: File access mode.  'a' and '+' are forbidden.  A blob can only be written or read at a time.
@@ -59,12 +57,12 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
                 type(t_value),
                 {_six.text_type, str, Blob},
                 received_value=t_value,
-                additional_msg="Unable to create Blob from user-provided value."
+                additional_msg="Unable to create Blob from user-provided value.",
             )
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def from_string(cls, t_value, mode='wb', format=None):
+    def from_string(cls, t_value, mode="wb", format=None):
         """
         :param T t_value:
         :param Text mode: Read or write mode of the object.
@@ -75,7 +73,7 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def create_at_known_location(cls, known_remote_location, mode='wb', format=None):
+    def create_at_known_location(cls, known_remote_location, mode="wb", format=None):
         """
         :param Text known_remote_location: The location to which to write the object.  Usually an s3 path.
         :param Text mode:
@@ -86,7 +84,7 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def create_at_any_location(cls, mode='wb', format=None):
+    def create_at_any_location(cls, mode="wb", format=None):
         """
         :param Text mode:
         :param Text format:
@@ -96,7 +94,7 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def fetch(cls, remote_path, local_path=None, overwrite=False, mode='rb', format=None):
+    def fetch(cls, remote_path, local_path=None, overwrite=False, mode="rb", format=None):
         """
         :param Text remote_path: The location from which to fetch the object. Usually an s3 path.
         :param Text local_path: [Optional] A local path to which to download the object. If specified, the object
@@ -112,7 +110,7 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
         return blob
 
     @classmethod
-    def promote_from_model(cls, model, mode='rb'):
+    def promote_from_model(cls, model, mode="rb"):
         """
         :param flytekit.models.literals.Blob model:
         :param Text mode: Read or write mode of the object.
@@ -153,9 +151,9 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
             raise _user_exceptions.FlyteAssertion("Only one reference can be open to a blob at a time.")
 
         if self.local_path is None:
-            if 'r' in self.mode:
+            if "r" in self.mode:
                 self.download()
-            elif 'w' in self.mode:
+            elif "w" in self.mode:
                 self._generate_local_path()
 
         self._file = open(self.local_path, self.mode)
@@ -166,7 +164,7 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
         if self._file is not None and not self._file.closed:
             self._file.close()
             self._file = None
-            if 'w' in self.mode:
+            if "w" in self.mode:
                 self.upload()
         return False
 
@@ -176,7 +174,8 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
                 "No temporary file system is present.  Either call this method from within the "
                 "context of a task or surround with a 'with LocalTestFileSystem():' block.  Or "
                 "specify a path when calling this function.  Note: Cleanup is not automatic when a "
-                "path is specified.")
+                "path is specified."
+            )
         self._local_path = _data_proxy.LocalWorkingDirectoryContext.get().get_named_tempfile(_uuid.uuid4().hex)
 
     @_exception_scopes.system_entry_point
@@ -188,7 +187,7 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
         :param bool overwrite: If true and local_path is specified, we will download the blob and
             overwrite an existing file at that location.  Default is False.
         """
-        if 'r' not in self._mode:
+        if "r" not in self._mode:
             raise _user_exceptions.FlyteAssertion("Cannot download a write-only blob!")
 
         if local_path:
@@ -200,18 +199,11 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
         if overwrite or not _os.path.exists(self.local_path):
             # TODO: Introduce system logging
             # logging.info("Getting {} -> {}".format(self.remote_location, self.local_path))
-            _data_proxy.Data.get_data(
-                self.remote_location,
-                self.local_path,
-                is_multipart=False
-            )
+            _data_proxy.Data.get_data(self.remote_location, self.local_path, is_multipart=False)
         else:
             raise _user_exceptions.FlyteAssertion(
                 "Cannot download blob to a location that already exists when overwrite is not set to True.  "
-                "Attempted download from {} -> {}".format(
-                    self.remote_location,
-                    self.local_path
-                )
+                "Attempted download from {} -> {}".format(self.remote_location, self.local_path)
             )
 
     @_exception_scopes.system_entry_point
@@ -219,40 +211,34 @@ class Blob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)
         """
         Upload the blob to the remote location
         """
-        if 'w' not in self.mode:
+        if "w" not in self.mode:
             raise _user_exceptions.FlyteAssertion("Cannot upload a read-only blob!")
 
         elif not self.local_path:
-            raise _user_exceptions.FlyteAssertion("The Blob is not currently backed by a local file and therefore "
-                                                  "cannot be uploaded.  Please write to this Blob before attempting "
-                                                  "an upload.")
+            raise _user_exceptions.FlyteAssertion(
+                "The Blob is not currently backed by a local file and therefore "
+                "cannot be uploaded.  Please write to this Blob before attempting "
+                "an upload."
+            )
         else:
             # TODO: Introduce system logging
             # logging.info("Putting {} -> {}".format(self.local_path, self.remote_location))
-            _data_proxy.Data.put_data(
-                self.local_path,
-                self.remote_location,
-                is_multipart=False
-            )
+            _data_proxy.Data.put_data(self.local_path, self.remote_location, is_multipart=False)
 
 
-class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_models.Blob)):
-
-    def __init__(self, remote_path, mode='rb', format=None):
+class MultiPartBlob(_literal_models.Blob, metaclass=_sdk_bases.ExtendedSdkType):
+    def __init__(self, remote_path, mode="rb", format=None):
         """
         :param Text remote_path: Path to location where the Blob should be synced to.
         :param Text mode: File access mode.  'a' and '+' are forbidden.  A blob can only be written or read at a time.
         :param Text format: Format of underlying blob pieces.
         """
-        remote_path = remote_path.strip().rstrip('/') + '/'
+        remote_path = remote_path.strip().rstrip("/") + "/"
         super(MultiPartBlob, self).__init__(
             _literal_models.BlobMetadata(
-                type=_core_types.BlobType(
-                    format or "",
-                    _core_types.BlobType.BlobDimensionality.MULTIPART
-                )
+                type=_core_types.BlobType(format or "", _core_types.BlobType.BlobDimensionality.MULTIPART)
             ),
-            remote_path
+            remote_path,
         )
         self._is_managed = False
         self._blobs = []
@@ -260,7 +246,7 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
         self._mode = mode
 
     @classmethod
-    def promote_from_model(cls, model, mode='rb'):
+    def promote_from_model(cls, model, mode="rb"):
         """
         :param flytekit.models.literals.Blob model:
         :param Text mode: File access mode.  'a' and '+' are forbidden.  A blob can only be written or read at a time.
@@ -270,7 +256,7 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def create_at_known_location(cls, known_remote_location, mode='wb', format=None):
+    def create_at_known_location(cls, known_remote_location, mode="wb", format=None):
         """
         :param Text known_remote_location: The location to which to write the object.  Usually an s3 path.
         :param Text mode:
@@ -281,7 +267,7 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def create_at_any_location(cls, mode='wb', format=None):
+    def create_at_any_location(cls, mode="wb", format=None):
         """
         :param Text mode:
         :param Text format:
@@ -291,7 +277,7 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def fetch(cls, remote_path, local_path=None, overwrite=False, mode='rb', format=None):
+    def fetch(cls, remote_path, local_path=None, overwrite=False, mode="rb", format=None):
         """
         :param Text remote_path: The location from which to fetch the object. Usually an s3 path.
         :param Text local_path: [Optional] A local path to which to download the object. If specified, the object
@@ -308,7 +294,7 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def from_python_std(cls, t_value, mode='wb', format=None):
+    def from_python_std(cls, t_value, mode="wb", format=None):
         """
         :param T t_value:
         :param Text mode: Read or write mode of the object.
@@ -331,12 +317,12 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
                 type(t_value),
                 {str, _six.text_type, MultiPartBlob},
                 received_value=t_value,
-                additional_msg="Unable to create Blob from user-provided value."
+                additional_msg="Unable to create Blob from user-provided value.",
             )
 
     @classmethod
     @_exception_scopes.system_entry_point
-    def from_string(cls, t_value, mode='wb', format=None):
+    def from_string(cls, t_value, mode="wb", format=None):
         """
         :param T t_value:
         :param Text mode: Read or write mode of the object.
@@ -350,7 +336,7 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
         """
         :rtype: list[typing.BinaryIO]
         """
-        if 'r' not in self.mode:
+        if "r" not in self.mode:
             raise _user_exceptions.FlyteAssertion("Do not enter context to write to directory. Call create_piece")
 
         try:
@@ -363,8 +349,8 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
                         "path is specified."
                     )
                 self._directory = _utils.AutoDeletingTempDir(
-                    _uuid.uuid4().hex,
-                    tmp_dir=_data_proxy.LocalWorkingDirectoryContext.get().name)
+                    _uuid.uuid4().hex, tmp_dir=_data_proxy.LocalWorkingDirectoryContext.get().name,
+                )
                 self._is_managed = True
                 self._directory.__enter__()
                 # TODO: Introduce system logging
@@ -375,16 +361,13 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
             self._blobs = []
             file_handles = []
             for local_path in sorted(self._directory.list_dir(), key=lambda x: x.lower()):
-                b = Blob(
-                    _os.path.join(self.remote_location, _os.path.basename(local_path)),
-                    mode=self.mode,
-                )
+                b = Blob(_os.path.join(self.remote_location, _os.path.basename(local_path)), mode=self.mode,)
                 b._local_path = local_path
                 file_handles.append(b.__enter__())
                 self._blobs.append(b)
 
             return file_handles
-        except:
+        except Exception:
             # Exit is idempotent so close partially opened context that way
             exc_type, exc_obj, exc_tb = _sys.exc_info()
             self.__exit__(exc_type, exc_obj, exc_tb)
@@ -437,18 +420,16 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
             used to enforce ordering.  If not provided, the name is randomly generated.
         :rtype: Blob
         """
-        if 'w' not in self.mode:
+        if "w" not in self.mode:
             raise _user_exceptions.FlyteAssertion("Cannot create a blob in a read-only multipart blob")
         if name is None:
             name = _uuid.uuid4().hex
-        if ':' in name or '/' in name:
+        if ":" in name or "/" in name:
             raise _user_exceptions.FlyteAssertion(
-                name,
-                "Cannot create a part of a multi-part object with ':' or '/' in the name.")
+                name, "Cannot create a part of a multi-part object with ':' or '/' in the name.",
+            )
         return Blob.create_at_known_location(
-            _os.path.join(self.remote_location, name),
-            mode=self.mode,
-            format=self.metadata.type.format
+            _os.path.join(self.remote_location, name), mode=self.mode, format=self.metadata.type.format,
         )
 
     @_exception_scopes.system_entry_point
@@ -461,7 +442,7 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
         :param bool overwrite: If true and local_path is specified, we will download the blob pieces and
             overwrite any existing files at that location.  Default is False.
         """
-        if 'r' not in self.mode:
+        if "r" not in self.mode:
             raise _user_exceptions.FlyteAssertion("Cannot download a write-only object!")
 
         if local_path:
@@ -471,7 +452,8 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
                 "No temporary file system is present.  Either call this method from within the "
                 "context of a task or surround with a 'with LocalTestFileSystem():' block.  Or "
                 "specify a path when calling this function.  Note: Cleanup is not automatic when a "
-                "path is specified.")
+                "path is specified."
+            )
         else:
             local_path = _data_proxy.LocalWorkingDirectoryContext.get().get_named_tempfile(_uuid.uuid4().hex)
 
@@ -485,10 +467,7 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
         else:
             raise _user_exceptions.FlyteAssertion(
                 "Cannot download multi-part blob to a location that already exists when overwrite is not set to True. "
-                "Attempted download from {} -> {}".format(
-                    self.remote_location,
-                    self.local_path
-                )
+                "Attempted download from {} -> {}".format(self.remote_location, self.local_path)
             )
 
     @_exception_scopes.system_entry_point
@@ -496,18 +475,16 @@ class MultiPartBlob(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _literal_mod
         """
         Upload the multi-part blob to the remote location
         """
-        if 'w' not in self.mode:
+        if "w" not in self.mode:
             raise _user_exceptions.FlyteAssertion("Cannot upload a read-only multi-part blob!")
 
         elif not self.local_path:
-            raise _user_exceptions.FlyteAssertion("The multi-part blob is not currently backed by a local directoru "
-                                                  "and therefore cannot be uploaded.  Please write to this before "
-                                                  "attempting an upload.")
+            raise _user_exceptions.FlyteAssertion(
+                "The multi-part blob is not currently backed by a local directoru "
+                "and therefore cannot be uploaded.  Please write to this before "
+                "attempting an upload."
+            )
         else:
             # TODO: Introduce system logging
             # logging.info("Putting {} -> {}".format(self.local_path, self.remote_location))
-            _data_proxy.Data.put_data(
-                self.local_path,
-                self.remote_location,
-                is_multipart=True
-            )
+            _data_proxy.Data.put_data(self.local_path, self.remote_location, is_multipart=True)

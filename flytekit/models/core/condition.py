@@ -1,8 +1,7 @@
-from __future__ import absolute_import
-
 from flyteidl.core import condition_pb2 as _condition
 
-from flytekit.models import common as _common, literals as _literals
+from flytekit.models import common as _common
+from flytekit.models import literals as _literals
 
 
 class ComparisonExpression(_common.FlyteIdlEntity):
@@ -59,15 +58,19 @@ class ComparisonExpression(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.condition_pb2.ComparisonExpression
         """
-        return _condition.ComparisonExpression(operator=self.operator,
-                                               left_value=self.left_value.to_flyte_idl(),
-                                               right_value=self.right_value.to_flyte_idl())
+        return _condition.ComparisonExpression(
+            operator=self.operator,
+            left_value=self.left_value.to_flyte_idl(),
+            right_value=self.right_value.to_flyte_idl(),
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
-        return cls(operator=pb2_object.operator,
-                   left_value=Operand.from_flyte_idl(pb2_object.left_value),
-                   right_value=Operand.from_flyte_idl(pb2_object.right_value))
+        return cls(
+            operator=pb2_object.operator,
+            left_value=Operand.from_flyte_idl(pb2_object.left_value),
+            right_value=Operand.from_flyte_idl(pb2_object.right_value),
+        )
 
 
 class ConjunctionExpression(_common.FlyteIdlEntity):
@@ -115,15 +118,19 @@ class ConjunctionExpression(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.condition_pb2.ConjunctionExpression
         """
-        return _condition.ConjunctionExpression(operator=self.operator,
-                                                left_expression=self.left_expression.to_flyte_idl(),
-                                                right_expression=self.right_expression.to_flyte_idl())
+        return _condition.ConjunctionExpression(
+            operator=self.operator,
+            left_expression=self.left_expression.to_flyte_idl(),
+            right_expression=self.right_expression.to_flyte_idl(),
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
-        return cls(operator=pb2_object.operator,
-                   left_expression=BooleanExpression.from_flyte_idl(pb2_object.left_expression),
-                   right_expression=BooleanExpression.from_flyte_idl(pb2_object.right_expression))
+        return cls(
+            operator=pb2_object.operator,
+            left_expression=BooleanExpression.from_flyte_idl(pb2_object.left_expression),
+            right_expression=BooleanExpression.from_flyte_idl(pb2_object.right_expression),
+        )
 
 
 class Operand(_common.FlyteIdlEntity):
@@ -157,14 +164,18 @@ class Operand(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.condition_pb2.Operand
         """
-        return _condition.Operand(primitive=self.primitive.to_flyte_idl() if self.primitive else None,
-                                  var=self.var if self.var else None)
+        return _condition.Operand(
+            primitive=self.primitive.to_flyte_idl() if self.primitive else None, var=self.var if self.var else None,
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
-        return cls(primitive=_literals.Primitive.from_flyte_idl(pb2_object.primitive) if pb2_object.HasField(
-            'primitive') else None,
-                   var=pb2_object.var if pb2_object.HasField('var') else None)
+        return cls(
+            primitive=_literals.Primitive.from_flyte_idl(pb2_object.primitive)
+            if pb2_object.HasField("primitive")
+            else None,
+            var=pb2_object.var if pb2_object.HasField("var") else None,
+        )
 
 
 class BooleanExpression(_common.FlyteIdlEntity):
@@ -200,12 +211,18 @@ class BooleanExpression(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.condition_pb2.BooleanExpression
         """
-        return _condition.BooleanExpression(conjunction=self.conjunction.to_flyte_idl() if self.conjunction else None,
-                                            comparison=self.comparison.to_flyte_idl() if self.comparison else None)
+        return _condition.BooleanExpression(
+            conjunction=self.conjunction.to_flyte_idl() if self.conjunction else None,
+            comparison=self.comparison.to_flyte_idl() if self.comparison else None,
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
-        return cls(conjunction=ConjunctionExpression.from_flyte_idl(
-            pb2_object.conjunction) if pb2_object.HasField('conjunction') else None,
-                   comparison=ComparisonExpression.from_flyte_idl(
-                       pb2_object.comparison) if pb2_object.HasField('comparison') else None)
+        return cls(
+            conjunction=ConjunctionExpression.from_flyte_idl(pb2_object.conjunction)
+            if pb2_object.HasField("conjunction")
+            else None,
+            comparison=ComparisonExpression.from_flyte_idl(pb2_object.comparison)
+            if pb2_object.HasField("comparison")
+            else None,
+        )

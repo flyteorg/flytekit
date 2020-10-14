@@ -1,24 +1,25 @@
-from __future__ import absolute_import
-
 from datetime import timedelta
-
-from mock import patch as _patch
 from os import path as _path
+
+from flyteidl.core import compiler_pb2 as _compiler_pb2
+from flyteidl.core import workflow_pb2 as _workflow_pb2
+from mock import patch as _patch
 
 from flytekit.common import workflow as _workflow_common
 from flytekit.common.tasks import task as _task
-from flytekit.models import interface as _interface, \
-    literals as _literals, types as _types, task as _task_model
-from flytekit.models.core import workflow as _workflow_model, identifier as _identifier, compiler as _compiler_model
+from flytekit.models import interface as _interface
+from flytekit.models import literals as _literals
+from flytekit.models import task as _task_model
+from flytekit.models import types as _types
+from flytekit.models.core import compiler as _compiler_model
+from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import workflow as _workflow_model
 from flytekit.sdk import tasks as _sdk_tasks
 from flytekit.sdk import workflow as _sdk_workflow
-from flytekit.sdk.types import Types as _Types
-from flyteidl.core import compiler_pb2 as _compiler_pb2, workflow_pb2 as _workflow_pb2
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class, Input, Output
 from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class, Input, Output
+from flytekit.sdk.types import Types as _Types
+from flytekit.sdk.workflow import Input, Output, workflow_class
 
 
 def get_sample_node_metadata(node_id):
@@ -27,11 +28,7 @@ def get_sample_node_metadata(node_id):
     :rtype: flytekit.models.core.workflow.NodeMetadata
     """
 
-    return _workflow_model.NodeMetadata(
-        name=node_id,
-        timeout=timedelta(seconds=10),
-        retries=_literals.RetryStrategy(0)
-    )
+    return _workflow_model.NodeMetadata(name=node_id, timeout=timedelta(seconds=10), retries=_literals.RetryStrategy(0))
 
 
 def get_sample_container():
@@ -42,12 +39,7 @@ def get_sample_container():
     resources = _task_model.Resources(requests=[cpu_resource], limits=[cpu_resource])
 
     return _task_model.Container(
-        "my_image",
-        ["this", "is", "a", "cmd"],
-        ["this", "is", "an", "arg"],
-        resources,
-        {},
-        {}
+        "my_image", ["this", "is", "a", "cmd"], ["this", "is", "an", "arg"], resources, {}, {},
     )
 
 
@@ -62,7 +54,7 @@ def get_sample_task_metadata():
         _literals.RetryStrategy(3),
         True,
         "0.1.1b0",
-        "This is deprecated!"
+        "This is deprecated!",
     )
 
 
@@ -70,8 +62,6 @@ def get_workflow_template():
     """
     This function retrieves a TasKTemplate object from the pb file in the resources directory.
     It was created by reading from Flyte Admin, the following workflow, after registration.
-
-    from __future__ import absolute_import
 
     from flytekit.common.types.primitives import Integer
     from flytekit.sdk.tasks import (
@@ -133,23 +123,24 @@ def test_basic_workflow_promote(mock_task_fetch):
     int_type = _types.LiteralType(_types.SimpleType.INTEGER)
     task_interface = _interface.TypedInterface(
         # inputs
-        {'a': _interface.Variable(int_type, "description1")},
+        {"a": _interface.Variable(int_type, "description1")},
         # outputs
-        {
-            'b': _interface.Variable(int_type, "description2"),
-            'c': _interface.Variable(int_type, "description3")
-        }
+        {"b": _interface.Variable(int_type, "description2"), "c": _interface.Variable(int_type, "description3")},
     )
     # Since the promotion of a workflow requires retrieving the task from Admin, we mock the SdkTask to return
     task_template = _task_model.TaskTemplate(
-        _identifier.Identifier(_identifier.ResourceType.TASK, "project", "domain",
-                               "tests.flytekit.unit.common_tests.test_workflow_promote.demo_task_for_promote",
-                               "version"),
+        _identifier.Identifier(
+            _identifier.ResourceType.TASK,
+            "project",
+            "domain",
+            "tests.flytekit.unit.common_tests.test_workflow_promote.demo_task_for_promote",
+            "version",
+        ),
         "python_container",
         get_sample_task_metadata(),
         task_interface,
         custom={},
-        container=get_sample_container()
+        container=get_sample_container(),
     )
     sdk_promoted_task = _task.SdkTask.promote_from_model(task_template)
     mock_task_fetch.return_value = sdk_promoted_task

@@ -1,14 +1,11 @@
-from __future__ import absolute_import
-
 from flyteidl.core import workflow_closure_pb2 as _workflow_closure_pb2
 
 from flytekit.models import common as _common
-from flytekit.models.core import workflow as _core_workflow_models
 from flytekit.models import task as _task_models
+from flytekit.models.core import workflow as _core_workflow_models
 
 
 class WorkflowClosure(_common.FlyteIdlEntity):
-
     def __init__(self, workflow, tasks=None):
         """
         :param flytekit.models.core.workflow.WorkflowTemplate workflow: Workflow template
@@ -36,8 +33,7 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.workflow_closure_pb2.WorkflowClosure
         """
         return _workflow_closure_pb2.WorkflowClosure(
-            workflow=self.workflow.to_flyte_idl(),
-            tasks=[t.to_flyte_idl() for t in self.tasks]
+            workflow=self.workflow.to_flyte_idl(), tasks=[t.to_flyte_idl() for t in self.tasks],
         )
 
     @classmethod

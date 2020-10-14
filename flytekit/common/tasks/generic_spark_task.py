@@ -1,54 +1,51 @@
-from __future__ import absolute_import
+import sys as _sys
 
-try:
-    from inspect import getfullargspec as _getargspec
-except ImportError:
-    from inspect import getargspec as _getargspec
+import six as _six
+from google.protobuf.json_format import MessageToDict as _MessageToDict
 
 from flytekit import __version__
-import sys as _sys
-import six as _six
-from flytekit.common.tasks import task as _base_tasks
-from flytekit.common.types import helpers as _helpers, primitives as _primitives
-
-from flytekit.models import literals as _literal_models, task as _task_models
-from google.protobuf.json_format import MessageToDict as _MessageToDict
 from flytekit.common import interface as _interface
-from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.exceptions import scopes as _exception_scopes
-
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.tasks import task as _base_tasks
+from flytekit.common.types import helpers as _helpers
+from flytekit.common.types import primitives as _primitives
 from flytekit.configuration import internal as _internal_config
+from flytekit.models import literals as _literal_models
+from flytekit.models import task as _task_models
 
-input_types_supported = { _primitives.Integer,
-                          _primitives.Boolean,
-                          _primitives.Float,
-                          _primitives.String,
-                          _primitives.Datetime,
-                          _primitives.Timedelta,
-                        }
+input_types_supported = {
+    _primitives.Integer,
+    _primitives.Boolean,
+    _primitives.Float,
+    _primitives.String,
+    _primitives.Datetime,
+    _primitives.Timedelta,
+}
 
 
-class SdkGenericSparkTask( _base_tasks.SdkTask):
+class SdkGenericSparkTask(_base_tasks.SdkTask):
     """
     This class includes the additional logic for building a task that executes as a Spark Job.
 
     """
+
     def __init__(
-            self,
-            task_type,
-            discovery_version,
-            retries,
-            interruptible,
-            task_inputs,
-            deprecated,
-            discoverable,
-            timeout,
-            spark_type,
-            main_class,
-            main_application_file,
-            spark_conf,
-            hadoop_conf,
-            environment,
+        self,
+        task_type,
+        discovery_version,
+        retries,
+        interruptible,
+        task_inputs,
+        deprecated,
+        discoverable,
+        timeout,
+        spark_type,
+        main_class,
+        main_application_file,
+        spark_conf,
+        hadoop_conf,
+        environment,
     ):
         """
         :param Text task_type: string describing the task type
@@ -69,7 +66,7 @@ class SdkGenericSparkTask( _base_tasks.SdkTask):
         spark_job = _task_models.SparkJob(
             spark_conf=spark_conf,
             hadoop_conf=hadoop_conf,
-            spark_type = spark_type,
+            spark_type=spark_type,
             application_file=main_application_file,
             main_class=main_class,
             executor_path=_sys.executable,
@@ -79,16 +76,12 @@ class SdkGenericSparkTask( _base_tasks.SdkTask):
             task_type,
             _task_models.TaskMetadata(
                 discoverable,
-                _task_models.RuntimeMetadata(
-                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
-                    __version__,
-                    'spark'
-                ),
+                _task_models.RuntimeMetadata(_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "spark",),
                 timeout,
                 _literal_models.RetryStrategy(retries),
                 interruptible,
                 discovery_version,
-                deprecated
+                deprecated,
             ),
             _interface.TypedInterface({}, {}),
             _MessageToDict(spark_job),
@@ -99,9 +92,7 @@ class SdkGenericSparkTask( _base_tasks.SdkTask):
             task_inputs(self)
 
         # Container after the Inputs have been updated.
-        self._container = self._get_container_definition(
-                environment=environment
-            )
+        self._container = self._get_container_definition(environment=environment)
 
     def _validate_inputs(self, inputs):
         """
@@ -109,10 +100,12 @@ class SdkGenericSparkTask( _base_tasks.SdkTask):
         :raises: flytekit.common.exceptions.user.FlyteValidationException
         """
         for k, v in _six.iteritems(inputs):
-            sdk_type =_helpers.get_sdk_type_from_literal_type(v.type)
+            sdk_type = _helpers.get_sdk_type_from_literal_type(v.type)
             if sdk_type not in input_types_supported:
                 raise _user_exceptions.FlyteValidationException(
-                    "Input Type '{}' not supported.  Only Primitives are supported for Scala/Java Spark.".format(sdk_type)
+                    "Input Type '{}' not supported.  Only Primitives are supported for Scala/Java Spark.".format(
+                        sdk_type
+                    )
                 )
         super(SdkGenericSparkTask, self)._validate_inputs(inputs)
 
@@ -128,8 +121,7 @@ class SdkGenericSparkTask( _base_tasks.SdkTask):
         self.interface.inputs.update(inputs)
 
     def _get_container_definition(
-            self,
-            environment=None,
+        self, environment=None,
     ):
         """
         :rtype: Container
@@ -146,5 +138,5 @@ class SdkGenericSparkTask( _base_tasks.SdkTask):
             args=args,
             resources=_task_models.Resources([], []),
             env=environment,
-            config={}
+            config={},
         )

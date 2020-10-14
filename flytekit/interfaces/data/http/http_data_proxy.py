@@ -1,8 +1,7 @@
-from __future__ import absolute_import
-
 import requests as _requests
-from flytekit.interfaces.data import common as _common_data
+
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.interfaces.data import common as _common_data
 
 
 class HttpFileProxy(_common_data.DataProxy):
@@ -17,14 +16,15 @@ class HttpFileProxy(_common_data.DataProxy):
         :rtype bool: whether the file exists or not
         """
         rsp = _requests.head(path)
-        allowed_codes = {type(self)._HTTP_OK, type(self)._HTTP_NOT_FOUND, type(self)._HTTP_FORBIDDEN}
+        allowed_codes = {
+            type(self)._HTTP_OK,
+            type(self)._HTTP_NOT_FOUND,
+            type(self)._HTTP_FORBIDDEN,
+        }
         if rsp.status_code not in allowed_codes:
             raise _user_exceptions.FlyteValueException(
                 rsp.status_code,
-                "Data at {} could not be checked for existence. Expected one of: {}".format(
-                    path,
-                    allowed_codes
-                )
+                "Data at {} could not be checked for existence. Expected one of: {}".format(path, allowed_codes),
             )
         return rsp.status_code == type(self)._HTTP_OK
 
@@ -45,9 +45,9 @@ class HttpFileProxy(_common_data.DataProxy):
         if rsp.status_code != type(self)._HTTP_OK:
             raise _user_exceptions.FlyteValueException(
                 rsp.status_code,
-                "Request for data @ {} failed. Expected status code {}".format(from_path, type(self)._HTTP_OK)
+                "Request for data @ {} failed. Expected status code {}".format(from_path, type(self)._HTTP_OK),
             )
-        with open(to_path, 'wb') as writer:
+        with open(to_path, "wb") as writer:
             writer.write(rsp.content)
 
     def upload(self, from_path, to_path):
