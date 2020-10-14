@@ -209,9 +209,6 @@ def binding_from_python_std(ctx: _flyte_context.FlyteContext, var_name: str, exp
     else:
         # Question: Haytham/Ketan - Is it okay for me to rely on the expected idl type, which comes from the task's
         #   interface, to derive the scalar value?
-        # Question: The context here is only used for complicated things like handling files. Should we
-        #   support this? Or should we try to make this function simpler and only allow users to create bindings to
-        #   simple scalars?
         scalar = python_value_to_idl_literal(ctx, t_value, expected_literal_type).scalar
         binding_data = _literals_models.BindingData(scalar=scalar)
 

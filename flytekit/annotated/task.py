@@ -330,7 +330,22 @@ class DynamicWorkflowTask(Task):
         super().__init__(self._workflow.name, self._workflow.interface, metadata, *args, **kwargs)
 
     def execute(self, **kwargs) -> Any:
+        """
+        By the time this function is invoked, the _local_execute function should have unwrapped the Promises and Flyte
+        literal wrappers so that the kwargs we are working with here are now Python native literal values. This
+        function is also expected to return Python native literal values.
+
+        Since the user code within a dynamic task constitute a workflow, we have to first compile the workflow, and
+        then execute that workflow.
+
+        When running for real in production, the task would stop after the compilation step, and then create a file
+        representing that newly generated workflow, instead of executing it.
+        """
         ctx = FlyteContext.current_context()
+        # with ctx.new_compilation_context() as ctx:
+        # if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+        #     ...
+
         if ctx.compilation_state is not None:
             raise NotImplementedError(
                 "Dynamic workflow compilation is not yet implemented. This will be invoked at runtime")

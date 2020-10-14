@@ -153,6 +153,9 @@ class Workflow(object):
         # there, but it'll return Promise objects.
         else:
             # Run some sanity checks
+            # Even though the _local_execute call generally expects inputs to be Promises, we don't have to do the
+            # conversion here in this loop. The reason is because we don't prevent users from specifying inputs
+            # as direct scalars, which means there's another Promise-generating loop inside _local_execute too
             for k, v in kwargs.items():
                 if k not in self.interface.inputs:
                     raise ValueError(f"Received unexpected keyword argument {k}")

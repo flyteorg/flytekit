@@ -317,35 +317,36 @@ def test_wf1_compile_time_constant_vars():
         'out_1': "hello This is my way",
     }
 
-# def test_wf1_with_dynamic():
-#     @task
-#     def t1(a: int) -> str:
-#         a = a + 2
-#         return "world-" + str(a)
-#
-#     @task
-#     def t2(a: str, b: str) -> str:
-#         return b + a
-#
-#     @dynamic
-#     def my_subwf(a: int) -> typing.List[str]:
-#         s = []
-#         for i in range(a):
-#             s.append(t1(a=i))
-#         return s
-#
-#     @workflow
-#     def my_wf(a: int, b: str) -> (str, typing.List[str]):
-#         x = t2(a=b, b=b)
-#         v = my_subwf(a=a)
-#         return x, v
-#
-#     v = 5
-#     x = my_wf(a=v, b="hello ")
-#     assert x == {
-#         'out_0': "hello hello ",
-#         'out_1': ["world-" + str(i) for i in range(2, v+2)],
-#     }
+
+def test_wf1_with_dynamic():
+    @task
+    def t1(a: int) -> str:
+        a = a + 2
+        return "world-" + str(a)
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @dynamic
+    def my_subwf(a: int) -> typing.List[str]:
+        s = []
+        for i in range(a):
+            s.append(t1(a=i))
+        return s
+
+    @workflow
+    def my_wf(a: int, b: str) -> (str, typing.List[str]):
+        x = t2(a=b, b=b)
+        v = my_subwf(a=a)
+        return x, v
+
+    v = 5
+    x = my_wf(a=v, b="hello ")
+    assert x == {
+        'out_0': "hello hello ",
+        'out_1': ["world-" + str(i) for i in range(2, v+2)],
+    }
 
 
 # TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!
