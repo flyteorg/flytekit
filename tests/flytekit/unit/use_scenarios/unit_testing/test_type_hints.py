@@ -4,7 +4,8 @@ import typing
 
 import flytekit.annotated.task
 import flytekit.annotated.workflow
-from flytekit.annotated import context_manager
+from flytekit.annotated import context_manager, promise
+from flytekit.annotated.context_manager import FlyteContext, ExecutionState
 from flytekit.annotated.task import task, AbstractSQLTask, metadata, maptask, dynamic
 from flytekit.annotated.workflow import workflow
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
@@ -120,6 +121,7 @@ def test_wf1():
 
     assert len(my_wf._sdk_workflow.nodes) == 2
     assert my_wf._sdk_workflow.nodes[0].id == "node-0"
+    assert my_wf._sdk_workflow.nodes[1]._upstream[0] is my_wf._sdk_workflow.nodes[0]
 
     assert len(my_wf._sdk_workflow.outputs) == 2
     assert my_wf._sdk_workflow.outputs[0].var == 'out_0'
@@ -168,6 +170,33 @@ def test_wf1_with_overrides():
         'out_0': 7,
         'out_1': "hello world",
     }
+
+
+def test_promise_return():
+    """
+    Testing that when a workflow is local executed but a local wf execution context already exists, Promise objects
+    are returned wrapping Flyte literals instead of the unpacked dict.
+    """
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        a = a + 2
+        return a, "world-" + str(a)
+
+    @workflow
+    def mimic_sub_wf(a: int) -> (str, str):
+        x, y = t1(a=a)
+        u, v = t1(a=x)
+        return y, v
+
+    ctx = context_manager.FlyteContext.current_context()
+
+    with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
+        a, b = mimic_sub_wf(a=3)
+
+    assert isinstance(a, promise.Promise)
+    assert isinstance(b, promise.Promise)
+    assert a.val.scalar.value.string_value == "world-5"
+    assert b.val.scalar.value.string_value == "world-7"
 
 
 def test_wf1_with_subwf():
@@ -319,24 +348,31 @@ def test_wf1_with_dynamic():
         'out_1': ["world-" + str(i) for i in range(2, v+2)],
     }
 
+    compiled_sub_wf = my_subwf.compile_into_workflow(a=5)
+    assert len(compiled_sub_wf._sdk_workflow.nodes) == 5
+
+
+def test_list_output():
+    @task
+    def t1(a: int) -> str:
+        a = a + 2
+        return "world-" + str(a)
+
+    @workflow
+    def lister() -> typing.List[str]:
+        s = []
+        # FYI: For users who happen to look at this, keep in mind this is only run once at compile time.
+        for i in range(10):
+            s.append(t1(a=i))
+        return s
+
+    assert len(lister._sdk_workflow.outputs) == 1
+    binding_data = lister._sdk_workflow.outputs[0].binding  # the property should be named binding_data
+    assert binding_data.collection is not None
+    assert len(binding_data.collection.bindings) ==  10
+
 
 # TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!
-
-
-    # def test_normal_path():
-#     # Write some random numbers to a file
-#     def t1():
-#         ...
-#
-#     # Read back the file and transform it
-#     def t2(in1: _flytekit_typing.FlyteFilePath) -> str:
-#         with open(in1, 'r') as fh:
-#             lines = fh.readlines()
-#             return "".join(lines)
-#
-#
-#
-#
 
 
 # @flyte_test

@@ -5,7 +5,6 @@ from typing import Dict, Generator, Union, Type, Tuple, List, Any, _GenericAlias
 
 from flytekit import logger
 from flytekit.annotated import type_engine
-from flytekit.common import interface as _common_interface
 from flytekit.models import interface as _interface_models, types as _type_models
 
 
@@ -103,7 +102,7 @@ def transform_inputs_to_parameters(interface: Interface) -> _interface_models.Pa
     return _interface_models.ParameterMap(params)
 
 
-def transform_interface_to_typed_interface(interface: Interface) -> _common_interface.TypedInterface:
+def transform_interface_to_typed_interface(interface: Interface) -> _interface_models.TypedInterface:
     """
     Transform the given simple python native interface to FlyteIDL's interface
     """
@@ -112,10 +111,7 @@ def transform_interface_to_typed_interface(interface: Interface) -> _common_inte
 
     inputs_map = transform_variable_map(interface.inputs)
     outputs_map = transform_variable_map(interface.outputs)
-    interface_model = _interface_models.TypedInterface(inputs_map, outputs_map)
-
-    # Maybe in the future we can just use the model
-    return _common_interface.TypedInterface.promote_from_model(interface_model)
+    return _interface_models.TypedInterface(inputs_map, outputs_map)
 
 
 def transform_variable_map_to_collection(
@@ -144,14 +140,15 @@ def transform_variable_map_to_collection(
 
 
 def transform_typed_interface_to_collection_interface(
-        interface: _common_interface.TypedInterface) -> _common_interface.TypedInterface:
+        interface: _interface_models.TypedInterface) -> _interface_models.TypedInterface:
     """
     Takes a single task interface and interpolates it to an array interface - to allow performing distributed python map
     like functions
     """
     map_inputs = transform_variable_map_to_collection(interface.inputs)
     map_outputs = transform_variable_map_to_collection(interface.outputs)
-    return _common_interface.TypedInterface(inputs=map_inputs, outputs=map_outputs)
+
+    return _interface_models.TypedInterface(inputs=map_inputs, outputs=map_outputs)
 
 
 def transform_signature_to_interface(signature: inspect.Signature) -> Interface:

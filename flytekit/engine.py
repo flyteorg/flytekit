@@ -188,8 +188,8 @@ def python_value_to_idl_literal(
         return _literals_models.Literal(map=_literals_models.LiteralMap(literals=idl_literals))
 
 
-def binding_from_python_std(ctx: _flyte_context.FlyteContext, var_name: str, expected_literal_type,
-                            t_value) -> _literals_models.Binding:
+def binding_data_from_python_std(ctx: _flyte_context.FlyteContext, expected_literal_type: _type_models.LiteralType,
+                                 t_value) -> _literals_models.BindingData:
     # This handles the case where the incoming value is a workflow-level input
     if isinstance(t_value, _type_models.OutputReference):
         binding_data = _literals_models.BindingData(promise=t_value)
@@ -199,20 +199,30 @@ def binding_from_python_std(ctx: _flyte_context.FlyteContext, var_name: str, exp
         if not t_value.is_ready:
             binding_data = _literals_models.BindingData(promise=t_value.ref)
 
-    elif isinstance(t_value, list) or isinstance(t_value, dict):
-        # I didn't really like the list implementation below so leaving both dict and list unimplemented for now
-        # When filling this part out, keep in mind detection of upstream nodes in task compilation will also need to
-        # be updated.
+    elif isinstance(t_value, list):
+        if expected_literal_type.collection_type is None:
+            raise Exception(f'this should be a list and it is not: {type(t_value)} vs {expected_literal_type}')
+
+        collection = _literals_models.BindingDataCollection(bindings=[
+            binding_data_from_python_std(ctx, expected_literal_type.collection_type, t)
+            for t in t_value])
+
+        binding_data = _literals_models.BindingData(collection=collection)
+
+    elif isinstance(t_value, dict):
         raise Exception("not yet handled - haytham will implement")
 
     # This is the scalar case - e.g. my_task(in1=5)
     else:
         # Question: Haytham/Ketan - Is it okay for me to rely on the expected idl type, which comes from the task's
         #   interface, to derive the scalar value?
-        # Question: The context here is only used for complicated things like handling files. Should we
-        #   support this? Or should we try to make this function simpler and only allow users to create bindings to
-        #   simple scalars?
         scalar = python_value_to_idl_literal(ctx, t_value, expected_literal_type).scalar
         binding_data = _literals_models.BindingData(scalar=scalar)
 
+    return binding_data
+
+
+def binding_from_python_std(ctx: _flyte_context.FlyteContext, var_name: str,
+                            expected_literal_type: _type_models.LiteralType, t_value) -> _literals_models.Binding:
+    binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value)
     return _literals_models.Binding(var=var_name, binding=binding_data)
