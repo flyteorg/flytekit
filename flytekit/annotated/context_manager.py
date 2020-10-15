@@ -29,6 +29,11 @@ class CompilationState(object):
         self.mode = 1  # TODO: Turn into enum in the future, or remove if only one mode.
 
 
+class BranchEvalMode(Enum):
+    BRANCH_ACTIVE = "branch active"
+    BRANCH_SKIPPED = "branch skipped"
+
+
 class ExecutionState(object):
     class Mode(Enum):
         # This is the mode that will be selected when a task is supposed to just run its function, nothing more
@@ -43,6 +48,7 @@ class ExecutionState(object):
         self._mode = mode
         self._working_dir = working_dir
         self._additional_context = additional_context
+        self._branch_eval_mode = None
 
     @property
     def working_dir(self) -> os.PathLike:
@@ -56,10 +62,38 @@ class ExecutionState(object):
     def mode(self) -> Mode:
         return self._mode
 
+    @property
+    def branch_eval_mode(self) -> Optional[BranchEvalMode]:
+        return self._branch_eval_mode
 
-class BranchEvalMode(Enum):
-    BRANCH_ACTIVE = "branch active"
-    BRANCH_SKIPPED = "branch skipped"
+    def enter_conditional_section(self):
+        """
+        We cannot use a context manager here, so we will mimic the context manager API
+        Reason we cannot use is because branch is a functional api and the context block is not well defined
+        TODO we might want to create a new node manager here, as we want to capture all nodes in this branch
+             context
+        """
+        self._branch_eval_mode = BranchEvalMode.BRANCH_SKIPPED
+
+    def take_branch(self):
+        """
+        Indicates that we are within an if-else block and the current branch has evaluated to true.
+        Useful only in local execution mode
+        """
+        self._branch_eval_mode = BranchEvalMode.BRANCH_ACTIVE
+
+    def branch_complete(self):
+        """
+        Indicates that we are within a conditional / ifelse block and the active branch is not done.
+        Default to SKIPPED
+        """
+        self._branch_eval_mode = BranchEvalMode.BRANCH_SKIPPED
+
+    def exit_conditional_section(self):
+        """
+        Removes any current branch logic
+        """
+        self._branch_eval_mode = None
 
 
 class FlyteContext(object):
@@ -83,7 +117,6 @@ class FlyteContext(object):
                  execution_state: ExecutionState = None,
                  flyte_client: flyte_client.SynchronousFlyteClient = None,
                  user_space_params: ExecutionParameters = None,
-                 branch_eval_mode: BranchEvalMode = None,
                  ):
         # TODO: Should we have this auto-parenting feature?
         if parent is None and len(FlyteContext.OBJS) > 0:
@@ -99,7 +132,6 @@ class FlyteContext(object):
         self._execution_state = execution_state
         self._flyte_client = flyte_client
         self._user_space_params = user_space_params
-        self._branch_eval_mode = branch_eval_mode
 
     def __enter__(self):
         # Should we auto-assign the parent here?
@@ -186,10 +218,6 @@ class FlyteContext(object):
     def execution_state(self) -> Optional[ExecutionState]:
         return self._execution_state
 
-    @property
-    def branch_eval_mode(self) -> Optional[BranchEvalMode]:
-        return self._branch_eval_mode
-
     @contextmanager
     def new_execution_context(self, mode: ExecutionState.Mode,
                               additional_context: Dict[Any, Any] = None) -> Generator['FlyteContext', None, None]:
@@ -253,36 +281,6 @@ class FlyteContext(object):
             yield new_ctx
         finally:
             FlyteContext.OBJS.pop()
-
-    def enter_conditional_section(self):
-        """
-        We cannot use a context manager here, so we will mimic the context manager API
-        Reason we cannot use is because branch is a functional api and the context block is not well defined
-        TODO we might want to create a new node manager here, as we want to capture all nodes in this branch
-             context
-        """
-        self._branch_eval_mode = BranchEvalMode.BRANCH_SKIPPED
-
-    def take_branch(self):
-        """
-        Indicates that we are within an if-else block and the current branch has evaluated to true.
-        Useful only in local execution mode
-        """
-        self._branch_eval_mode = BranchEvalMode.BRANCH_ACTIVE
-
-    def branch_complete(self):
-        """
-        Indicates that we are within a conditional / ifelse block and the active branch is not done.
-        Default to SKIPPED
-        """
-        self._branch_eval_mode = BranchEvalMode.BRANCH_SKIPPED
-
-    def exit_conditional_section(self):
-        """
-        Removes any current branch logic
-        """
-        self._branch_eval_mode = None
-
 
     @property
     def flyte_client(self):

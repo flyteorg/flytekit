@@ -37,8 +37,8 @@ class ConditionalSection(object):
         self._selected_case = None
         self._last_condition = False
 
-        ctx = FlyteContext.current_context()
-        self._exec_mode = ctx.execution_state.mode if ctx.execution_state else None
+        ctx = FlyteContext.current_context().execution_state
+        self._exec_mode = ctx.mode if ctx else None
 
         if self._exec_mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             """
@@ -49,15 +49,16 @@ class ConditionalSection(object):
 
     def __del__(self):
         # Its ok to always clean up the conditional section
-        ctx = FlyteContext.current_context()
-        ctx.exit_conditional_section()
+        ctx = FlyteContext.current_context().execution_state
+        if ctx:
+            ctx.exit_conditional_section()
 
     def _eval_take_branch(self, expr: Union[ComparisonExpression, ConjunctionExpression]):
         if self._exec_mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             if expr is None or expr.eval():
                 if self._selected_case:
                     return
-                ctx = FlyteContext.current_context()
+                ctx = FlyteContext.current_context().execution_state
                 ctx.take_branch()
                 self._selected_case = self._cases[-1]
         else:
@@ -66,7 +67,7 @@ class ConditionalSection(object):
 
     def _branch_complete(self):
         if self._exec_mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            ctx = FlyteContext.current_context()
+            ctx = FlyteContext.current_context().execution_state
             return ctx.branch_complete()
 
     @property
