@@ -13,7 +13,7 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 from flytekit.models import literals as _literals
 from flytekit.models import types as _idl_types
-from flytekit.models.common import FlyteIdlEntity
+from flytekit.models.common import FlyteIdlEntity, FlyteType
 from flytekit.models.types import LiteralType
 
 ProtobufT = Type[_proto_reflection.GeneratedProtocolMessageType]
@@ -53,8 +53,24 @@ class Protobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
         :param Union[T, FlyteIdlEntity] pb_object:
         """
         v = pb_object
+        # This section converts an existing proto object (or a subclass of) to the right type expected by this instance
+        # of GenericProto. GenericProto can be used with any protobuf type (not restricted to FlyteType). This makes it
+        # a bit tricky to figure out the right version of the underlying raw proto class to use to populate the final
+        # struct.
+        # If the provided object has to_flyte_idl(), call it to produce a raw proto.
         if isinstance(pb_object, FlyteIdlEntity):
             v = pb_object.to_flyte_idl()
+
+        # A check to ensure the raw proto (v) is of the correct expected type. This also performs one final attempt to
+        # convert it to the correct type by leveraging from_flyte_idl (implemented by all FlyteTypes) in case this class
+        # is initialized with one.
+        expected_type = type(self).pb_type
+        if expected_type != type(v) and expected_type != type(pb_object):
+            if isinstance(type(self).pb_type, FlyteType):
+                v = expected_type.from_flyte_idl(v).to_flyte_idl()
+            else:
+                raise _user_exceptions.FlyteTypeException(received_type=type(pb_object), expected_type=expected_type,
+                                                          received_value=pb_object)
         data = v.SerializeToString()
         super(Protobuf, self).__init__(
             scalar=_literals.Scalar(
@@ -174,10 +190,28 @@ class GenericProtobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
         """
         struct = Struct()
         v = pb_object
+
+        # This section converts an existing proto object (or a subclass of) to the right type expected by this instance
+        # of GenericProto. GenericProto can be used with any protobuf type (not restricted to FlyteType). This makes it
+        # a bit tricky to figure out the right version of the underlying raw proto class to use to populate the final
+        # struct.
+        # If the provided object has to_flyte_idl(), call it to produce a raw proto.
         if isinstance(pb_object, FlyteIdlEntity):
             v = pb_object.to_flyte_idl()
+
+        # A check to ensure the raw proto (v) is of the correct expected type. This also performs one final attempt to
+        # convert it to the correct type by leveraging from_flyte_idl (implemented by all FlyteTypes) in case this class
+        # is initialized with one.
+        expected_type = type(self).pb_type
+        if expected_type != type(v) and expected_type != type(pb_object):
+            if isinstance(type(self).pb_type, FlyteType):
+                v = expected_type.from_flyte_idl(v).to_flyte_idl()
+            else:
+                raise _user_exceptions.FlyteTypeException(received_type=type(pb_object), expected_type=expected_type,
+                                                          received_value=pb_object)
+
         struct.update(_MessageToDict(v))
-        super().__init__(scalar=_literals.Scalar(generic=struct,))
+        super().__init__(scalar=_literals.Scalar(generic=struct, ))
 
     @classmethod
     def is_castable_from(cls, other):
@@ -268,7 +302,8 @@ def create_generic(pb_type: Type[GeneratedProtocolMessageType]) -> Type[GenericP
     :param Type[GeneratedProtocolMessageType] pb_type:
     :rtype: Type[GenericProtobuf]
     """
-    if not isinstance(pb_type, _proto_reflection.GeneratedProtocolMessageType):
+    if not isinstance(pb_type, _proto_reflection.GeneratedProtocolMessageType) and not issubclass(pb_type,
+                                                                                                  FlyteIdlEntity):
         raise _user_exceptions.FlyteTypeException(
             expected_type=_proto_reflection.GeneratedProtocolMessageType,
             received_type=type(pb_type),

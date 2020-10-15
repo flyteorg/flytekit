@@ -1,8 +1,6 @@
-from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
-from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _pb2_parameter_ranges
-
+from flytekit.models.sagemaker import parameter_ranges as _parameter_range_models, hpo_job as _hpo_models
 from flytekit.sdk import types as _sdk_types
 
-HyperparameterTuningJobConfig = _sdk_types.Types.GenericProto(_pb2_hpo_job.HyperparameterTuningJobConfig)
+HyperparameterTuningJobConfig = _sdk_types.Types.GenericProto(_hpo_models.HyperparameterTuningJobConfig)
 
-ParameterRange = _sdk_types.Types.GenericProto(_pb2_parameter_ranges.ParameterRangeOneOf)
+ParameterRange = _sdk_types.Types.GenericProto(_parameter_range_models.ParameterRangeOneOf)

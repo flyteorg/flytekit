@@ -15,7 +15,6 @@ from flytekit.models.sagemaker.parameter_ranges import (
     ContinuousParameterRange,
     HyperparameterScalingType,
     IntegerParameterRange,
-    ParameterRangeOneOf,
 )
 from flytekit.models.sagemaker.training_job import (
     AlgorithmName,
@@ -97,15 +96,9 @@ class SageMakerHPO(object):
         validation=validation_dataset,
         static_hyperparameters=static_hyperparameters,
         hyperparameter_tuning_job_config=hyperparameter_tuning_job_config,
-        num_round=ParameterRangeOneOf(
-            IntegerParameterRange(min_value=2, max_value=8, scaling_type=HyperparameterScalingType.LINEAR)
-        ),
-        max_depth=ParameterRangeOneOf(
-            IntegerParameterRange(min_value=5, max_value=7, scaling_type=HyperparameterScalingType.LINEAR)
-        ),
-        gamma=ParameterRangeOneOf(
-            ContinuousParameterRange(min_value=0.0, max_value=0.3, scaling_type=HyperparameterScalingType.LINEAR)
-        ),
+        num_round=IntegerParameterRange(min_value=2, max_value=8, scaling_type=HyperparameterScalingType.LINEAR),
+        max_depth=IntegerParameterRange(min_value=5, max_value=7, scaling_type=HyperparameterScalingType.LINEAR),
+        gamma=ContinuousParameterRange(min_value=0.0, max_value=0.3, scaling_type=HyperparameterScalingType.LINEAR),
     )
 
 
