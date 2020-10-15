@@ -1,36 +1,65 @@
 import collections
 from typing import Union, Dict, Any, List, Tuple
 
+from flytekit.annotated.context_manager import FlyteContext
 from flytekit import engine as flytekit_engine
 from flytekit.common.promise import NodeOutput as _NodeOutput
-from flytekit.models import literals as _literal_models, interface as _interface_models
+from flytekit.models import literals as _literal_models, interface as _interface_models, types as _type_models
 
 
-def translate_inputs_to_literals(ctx, input_kwargs: Dict[str, Any], interface: _interface_models.TypedInterface):
+def translate_inputs_to_literals(ctx: FlyteContext, input_kwargs: Dict[str, Any],
+                                 interface: _interface_models.TypedInterface) -> Dict[str, _literal_models.Literal]:
     """
     When calling a task inside a workflow, a user might do something like this.
 
-    def my_wf(in1: int) -> int:
-        a = task_1(in1=in1)
-        b = task_2(in1=5, in2=a)
-        return b
+        def my_wf(in1: int) -> int:
+            a = task_1(in1=in1)
+            b = task_2(in1=5, in2=a)
+            return b
 
     If this is the case, when task_2 is called in local workflow execution, we'll need to translate the Python native
     literal 5 to a Flyte literal.
+
+    More interesting is this:
+
+        def my_wf(in1: int, in2: int) -> int:
+            a = task_1(in1=in1)
+            b = task_2(in1=5, in2=[a, in2])
+            return b
+
+    Here, in task_2, during execution we'd have a list of Promises. We have to make sure to give task2 a Flyte
+    LiteralCollection (Flyte's name for list), not a Python list of Flyte literals.
     """
-    # TODO: Are there any pass-by-reference considerations we need to think about?  I don't think so. Write unit
-    #  tests to be sure.
+
+    def extract_value(ctx: FlyteContext, input_val: Any, flyte_literal_type: _type_models.LiteralType) -> Any:
+        if isinstance(input_val, list):
+            if flyte_literal_type.collection_type is None:
+                raise Exception(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
+            literals = [
+                extract_value(ctx, v, flyte_literal_type.collection_type)
+                for v in input_val
+            ]
+            return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literals))
+        elif isinstance(input_val, dict):
+            if flyte_literal_type.map_value_type is None:
+                raise Exception(f"Not a map type {flyte_literal_type} but got a map {input_val}")
+            literals = {
+                k: extract_value(ctx, v, flyte_literal_type.map_value_type)
+                for k, v in input_val.items()
+            }
+            return _literal_models.Literal(map=_literal_models.LiteralMap(literals=literals))
+        elif isinstance(input_val, Promise):
+            # In the example above, this handles the "in2=a" type of argument
+            return input_val.val
+        else:
+            # This handles native values, the 5 example
+            return flytekit_engine.python_value_to_idl_literal(ctx, input_val, flyte_literal_type)
+
     for k, v in input_kwargs.items():
         if k not in interface.inputs:
             raise ValueError(f"Received unexpected keyword argument {k}")
-        # In the example above, this handles the "in2=a" type of argument
-        if isinstance(v, Promise):
-            input_kwargs[k] = v.val
-        # This handles native values, the 5 example
-        else:
-            val = input_kwargs[k]
-            var = interface.inputs[k]
-            input_kwargs[k] = flytekit_engine.python_value_to_idl_literal(ctx, val, var.type)
+        var = interface.inputs[k]
+        input_kwargs[k] = extract_value(ctx, v, var.type)
 
     return input_kwargs
 

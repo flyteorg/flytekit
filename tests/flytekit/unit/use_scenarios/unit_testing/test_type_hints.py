@@ -172,26 +172,26 @@ def test_wf1_with_overrides():
     }
 
 
-# def test_wf1_with_overridesdfd():
-#     @task
-#     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
-#         return a + 2, "world"
-#
-#     @task
-#     def t2(a: typing.List[str]) -> str:
-#         return "".join(a)
-#
-#     @workflow
-#     def my_wf(a: int, b: str) -> (int, str):
-#         x, y = t1(a=a)
-#         d = t2(a=[y, b])
-#         return x, d
-#
-#     x = my_wf(a=5, b="hello ")
-#     assert x == {
-#         'out_0': 7,
-#         'out_1': "hello world",
-#     }
+def test_wf1_with_overridesdfd():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: typing.List[str]) -> str:
+        return " ".join(a)
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a)
+        d = t2(a=[b, y])
+        return x, d
+
+    x = my_wf(a=5, b="hello")
+    assert x == {
+        'out_0': 7,
+        'out_1': "hello world",
+    }
 
 
 def test_promise_return():
