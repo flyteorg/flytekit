@@ -185,18 +185,21 @@ class Workflow(object):
                 return None
 
             if isinstance(result, Promise):
-                literals = {result.var: result.val}
+                # literals = {result.var: result.val}
+                return flytekit_engine.idl_literal_to_python_value(ctx, result.val)
             else:
-                literals = {}
+                # literals = {}
                 for prom in result:
                     if not isinstance(prom, Promise):
                         raise Exception("should be promises")
 
-                    literals[prom.var] = prom.val
+                    # literals[prom.var] = prom.val
+                    native_list = [flytekit_engine.idl_literal_to_python_value(ctx, promise.val) for promise in result]
+                    return tuple(native_list)
 
             # unpack result
-            return flytekit_engine.idl_literal_map_to_python_value(ctx, _literal_models.LiteralMap(
-                literals=literals))
+            # return flytekit_engine.idl_literal_map_to_python_value(ctx, _literal_models.LiteralMap(
+            #     literals=literals))
 
     def _create_and_link_node(self, ctx: FlyteContext, *args, **kwargs):
         """
@@ -227,8 +230,7 @@ class Workflow(object):
         # These will be our annotated Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
         upstream_nodes = [input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)]
 
-        sdk_node = Node(
-            # TODO
+        node = Node(
             id=f"node-{len(ctx.compilation_state.nodes)}",
             metadata=_workflow_model.NodeMetadata(self._name, datetime.timedelta(),
                                                   _literal_models.RetryStrategy(0)),
@@ -236,7 +238,7 @@ class Workflow(object):
             upstream_nodes=upstream_nodes,  # type: ignore
             flyte_entity=self
         )
-        ctx.compilation_state.nodes.append(sdk_node)
+        ctx.compilation_state.nodes.append(node)
 
         # Create a node output object for each output, they should all point to this node of course.
         # TODO: Again, we need to be sure that we end up iterating through the output names in the correct order
@@ -246,8 +248,7 @@ class Workflow(object):
             # TODO: If node id gets updated later, we have to make sure to update the NodeOutput model's ID, which
             #  is currently just a static str
             node_outputs.append(
-                Promise(output_name, _common_promise.NodeOutput(sdk_node=sdk_node, sdk_type=None, var=output_name)))
-        # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
+                Promise(output_name, _common_promise.NodeOutput(sdk_node=node, sdk_type=None, var=output_name)))
 
         return create_task_output(node_outputs)
 
