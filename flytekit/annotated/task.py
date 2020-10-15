@@ -13,7 +13,7 @@ from flytekit.annotated.interface import Interface, transform_interface_to_typed
     transform_signature_to_interface, transform_typed_interface_to_collection_interface, ControlPlaneSettings
 from flytekit.annotated.promise import Promise, create_task_output, translate_inputs_to_literals
 from flytekit.annotated.workflow import Workflow
-from flytekit.common import nodes as _nodes
+from flytekit.annotated.node import Node
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.models import task as _task_model, literals as _literal_models, interface as _interface_models
@@ -68,11 +68,11 @@ class Task(object):
             )
 
         # Detect upstream nodes
-        # These will be SdkNodePrecursors, not SdkNodes but whatever
+        # These will be our annotated Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
         upstream_nodes = [input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)]
 
         # TODO: Make the metadata name the full name of the (function)?
-        sdk_node = _nodes.SdkNodePrecursor(
+        sdk_node = Node(
             # TODO
             id=f"node-{len(ctx.compilation_state.nodes)}",
             metadata=_workflow_model.NodeMetadata(self._name, self.metadata.timeout,

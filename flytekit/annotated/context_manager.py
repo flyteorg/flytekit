@@ -9,7 +9,7 @@ from flytekit.clients import friendly as flyte_client
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
 from flytekit.common import constants as _constants
 from flytekit.common.exceptions import user as _user_exception
-from flytekit.common.nodes import SdkNodePrecursor
+from flytekit.annotated.node import Node
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import sdk as _sdk_config, internal as _internal_config
 from flytekit.interfaces.data import common as _common_data
@@ -25,7 +25,7 @@ from flytekit.models import interface as _interface_models
 
 class CompilationState(object):
     def __init__(self):
-        self.nodes: List[SdkNodePrecursor] = []
+        self.nodes: List[Node] = []
         self.mode = 1  # TODO: Turn into enum in the future, or remove if only one mode.
 
 

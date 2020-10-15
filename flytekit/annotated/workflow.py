@@ -8,8 +8,8 @@ from flytekit.annotated.interface import transform_inputs_to_parameters
 from flytekit.annotated.interface import transform_interface_to_typed_interface, \
     transform_signature_to_interface, ControlPlaneSettings
 from flytekit.annotated.promise import Promise, create_task_output
+from flytekit.annotated.node import Node
 from flytekit.common import constants as _common_constants
-from flytekit.common import nodes as _nodes
 from flytekit.common import promise as _common_promise
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import registerable as _registerable
@@ -224,10 +224,10 @@ class Workflow(object):
             )
 
         # Detect upstream nodes
-        # These will be SdkNodePrecursors, not SdkNodes but whatever
+        # These will be our annotated Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
         upstream_nodes = [input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)]
 
-        sdk_node = _nodes.SdkNodePrecursor(
+        sdk_node = Node(
             # TODO
             id=f"node-{len(ctx.compilation_state.nodes)}",
             metadata=_workflow_model.NodeMetadata(self._name, datetime.timedelta(),
