@@ -12,8 +12,8 @@ from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
 from flytekit.configuration import TemporaryConfiguration
 from flytekit.configuration import internal as _internal_configuration
-from flytekit.tools.module_loader import iterate_registerable_entities_in_order
-
+from flytekit.tools.module_loader import iterate_registerable_entities_in_order, just_load_modules
+from flytekit.annotated import context_manager as flyte_context, interface as annotated_interface
 
 @system_entry_point
 def serialize_tasks_only(project, domain, pkgs, version, folder=None):
@@ -79,6 +79,10 @@ def serialize_all(project, domain, pkgs, version, folder=None):
     # m = module (i.e. python file)
     # k = value of dir(m), type str
     # o = object (e.g. SdkWorkflow)
+
+    # Clear annotated Flyte entities
+    flyte_context.FlyteEntities.entities.clear()
+
     loaded_entities = []
     for m, k, o in iterate_registerable_entities_in_order(pkgs):
         name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
@@ -106,6 +110,26 @@ def serialize_all(project, domain, pkgs, version, folder=None):
             identifier_fname = _os.path.join(folder, identifier_fname)
         _write_proto_to_file(entity._id.to_flyte_idl(), identifier_fname)
 
+    just_load_modules(pkgs)
+    click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} items")
+    registration_settings = annotated_interface.ControlPlaneSettings(
+        project=project, domain=domain, version=version, image=_internal_configuration.IMAGE.get())
+
+    for entity in flyte_context.FlyteEntities.entities:
+        print(entity)
+        # TODO: Add a reachable check. Since these entities are always added by the constructor, weird things can
+        #  happen. If someone creates a workflow inside a workflow, we don't actually want the inner workflow to be
+        #  registered. Or do we? Certainly, we don't want inner tasks
+        #  to be registered because we don't know how to reach them, but perhaps workflows should be okay to take into
+        #  account generated workflows.
+        #  Also a user may import dir_b.workflows from dir_a.workflows but workflow packages might only specify dir_a
+
+        # TODO: Do this better, but without introducing all sorts of class hierarchies.
+        if hasattr(entity, "get_registerable_entity"):
+            serializable = entity.get_registerable_entity(registration_settings)
+            print(f"|{serializable}|")
+
+
 
 def _determine_text_chars(length):
     """
@@ -115,6 +139,8 @@ def _determine_text_chars(length):
     :param int length:
     :rtype: int
     """
+    if length == 0:
+        return 0
     return _math.ceil(_math.log(length, 10))
 
 

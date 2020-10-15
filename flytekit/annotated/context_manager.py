@@ -253,6 +253,11 @@ class FlyteContext(object):
             raise Exception('No flyte_client initialized')
 
 
+class FlyteEntities(object):
+
+    entities = []
+
+
 # This is supplied so that tasks that rely on Flyte provided param functionality do not fail when run locally
 default_execution_id = _identifier.WorkflowExecutionIdentifier(
     project='local',

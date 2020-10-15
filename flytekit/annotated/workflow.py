@@ -3,7 +3,7 @@ import datetime
 from typing import Dict, Any, Callable, Union, Tuple
 
 from flytekit import engine as flytekit_engine, logger
-from flytekit.annotated.context_manager import FlyteContext, ExecutionState
+from flytekit.annotated.context_manager import FlyteContext, ExecutionState, FlyteEntities
 from flytekit.annotated.interface import transform_signature_to_interface, transform_interface_to_typed_interface, \
     transform_inputs_to_parameters
 from flytekit.annotated.promise import Promise, create_task_output
@@ -35,6 +35,7 @@ class Workflow(object):
         #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or
         #    we can re-evaluate.
         self._input_parameters = None
+        FlyteEntities.entities.append(self)
 
     @property
     def function(self):

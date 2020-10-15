@@ -1,7 +1,7 @@
 import copy
 import inspect
 from collections import OrderedDict
-from typing import Dict, Generator, Union, Type, Tuple, List, Any, _GenericAlias, TypeVar
+from typing import Dict, Generator, Union, Type, Tuple, List, Any, TypeVar
 
 from flytekit import logger
 from flytekit.annotated import type_engine
@@ -221,8 +221,6 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
     TODO: We'll need to check the actual return types for in all cases as well, to make sure Flyte IDL actually
           supports it. For instance, typing.Tuple[Optional[int]] is not something we can represent currently.
 
-    TODO: Generator[A,B,C] types are also valid, indicating dynamic tasks. Will need to implement.
-
     Note that Options 1 and 2 are identical, just syntactic sugar. In the NamedTuple case, we'll use the names in the
     definition. In all other cases, we'll automatically generate output names, indexed starting at 0.
     """
@@ -244,8 +242,10 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
         logger.debug(f'Task returns a single output of type {return_annotation}')
         return {default_output_name(): return_annotation}
 
-    if isinstance(return_annotation, _GenericAlias) and return_annotation.__origin__ in [list, dict]:
+    if hasattr(return_annotation, '_name') and return_annotation._name == 'List' and return_annotation.__origin__ == list:
         return {default_output_name(): return_annotation}
+
+    # TODO: Handle typing.Dict
 
     return_map = {}
     # Now lets handle multi-valued return annotations
@@ -260,3 +260,14 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
 
     return_map = OrderedDict(zip(list(output_name_generator(len(return_types))), return_types))
     return return_map
+
+
+# Doesn't really belong here, not sure where else to put it
+class ControlPlaneSettings(object):
+    def __init__(self, project: str, domain: str, version: str, image: str):
+        self._project = project
+        self._domain = domain
+        self._version = version
+        self._image = image
+
+
