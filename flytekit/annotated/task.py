@@ -4,7 +4,7 @@ import functools
 import inspect
 import re
 from abc import abstractmethod
-from typing import Callable, Union, Dict, DefaultDict, Type, Any, List, Tuple
+from typing import Callable, Union, Dict, DefaultDict, Type, Any, List, Tuple, Optional
 from flytekit.common.mixins import registerable as _registerable
 
 from flytekit import engine as flytekit_engine, logger
@@ -38,6 +38,11 @@ class Task(object):
         self._name = name
         self._interface = interface
         self._metadata = metadata
+
+        # This will get populated only at registration time, when we retrieve the rest of the environment variables like
+        # project/domain/version/image and anything else we might need from the environment in the future.
+        self._registerable_entity: Optional[SdkTask] = None
+
         FlyteEntities.entities.append(self)
 
     def _compile(self, ctx: FlyteContext, *args, **kwargs):
@@ -63,18 +68,19 @@ class Task(object):
             )
 
         # Detect upstream nodes
+        # These will be SdkNodePrecursors, not SdkNodes but whatever
         upstream_nodes = [input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)]
 
         # TODO: Make the metadata name the full name of the (function)?
-        sdk_node = _nodes.SdkNode(
+        sdk_node = _nodes.SdkNodePrecursor(
             # TODO
             id=f"node-{len(ctx.compilation_state.nodes)}",
             metadata=_workflow_model.NodeMetadata(self._name, self.metadata.timeout,
                                                   self.metadata.retries,
                                                   self.metadata.interruptible),
             bindings=sorted(bindings, key=lambda b: b.var),
-            upstream_nodes=upstream_nodes,
-            sdk_task=self
+            upstream_nodes=upstream_nodes,  # type: ignore
+            flyte_entity=self,
         )
         ctx.compilation_state.nodes.append(sdk_node)
 
@@ -216,6 +222,9 @@ class PythonFunctionTask(Task):
         return self._native_interface
 
     def get_registerable_entity(self, settings: ControlPlaneSettings) -> _registerable.RegisterableEntity:
+        if self._registerable_entity is not None:
+            return self._registerable_entity
+
         from flytekit.configuration import internal as _internal_config
         args = [
                    "pyflyte-execute",
@@ -235,8 +244,8 @@ class PythonFunctionTask(Task):
                 _internal_config.IMAGE.env_var: _internal_config.IMAGE.get(),
             }
         container = _get_container_definition(image=settings._image, command=[], args=args, data_loading_config=None, environment=env)
-        return SdkTask(type="python_task", metadata=self.metadata, interface=self.interface, custom={}, container=container)
-
+        self._registerable_entity = SdkTask(type="python_task", metadata=self.metadata, interface=self.interface, custom={}, container=container)
+        return self._registerable_entity
 
 class PysparkFunctionTask(PythonFunctionTask):
     def __init__(self, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):

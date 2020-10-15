@@ -4,6 +4,7 @@ import os as _os
 
 from flyteidl.core import literals_pb2 as _literals_pb2
 from sortedcontainers import SortedDict as _SortedDict
+from typing import Union, List, Dict, Any, Optional
 
 from flytekit.clients.helpers import iterate_task_executions as _iterate_task_executions
 from flytekit.common import component_nodes as _component_nodes
@@ -109,17 +110,66 @@ class OutputParameterMapper(ParameterMapper):
         return _promise.NodeOutput(sdk_node, sdk_type, name)
 
 
+# TODO: Refactor this into something cleaner once we have a pattern for Tasks/Workflows/Launchplans
+#  At the very least this should move to the annotated folder.
+class SdkNodePrecursor(object):
+    """
+    This class will hold all the things necessary to make an SdkNode but we won't make one until we know things like
+    ID, which from the registration step
+    """
+
+    def __init__(self, id: str, metadata: _workflow_model.NodeMetadata, bindings: List[_literal_models.Binding],
+                 upstream_nodes: List['SdkNodePrecursor'], flyte_entity: Any):
+        self._id = id
+        self._metadata = metadata
+        self._bindings = bindings
+        self._upstream_nodes = upstream_nodes
+        self._flyte_entity = flyte_entity
+        self._sdk_node = None
+
+    def get_registerable_entity(self) -> 'SdkNode':
+        if self._flyte_entity is None:
+            raise Exception('Node precursor flyte entity none')
+
+        if self._flyte_entity._registerable_entity is None:
+            raise Exception('Node precursor registerable entity has not been set')
+
+        for n in self._upstream_nodes:
+            if n._sdk_node is None:
+                n.get_registerable_entity()
+        sdk_nodes = [n.get_registerable_entity() for n in self._upstream_nodes]
+
+        from flytekit.annotated.workflow import Workflow
+        from flytekit.annotated.task import Task
+
+        if isinstance(self._flyte_entity, Task):
+            self._sdk_node = SdkNode(self._id, upstream_nodes=sdk_nodes, bindings=self._bindings,
+                                     metadata=self._metadata, sdk_task=self._flyte_entity._registerable_entity)
+        elif isinstance(self._flyte_entity, Workflow):
+            self._sdk_node = SdkNode(self._id, upstream_nodes=sdk_nodes, bindings=self._bindings,
+                                     metadata=self._metadata, sdk_workflow=self._flyte_entity._registerable_entity)
+        # TODO: Add new annotated LaunchPlan when done
+        else:
+            raise Exception("nothing found")
+
+        return self._sdk_node
+
+    @property
+    def id(self) -> str:
+        return self._id
+
+
 class SdkNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(
-        self,
-        id,
-        upstream_nodes,
-        bindings,
-        metadata,
-        sdk_task=None,
-        sdk_workflow=None,
-        sdk_launch_plan=None,
-        sdk_branch=None,
+            self,
+            id,
+            upstream_nodes,
+            bindings,
+            metadata,
+            sdk_task=None,
+            sdk_workflow=None,
+            sdk_launch_plan=None,
+            sdk_branch=None,
     ):
         """
         :param Text id: A workflow-level unique identifier that identifies this node in the workflow. "inputs" and

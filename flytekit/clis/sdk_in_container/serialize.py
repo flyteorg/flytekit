@@ -15,6 +15,7 @@ from flytekit.configuration import internal as _internal_configuration
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order, just_load_modules
 from flytekit.annotated import context_manager as flyte_context, interface as annotated_interface
 
+
 @system_entry_point
 def serialize_tasks_only(project, domain, pkgs, version, folder=None):
     """
@@ -125,6 +126,7 @@ def serialize_all(project, domain, pkgs, version, folder=None):
         #  Also a user may import dir_b.workflows from dir_a.workflows but workflow packages might only specify dir_a
 
         # TODO: Do this better, but without introducing all sorts of class hierarchies.
+
         if hasattr(entity, "get_registerable_entity"):
             serializable = entity.get_registerable_entity(registration_settings)
             print(f"|{serializable}|")
