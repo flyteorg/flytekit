@@ -2,13 +2,21 @@ import datetime
 import inspect
 import typing
 
+import pytest
+
 import flytekit.annotated.task
 import flytekit.annotated.workflow
 from flytekit.annotated import context_manager, promise
-from flytekit.annotated.context_manager import FlyteContext, ExecutionState
-from flytekit.annotated.task import task, AbstractSQLTask, metadata, maptask, dynamic
-from flytekit.annotated.workflow import workflow
+from flytekit.annotated.condition import conditional
+from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
+from flytekit.annotated.promise import Promise
+from flytekit.annotated.task import task, AbstractSQLTask, metadata, maptask, dynamic
+from flytekit.annotated.type_engine import BASE_TYPES
+from flytekit.annotated.workflow import workflow
+from flytekit.common.nodes import SdkNode
+from flytekit.common.promise import NodeOutput
+from flytekit.models.types import LiteralType, SimpleType
 
 
 def test_default_wf_params_works():
@@ -345,7 +353,7 @@ def test_wf1_with_dynamic():
     x = my_wf(a=v, b="hello ")
     assert x == {
         'out_0': "hello hello ",
-        'out_1': ["world-" + str(i) for i in range(2, v+2)],
+        'out_1': ["world-" + str(i) for i in range(2, v + 2)],
     }
 
     compiled_sub_wf = my_subwf.compile_into_workflow(a=5)
@@ -372,7 +380,138 @@ def test_list_output():
     assert len(binding_data.collection.bindings) ==  10
 
 
+def test_comparison_refs():
+    def dummy_node(id) -> SdkNode:
+        n = SdkNode(id, [], None, None, sdk_task=AbstractSQLTask("x", "x", [], metadata()))
+        n._id = id
+        return n
+
+    px = Promise("x", NodeOutput(var="x", sdk_type=LiteralType(simple=SimpleType.INTEGER), sdk_node=dummy_node("n1")))
+    py = Promise("y", NodeOutput(var="y", sdk_type=LiteralType(simple=SimpleType.INTEGER), sdk_node=dummy_node("n2")))
+
+    def print_expr(expr):
+        print(f"{expr} is type {type(expr)}")
+
+    print_expr(px == py)
+    print_expr(px < py)
+    print_expr((px == py) & (px < py))
+    print_expr(((px == py) & (px < py)) | (px > py))
+    print_expr(px < 5)
+    print_expr(px >= 5)
+
+
+def test_comparison_lits():
+    px = Promise("x", BASE_TYPES[int][1](5))
+    py = Promise("y", BASE_TYPES[int][1](8))
+
+    def eval_expr(expr, expected: bool):
+        print(f"{expr} evals to {expr.eval()}")
+        assert expected == expr.eval()
+
+    eval_expr(px == py, False)
+    eval_expr(px < py, True)
+    eval_expr((px == py) & (px < py), False)
+    eval_expr(((px == py) & (px < py)) | (px > py), False)
+    eval_expr(px < 5, False)
+    eval_expr(px >= 5, True)
+    eval_expr(py >= 5, True)
+
+
+def test_wf1_branches():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: str) -> str:
+        return a
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a)
+        print(x)
+        d = conditional()\
+            .if_(x == 4).then(t2(a=b)) \
+            .elif_(x >= 5).then(t2(a=y)) \
+            .else_().fail("Unable to choose branch")
+        return x, d
+
+    x = my_wf(a=5, b="hello ")
+    assert x == {
+        'out_0': 7,
+        'out_1': "world",
+    }
+
+
+def test_wf1_branches_no_else():
+    with pytest.raises(AssertionError):
+        def foo():
+            @task
+            def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+                return a + 2, "world"
+
+            @task
+            def t2(a: str) -> str:
+                return a
+
+            @workflow
+            def my_wf(a: int, b: str) -> (int, str):
+                x, y = t1(a=a)
+                print(x)
+                d = conditional()\
+                    .if_(x == 4).then(t2(a=b)) \
+                    .elif_(x >= 5).then(t2(a=y))
+                return x, d
+
+            @workflow
+            def my_wf2(a: int, b: str) -> (int, str):
+                x, y = t1(a=a)
+                print(x)
+                d = conditional()\
+                    .if_(x == 4).then(t2(a=b)) \
+                    .elif_(x >= 5).then(t2(a=y)) \
+                    .else_().then(t2(a="Ok I give up!"))
+                return x, d
+        foo()
+
+
+def test_wf1_branches_failing():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: str) -> str:
+        return a
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a)
+        print(x)
+        d = conditional()\
+            .if_(x == 4).then(t2(a=b)) \
+            .elif_(x >= 5).then(t2(a=y)) \
+            .else_().fail("All Branches failed")
+        return x, d
+    with pytest.raises(AssertionError):
+        x = my_wf(a=1, b="hello ")
+
+
 # TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!
+    # def test_normal_path():
+#     # Write some random numbers to a file
+#     def t1():
+#         ...
+#
+#     # Read back the file and transform it
+#     def t2(in1: _flytekit_typing.FlyteFilePath) -> str:
+#         with open(in1, 'r') as fh:
+#             lines = fh.readlines()
+#             return "".join(lines)
+#
+#
+#
+#
 
 
 # @flyte_test

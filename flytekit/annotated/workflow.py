@@ -3,6 +3,7 @@ import datetime
 from typing import Dict, Any, Callable, Union, Tuple
 
 from flytekit import engine as flytekit_engine, logger
+from flytekit.annotated.condition import ConditionalSection
 from flytekit.annotated.context_manager import FlyteContext, ExecutionState
 from flytekit.annotated.interface import transform_signature_to_interface, transform_interface_to_typed_interface, \
     transform_inputs_to_parameters
@@ -81,13 +82,15 @@ class Workflow(object):
         # collection/map out of it.
         if len(output_names) == 1:
             b = flytekit_engine.binding_from_python_std(ctx, output_names[0],
-                                                    self.interface.outputs[output_names[0]].type, workflow_outputs)
+                                                        self.interface.outputs[output_names[0]].type, workflow_outputs)
             bindings.append(b)
         elif len(output_names) > 1:
             if len(output_names) != len(workflow_outputs):
                 raise Exception(f"Length mismatch {len(output_names)} vs {len(workflow_outputs)}")
             for i, out in enumerate(output_names):
                 output_name = output_names[i]
+                if isinstance(workflow_outputs[i], ConditionalSection):
+                    raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
                 b = flytekit_engine.binding_from_python_std(ctx, output_name, self.interface.outputs[output_name].type,
                                                             workflow_outputs[i])
                 bindings.append(b)
@@ -128,7 +131,7 @@ class Workflow(object):
         #   other things as well? What if someone just returns 5? Should we disallow this?
         function_outputs = self._workflow_function(**kwargs)
 
-        output_names = list(self.interface.outputs.keys())
+        output_names = list(self._interface.outputs.keys())
         if len(output_names) == 0:
             if function_outputs is None:
                 return None
