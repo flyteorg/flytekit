@@ -172,7 +172,7 @@ def test_wf1_with_overrides():
     }
 
 
-def test_wf1_with_overridesdfd():
+def test_wf1_with_list_of_inputs():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         return a + 2, "world"
