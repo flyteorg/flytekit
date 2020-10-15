@@ -48,7 +48,7 @@ class IfBlock(_common.FlyteIdlEntity):
 class IfElseBlock(_common.FlyteIdlEntity):
     def __init__(self, case, other=None, else_node=None, error=None):
         """
-        Defines a series of if/else blocks. The first branch.py whose condition evaluates to true is the one to execute.
+        Defines a series of if/else blocks. The first branch whose condition evaluates to true is the one to execute.
         If no conditions were satisfied, the else_node or the error will execute.
 
         :param IfBlock case:
@@ -120,7 +120,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
 class BranchNode(_common.FlyteIdlEntity):
     def __init__(self, if_else):
         """
-        BranchNode is a special node that alter the flow of the workflow graph. It allows the control flow to branch.py at
+        BranchNode is a special node that alter the flow of the workflow graph. It allows the control flow to branch at
         runtime based on a series of conditions that get evaluated on various parameters (e.g. inputs, primtives).
         :param IfElseBlock if_else:
         """
@@ -212,7 +212,7 @@ class Node(_common.FlyteIdlEntity):
                  workflow_node=None, branch_node=None):
         """
         A Workflow graph Node. One unit of execution in the graph. Each node can be linked to a Task,
-        a Workflow or a branch.py node.  One of the nodes must be specified.
+        a Workflow or a branch node.  One of the nodes must be specified.
 
         :param Text id: A workflow-level unique identifier that identifies this node in the workflow. "inputs" and
             "outputs" are reserved node ids that cannot be used by other nodes.
@@ -224,10 +224,10 @@ class Node(_common.FlyteIdlEntity):
             an implicit dependency on any node that appears in inputs field.
         :param list[Alias] output_aliases: A node can define aliases for a subset of its outputs. This
             is particularly useful if different nodes need to conform to the same interface (e.g. all branches in
-            a branch.py node). Downstream nodes must refer to this node's outputs using the alias if one is specified.
+            a branch node). Downstream nodes must refer to this node's outputs using the alias if one is specified.
         :param TaskNode task_node: [Optional] Information about the Task to execute in this node.
         :param WorkflowNode workflow_node: [Optional] Information about the Workflow to execute in this mode.
-        :param BranchNode branch_node: [Optional] Information about the branch.py node to evaluate in this node.
+        :param BranchNode branch_node: [Optional] Information about the branch node to evaluate in this node.
         """
 
         self._id = id
@@ -281,7 +281,7 @@ class Node(_common.FlyteIdlEntity):
         """
         [Optional] A node can define aliases for a subset of its outputs. This
         is particularly useful if different nodes need to conform to the same interface (e.g. all branches in
-        a branch.py node). Downstream nodes must refer to this node's outputs using the alias if one is specified.
+        a branch node). Downstream nodes must refer to this node's outputs using the alias if one is specified.
         :rtype: list[Alias]
         """
         return self._output_aliases
@@ -305,7 +305,7 @@ class Node(_common.FlyteIdlEntity):
     @property
     def branch_node(self):
         """
-        [Optional] Information about the branch.py node to evaluate in this node.
+        [Optional] Information about the branch node to evaluate in this node.
         :rtype: BranchNode
         """
         return self._branch_node
@@ -530,7 +530,7 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
 
     def __init__(self, id, metadata, metadata_defaults, interface, nodes, outputs, failure_node=None):
         """
-        A workflow template encapsulates all the task, branch.py, and subworkflow nodes to run a statically analyzable,
+        A workflow template encapsulates all the task, branch, and subworkflow nodes to run a statically analyzable,
         directed acyclic graph. It contains also metadata that tells the system how to execute the workflow (i.e.
         the AWS IAM role to run with).
 
