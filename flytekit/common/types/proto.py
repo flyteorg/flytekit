@@ -69,8 +69,9 @@ class Protobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
             if isinstance(type(self).pb_type, FlyteType):
                 v = expected_type.from_flyte_idl(v).to_flyte_idl()
             else:
-                raise _user_exceptions.FlyteTypeException(received_type=type(pb_object), expected_type=expected_type,
-                                                          received_value=pb_object)
+                raise _user_exceptions.FlyteTypeException(
+                    received_type=type(pb_object), expected_type=expected_type, received_value=pb_object
+                )
         data = v.SerializeToString()
         super(Protobuf, self).__init__(
             scalar=_literals.Scalar(
@@ -207,11 +208,12 @@ class GenericProtobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
             if isinstance(type(self).pb_type, FlyteType):
                 v = expected_type.from_flyte_idl(v).to_flyte_idl()
             else:
-                raise _user_exceptions.FlyteTypeException(received_type=type(pb_object), expected_type=expected_type,
-                                                          received_value=pb_object)
+                raise _user_exceptions.FlyteTypeException(
+                    received_type=type(pb_object), expected_type=expected_type, received_value=pb_object
+                )
 
         struct.update(_MessageToDict(v))
-        super().__init__(scalar=_literals.Scalar(generic=struct, ))
+        super().__init__(scalar=_literals.Scalar(generic=struct,))
 
     @classmethod
     def is_castable_from(cls, other):
@@ -302,8 +304,9 @@ def create_generic(pb_type: Type[GeneratedProtocolMessageType]) -> Type[GenericP
     :param Type[GeneratedProtocolMessageType] pb_type:
     :rtype: Type[GenericProtobuf]
     """
-    if not isinstance(pb_type, _proto_reflection.GeneratedProtocolMessageType) and not issubclass(pb_type,
-                                                                                                  FlyteIdlEntity):
+    if not isinstance(pb_type, _proto_reflection.GeneratedProtocolMessageType) and not issubclass(
+        pb_type, FlyteIdlEntity
+    ):
         raise _user_exceptions.FlyteTypeException(
             expected_type=_proto_reflection.GeneratedProtocolMessageType,
             received_type=type(pb_type),

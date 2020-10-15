@@ -267,10 +267,15 @@ class ParameterRangeOneOf(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb_object: Union[_idl_parameter_ranges.ParameterRangeOneOf,
-                                             _idl_parameter_ranges.IntegerParameterRange,
-                                             _idl_parameter_ranges.ContinuousParameterRange,
-                                             _idl_parameter_ranges.CategoricalParameterRange]):
+    def from_flyte_idl(
+        cls,
+        pb_object: Union[
+            _idl_parameter_ranges.ParameterRangeOneOf,
+            _idl_parameter_ranges.IntegerParameterRange,
+            _idl_parameter_ranges.ContinuousParameterRange,
+            _idl_parameter_ranges.CategoricalParameterRange,
+        ],
+    ):
         param = None
         if isinstance(pb_object, _idl_parameter_ranges.ParameterRangeOneOf):
             if pb_object.HasField("continuous_parameter_range"):
