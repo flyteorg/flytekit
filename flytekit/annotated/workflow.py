@@ -82,7 +82,7 @@ class Workflow(object):
         # collection/map out of it.
         if len(output_names) == 1:
             b = flytekit_engine.binding_from_python_std(ctx, output_names[0],
-                                                    self.interface.outputs[output_names[0]].type, workflow_outputs)
+                                                        self.interface.outputs[output_names[0]].type, workflow_outputs)
             bindings.append(b)
         elif len(output_names) > 1:
             if len(output_names) != len(workflow_outputs):
@@ -132,21 +132,11 @@ class Workflow(object):
         function_outputs = self._workflow_function(**kwargs)
 
         output_names = list(self._interface.outputs.keys())
-        output_literal_map = {}
-        # TODO Ketan fix this make it into a simple promise transformation
-        if len(output_names) > 1:
-            for idx, var_name in enumerate(output_names):
-                op = function_outputs[idx]
-                if isinstance(op, Promise):
-                    output_literal_map[var_name] = op.val
-                elif isinstance(op, ConditionalSection):
-                    raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
-                else:
-                    raise AssertionError("Illegal workflow construction detected")
-        elif len(output_names) == 1:
-            output_literal_map[output_names[0]] = function_outputs.val
-        else:
-            return None
+        if len(output_names) == 0:
+            if function_outputs is None:
+                return None
+            else:
+                raise Exception("something returned from wf but shouldn't have outputs")
 
         if len(output_names) != len(function_outputs):
             # Length check, clean up exception
