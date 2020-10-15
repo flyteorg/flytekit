@@ -199,7 +199,7 @@ class PythonFunctionTask(Task):
         self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         interface = transform_interface_to_typed_interface(mutated_interface)
-        super().__init__(name=task_function.__name__, interface=interface, metadata=metadata, *args, **kwargs)
+        super().__init__(name=f"{task_function.__module__}.{task_function.__name__}", interface=interface, metadata=metadata, *args, **kwargs)
         self._task_function = task_function
 
     def execute(self, **kwargs) -> Any:

@@ -91,6 +91,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                     context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
                 )
 
+            # We should just do a different style of detection.
             elif not test and hasattr(task_def, "_task_style") and task_def._task_style == SdkRunnableTaskStyle.V1:
                 cloud_provider = _platform_config.CLOUD_PROVIDER.get()
                 additional_context = {'output_prefix': output_prefix}

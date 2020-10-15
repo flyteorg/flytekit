@@ -25,7 +25,7 @@ class Workflow(object):
     """
 
     def __init__(self, workflow_function: Callable):
-        self._name = workflow_function.__name__
+        self._name = f"{workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
         self._native_interface = transform_signature_to_interface(inspect.signature(workflow_function))
         self._interface = transform_interface_to_typed_interface(self._native_interface)
@@ -99,8 +99,9 @@ class Workflow(object):
         # Create a FlyteWorkflow object. We call this like how promote_from_model would call this, by ignoring the
         # fancy arguments and supplying just the raw elements manually. Alternatively we can construct the
         # WorkflowTemplate object, and then call promote_from_model.
-        self._sdk_workflow = _SdkWorkflow(inputs=None, outputs=None, nodes=all_nodes, id=workflow_id, metadata=None,
-                                          metadata_defaults=None, interface=self._interface, output_bindings=bindings)
+        self._sdk_workflow = _SdkWorkflow(nodes=all_nodes, id=workflow_id, metadata=None,
+                                          metadata_defaults=_workflow_model.WorkflowMetadataDefaults(),
+                                          interface=self._interface, output_bindings=bindings)
         if not output_names:
             return None
         if len(output_names) == 1:
