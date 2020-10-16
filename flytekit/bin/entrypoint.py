@@ -142,15 +142,16 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                 with ctx.new_data_proxy_by_cloud_provider(cloud_provider=cloud_provider,
                                                           raw_output_data_prefix=raw_output_data_prefix) as ctx:
 
+                    # Because execution states do not look up the context chain, it has to be made second.
                     with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION,
                                                    execution_params=execution_parameters) as ctx:
 
                         # First download the contents of the input file
                         local_inputs_file = _os.path.join(ctx.execution_state.working_dir, 'inputs.pb')
                         _data_proxy.Data.get_data(inputs, local_inputs_file)
-                        idl_input_literals = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+                        input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+                        idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
                         outputs = task_def.dispatch_execute(ctx, idl_input_literals)
-                        print(outputs.literals)
 
                         # TODO: How do we handle the fact that some tasks should fail (like hive/presto tasks) and
                         #   some tasks don't produce output literals
