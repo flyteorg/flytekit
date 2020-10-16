@@ -245,6 +245,11 @@ class PythonFunctionTask(Task):
             }
         container = _get_container_definition(image=settings._image, command=[], args=args, data_loading_config=None, environment=env)
         self._registerable_entity = SdkTask(type="python_task", metadata=self.metadata, interface=self.interface, custom={}, container=container)
+        # Reset just to make sure it's what we give it
+        self._registerable_entity.id._project = settings._project
+        self._registerable_entity.id._domain = settings._domain
+        self._registerable_entity.id._name = self._name
+        self._registerable_entity.id._version = settings._version
         return self._registerable_entity
 
 class PysparkFunctionTask(PythonFunctionTask):

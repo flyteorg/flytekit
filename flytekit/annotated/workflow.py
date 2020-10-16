@@ -266,6 +266,11 @@ class Workflow(object):
                                                  metadata=_workflow_model.WorkflowMetadata(),
                                                  metadata_defaults=_workflow_model.WorkflowMetadataDefaults(),
                                                  interface=self._interface, output_bindings=self._output_bindings)
+        # Reset just to make sure it's what we give it
+        self._registerable_entity.id._project = settings._project
+        self._registerable_entity.id._domain = settings._domain
+        self._registerable_entity.id._name = self._name
+        self._registerable_entity.id._version = settings._version
 
         return self._registerable_entity
 

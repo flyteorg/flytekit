@@ -7,18 +7,17 @@ import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.annotated.context_manager import FlyteContext
+from flytekit.annotated.task import Task
 from flytekit.common import utils as _utils
-from flytekit.common.exceptions import scopes as _scopes, system as _system_exceptions
-from flytekit.configuration import internal as _internal_config, TemporaryConfiguration as _TemporaryConfiguration , platform as _platform_config
 from flytekit.common.exceptions import scopes as _scopes
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.configuration import internal as _internal_config
+from flytekit.configuration import platform as _platform_config
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import literals as _literal_models
-from flytekit.common.tasks.sdk_runnable import SdkRunnableTaskStyle
 
 
 def _compute_array_job_index():
@@ -62,8 +61,8 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
             task_module = _importlib.import_module(task_module)
             task_def = getattr(task_module, task_name)
 
-            if not test and (not hasattr(task_def, "_task_style") or (
-                    hasattr(task_def, "_task_style") and task_def._task_style == SdkRunnableTaskStyle.V0)):
+            # Everything else
+            if not test and not isinstance(task_def, Task):
                 local_inputs_file = input_dir.get_named_tempfile('inputs.pb')
 
                 # Handle inputs/outputs for array job.
@@ -91,8 +90,8 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                     context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
                 )
 
-            # We should just do a different style of detection.
-            elif not test and hasattr(task_def, "_task_style") and task_def._task_style == SdkRunnableTaskStyle.V1:
+            # New annotated style task
+            elif not test and isinstance(task_def, Task):
                 cloud_provider = _platform_config.CLOUD_PROVIDER.get()
                 additional_context = {'output_prefix': output_prefix}
                 ctx = FlyteContext.current_context()
@@ -101,9 +100,11 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                     local_inputs_file = _os.path.join(ctx.workflow_execution_state.working_dir, 'inputs.pb')
                     _data_proxy.Data.get_data(inputs, local_inputs_file)
                     idl_input_literals = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-                    outputs_literal_map = task_def.dispatch_execute(ctx, idl_input_literals)
-                    print("That's all folks!")
-                    print(outputs_literal_map.literals)
+                    outputs = task_def.dispatch_execute(ctx, idl_input_literals)
+                    print(outputs.literals)
+
+                    # How do we handle the fact that some tasks should fail (like hive/presto tasks) and some tasks
+                    # don't produce output literals
 
                     # Write the output back to file and write file to S3.
                     # return {
