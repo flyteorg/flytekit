@@ -183,23 +183,15 @@ class Workflow(object):
 
             if result is None:
                 return None
-
-            if isinstance(result, Promise):
-                # literals = {result.var: result.val}
+            elif isinstance(result, Promise):
                 return flytekit_engine.idl_literal_to_python_value(ctx, result.val)
             else:
-                # literals = {}
                 for prom in result:
                     if not isinstance(prom, Promise):
                         raise Exception("should be promises")
 
-                    # literals[prom.var] = prom.val
                     native_list = [flytekit_engine.idl_literal_to_python_value(ctx, promise.val) for promise in result]
                     return tuple(native_list)
-
-            # unpack result
-            # return flytekit_engine.idl_literal_map_to_python_value(ctx, _literal_models.LiteralMap(
-            #     literals=literals))
 
     def _create_and_link_node(self, ctx: FlyteContext, *args, **kwargs):
         """

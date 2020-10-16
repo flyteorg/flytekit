@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from contextlib import contextmanager
 from typing import List, Optional, Generator, Dict, Any
@@ -155,11 +157,11 @@ class FlyteContext(object):
             FlyteContext.OBJS.pop()
 
     @contextmanager
-    def new_data_proxy_by_cloud_provider(self, cloud_provider: str) -> Generator['FlyteContext', None, None]:
+    def new_data_proxy_by_cloud_provider(self, cloud_provider: str, raw_output_data_prefix: Optional[str] = None) -> Generator[FlyteContext, None, None]:
         if cloud_provider == _constants.CloudProvider.AWS:
-            proxy = _s3proxy.AwsS3Proxy()
+            proxy = _s3proxy.AwsS3Proxy(raw_output_data_prefix)
         elif cloud_provider == _constants.CloudProvider.GCP:
-            proxy = _gcs_proxy.GCSProxy()
+            proxy = _gcs_proxy.GCSProxy(raw_output_data_prefix)
         else:
             raise _user_exception.FlyteAssertion(
                 "Configured cloud provider is not supported for data I/O.  Received: {}, expected one of: {}".format(
