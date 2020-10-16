@@ -31,7 +31,8 @@ def translate_inputs_to_literals(ctx: FlyteContext, input_kwargs: Dict[str, Any]
     LiteralCollection (Flyte's name for list), not a Python list of Flyte literals.
     """
 
-    def extract_value(ctx: FlyteContext, input_val: Any, flyte_literal_type: _type_models.LiteralType) -> Any:
+    def extract_value(ctx: FlyteContext, input_val: Any,
+                      flyte_literal_type: _type_models.LiteralType) -> _literal_models.Literal:
         if isinstance(input_val, list):
             if flyte_literal_type.collection_type is None:
                 raise Exception(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
