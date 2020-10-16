@@ -145,7 +145,6 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                     # Because execution states do not look up the context chain, it has to be made second.
                     with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION,
                                                    execution_params=execution_parameters) as ctx:
-
                         # First download the contents of the input file
                         local_inputs_file = _os.path.join(ctx.execution_state.working_dir, 'inputs.pb')
                         _data_proxy.Data.get_data(inputs, local_inputs_file)
@@ -163,9 +162,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                             _common_utils.write_proto_to_file(v.to_flyte_idl(),
                                                               _os.path.join(ctx.execution_state.engine_dir, k))
 
-                        ctx.data_proxy.put_data(
-                            ctx.execution_state.engine_dir, output_prefix, is_multipart=True,
-                        )
+                        ctx.data_proxy.upload_directory(ctx.execution_state.engine_dir, output_prefix)
 
 
 @_click.group()
