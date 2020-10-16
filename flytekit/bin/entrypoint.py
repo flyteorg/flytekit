@@ -146,7 +146,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                                                               raw_output_data_prefix=raw_output_data_prefix) as ctx:
 
                         # First download the contents of the input file
-                        local_inputs_file = _os.path.join(ctx.workflow_execution_state.working_dir, 'inputs.pb')
+                        local_inputs_file = _os.path.join(ctx.execution_state.working_dir, 'inputs.pb')
                         _data_proxy.Data.get_data(inputs, local_inputs_file)
                         idl_input_literals = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
                         outputs = task_def.dispatch_execute(ctx, idl_input_literals)
