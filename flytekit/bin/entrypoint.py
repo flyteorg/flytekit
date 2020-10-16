@@ -8,7 +8,7 @@ import random as _random
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit.annotated.context_manager import FlyteContext
+from flytekit.annotated.context_manager import FlyteContext, ExecutionState
 from flytekit.annotated.task import Task
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
@@ -107,16 +107,11 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                 ctx = FlyteContext.current_context()
 
                 # Create directories
-                # TODO: Move these into new execution context creation
-                root_directory = ctx.local_file_access.get_random_directory()
-                _click.echo(f"Using root working directory {root_directory}")
-                task_dir = _os.path.join(root_directory, "task_dir")
-                engine_dir = _os.path.join(root_directory, "engine_dir")
-                pathlib.Path(task_dir).mkdir(parents=True, exist_ok=True)
-                pathlib.Path(engine_dir).mkdir(parents=True, exist_ok=True)
+                user_workspace_dir = ctx.local_file_access.get_random_directory()
+                _click.echo(f"Using user directory {user_workspace_dir}")
+                pathlib.Path(user_workspace_dir).mkdir(parents=True, exist_ok=True)
                 from flytekit import __version__ as _api_version
 
-                # TODO: Move this into execution state
                 execution_parameters = ExecutionParameters(execution_id=_identifier.WorkflowExecutionIdentifier(
                     project=_internal_config.EXECUTION_PROJECT.get(),
                     domain=_internal_config.EXECUTION_DOMAIN.get(),
@@ -141,34 +136,35 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                         },
                     ),
                     logging=_logging,
-                    tmp_dir=task_dir,
+                    tmp_dir=user_workspace_dir,
                 )
 
-                # TODO: Move this into execution state
-                ctx._user_space_params = execution_parameters
+                with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION,
+                                               execution_params=execution_parameters) as ctx:
 
-                with ctx.new_data_proxy_by_cloud_provider(cloud_provider=cloud_provider,
-                                                          raw_output_data_prefix=raw_output_data_prefix) as ctx:
+                    with ctx.new_data_proxy_by_cloud_provider(cloud_provider=cloud_provider,
+                                                              raw_output_data_prefix=raw_output_data_prefix) as ctx:
 
-                    # First download the contents of the input file
-                    local_inputs_file = _os.path.join(ctx.workflow_execution_state.working_dir, 'inputs.pb')
-                    _data_proxy.Data.get_data(inputs, local_inputs_file)
-                    idl_input_literals = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-                    outputs = task_def.dispatch_execute(ctx, idl_input_literals)
-                    print(outputs.literals)
+                        # First download the contents of the input file
+                        local_inputs_file = _os.path.join(ctx.workflow_execution_state.working_dir, 'inputs.pb')
+                        _data_proxy.Data.get_data(inputs, local_inputs_file)
+                        idl_input_literals = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+                        outputs = task_def.dispatch_execute(ctx, idl_input_literals)
+                        print(outputs.literals)
 
-                    # TODO: How do we handle the fact that some tasks should fail (like hive/presto tasks) and some tasks
-                    #   don't produce output literals
-                    output_file_dict = {
-                        _constants.OUTPUT_FILE_NAME: outputs
-                    }
+                        # TODO: How do we handle the fact that some tasks should fail (like hive/presto tasks) and
+                        #   some tasks don't produce output literals
+                        output_file_dict = {
+                            _constants.OUTPUT_FILE_NAME: outputs
+                        }
 
-                    for k, v in output_file_dict.items():
-                        _common_utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(engine_dir, k))
+                        for k, v in output_file_dict.items():
+                            _common_utils.write_proto_to_file(v.to_flyte_idl(),
+                                                              _os.path.join(ctx.execution_state.engine_dir, k))
 
-                    ctx.data_proxy.put_data(
-                        engine_dir, output_prefix, is_multipart=True,
-                    )
+                        ctx.data_proxy.put_data(
+                            ctx.execution_state.engine_dir, output_prefix, is_multipart=True,
+                        )
 
 
 @_click.group()

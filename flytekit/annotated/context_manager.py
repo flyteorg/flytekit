@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import pathlib
 from contextlib import contextmanager
 from typing import List, Optional, Generator, Dict, Any
 import datetime as _datetime
@@ -41,14 +42,20 @@ class ExecutionState(object):
         # NodeOutput
         LOCAL_WORKFLOW_EXECUTION = 2
 
-    def __init__(self, mode: Mode, working_dir: os.PathLike, additional_context: Dict[Any, Any] = None):
+    def __init__(self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike,
+                 additional_context: Dict[Any, Any] = None):
         self._mode = mode
         self._working_dir = working_dir
+        self._engine_dir = engine_dir
         self._additional_context = additional_context
 
     @property
     def working_dir(self) -> os.PathLike:
         return self._working_dir
+
+    @property
+    def engine_dir(self) -> os.PathLike:
+        return self._engine_dir
 
     @property
     def additional_context(self) -> Dict[Any, Any]:
@@ -157,7 +164,8 @@ class FlyteContext(object):
             FlyteContext.OBJS.pop()
 
     @contextmanager
-    def new_data_proxy_by_cloud_provider(self, cloud_provider: str, raw_output_data_prefix: Optional[str] = None) -> Generator[FlyteContext, None, None]:
+    def new_data_proxy_by_cloud_provider(self, cloud_provider: str, raw_output_data_prefix: Optional[str] = None) -> \
+            Generator[FlyteContext, None, None]:
         if cloud_provider == _constants.CloudProvider.AWS:
             proxy = _s3proxy.AwsS3Proxy(raw_output_data_prefix)
         elif cloud_provider == _constants.CloudProvider.GCP:
@@ -183,44 +191,20 @@ class FlyteContext(object):
 
     @contextmanager
     def new_execution_context(self, mode: ExecutionState.Mode,
-                              additional_context: Dict[Any, Any] = None) -> Generator['FlyteContext', None, None]:
-        # Here to avoid circular dependency
-        from flytekit import __version__ as _api_version
+                              additional_context: Dict[Any, Any] = None,
+                              execution_params: Optional[ExecutionParameters] = None) -> Generator[
+            FlyteContext, None, None]:
 
         # Create a working directory for the execution to use
         working_dir = self.local_file_access.get_random_path()
-        exec_state = ExecutionState(mode=mode, working_dir=working_dir, additional_context=additional_context)
+        engine_dir = os.path.join(working_dir, "engine_dir")
+        pathlib.Path(engine_dir).mkdir(parents=True, exist_ok=True)
+        exec_state = ExecutionState(mode=mode, working_dir=working_dir, engine_dir=engine_dir,
+                                    additional_context=additional_context)
 
-        # Create a more accurate object for users to use within tasks
-        user_space_execution_params = ExecutionParameters(
-            execution_id=_identifier.WorkflowExecutionIdentifier(
-                project=_internal_config.EXECUTION_PROJECT.get(),
-                domain=_internal_config.EXECUTION_DOMAIN.get(),
-                name=_internal_config.EXECUTION_NAME.get()
-            ),
-            execution_date=_datetime.datetime.utcnow(),
-            stats=_get_stats(
-                # Stats metric path will be:
-                # registration_project.registration_domain.app.module.task_name.user_stats
-                # and it will be tagged with execution-level values for project/domain/wf/lp
-                "{}.{}.{}.user_stats".format(
-                    _internal_config.TASK_PROJECT.get() or _internal_config.PROJECT.get(),
-                    _internal_config.TASK_DOMAIN.get() or _internal_config.DOMAIN.get(),
-                    _internal_config.TASK_NAME.get() or _internal_config.NAME.get()
-                ),
-                tags={
-                    'exec_project': _internal_config.EXECUTION_PROJECT.get(),
-                    'exec_domain': _internal_config.EXECUTION_DOMAIN.get(),
-                    'exec_workflow': _internal_config.EXECUTION_WORKFLOW.get(),
-                    'exec_launchplan': _internal_config.EXECUTION_LAUNCHPLAN.get(),
-                    'api_version': _api_version
-                }
-            ),
-            logging=_logging,
-            tmp_dir=os.path.join(working_dir, "user_space")
-        )
-
-        new_ctx = FlyteContext(parent=self, execution_state=exec_state, user_space_params=user_space_execution_params)
+        # If a wf_params object was not given, use the default (defined at the bottom of this file)
+        new_ctx = FlyteContext(parent=self, execution_state=exec_state,
+                               user_space_params=execution_params or default_user_space_params)
         FlyteContext.OBJS.append(new_ctx)
         try:
             yield new_ctx
@@ -253,6 +237,7 @@ class FlyteContext(object):
             return self._parent.flyte_client
         else:
             raise Exception('No flyte_client initialized')
+
 
 # Hack... we'll think of something better in the future
 class FlyteEntities(object):
