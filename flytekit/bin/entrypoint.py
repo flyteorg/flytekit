@@ -139,11 +139,11 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                     tmp_dir=user_workspace_dir,
                 )
 
-                with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION,
-                                               execution_params=execution_parameters) as ctx:
+                with ctx.new_data_proxy_by_cloud_provider(cloud_provider=cloud_provider,
+                                                          raw_output_data_prefix=raw_output_data_prefix) as ctx:
 
-                    with ctx.new_data_proxy_by_cloud_provider(cloud_provider=cloud_provider,
-                                                              raw_output_data_prefix=raw_output_data_prefix) as ctx:
+                    with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION,
+                                                   execution_params=execution_parameters) as ctx:
 
                         # First download the contents of the input file
                         local_inputs_file = _os.path.join(ctx.execution_state.working_dir, 'inputs.pb')
