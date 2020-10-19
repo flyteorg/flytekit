@@ -438,10 +438,7 @@ def test_wf1_branches():
         return x, d
 
     x = my_wf(a=5, b="hello ")
-    assert x == {
-        'out_0': 7,
-        'out_1': "world",
-    }
+    assert x == (7, "world")
 
 
 def test_wf1_branches_no_else():
