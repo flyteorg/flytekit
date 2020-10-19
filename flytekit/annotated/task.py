@@ -429,7 +429,7 @@ class DynamicWorkflowTask(PythonFunctionTask):
         ctx = FlyteContext.current_context()
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            with ctx.new_execution_context(ExecutionState.Mode.TASK_EXECUTION) as _inner_ctx:
+            with ctx.new_execution_context(ExecutionState.Mode.TASK_EXECUTION):
                 logger.info("Executing Dynamic workflow, using raw inputs")
                 return self._task_function(**kwargs)
 

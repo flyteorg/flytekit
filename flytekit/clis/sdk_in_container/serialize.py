@@ -5,7 +5,6 @@ import os as _os
 import click
 
 from flytekit.annotated import context_manager as flyte_context
-from flytekit.annotated import interface as annotated_interface
 from flytekit.annotated.task import Task
 from flytekit.annotated.workflow import Workflow
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_VERSION
@@ -96,8 +95,7 @@ def serialize_all(project, domain, pkgs, version, folder=None):
     )
     with flyte_context.FlyteContext.current_context().new_registration_settings(
         registration_settings=registration_settings
-    ) as ctx:
-
+    ):
         loaded_entities = []
         for m, k, o in iterate_registerable_entities_in_order(pkgs):
             name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)

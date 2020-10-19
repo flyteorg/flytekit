@@ -9,12 +9,11 @@ from enum import Enum
 from typing import Any, Dict, Generator, List, Optional
 
 from flytekit.annotated.node import Node
-from flytekit.clients import friendly as flyte_client
+from flytekit.clients import friendly as friendly_client  # noqa
 from flytekit.common import constants as _constants
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
 from flytekit.common.exceptions import user as _user_exception
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.interfaces.data import common as _common_data
@@ -22,8 +21,6 @@ from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
 from flytekit.interfaces.data.http import http_data_proxy as _http_data_proxy
 from flytekit.interfaces.data.local import local_file_proxy as _local_file_proxy
 from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
-from flytekit.interfaces.stats.taggable import get_stats as _get_stats
-from flytekit.models import interface as _interface_models
 from flytekit.models.core import identifier as _identifier
 
 
@@ -157,7 +154,7 @@ class FlyteContext(object):
         data_proxy: _common_data.DataProxy = None,
         compilation_state: CompilationState = None,
         execution_state: ExecutionState = None,
-        flyte_client: flyte_client.SynchronousFlyteClient = None,
+        flyte_client: friendly_client.SynchronousFlyteClient = None,
         user_space_params: ExecutionParameters = None,
         registration_settings: RegistrationSettings = None,
     ):

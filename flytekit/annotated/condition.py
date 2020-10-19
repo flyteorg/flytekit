@@ -1,4 +1,4 @@
-from typing import Generator, Tuple, Union
+from typing import Tuple, Union
 
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext
 from flytekit.annotated.promise import ComparisonExpression, ConjunctionExpression, Promise

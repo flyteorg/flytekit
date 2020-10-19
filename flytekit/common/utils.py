@@ -3,7 +3,6 @@ import os as _os
 import shutil as _shutil
 import tempfile as _tempfile
 import time as _time
-import typing
 from hashlib import sha224 as _sha224
 from pathlib import Path
 

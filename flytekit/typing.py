@@ -23,12 +23,12 @@ There are a few possible types on the Python side that can be specified:
         return fh
 
   Note: issubclass(type(fh), typing.Text/BinaryIO) is False for some reason, nevertheless the type checker passes.
-  
+
   If you specify either of these, as an input, Flyte will open a filehandle to the data, before the task runs, and pass
   that handle as the argument to your function. If you specify it as an output, Flyte will read() the data after the
   task completes, and write it to Flyte's configurable Blob store. On the backend, Flyte's type system for file and
   file-like objects include a str based "format" as part of the type. For TextIO and BinaryIO, the format will be
-  "TextIO" and "BinaryIO". 
+  "TextIO" and "BinaryIO".
 
   * os.PathLike
   This is just a path on the filesystem accessible from the Python process. This is a native Python abstract class.
@@ -36,21 +36,21 @@ There are a few possible types on the Python side that can be specified:
     # NB: This is just normal Python, will not work in Flyte! Read below for more information.
     def path_task() -> os.PathLike:
         return os.path.abspath('/tmp/xyz.txt')
-  
+
   If you specify a PathLike as an input, the task will receive a PathLike at task start, and you can open() it as
   normal. However, since we want to control when files are downloaded, Flyte provides its own PathLike object.
 
     # This is how you should write it instead.
     from flytekit import typing as flytekit_typing
-    
+
     def t1(in1: flytekit_typing.FlyteFilePath) -> str:
         with open(in1, 'r') as fh:
             lines = fh.readlines()
             return "".join(lines)
-  
+
   As mentioned above, since Flyte file types have a string embedded in it as part of the type, flytekit.typing
   includes a CSV variant as well.
-  
+
     def t2() -> flytekit_typing.FlyteCSVFilePath:
         from random import sample
         sequence = [i for i in range(20)]

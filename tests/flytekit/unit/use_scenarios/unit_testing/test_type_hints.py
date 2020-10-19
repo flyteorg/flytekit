@@ -492,7 +492,7 @@ def test_wf1_branches_failing():
         return x, d
 
     with pytest.raises(AssertionError):
-        x = my_wf(a=1, b="hello ")
+        my_wf(a=1, b="hello ")
 
 
 # TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!
