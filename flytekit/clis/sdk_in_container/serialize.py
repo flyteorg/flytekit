@@ -4,7 +4,7 @@ import os as _os
 
 import click
 
-from flytekit.annotated import context_manager as flyte_context, interface as annotated_interface
+from flytekit.annotated import context_manager as flyte_context
 from flytekit.annotated.task import Task
 from flytekit.annotated.workflow import Workflow
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_VERSION
@@ -14,10 +14,10 @@ from flytekit.common.exceptions.scopes import system_entry_point
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
 from flytekit.configuration import TemporaryConfiguration
+from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import internal as _internal_configuration
 from flytekit.models.core import identifier as _identifier_models
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
-from flytekit.configuration import internal as _internal_config
 
 
 @system_entry_point
@@ -91,10 +91,11 @@ def serialize_all(project, domain, pkgs, version, folder=None):
     }
 
     registration_settings = flyte_context.RegistrationSettings(
-        project=project, domain=domain, version=version, image=_internal_configuration.IMAGE.get(), env=env)
+        project=project, domain=domain, version=version, image=_internal_configuration.IMAGE.get(), env=env
+    )
     with flyte_context.FlyteContext.current_context().new_registration_settings(
-            registration_settings=registration_settings) as ctx:
-
+        registration_settings=registration_settings
+    ):
         loaded_entities = []
         for m, k, o in iterate_registerable_entities_in_order(pkgs):
             name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
@@ -120,7 +121,10 @@ def serialize_all(project, domain, pkgs, version, folder=None):
                     launch_plan = serializable.create_launch_plan()
                     launch_plan._id = _identifier_models.Identifier(
                         resource_type=_identifier_models.ResourceType.LAUNCH_PLAN,
-                        project=project, domain=domain, version=version, name=serializable.id.name
+                        project=project,
+                        domain=domain,
+                        version=version,
+                        name=serializable.id.name,
                     )
                     loaded_entities.append(launch_plan)
 
@@ -189,9 +193,9 @@ def tasks(ctx, version=None, folder=None):
         click.echo(f"Writing output to {folder}")
 
     version = (
-            version
-            or ctx.obj[CTX_VERSION]
-            or _internal_configuration.look_up_version_from_image_tag(_internal_configuration.IMAGE.get())
+        version
+        or ctx.obj[CTX_VERSION]
+        or _internal_configuration.look_up_version_from_image_tag(_internal_configuration.IMAGE.get())
     )
 
     internal_settings = {
@@ -234,9 +238,9 @@ def workflows(ctx, version=None, folder=None):
     pkgs = ctx.obj[CTX_PACKAGES]
 
     version = (
-            version
-            or ctx.obj[CTX_VERSION]
-            or _internal_configuration.look_up_version_from_image_tag(_internal_configuration.IMAGE.get())
+        version
+        or ctx.obj[CTX_VERSION]
+        or _internal_configuration.look_up_version_from_image_tag(_internal_configuration.IMAGE.get())
     )
 
     internal_settings = {

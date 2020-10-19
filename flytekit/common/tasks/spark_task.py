@@ -39,10 +39,9 @@ class GlobalSparkContext(object):
 
     def __enter__(self):
         GlobalSparkContext._SPARK_CONTEXT = _pyspark.SparkContext()
-        GlobalSparkContext._SPARK_SESSION = _pyspark.sql.SparkSession \
-            .builder \
-            .appName("Flyte Spark SQL Context") \
-            .getOrCreate()
+        GlobalSparkContext._SPARK_SESSION = _pyspark.sql.SparkSession.builder.appName(
+            "Flyte Spark SQL Context"
+        ).getOrCreate()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

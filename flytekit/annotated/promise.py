@@ -1,18 +1,20 @@
 import collections
 from enum import Enum
-from typing import Union, Tuple, List, Any, Dict
+from typing import Any, Dict, List, Tuple, Union
 
 from flytekit import engine as flytekit_engine
 from flytekit.annotated import type_engine
 from flytekit.annotated.context_manager import FlyteContext
 from flytekit.common.promise import NodeOutput as _NodeOutput
-from flytekit.models import literals as _literal_models, interface as _interface_models
+from flytekit.models import interface as _interface_models
+from flytekit.models import literals as _literal_models
 from flytekit.models import types as _type_models
 from flytekit.models.literals import Primitive
 
 
-def translate_inputs_to_literals(ctx: FlyteContext, input_kwargs: Dict[str, Any],
-                                 interface: _interface_models.TypedInterface) -> Dict[str, _literal_models.Literal]:
+def translate_inputs_to_literals(
+    ctx: FlyteContext, input_kwargs: Dict[str, Any], interface: _interface_models.TypedInterface
+) -> Dict[str, _literal_models.Literal]:
     """
     When calling a task inside a workflow, a user might do something like this.
 
@@ -35,23 +37,18 @@ def translate_inputs_to_literals(ctx: FlyteContext, input_kwargs: Dict[str, Any]
     LiteralCollection (Flyte's name for list), not a Python list of Flyte literals.
     """
 
-    def extract_value(ctx: FlyteContext, input_val: Any,
-                      flyte_literal_type: _type_models.LiteralType) -> _literal_models.Literal:
+    def extract_value(
+        ctx: FlyteContext, input_val: Any, flyte_literal_type: _type_models.LiteralType
+    ) -> _literal_models.Literal:
         if isinstance(input_val, list):
             if flyte_literal_type.collection_type is None:
                 raise Exception(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
-            literals = [
-                extract_value(ctx, v, flyte_literal_type.collection_type)
-                for v in input_val
-            ]
+            literals = [extract_value(ctx, v, flyte_literal_type.collection_type) for v in input_val]
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literals))
         elif isinstance(input_val, dict):
             if flyte_literal_type.map_value_type is None:
                 raise Exception(f"Not a map type {flyte_literal_type} but got a map {input_val}")
-            literals = {
-                k: extract_value(ctx, v, flyte_literal_type.map_value_type)
-                for k, v in input_val.items()
-            }
+            literals = {k: extract_value(ctx, v, flyte_literal_type.map_value_type) for k, v in input_val.items()}
             return _literal_models.Literal(map=_literal_models.LiteralMap(literals=literals))
         elif isinstance(input_val, Promise):
             # In the example above, this handles the "in2=a" type of argument
@@ -112,7 +109,7 @@ _comparators = {
 
 
 class ComparisonExpression(object):
-    def __init__(self, lhs: Union['Promise', Any], op: ComparisonOps, rhs: Union['Promise', Any]):
+    def __init__(self, lhs: Union["Promise", Any], op: ComparisonOps, rhs: Union["Promise", Any]):
         self._op = op
         self._lhs = None
         self._rhs = None
@@ -132,7 +129,7 @@ class ComparisonExpression(object):
             self._rhs = type_engine.BASE_TYPES[type(rhs)][1](rhs)
 
     @property
-    def rhs(self) -> 'Promise':
+    def rhs(self) -> "Promise":
         return self._rhs
 
     @property
@@ -167,7 +164,8 @@ class ComparisonExpression(object):
     def __bool__(self):
         raise ValueError(
             "Cannot perform truth value testing,"
-            " This is a limitation in python. For Logical `and\\or` use `&\\|` (bitwise) instead")
+            " This is a limitation in python. For Logical `and\\or` use `&\\|` (bitwise) instead"
+        )
 
     def __repr__(self):
         s = "Comp( "
@@ -178,7 +176,6 @@ class ComparisonExpression(object):
 
 
 class ConjunctionExpression(object):
-
     def __init__(self, lhs: ComparisonExpression, op: ConjunctionOps, rhs: ComparisonExpression):
         self._lhs = lhs
         self._rhs = rhs
@@ -221,7 +218,8 @@ class ConjunctionExpression(object):
     def __bool__(self):
         raise ValueError(
             "Cannot perform truth value testing,"
-            " This is a limitation in python. For Logical `and\\or` use `&\\|` (bitwise) instead")
+            " This is a limitation in python. For Logical `and\\or` use `&\\|` (bitwise) instead"
+        )
 
     def __repr__(self):
         return f"( {self._lhs} {self._op} {self._rhs} )"
@@ -300,7 +298,8 @@ class Promise(object):
     def __bool__(self):
         raise ValueError(
             "Cannot perform truth value testing,"
-            " This is a limitation in python. For Logical `and\\or` use `&\\|` (bitwise) instead")
+            " This is a limitation in python. For Logical `and\\or` use `&\\|` (bitwise) instead"
+        )
 
     def __and__(self, other):
         raise ValueError("Cannot perform Logical AND of Promise with other")

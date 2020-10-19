@@ -2,9 +2,6 @@ import logging as _logging
 import os as _os
 import shutil as _shutil
 import tempfile as _tempfile
-import typing
-from hashlib import sha224 as _sha224
-
 import time as _time
 from hashlib import sha224 as _sha224
 from pathlib import Path
