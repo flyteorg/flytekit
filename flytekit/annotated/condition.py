@@ -1,18 +1,18 @@
-from typing import Union, Tuple, Generator
+from typing import Generator, Tuple, Union
 
-from flytekit.annotated.context_manager import FlyteContext, ExecutionState
-from flytekit.annotated.promise import ConjunctionExpression, ComparisonExpression, Promise
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext
+from flytekit.annotated.promise import ComparisonExpression, ConjunctionExpression, Promise
 
 
 class Case(object):
-    def __init__(self, branch: 'ConditionalSection', expr: Union[ComparisonExpression, ConjunctionExpression]):
+    def __init__(self, branch: "ConditionalSection", expr: Union[ComparisonExpression, ConjunctionExpression]):
         self._conditional = branch
         self._expr = expr
         self._output_promise = None
         self._err = None
 
     # TODO this is complicated. We do not want this to run
-    def then(self, p: Union[Promise, Tuple[Promise]]) -> Union['ConditionalSection', Promise]:
+    def then(self, p: Union[Promise, Tuple[Promise]]) -> Union["ConditionalSection", Promise]:
         self._output_promise = p
         # We can always mark branch as completed
         self._conditional._branch_complete()

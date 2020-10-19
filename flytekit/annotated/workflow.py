@@ -1,12 +1,16 @@
 import datetime
 import inspect
-from typing import Dict, Callable, Union, Tuple, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from flytekit import engine as flytekit_engine, logger
+from flytekit import engine as flytekit_engine
+from flytekit import logger
 from flytekit.annotated.condition import ConditionalSection
-from flytekit.annotated.context_manager import FlyteContext, ExecutionState, FlyteEntities
-from flytekit.annotated.interface import transform_signature_to_interface, transform_interface_to_typed_interface, \
-    transform_inputs_to_parameters
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext, FlyteEntities
+from flytekit.annotated.interface import (
+    transform_inputs_to_parameters,
+    transform_interface_to_typed_interface,
+    transform_signature_to_interface,
+)
 from flytekit.annotated.node import Node
 from flytekit.annotated.promise import Promise, create_task_output
 from flytekit.common import constants as _common_constants
@@ -15,8 +19,10 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
 from flytekit.models import interface as _interface_models
-from flytekit.models import literals as _literal_models, types as _type_models
-from flytekit.models.core import identifier as _identifier_model, workflow as _workflow_model
+from flytekit.models import literals as _literal_models
+from flytekit.models import types as _type_models
+from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import workflow as _workflow_model
 
 
 class Workflow(object):
@@ -90,8 +96,9 @@ class Workflow(object):
         # iterate through the list here, instead we should let the binding creation unwrap it and make a binding
         # collection/map out of it.
         if len(output_names) == 1:
-            b = flytekit_engine.binding_from_python_std(ctx, output_names[0],
-                                                        self.interface.outputs[output_names[0]].type, workflow_outputs)
+            b = flytekit_engine.binding_from_python_std(
+                ctx, output_names[0], self.interface.outputs[output_names[0]].type, workflow_outputs
+            )
             bindings.append(b)
         elif len(output_names) > 1:
             if len(output_names) != len(workflow_outputs):
@@ -100,8 +107,9 @@ class Workflow(object):
                 output_name = output_names[i]
                 if isinstance(workflow_outputs[i], ConditionalSection):
                     raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
-                b = flytekit_engine.binding_from_python_std(ctx, output_name, self.interface.outputs[output_name].type,
-                                                            workflow_outputs[i])
+                b = flytekit_engine.binding_from_python_std(
+                    ctx, output_name, self.interface.outputs[output_name].type, workflow_outputs[i]
+                )
                 bindings.append(b)
 
         # Save all the things necessary to create an SdkWorkflow, except for the missing project and domain
@@ -128,7 +136,8 @@ class Workflow(object):
         for k, v in kwargs.items():
             if not isinstance(v, Promise):
                 kwargs[k] = Promise(
-                    var=k, val=flytekit_engine.python_value_to_idl_literal(ctx, v, self.interface.inputs[k].type))
+                    var=k, val=flytekit_engine.python_value_to_idl_literal(ctx, v, self.interface.inputs[k].type)
+                )
 
         # TODO: function_outputs are all assumed to be Promise objects produced by task calls, but can they be
         #   other things as well? What if someone just returns 5? Should we disallow this?
@@ -147,13 +156,15 @@ class Workflow(object):
 
         # This recasts the Promises provided by the outputs of the workflow's tasks into the correct output names
         # of the workflow itself
-        vals = [Promise(var=output_names[idx], val=function_outputs[idx].val) for idx, promise in
-                enumerate(function_outputs)]
+        vals = [
+            Promise(var=output_names[idx], val=function_outputs[idx].val)
+            for idx, promise in enumerate(function_outputs)
+        ]
         return create_task_output(vals)
 
     def __call__(self, *args, **kwargs):
         if len(args) > 0:
-            raise Exception('not allowed')
+            raise Exception("not allowed")
 
         ctx = FlyteContext.current_context()
 
@@ -161,7 +172,9 @@ class Workflow(object):
         if ctx.compilation_state is not None:
             return self._create_and_link_node(ctx, **kwargs)
 
-        elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+        elif (
+            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+        ):
             # We are already in a local execution, just continue the execution context
             return self._local_execute(ctx, **kwargs)
 
@@ -177,8 +190,7 @@ class Workflow(object):
                 if k not in self.interface.inputs:
                     raise ValueError(f"Received unexpected keyword argument {k}")
                 if isinstance(v, Promise):
-                    raise ValueError(
-                        f"Received a promise for a workflow call, when expecting a native value for {k}")
+                    raise ValueError(f"Received a promise for a workflow call, when expecting a native value for {k}")
 
             with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
                 result = self._local_execute(ctx, **kwargs)
@@ -208,9 +220,7 @@ class Workflow(object):
         for k in sorted(self.interface.inputs):
             var = self.interface.inputs[k]
             if k not in kwargs:
-                raise _user_exceptions.FlyteAssertion(
-                    "Input was not specified for: {} of type {}".format(k, var.type)
-                )
+                raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
             bindings.append(flytekit_engine.binding_from_python_std(ctx, k, var.type, kwargs[k]))
             used_inputs.add(k)
 
@@ -226,11 +236,10 @@ class Workflow(object):
 
         node = Node(
             id=f"node-{len(ctx.compilation_state.nodes)}",
-            metadata=_workflow_model.NodeMetadata(self._name, datetime.timedelta(),
-                                                  _literal_models.RetryStrategy(0)),
+            metadata=_workflow_model.NodeMetadata(self._name, datetime.timedelta(), _literal_models.RetryStrategy(0)),
             bindings=sorted(bindings, key=lambda b: b.var),
             upstream_nodes=upstream_nodes,  # type: ignore
-            flyte_entity=self
+            flyte_entity=self,
         )
         ctx.compilation_state.nodes.append(node)
 
@@ -242,7 +251,8 @@ class Workflow(object):
             # TODO: If node id gets updated later, we have to make sure to update the NodeOutput model's ID, which
             #  is currently just a static str
             node_outputs.append(
-                Promise(output_name, _common_promise.NodeOutput(sdk_node=node, sdk_type=None, var=output_name)))
+                Promise(output_name, _common_promise.NodeOutput(sdk_node=node, sdk_type=None, var=output_name))
+            )
 
         return create_task_output(node_outputs)
 
@@ -251,16 +261,21 @@ class Workflow(object):
         if self._registerable_entity is not None:
             return self._registerable_entity
 
-        workflow_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW,
-                                                   settings._project, settings._domain, self._name, settings._version)
+        workflow_id = _identifier_model.Identifier(
+            _identifier_model.ResourceType.WORKFLOW, settings._project, settings._domain, self._name, settings._version
+        )
 
         # Translate nodes
         sdk_nodes = [n.get_registerable_entity() for n in self._nodes]
 
-        self._registerable_entity = _SdkWorkflow(nodes=sdk_nodes, id=workflow_id,
-                                                 metadata=_workflow_model.WorkflowMetadata(),
-                                                 metadata_defaults=_workflow_model.WorkflowMetadataDefaults(),
-                                                 interface=self._interface, output_bindings=self._output_bindings)
+        self._registerable_entity = _SdkWorkflow(
+            nodes=sdk_nodes,
+            id=workflow_id,
+            metadata=_workflow_model.WorkflowMetadata(),
+            metadata_defaults=_workflow_model.WorkflowMetadataDefaults(),
+            interface=self._interface,
+            output_bindings=self._output_bindings,
+        )
         # Reset just to make sure it's what we give it
         self._registerable_entity.id._project = settings._project
         self._registerable_entity.id._domain = settings._domain
@@ -276,8 +291,9 @@ def workflow(_workflow_function=None):
     # workflow is what expresses the workflow structure.
     def wrapper(fn):
         # TODO: Again, at this point, we should be able to identify the name of the workflow
-        workflow_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW,
-                                                   "proj", "dom", "moreblah", "1")
+        workflow_id = _identifier_model.Identifier(
+            _identifier_model.ResourceType.WORKFLOW, "proj", "dom", "moreblah", "1"
+        )
         workflow_instance = Workflow(fn)
         workflow_instance.compile()
         workflow_instance.id = workflow_id

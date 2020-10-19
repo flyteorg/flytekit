@@ -3,13 +3,15 @@ import functools
 import json
 import typing
 from typing import Dict
-from flytekit import typing as flyte_typing
-from flytekit.common.exceptions import system as system_exceptions, user as user_exceptions
 
+from flytekit import typing as flyte_typing
+from flytekit.common.exceptions import system as system_exceptions
+from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import primitives as _primitives
-from flytekit.models import types as _type_models, interface as _interface_models
+from flytekit.models import interface as _interface_models
+from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Literal, Scalar, Primitive, Blob, BlobMetadata
+from flytekit.models.literals import Blob, BlobMetadata, Literal, Primitive, Scalar
 
 
 def create_int_literal(x: int) -> Literal:
@@ -61,33 +63,43 @@ BASE_TYPES: Dict[type, typing.Tuple[_type_models.LiteralType, typing.Callable]] 
     str: (_primitives.String.to_flyte_literal_type(), create_str_literal),
     # TODO: Not sure what to do about this yet
     dict: (_primitives.Generic.to_flyte_literal_type(), create_generic),
-    None: (_type_models.LiteralType(
-        simple=_type_models.SimpleType.NONE,
-    ), None),
-    typing.TextIO: (_type_models.LiteralType(
-        blob=_core_types.BlobType(
-            format=flyte_typing.FlyteFileFormats.TEXT_IO.value,
-            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-        )
-    ), functools.partial(create_blob, dim=_core_types.BlobType.BlobDimensionality.SINGLE)),
-    typing.BinaryIO: (_type_models.LiteralType(
-        blob=_core_types.BlobType(
-            format=flyte_typing.FlyteFileFormats.BINARY_IO.value,
-            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-        )
-    ), functools.partial(create_blob, dim=_core_types.BlobType.BlobDimensionality.SINGLE)),
-    flyte_typing.FlyteFilePath: (_type_models.LiteralType(
-        blob=_core_types.BlobType(
-            format=flyte_typing.FlyteFileFormats.BASE_FORMAT.value,
-            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-        )
-    ), functools.partial(create_blob, dim=_core_types.BlobType.BlobDimensionality.SINGLE)),
-    flyte_typing.FlyteCSVFilePath: (_type_models.LiteralType(
-        blob=_core_types.BlobType(
-            format=flyte_typing.FlyteFileFormats.CSV.value,
-            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-        )
-    ), functools.partial(create_blob, dim=_core_types.BlobType.BlobDimensionality.SINGLE)),
+    None: (_type_models.LiteralType(simple=_type_models.SimpleType.NONE,), None),
+    typing.TextIO: (
+        _type_models.LiteralType(
+            blob=_core_types.BlobType(
+                format=flyte_typing.FlyteFileFormats.TEXT_IO.value,
+                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            )
+        ),
+        functools.partial(create_blob, dim=_core_types.BlobType.BlobDimensionality.SINGLE),
+    ),
+    typing.BinaryIO: (
+        _type_models.LiteralType(
+            blob=_core_types.BlobType(
+                format=flyte_typing.FlyteFileFormats.BINARY_IO.value,
+                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            )
+        ),
+        functools.partial(create_blob, dim=_core_types.BlobType.BlobDimensionality.SINGLE),
+    ),
+    flyte_typing.FlyteFilePath: (
+        _type_models.LiteralType(
+            blob=_core_types.BlobType(
+                format=flyte_typing.FlyteFileFormats.BASE_FORMAT.value,
+                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            )
+        ),
+        functools.partial(create_blob, dim=_core_types.BlobType.BlobDimensionality.SINGLE),
+    ),
+    flyte_typing.FlyteCSVFilePath: (
+        _type_models.LiteralType(
+            blob=_core_types.BlobType(
+                format=flyte_typing.FlyteFileFormats.CSV.value,
+                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            )
+        ),
+        functools.partial(create_blob, dim=_core_types.BlobType.BlobDimensionality.SINGLE),
+    ),
 }
 
 CONTAINER_TYPES = [typing.Dict, typing.List]
@@ -114,18 +126,19 @@ class BaseEngine(object):
         #   t in [typing.List]  # False
         #   isinstance(t, typing.List)  # False
         # so we have to look inside the type's hidden attributes
-        if hasattr(native_type, '__origin__') and native_type.__origin__ is list:
+        if hasattr(native_type, "__origin__") and native_type.__origin__ is list:
             return self._type_unpack_list(native_type)
 
-        if hasattr(native_type, '__origin__') and native_type.__origin__ is dict:
+        if hasattr(native_type, "__origin__") and native_type.__origin__ is dict:
             return self._type_unpack_dict(native_type)
 
         raise user_exceptions.FlyteUserException(f"Python type {native_type} is not supported")
 
     def _type_unpack_dict(self, t) -> _type_models.LiteralType:
         if t.__origin__ != dict:
-            raise user_exceptions.FlyteUserException(f"Attempting to analyze dict but non-dict "
-                                                     f"type given {t.__origin__}")
+            raise user_exceptions.FlyteUserException(
+                f"Attempting to analyze dict but non-dict " f"type given {t.__origin__}"
+            )
         if t.__args__[0] != str:
             raise user_exceptions.FlyteUserException(f"Key type for hash tables must be of type str, given: {t}")
 
@@ -134,8 +147,9 @@ class BaseEngine(object):
 
     def _type_unpack_list(self, t) -> _type_models.LiteralType:
         if t.__origin__ != list:
-            raise user_exceptions.FlyteUserException(f"Attempting to analyze list but non-list "
-                                                     f"type given {t.__origin__}")
+            raise user_exceptions.FlyteUserException(
+                f"Attempting to analyze list but non-list " f"type given {t.__origin__}"
+            )
 
         sub_type = self.native_type_to_literal_type(t.__args__[0])
         return _type_models.LiteralType(collection_type=sub_type)

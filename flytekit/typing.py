@@ -1,7 +1,8 @@
 import os
-from flytekit import logger
-from enum import Enum
 import typing
+from enum import Enum
+
+from flytekit import logger
 
 """
 Since there is no native equivalent of the int type for files and directories, we need to create one so that users
@@ -66,13 +67,15 @@ class FlyteFileFormats(Enum):
     When users are subclassing the FlyteFilePath type to create their own formats, they should not use these strings
     as these have special meaning. Also please use lower case.
     """
+
     BASE_FORMAT = ""
     TEXT_IO = "TextIO"
     BINARY_IO = "BinaryIO"
     CSV = "csv"
 
 
-def noop(): ...
+def noop():
+    ...
 
 
 class FlyteFilePath(os.PathLike):

@@ -22,4 +22,5 @@ logger.addHandler(ch)
 
 def current_context():
     from flytekit.annotated.context_manager import FlyteContext
+
     return FlyteContext.current_context().user_space_params

@@ -8,7 +8,7 @@ import random as _random
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit.annotated.context_manager import FlyteContext, ExecutionState
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext
 from flytekit.annotated.task import Task
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
@@ -71,7 +71,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
 
             # Everything else
             if not test and not isinstance(task_def, Task):
-                local_inputs_file = input_dir.get_named_tempfile('inputs.pb')
+                local_inputs_file = input_dir.get_named_tempfile("inputs.pb")
 
                 # Handle inputs/outputs for array job.
                 if _os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
@@ -112,11 +112,12 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                 pathlib.Path(user_workspace_dir).mkdir(parents=True, exist_ok=True)
                 from flytekit import __version__ as _api_version
 
-                execution_parameters = ExecutionParameters(execution_id=_identifier.WorkflowExecutionIdentifier(
-                    project=_internal_config.EXECUTION_PROJECT.get(),
-                    domain=_internal_config.EXECUTION_DOMAIN.get(),
-                    name=_internal_config.EXECUTION_NAME.get(),
-                ),
+                execution_parameters = ExecutionParameters(
+                    execution_id=_identifier.WorkflowExecutionIdentifier(
+                        project=_internal_config.EXECUTION_PROJECT.get(),
+                        domain=_internal_config.EXECUTION_DOMAIN.get(),
+                        name=_internal_config.EXECUTION_NAME.get(),
+                    ),
                     execution_date=_datetime.datetime.utcnow(),
                     stats=_get_stats(
                         # Stats metric path will be:
@@ -139,14 +140,16 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                     tmp_dir=user_workspace_dir,
                 )
 
-                with ctx.new_data_proxy_by_cloud_provider(cloud_provider=cloud_provider,
-                                                          raw_output_data_prefix=raw_output_data_prefix) as ctx:
+                with ctx.new_data_proxy_by_cloud_provider(
+                    cloud_provider=cloud_provider, raw_output_data_prefix=raw_output_data_prefix
+                ) as ctx:
 
                     # Because execution states do not look up the context chain, it has to be made second.
-                    with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION,
-                                                   execution_params=execution_parameters) as ctx:
+                    with ctx.new_execution_context(
+                        mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
+                    ) as ctx:
                         # First download the contents of the input file
-                        local_inputs_file = _os.path.join(ctx.execution_state.working_dir, 'inputs.pb')
+                        local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
                         _data_proxy.Data.get_data(inputs, local_inputs_file)
                         input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
                         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
@@ -154,13 +157,12 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
 
                         # TODO: How do we handle the fact that some tasks should fail (like hive/presto tasks) and
                         #   some tasks don't produce output literals
-                        output_file_dict = {
-                            _constants.OUTPUT_FILE_NAME: outputs
-                        }
+                        output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
 
                         for k, v in output_file_dict.items():
-                            _common_utils.write_proto_to_file(v.to_flyte_idl(),
-                                                              _os.path.join(ctx.execution_state.engine_dir, k))
+                            _common_utils.write_proto_to_file(
+                                v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k)
+                            )
 
                         ctx.data_proxy.upload_directory(ctx.execution_state.engine_dir, output_prefix)
 

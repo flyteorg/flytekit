@@ -1,4 +1,4 @@
-from flytekit.annotated.context_manager import FlyteContext, CompilationState
+from flytekit.annotated.context_manager import CompilationState, FlyteContext
 
 
 class SampleTestClass(object):

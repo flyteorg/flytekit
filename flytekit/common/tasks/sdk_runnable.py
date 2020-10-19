@@ -3,10 +3,14 @@ from inspect import getfullargspec as _getargspec
 
 import six as _six
 
-from flytekit.common import interface as _interface, constants as _constants, sdk_bases as _sdk_bases
+from flytekit.common import constants as _constants
+from flytekit.common import interface as _interface
+from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
-from flytekit.common.exceptions import user as _user_exceptions, scopes as _exception_scopes
-from flytekit.common.tasks import task as _base_task, output as _task_output
+from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.tasks import output as _task_output
+from flytekit.common.tasks import task as _base_task
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import resources as _resource_config
@@ -398,7 +402,7 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
                     execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
                     stats=context.stats,
                     logging=context.logging,
-                    tmp_dir=context.working_directory
+                    tmp_dir=context.working_directory,
                 ),
                 **inputs
             )
@@ -427,9 +431,9 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
             working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
-        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(inputs, {
-            k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in self.interface.inputs.items()
-        })
+        inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(
+            inputs, {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in self.interface.inputs.items()}
+        )
         outputs_dict = {
             name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
             for name, variable in _six.iteritems(self.interface.outputs)

@@ -11,7 +11,7 @@ from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import task, AbstractSQLTask, metadata, maptask, dynamic
+from flytekit.annotated.task import AbstractSQLTask, dynamic, maptask, metadata, task
 from flytekit.annotated.type_engine import BASE_TYPES
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
@@ -23,7 +23,7 @@ def test_default_wf_params_works():
     @task
     def my_task(a: int):
         wf_params = flytekit.current_context()
-        assert wf_params.execution_id == 'ex:local:local:local'
+        assert wf_params.execution_id == "ex:local:local:local"
 
     my_task(a=3)
 
@@ -32,10 +32,10 @@ def test_simple_input_output():
     @task
     def my_task(a: int) -> typing.NamedTuple("OutputsBC", b=int, c=str):
         ctx = flytekit.current_context()
-        assert ctx.execution_id == 'ex:local:local:local'
+        assert ctx.execution_id == "ex:local:local:local"
         return a + 2, "hello world"
 
-    assert my_task(a=3) == (5, 'hello world')
+    assert my_task(a=3) == (5, "hello world")
 
 
 def test_simple_input_no_output():
@@ -56,7 +56,7 @@ def test_single_output():
     def my_task() -> str:
         return "Hello world"
 
-    assert my_task() == 'Hello world'
+    assert my_task() == "Hello world"
 
     ctx = context_manager.FlyteContext.current_context()
     with ctx.new_compilation_context() as ctx:
@@ -78,12 +78,12 @@ def test_named_tuples():
         return nt1("hello world", 5)
 
     result = transform_variable_map(extract_return_annotation(inspect.signature(x).return_annotation))
-    assert result['x_str'].type.simple == 3
-    assert result['y_int'].type.simple == 1
+    assert result["x_str"].type.simple == 3
+    assert result["y_int"].type.simple == 1
 
     result = transform_variable_map(extract_return_annotation(inspect.signature(y).return_annotation))
-    assert result['x_str'].type.simple == 3
-    assert result['y_int'].type.simple == 1
+    assert result["x_str"].type.simple == 3
+    assert result["y_int"].type.simple == 1
 
 
 def test_unnamed_typing_tuple():
@@ -91,8 +91,8 @@ def test_unnamed_typing_tuple():
         return 5, "hello world"
 
     result = transform_variable_map(extract_return_annotation(inspect.signature(z).return_annotation))
-    assert result['out_0'].type.simple == 1
-    assert result['out_1'].type.simple == 3
+    assert result["out_0"].type.simple == 1
+    assert result["out_1"].type.simple == 3
 
 
 def test_regular_tuple():
@@ -100,8 +100,8 @@ def test_regular_tuple():
         return 5, "hello world"
 
     result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
-    assert result['out_0'].type.simple == 1
-    assert result['out_1'].type.simple == 3
+    assert result["out_0"].type.simple == 1
+    assert result["out_1"].type.simple == 3
 
 
 def test_single_output_new_decorator():
@@ -109,7 +109,7 @@ def test_single_output_new_decorator():
         return a + len(b)
 
     result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
-    assert result['out_0'].type.simple == 1
+    assert result["out_0"].type.simple == 1
 
 
 def test_wf1():
@@ -132,8 +132,8 @@ def test_wf1():
     assert my_wf._nodes[1]._upstream_nodes[0] is my_wf._nodes[0]
 
     assert len(my_wf._output_bindings) == 2
-    assert my_wf._output_bindings[0].var == 'out_0'
-    assert my_wf._output_bindings[0].binding.promise.var == 't1_int_output'
+    assert my_wf._output_bindings[0].var == "out_0"
+    assert my_wf._output_bindings[0].binding.promise.var == "t1_int_output"
 
 
 def test_wf1_run():
@@ -252,7 +252,7 @@ def test_wf1_with_sql():
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
         inputs={"ds": datetime.datetime},
-        metadata=metadata(retries=2)
+        metadata=metadata(retries=2),
     )
 
     @task
@@ -308,7 +308,7 @@ def test_wf1_with_map():
         return t2(a=x, b=y)
 
     x = my_wf(a=[5, 6])
-    assert x == (15, 'world-7world-8')
+    assert x == (15, "world-7world-8")
 
 
 def test_wf1_compile_time_constant_vars():
@@ -431,10 +431,7 @@ def test_wf1_branches():
     def my_wf(a: int, b: str) -> (int, str):
         x, y = t1(a=a)
         print(x)
-        d = conditional()\
-            .if_(x == 4).then(t2(a=b)) \
-            .elif_(x >= 5).then(t2(a=y)) \
-            .else_().fail("Unable to choose branch")
+        d = conditional().if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("Unable to choose branch")
         return x, d
 
     x = my_wf(a=5, b="hello ")
@@ -443,6 +440,7 @@ def test_wf1_branches():
 
 def test_wf1_branches_no_else():
     with pytest.raises(AssertionError):
+
         def foo():
             @task
             def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
@@ -456,20 +454,24 @@ def test_wf1_branches_no_else():
             def my_wf(a: int, b: str) -> (int, str):
                 x, y = t1(a=a)
                 print(x)
-                d = conditional()\
-                    .if_(x == 4).then(t2(a=b)) \
-                    .elif_(x >= 5).then(t2(a=y))
+                d = conditional().if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y))
                 return x, d
 
             @workflow
             def my_wf2(a: int, b: str) -> (int, str):
                 x, y = t1(a=a)
                 print(x)
-                d = conditional()\
-                    .if_(x == 4).then(t2(a=b)) \
-                    .elif_(x >= 5).then(t2(a=y)) \
-                    .else_().then(t2(a="Ok I give up!"))
+                d = (
+                    conditional()
+                    .if_(x == 4)
+                    .then(t2(a=b))
+                    .elif_(x >= 5)
+                    .then(t2(a=y))
+                    .else_()
+                    .then(t2(a="Ok I give up!"))
+                )
                 return x, d
+
         foo()
 
 
@@ -486,13 +488,12 @@ def test_wf1_branches_failing():
     def my_wf(a: int, b: str) -> (int, str):
         x, y = t1(a=a)
         print(x)
-        d = conditional()\
-            .if_(x == 4).then(t2(a=b)) \
-            .elif_(x >= 5).then(t2(a=y)) \
-            .else_().fail("All Branches failed")
+        d = conditional().if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("All Branches failed")
         return x, d
+
     with pytest.raises(AssertionError):
         x = my_wf(a=1, b="hello ")
+
 
 # TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!
 
@@ -515,7 +516,7 @@ def test_wf1_branches_failing():
 #     @python_task
 #     def my_task(ctx, fh: typing.BinaryIO):
 #         lines = fh.readlines()
-#         # assert 
+#         # assert
 
 #     # Option 1.1
 #     # To call the task for unit testing, users need to open a file and pass the handle
@@ -536,7 +537,7 @@ def test_wf1_branches_failing():
 #         file_path.download()
 #         with open(file_path.local_path, mode='rb') as fh:
 #             lines = fh.readlines()
-#             # assert 
+#             # assert
 
 #     assert my_task.unit_test(file_path=CustomPathLike('s3://bucket-my/mytest')) == {}
 
@@ -546,7 +547,7 @@ def test_wf1_branches_failing():
 #     def my_task(ctx, file_path: CustomPathLike):
 #         with file_path.open() as fh:
 #             lines = fh.readlines()
-#             # assert 
+#             # assert
 
 
 #     # Option 2.3
@@ -555,5 +556,5 @@ def test_wf1_branches_failing():
 #     def my_task(ctx, file_path: CustomPathLike):
 #         with open(file_path.local_path, mode='rb') as fh:
 #             lines = fh.readlines()
-#             # assert 
+#             # assert
 # nt1 = typing.NamedTuple("NT1", x_str=str, y_int=int)

@@ -19,7 +19,7 @@ def test_type_engine():
 
 def test_named_tuple():
     e = type_engine.BaseEngine()
-    t = typing.NamedTuple("Outputs", [('x_str', str), ('y_int', int)])
+    t = typing.NamedTuple("Outputs", [("x_str", str), ("y_int", int)])
     var_map = e.named_tuple_to_variable_map(t)
     assert var_map.variables["x_str"].type.simple == model_types.SimpleType.STRING
     assert var_map.variables["y_int"].type.simple == model_types.SimpleType.INTEGER

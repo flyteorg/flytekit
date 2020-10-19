@@ -1,11 +1,12 @@
 import copy
 import inspect
 from collections import OrderedDict
-from typing import Dict, Generator, Union, Type, Tuple, List, Any, TypeVar
+from typing import Any, Dict, Generator, List, Tuple, Type, TypeVar, Union
 
 from flytekit import logger
 from flytekit.annotated import type_engine
-from flytekit.models import interface as _interface_models, types as _type_models
+from flytekit.models import interface as _interface_models
+from flytekit.models import types as _type_models
 
 
 class Interface(object):
@@ -115,7 +116,8 @@ def transform_interface_to_typed_interface(interface: Interface) -> _interface_m
 
 
 def transform_variable_map_to_collection(
-        m: Dict[str, _interface_models.Variable]) -> Dict[str, _interface_models.Variable]:
+    m: Dict[str, _interface_models.Variable]
+) -> Dict[str, _interface_models.Variable]:
     """
     Converts a given variables to be collections of their type. This is useful for array jobs / map style code.
     It will create a collection of types even if any one these types is not a collection type
@@ -134,13 +136,15 @@ def transform_variable_map_to_collection(
 
     om = {}
     for k, v in m.items():
-        om[k] = _interface_models.Variable(type=_type_models.LiteralType(collection_type=v.type),
-                                           description=v.description)
+        om[k] = _interface_models.Variable(
+            type=_type_models.LiteralType(collection_type=v.type), description=v.description
+        )
     return om
 
 
 def transform_typed_interface_to_collection_interface(
-        interface: _interface_models.TypedInterface) -> _interface_models.TypedInterface:
+    interface: _interface_models.TypedInterface,
+) -> _interface_models.TypedInterface:
     """
     Takes a single task interface and interpolates it to an array interface - to allow performing distributed python map
     like functions
@@ -240,27 +244,28 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
     if isinstance(return_annotation, Type) or isinstance(return_annotation, TypeVar):
         # isinstance / issubclass does not work for Namedtuple.
         # Options 1 and 2
-        if hasattr(return_annotation, '_field_types'):
-            logger.debug(f'Task returns named tuple {return_annotation}')
+        if hasattr(return_annotation, "_field_types"):
+            logger.debug(f"Task returns named tuple {return_annotation}")
             return return_annotation._field_types
         # Option 5
-        logger.debug(f'Task returns a single output of type {return_annotation}')
+        logger.debug(f"Task returns a single output of type {return_annotation}")
         return {default_output_name(): return_annotation}
 
     # Options 7 and 8.
-    if hasattr(return_annotation, '_name') and (
-            (return_annotation._name == 'List' and return_annotation.__origin__ == list) or
-            (return_annotation._name == 'Dict' and return_annotation.__origin__ == dict)):
+    if hasattr(return_annotation, "_name") and (
+        (return_annotation._name == "List" and return_annotation.__origin__ == list)
+        or (return_annotation._name == "Dict" and return_annotation.__origin__ == dict)
+    ):
         return {default_output_name(): return_annotation}
 
     # Now lets handle multi-valued return annotations
-    if hasattr(return_annotation, '__origin__') and return_annotation.__origin__ is tuple:
+    if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:
         # Handle option 3
-        logger.debug(f'Task returns unnamed typing.Tuple {return_annotation}')
+        logger.debug(f"Task returns unnamed typing.Tuple {return_annotation}")
         return_types = return_annotation.__args__
     else:
         # Handle option 4
-        logger.debug(f'Task returns unnamed native tuple {return_annotation}')
+        logger.debug(f"Task returns unnamed native tuple {return_annotation}")
         return_types = return_annotation
 
     return_map = OrderedDict(zip(list(output_name_generator(len(return_types))), return_types))
