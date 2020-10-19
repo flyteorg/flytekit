@@ -1,29 +1,26 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import random
 from operator import add
 
 from six.moves import range
 
-from flytekit.sdk.tasks import spark_task, inputs, outputs, python_task
+from flytekit.sdk.tasks import inputs, outputs, python_task, spark_task
 from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class, Input
+from flytekit.sdk.workflow import Input, workflow_class
 
 
 @inputs(partitions=Types.Integer)
 @outputs(out=Types.Float)
 @spark_task(
     spark_conf={
-        'spark.driver.memory': "1000M",
-        'spark.executor.memory': "1000M",
-        'spark.executor.cores': '1',
-        'spark.executor.instances': '2',
-        'spark.hadoop.mapred.output.committer.class': "org.apache.hadoop.mapred.DirectFileOutputCommitter",
-        'spark.hadoop.mapreduce.use.directfileoutputcommitter': "true",
+        "spark.driver.memory": "1000M",
+        "spark.executor.memory": "1000M",
+        "spark.executor.cores": "1",
+        "spark.executor.instances": "2",
+        "spark.hadoop.mapred.output.committer.class": "org.apache.hadoop.mapred.DirectFileOutputCommitter",
+        "spark.hadoop.mapreduce.use.directfileoutputcommitter": "true",
     },
-    cache_version='1')
+    cache_version="1",
+)
 def hello_spark(workflow_parameters, spark_context, partitions, out):
     print("Starting Spark with Partitions: {}".format(partitions))
 
@@ -35,7 +32,7 @@ def hello_spark(workflow_parameters, spark_context, partitions, out):
 
 
 @inputs(value_to_print=Types.Float, date_triggered=Types.Datetime)
-@python_task(cache_version='1')
+@python_task(cache_version="1")
 def print_every_time(workflow_parameters, value_to_print, date_triggered):
     print("My printed value: {} @ {}".format(value_to_print, date_triggered))
 
@@ -50,6 +47,4 @@ def f(_):
 class SparkTasksWorkflow(object):
     triggered_date = Input(Types.Datetime)
     sparkTask = hello_spark(partitions=50)
-    print_always = print_every_time(
-        value_to_print=sparkTask.outputs.out,
-        date_triggered=triggered_date)
+    print_always = print_every_time(value_to_print=sparkTask.outputs.out, date_triggered=triggered_date)

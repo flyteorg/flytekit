@@ -1,15 +1,14 @@
-from __future__ import absolute_import
-
 import abc as _abc
-import six as _six
+
 from flytekit.models import common as _common_models
 
 
-class BaseWorkflowExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
+class BaseWorkflowExecutor(object, metaclass=_common_models.FlyteABCMeta):
     """
     This class must be implemented for any engine to create, interact with, and execute workflows using the
     FlyteKit SDK.
     """
+
     def __init__(self, sdk_workflow):
         """
         :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
@@ -32,7 +31,7 @@ class BaseWorkflowExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, obje
         pass
 
 
-class BaseWorkflowExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
+class BaseWorkflowExecution(object, metaclass=_common_models.FlyteABCMeta):
     """
     This class must be implemented for any engine to track and interact with the executions of workflows.
     """
@@ -87,8 +86,7 @@ class BaseWorkflowExecution(_six.with_metaclass(_common_models.FlyteABCMeta, obj
         pass
 
 
-class BaseNodeExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
-
+class BaseNodeExecution(object, metaclass=_common_models.FlyteABCMeta):
     def __init__(self, node_execution):
         """
         :param flytekit.common.nodes.SdkNodeExecution node_execution:
@@ -138,8 +136,7 @@ class BaseNodeExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)
         pass
 
 
-class BaseTaskExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
-
+class BaseTaskExecution(object, metaclass=_common_models.FlyteABCMeta):
     def __init__(self, task_exec):
         """
         :param flytekit.common.tasks.executions.SdkTaskExecution task_exec:
@@ -183,8 +180,7 @@ class BaseTaskExecution(_six.with_metaclass(_common_models.FlyteABCMeta, object)
         pass
 
 
-class BaseLaunchPlanLauncher(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
-
+class BaseLaunchPlanLauncher(object, metaclass=_common_models.FlyteABCMeta):
     def __init__(self, sdk_launch_plan):
         """
         :param flytekit.common.launch_plan.SdkLaunchPlan sdk_launch_plan:
@@ -207,8 +203,16 @@ class BaseLaunchPlanLauncher(_six.with_metaclass(_common_models.FlyteABCMeta, ob
         pass
 
     @_abc.abstractmethod
-    def launch(self, project, domain, name, inputs, notification_overrides=None, label_overrides=None,
-               annotation_overrides=None):
+    def launch(
+        self,
+        project,
+        domain,
+        name,
+        inputs,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+    ):
         """
         Registers the launch plan and returns the identifier.
         :param Text project:
@@ -232,7 +236,7 @@ class BaseLaunchPlanLauncher(_six.with_metaclass(_common_models.FlyteABCMeta, ob
         pass
 
 
-class BaseTaskExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
+class BaseTaskExecutor(object, metaclass=_common_models.FlyteABCMeta):
     def __init__(self, sdk_task):
         """
         :param flytekit.common.tasks.task.SdkTask sdk_task:
@@ -262,8 +266,17 @@ class BaseTaskExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, object))
         pass
 
     @_abc.abstractmethod
-    def launch(self, project, domain, name=None, inputs=None, notification_overrides=None,
-               label_overrides=None, annotation_overrides=None, auth_role=None):
+    def launch(
+        self,
+        project,
+        domain,
+        name=None,
+        inputs=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+        auth_role=None,
+    ):
         """
         Executes the task as a single task execution and returns the identifier.
         :param Text project:
@@ -280,18 +293,10 @@ class BaseTaskExecutor(_six.with_metaclass(_common_models.FlyteABCMeta, object))
         pass
 
 
-class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta, object)):
+class BaseExecutionEngineFactory(object, metaclass=_common_models.FlyteABCMeta):
     """
     This object should be implemented to satisfy the basic engine interface.
     """
-
-    @_abc.abstractmethod
-    def get_workflow(self, sdk_workflow):
-        """
-        :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
-        :rtype: BaseWorkflowExecutor
-        """
-        pass
 
     @_abc.abstractmethod
     def get_task(self, sdk_task):
@@ -359,41 +364,17 @@ class BaseExecutionEngineFactory(_six.with_metaclass(_common_models.FlyteABCMeta
         """
         pass
 
-    @_abc.abstractmethod
-    def fetch_launch_plan(self, launch_plan_id):
-        """
-        :param flytekit.models.core.identifier.Identifier launch_plan_id: This identifier should have a resource
-            type of kind LaunchPlan.
-        :rtype: flytekit.models.launch_plan.LaunchPlan
-        """
-        pass
-
-    @_abc.abstractmethod
-    def fetch_workflow(self, workflow_id):
-        """
-        :param flytekit.models.core.identifier.Identifier workflow_id: This identifier should have a resource
-            type of kind workflow.
-        :rtype: flytekit.models.admin.workflow.Workflow
-        """
-        pass
-
 
 class EngineContext(object):
-    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, raw_data_output_path=None):
-        """
-        :param execution_date:
-        :param tmp_dir:
-        :param stats:
-        :param execution_id:
-        :param logging:
-        :param raw_data_output_path: This is the prefix for S3 or
-        """
+    def __init__(
+        self, execution_date, tmp_dir, stats, execution_id, logging, raw_output_data_prefix=None,
+    ):
         self._stats = stats
         self._execution_date = execution_date
         self._working_directory = tmp_dir
         self._execution_id = execution_id
         self._logging = logging
-        self._raw_data_output_path = raw_data_output_path
+        self._raw_output_data_prefix = raw_output_data_prefix
 
     @property
     def stats(self):
@@ -431,5 +412,5 @@ class EngineContext(object):
         return self._execution_id
 
     @property
-    def raw_data_output_path(self) -> str:
-        return self._raw_data_output_path
+    def raw_output_data_prefix(self) -> str:
+        return self._raw_output_data_prefix

@@ -1,20 +1,19 @@
-from __future__ import absolute_import
+import datetime as _datetime
+import json as _json
 
+import six as _six
+from dateutil import parser as _parser
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
 from pytimeparse import parse as _parse_duration_string
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
-from flytekit.models import types as _idl_types, literals as _literals
-from dateutil import parser as _parser
-from google.protobuf import json_format as _json_format, struct_pb2 as _struct
-
-import json as _json
-import six as _six
-import datetime as _datetime
+from flytekit.models import literals as _literals
+from flytekit.models import types as _idl_types
 
 
 class Integer(_base_sdk_types.FlyteSdkValue):
-
     @classmethod
     def from_string(cls, string_value):
         """
@@ -24,9 +23,11 @@ class Integer(_base_sdk_types.FlyteSdkValue):
         try:
             return cls(int(string_value))
         except (ValueError, TypeError):
-            raise _user_exceptions.FlyteTypeException(_six.text_type, int,
-                                                      additional_msg='String not castable to Integer SDK type:'
-                                                                     ' {}'.format(string_value))
+            raise _user_exceptions.FlyteTypeException(
+                _six.text_type,
+                int,
+                additional_msg="String not castable to Integer SDK type:" " {}".format(string_value),
+            )
 
     @classmethod
     def is_castable_from(cls, other):
@@ -70,7 +71,7 @@ class Integer(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: Text
         """
-        return 'Integer'
+        return "Integer"
 
     def __init__(self, value):
         """
@@ -92,7 +93,6 @@ class Integer(_base_sdk_types.FlyteSdkValue):
 
 
 class Float(_base_sdk_types.FlyteSdkValue):
-
     @classmethod
     def from_string(cls, string_value):
         """
@@ -102,9 +102,11 @@ class Float(_base_sdk_types.FlyteSdkValue):
         try:
             return cls(float(string_value))
         except ValueError:
-            raise _user_exceptions.FlyteTypeException(_six.text_type, float,
-                                                      additional_msg='String not castable to Float SDK type:'
-                                                                     ' {}'.format(string_value))
+            raise _user_exceptions.FlyteTypeException(
+                _six.text_type,
+                float,
+                additional_msg="String not castable to Float SDK type:" " {}".format(string_value),
+            )
 
     @classmethod
     def is_castable_from(cls, other):
@@ -148,7 +150,7 @@ class Float(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: Text
         """
-        return 'Float'
+        return "Float"
 
     def __init__(self, value):
         """
@@ -170,20 +172,19 @@ class Float(_base_sdk_types.FlyteSdkValue):
 
 
 class Boolean(_base_sdk_types.FlyteSdkValue):
-
     @classmethod
     def from_string(cls, string_value):
         """
         :param Text string_value:
         :rtype: Boolean
         """
-        if string_value == '1' or string_value.lower() == 'true':
+        if string_value == "1" or string_value.lower() == "true":
             return cls(True)
-        elif string_value == '0' or string_value.lower() == 'false':
+        elif string_value == "0" or string_value.lower() == "false":
             return cls(False)
-        raise _user_exceptions.FlyteTypeException(_six.text_type, bool,
-                                                  additional_msg='String not castable to Boolean SDK '
-                                                                 'type: {}'.format(string_value))
+        raise _user_exceptions.FlyteTypeException(
+            _six.text_type, bool, additional_msg="String not castable to Boolean SDK " "type: {}".format(string_value),
+        )
 
     @classmethod
     def is_castable_from(cls, other):
@@ -227,7 +228,7 @@ class Boolean(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: Text
         """
-        return 'Boolean'
+        return "Boolean"
 
     def __init__(self, value):
         """
@@ -249,7 +250,6 @@ class Boolean(_base_sdk_types.FlyteSdkValue):
 
 
 class String(_base_sdk_types.FlyteSdkValue):
-
     @classmethod
     def from_string(cls, string_value):
         """
@@ -258,8 +258,10 @@ class String(_base_sdk_types.FlyteSdkValue):
         """
         if type(string_value) == dict or type(string_value) == list:
             raise _user_exceptions.FlyteTypeException(
-                type(string_value), _six.text_type,
-                additional_msg='Should not cast native Python type to string {}'.format(string_value))
+                type(string_value),
+                _six.text_type,
+                additional_msg="Should not cast native Python type to string {}".format(string_value),
+            )
         return cls(string_value)
 
     @classmethod
@@ -305,7 +307,7 @@ class String(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: Text
         """
-        return 'String'
+        return "String"
 
     def __init__(self, value):
         """
@@ -326,7 +328,7 @@ class String(_base_sdk_types.FlyteSdkValue):
         _TRUNCATE_LENGTH = 100
         return "String('{}'{})".format(
             self.scalar.primitive.string_value[:_TRUNCATE_LENGTH],
-            " ..." if len(self.scalar.primitive.string_value) > _TRUNCATE_LENGTH else ""
+            " ..." if len(self.scalar.primitive.string_value) > _TRUNCATE_LENGTH else "",
         )
 
     def verbose_string(self):
@@ -337,7 +339,6 @@ class String(_base_sdk_types.FlyteSdkValue):
 
 
 class Datetime(_base_sdk_types.FlyteSdkValue):
-
     @classmethod
     def from_string(cls, string_value):
         """
@@ -347,9 +348,11 @@ class Datetime(_base_sdk_types.FlyteSdkValue):
         try:
             python_std_datetime = _parser.parse(string_value)
         except ValueError:
-            raise _user_exceptions.FlyteTypeException(_six.text_type, _datetime.datetime,
-                                                      additional_msg='String not castable to Datetime '
-                                                                     'SDK type: {}'.format(string_value))
+            raise _user_exceptions.FlyteTypeException(
+                _six.text_type,
+                _datetime.datetime,
+                additional_msg="String not castable to Datetime " "SDK type: {}".format(string_value),
+            )
 
         return cls.from_python_std(python_std_datetime)
 
@@ -373,8 +376,9 @@ class Datetime(_base_sdk_types.FlyteSdkValue):
         elif type(t_value) != _datetime.datetime:
             raise _user_exceptions.FlyteTypeException(type(t_value), _datetime.datetime, t_value)
         elif t_value.tzinfo is None:
-            raise _user_exceptions.FlyteValueException(t_value, "Datetime objects in Flyte must be timezone aware.  "
-                                                                "tzinfo was found to be None.")
+            raise _user_exceptions.FlyteValueException(
+                t_value, "Datetime objects in Flyte must be timezone aware.  " "tzinfo was found to be None.",
+            )
         return cls(t_value)
 
     @classmethod
@@ -398,7 +402,7 @@ class Datetime(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: Text
         """
-        return 'Datetime'
+        return "Datetime"
 
     def __init__(self, value):
         """
@@ -420,7 +424,6 @@ class Datetime(_base_sdk_types.FlyteSdkValue):
 
 
 class Timedelta(_base_sdk_types.FlyteSdkValue):
-
     @classmethod
     def from_string(cls, string_value):
         """
@@ -429,9 +432,11 @@ class Timedelta(_base_sdk_types.FlyteSdkValue):
         """
         td = _parse_duration_string(string_value)
         if td is None:
-            raise _user_exceptions.FlyteTypeException(_six.text_type, _datetime.timedelta,
-                                                      additional_msg='Could not convert string to'
-                                                                     ' time delta: {}'.format(string_value))
+            raise _user_exceptions.FlyteTypeException(
+                _six.text_type,
+                _datetime.timedelta,
+                additional_msg="Could not convert string to" " time delta: {}".format(string_value),
+            )
         return cls.from_python_std(_datetime.timedelta(seconds=td))
 
     @classmethod
@@ -477,7 +482,7 @@ class Timedelta(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: Text
         """
-        return 'Timedelta'
+        return "Timedelta"
 
     def __init__(self, value):
         """
@@ -499,7 +504,6 @@ class Timedelta(_base_sdk_types.FlyteSdkValue):
 
 
 class Generic(_base_sdk_types.FlyteSdkValue):
-
     @classmethod
     def from_string(cls, string_value):
         """
@@ -508,11 +512,8 @@ class Generic(_base_sdk_types.FlyteSdkValue):
         """
         try:
             t = _json_format.Parse(string_value, _struct.Struct())
-        except:
-            raise _user_exceptions.FlyteValueException(
-                string_value,
-                "Could not be parsed from JSON."
-            )
+        except Exception:
+            raise _user_exceptions.FlyteValueException(string_value, "Could not be parsed from JSON.")
         return cls(t)
 
     @classmethod
@@ -537,11 +538,8 @@ class Generic(_base_sdk_types.FlyteSdkValue):
 
         try:
             t = _json.dumps(t_value)
-        except:
-            raise _user_exceptions.FlyteValueException(
-                t_value,
-                "Is not JSON serializable."
-            )
+        except Exception:
+            raise _user_exceptions.FlyteValueException(t_value, "Is not JSON serializable.")
 
         return cls(_json_format.Parse(t, _struct.Struct()))
 
@@ -566,7 +564,7 @@ class Generic(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: Text
         """
-        return 'Generic'
+        return "Generic"
 
     def __init__(self, value):
         """

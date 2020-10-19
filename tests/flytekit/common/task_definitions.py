@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-from flytekit.sdk.tasks import python_task, inputs, outputs
+from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.types import Types
 
 

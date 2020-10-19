@@ -1,6 +1,6 @@
-from __future__ import absolute_import
-from flytekit.sdk.tasks import hive_task
 import pytest
+
+from flytekit.sdk.tasks import hive_task
 
 
 def test_no_queries():

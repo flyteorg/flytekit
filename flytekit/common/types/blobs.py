@@ -1,23 +1,19 @@
-from __future__ import absolute_import
-
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 from flytekit.common.types.impl import blobs as _blob_impl
-from flytekit.models import types as _idl_types, literals as _literals
+from flytekit.models import literals as _literals
+from flytekit.models import types as _idl_types
 from flytekit.models.core import types as _core_types
-
-import six as _six
 
 
 class BlobInstantiator(_base_sdk_types.InstantiableType):
-
     @staticmethod
     def create_at_known_location(location):
         """
         :param Text location:
         :rtype: flytekit.common.types.impl.blobs.Blob
         """
-        return _blob_impl.Blob.create_at_known_location(location, mode='wb')
+        return _blob_impl.Blob.create_at_known_location(location, mode="wb")
 
     @staticmethod
     def fetch(remote_path, local_path=None):
@@ -27,7 +23,7 @@ class BlobInstantiator(_base_sdk_types.InstantiableType):
             this location is NOT managed and the blob will not be cleaned up upon exit.
         :rtype: flytekit.common.types.impl.blobs.Blob
         """
-        return _blob_impl.Blob.fetch(remote_path, mode='rb', local_path=local_path)
+        return _blob_impl.Blob.fetch(remote_path, mode="rb", local_path=local_path)
 
     def __call__(cls, *args, **kwargs):
         """
@@ -39,14 +35,13 @@ class BlobInstantiator(_base_sdk_types.InstantiableType):
         :rtype: flytekit.common.types.impl.blobs.Blob
         """
         if not args and not kwargs:
-            return _blob_impl.Blob.create_at_any_location(mode='wb')
+            return _blob_impl.Blob.create_at_any_location(mode="wb")
         else:
             return super(BlobInstantiator, cls).__call__(*args, **kwargs)
 
 
 # TODO: Make blobs and schemas pluggable
-class Blob(_six.with_metaclass(BlobInstantiator, _base_sdk_types.FlyteSdkValue)):
-
+class Blob(_base_sdk_types.FlyteSdkValue, metaclass=BlobInstantiator):
     @classmethod
     def from_string(cls, string_value):
         """
@@ -55,7 +50,7 @@ class Blob(_six.with_metaclass(BlobInstantiator, _base_sdk_types.FlyteSdkValue))
         """
         if not string_value:
             _user_exceptions.FlyteValueException(string_value, "Cannot create a Blob from the provided path value.")
-        return cls(_blob_impl.Blob.from_string(string_value, mode='rb'))
+        return cls(_blob_impl.Blob.from_string(string_value, mode="rb"))
 
     @classmethod
     def is_castable_from(cls, other):
@@ -86,10 +81,7 @@ class Blob(_six.with_metaclass(BlobInstantiator, _base_sdk_types.FlyteSdkValue))
         :rtype: flytekit.models.types.LiteralType
         """
         return _idl_types.LiteralType(
-            blob=_core_types.BlobType(
-                format="",
-                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-            )
+            blob=_core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE)
         )
 
     @classmethod
@@ -106,7 +98,7 @@ class Blob(_six.with_metaclass(BlobInstantiator, _base_sdk_types.FlyteSdkValue))
         """
         :rtype: Text
         """
-        return 'Blob'
+        return "Blob"
 
     def __init__(self, value):
         """
@@ -126,19 +118,20 @@ class Blob(_six.with_metaclass(BlobInstantiator, _base_sdk_types.FlyteSdkValue))
         """
         return "Blob(uri={}{})".format(
             self.scalar.blob.uri,
-            ", format={}".format(self.scalar.blob.metadata.type.format) if self.scalar.blob.metadata.type.format else ""
+            ", format={}".format(self.scalar.blob.metadata.type.format)
+            if self.scalar.blob.metadata.type.format
+            else "",
         )
 
 
 class MultiPartBlobInstantiator(_base_sdk_types.InstantiableType):
-
     @staticmethod
     def create_at_known_location(location):
         """
         :param Text location:
         :rtype: flytekit.common.types.impl.blobs.MultiPartBlob
         """
-        return _blob_impl.MultiPartBlob.create_at_known_location(location, mode='wb')
+        return _blob_impl.MultiPartBlob.create_at_known_location(location, mode="wb")
 
     @staticmethod
     def fetch(remote_path, local_path=None):
@@ -148,7 +141,7 @@ class MultiPartBlobInstantiator(_base_sdk_types.InstantiableType):
             this location is NOT managed and the blob will not be cleaned up upon exit.
         :rtype: flytekit.common.types.impl.blobs.MultiPartBlob
         """
-        return _blob_impl.MultiPartBlob.fetch(remote_path, mode='rb', local_path=local_path)
+        return _blob_impl.MultiPartBlob.fetch(remote_path, mode="rb", local_path=local_path)
 
     def __call__(cls, *args, **kwargs):
         """
@@ -161,13 +154,12 @@ class MultiPartBlobInstantiator(_base_sdk_types.InstantiableType):
         :rtype: flytekit.common.types.impl.blobs.MultiPartBlob
         """
         if not args and not kwargs:
-            return _blob_impl.MultiPartBlob.create_at_any_location(mode='wb')
+            return _blob_impl.MultiPartBlob.create_at_any_location(mode="wb")
         else:
             return super(MultiPartBlobInstantiator, cls).__call__(*args, **kwargs)
 
 
-class MultiPartBlob(_six.with_metaclass(MultiPartBlobInstantiator, _base_sdk_types.FlyteSdkValue)):
-
+class MultiPartBlob(_base_sdk_types.FlyteSdkValue, metaclass=MultiPartBlobInstantiator):
     @classmethod
     def from_string(cls, string_value):
         """
@@ -175,9 +167,10 @@ class MultiPartBlob(_six.with_metaclass(MultiPartBlobInstantiator, _base_sdk_typ
         :rtype: MultiPartBlob
         """
         if not string_value:
-            _user_exceptions.FlyteValueException(string_value, "Cannot create a MultiPartBlob from the provided path "
-                                                               "value.")
-        return cls(_blob_impl.MultiPartBlob.from_string(string_value, mode='rb'))
+            _user_exceptions.FlyteValueException(
+                string_value, "Cannot create a MultiPartBlob from the provided path " "value.",
+            )
+        return cls(_blob_impl.MultiPartBlob.from_string(string_value, mode="rb"))
 
     @classmethod
     def is_castable_from(cls, other):
@@ -208,10 +201,7 @@ class MultiPartBlob(_six.with_metaclass(MultiPartBlobInstantiator, _base_sdk_typ
         :rtype: flytekit.models.types.LiteralType
         """
         return _idl_types.LiteralType(
-            blob=_core_types.BlobType(
-                format="",
-                dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
-            )
+            blob=_core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,)
         )
 
     @classmethod
@@ -228,7 +218,7 @@ class MultiPartBlob(_six.with_metaclass(MultiPartBlobInstantiator, _base_sdk_typ
         """
         :rtype: Text
         """
-        return 'MultiPartBlob'
+        return "MultiPartBlob"
 
     def __init__(self, value):
         """
@@ -248,19 +238,20 @@ class MultiPartBlob(_six.with_metaclass(MultiPartBlobInstantiator, _base_sdk_typ
         """
         return "MultiPartBlob(uri={}{})".format(
             self.scalar.blob.uri,
-            ", format={}".format(self.scalar.blob.metadata.type.format) if self.scalar.blob.metadata.type.format else ""
+            ", format={}".format(self.scalar.blob.metadata.type.format)
+            if self.scalar.blob.metadata.type.format
+            else "",
         )
 
 
 class CsvInstantiator(BlobInstantiator):
-
     @staticmethod
     def create_at_known_location(location):
         """
         :param Text location:
         :rtype: flytekit.common.types.impl.blobs.CSV
         """
-        return _blob_impl.Blob.create_at_known_location(location, mode='w', format='csv')
+        return _blob_impl.Blob.create_at_known_location(location, mode="w", format="csv")
 
     @staticmethod
     def fetch(remote_path, local_path=None):
@@ -270,7 +261,7 @@ class CsvInstantiator(BlobInstantiator):
             this location is NOT managed and the blob will not be cleaned up upon exit.
         :rtype: flytekit.common.types.impl.blobs.CSV
         """
-        return _blob_impl.Blob.fetch(remote_path, local_path=local_path, mode='r', format='csv')
+        return _blob_impl.Blob.fetch(remote_path, local_path=local_path, mode="r", format="csv")
 
     def __call__(cls, *args, **kwargs):
         """
@@ -283,13 +274,12 @@ class CsvInstantiator(BlobInstantiator):
         :rtype: flytekit.common.types.impl.blobs.CSV
         """
         if not args and not kwargs:
-            return _blob_impl.Blob.create_at_any_location(mode='w', format='csv')
+            return _blob_impl.Blob.create_at_any_location(mode="w", format="csv")
         else:
             return super(CsvInstantiator, cls).__call__(*args, **kwargs)
 
 
-class CSV(_six.with_metaclass(CsvInstantiator, Blob)):
-
+class CSV(Blob, metaclass=CsvInstantiator):
     @classmethod
     def from_string(cls, string_value):
         """
@@ -298,7 +288,7 @@ class CSV(_six.with_metaclass(CsvInstantiator, Blob)):
         """
         if not string_value:
             _user_exceptions.FlyteValueException(string_value, "Cannot create a CSV from the provided path value.")
-        return cls(_blob_impl.Blob.from_string(string_value, format='csv', mode='r'))
+        return cls(_blob_impl.Blob.from_string(string_value, format="csv", mode="r"))
 
     @classmethod
     def is_castable_from(cls, other):
@@ -331,10 +321,7 @@ class CSV(_six.with_metaclass(CsvInstantiator, Blob)):
         :rtype: flytekit.models.types.LiteralType
         """
         return _idl_types.LiteralType(
-            blob=_core_types.BlobType(
-                format="csv",
-                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-            )
+            blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
         )
 
     @classmethod
@@ -344,14 +331,14 @@ class CSV(_six.with_metaclass(CsvInstantiator, Blob)):
         :param flytekit.models.literals.Literal literal_model:
         :rtype: CSV
         """
-        return cls(_blob_impl.Blob.promote_from_model(literal_model.scalar.blob, mode='r'))
+        return cls(_blob_impl.Blob.promote_from_model(literal_model.scalar.blob, mode="r"))
 
     @classmethod
     def short_class_string(cls):
         """
         :rtype: Text
         """
-        return 'CSV'
+        return "CSV"
 
     def __init__(self, value):
         """
@@ -361,14 +348,13 @@ class CSV(_six.with_metaclass(CsvInstantiator, Blob)):
 
 
 class MultiPartCsvInstantiator(MultiPartBlobInstantiator):
-
     @staticmethod
     def create_at_known_location(location):
         """
         :param Text location:
         :rtype: flytekit.common.types.impl.blobs.MultiPartBlob
         """
-        return _blob_impl.MultiPartBlob.create_at_known_location(location, mode='w', format="csv")
+        return _blob_impl.MultiPartBlob.create_at_known_location(location, mode="w", format="csv")
 
     @staticmethod
     def fetch(remote_path, local_path=None):
@@ -378,7 +364,7 @@ class MultiPartCsvInstantiator(MultiPartBlobInstantiator):
             this location is NOT managed and the blob will not be cleaned up upon exit.
         :rtype: flytekit.common.types.impl.blobs.MultiPartCSV
         """
-        return _blob_impl.MultiPartBlob.fetch(remote_path, local_path=local_path, mode='r', format="csv")
+        return _blob_impl.MultiPartBlob.fetch(remote_path, local_path=local_path, mode="r", format="csv")
 
     def __call__(cls, *args, **kwargs):
         """
@@ -391,13 +377,12 @@ class MultiPartCsvInstantiator(MultiPartBlobInstantiator):
         :rtype: flytekit.common.types.impl.blobs.MultiPartCSV
         """
         if not args and not kwargs:
-            return _blob_impl.MultiPartBlob.create_at_any_location(mode='w', format="csv")
+            return _blob_impl.MultiPartBlob.create_at_any_location(mode="w", format="csv")
         else:
             return super(MultiPartCsvInstantiator, cls).__call__(*args, **kwargs)
 
 
-class MultiPartCSV(_six.with_metaclass(MultiPartCsvInstantiator, MultiPartBlob)):
-
+class MultiPartCSV(MultiPartBlob, metaclass=MultiPartCsvInstantiator):
     @classmethod
     def from_string(cls, string_value):
         """
@@ -406,10 +391,9 @@ class MultiPartCSV(_six.with_metaclass(MultiPartCsvInstantiator, MultiPartBlob))
         """
         if not string_value:
             _user_exceptions.FlyteValueException(
-                string_value,
-                "Cannot create a MultiPartCSV from the provided path value."
+                string_value, "Cannot create a MultiPartCSV from the provided path value.",
             )
-        return cls(_blob_impl.MultiPartBlob.from_string(string_value, format='csv', mode='r'))
+        return cls(_blob_impl.MultiPartBlob.from_string(string_value, format="csv", mode="r"))
 
     @classmethod
     def is_castable_from(cls, other):
@@ -431,8 +415,7 @@ class MultiPartCSV(_six.with_metaclass(MultiPartCsvInstantiator, MultiPartBlob))
         elif isinstance(t_value, _blob_impl.MultiPartBlob):
             if t_value.metadata.type.format != "csv":
                 raise _user_exceptions.FlyteValueException(
-                    t_value,
-                    "Multi Part Blob is in incorrect format.  Expected CSV."
+                    t_value, "Multi Part Blob is in incorrect format.  Expected CSV."
                 )
             blob = t_value
         else:
@@ -445,10 +428,7 @@ class MultiPartCSV(_six.with_metaclass(MultiPartCsvInstantiator, MultiPartBlob))
         :rtype: flytekit.models.types.LiteralType
         """
         return _idl_types.LiteralType(
-            blob=_core_types.BlobType(
-                format="csv",
-                dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
-            )
+            blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,)
         )
 
     @classmethod
@@ -458,14 +438,14 @@ class MultiPartCSV(_six.with_metaclass(MultiPartCsvInstantiator, MultiPartBlob))
         :param flytekit.models.literals.Literal literal_model:
         :rtype: MultiPartCSV
         """
-        return cls(_blob_impl.MultiPartBlob.promote_from_model(literal_model.scalar.blob, mode='r'))
+        return cls(_blob_impl.MultiPartBlob.promote_from_model(literal_model.scalar.blob, mode="r"))
 
     @classmethod
     def short_class_string(cls):
         """
         :rtype: Text
         """
-        return 'MultiPartCSV'
+        return "MultiPartCSV"
 
     def __init__(self, value):
         """

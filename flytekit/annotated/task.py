@@ -4,19 +4,22 @@ import functools
 import inspect
 import re
 from abc import abstractmethod
-from typing import Callable, Union, Dict, DefaultDict, Type, Any, List, Tuple
+from typing import Callable, Union, Dict, DefaultDict, Type, Any, List, Tuple, Optional
+from flytekit.common.mixins import registerable as _registerable
 
 from flytekit import engine as flytekit_engine, logger
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext, BranchEvalMode
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext, BranchEvalMode, FlyteEntities
 from flytekit.annotated.interface import Interface, transform_interface_to_typed_interface, \
     transform_signature_to_interface, transform_typed_interface_to_collection_interface
 from flytekit.annotated.promise import Promise, create_task_output, translate_inputs_to_literals
 from flytekit.annotated.workflow import Workflow
-from flytekit.common import nodes as _nodes
+from flytekit.annotated.node import Node
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.models import task as _task_model, literals as _literal_models, interface as _interface_models
 from flytekit.models.core import workflow as _workflow_model, identifier as _identifier_model
+from flytekit.common.tasks.task import SdkTask
+from flytekit.common.tasks.raw_container import _get_container_definition
 
 
 # This is the least abstract task. It will have access to the loaded Python function
@@ -30,12 +33,17 @@ from flytekit.models.core import workflow as _workflow_model, identifier as _ide
 # That is, all the control plane interactions we wish to build should belong there. (I think this is how it's done
 # already.)
 class Task(object):
-
     def __init__(self, name: str, interface: _interface_models.TypedInterface, metadata: _task_model.TaskMetadata,
                  *args, **kwargs):
         self._name = name
         self._interface = interface
         self._metadata = metadata
+
+        # This will get populated only at registration time, when we retrieve the rest of the environment variables like
+        # project/domain/version/image and anything else we might need from the environment in the future.
+        self._registerable_entity: Optional[SdkTask] = None
+
+        FlyteEntities.entities.append(self)
 
     def _compile(self, ctx: FlyteContext, *args, **kwargs):
         """
@@ -60,18 +68,19 @@ class Task(object):
             )
 
         # Detect upstream nodes
+        # These will be our annotated Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
         upstream_nodes = [input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)]
 
         # TODO: Make the metadata name the full name of the (function)?
-        sdk_node = _nodes.SdkNode(
+        sdk_node = Node(
             # TODO
             id=f"node-{len(ctx.compilation_state.nodes)}",
             metadata=_workflow_model.NodeMetadata(self._name, self.metadata.timeout,
                                                   self.metadata.retries,
                                                   self.metadata.interruptible),
             bindings=sorted(bindings, key=lambda b: b.var),
-            upstream_nodes=upstream_nodes,
-            sdk_task=self
+            upstream_nodes=upstream_nodes,  # type: ignore
+            flyte_entity=self,
         )
         ctx.compilation_state.nodes.append(sdk_node)
 
@@ -193,6 +202,10 @@ class Task(object):
     def name(self) -> str:
         return self._name
 
+    @abstractmethod
+    def get_registerable_entity(self) -> _registerable.RegisterableEntity:
+        ...
+
 
 class PythonFunctionTask(Task):
 
@@ -201,7 +214,7 @@ class PythonFunctionTask(Task):
         self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         interface = transform_interface_to_typed_interface(mutated_interface)
-        super().__init__(name=task_function.__name__, interface=interface, metadata=metadata, *args, **kwargs)
+        super().__init__(name=f"{task_function.__module__}.{task_function.__name__}", interface=interface, metadata=metadata, *args, **kwargs)
         self._task_function = task_function
 
     def execute(self, **kwargs) -> Any:
@@ -210,6 +223,33 @@ class PythonFunctionTask(Task):
     def native_interface(self) -> Interface:
         return self._native_interface
 
+    def get_registerable_entity(self) -> _registerable.RegisterableEntity:
+        settings = FlyteContext.current_context().registration_settings
+        if self._registerable_entity is not None:
+            return self._registerable_entity
+
+        args = [
+                   "pyflyte-execute",
+                   "--task-module",
+                   self._task_function.__module__,
+                   "--task-name",
+                   self._task_function.__name__,
+                   "--inputs",
+                   "{{.input}}",
+                   "--output-prefix",
+                   "{{.outputPrefix}}",
+                   "--raw-output-data-prefix",
+                   "{{.rawOutputDataPrefix}}",
+               ]
+        env = settings.env
+        container = _get_container_definition(image=settings.image, command=[], args=args, data_loading_config=None, environment=env)
+        self._registerable_entity = SdkTask(type="python_task", metadata=self.metadata, interface=self.interface, custom={}, container=container)
+        # Reset just to make sure it's what we give it
+        self._registerable_entity.id._project = settings.project
+        self._registerable_entity.id._domain = settings.domain
+        self._registerable_entity.id._name = self.name
+        self._registerable_entity.id._version = settings.version
+        return self._registerable_entity
 
 class PysparkFunctionTask(PythonFunctionTask):
     def __init__(self, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
@@ -407,18 +447,18 @@ def task(
         retries: int = 0,
         interruptible: bool = False,
         deprecated: str = "",
-        timeout: Union[_datetime.timedelta, int] = None,
+        timeout: Union[_datetime.timedelta, int] = 0,
         environment: Dict[str, str] = None,  # TODO: Ketan - what do we do with this?  Not sure how to use kwargs
         *args, **kwargs) -> Callable:
     def wrapper(fn) -> PythonFunctionTask:
-        _timeout = timeout
-        if _timeout and not isinstance(_timeout, _datetime.timedelta):
-            if isinstance(_timeout, int):
-                _timeout = _datetime.timedelta(seconds=_timeout)
-            else:
-                raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
+        if isinstance(timeout, int):
+            _timeout = _datetime.timedelta(seconds=timeout)
+        elif timeout and isinstance(timeout, _datetime.timedelta):
+            _timeout = timeout
+        else:
+            raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
 
-        _metadata = metadata(cache, cache_version, retries, interruptible, deprecated, timeout)
+        _metadata = metadata(cache, cache_version, retries, interruptible, deprecated, _timeout)
 
         task_instance = TaskTypePlugins[task_type](fn, _metadata, *args, **kwargs)
         # TODO: One of the things I want to make sure to do is better naming support. At this point, we should already

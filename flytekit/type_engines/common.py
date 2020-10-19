@@ -1,10 +1,7 @@
-from __future__ import absolute_import
 import abc as _abc
-import six as _six
 
 
-class TypeEngine(_six.with_metaclass(_abc.ABCMeta, object)):
-
+class TypeEngine(object, metaclass=_abc.ABCMeta):
     @_abc.abstractmethod
     def python_std_to_sdk_type(self, t):
         """

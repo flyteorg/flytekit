@@ -1,11 +1,11 @@
-from __future__ import absolute_import
+import json as _json
 
 import six as _six
-import json as _json
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
-from flytekit.models import types as _idl_types, literals as _literals
+from flytekit.models import literals as _literals
+from flytekit.models import types as _idl_types
 
 
 class CollectionType(_base_sdk_types.FlyteSdkType):
@@ -21,7 +21,7 @@ class TypedCollectionType(CollectionType):
         return cls._sub_type
 
     def __eq__(cls, other):
-        return hasattr(other, 'sub_type') and cls.sub_type == other.sub_type
+        return hasattr(other, "sub_type") and cls.sub_type == other.sub_type
 
     def __hash__(cls):
         # Python 3 checks complain if hash isn't implemented at the same time as equals
@@ -41,13 +41,12 @@ def List(sdk_type):
     return TList
 
 
-class ListImpl(_six.with_metaclass(CollectionType, _base_sdk_types.FlyteSdkValue)):
+class ListImpl(_base_sdk_types.FlyteSdkValue, metaclass=CollectionType):
     def __len__(self):
         return len(self.collection.literals)
 
 
-class TypedListImpl(_six.with_metaclass(TypedCollectionType, ListImpl)):
-
+class TypedListImpl(ListImpl, metaclass=TypedCollectionType):
     @classmethod
     def from_string(cls, string_value):
         """
@@ -59,11 +58,13 @@ class TypedListImpl(_six.with_metaclass(TypedCollectionType, ListImpl)):
             items = _json.loads(string_value)
         except ValueError:
             raise _user_exceptions.FlyteTypeException(
-                _six.text_type, cls, additional_msg='String not parseable to json {}'.format(string_value))
+                _six.text_type, cls, additional_msg="String not parseable to json {}".format(string_value),
+            )
 
         if type(items) != list:
             raise _user_exceptions.FlyteTypeException(
-                _six.text_type, cls, additional_msg='String is not a list {}'.format(string_value))
+                _six.text_type, cls, additional_msg="String is not a list {}".format(string_value),
+            )
 
         # Instead of recursively calling from_string(), we're changing to from_python_std() instead because json
         # loading naturally interprets all layers, not just the outer layer.
@@ -113,17 +114,13 @@ class TypedListImpl(_six.with_metaclass(TypedCollectionType, ListImpl)):
         """
         :rtype: Text
         """
-        return 'List<{}>'.format(cls.sub_type.short_class_string())
+        return "List<{}>".format(cls.sub_type.short_class_string())
 
     def __init__(self, value):
         """
         :param list[flytekit.common.types.base_sdk_types.FlyteSdkValue] value: List value to wrap
         """
-        super(TypedListImpl, self).__init__(
-            collection=_literals.LiteralCollection(
-                literals=value
-            )
-        )
+        super(TypedListImpl, self).__init__(collection=_literals.LiteralCollection(literals=value))
 
     def to_python_std(self):
         """
@@ -140,9 +137,7 @@ class TypedListImpl(_six.with_metaclass(TypedCollectionType, ListImpl)):
         if len(self.collection.literals) > num_to_print:
             to_print.append("...")
         return "{}(len={}, [{}])".format(
-            type(self).short_class_string(),
-            len(self.collection.literals),
-            ", ".join(to_print)
+            type(self).short_class_string(), len(self.collection.literals), ", ".join(to_print),
         )
 
     def verbose_string(self):
@@ -152,8 +147,5 @@ class TypedListImpl(_six.with_metaclass(TypedCollectionType, ListImpl)):
         return "{}(\n\tlen={},\n\t[\n\t\t{}\n\t]\n)".format(
             type(self).short_class_string(),
             len(self.collection.literals),
-            ",\n\t\t".join(
-                "\n\t\t".join(v.verbose_string().splitlines())
-                for v in self.collection.literals
-            )
+            ",\n\t\t".join("\n\t\t".join(v.verbose_string().splitlines()) for v in self.collection.literals),
         )

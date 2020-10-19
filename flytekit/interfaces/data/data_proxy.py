@@ -1,16 +1,13 @@
-from __future__ import absolute_import
+import six as _six
 
-from contextlib import contextmanager
-from typing import List
-
-from flytekit.configuration import sdk as _sdk_config, platform as _platform_config
-from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
-from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
-from flytekit.interfaces.data.local import local_file_proxy as _local_file_proxy
-from flytekit.interfaces.data.http import http_data_proxy as _http_data_proxy
-from flytekit.common.exceptions import user as _user_exception
 from flytekit.common import utils as _common_utils, constants as _constants
-from flytekit.common.nodes import SdkNode
+from flytekit.common.exceptions import user as _user_exception
+from flytekit.configuration import platform as _platform_config
+from flytekit.configuration import sdk as _sdk_config
+from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
+from flytekit.interfaces.data.http import http_data_proxy as _http_data_proxy
+from flytekit.interfaces.data.local import local_file_proxy as _local_file_proxy
+from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 
 
 class LocalWorkingDirectoryContext(object):
@@ -64,23 +61,23 @@ class LocalDataContext(_OutputDataContext):
 class RemoteDataContext(_OutputDataContext):
 
     _CLOUD_PROVIDER_TO_PROXIES = {
-        _constants.CloudProvider.AWS: _s3proxy.AwsS3Proxy(),
-        _constants.CloudProvider.GCP: _gcs_proxy.GCSProxy(),
+        _constants.CloudProvider.AWS: _s3proxy.AwsS3Proxy,
+        _constants.CloudProvider.GCP: _gcs_proxy.GCSProxy,
     }
 
-    def __init__(self, cloud_provider=None):
+    def __init__(self, cloud_provider=None, raw_output_data_prefix_override=None):
         """
         :param Optional[Text] cloud_provider: From flytekit.common.constants.CloudProvider enum
         """
         cloud_provider = cloud_provider or _platform_config.CLOUD_PROVIDER.get()
-        proxy = type(self)._CLOUD_PROVIDER_TO_PROXIES.get(cloud_provider, None)
-        if proxy is None:
+        proxy_class = type(self)._CLOUD_PROVIDER_TO_PROXIES.get(cloud_provider, None)
+        if proxy_class is None:
             raise _user_exception.FlyteAssertion(
                 "Configured cloud provider is not supported for data I/O.  Received: {}, expected one of: {}".format(
-                    cloud_provider,
-                    list(type(self)._CLOUD_PROVIDER_TO_PROXIES.keys())
+                    cloud_provider, list(type(self)._CLOUD_PROVIDER_TO_PROXIES.keys())
                 )
             )
+        proxy = proxy_class(raw_output_data_prefix_override)
         super(RemoteDataContext, self).__init__(proxy)
 
 
@@ -135,7 +132,7 @@ class Data(object):
                     remote_path=remote_path,
                     local_path=local_path,
                     is_multipart=is_multipart,
-                    error_string=str(ex)
+                    error_string=str(ex),
                 )
             )
 
@@ -160,7 +157,7 @@ class Data(object):
                     remote_path=remote_path,
                     local_path=local_path,
                     is_multipart=is_multipart,
-                    error_string=str(ex)
+                    error_string=str(ex),
                 )
             )
 

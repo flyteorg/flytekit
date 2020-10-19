@@ -1,10 +1,18 @@
-from __future__ import absolute_import
-
 from typing import List
 
 from flyteidl.plugins.sagemaker import training_job_pb2 as _training_job_pb2
 
 from flytekit.models import common as _common
+
+
+class DistributedProtocol(object):
+    """
+    The distribution framework is used for determining which underlying distributed training mechanism to use.
+    This is only required for use cases where the user wants to train its custom training job in a distributed manner
+    """
+
+    UNSPECIFIED = _training_job_pb2.DistributedProtocol.UNSPECIFIED
+    MPI = _training_job_pb2.DistributedProtocol.MPI
 
 
 class TrainingJobResourceConfig(_common.FlyteIdlEntity):
@@ -13,15 +21,18 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
     number of instances to launch, and the size of the ML storage volume the user wants to provision
     Refer to SageMaker official doc for more details: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTrainingJob.html
     """
+
     def __init__(
-            self,
-            instance_count: int,
-            instance_type: str,
-            volume_size_in_gb: int,
+        self,
+        instance_count: int,
+        instance_type: str,
+        volume_size_in_gb: int,
+        distributed_protocol: int = DistributedProtocol.UNSPECIFIED,
     ):
         self._instance_count = instance_count
         self._instance_type = instance_type
         self._volume_size_in_gb = volume_size_in_gb
+        self._distributed_protocol = distributed_protocol
 
     @property
     def instance_count(self) -> int:
@@ -47,6 +58,15 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
         """
         return self._volume_size_in_gb
 
+    @property
+    def distributed_protocol(self) -> int:
+        """
+        The distribution framework is used to determine through which mechanism the distributed training is done.
+        enum value from DistributionFramework.
+        :rtype: int
+        """
+        return self._distributed_protocol
+
     def to_flyte_idl(self) -> _training_job_pb2.TrainingJobResourceConfig:
         """
 
@@ -56,6 +76,7 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
             instance_count=self.instance_count,
             instance_type=self.instance_type,
             volume_size_in_gb=self.volume_size_in_gb,
+            distributed_protocol=self.distributed_protocol,
         )
 
     @classmethod
@@ -69,14 +90,13 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
             instance_count=pb2_object.instance_count,
             instance_type=pb2_object.instance_type,
             volume_size_in_gb=pb2_object.volume_size_in_gb,
+            distributed_protocol=pb2_object.distributed_protocol,
         )
 
 
 class MetricDefinition(_common.FlyteIdlEntity):
     def __init__(
-            self,
-            name: str,
-            regex: str,
+        self, name: str, regex: str,
     ):
         self._name = name
         self._regex = regex
@@ -103,10 +123,7 @@ class MetricDefinition(_common.FlyteIdlEntity):
 
         :rtype: _training_job_pb2.MetricDefinition
         """
-        return _training_job_pb2.MetricDefinition(
-            name=self.name,
-            regex=self.regex,
-        )
+        return _training_job_pb2.MetricDefinition(name=self.name, regex=self.regex,)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _training_job_pb2.MetricDefinition):
@@ -115,10 +132,7 @@ class MetricDefinition(_common.FlyteIdlEntity):
         :param pb2_object: _training_job_pb2.MetricDefinition
         :rtype: MetricDefinition
         """
-        return cls(
-            name=pb2_object.name,
-            regex=pb2_object.regex,
-        )
+        return cls(name=pb2_object.name, regex=pb2_object.regex,)
 
 
 class InputMode(object):
@@ -127,6 +141,7 @@ class InputMode(object):
     See https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
     https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html
     """
+
     PIPE = _training_job_pb2.InputMode.PIPE
     FILE = _training_job_pb2.InputMode.FILE
 
@@ -138,6 +153,7 @@ class AlgorithmName(object):
     While we currently only support a subset of the algorithms, more will be added to the list.
     See: https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html
     """
+
     CUSTOM = _training_job_pb2.AlgorithmName.CUSTOM
     XGBOOST = _training_job_pb2.AlgorithmName.XGBOOST
 
@@ -148,6 +164,7 @@ class InputContentType(object):
     See https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
     https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html
     """
+
     TEXT_CSV = _training_job_pb2.InputContentType.TEXT_CSV
 
 
@@ -161,13 +178,14 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
     For pass-through use cases: refer to this AWS official document for more details
     https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_AlgorithmSpecification.html
     """
+
     def __init__(
-            self,
-            algorithm_name: int,
-            algorithm_version: str,
-            input_mode: int,
-            metric_definitions: List[MetricDefinition] = None,
-            input_content_type: int = InputContentType.TEXT_CSV,
+        self,
+        algorithm_name: int = AlgorithmName.CUSTOM,
+        algorithm_version: str = "",
+        input_mode: int = InputMode.FILE,
+        metric_definitions: List[MetricDefinition] = None,
+        input_content_type: int = InputContentType.TEXT_CSV,
     ):
         self._input_mode = input_mode
         self._input_content_type = input_content_type
@@ -249,9 +267,7 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
 
 class TrainingJob(_common.FlyteIdlEntity):
     def __init__(
-            self,
-            algorithm_specification: AlgorithmSpecification,
-            training_job_resource_config: TrainingJobResourceConfig,
+        self, algorithm_specification: AlgorithmSpecification, training_job_resource_config: TrainingJobResourceConfig,
     ):
         self._algorithm_specification = algorithm_specification
         self._training_job_resource_config = training_job_resource_config
@@ -278,8 +294,12 @@ class TrainingJob(_common.FlyteIdlEntity):
         """
 
         return _training_job_pb2.TrainingJob(
-            algorithm_specification=self.algorithm_specification.to_flyte_idl(),
-            training_job_resource_config=self.training_job_resource_config.to_flyte_idl(),
+            algorithm_specification=self.algorithm_specification.to_flyte_idl()
+            if self.algorithm_specification
+            else None,
+            training_job_resource_config=self.training_job_resource_config.to_flyte_idl()
+            if self.training_job_resource_config
+            else None,
         )
 
     @classmethod

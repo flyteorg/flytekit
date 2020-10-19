@@ -1,16 +1,14 @@
-from __future__ import absolute_import
-from flytekit.common.types import schema, primitives
+from flytekit.common.types import primitives, schema
 from flytekit.common.types.impl import schema as schema_impl
 from flytekit.sdk import test_utils
 
-
 _ALL_COLUMN_TYPES = [
-    ('a', primitives.Integer),
-    ('b', primitives.String),
-    ('c', primitives.Float),
-    ('d', primitives.Datetime),
-    ('e', primitives.Timedelta),
-    ('f', primitives.Boolean),
+    ("a", primitives.Integer),
+    ("b", primitives.String),
+    ("c", primitives.Float),
+    ("d", primitives.Datetime),
+    ("e", primitives.Timedelta),
+    ("f", primitives.Boolean),
 ]
 
 
@@ -59,9 +57,9 @@ def test_casting():
     class MyDateTime(primitives.Datetime):
         ...
 
-    with test_utils.LocalTestFileSystem() as t:
-        test_columns_1 = [('altered', MyDateTime)]
-        test_columns_2 = [('altered', primitives.Datetime)]
+    with test_utils.LocalTestFileSystem():
+        test_columns_1 = [("altered", MyDateTime)]
+        test_columns_2 = [("altered", primitives.Datetime)]
 
         instantiator_1 = schema.schema_instantiator(test_columns_1)
         a = instantiator_1()

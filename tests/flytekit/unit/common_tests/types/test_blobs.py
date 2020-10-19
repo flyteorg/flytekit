@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 from flytekit.common.types import blobs
 from flytekit.common.types.impl import blobs as blob_impl
 from flytekit.models import literals as _literal_models
@@ -38,12 +37,9 @@ def test_blob_promote_from_model():
         scalar=_literal_models.Scalar(
             blob=_literal_models.Blob(
                 _literal_models.BlobMetadata(
-                    _core_types.BlobType(
-                        format="f",
-                        dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-                    )
+                    _core_types.BlobType(format="f", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
                 ),
-                "some/path"
+                "some/path",
             )
         )
     )

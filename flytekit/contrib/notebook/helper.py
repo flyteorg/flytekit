@@ -1,8 +1,11 @@
+import os as _os
+
+import six as _six
+
 from flytekit.common.types.helpers import pack_python_std_map_to_literal_map as _packer
 from flytekit.contrib.notebook.supported_types import notebook_types_map as _notebook_types_map
-import six as _six
-from pyspark import SparkConf, SparkContext
-import os as _os
+from flytekit.plugins import pyspark as _pyspark
+
 
 
 def record_outputs(outputs=None):
@@ -16,7 +19,10 @@ def record_outputs(outputs=None):
         t = type(v)
         if t not in _notebook_types_map:
             raise ValueError(
-                "Currently only primitive types {} are supported for recording from notebook".format(_notebook_types_map))
+                "Currently only primitive types {} are supported for recording from notebook".format(
+                    _notebook_types_map
+                )
+            )
         tm[k] = _notebook_types_map[t]
     return _packer(outputs, tm).to_flyte_idl()
 
@@ -24,15 +30,15 @@ def record_outputs(outputs=None):
 # TODO: Support Client Mode
 def get_spark_context(spark_conf):
     """
-       outputs: SparkContext
-       Returns appropriate SparkContext based on whether invoked via a Notebook or a Flyte workflow.
+    outputs: SparkContext
+    Returns appropriate SparkContext based on whether invoked via a Notebook or a Flyte workflow.
     """
     # We run in cluster-mode in Flyte.
     # Ref https://github.com/lyft/flyteplugins/blob/master/go/tasks/v1/flytek8s/k8s_resource_adds.go#L46
     if "FLYTE_INTERNAL_EXECUTION_ID" in _os.environ:
-        return SparkContext()
+        return _pyspark.SparkContext()
 
     # Add system spark-conf for local/notebook based execution.
     spark_conf.add(("spark.master", "local"))
-    conf = SparkConf().setAll(spark_conf)
-    return SparkContext(conf=conf)
+    conf = _pyspark.SparkConf().setAll(spark_conf)
+    return _pyspark.SparkContext(conf=conf)

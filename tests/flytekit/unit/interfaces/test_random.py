@@ -1,6 +1,6 @@
-from __future__ import absolute_import
-from flytekit.interfaces import random
 import random as global_random
+
+from flytekit.interfaces import random
 
 
 def test_isolated_random_state():

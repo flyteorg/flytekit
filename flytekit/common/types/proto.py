@@ -1,12 +1,12 @@
-from __future__ import absolute_import
+import base64 as _base64
+
+import six as _six
+from google.protobuf import reflection as _proto_reflection
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
-from flytekit.models import types as _idl_types, literals as _literals
-from google.protobuf import reflection as _proto_reflection
-
-import base64 as _base64
-import six as _six
+from flytekit.models import literals as _literals
+from flytekit.models import types as _idl_types
 
 
 def create_protobuf(pb_type):
@@ -18,16 +18,16 @@ def create_protobuf(pb_type):
         raise _user_exceptions.FlyteTypeException(
             expected_type=_proto_reflection.GeneratedProtocolMessageType,
             received_type=type(pb_type),
-            received_value=pb_type
+            received_value=pb_type,
         )
 
     class _Protobuf(Protobuf):
         _pb_type = pb_type
+
     return _Protobuf
 
 
 class ProtobufType(_base_sdk_types.FlyteSdkType):
-
     @property
     def pb_type(cls):
         """
@@ -50,7 +50,7 @@ class ProtobufType(_base_sdk_types.FlyteSdkType):
         return "{}{}".format(Protobuf.TAG_PREFIX, cls.descriptor)
 
 
-class Protobuf(_six.with_metaclass(ProtobufType, _base_sdk_types.FlyteSdkValue)):
+class Protobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
 
     PB_FIELD_KEY = "pb_type"
     TAG_PREFIX = "{}=".format(PB_FIELD_KEY)
@@ -62,10 +62,7 @@ class Protobuf(_six.with_metaclass(ProtobufType, _base_sdk_types.FlyteSdkValue))
         data = pb_object.SerializeToString()
         super(Protobuf, self).__init__(
             scalar=_literals.Scalar(
-                binary=_literals.Binary(
-                    value=bytes(data) if _six.PY2 else data,
-                    tag=type(self).tag
-                )
+                binary=_literals.Binary(value=bytes(data) if _six.PY2 else data, tag=type(self).tag)
             )
         )
 
@@ -103,23 +100,14 @@ class Protobuf(_six.with_metaclass(ProtobufType, _base_sdk_types.FlyteSdkValue))
         elif isinstance(t_value, cls.pb_type):
             return cls(t_value)
         else:
-            raise _user_exceptions.FlyteTypeException(
-                type(t_value),
-                cls.pb_type,
-                received_value=t_value
-            )
+            raise _user_exceptions.FlyteTypeException(type(t_value), cls.pb_type, received_value=t_value)
 
     @classmethod
     def to_flyte_literal_type(cls):
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return _idl_types.LiteralType(
-            simple=_idl_types.SimpleType.BINARY,
-            metadata={
-                cls.PB_FIELD_KEY: cls.descriptor
-            }
-        )
+        return _idl_types.LiteralType(simple=_idl_types.SimpleType.BINARY, metadata={cls.PB_FIELD_KEY: cls.descriptor},)
 
     @classmethod
     def promote_from_model(cls, literal_model):
@@ -133,7 +121,7 @@ class Protobuf(_six.with_metaclass(ProtobufType, _base_sdk_types.FlyteSdkValue))
                 literal_model.scalar.binary.tag,
                 cls.pb_type,
                 received_value=_base64.b64encode(literal_model.scalar.binary.value),
-                additional_msg="Can not deserialize as proto tags don't match."
+                additional_msg="Can not deserialize as proto tags don't match.",
             )
         pb_obj = cls.pb_type()
         pb_obj.ParseFromString(literal_model.scalar.binary.value)

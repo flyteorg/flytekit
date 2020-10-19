@@ -1,10 +1,11 @@
-from __future__ import absolute_import, division
-from flytekit.models import schedule as _schedule_models
+import datetime as _datetime
+import re as _re
+
+import croniter as _croniter
+
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
-import croniter as _croniter
-import datetime as _datetime
-import six as _six
+from flytekit.models import schedule as _schedule_models
 
 
 class _ExtendedSchedule(_schedule_models.Schedule):
@@ -17,15 +18,57 @@ class _ExtendedSchedule(_schedule_models.Schedule):
         return cls.promote_from_model(_schedule_models.Schedule.from_flyte_idl(proto))
 
 
-class CronSchedule(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _ExtendedSchedule)):
+class CronSchedule(_ExtendedSchedule, metaclass=_sdk_bases.ExtendedSdkType):
+    _VALID_CRON_ALIASES = [
+        "hourly",
+        "hours",
+        "@hourly",
+        "daily",
+        "days",
+        "@daily",
+        "weekly",
+        "weeks",
+        "@weekly",
+        "monthly",
+        "months",
+        "@monthly",
+        "annually",
+        "@annually",
+        "yearly",
+        "years",
+        "@yearly",
+    ]
 
-    def __init__(self, cron_expression, kickoff_time_input_arg=None):
+    # Not a perfect regex but good enough and simple to reason about
+    _OFFSET_PATTERN = _re.compile("([-+]?)P([-+0-9YMWD]+)?(T([-+0-9HMS.,]+)?)?")
+
+    def __init__(self, cron_expression=None, schedule=None, offset=None, kickoff_time_input_arg=None):
         """
         :param Text cron_expression:
+        :param Text schedule:
+        :param Text offset:
         :param Text kickoff_time_input_arg:
         """
-        CronSchedule._validate_expression(cron_expression)
-        super(CronSchedule, self).__init__(kickoff_time_input_arg, cron_expression=cron_expression)
+        if cron_expression is None and schedule is None:
+            raise _user_exceptions.FlyteAssertion("Either `cron_expression` or `schedule` should be specified.")
+
+        if cron_expression is not None and offset is not None:
+            raise _user_exceptions.FlyteAssertion("Only `schedule` is supported when specifying `offset`.")
+
+        if cron_expression is not None:
+            CronSchedule._validate_expression(cron_expression)
+
+        if schedule is not None:
+            CronSchedule._validate_schedule(schedule)
+
+        if offset is not None:
+            CronSchedule._validate_offset(offset)
+
+        super(CronSchedule, self).__init__(
+            kickoff_time_input_arg,
+            cron_expression=cron_expression,
+            cron_schedule=_schedule_models.Schedule.CronSchedule(schedule, offset) if schedule is not None else None,
+        )
 
     @staticmethod
     def _validate_expression(cron_expression):
@@ -41,12 +84,11 @@ class CronSchedule(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _ExtendedSche
         if len(tokens) != 6:
             raise _user_exceptions.FlyteAssertion(
                 "Cron expression is invalid.  A cron expression must have 6 fields.  Cron expressions are in the "
-                "format of: `minute hour day-of-month month day-of-week year`.  Received: `{}`".format(
-                    cron_expression
-                )
+                "format of: `minute hour day-of-month month day-of-week year`.  "
+                "Use `schedule` for 5 fields cron expression.  Received: `{}`".format(cron_expression)
             )
 
-        if tokens[2] != '?' and tokens[4] != '?':
+        if tokens[2] != "?" and tokens[4] != "?":
             raise _user_exceptions.FlyteAssertion(
                 "Scheduled string is invalid.  A cron expression must have a '?' for either day-of-month or "
                 "day-of-week.  Please specify '?' for one of those fields.  Cron expressions are in the format of: "
@@ -58,13 +100,29 @@ class CronSchedule(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _ExtendedSche
         try:
             # Cut to 5 fields and just assume year field is good because croniter treats the 6th field as seconds.
             # TODO: Parse this field ourselves and check
-            _croniter.croniter(" ".join(cron_expression.replace('?', '*').split()[:5]))
-        except:
+            _croniter.croniter(" ".join(cron_expression.replace("?", "*").split()[:5]))
+        except Exception:
             raise _user_exceptions.FlyteAssertion(
                 "Scheduled string is invalid.  The cron expression was found to be invalid."
-                " Provided cron expr: {}".format(
-                    cron_expression
+                " Provided cron expr: {}".format(cron_expression)
+            )
+
+    @staticmethod
+    def _validate_schedule(schedule):
+        if schedule.lower() not in CronSchedule._VALID_CRON_ALIASES:
+            try:
+                _croniter.croniter(schedule)
+            except Exception:
+                raise _user_exceptions.FlyteAssertion(
+                    "Schedule is invalid. It must be set to either a cron alias or valid cron expression."
+                    " Provided schedule: {}".format(schedule)
                 )
+
+    @staticmethod
+    def _validate_offset(offset):
+        if CronSchedule._OFFSET_PATTERN.fullmatch(offset) is None:
+            raise _user_exceptions.FlyteAssertion(
+                "Offset is invalid. It must be an ISO 8601 duration. Provided offset: {}".format(offset)
             )
 
     @classmethod
@@ -74,13 +132,14 @@ class CronSchedule(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _ExtendedSche
         :rtype: CronSchedule
         """
         return cls(
-            base_model.cron_expression,
-            kickoff_time_input_arg=base_model.kickoff_time_input_arg
+            cron_expression=base_model.cron_expression,
+            schedule=base_model.cron_schedule.schedule if base_model.cron_schedule is not None else None,
+            offset=base_model.cron_schedule.offset if base_model.cron_schedule is not None else None,
+            kickoff_time_input_arg=base_model.kickoff_time_input_arg,
         )
 
 
-class FixedRate(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _ExtendedSchedule)):
-
+class FixedRate(_ExtendedSchedule, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(self, duration, kickoff_time_input_arg=None):
         """
         :param datetime.timedelta duration:
@@ -106,18 +165,15 @@ class FixedRate(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _ExtendedSchedul
             )
         elif int(duration.total_seconds()) % _SECONDS_TO_DAYS == 0:
             return _schedule_models.Schedule.FixedRate(
-                int(duration.total_seconds() / _SECONDS_TO_DAYS),
-                _schedule_models.Schedule.FixedRateUnit.DAY
+                int(duration.total_seconds() / _SECONDS_TO_DAYS), _schedule_models.Schedule.FixedRateUnit.DAY,
             )
         elif int(duration.total_seconds()) % _SECONDS_TO_HOURS == 0:
             return _schedule_models.Schedule.FixedRate(
-                int(duration.total_seconds() / _SECONDS_TO_HOURS),
-                _schedule_models.Schedule.FixedRateUnit.HOUR
+                int(duration.total_seconds() / _SECONDS_TO_HOURS), _schedule_models.Schedule.FixedRateUnit.HOUR,
             )
         else:
             return _schedule_models.Schedule.FixedRate(
-                int(duration.total_seconds() / _SECONDS_TO_MINUTES),
-                _schedule_models.Schedule.FixedRateUnit.MINUTE
+                int(duration.total_seconds() / _SECONDS_TO_MINUTES), _schedule_models.Schedule.FixedRateUnit.MINUTE,
             )
 
     @classmethod
@@ -133,7 +189,4 @@ class FixedRate(_six.with_metaclass(_sdk_bases.ExtendedSdkType, _ExtendedSchedul
         else:
             duration = _datetime.timedelta(minutes=base_model.rate.value)
 
-        return cls(
-            duration,
-            kickoff_time_input_arg=base_model.kickoff_time_input_arg
-        )
+        return cls(duration, kickoff_time_input_arg=base_model.kickoff_time_input_arg)

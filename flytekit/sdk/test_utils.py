@@ -1,7 +1,7 @@
-from __future__ import absolute_import
+from wrapt import decorator as _decorator
+
 from flytekit.common import utils as _utils
 from flytekit.interfaces.data import data_proxy as _data_proxy
-from wrapt import decorator as _decorator
 
 
 class LocalTestFileSystem(object):

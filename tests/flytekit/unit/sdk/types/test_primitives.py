@@ -1,6 +1,6 @@
-from __future__ import absolute_import
-from flytekit.sdk import types as _sdk_types
 import pytest
+
+from flytekit.sdk import types as _sdk_types
 
 
 def test_integer():

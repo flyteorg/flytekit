@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import os
+import pathlib
 from contextlib import contextmanager
 from typing import List, Optional, Generator, Dict, Any
 import datetime as _datetime
@@ -9,7 +12,7 @@ from flytekit.clients import friendly as flyte_client
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
 from flytekit.common import constants as _constants
 from flytekit.common.exceptions import user as _user_exception
-from flytekit.common.nodes import SdkNode
+from flytekit.annotated.node import Node
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import sdk as _sdk_config, internal as _internal_config
 from flytekit.interfaces.data import common as _common_data
@@ -23,9 +26,38 @@ from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.models import interface as _interface_models
 
 
+class RegistrationSettings(object):
+    def __init__(self, project: str, domain: str, version: str, image: str, env: Optional[Dict[str, str]]):
+        self._project = project
+        self._domain = domain
+        self._version = version
+        self._image = image
+        self._env = env or {}
+
+    @property
+    def project(self) -> str:
+        return self._project
+
+    @property
+    def domain(self) -> str:
+        return self._domain
+
+    @property
+    def version(self) -> str:
+        return self._version
+
+    @property
+    def image(self) -> str:
+        return self._image
+
+    @property
+    def env(self) -> Dict[str, str]:
+        return self._env
+
+
 class CompilationState(object):
     def __init__(self):
-        self.nodes: List[SdkNode] = []
+        self.nodes: List[Node] = []
         self.mode = 1  # TODO: Turn into enum in the future, or remove if only one mode.
 
 
@@ -44,15 +76,21 @@ class ExecutionState(object):
         # NodeOutput
         LOCAL_WORKFLOW_EXECUTION = 2
 
-    def __init__(self, mode: Mode, working_dir: os.PathLike, additional_context: Dict[Any, Any] = None):
+    def __init__(self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike,
+                 additional_context: Dict[Any, Any] = None):
         self._mode = mode
         self._working_dir = working_dir
+        self._engine_dir = engine_dir
         self._additional_context = additional_context
         self._branch_eval_mode = None
 
     @property
     def working_dir(self) -> os.PathLike:
         return self._working_dir
+
+    @property
+    def engine_dir(self) -> os.PathLike:
+        return self._engine_dir
 
     @property
     def additional_context(self) -> Dict[Any, Any]:
@@ -117,6 +155,7 @@ class FlyteContext(object):
                  execution_state: ExecutionState = None,
                  flyte_client: flyte_client.SynchronousFlyteClient = None,
                  user_space_params: ExecutionParameters = None,
+                 registration_settings: RegistrationSettings = None,
                  ):
         # TODO: Should we have this auto-parenting feature?
         if parent is None and len(FlyteContext.OBJS) > 0:
@@ -132,6 +171,7 @@ class FlyteContext(object):
         self._execution_state = execution_state
         self._flyte_client = flyte_client
         self._user_space_params = user_space_params
+        self._registration_settings = registration_settings
 
     def __enter__(self):
         # Should we auto-assign the parent here?
@@ -194,11 +234,12 @@ class FlyteContext(object):
             FlyteContext.OBJS.pop()
 
     @contextmanager
-    def new_data_proxy_by_cloud_provider(self, cloud_provider: str) -> Generator['FlyteContext', None, None]:
+    def new_data_proxy_by_cloud_provider(self, cloud_provider: str, raw_output_data_prefix: Optional[str] = None) -> \
+            Generator[FlyteContext, None, None]:
         if cloud_provider == _constants.CloudProvider.AWS:
-            proxy = _s3proxy.AwsS3Proxy()
+            proxy = _s3proxy.AwsS3Proxy(raw_output_data_prefix)
         elif cloud_provider == _constants.CloudProvider.GCP:
-            proxy = _gcs_proxy.GCSProxy()
+            proxy = _gcs_proxy.GCSProxy(raw_output_data_prefix)
         else:
             raise _user_exception.FlyteAssertion(
                 "Configured cloud provider is not supported for data I/O.  Received: {}, expected one of: {}".format(
@@ -220,44 +261,20 @@ class FlyteContext(object):
 
     @contextmanager
     def new_execution_context(self, mode: ExecutionState.Mode,
-                              additional_context: Dict[Any, Any] = None) -> Generator['FlyteContext', None, None]:
-        # Here to avoid circular dependency
-        from flytekit import __version__ as _api_version
+                              additional_context: Dict[Any, Any] = None,
+                              execution_params: Optional[ExecutionParameters] = None) -> Generator[
+        FlyteContext, None, None]:
 
         # Create a working directory for the execution to use
         working_dir = self.local_file_access.get_random_path()
-        exec_state = ExecutionState(mode=mode, working_dir=working_dir, additional_context=additional_context)
+        engine_dir = os.path.join(working_dir, "engine_dir")
+        pathlib.Path(engine_dir).mkdir(parents=True, exist_ok=True)
+        exec_state = ExecutionState(mode=mode, working_dir=working_dir, engine_dir=engine_dir,
+                                    additional_context=additional_context)
 
-        # Create a more accurate object for users to use within tasks
-        user_space_execution_params = ExecutionParameters(
-            execution_id=_identifier.WorkflowExecutionIdentifier(
-                project=_internal_config.EXECUTION_PROJECT.get(),
-                domain=_internal_config.EXECUTION_DOMAIN.get(),
-                name=_internal_config.EXECUTION_NAME.get()
-            ),
-            execution_date=_datetime.datetime.utcnow(),
-            stats=_get_stats(
-                # Stats metric path will be:
-                # registration_project.registration_domain.app.module.task_name.user_stats
-                # and it will be tagged with execution-level values for project/domain/wf/lp
-                "{}.{}.{}.user_stats".format(
-                    _internal_config.TASK_PROJECT.get() or _internal_config.PROJECT.get(),
-                    _internal_config.TASK_DOMAIN.get() or _internal_config.DOMAIN.get(),
-                    _internal_config.TASK_NAME.get() or _internal_config.NAME.get()
-                ),
-                tags={
-                    'exec_project': _internal_config.EXECUTION_PROJECT.get(),
-                    'exec_domain': _internal_config.EXECUTION_DOMAIN.get(),
-                    'exec_workflow': _internal_config.EXECUTION_WORKFLOW.get(),
-                    'exec_launchplan': _internal_config.EXECUTION_LAUNCHPLAN.get(),
-                    'api_version': _api_version
-                }
-            ),
-            logging=_logging,
-            tmp_dir=os.path.join(working_dir, "user_space")
-        )
-
-        new_ctx = FlyteContext(parent=self, execution_state=exec_state, user_space_params=user_space_execution_params)
+        # If a wf_params object was not given, use the default (defined at the bottom of this file)
+        new_ctx = FlyteContext(parent=self, execution_state=exec_state,
+                               user_space_params=execution_params or default_user_space_params)
         FlyteContext.OBJS.append(new_ctx)
         try:
             yield new_ctx
@@ -283,6 +300,24 @@ class FlyteContext(object):
             FlyteContext.OBJS.pop()
 
     @property
+    def registration_settings(self) -> RegistrationSettings:
+        if self._registration_settings is not None:
+            return self._registration_settings
+        elif self._parent is not None:
+            return self._parent.registration_settings
+        else:
+            raise Exception('No local_file_access initialized')
+
+    @contextmanager
+    def new_registration_settings(self, registration_settings):
+        new_ctx = FlyteContext(parent=self, registration_settings=registration_settings)
+        FlyteContext.OBJS.append(new_ctx)
+        try:
+            yield new_ctx
+        finally:
+            FlyteContext.OBJS.pop()
+
+    @property
     def flyte_client(self):
         if self._flyte_client is not None:
             return self._flyte_client
@@ -290,6 +325,11 @@ class FlyteContext(object):
             return self._parent.flyte_client
         else:
             raise Exception('No flyte_client initialized')
+
+
+# Hack... we'll think of something better in the future
+class FlyteEntities(object):
+    entities = []
 
 
 # This is supplied so that tasks that rely on Flyte provided param functionality do not fail when run locally

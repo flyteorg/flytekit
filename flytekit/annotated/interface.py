@@ -1,7 +1,7 @@
 import copy
 import inspect
 from collections import OrderedDict
-from typing import Dict, Generator, Union, Type, Tuple, List, Any, _GenericAlias, TypeVar
+from typing import Dict, Generator, Union, Type, Tuple, List, Any, TypeVar
 
 from flytekit import logger
 from flytekit.annotated import type_engine
@@ -218,15 +218,18 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
         # Option 6
         def t(a: int, b: str) -> None: ...
 
+        # Options 7/8
+        def t(a: int, b: str) -> List[int]: ...
+        def t(a: int, b: str) -> Dict[str, int]: ...
+
     TODO: We'll need to check the actual return types for in all cases as well, to make sure Flyte IDL actually
           supports it. For instance, typing.Tuple[Optional[int]] is not something we can represent currently.
-
-    TODO: Generator[A,B,C] types are also valid, indicating dynamic tasks. Will need to implement.
 
     Note that Options 1 and 2 are identical, just syntactic sugar. In the NamedTuple case, we'll use the names in the
     definition. In all other cases, we'll automatically generate output names, indexed starting at 0.
     """
 
+    # TODO: Clean this up and add unit tests specifically for this function - there's a lot of duplication going on.
     # Handle Option 6
     # We can think about whether we should add a default output name with type None in the future.
     if return_annotation is None or return_annotation is inspect.Signature.empty:
@@ -244,10 +247,12 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
         logger.debug(f'Task returns a single output of type {return_annotation}')
         return {default_output_name(): return_annotation}
 
-    if isinstance(return_annotation, _GenericAlias) and return_annotation.__origin__ in [list, dict]:
+    # Options 7 and 8.
+    if hasattr(return_annotation, '_name') and (
+            (return_annotation._name == 'List' and return_annotation.__origin__ == list) or
+            (return_annotation._name == 'Dict' and return_annotation.__origin__ == dict)):
         return {default_output_name(): return_annotation}
 
-    return_map = {}
     # Now lets handle multi-valued return annotations
     if hasattr(return_annotation, '__origin__') and return_annotation.__origin__ is tuple:
         # Handle option 3

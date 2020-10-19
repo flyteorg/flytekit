@@ -1,33 +1,34 @@
-from __future__ import absolute_import
-
 from flytekit.models import common as _common
 from flytekit.models.core import execution as _execution
 
 
 def test_notification_email():
-    obj = _common.EmailNotification(['a', 'b', 'c'])
-    assert obj.recipients_email == ['a', 'b', 'c']
+    obj = _common.EmailNotification(["a", "b", "c"])
+    assert obj.recipients_email == ["a", "b", "c"]
     obj2 = _common.EmailNotification.from_flyte_idl(obj.to_flyte_idl())
     assert obj2 == obj
 
 
 def test_notification_pagerduty():
-    obj = _common.PagerDutyNotification(['a', 'b', 'c'])
-    assert obj.recipients_email == ['a', 'b', 'c']
+    obj = _common.PagerDutyNotification(["a", "b", "c"])
+    assert obj.recipients_email == ["a", "b", "c"]
     obj2 = _common.PagerDutyNotification.from_flyte_idl(obj.to_flyte_idl())
     assert obj2 == obj
 
 
 def test_notification_slack():
-    obj = _common.SlackNotification(['a', 'b', 'c'])
-    assert obj.recipients_email == ['a', 'b', 'c']
+    obj = _common.SlackNotification(["a", "b", "c"])
+    assert obj.recipients_email == ["a", "b", "c"]
     obj2 = _common.SlackNotification.from_flyte_idl(obj.to_flyte_idl())
     assert obj2 == obj
 
 
 def test_notification():
-    phases = [_execution.WorkflowExecutionPhase.FAILED, _execution.WorkflowExecutionPhase.SUCCEEDED]
-    recipients = ['a', 'b', 'c']
+    phases = [
+        _execution.WorkflowExecutionPhase.FAILED,
+        _execution.WorkflowExecutionPhase.SUCCEEDED,
+    ]
+    recipients = ["a", "b", "c"]
 
     obj = _common.Notification(phases, email=_common.EmailNotification(recipients))
     assert obj.phases == phases
@@ -80,3 +81,10 @@ def test_auth_role():
     assert not obj.assumable_iam_role
     obj2 = _common.AuthRole.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
+
+
+def test_raw_output_data_config():
+    obj = _common.RawOutputDataConfig("s3://bucket")
+    assert obj.output_location_prefix == "s3://bucket"
+    obj2 = _common.RawOutputDataConfig.from_flyte_idl(obj.to_flyte_idl())
+    assert obj2 == obj
