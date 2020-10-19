@@ -6,7 +6,7 @@ from flytekit import engine as flytekit_engine, logger
 from flytekit.annotated.context_manager import FlyteContext, ExecutionState, FlyteEntities
 from flytekit.annotated.interface import transform_inputs_to_parameters
 from flytekit.annotated.interface import transform_interface_to_typed_interface, \
-    transform_signature_to_interface, ControlPlaneSettings
+    transform_signature_to_interface
 from flytekit.annotated.promise import Promise, create_task_output
 from flytekit.annotated.node import Node
 from flytekit.common import constants as _common_constants
@@ -244,7 +244,8 @@ class Workflow(object):
 
         return create_task_output(node_outputs)
 
-    def get_registerable_entity(self, settings: ControlPlaneSettings) -> _registerable.RegisterableEntity:
+    def get_registerable_entity(self) -> _registerable.RegisterableEntity:
+        settings = FlyteContext.current_context().registration_settings
         if self._registerable_entity is not None:
             return self._registerable_entity
 

@@ -10,7 +10,7 @@ from flytekit.common.mixins import registerable as _registerable
 from flytekit import engine as flytekit_engine, logger
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext, FlyteEntities
 from flytekit.annotated.interface import Interface, transform_interface_to_typed_interface, \
-    transform_signature_to_interface, transform_typed_interface_to_collection_interface, ControlPlaneSettings
+    transform_signature_to_interface, transform_typed_interface_to_collection_interface
 from flytekit.annotated.promise import Promise, create_task_output, translate_inputs_to_literals
 from flytekit.annotated.workflow import Workflow
 from flytekit.annotated.node import Node
@@ -201,7 +201,7 @@ class Task(object):
         return self._name
 
     @abstractmethod
-    def get_registerable_entity(self, settings: ControlPlaneSettings) -> _registerable.RegisterableEntity:
+    def get_registerable_entity(self) -> _registerable.RegisterableEntity:
         ...
 
 
@@ -221,11 +221,11 @@ class PythonFunctionTask(Task):
     def native_interface(self) -> Interface:
         return self._native_interface
 
-    def get_registerable_entity(self, settings: ControlPlaneSettings) -> _registerable.RegisterableEntity:
+    def get_registerable_entity(self) -> _registerable.RegisterableEntity:
+        settings = FlyteContext.current_context().registration_settings
         if self._registerable_entity is not None:
             return self._registerable_entity
 
-        from flytekit.configuration import internal as _internal_config
         args = [
                    "pyflyte-execute",
                    "--task-module",
@@ -239,17 +239,14 @@ class PythonFunctionTask(Task):
                    "--raw-output-data-prefix",
                    "{{.rawOutputDataPrefix}}",
                ]
-        env =            {
-                _internal_config.CONFIGURATION_PATH.env_var: _internal_config.CONFIGURATION_PATH.get(),
-                _internal_config.IMAGE.env_var: _internal_config.IMAGE.get(),
-            }
-        container = _get_container_definition(image=settings._image, command=[], args=args, data_loading_config=None, environment=env)
+        env = settings.env
+        container = _get_container_definition(image=settings.image, command=[], args=args, data_loading_config=None, environment=env)
         self._registerable_entity = SdkTask(type="python_task", metadata=self.metadata, interface=self.interface, custom={}, container=container)
         # Reset just to make sure it's what we give it
-        self._registerable_entity.id._project = settings._project
-        self._registerable_entity.id._domain = settings._domain
-        self._registerable_entity.id._name = self._name
-        self._registerable_entity.id._version = settings._version
+        self._registerable_entity.id._project = settings.project
+        self._registerable_entity.id._domain = settings.domain
+        self._registerable_entity.id._name = self.name
+        self._registerable_entity.id._version = settings.version
         return self._registerable_entity
 
 class PysparkFunctionTask(PythonFunctionTask):

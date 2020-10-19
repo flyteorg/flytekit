@@ -26,6 +26,35 @@ from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.models import interface as _interface_models
 
 
+class RegistrationSettings(object):
+    def __init__(self, project: str, domain: str, version: str, image: str, env: Optional[Dict[str, str]]):
+        self._project = project
+        self._domain = domain
+        self._version = version
+        self._image = image
+        self._env = env or {}
+
+    @property
+    def project(self) -> str:
+        return self._project
+
+    @property
+    def domain(self) -> str:
+        return self._domain
+
+    @property
+    def version(self) -> str:
+        return self._version
+
+    @property
+    def image(self) -> str:
+        return self._image
+
+    @property
+    def env(self) -> Dict[str, str]:
+        return self._env
+
+
 class CompilationState(object):
     def __init__(self):
         self.nodes: List[Node] = []
@@ -87,6 +116,7 @@ class FlyteContext(object):
                  execution_state: ExecutionState = None,
                  flyte_client: flyte_client.SynchronousFlyteClient = None,
                  user_space_params: ExecutionParameters = None,
+                 registration_settings: RegistrationSettings = None,
                  ):
         # TODO: Should we have this auto-parenting feature?
         if parent is None and len(FlyteContext.OBJS) > 0:
@@ -102,6 +132,7 @@ class FlyteContext(object):
         self._execution_state = execution_state
         self._flyte_client = flyte_client
         self._user_space_params = user_space_params
+        self._registration_settings = registration_settings
 
     def __enter__(self):
         # Should we auto-assign the parent here?
@@ -193,7 +224,7 @@ class FlyteContext(object):
     def new_execution_context(self, mode: ExecutionState.Mode,
                               additional_context: Dict[Any, Any] = None,
                               execution_params: Optional[ExecutionParameters] = None) -> Generator[
-            FlyteContext, None, None]:
+        FlyteContext, None, None]:
 
         # Create a working directory for the execution to use
         working_dir = self.local_file_access.get_random_path()
@@ -223,6 +254,24 @@ class FlyteContext(object):
     @contextmanager
     def new_compilation_context(self) -> Generator['FlyteContext', None, None]:
         new_ctx = FlyteContext(parent=self, compilation_state=CompilationState())
+        FlyteContext.OBJS.append(new_ctx)
+        try:
+            yield new_ctx
+        finally:
+            FlyteContext.OBJS.pop()
+
+    @property
+    def registration_settings(self) -> RegistrationSettings:
+        if self._registration_settings is not None:
+            return self._registration_settings
+        elif self._parent is not None:
+            return self._parent.registration_settings
+        else:
+            raise Exception('No local_file_access initialized')
+
+    @contextmanager
+    def new_registration_settings(self, registration_settings):
+        new_ctx = FlyteContext(parent=self, registration_settings=registration_settings)
         FlyteContext.OBJS.append(new_ctx)
         try:
             yield new_ctx

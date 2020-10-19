@@ -218,6 +218,10 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
         # Option 6
         def t(a: int, b: str) -> None: ...
 
+        # Options 7/8
+        def t(a: int, b: str) -> List[int]: ...
+        def t(a: int, b: str) -> Dict[str, int]: ...
+
     TODO: We'll need to check the actual return types for in all cases as well, to make sure Flyte IDL actually
           supports it. For instance, typing.Tuple[Optional[int]] is not something we can represent currently.
 
@@ -225,6 +229,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
     definition. In all other cases, we'll automatically generate output names, indexed starting at 0.
     """
 
+    # TODO: Clean this up and add unit tests specifically for this function - there's a lot of duplication going on.
     # Handle Option 6
     # We can think about whether we should add a default output name with type None in the future.
     if return_annotation is None or return_annotation is inspect.Signature.empty:
@@ -242,12 +247,12 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
         logger.debug(f'Task returns a single output of type {return_annotation}')
         return {default_output_name(): return_annotation}
 
-    if hasattr(return_annotation, '_name') and return_annotation._name == 'List' and return_annotation.__origin__ == list:
+    # Options 7 and 8.
+    if hasattr(return_annotation, '_name') and (
+            (return_annotation._name == 'List' and return_annotation.__origin__ == list) or
+            (return_annotation._name == 'Dict' and return_annotation.__origin__ == dict)):
         return {default_output_name(): return_annotation}
 
-    # TODO: Handle typing.Dict
-
-    return_map = {}
     # Now lets handle multi-valued return annotations
     if hasattr(return_annotation, '__origin__') and return_annotation.__origin__ is tuple:
         # Handle option 3
@@ -260,14 +265,3 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
 
     return_map = OrderedDict(zip(list(output_name_generator(len(return_types))), return_types))
     return return_map
-
-
-# Doesn't really belong here, not sure where else to put it
-class ControlPlaneSettings(object):
-    def __init__(self, project: str, domain: str, version: str, image: str):
-        self._project = project
-        self._domain = domain
-        self._version = version
-        self._image = image
-
-
