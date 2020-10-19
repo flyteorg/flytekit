@@ -1,7 +1,6 @@
 import importlib
 import pkgutil
-
-import six
+from typing import List
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.local_workflow import SdkRunnableWorkflow as _SdkRunnableWorkflow
@@ -14,6 +13,16 @@ def iterate_modules(pkgs):
         yield package
         for _, name, _ in pkgutil.walk_packages(package.__path__, prefix="{}.".format(package_name)):
             yield importlib.import_module(name)
+
+
+def just_load_modules(pkgs: List[str]):
+    """
+    This one differs from the above in that we don't yield anything, just load all the modules.
+    """
+    for package_name in pkgs:
+        package = importlib.import_module(package_name)
+        for _, name, _ in pkgutil.walk_packages(package.__path__, prefix="{}.".format(package_name)):
+            importlib.import_module(name)
 
 
 def load_workflow_modules(pkgs):
@@ -116,7 +125,7 @@ def iterate_registerable_entities_in_order(
                         entity_to_module_key[o.create_launch_plan()] = (m, k)
 
     visited = set()
-    for o in six.iterkeys(entity_to_module_key):
+    for o in entity_to_module_key.keys():
         if o not in visited:
             recursion_set = dict()
             recursion_stack = []

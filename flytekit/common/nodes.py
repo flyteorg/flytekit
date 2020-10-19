@@ -111,15 +111,15 @@ class OutputParameterMapper(ParameterMapper):
 
 class SdkNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(
-        self,
-        id,
-        upstream_nodes,
-        bindings,
-        metadata,
-        sdk_task=None,
-        sdk_workflow=None,
-        sdk_launch_plan=None,
-        sdk_branch=None,
+            self,
+            id,
+            upstream_nodes,
+            bindings,
+            metadata,
+            sdk_task=None,
+            sdk_workflow=None,
+            sdk_launch_plan=None,
+            sdk_branch=None,
     ):
         """
         :param Text id: A workflow-level unique identifier that identifies this node in the workflow. "inputs" and

@@ -278,9 +278,8 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         )
         self.id._name = "{}.{}".format(self.task_module, self.task_function_name)
 
-        # TODO: If we end up using SdkRunnableTask for the new code, make sure these are set correctly.
-        self._task_style = SdkRunnableTaskStyle.V1 if len(self.interface.inputs) + len(
-            self.interface.outputs) > 0 else SdkRunnableTaskStyle.V0
+        # TODO: Remove this in the future, I don't think we'll be using this.
+        self._task_style = SdkRunnableTaskStyle.V0
 
     _banned_inputs = {}
     _banned_outputs = {}

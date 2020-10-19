@@ -1,19 +1,22 @@
-import inspect
 import datetime
-from typing import Dict, Any, Callable, Union, Tuple
+import inspect
+from typing import Dict, Callable, Union, Tuple, List, Optional
 
 from flytekit import engine as flytekit_engine, logger
-from flytekit.annotated.context_manager import FlyteContext, ExecutionState
-from flytekit.annotated.interface import transform_signature_to_interface, transform_interface_to_typed_interface, \
-    transform_inputs_to_parameters
+from flytekit.annotated.context_manager import FlyteContext, ExecutionState, FlyteEntities
+from flytekit.annotated.interface import transform_inputs_to_parameters
+from flytekit.annotated.interface import transform_interface_to_typed_interface, \
+    transform_signature_to_interface
 from flytekit.annotated.promise import Promise, create_task_output
+from flytekit.annotated.node import Node
 from flytekit.common import constants as _common_constants
+from flytekit.common import promise as _common_promise
+from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
+from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models, types as _type_models
 from flytekit.models.core import identifier as _identifier_model, workflow as _workflow_model
-from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common import nodes as _nodes
-from flytekit.common import promise as _common_promise
 
 
 class Workflow(object):
@@ -25,27 +28,34 @@ class Workflow(object):
     """
 
     def __init__(self, workflow_function: Callable):
-        self._name = workflow_function.__name__
+        self._name = f"{workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
         self._native_interface = transform_signature_to_interface(inspect.signature(workflow_function))
         self._interface = transform_interface_to_typed_interface(self._native_interface)
-        # This will get populated on compile only
-        self._sdk_workflow = None
+        # These will get populated on compile only
+        self._nodes = None
+        self._output_bindings: Optional[List[_literal_models.Binding]] = None
+
+        # This will get populated only at registration time, when we retrieve the rest of the environment variables like
+        # project/domain/version/image and anything else we might need from the environment in the future.
+        self._registerable_entity: Optional[_SdkWorkflow] = None
+
         # TODO do we need this - can this not be in launchplan only?
         #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or
         #    we can re-evaluate.
         self._input_parameters = None
+        FlyteEntities.entities.append(self)
 
     @property
     def function(self):
         return self._workflow_function
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     @property
-    def interface(self):
+    def interface(self) -> _interface_models.TypedInterface:
         return self._interface
 
     def _construct_input_promises(self) -> Dict[str, _type_models.OutputReference]:
@@ -81,7 +91,7 @@ class Workflow(object):
         # collection/map out of it.
         if len(output_names) == 1:
             b = flytekit_engine.binding_from_python_std(ctx, output_names[0],
-                                                    self.interface.outputs[output_names[0]].type, workflow_outputs)
+                                                        self.interface.outputs[output_names[0]].type, workflow_outputs)
             bindings.append(b)
         elif len(output_names) > 1:
             if len(output_names) != len(workflow_outputs):
@@ -92,15 +102,9 @@ class Workflow(object):
                                                             workflow_outputs[i])
                 bindings.append(b)
 
-        # TODO: Again, at this point, we should be able to identify the name of the workflow
-        workflow_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW,
-                                                   "proj", "dom", "moreblah", "1")
-
-        # Create a FlyteWorkflow object. We call this like how promote_from_model would call this, by ignoring the
-        # fancy arguments and supplying just the raw elements manually. Alternatively we can construct the
-        # WorkflowTemplate object, and then call promote_from_model.
-        self._sdk_workflow = _SdkWorkflow(inputs=None, outputs=None, nodes=all_nodes, id=workflow_id, metadata=None,
-                                          metadata_defaults=None, interface=self._interface, output_bindings=bindings)
+        # Save all the things necessary to create an SdkWorkflow, except for the missing project and domain
+        self._nodes = all_nodes
+        self._output_bindings = bindings
         if not output_names:
             return None
         if len(output_names) == 1:
@@ -179,20 +183,15 @@ class Workflow(object):
 
             if result is None:
                 return None
-
-            if isinstance(result, Promise):
-                literals = {result.var: result.val}
+            elif isinstance(result, Promise):
+                return flytekit_engine.idl_literal_to_python_value(ctx, result.val)
             else:
-                literals = {}
                 for prom in result:
                     if not isinstance(prom, Promise):
                         raise Exception("should be promises")
 
-                    literals[prom.var] = prom.val
-
-            # unpack result
-            return flytekit_engine.idl_literal_map_to_python_value(ctx, _literal_models.LiteralMap(
-                literals=literals))
+                    native_list = [flytekit_engine.idl_literal_to_python_value(ctx, promise.val) for promise in result]
+                    return tuple(native_list)
 
     def _create_and_link_node(self, ctx: FlyteContext, *args, **kwargs):
         """
@@ -220,18 +219,18 @@ class Workflow(object):
             )
 
         # Detect upstream nodes
+        # These will be our annotated Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
         upstream_nodes = [input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)]
 
-        sdk_node = _nodes.SdkNode(
-            # TODO
+        node = Node(
             id=f"node-{len(ctx.compilation_state.nodes)}",
             metadata=_workflow_model.NodeMetadata(self._name, datetime.timedelta(),
                                                   _literal_models.RetryStrategy(0)),
             bindings=sorted(bindings, key=lambda b: b.var),
-            upstream_nodes=upstream_nodes,
-            sdk_workflow=self._sdk_workflow
+            upstream_nodes=upstream_nodes,  # type: ignore
+            flyte_entity=self
         )
-        ctx.compilation_state.nodes.append(sdk_node)
+        ctx.compilation_state.nodes.append(node)
 
         # Create a node output object for each output, they should all point to this node of course.
         # TODO: Again, we need to be sure that we end up iterating through the output names in the correct order
@@ -241,10 +240,32 @@ class Workflow(object):
             # TODO: If node id gets updated later, we have to make sure to update the NodeOutput model's ID, which
             #  is currently just a static str
             node_outputs.append(
-                Promise(output_name, _common_promise.NodeOutput(sdk_node=sdk_node, sdk_type=None, var=output_name)))
-        # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
+                Promise(output_name, _common_promise.NodeOutput(sdk_node=node, sdk_type=None, var=output_name)))
 
         return create_task_output(node_outputs)
+
+    def get_registerable_entity(self) -> _registerable.RegisterableEntity:
+        settings = FlyteContext.current_context().registration_settings
+        if self._registerable_entity is not None:
+            return self._registerable_entity
+
+        workflow_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW,
+                                                   settings._project, settings._domain, self._name, settings._version)
+
+        # Translate nodes
+        sdk_nodes = [n.get_registerable_entity() for n in self._nodes]
+
+        self._registerable_entity = _SdkWorkflow(nodes=sdk_nodes, id=workflow_id,
+                                                 metadata=_workflow_model.WorkflowMetadata(),
+                                                 metadata_defaults=_workflow_model.WorkflowMetadataDefaults(),
+                                                 interface=self._interface, output_bindings=self._output_bindings)
+        # Reset just to make sure it's what we give it
+        self._registerable_entity.id._project = settings._project
+        self._registerable_entity.id._domain = settings._domain
+        self._registerable_entity.id._name = self._name
+        self._registerable_entity.id._version = settings._version
+
+        return self._registerable_entity
 
 
 def workflow(_workflow_function=None):

@@ -119,13 +119,13 @@ def test_wf1():
         d = t2(a=y, b=b)
         return x, d
 
-    assert len(my_wf._sdk_workflow.nodes) == 2
-    assert my_wf._sdk_workflow.nodes[0].id == "node-0"
-    assert my_wf._sdk_workflow.nodes[1]._upstream[0] is my_wf._sdk_workflow.nodes[0]
+    assert len(my_wf._nodes) == 2
+    assert my_wf._nodes[0].id == "node-0"
+    assert my_wf._nodes[1]._upstream_nodes[0] is my_wf._nodes[0]
 
-    assert len(my_wf._sdk_workflow.outputs) == 2
-    assert my_wf._sdk_workflow.outputs[0].var == 'out_0'
-    assert my_wf._sdk_workflow.outputs[0].binding.promise.var == 't1_int_output'
+    assert len(my_wf._output_bindings) == 2
+    assert my_wf._output_bindings[0].var == 'out_0'
+    assert my_wf._output_bindings[0].binding.promise.var == 't1_int_output'
 
 
 def test_wf1_run():
@@ -144,10 +144,7 @@ def test_wf1_run():
         return x, d
 
     x = my_wf(a=5, b="hello ")
-    assert x == {
-        'out_0': 7,
-        'out_1': "hello world",
-    }
+    assert x == (7, "hello world")
 
 
 def test_wf1_with_overrides():
@@ -166,10 +163,26 @@ def test_wf1_with_overrides():
         return x, d
 
     x = my_wf(a=5, b="hello ")
-    assert x == {
-        'out_0': 7,
-        'out_1': "hello world",
-    }
+    assert x == (7, "hello world")
+
+
+def test_wf1_with_list_of_inputs():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: typing.List[str]) -> str:
+        return " ".join(a)
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a)
+        d = t2(a=[b, y])
+        return x, d
+
+    x = my_wf(a=5, b="hello")
+    assert x == (7, "hello world")
 
 
 def test_promise_return():
@@ -177,6 +190,7 @@ def test_promise_return():
     Testing that when a workflow is local executed but a local wf execution context already exists, Promise objects
     are returned wrapping Flyte literals instead of the unpacked dict.
     """
+
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         a = a + 2
@@ -222,11 +236,7 @@ def test_wf1_with_subwf():
         return x, u, v
 
     x = my_wf(a=5, b="hello ")
-    assert x == {
-        'out_0': 7,
-        'out_1': "world-9",
-        'out_2': "world-11",
-    }
+    assert x == (7, "world-9", "world-11")
 
 
 def test_wf1_with_sql():
@@ -265,10 +275,7 @@ def test_wf1_with_spark():
         return x, d
 
     x = my_wf(a=5, b="hello ")
-    assert x == {
-        'out_0': 7,
-        'out_1': "hello world",
-    }
+    assert x == (7, "hello world")
 
 
 def test_wf1_with_map():
@@ -293,7 +300,7 @@ def test_wf1_with_map():
         return t2(a=x, b=y)
 
     x = my_wf(a=[5, 6])
-    assert x == {'out_0': 15, 'out_1': 'world-7world-8'}
+    assert x == (15, 'world-7world-8')
 
 
 def test_wf1_compile_time_constant_vars():
@@ -312,10 +319,7 @@ def test_wf1_compile_time_constant_vars():
         return x, d
 
     x = my_wf(a=5, b="hello ")
-    assert x == {
-        'out_0': 7,
-        'out_1': "hello This is my way",
-    }
+    assert x == (7, "hello This is my way")
 
 
 def test_wf1_with_dynamic():
@@ -343,13 +347,10 @@ def test_wf1_with_dynamic():
 
     v = 5
     x = my_wf(a=v, b="hello ")
-    assert x == {
-        'out_0': "hello hello ",
-        'out_1': ["world-" + str(i) for i in range(2, v+2)],
-    }
+    assert x == ("hello hello ", ["world-" + str(i) for i in range(2, v + 2)])
 
     compiled_sub_wf = my_subwf.compile_into_workflow(a=5)
-    assert len(compiled_sub_wf._sdk_workflow.nodes) == 5
+    assert len(compiled_sub_wf._nodes) == 5
 
 
 def test_list_output():
@@ -366,11 +367,10 @@ def test_list_output():
             s.append(t1(a=i))
         return s
 
-    assert len(lister._sdk_workflow.outputs) == 1
-    binding_data = lister._sdk_workflow.outputs[0].binding  # the property should be named binding_data
+    assert len(lister.interface.outputs) == 1
+    binding_data = lister._output_bindings[0].binding  # the property should be named binding_data
     assert binding_data.collection is not None
-    assert len(binding_data.collection.bindings) ==  10
-
+    assert len(binding_data.collection.bindings) == 10
 
 # TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!
 
