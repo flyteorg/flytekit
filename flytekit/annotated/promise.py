@@ -312,6 +312,8 @@ class Promise(object):
             # TODO, this should be forwarded, but right now this results in failure and we want to test this behavior
             # self.ref.sdk_node.with_overrides(*args, **kwargs)
             print(f"Forwarding to node {self.ref.sdk_node.id}")
+            if "node_name" in kwargs:
+                self.ref.sdk_node._id = kwargs["node_name"]
         return self
 
     def __repr__(self):

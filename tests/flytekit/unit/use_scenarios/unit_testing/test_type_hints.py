@@ -239,7 +239,7 @@ def test_wf1_with_subwf():
 
     @workflow
     def my_wf(a: int, b: str) -> (int, str, str):
-        x, y = t1(a=a)
+        x, y = t1(a=a).with_overrides()
         u, v = my_subwf(a=x)
         return x, u, v
 
