@@ -8,7 +8,7 @@ from typing import Callable, Union, Dict, DefaultDict, Type, Any, List, Tuple, O
 from flytekit.common.mixins import registerable as _registerable
 
 from flytekit import engine as flytekit_engine, logger
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext, FlyteEntities
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext, BranchEvalMode, FlyteEntities
 from flytekit.annotated.interface import Interface, transform_interface_to_typed_interface, \
     transform_signature_to_interface, transform_typed_interface_to_collection_interface
 from flytekit.annotated.promise import Promise, create_task_output, translate_inputs_to_literals
@@ -183,6 +183,8 @@ class Task(object):
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
             return self._compile(ctx, *args, **kwargs)
         elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
+                return
             return self._local_execute(ctx, **kwargs)
         else:
             logger.warning("task run without context - executing raw function")

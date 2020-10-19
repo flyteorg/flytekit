@@ -3,12 +3,12 @@ import inspect
 from typing import Dict, Callable, Union, Tuple, List, Optional
 
 from flytekit import engine as flytekit_engine, logger
+from flytekit.annotated.condition import ConditionalSection
 from flytekit.annotated.context_manager import FlyteContext, ExecutionState, FlyteEntities
-from flytekit.annotated.interface import transform_inputs_to_parameters
-from flytekit.annotated.interface import transform_interface_to_typed_interface, \
-    transform_signature_to_interface
-from flytekit.annotated.promise import Promise, create_task_output
+from flytekit.annotated.interface import transform_signature_to_interface, transform_interface_to_typed_interface, \
+    transform_inputs_to_parameters
 from flytekit.annotated.node import Node
+from flytekit.annotated.promise import Promise, create_task_output
 from flytekit.common import constants as _common_constants
 from flytekit.common import promise as _common_promise
 from flytekit.common.exceptions import user as _user_exceptions
@@ -98,6 +98,8 @@ class Workflow(object):
                 raise Exception(f"Length mismatch {len(output_names)} vs {len(workflow_outputs)}")
             for i, out in enumerate(output_names):
                 output_name = output_names[i]
+                if isinstance(workflow_outputs[i], ConditionalSection):
+                    raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
                 b = flytekit_engine.binding_from_python_std(ctx, output_name, self.interface.outputs[output_name].type,
                                                             workflow_outputs[i])
                 bindings.append(b)
@@ -132,7 +134,7 @@ class Workflow(object):
         #   other things as well? What if someone just returns 5? Should we disallow this?
         function_outputs = self._workflow_function(**kwargs)
 
-        output_names = list(self.interface.outputs.keys())
+        output_names = list(self._interface.outputs.keys())
         if len(output_names) == 0:
             if function_outputs is None:
                 return None

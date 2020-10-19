@@ -3,8 +3,6 @@ from datetime import datetime, timedelta
 
 from flytekit import typing as flyte_typing
 from flytekit.annotated.promise import Promise
-from flytekit.common import promise as _promise
-from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import literals as _literals_models, types as _type_models
 from flytekit.models.core import types as _core_type_models
