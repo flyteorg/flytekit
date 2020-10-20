@@ -1,3 +1,7 @@
+from typing import Optional, List, Dict
+import os
+import pathlib
+
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common.exceptions import user as _user_exception
@@ -167,3 +171,55 @@ class Data(object):
         :rtype: Text
         """
         return _OutputDataContext.get_active_proxy().get_random_directory()
+
+
+class FileAccessProvider(object):
+    def __init__(self,
+                 local_sandbox_dir: Optional[os.PathLike] = None,
+                 aws_proxy: Optional[_s3proxy.AwsS3Proxy] = None,
+                 gcs_proxy: Optional[_gcs_proxy.GCSProxy] = None):
+
+        # Cloud stuff
+        self._aws = aws_proxy
+        self._gcs = gcs_proxy
+
+        # Local access
+        if local_sandbox_dir is not None and local_sandbox_dir == "":
+            raise Exception("Can't use empty path")
+        else:
+            local_sandbox_dir = "/tmp/flyte"
+        pathlib.Path(local_sandbox_dir).mkdir(parents=True, exist_ok=True)
+        self._local_sandbox_dir = local_sandbox_dir
+        self._local = _local_file_proxy.LocalFileProxy(local_sandbox_dir)
+
+        # HTTP access
+        self._http_proxy = _http_data_proxy.HttpFileProxy()
+
+    @property
+    def aws(self) -> _s3proxy.AwsS3Proxy:
+        if self._aws is None:
+            raise Exception("No AWS handler found")
+        return self._aws
+
+    @property
+    def gcp(self) -> _gcs_proxy.GCSProxy:
+        if self._gcs is None:
+            raise Exception("No AWS handler found")
+        return self._gcs
+
+    @property
+    def local_sandbox_dir(self) -> str:
+        return self._local_sandbox_dir
+
+    def get_random_cloud_path(self):
+        ...
+
+    def get_random_cloud_directory(self):
+        ...
+
+    def get_random_local_path(self):
+        ...
+
+    def get_random_local_directory(self):
+        ...
+
