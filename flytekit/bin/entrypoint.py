@@ -102,6 +102,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
 
             # New annotated style task
             elif not test and isinstance(task_def, Task):
+                _click.echo(f"Running annotated task")
                 cloud_provider = _platform_config.CLOUD_PROVIDER.get()
                 log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
                 _logging.getLogger().setLevel(log_level)

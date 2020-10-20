@@ -133,7 +133,7 @@ class FlyteContext(object):
     def __init__(
         self,
         parent=None,
-        file_access: _data_proxy.FileAccessProvider = _data_proxy.default_local_file_access_provider,
+        file_access: _data_proxy.FileAccessProvider = None,
         compilation_state: CompilationState = None,
         execution_state: ExecutionState = None,
         flyte_client: friendly_client.SynchronousFlyteClient = None,
@@ -289,5 +289,7 @@ default_user_space_params = ExecutionParameters(
     logging=_logging,
     tmp_dir=os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "user_space"),
 )
-default_context = FlyteContext(user_space_params=default_user_space_params)
+default_context = FlyteContext(
+    user_space_params=default_user_space_params, file_access=_data_proxy.default_local_file_access_provider
+)
 FlyteContext.OBJS.append(default_context)
