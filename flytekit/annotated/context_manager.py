@@ -10,17 +10,11 @@ from typing import Any, Dict, Generator, List, Optional
 
 from flytekit.annotated.node import Node
 from flytekit.clients import friendly as friendly_client  # noqa
-from flytekit.common import constants as _constants
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
-from flytekit.common.exceptions import user as _user_exception
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.unit import mock_stats as _mock_stats
-from flytekit.interfaces.data import common as _common_data
-from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
-from flytekit.interfaces.data.http import http_data_proxy as _http_data_proxy
-from flytekit.interfaces.data.local import local_file_proxy as _local_file_proxy
-from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
+from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models.core import identifier as _identifier
 
 
@@ -134,24 +128,12 @@ class ExecutionState(object):
 
 
 class FlyteContext(object):
-    _DATA_PROXIES_BY_PATH = {
-        "s3:/": _s3proxy.AwsS3Proxy(),
-        "gs:/": _gcs_proxy.GCSProxy(),
-        "http://": _http_data_proxy.HttpFileProxy(),
-        "https://": _http_data_proxy.HttpFileProxy(),
-    }
-    _DATA_PROXIES_BY_CLOUD_PROVIDER = {
-        _constants.CloudProvider.AWS: _s3proxy.AwsS3Proxy(),
-        _constants.CloudProvider.GCP: _gcs_proxy.GCSProxy(),
-    }
-
     OBJS = []
 
     def __init__(
         self,
         parent=None,
-        local_file_access: _local_file_proxy.LocalFileProxy = None,
-        data_proxy: _common_data.DataProxy = None,
+        file_access: _data_proxy.FileAccessProvider = _data_proxy.default_local_file_access_provider,
         compilation_state: CompilationState = None,
         execution_state: ExecutionState = None,
         flyte_client: friendly_client.SynchronousFlyteClient = None,
@@ -166,8 +148,7 @@ class FlyteContext(object):
             raise Exception("Can't specify both")
 
         self._parent: FlyteContext = parent
-        self._local_file_access = local_file_access
-        self._data_proxy = data_proxy
+        self._file_access = file_access
         self._compilation_state = compilation_state
         self._execution_state = execution_state
         self._flyte_client = flyte_client
@@ -184,23 +165,23 @@ class FlyteContext(object):
         FlyteContext.OBJS.pop()
 
     @classmethod
-    def current_context(cls) -> "FlyteContext":
+    def current_context(cls) -> FlyteContext:
         if len(cls.OBJS) == 0:
             raise Exception("There should pretty much always be a base context object.")
         return cls.OBJS[-1]
 
     @property
-    def local_file_access(self):
-        if self._local_file_access is not None:
-            return self._local_file_access
+    def file_access(self) -> _data_proxy.FileAccessProvider:
+        if self._file_access is not None:
+            return self._file_access
         elif self._parent is not None:
-            return self._parent.local_file_access
+            return self._parent.file_access
         else:
-            raise Exception("No local_file_access initialized")
+            raise Exception("No file_access initialized")
 
     @contextmanager
-    def new_local_file_context(self, proxy):
-        new_ctx = FlyteContext(parent=self, local_file_access=proxy)
+    def new_file_access_context(self, file_access_provider: _data_proxy.FileAccessProvider):
+        new_ctx = FlyteContext(parent=self, file_access=file_access_provider)
         FlyteContext.OBJS.append(new_ctx)
         try:
             yield new_ctx
@@ -217,46 +198,6 @@ class FlyteContext(object):
             raise Exception("No user_space_params initialized")
 
     @property
-    def data_proxy(self) -> _common_data.DataProxy:
-        if self._data_proxy is not None:
-            return self._data_proxy
-        elif self._parent is not None:
-            return self._parent.data_proxy
-        else:
-            raise Exception("No local_file_access initialized")
-
-    @contextmanager
-    def new_data_proxy(self, proxy):
-        new_ctx = FlyteContext(parent=self, data_proxy=proxy)
-        FlyteContext.OBJS.append(new_ctx)
-        try:
-            yield new_ctx
-        finally:
-            FlyteContext.OBJS.pop()
-
-    @contextmanager
-    def new_data_proxy_by_cloud_provider(
-        self, cloud_provider: str, raw_output_data_prefix: Optional[str] = None
-    ) -> Generator[FlyteContext, None, None]:
-        if cloud_provider == _constants.CloudProvider.AWS:
-            proxy = _s3proxy.AwsS3Proxy(raw_output_data_prefix)
-        elif cloud_provider == _constants.CloudProvider.GCP:
-            proxy = _gcs_proxy.GCSProxy(raw_output_data_prefix)
-        else:
-            raise _user_exception.FlyteAssertion(
-                "Configured cloud provider is not supported for data I/O.  Received: {}, expected one of: {}".format(
-                    cloud_provider, list(type(self)._DATA_PROXIES_BY_CLOUD_PROVIDER.keys())
-                )
-            )
-
-        new_ctx = FlyteContext(parent=self, data_proxy=proxy)
-        FlyteContext.OBJS.append(new_ctx)
-        try:
-            yield new_ctx
-        finally:
-            FlyteContext.OBJS.pop()
-
-    @property
     def execution_state(self) -> Optional[ExecutionState]:
         return self._execution_state
 
@@ -269,7 +210,7 @@ class FlyteContext(object):
     ) -> Generator[FlyteContext, None, None]:
 
         # Create a working directory for the execution to use
-        working_dir = self.local_file_access.get_random_path()
+        working_dir = self.file_access.get_random_local_directory()
         engine_dir = os.path.join(working_dir, "engine_dir")
         pathlib.Path(engine_dir).mkdir(parents=True, exist_ok=True)
         exec_state = ExecutionState(
@@ -348,10 +289,5 @@ default_user_space_params = ExecutionParameters(
     logging=_logging,
     tmp_dir=os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "user_space"),
 )
-
-default_context = FlyteContext(
-    local_file_access=_local_file_proxy.LocalFileProxy(_sdk_config.LOCAL_SANDBOX.get()),
-    data_proxy=_local_file_proxy.LocalFileProxy(os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "data_dir")),
-    user_space_params=default_user_space_params,
-)
+default_context = FlyteContext(user_space_params=default_user_space_params)
 FlyteContext.OBJS.append(default_context)

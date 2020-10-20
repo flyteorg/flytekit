@@ -23,6 +23,8 @@ from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
+from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
+from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import identifier as _identifier
@@ -107,7 +109,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                 ctx = FlyteContext.current_context()
 
                 # Create directories
-                user_workspace_dir = ctx.local_file_access.get_random_directory()
+                user_workspace_dir = ctx.file_access.local_access.get_random_directory()
                 _click.echo(f"Using user directory {user_workspace_dir}")
                 pathlib.Path(user_workspace_dir).mkdir(parents=True, exist_ok=True)
                 from flytekit import __version__ as _api_version
@@ -140,17 +142,32 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                     tmp_dir=user_workspace_dir,
                 )
 
-                with ctx.new_data_proxy_by_cloud_provider(
-                    cloud_provider=cloud_provider, raw_output_data_prefix=raw_output_data_prefix
-                ) as ctx:
+                if cloud_provider == _constants.CloudProvider.AWS:
+                    file_access = _data_proxy.FileAccessProvider(
+                        local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
+                        remote_proxy=_s3proxy.AwsS3Proxy(raw_output_data_prefix),
+                    )
+                elif cloud_provider == _constants.CloudProvider.GCP:
+                    file_access = _data_proxy.FileAccessProvider(
+                        local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
+                        remote_proxy=_gcs_proxy.GCSProxy(raw_output_data_prefix),
+                    )
+                elif cloud_provider == _constants.CloudProvider.LOCAL:
+                    # A fake remote using the local disk will automatically be created
+                    file_access = _data_proxy.FileAccessProvider(
+                        local_sandbox_dir=_os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "local_pyflyte")
+                    )
+                else:
+                    raise Exception(f"Bad cloud provider {cloud_provider}")
 
+                with ctx.new_file_access_context(file_access_provider=file_access) as ctx:
                     # Because execution states do not look up the context chain, it has to be made second.
                     with ctx.new_execution_context(
                         mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
                     ) as ctx:
                         # First download the contents of the input file
                         local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
-                        _data_proxy.Data.get_data(inputs, local_inputs_file)
+                        ctx.file_access.get_data(inputs, local_inputs_file)
                         input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
                         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
                         outputs = task_def.dispatch_execute(ctx, idl_input_literals)
@@ -164,7 +181,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                                 v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k)
                             )
 
-                        ctx.data_proxy.upload_directory(ctx.execution_state.engine_dir, output_prefix)
+                        ctx.file_access.upload_directory(ctx.execution_state.engine_dir, output_prefix)
 
 
 @_click.group()

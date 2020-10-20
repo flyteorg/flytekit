@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from flytekit import typing as flyte_typing
 from flytekit.annotated import context_manager as _flyte_context
 from flytekit.annotated.promise import Promise
-from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import literals as _literals_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_type_models
@@ -18,16 +17,16 @@ def blob_literal_to_python_value(
     why there's an execution context as an input. We need to download the file onto the local filesystem (or construct
     a function that will do a JIT download), or open a file handle to the thing.
     """
-    local_path = ctx.local_file_access.get_random_path()
+    local_path = ctx.file_access.get_random_local_path()
 
     def _downloader():
-        _data_proxy.Data.get_data(blob.uri, local_path, is_multipart=False)
+        ctx.file_access.get_data(blob.uri, local_path, is_multipart=False)
 
     if blob.metadata.type.format == flyte_typing.FlyteFileFormats.CSV.value:
         return flyte_typing.FlyteCSVFilePath(local_path, _downloader, blob.uri)
 
     if blob.metadata.type.format == flyte_typing.FlyteFileFormats.TEXT_IO:
-        _data_proxy.Data.get_data(blob.uri, local_path, is_multipart=False)
+        ctx.file_access.get_data(blob.uri, local_path, is_multipart=False)
         return open(local_path, "r")
     return flyte_typing.FlyteFilePath(local_path, _downloader, blob.uri)
 
@@ -42,7 +41,7 @@ def python_file_esque_to_idl_blob(
     We have to read the idl literal type given to determine the type of the incoming Python value is. We can't
     just run type(native_value). See the comments in flytekit/typing for more information on why not.
     """
-    remote_path = ctx.data_proxy.get_random_path()
+    remote_path = ctx.file_access.get_random_remote_path()
 
     # If the type is a plain old file, that means we just have to upload the file.
     if blob_type.format == flyte_typing.FlyteFileFormats.TEXT_IO:
@@ -51,7 +50,7 @@ def python_file_esque_to_idl_blob(
         raise Exception("not implemented - binary filehandle to blob literal")
     else:
         # This is just a regular file, upload it and return a Blob pointing to it.
-        _data_proxy.Data.put_data(native_value, remote_path, is_multipart=False)
+        ctx.file_access.put_data(native_value, remote_path, is_multipart=False)
         meta = _literals_models.BlobMetadata(type=blob_type)
         return _literals_models.Literal(
             scalar=_literals_models.Scalar(blob=_literals_models.Blob(metadata=meta, uri=remote_path))
