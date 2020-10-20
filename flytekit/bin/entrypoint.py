@@ -155,7 +155,9 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                 elif cloud_provider == _constants.CloudProvider.LOCAL:
                     # A fake remote using the local disk will automatically be created
                     file_access = _data_proxy.FileAccessProvider(
-                        local_sandbox_dir=_os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "local_pyflyte")
+                        local_sandbox_dir=_os.path.join(
+                            _sdk_config.LOCAL_SANDBOX.get(), raw_output_data_prefix or "local_pyflyte"
+                        )
                     )
                 else:
                     raise Exception(f"Bad cloud provider {cloud_provider}")
