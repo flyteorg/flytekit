@@ -124,9 +124,9 @@ class ComparisonExpression(object):
                 if rhs.val.scalar is None or rhs.val.scalar.primitive is None:
                     raise ValueError("Only primitive values can be used in comparison")
         if self._lhs is None:
-            self._lhs = type_engine.BASE_TYPES[type(lhs)][1](lhs)
+            self._lhs = type_engine.TypeEngine.get_transformer(type(lhs)).get_literal(lhs)
         if self._rhs is None:
-            self._rhs = type_engine.BASE_TYPES[type(rhs)][1](rhs)
+            self._rhs = type_engine.TypeEngine.get_transformer(type(rhs)).get_literal(rhs)
 
     @property
     def rhs(self) -> "Promise":

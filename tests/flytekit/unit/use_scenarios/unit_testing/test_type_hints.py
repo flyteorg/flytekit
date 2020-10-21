@@ -12,7 +12,7 @@ from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import AbstractSQLTask, dynamic, maptask, metadata, task
-from flytekit.annotated.type_engine import BASE_TYPES
+from flytekit.annotated.type_engine import TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
@@ -402,8 +402,8 @@ def test_comparison_refs():
 
 
 def test_comparison_lits():
-    px = Promise("x", BASE_TYPES[int][1](5))
-    py = Promise("y", BASE_TYPES[int][1](8))
+    px = Promise("x", TypeEngine.get_transformer(int).get_literal(5))
+    py = Promise("y", TypeEngine.get_transformer(int).get_literal(8))
 
     def eval_expr(expr, expected: bool):
         print(f"{expr} evals to {expr.eval()}")
