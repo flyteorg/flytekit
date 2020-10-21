@@ -103,7 +103,7 @@ def serialize_all(project, domain, pkgs, version, folder=None):
             o._id = _identifier.Identifier(o.resource_type, project, domain, name, version)
             loaded_entities.append(o)
 
-        click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} items")
+        click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
 
         for entity in flyte_context.FlyteEntities.entities:
             # TODO: Add a reachable check. Since these entities are always added by the constructor, weird things can
@@ -133,7 +133,7 @@ def serialize_all(project, domain, pkgs, version, folder=None):
             serialized = entity.serialize()
             fname_index = str(i).zfill(zero_padded_length)
             fname = "{}_{}.pb".format(fname_index, entity.id.name)
-            click.echo("  Writing {} to\n    {}".format(entity._id, fname))
+            click.echo(f"  Writing type: {entity.id.resource_type}, {entity.id.name} to\n    {fname}")
             if folder:
                 fname = _os.path.join(folder, fname)
             _write_proto_to_file(serialized, fname)

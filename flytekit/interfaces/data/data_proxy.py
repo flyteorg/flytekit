@@ -1,3 +1,8 @@
+import datetime
+import os
+import pathlib
+from typing import Union
+
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common.exceptions import user as _user_exception
@@ -167,3 +172,179 @@ class Data(object):
         :rtype: Text
         """
         return _OutputDataContext.get_active_proxy().get_random_directory()
+
+
+class FileAccessProvider(object):
+    def __init__(
+        self,
+        local_sandbox_dir: os.PathLike,
+        remote_proxy: Union[_s3proxy.AwsS3Proxy, _gcs_proxy.GCSProxy, None] = None,
+    ):
+
+        # Local access
+        if local_sandbox_dir is None or local_sandbox_dir == "":
+            raise Exception("Can't use empty path")
+        pathlib.Path(local_sandbox_dir).mkdir(parents=True, exist_ok=True)
+        self._local_sandbox_dir = local_sandbox_dir
+        self._local = _local_file_proxy.LocalFileProxy(local_sandbox_dir)
+
+        # Remote/cloud stuff
+        if isinstance(remote_proxy, _s3proxy.AwsS3Proxy):
+            self._aws = remote_proxy
+        if isinstance(remote_proxy, _gcs_proxy.GCSProxy):
+            self._gcs = remote_proxy
+        if remote_proxy is not None:
+            self._remote = remote_proxy
+        else:
+            mock_remote = os.path.join(local_sandbox_dir, "mock_remote")
+            pathlib.Path(mock_remote).mkdir(parents=True, exist_ok=True)
+            self._remote = _local_file_proxy.LocalFileProxy(mock_remote)
+
+        # HTTP access
+        self._http_proxy = _http_data_proxy.HttpFileProxy()
+
+    def _get_data_proxy_by_path(self, path):
+        """
+        :param Text path:
+        :rtype: flytekit.interfaces.data.common.DataProxy
+        """
+        if path.startswith("s3:/"):
+            return self.aws
+        elif path.startswith("gs:/"):
+            return self.gcs
+        elif path.startswith("http"):
+            return self.http
+        elif path.startswith("file://"):
+            # Note that we default to the local one here, not the remote one.
+            return self.local_access
+        elif path.startswith("/"):
+            # Note that we default to the local one here, not the remote one.
+            return self.local_access
+        raise Exception(f"Unknown file access {path}")
+
+    @property
+    def aws(self) -> _s3proxy.AwsS3Proxy:
+        if self._aws is None:
+            raise Exception("No AWS handler found")
+        return self._aws
+
+    @property
+    def gcs(self) -> _gcs_proxy.GCSProxy:
+        if self._gcs is None:
+            raise Exception("No GCP handler found")
+        return self._gcs
+
+    @property
+    def remote(self):
+        if self._remote is not None:
+            return self._remote
+        raise Exception("No cloud provider specified")
+
+    @property
+    def http(self) -> _http_data_proxy.HttpFileProxy:
+        return self._http_proxy
+
+    @property
+    def local_sandbox_dir(self) -> os.PathLike:
+        return self._local_sandbox_dir
+
+    @property
+    def local_access(self) -> _local_file_proxy.LocalFileProxy:
+        return self._local
+
+    def get_random_remote_path(self) -> str:
+        return self.remote.get_random_path()
+
+    def get_random_remote_directory(self):
+        return self.remote.get_random_directory()
+
+    def get_random_local_path(self) -> str:
+        return self.local_access.get_random_path()
+
+    def get_random_local_directory(self) -> str:
+        dir = self.local_access.get_random_directory()
+        pathlib.Path(dir).mkdir(parents=True, exist_ok=True)
+        return dir
+
+    def exists(self, remote_path: str) -> bool:
+        """
+        :param Text remote_path: remote s3:// or gs:// path
+        """
+        return self._get_data_proxy_by_path(remote_path).exists(remote_path)
+
+    def download_directory(self, remote_path: str, local_path: str):
+        """
+        :param Text remote_path: remote s3:// path
+        :param Text local_path: directory to copy to
+        """
+        return self._get_data_proxy_by_path(remote_path).download_directory(remote_path, local_path)
+
+    def download(self, remote_path: str, local_path: str):
+        """
+        :param Text remote_path: remote s3:// path
+        :param Text local_path: directory to copy to
+        """
+        return self._get_data_proxy_by_path(remote_path).download(remote_path, local_path)
+
+    def upload(self, file_path: str, to_path: str):
+        """
+        :param Text file_path:
+        :param Text to_path:
+        """
+        return self.remote.upload(file_path, to_path)
+
+    def upload_directory(self, local_path: str, remote_path: str):
+        """
+        :param Text local_path:
+        :param Text remote_path:
+        """
+        return self.remote.upload_directory(local_path, remote_path)
+
+    def get_data(self, remote_path: str, local_path: str, is_multipart=False):
+        """
+        :param Text remote_path:
+        :param Text local_path:
+        :param bool is_multipart:
+        """
+        try:
+            with _common_utils.PerformanceTimer("Copying ({} -> {})".format(remote_path, local_path)):
+                if is_multipart:
+                    self.download_directory(remote_path, local_path)
+                else:
+                    self.download(remote_path, local_path)
+        except Exception as ex:
+            raise _user_exception.FlyteAssertion(
+                "Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
+                "Original exception: {error_string}".format(
+                    remote_path=remote_path, local_path=local_path, is_multipart=is_multipart, error_string=str(ex),
+                )
+            )
+
+    def put_data(self, local_path: str, remote_path: str, is_multipart=False):
+        """
+        The implication here is that we're always going to put data to the remote location, so we .remote to ensure
+        we don't use the true local proxy if the remote path is a file://
+
+        :param Text local_path:
+        :param Text remote_path:
+        :param bool is_multipart:
+        """
+        try:
+            with _common_utils.PerformanceTimer("Writing ({} -> {})".format(local_path, remote_path)):
+                if is_multipart:
+                    self.remote.upload_directory(local_path, remote_path)
+                else:
+                    self.remote.upload(local_path, remote_path)
+        except Exception as ex:
+            raise _user_exception.FlyteAssertion(
+                "Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"
+                "Original exception: {error_string}".format(
+                    remote_path=remote_path, local_path=local_path, is_multipart=is_multipart, error_string=str(ex),
+                )
+            )
+
+
+timestamped_default_sandbox_location = os.path.join(
+    _sdk_config.LOCAL_SANDBOX.get(), datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+)
+default_local_file_access_provider = FileAccessProvider(local_sandbox_dir=timestamped_default_sandbox_location)

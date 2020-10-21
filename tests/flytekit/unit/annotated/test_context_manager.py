@@ -19,4 +19,4 @@ def test_levels():
 
 def test_default():
     ctx = FlyteContext.current_context()
-    assert ctx.local_file_access is not None
+    assert ctx.file_access is not None

@@ -1,5 +1,6 @@
 import datetime as _datetime
 import functools
+import os
 import typing
 from typing import Dict
 
@@ -81,6 +82,15 @@ BASE_TYPES: Dict[type, typing.Tuple[_type_models.LiteralType, typing.Callable]] 
         functools.partial(create_blob, dim=_core_types.BlobType.BlobDimensionality.SINGLE),
     ),
     flyte_typing.FlyteFilePath: (
+        _type_models.LiteralType(
+            blob=_core_types.BlobType(
+                format=flyte_typing.FlyteFileFormats.BASE_FORMAT.value,
+                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            )
+        ),
+        functools.partial(create_blob, dim=_core_types.BlobType.BlobDimensionality.SINGLE),
+    ),
+    os.PathLike: (
         _type_models.LiteralType(
             blob=_core_types.BlobType(
                 format=flyte_typing.FlyteFileFormats.BASE_FORMAT.value,

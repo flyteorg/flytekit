@@ -1,11 +1,13 @@
 import datetime
 import inspect
+import os
 import typing
 
 import pytest
 
 import flytekit.annotated.task
 import flytekit.annotated.workflow
+from flytekit import engine as flytekit_engine
 from flytekit.annotated import context_manager, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
@@ -16,6 +18,8 @@ from flytekit.annotated.type_engine import BASE_TYPES
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
+from flytekit.interfaces.data.data_proxy import FileAccessProvider
+from flytekit.models.core import types as _core_types
 from flytekit.models.types import LiteralType, SimpleType
 
 
@@ -110,6 +114,38 @@ def test_single_output_new_decorator():
 
     result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
     assert result["out_0"].type.simple == 1
+
+
+def test_sig_files():
+    def q() -> os.PathLike:
+        ...
+
+    result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
+    assert isinstance(result["out_0"].type.blob, _core_types.BlobType)
+
+
+def test_engine_file_output():
+    basic_blob_type = _core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
+
+    fs = FileAccessProvider(local_sandbox_dir="/tmp/flytetesting")
+    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
+        # Write some text to a file not in that directory above
+        test_file_location = "/tmp/sample.txt"
+        with open(test_file_location, "w") as fh:
+            fh.write("Hello World\n")
+
+        lit = flytekit_engine.python_file_esque_to_idl_blob(
+            ctx, native_value=test_file_location, blob_type=basic_blob_type
+        )
+
+        # Since we're using local as remote, we should be able to just read the file from the 'remote' location.
+        with open(lit.scalar.blob.uri, "r") as fh:
+            assert fh.readline() == "Hello World\n"
+
+        # We should also be able to turn the thing back into regular python native thing.
+        redownloaded_local_file_location = flytekit_engine.blob_literal_to_python_value(ctx, lit.scalar.blob)
+        with open(redownloaded_local_file_location, "r") as fh:
+            assert fh.readline() == "Hello World\n"
 
 
 def test_wf1():
@@ -239,7 +275,7 @@ def test_wf1_with_subwf():
 
     @workflow
     def my_wf(a: int, b: str) -> (int, str, str):
-        x, y = t1(a=a)
+        x, y = t1(a=a).with_overrides()
         u, v = my_subwf(a=x)
         return x, u, v
 
@@ -496,65 +532,3 @@ def test_wf1_branches_failing():
 
 
 # TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!
-
-# @flyte_test
-# def test_single_output():
-#     @python_task
-#     def my_task(ctx) -> typing.BinaryIO:
-#         with open("/tmp/blah", mode="w") as fh:
-#             fh.writelines("hello world")
-#             my_output = upload_to_location(fh, "s3://my-known-location", format="csv")
-#             return fh
-
-#     assert my_task.unit_test() == {'output': 'Hello world'}
-
-
-# @flyte_test
-# def test_read_file_known_location():
-#     # Option 1
-#     # users receive a file handle as the parameter to their task
-#     @python_task
-#     def my_task(ctx, fh: typing.BinaryIO):
-#         lines = fh.readlines()
-#         # assert
-
-#     # Option 1.1
-#     # To call the task for unit testing, users need to open a file and pass the handle
-#     with open('/mytest', mode='rb') as fh:
-#         assert my_task.unit_test(fh=fh) == {'output': 'Hello world'}
-
-
-#     # Option 1.2
-#     # Users pass a Path-Like object that flyte knows how to interpret and open or youo
-#     assert my_task.unit_test(fh=CustomPathLike('/mytest', format="csv")) == {}
-
-#     # Option 2
-#     # Users receive a Path-Like type as a parameter to their function (much like how Blobs work today)
-#     # Option 2.1
-#     # Users will have to call downlooad then open
-#     @python_task
-#     def my_task(ctx, file_path: CustomPathLike):
-#         file_path.download()
-#         with open(file_path.local_path, mode='rb') as fh:
-#             lines = fh.readlines()
-#             # assert
-
-#     assert my_task.unit_test(file_path=CustomPathLike('s3://bucket-my/mytest')) == {}
-
-#     # Option 2.2
-#     # Provide a custom open() that encapsulates download and open actions
-#     @python_task
-#     def my_task(ctx, file_path: CustomPathLike):
-#         with file_path.open() as fh:
-#             lines = fh.readlines()
-#             # assert
-
-
-#     # Option 2.3
-#     # Flyte always downloads the file and users can use the regular open() function to read it.
-#     @python_task
-#     def my_task(ctx, file_path: CustomPathLike):
-#         with open(file_path.local_path, mode='rb') as fh:
-#             lines = fh.readlines()
-#             # assert
-# nt1 = typing.NamedTuple("NT1", x_str=str, y_int=int)
