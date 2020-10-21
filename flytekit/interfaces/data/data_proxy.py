@@ -228,7 +228,7 @@ class FileAccessProvider(object):
     @property
     def gcs(self) -> _gcs_proxy.GCSProxy:
         if self._gcs is None:
-            raise Exception("No AWS handler found")
+            raise Exception("No GCP handler found")
         return self._gcs
 
     @property
