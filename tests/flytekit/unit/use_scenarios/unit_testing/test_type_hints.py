@@ -19,7 +19,6 @@ from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
-from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.types import LiteralType, SimpleType
 
