@@ -1,3 +1,4 @@
+import os
 import typing
 from datetime import datetime, timedelta
 
@@ -33,7 +34,7 @@ def blob_literal_to_python_value(
 
 def python_file_esque_to_idl_blob(
     ctx: _flyte_context.FlyteContext,
-    native_value: typing.Union[flyte_typing.FlyteFilePath, typing.TextIO, typing.BinaryIO],
+    native_value: typing.Union[os.PathLike, flyte_typing.FlyteFilePath, typing.TextIO, typing.BinaryIO],
     blob_type: _core_type_models.BlobType,
 ) -> _literals_models.Literal:
     """
@@ -48,6 +49,15 @@ def python_file_esque_to_idl_blob(
         raise Exception("not implemented - text filehandle to blob literal")
     elif blob_type.format == flyte_typing.FlyteFileFormats.BINARY_IO:
         raise Exception("not implemented - binary filehandle to blob literal")
+    elif isinstance(native_value, flyte_typing.FlyteFilePath):
+        # For our Flyte file location type, we support specifying writing to a specific remote location.
+        if native_value.remote_path:
+            remote_path = native_value.remote_path
+        ctx.file_access.put_data(native_value, remote_path, is_multipart=False)
+        meta = _literals_models.BlobMetadata(type=blob_type)
+        return _literals_models.Literal(
+            scalar=_literals_models.Scalar(blob=_literals_models.Blob(metadata=meta, uri=remote_path))
+        )
     else:
         # This is just a regular file, upload it and return a Blob pointing to it.
         ctx.file_access.put_data(native_value, remote_path, is_multipart=False)

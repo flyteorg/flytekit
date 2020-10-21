@@ -1,11 +1,13 @@
 import datetime
 import inspect
+import os
 import typing
 
 import pytest
 
 import flytekit.annotated.task
 import flytekit.annotated.workflow
+from flytekit import engine as flytekit_engine
 from flytekit.annotated import context_manager, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
@@ -16,6 +18,9 @@ from flytekit.annotated.type_engine import BASE_TYPES
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
+from flytekit.interfaces.data.data_proxy import FileAccessProvider
+from flytekit.models import types as _type_models
+from flytekit.models.core import types as _core_types
 from flytekit.models.types import LiteralType, SimpleType
 
 
@@ -110,6 +115,38 @@ def test_single_output_new_decorator():
 
     result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
     assert result["out_0"].type.simple == 1
+
+
+def test_sig_files():
+    def q() -> os.PathLike:
+        ...
+
+    result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
+    assert isinstance(result["out_0"].type.blob, _core_types.BlobType)
+
+
+def test_engine_file_output():
+    basic_blob_type = _core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
+
+    fs = FileAccessProvider(local_sandbox_dir="/tmp/flytetesting")
+    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
+        # Write some text to a file not in that directory above
+        test_file_location = "/tmp/sample.txt"
+        with open(test_file_location, "w") as fh:
+            fh.write("Hello World\n")
+
+        lit = flytekit_engine.python_file_esque_to_idl_blob(
+            ctx, native_value=test_file_location, blob_type=basic_blob_type
+        )
+
+        # Since we're using local as remote, we should be able to just read the file from the 'remote' location.
+        with open(lit.scalar.blob.uri, "r") as fh:
+            assert fh.readline() == "Hello World\n"
+
+        # We should also be able to turn the thing back into regular python native thing.
+        redownloaded_local_file_location = flytekit_engine.blob_literal_to_python_value(ctx, lit.scalar.blob)
+        with open(redownloaded_local_file_location, "r") as fh:
+            assert fh.readline() == "Hello World\n"
 
 
 def test_wf1():

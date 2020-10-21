@@ -217,6 +217,9 @@ class FileAccessProvider(object):
         elif path.startswith("file://"):
             # Note that we default to the local one here, not the remote one.
             return self.local_access
+        elif path.startswith("/"):
+            # Note that we default to the local one here, not the remote one.
+            return self.local_access
         raise Exception(f"Unknown file access {path}")
 
     @property
@@ -319,7 +322,7 @@ class FileAccessProvider(object):
 
     def put_data(self, local_path: str, remote_path: str, is_multipart=False):
         """
-        The implication here is that we're pulling from the remote one. The code uses .remote to ensure
+        The implication here is that we're always going to put data to the remote location, so we .remote to ensure
         we don't use the true local proxy if the remote path is a file://
 
         :param Text local_path:
