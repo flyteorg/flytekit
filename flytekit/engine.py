@@ -53,7 +53,7 @@ def python_file_esque_to_idl_blob(
         # For our Flyte file location type, we support specifying writing to a specific remote location.
         if native_value.remote_path:
             remote_path = native_value.remote_path
-        ctx.file_access.put_data(native_value, remote_path, is_multipart=False)
+        ctx.file_access.put_data(f"{native_value}", remote_path, is_multipart=False)
         meta = _literals_models.BlobMetadata(type=blob_type)
         return _literals_models.Literal(
             scalar=_literals_models.Scalar(blob=_literals_models.Blob(metadata=meta, uri=remote_path))
