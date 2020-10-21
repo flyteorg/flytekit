@@ -1,5 +1,6 @@
 import datetime as _datetime
 import functools
+import os
 import typing
 from abc import abstractmethod
 from typing import Dict
@@ -213,10 +214,21 @@ TypeEngine.register(SimpleTransformer(
 )
 
 TypeEngine.register(SimpleTransformer(
-    "FlyteFilePath", flyte_typing.FlyteCSVFilePath,
+    "FlyteCSVFilePath", flyte_typing.FlyteCSVFilePath,
     _type_models.LiteralType(
         blob=_core_types.BlobType(
             format=flyte_typing.FlyteFileFormats.CSV.value,
+            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+        )
+    ),
+    functools.partial(create_blob, dim=_core_types.BlobType.BlobDimensionality.SINGLE)),
+)
+
+TypeEngine.register(SimpleTransformer(
+    "os.PathLike", os.PathLike,
+    _type_models.LiteralType(
+        blob=_core_types.BlobType(
+            format=flyte_typing.FlyteFileFormats.BASE_FORMAT.value,
             dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
         )
     ),

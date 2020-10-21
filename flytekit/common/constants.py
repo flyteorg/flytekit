@@ -37,3 +37,4 @@ END_NODE_ID = "end-node"
 class CloudProvider(object):
     AWS = "aws"
     GCP = "gcp"
+    LOCAL = "local"

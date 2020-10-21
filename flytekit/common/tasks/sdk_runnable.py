@@ -20,6 +20,7 @@ from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_models
 
 
+# TODO: Clean up working dir name
 class ExecutionParameters(object):
     """
     This is the parameter object that will be provided as the first parameter for every execution of any @*_task

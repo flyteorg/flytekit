@@ -119,6 +119,12 @@ class FlyteFilePath(os.PathLike):
     def remote_path(self) -> typing.Optional[str]:
         return self._remote_path
 
+    def __repr__(self):
+        return self._abspath
+
+    def __str__(self):
+        return self._abspath
+
 
 class FlyteCSVFilePath(FlyteFilePath):
     @classmethod
