@@ -49,4 +49,4 @@ dev-requirements.txt: dev-requirements.in requirements.txt install-piptools
 	$(call PIP_COMPILE,dev-requirements.in)
 
 .PHONY: requirements
-requirements: requirements.txt dev-requirements.txt ## Compile requirements
+requirements: requirements.txt dev-requirements.txt requirements-spark3.txt ## Compile requirements

@@ -15,10 +15,6 @@ pandas = _lazy_loader.lazy_load_module("pandas")  # type: _lazy_loader._LazyLoad
 hmsclient = _lazy_loader.lazy_load_module("hmsclient")  # type: _lazy_loader._LazyLoadModule
 type(hmsclient).add_sub_module("genthrift.hive_metastore.ttypes")
 
-torch = _lazy_loader.lazy_load_module("torch")  # type: _lazy_loader._LazyLoadModule
-
-tensorflow = _lazy_loader.lazy_load_module("tensorflow")  # type: _lazy_loader._LazyLoadModule
-
 _lazy_loader.LazyLoadPlugin("spark", ["pyspark>=2.4.0,<3.0.0"], [pyspark])
 
 _lazy_loader.LazyLoadPlugin("spark3", ["pyspark>=3.0.0"], [pyspark])
@@ -31,6 +27,3 @@ _lazy_loader.LazyLoadPlugin(
 
 _lazy_loader.LazyLoadPlugin("hive_sensor", ["hmsclient>=0.0.1,<1.0.0"], [hmsclient])
 
-_lazy_loader.LazyLoadPlugin("pytorch", ["torch>=1.0.0,<2.0.0"], [torch])
-
-_lazy_loader.LazyLoadPlugin("tensorflow", ["tensorflow>=2.0.0,<3.0.0"], [tensorflow])
