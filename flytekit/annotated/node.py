@@ -52,7 +52,7 @@ class Node(object):
                 upstream_nodes=sdk_nodes,
                 bindings=self._bindings,
                 metadata=self._metadata,
-                sdk_task=self._flyte_entity._registerable_entity,
+                sdk_task=self._flyte_entity.get_registerable_entity(),
             )
         elif isinstance(self._flyte_entity, Workflow):
             self._sdk_node = SdkNode(
@@ -60,7 +60,7 @@ class Node(object):
                 upstream_nodes=sdk_nodes,
                 bindings=self._bindings,
                 metadata=self._metadata,
-                sdk_workflow=self._flyte_entity._registerable_entity,
+                sdk_workflow=self._flyte_entity.get_registerable_entity(),
             )
         # TODO: Add new annotated LaunchPlan when done
         else:
