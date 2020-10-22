@@ -13,7 +13,7 @@ from flytekit.annotated.interface import (
     Interface,
     transform_interface_to_typed_interface,
     transform_signature_to_interface,
-    transform_typed_interface_to_collection_interface,
+    transform_interface_to_list_interface,
 )
 from flytekit.annotated.node import Node
 from flytekit.annotated.promise import Promise, create_task_output, translate_inputs_to_literals
@@ -360,7 +360,7 @@ class MapPythonTask(PythonTask):
     """
 
     def __init__(self, tk: PythonTask, metadata: _task_model.TaskMetadata, *args, **kwargs):
-        collection_interface = transform_typed_interface_to_collection_interface(tk.python_interface)
+        collection_interface = transform_interface_to_list_interface(tk.python_interface)
         name = "mapper_" + tk.name
         self._run_task = tk
         super().__init__(name, collection_interface, metadata, *args, **kwargs)

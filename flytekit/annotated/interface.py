@@ -3,6 +3,8 @@ import inspect
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Tuple, Type, TypeVar, Union
 
+import typing
+
 from flytekit import logger
 from flytekit.annotated import type_engine
 from flytekit.annotated.type_engine import TypeEngine
@@ -116,9 +118,7 @@ def transform_interface_to_typed_interface(interface: Interface) -> _interface_m
     return _interface_models.TypedInterface(inputs_map, outputs_map)
 
 
-def transform_variable_map_to_collection(
-    m: Dict[str, _interface_models.Variable]
-) -> Dict[str, _interface_models.Variable]:
+def transform_types_to_list_of_type(m: Dict[str, type]) -> Dict[str, type]:
     """
     Converts a given variables to be collections of their type. This is useful for array jobs / map style code.
     It will create a collection of types even if any one these types is not a collection type
@@ -128,7 +128,8 @@ def transform_variable_map_to_collection(
 
     all_types_are_collection = True
     for k, v in m.items():
-        if v.type.collection_type is None:
+        v_type = type(v)
+        if v_type != typing.List and v_type != list:
             all_types_are_collection = False
             break
 
@@ -137,23 +138,19 @@ def transform_variable_map_to_collection(
 
     om = {}
     for k, v in m.items():
-        om[k] = _interface_models.Variable(
-            type=_type_models.LiteralType(collection_type=v.type), description=v.description
-        )
+        om[k] = typing.List[v]
     return om
 
 
-def transform_typed_interface_to_collection_interface(
-    interface: _interface_models.TypedInterface,
-) -> _interface_models.TypedInterface:
+def transform_interface_to_list_interface(interface: Interface) -> Interface:
     """
     Takes a single task interface and interpolates it to an array interface - to allow performing distributed python map
     like functions
     """
-    map_inputs = transform_variable_map_to_collection(interface.inputs)
-    map_outputs = transform_variable_map_to_collection(interface.outputs)
+    map_inputs = transform_types_to_list_of_type(interface.inputs)
+    map_outputs = transform_types_to_list_of_type(interface.outputs)
 
-    return _interface_models.TypedInterface(inputs=map_inputs, outputs=map_outputs)
+    return Interface(inputs=map_inputs, outputs=map_outputs)
 
 
 def transform_signature_to_interface(signature: inspect.Signature) -> Interface:
@@ -253,8 +250,8 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
 
     # Options 7 and 8.
     if hasattr(return_annotation, "_name") and (
-        (return_annotation._name == "List" and return_annotation.__origin__ == list)
-        or (return_annotation._name == "Dict" and return_annotation.__origin__ == dict)
+            (return_annotation._name == "List" and return_annotation.__origin__ == list)
+            or (return_annotation._name == "Dict" and return_annotation.__origin__ == dict)
     ):
         return {default_output_name(): return_annotation}
 

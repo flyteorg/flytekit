@@ -1,7 +1,9 @@
+import os
 import typing
 from datetime import timedelta
 
-from flytekit.annotated.type_engine import TypeEngine
+from flytekit.annotated.type_engine import TypeEngine, ListTransformer, DictTransformer, SimpleTransformer, \
+    PathLikeTransformer
 from flytekit.models import types as model_types
 
 
@@ -20,3 +22,17 @@ def test_named_tuple():
     var_map = TypeEngine.named_tuple_to_variable_map(t)
     assert var_map.variables["x_str"].type.simple == model_types.SimpleType.STRING
     assert var_map.variables["y_int"].type.simple == model_types.SimpleType.INTEGER
+
+
+def test_type_resolution():
+    assert type(TypeEngine.get_transformer(typing.List[int])) == ListTransformer
+    assert type(TypeEngine.get_transformer(typing.List)) == ListTransformer
+    assert type(TypeEngine.get_transformer(list)) == ListTransformer
+
+    assert type(TypeEngine.get_transformer(typing.Dict[str, int])) == DictTransformer
+    assert type(TypeEngine.get_transformer(typing.Dict)) == DictTransformer
+    assert type(TypeEngine.get_transformer(dict)) == DictTransformer
+
+    assert type(TypeEngine.get_transformer(int)) == SimpleTransformer
+
+    assert type(TypeEngine.get_transformer(os.PathLike)) == PathLikeTransformer
