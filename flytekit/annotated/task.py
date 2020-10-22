@@ -458,7 +458,8 @@ class DynamicWorkflowTask(PythonFunctionTask):
                 return self._task_function(**kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            return self.compile_into_workflow(**kwargs)
+            self.compile_into_workflow(**kwargs)
+            self.construct_dynamic_job_spec()
 
 
 TaskTypePlugins: DefaultDict[str, Type[PythonFunctionTask]] = collections.defaultdict(
