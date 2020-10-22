@@ -182,7 +182,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                     # identifier for t1.
                     with ctx.new_registration_settings(
                             registration_settings=registration_settings
-                    ):
+                    ) as ctx:
                         # Because execution states do not look up the context chain, it has to be made last
                         with ctx.new_execution_context(
                             mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
