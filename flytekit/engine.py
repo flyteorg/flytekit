@@ -5,13 +5,14 @@ from datetime import datetime, timedelta
 from flytekit import typing as flyte_typing
 from flytekit.annotated import context_manager as _flyte_context
 from flytekit.annotated.promise import Promise
+from flytekit.annotated.type_engine import TypeEngine, ListTransformer
 from flytekit.models import literals as _literals_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_type_models
 
 
 def blob_literal_to_python_value(
-    ctx: _flyte_context.FlyteContext, blob: _literals_models.Blob
+        ctx: _flyte_context.FlyteContext, blob: _literals_models.Blob
 ) -> typing.Union[flyte_typing.FlyteFilePath, typing.TextIO]:
     """
     When translating a literal blob into a local Python object, we'll need to do far more complicated things, which is
@@ -33,9 +34,9 @@ def blob_literal_to_python_value(
 
 
 def python_file_esque_to_idl_blob(
-    ctx: _flyte_context.FlyteContext,
-    native_value: typing.Union[os.PathLike, flyte_typing.FlyteFilePath, typing.TextIO, typing.BinaryIO],
-    blob_type: _core_type_models.BlobType,
+        ctx: _flyte_context.FlyteContext,
+        native_value: typing.Union[os.PathLike, flyte_typing.FlyteFilePath, typing.TextIO, typing.BinaryIO],
+        blob_type: _core_type_models.BlobType,
 ) -> _literals_models.Literal:
     """
     This is where we upload files, read filehandles that were opened for Flyte, etc.
@@ -68,13 +69,13 @@ def python_file_esque_to_idl_blob(
 
 
 def literal_primitive_to_python_value(
-    primitive: _literals_models.Primitive,
+        primitive: _literals_models.Primitive,
 ) -> typing.Union[int, float, str, bool, datetime, timedelta]:
     return primitive.value
 
 
 def literal_scalar_to_python_value(
-    ctx: _flyte_context.FlyteContext, scalar: _literals_models.Scalar
+        ctx: _flyte_context.FlyteContext, scalar: _literals_models.Scalar
 ) -> typing.Union[int, float, str, bool, datetime, timedelta, flyte_typing.FlyteFilePath, None]:
     if scalar.primitive is not None:
         return scalar.primitive.value
@@ -103,7 +104,7 @@ def idl_literal_to_python_value(ctx: _flyte_context.FlyteContext, idl_literal: _
 
 
 def idl_literal_map_to_python_value(
-    ctx: _flyte_context.FlyteContext, idl_literal_map: _literals_models.LiteralMap
+        ctx: _flyte_context.FlyteContext, idl_literal_map: _literals_models.LiteralMap
 ) -> typing.Dict[str, typing.Any]:
     """
     This function is only here because often we start with a LiteralMap, not a plain Literal.
@@ -112,7 +113,7 @@ def idl_literal_map_to_python_value(
 
 
 def python_simple_value_to_idl_literal(
-    native_value: typing.Any, simple: _type_models.SimpleType
+        native_value: typing.Any, simple: _type_models.SimpleType
 ) -> _literals_models.Literal:
     if native_value is None:
         return _literals_models.Literal(scalar=_literals_models.Scalar(none_type=_literals_models.Void()))
@@ -161,7 +162,7 @@ def python_simple_value_to_idl_literal(
 
 
 def python_value_to_idl_literal(
-    ctx: _flyte_context.FlyteContext, native_value: typing.Any, idl_type: _type_models.LiteralType
+        ctx: _flyte_context.FlyteContext, native_value: typing.Any, idl_type: _type_models.LiteralType
 ) -> _literals_models.Literal:
     # If the native python std value is None, but the IDL type is a Map of {"my_key": some_primitive_type}, should
     # we return Void? Or a literal map with a "my key" pointing to a Void?
@@ -198,8 +199,8 @@ def python_value_to_idl_literal(
 
 
 def binding_data_from_python_std(
-    ctx: _flyte_context.FlyteContext, expected_literal_type: _type_models.LiteralType, t_value
-) -> _literals_models.BindingData:
+        ctx: _flyte_context.FlyteContext, expected_literal_type: _type_models.LiteralType,
+        t_value: typing.Any, t_value_type: type) -> _literals_models.BindingData:
     # This handles the case where the incoming value is a workflow-level input
     if isinstance(t_value, _type_models.OutputReference):
         binding_data = _literals_models.BindingData(promise=t_value)
@@ -213,8 +214,9 @@ def binding_data_from_python_std(
         if expected_literal_type.collection_type is None:
             raise Exception(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
 
-        collection = _literals_models.BindingDataCollection(
-            bindings=[binding_data_from_python_std(ctx, expected_literal_type.collection_type, t) for t in t_value]
+        sub_type = ListTransformer.get_sub_type(t_value_type)
+        collection = _literals_models.BindingDataCollection(bindings=[
+            binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type) for t in t_value]
         )
 
         binding_data = _literals_models.BindingData(collection=collection)
@@ -226,14 +228,15 @@ def binding_data_from_python_std(
     else:
         # Question: Haytham/Ketan - Is it okay for me to rely on the expected idl type, which comes from the task's
         #   interface, to derive the scalar value?
-        scalar = python_value_to_idl_literal(ctx, t_value, expected_literal_type).scalar
+        scalar = TypeEngine.to_literal(ctx, t_value, t_value_type, expected_literal_type).scalar
         binding_data = _literals_models.BindingData(scalar=scalar)
 
     return binding_data
 
 
 def binding_from_python_std(
-    ctx: _flyte_context.FlyteContext, var_name: str, expected_literal_type: _type_models.LiteralType, t_value
-) -> _literals_models.Binding:
-    binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value)
+        ctx: _flyte_context.FlyteContext, var_name: str,
+        expected_literal_type: _type_models.LiteralType, t_value: typing.Any,
+        t_value_type: type) -> _literals_models.Binding:
+    binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
     return _literals_models.Binding(var=var_name, binding=binding_data)

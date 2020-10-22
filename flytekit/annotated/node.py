@@ -29,7 +29,7 @@ class Node(object):
 
     def get_registerable_entity(self) -> SdkNode:
         # TODO: Figure out import cycles in the future
-        from flytekit.annotated.task import Task
+        from flytekit.annotated.task import PythonTask
         from flytekit.annotated.workflow import Workflow
 
         if self._flyte_entity is None:
@@ -43,7 +43,7 @@ class Node(object):
                 n.get_registerable_entity()
         sdk_nodes = [n.get_registerable_entity() for n in self._upstream_nodes]
 
-        if isinstance(self._flyte_entity, Task):
+        if isinstance(self._flyte_entity, PythonTask):
             self._sdk_node = SdkNode(
                 self._id,
                 upstream_nodes=sdk_nodes,

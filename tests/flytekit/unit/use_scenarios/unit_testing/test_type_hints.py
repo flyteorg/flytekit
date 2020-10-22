@@ -13,7 +13,7 @@ from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import AbstractSQLTask, dynamic, maptask, metadata, task
+from flytekit.annotated.task import AbstractSQLPythonTask, dynamic, maptask, metadata, task
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
@@ -125,7 +125,7 @@ def test_sig_files():
 
 
 def test_engine_file_output():
-    basic_blob_type = _core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
+    basic_blob_type = _core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE, )
 
     fs = FileAccessProvider(local_sandbox_dir="/tmp/flytetesting")
     with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
@@ -134,9 +134,7 @@ def test_engine_file_output():
         with open(test_file_location, "w") as fh:
             fh.write("Hello World\n")
 
-        lit = flytekit_engine.python_file_esque_to_idl_blob(
-            ctx, native_value=test_file_location, blob_type=basic_blob_type
-        )
+        lit = TypeEngine.to_literal(ctx, test_file_location, os.PathLike, LiteralType(blob=basic_blob_type))
 
         # Since we're using local as remote, we should be able to just read the file from the 'remote' location.
         with open(lit.scalar.blob.uri, "r") as fh:
@@ -284,7 +282,7 @@ def test_wf1_with_subwf():
 
 
 def test_wf1_with_sql():
-    sql = AbstractSQLTask(
+    sql = AbstractSQLPythonTask(
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
         inputs={"ds": datetime.datetime},
@@ -419,7 +417,7 @@ def test_list_output():
 
 def test_comparison_refs():
     def dummy_node(id) -> SdkNode:
-        n = SdkNode(id, [], None, None, sdk_task=AbstractSQLTask("x", "x", [], metadata()))
+        n = SdkNode(id, [], None, None, sdk_task=AbstractSQLPythonTask("x", "x", [], metadata()))
         n._id = id
         return n
 
@@ -438,8 +436,8 @@ def test_comparison_refs():
 
 
 def test_comparison_lits():
-    px = Promise("x", TypeEngine.get_transformer(int).get_literal(5))
-    py = Promise("y", TypeEngine.get_transformer(int).get_literal(8))
+    px = Promise("x", TypeEngine.to_literal(None, 5, int, None))
+    py = Promise("y", TypeEngine.to_literal(None, 8, int, None))
 
     def eval_expr(expr, expected: bool):
         print(f"{expr} evals to {expr.eval()}")
@@ -476,7 +474,6 @@ def test_wf1_branches():
 
 def test_wf1_branches_no_else():
     with pytest.raises(AssertionError):
-
         def foo():
             @task
             def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
@@ -499,12 +496,12 @@ def test_wf1_branches_no_else():
                 print(x)
                 d = (
                     conditional()
-                    .if_(x == 4)
-                    .then(t2(a=b))
-                    .elif_(x >= 5)
-                    .then(t2(a=y))
-                    .else_()
-                    .then(t2(a="Ok I give up!"))
+                        .if_(x == 4)
+                        .then(t2(a=b))
+                        .elif_(x >= 5)
+                        .then(t2(a=y))
+                        .else_()
+                        .then(t2(a="Ok I give up!"))
                 )
                 return x, d
 
@@ -529,6 +526,5 @@ def test_wf1_branches_failing():
 
     with pytest.raises(AssertionError):
         my_wf(a=1, b="hello ")
-
 
 # TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!

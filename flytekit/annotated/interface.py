@@ -5,6 +5,7 @@ from typing import Any, Dict, Generator, List, Tuple, Type, TypeVar, Union
 
 from flytekit import logger
 from flytekit.annotated import type_engine
+from flytekit.annotated.type_engine import TypeEngine
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 
@@ -186,8 +187,7 @@ def transform_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interfac
 
 
 def transform_type(x: type, description: str = None) -> _interface_models.Variable:
-    e = type_engine.BaseEngine()
-    return _interface_models.Variable(type=e.native_type_to_literal_type(x), description=description)
+    return _interface_models.Variable(type=TypeEngine.to_literal_type(x), description=description)
 
 
 def default_output_name(index: int = 0) -> str:

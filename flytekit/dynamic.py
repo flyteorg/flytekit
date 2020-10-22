@@ -1,7 +1,7 @@
 import datetime as _datetime
 from typing import Callable, Dict, Union
 
-from flytekit.annotated.task import PythonFunctionTask, TaskTypePlugins, metadata
+from flytekit.annotated.task import PythonFunctionPythonTask, TaskTypePlugins, metadata
 from flytekit.models.core import identifier as _identifier_models
 
 
@@ -18,7 +18,7 @@ def dynamic(
     *args,
     **kwargs
 ) -> Callable:
-    def wrapper(fn) -> PythonFunctionTask:
+    def wrapper(fn) -> PythonFunctionPythonTask:
         _timeout = timeout
         if _timeout and not isinstance(_timeout, _datetime.timedelta):
             if isinstance(_timeout, int):

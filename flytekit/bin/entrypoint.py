@@ -9,7 +9,7 @@ import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext
-from flytekit.annotated.task import Task
+from flytekit.annotated.task import PythonTask
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common import utils as _utils
@@ -72,7 +72,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
             task_def = getattr(task_module, task_name)
 
             # Everything else
-            if not test and not isinstance(task_def, Task):
+            if not test and not isinstance(task_def, PythonTask):
                 local_inputs_file = input_dir.get_named_tempfile("inputs.pb")
 
                 # Handle inputs/outputs for array job.
@@ -101,7 +101,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                 )
 
             # New annotated style task
-            elif not test and isinstance(task_def, Task):
+            elif not test and isinstance(task_def, PythonTask):
                 _click.echo("Running native-typed task")
                 cloud_provider = _platform_config.CLOUD_PROVIDER.get()
                 log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
