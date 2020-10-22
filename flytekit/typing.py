@@ -1,5 +1,8 @@
 import os
+import inspect
 import typing
+from abc import abstractmethod
+from typing import Dict, Generator, Union, Type, Tuple, List, TypeVar, Generic, Iterable
 from enum import Enum
 
 from flytekit import logger
@@ -76,6 +79,70 @@ class FlyteFileFormats(Enum):
 
 def noop():
     ...
+
+
+class FileFormat(object):
+    @classmethod
+    @abstractmethod
+    def format(cls) -> str:
+        return ""
+
+
+class Text(FileFormat):
+    @classmethod
+    def format(cls) -> str:
+        return "txt"
+
+
+FF = TypeVar('FF', bound=FileFormat)
+
+
+class FlyteFile(os.PathLike, Generic[FF]):
+    @classmethod
+    def format(cls) -> str:
+        """
+        When subclassing this, please make sure you do not use the same string as any of the ones already declared
+        in the FlyteFileFormats enum.
+        """
+        return FlyteFileFormats.BASE_FORMAT.value
+
+    def __init__(self, path: str, downloader: typing.Callable = noop, remote_path=None):
+        """
+        :param path: The local path that users are expected to call open() on
+        :param downloader: Optional function that can be passed that used to delay downloading of the actual fil
+            until a user actually calls open().
+        :param remote_path: If the user wants to return something and also specify where it should be uploaded to.
+        """
+        self._abspath = os.path.abspath(path)
+        self._downloader = downloader
+        self._downloaded = False
+        self._remote_path = remote_path
+        logger.debug(f"Path is: {self._abspath}")
+
+    def __fspath__(self):
+        # This is where a delayed downloading of the file will happen
+        self._downloader()
+        self._downloaded = True
+        return self._abspath
+
+    def __eq__(self, other):
+        if self.format() != other.format():
+            return False
+        return self._abspath == other._abspath and self._remote_path == other._remote_path
+
+    @property
+    def downloaded(self) -> bool:
+        return self._downloaded
+
+    @property
+    def remote_path(self) -> typing.Optional[str]:
+        return self._remote_path
+
+    def __repr__(self):
+        return self._abspath
+
+    def __str__(self):
+        return self._abspath
 
 
 class FlyteFilePath(os.PathLike):
