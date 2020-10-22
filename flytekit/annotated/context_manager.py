@@ -252,7 +252,7 @@ class FlyteContext(object):
         elif self._parent is not None:
             return self._parent.registration_settings
         else:
-            raise Exception("No local_file_access initialized")
+            raise Exception("No registration_settings initialized")
 
     @contextmanager
     def new_registration_settings(self, registration_settings):
