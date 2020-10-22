@@ -409,10 +409,30 @@ class DynamicWorkflowTask(PythonFunctionTask):
 
     def compile_into_workflow(self, **kwargs) -> Workflow:
         wf = Workflow(self._task_function)
-        # TODO: May need to tweak the workflow's interface since all inputs should be "bound" to static scalars. Not
-        #  sure how Admin/Propeller will react when sent throught the dj spec.
         wf.compile(**kwargs)
-        return wf
+
+        # Need to zero out the workflow's interface since all inputs should be "bound" to static scalars. That is,
+        # in the old dynamic_task, nodes were collected by users yielding them. In the new dynamic, nodes are
+        # collected by a compilation process. This means we have to supply actual Python native inputs to the
+        # compilation step. To see this, consider the case where the user does for i in range(in1) in the function.
+        # That means we have to compile the dynamic workflow using all Python native literals, which means all inputs
+        # should already be covered.
+        wf._interface._inputs = {}
+
+        # Now create all the registerable entities. This is the same step that is done in pyflyte serialize
+        sdk_workflow = wf.get_registerable_entity()
+        print("===================================")
+        print(sdk_workflow)
+        print("===========================")
+        print(sdk_workflow.nodes)
+        print("===================================")
+
+        # Construct a node for the DJ Spec, just one node representing this dynamically compiled workflow.
+
+        # Create outputs that are the same as this task's output, but tied to the node we just created.
+
+        # Gather all tasks and
+
 
     def execute(self, **kwargs) -> Any:
         """
@@ -432,6 +452,9 @@ class DynamicWorkflowTask(PythonFunctionTask):
             with ctx.new_execution_context(ExecutionState.Mode.TASK_EXECUTION):
                 logger.info("Executing Dynamic workflow, using raw inputs")
                 return self._task_function(**kwargs)
+
+        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+            return self.compile_into_workflow(**kwargs)
 
 
 TaskTypePlugins: DefaultDict[str, Type[PythonFunctionTask]] = collections.defaultdict(

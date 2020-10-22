@@ -28,6 +28,8 @@ class Node(object):
         self._sdk_node = None
 
     def get_registerable_entity(self) -> SdkNode:
+        if self._sdk_node is not None:
+            return self._sdk_node
         # TODO: Figure out import cycles in the future
         from flytekit.annotated.task import Task
         from flytekit.annotated.workflow import Workflow
@@ -36,7 +38,8 @@ class Node(object):
             raise Exception("Node flyte entity none")
 
         if self._flyte_entity._registerable_entity is None:
-            raise Exception("Node registerable entity has not been set")
+            print("WARNING!!!!!!!!!!!!!!!!!!!  not really")
+            # raise Exception("Node registerable entity has not been set")
 
         for n in self._upstream_nodes:
             if n._sdk_node is None:
@@ -61,7 +64,7 @@ class Node(object):
             )
         # TODO: Add new annotated LaunchPlan when done
         else:
-            raise Exception("nothing found")
+            raise Exception("not a task or workflow, not sure what to do")
 
         return self._sdk_node
 
