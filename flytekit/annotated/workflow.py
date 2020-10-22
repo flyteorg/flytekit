@@ -2,7 +2,8 @@ import datetime
 import inspect
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from flytekit import engine as flytekit_engine
+import flytekit.annotated.promise
+import flytekit.annotated.type_engine
 from flytekit import logger
 from flytekit.annotated.condition import ConditionalSection
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext, FlyteEntities
@@ -98,7 +99,7 @@ class Workflow(object):
         # collection/map out of it.
         if len(output_names) == 1:
             t = self._native_interface.outputs[output_names[0]]
-            b = flytekit_engine.binding_from_python_std(
+            b = flytekit.annotated.promise.binding_from_python_std(
                 ctx, output_names[0], self.interface.outputs[output_names[0]].type, workflow_outputs, t,
             )
             bindings.append(b)
@@ -109,7 +110,7 @@ class Workflow(object):
                 if isinstance(workflow_outputs[i], ConditionalSection):
                     raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
                 t = self._native_interface.outputs[out]
-                b = flytekit_engine.binding_from_python_std(
+                b = flytekit.annotated.promise.binding_from_python_std(
                     ctx, out, self.interface.outputs[out].type, workflow_outputs[i], t,
                 )
                 bindings.append(b)
@@ -233,7 +234,7 @@ class Workflow(object):
             if k not in kwargs:
                 raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
             t = self._native_interface.inputs[k]
-            bindings.append(flytekit_engine.binding_from_python_std(ctx, k, var.type, kwargs[k], t))
+            bindings.append(flytekit.annotated.promise.binding_from_python_std(ctx, k, var.type, kwargs[k], t))
             used_inputs.add(k)
 
         extra_inputs = used_inputs ^ set(kwargs.keys())

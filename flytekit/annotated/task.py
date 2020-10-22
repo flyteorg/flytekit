@@ -6,7 +6,8 @@ import re
 from abc import abstractmethod
 from typing import Any, Callable, DefaultDict, Dict, List, Optional, Tuple, Type, Union
 
-from flytekit import engine as flytekit_engine
+import flytekit.annotated.promise
+import flytekit.annotated.type_engine
 from flytekit import logger
 from flytekit.annotated.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteEntities
 from flytekit.annotated.interface import (
@@ -94,7 +95,7 @@ class Task(object):
             var = self.interface.inputs[k]
             if k not in kwargs:
                 raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
-            bindings.append(flytekit_engine.binding_from_python_std(
+            bindings.append(flytekit.annotated.promise.binding_from_python_std(
                 ctx, k, var.type, kwargs[k], self.get_type_for_input_var(k, kwargs[k])))
             used_inputs.add(k)
 

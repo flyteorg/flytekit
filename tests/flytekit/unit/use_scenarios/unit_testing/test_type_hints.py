@@ -7,7 +7,6 @@ import pytest
 
 import flytekit.annotated.task
 import flytekit.annotated.workflow
-from flytekit import engine as flytekit_engine
 from flytekit.annotated import context_manager, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
@@ -141,7 +140,7 @@ def test_engine_file_output():
             assert fh.readline() == "Hello World\n"
 
         # We should also be able to turn the thing back into regular python native thing.
-        redownloaded_local_file_location = flytekit_engine.blob_literal_to_python_value(ctx, lit.scalar.blob)
+        redownloaded_local_file_location = TypeEngine.to_python_value(ctx, lit, os.PathLike)
         with open(redownloaded_local_file_location, "r") as fh:
             assert fh.readline() == "Hello World\n"
 

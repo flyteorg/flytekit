@@ -354,7 +354,7 @@ class PathLikeTransformer(TypeTransformer):
         local_path = ctx.file_access.get_random_local_path()
         ctx.file_access.get_data(lv.scalar.blob.uri, local_path, is_multipart=False)
         # TODO it is probability the responsibility of the framework to close this
-        return open(local_path, "rb")
+        return local_path
 
 
 class FlyteFilePathTransformer(TypeTransformer):
@@ -450,3 +450,4 @@ def _register_default_type_transformers():
 
 
 _register_default_type_transformers()
+
