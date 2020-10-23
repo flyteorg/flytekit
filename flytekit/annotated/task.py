@@ -278,7 +278,7 @@ class PythonTask(Task):
         ...
 
 
-class PythonFunctionPythonTask(PythonTask):
+class PythonFunctionTask(PythonTask):
     def __init__(
             self,
             task_function: Callable,
@@ -337,7 +337,7 @@ class PythonFunctionPythonTask(PythonTask):
         return self._registerable_entity
 
 
-class PysparkFunctionTask(PythonFunctionPythonTask):
+class PysparkFunctionTask(PythonFunctionTask):
     def __init__(self, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
         super(PysparkFunctionTask, self).__init__(
             task_function, metadata, ignore_input_vars=["spark_session", "spark_context"], *args, **kwargs
@@ -457,7 +457,7 @@ class AbstractSQLPythonTask(PythonTask):
         return None
 
 
-class DynamicWorkflowTask(PythonFunctionPythonTask):
+class DynamicWorkflowTask(PythonFunctionTask):
     def __init__(self, dynamic_workflow_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
         super().__init__(dynamic_workflow_function, metadata, *args, **kwargs)
 
@@ -488,11 +488,11 @@ class DynamicWorkflowTask(PythonFunctionPythonTask):
                 return self._task_function(**kwargs)
 
 
-TaskTypePlugins: DefaultDict[str, Type[PythonFunctionPythonTask]] = collections.defaultdict(
-    lambda: PythonFunctionPythonTask,
+TaskTypePlugins: DefaultDict[str, Type[PythonFunctionTask]] = collections.defaultdict(
+    lambda: PythonFunctionTask,
     {
-        "python_task": PythonFunctionPythonTask,
-        "task": PythonFunctionPythonTask,
+        "python_task": PythonFunctionTask,
+        "task": PythonFunctionTask,
         "spark": PysparkFunctionTask,
         "_dynamic": DynamicWorkflowTask,
     },
@@ -539,7 +539,7 @@ def task(
         *args,
         **kwargs,
 ) -> Callable:
-    def wrapper(fn) -> PythonFunctionPythonTask:
+    def wrapper(fn) -> PythonFunctionTask:
         if isinstance(timeout, int):
             _timeout = _datetime.timedelta(seconds=timeout)
         elif timeout and isinstance(timeout, _datetime.timedelta):
