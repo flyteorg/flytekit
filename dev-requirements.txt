@@ -24,7 +24,7 @@ pycodestyle==2.6.0        # via flake8
 pyflakes==2.2.0           # via flake8
 pyparsing==2.4.7          # via packaging
 pytest==6.1.1             # via -r dev-requirements.in
-regex==2020.10.15         # via -c requirements.txt, black
+regex==2020.10.23         # via -c requirements.txt, black
 six==1.15.0               # via -c requirements.txt, packaging
 testfixtures==6.15.0      # via flake8-isort
 toml==0.10.1              # via -c requirements.txt, black, pytest
