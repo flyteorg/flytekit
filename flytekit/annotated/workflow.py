@@ -2,7 +2,8 @@ import datetime
 import inspect
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from flytekit import engine as flytekit_engine
+import flytekit.annotated.promise
+import flytekit.annotated.type_engine
 from flytekit import logger
 from flytekit.annotated.condition import ConditionalSection
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext, FlyteEntities
@@ -13,6 +14,7 @@ from flytekit.annotated.interface import (
 )
 from flytekit.annotated.node import Node
 from flytekit.annotated.promise import Promise, create_task_output
+from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
 from flytekit.common import promise as _common_promise
 from flytekit.common.exceptions import user as _user_exceptions
@@ -96,19 +98,20 @@ class Workflow(object):
         # iterate through the list here, instead we should let the binding creation unwrap it and make a binding
         # collection/map out of it.
         if len(output_names) == 1:
-            b = flytekit_engine.binding_from_python_std(
-                ctx, output_names[0], self.interface.outputs[output_names[0]].type, workflow_outputs
+            t = self._native_interface.outputs[output_names[0]]
+            b = flytekit.annotated.promise.binding_from_python_std(
+                ctx, output_names[0], self.interface.outputs[output_names[0]].type, workflow_outputs, t,
             )
             bindings.append(b)
         elif len(output_names) > 1:
             if len(output_names) != len(workflow_outputs):
                 raise Exception(f"Length mismatch {len(output_names)} vs {len(workflow_outputs)}")
             for i, out in enumerate(output_names):
-                output_name = output_names[i]
                 if isinstance(workflow_outputs[i], ConditionalSection):
                     raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
-                b = flytekit_engine.binding_from_python_std(
-                    ctx, output_name, self.interface.outputs[output_name].type, workflow_outputs[i]
+                t = self._native_interface.outputs[out]
+                b = flytekit.annotated.promise.binding_from_python_std(
+                    ctx, out, self.interface.outputs[out].type, workflow_outputs[i], t,
                 )
                 bindings.append(b)
 
@@ -135,9 +138,8 @@ class Workflow(object):
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
         for k, v in kwargs.items():
             if not isinstance(v, Promise):
-                kwargs[k] = Promise(
-                    var=k, val=flytekit_engine.python_value_to_idl_literal(ctx, v, self.interface.inputs[k].type)
-                )
+                t = self._native_interface.inputs[k]
+                kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
 
         # TODO: function_outputs are all assumed to be Promise objects produced by task calls, but can they be
         #   other things as well? What if someone just returns 5? Should we disallow this?
@@ -195,17 +197,28 @@ class Workflow(object):
             with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
                 result = self._local_execute(ctx, **kwargs)
 
-            if result is None:
-                return None
-            elif isinstance(result, Promise):
-                return flytekit_engine.idl_literal_to_python_value(ctx, result.val)
-            else:
-                for prom in result:
-                    if not isinstance(prom, Promise):
-                        raise Exception("should be promises")
+            expected_outputs = len(self._native_interface.outputs)
+            if (
+                (expected_outputs == 0 and result is None)
+                or (expected_outputs > 1 and len(result) == expected_outputs)
+                or (expected_outputs == 1 and result is not None)
+            ):
+                if result is None:
+                    return None
+                elif isinstance(result, Promise):
+                    k, v = self._native_interface.outputs.items()[0]
+                    return TypeEngine.to_python_value(ctx, result.val, v)
+                else:
+                    for prom in result:
+                        if not isinstance(prom, Promise):
+                            raise Exception("should be promises")
+                        native_list = [
+                            TypeEngine.to_python_value(ctx, promise.val, self._native_interface.outputs[promise.var])
+                            for promise in result
+                        ]
+                        return tuple(native_list)
 
-                    native_list = [flytekit_engine.idl_literal_to_python_value(ctx, promise.val) for promise in result]
-                    return tuple(native_list)
+            raise ValueError("expected outputs and actual outputs do not match")
 
     def _create_and_link_node(self, ctx: FlyteContext, *args, **kwargs):
         """
@@ -221,7 +234,8 @@ class Workflow(object):
             var = self.interface.inputs[k]
             if k not in kwargs:
                 raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
-            bindings.append(flytekit_engine.binding_from_python_std(ctx, k, var.type, kwargs[k]))
+            t = self._native_interface.inputs[k]
+            bindings.append(flytekit.annotated.promise.binding_from_python_std(ctx, k, var.type, kwargs[k], t))
             used_inputs.add(k)
 
         extra_inputs = used_inputs ^ set(kwargs.keys())

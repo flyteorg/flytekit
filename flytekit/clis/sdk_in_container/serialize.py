@@ -5,7 +5,7 @@ import os as _os
 import click
 
 from flytekit.annotated import context_manager as flyte_context
-from flytekit.annotated.task import Task
+from flytekit.annotated.task import PythonTask
 from flytekit.annotated.workflow import Workflow
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_VERSION
 from flytekit.common import utils as _utils
@@ -113,7 +113,7 @@ def serialize_all(project, domain, pkgs, version, folder=None):
             #  Also a user may import dir_b.workflows from dir_a.workflows but workflow packages might only
             #  specify dir_a
 
-            if isinstance(entity, Task) or isinstance(entity, Workflow):
+            if isinstance(entity, PythonTask) or isinstance(entity, Workflow):
                 serializable = entity.get_registerable_entity()
                 loaded_entities.append(serializable)
 
