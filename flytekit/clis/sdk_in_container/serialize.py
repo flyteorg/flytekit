@@ -84,7 +84,6 @@ def serialize_all(project, domain, pkgs, version, folder=None):
     # m = module (i.e. python file)
     # k = value of dir(m), type str
     # o = object (e.g. SdkWorkflow)
-
     env = {
         _internal_config.CONFIGURATION_PATH.env_var: _internal_config.CONFIGURATION_PATH.get(),
         _internal_config.IMAGE.env_var: _internal_config.IMAGE.get(),
