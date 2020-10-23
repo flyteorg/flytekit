@@ -1,9 +1,22 @@
 from setuptools import find_packages, setup  # noqa
+from setuptools.command.install import install
+import subprocess
+import sys
 
 import flytekit  # noqa
 from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
 
 extras_require = LazyLoadPlugin.get_extras_require()
+
+
+class WrappedInstallCommand(install):
+    """Post-installation for installation mode."""
+    def run(self):
+        install.run(self)
+        if "sagemaker-training" in extras_require.keys():
+            cmd = 'echo "/srv/service/venv/bin/activate; train" > /usr/local/bin/train; chmod a+x /usr/local/bin/train'
+            subprocess.run(cmd.split(), check=True, stdout=sys.stdout, stderr=sys.stderr, encoding="utf-8")
+
 
 setup(
     name="flytekit",
@@ -65,4 +78,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Topic :: Software Development :: Libraries",
     ],
+    cmdclass={
+        'install': WrappedInstallCommand,
+    }
 )
