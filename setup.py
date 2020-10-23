@@ -7,24 +7,6 @@ import flytekit  # noqa
 from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
 
 extras_require = LazyLoadPlugin.get_extras_require()
-print("+++++++++++++++++++++++++++++++++++++++++")
-print(extras_require)
-print("+++++++++++++++++++++++++++++++++++++++++")
-
-
-class WrappedInstallCommand(install):
-    """Post-installation for installation mode."""
-    def run(self):
-        install.run(self)
-        if "sagemaker-training" in extras_require.keys():
-            print("Hacking sagemaker train script")
-            train_script_path = "/usr/local/bin/train"
-            with open(train_script_path, "w") as script:
-                script_content = ". /srv/service/venv/bin/activate\ntrain\n"
-                script.write(script_content)
-                cmd = 'chmod a+x {}'.format(train_script_path)
-                subprocess.run(cmd.split(), check=True, stdout=sys.stdout, stderr=sys.stderr, encoding="utf-8")
-
 
 setup(
     name="flytekit",
@@ -86,7 +68,4 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Topic :: Software Development :: Libraries",
     ],
-    cmdclass={
-        'install': WrappedInstallCommand,
-    }
 )
