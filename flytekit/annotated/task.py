@@ -12,9 +12,9 @@ from flytekit import logger
 from flytekit.annotated.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteEntities
 from flytekit.annotated.interface import (
     Interface,
+    transform_interface_to_list_interface,
     transform_interface_to_typed_interface,
     transform_signature_to_interface,
-    transform_interface_to_list_interface,
 )
 from flytekit.annotated.node import Node
 from flytekit.annotated.promise import Promise, create_task_output, translate_inputs_to_literals
@@ -44,12 +44,12 @@ from flytekit.models.core import workflow as _workflow_model
 # already.)
 class Task(object):
     def __init__(
-            self,
-            name: str,
-            interface: _interface_models.TypedInterface,
-            metadata: _task_model.TaskMetadata,
-            *args,
-            **kwargs,
+        self,
+        name: str,
+        interface: _interface_models.TypedInterface,
+        metadata: _task_model.TaskMetadata,
+        *args,
+        **kwargs,
     ):
         self._name = name
         self._interface = interface
@@ -95,8 +95,11 @@ class Task(object):
             var = self.interface.inputs[k]
             if k not in kwargs:
                 raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
-            bindings.append(flytekit.annotated.promise.binding_from_python_std(
-                ctx, k, var.type, kwargs[k], self.get_type_for_input_var(k, kwargs[k])))
+            bindings.append(
+                flytekit.annotated.promise.binding_from_python_std(
+                    ctx, k, var.type, kwargs[k], self.get_type_for_input_var(k, kwargs[k])
+                )
+            )
             used_inputs.add(k)
 
         extra_inputs = used_inputs ^ set(kwargs.keys())
@@ -145,8 +148,9 @@ class Task(object):
         #  Promises as essentially inputs from previous task executions
         #  native constants are just bound to this specific task (default values for a task input)
         #  Also alongwith promises and constants, there could be dictionary or list of promises or constants
-        kwargs = translate_inputs_to_literals(ctx, input_kwargs=kwargs,
-                                              interface=self.interface, native_input_types=self.get_input_types())
+        kwargs = translate_inputs_to_literals(
+            ctx, input_kwargs=kwargs, interface=self.interface, native_input_types=self.get_input_types()
+        )
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
         outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
@@ -184,7 +188,7 @@ class Task(object):
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
             return self._compile(ctx, *args, **kwargs)
         elif (
-                ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
             if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
                 return
@@ -195,7 +199,8 @@ class Task(object):
 
     @abstractmethod
     def dispatch_execute(
-            self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap) -> _literal_models.LiteralMap:
+        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
+    ) -> _literal_models.LiteralMap:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
         This method is also invoked during runtime.
@@ -208,7 +213,6 @@ class Task(object):
 
 
 class PythonTask(Task):
-
     def __init__(self, name: str, interface: Interface, metadata: _task_model.TaskMetadata, *args, **kwargs):
         super().__init__(name, transform_interface_to_typed_interface(interface), metadata)
         self._python_interface = interface
@@ -228,7 +232,7 @@ class PythonTask(Task):
         return self._python_interface.inputs
 
     def dispatch_execute(
-            self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
+        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
     ) -> _literal_models.LiteralMap:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
@@ -280,12 +284,12 @@ class PythonTask(Task):
 
 class PythonFunctionTask(PythonTask):
     def __init__(
-            self,
-            task_function: Callable,
-            metadata: _task_model.TaskMetadata,
-            ignore_input_vars: List[str] = None,
-            *args,
-            **kwargs,
+        self,
+        task_function: Callable,
+        metadata: _task_model.TaskMetadata,
+        ignore_input_vars: List[str] = None,
+        *args,
+        **kwargs,
     ):
         self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
@@ -422,16 +426,17 @@ class AbstractSQLPythonTask(PythonTask):
     _INPUT_REGEX = re.compile(r"({{\s*.inputs.(\w+)\s*}})", re.IGNORECASE)
 
     def __init__(
-            self,
-            name: str,
-            query_template: str,
-            inputs: Dict[str, Type],
-            metadata: _task_model.TaskMetadata,
-            *args,
-            **kwargs,
+        self,
+        name: str,
+        query_template: str,
+        inputs: Dict[str, Type],
+        metadata: _task_model.TaskMetadata,
+        *args,
+        **kwargs,
     ):
-        super().__init__(name=name, interface=Interface(inputs=inputs, outputs=self._OUTPUTS), metadata=metadata, *args,
-                         **kwargs)
+        super().__init__(
+            name=name, interface=Interface(inputs=inputs, outputs=self._OUTPUTS), metadata=metadata, *args, **kwargs
+        )
         self._query_template = query_template
 
     @property
@@ -508,12 +513,12 @@ class Resources(object):
 
 
 def metadata(
-        cache: bool = False,
-        cache_version: str = "",
-        retries: int = 0,
-        interruptible: bool = False,
-        deprecated: str = "",
-        timeout: Union[_datetime.timedelta, int] = None,
+    cache: bool = False,
+    cache_version: str = "",
+    retries: int = 0,
+    interruptible: bool = False,
+    deprecated: str = "",
+    timeout: Union[_datetime.timedelta, int] = None,
 ) -> _task_model.TaskMetadata:
     return _task_model.TaskMetadata(
         discoverable=cache,
@@ -527,17 +532,17 @@ def metadata(
 
 
 def task(
-        _task_function: Callable = None,
-        task_type: str = "",
-        cache: bool = False,
-        cache_version: str = "",
-        retries: int = 0,
-        interruptible: bool = False,
-        deprecated: str = "",
-        timeout: Union[_datetime.timedelta, int] = 0,
-        environment: Dict[str, str] = None,  # TODO: Ketan - what do we do with this?  Not sure how to use kwargs
-        *args,
-        **kwargs,
+    _task_function: Callable = None,
+    task_type: str = "",
+    cache: bool = False,
+    cache_version: str = "",
+    retries: int = 0,
+    interruptible: bool = False,
+    deprecated: str = "",
+    timeout: Union[_datetime.timedelta, int] = 0,
+    environment: Dict[str, str] = None,  # TODO: Ketan - what do we do with this?  Not sure how to use kwargs
+    *args,
+    **kwargs,
 ) -> Callable:
     def wrapper(fn) -> PythonFunctionTask:
         if isinstance(timeout, int):

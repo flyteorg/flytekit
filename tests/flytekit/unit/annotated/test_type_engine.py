@@ -2,8 +2,13 @@ import os
 import typing
 from datetime import timedelta
 
-from flytekit.annotated.type_engine import TypeEngine, ListTransformer, DictTransformer, SimpleTransformer, \
-    PathLikeTransformer
+from flytekit.annotated.type_engine import (
+    DictTransformer,
+    ListTransformer,
+    PathLikeTransformer,
+    SimpleTransformer,
+    TypeEngine,
+)
 from flytekit.models import types as model_types
 
 

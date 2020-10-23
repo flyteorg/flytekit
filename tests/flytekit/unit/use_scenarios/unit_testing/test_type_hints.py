@@ -124,7 +124,7 @@ def test_sig_files():
 
 
 def test_engine_file_output():
-    basic_blob_type = _core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE, )
+    basic_blob_type = _core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
 
     fs = FileAccessProvider(local_sandbox_dir="/tmp/flytetesting")
     with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
@@ -473,6 +473,7 @@ def test_wf1_branches():
 
 def test_wf1_branches_no_else():
     with pytest.raises(AssertionError):
+
         def foo():
             @task
             def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
@@ -495,12 +496,12 @@ def test_wf1_branches_no_else():
                 print(x)
                 d = (
                     conditional()
-                        .if_(x == 4)
-                        .then(t2(a=b))
-                        .elif_(x >= 5)
-                        .then(t2(a=y))
-                        .else_()
-                        .then(t2(a="Ok I give up!"))
+                    .if_(x == 4)
+                    .then(t2(a=b))
+                    .elif_(x >= 5)
+                    .then(t2(a=y))
+                    .else_()
+                    .then(t2(a="Ok I give up!"))
                 )
                 return x, d
 
@@ -525,5 +526,6 @@ def test_wf1_branches_failing():
 
     with pytest.raises(AssertionError):
         my_wf(a=1, b="hello ")
+
 
 # TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!

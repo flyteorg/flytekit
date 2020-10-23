@@ -3,7 +3,7 @@ import json as _json
 import mimetypes
 import os
 import typing
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -14,7 +14,7 @@ from flytekit.common.types import primitives as _primitives
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Primitive, Scalar, LiteralMap, LiteralCollection
+from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
 
 T = typing.TypeVar("T")
@@ -56,8 +56,9 @@ class TypeTransformer(typing.Generic[T]):
         raise NotImplementedError("Conversion to LiteralType should be implemented")
 
     @abstractmethod
-    def to_literal(self, ctx: FlyteContext, python_val: typing.Any, python_type: type,
-                   expected: LiteralType) -> Literal:
+    def to_literal(
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+    ) -> Literal:
         raise NotImplementedError(f"Conversion to Literal for python not implemented")
 
     @abstractmethod
@@ -77,8 +78,13 @@ class SimpleTransformer(TypeTransformer[T]):
     """
 
     def __init__(
-            self, name: str, t: type, lt: LiteralType, to_literal_transformer: typing.Callable[[T], Literal],
-            from_literal_transformer: typing.Callable[[Literal], T]):
+        self,
+        name: str,
+        t: type,
+        lt: LiteralType,
+        to_literal_transformer: typing.Callable[[T], Literal],
+        from_literal_transformer: typing.Callable[[Literal], T],
+    ):
         super().__init__(name, t)
         self._lt = lt
         self._to_literal_transformer = to_literal_transformer
@@ -87,8 +93,9 @@ class SimpleTransformer(TypeTransformer[T]):
     def get_literal_type(self, t=None) -> LiteralType:
         return self._lt
 
-    def to_literal(self, ctx: FlyteContext, python_val: typing.Any, python_type: type,
-                   expected: LiteralType) -> Literal:
+    def to_literal(
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+    ) -> Literal:
         return self._to_literal_transformer(python_val)
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: type) -> typing.Any:
@@ -123,7 +130,8 @@ class TypeEngine(object):
             existing = cls._REGISTRY[transformer.python_type]
             raise ValueError(
                 f"Transformer f{existing.name} for type{transformer.python_type} is already registered."
-                f" Cannot override with {transformer.name}")
+                f" Cannot override with {transformer.name}"
+            )
         cls._REGISTRY[transformer.python_type] = transformer
 
     @classmethod
@@ -163,16 +171,15 @@ class TypeEngine(object):
 
     @classmethod
     def literal_map_to_kwargs(
-            cls,
-            ctx: FlyteContext,
-            lm: LiteralMap,
-            python_types: typing.Dict[str, type]) -> typing.Dict[str, typing.Any]:
+        cls, ctx: FlyteContext, lm: LiteralMap, python_types: typing.Dict[str, type]
+    ) -> typing.Dict[str, typing.Any]:
         """
         Given a literal Map (usually an input into a task - intermediate), convert to kwargs for the task
         """
         if len(lm.literals) != len(python_types):
-            raise ValueError(f"Received more input values {len(lm.literals)}"
-                             f" than allowed by the input spec {len(python_types)}")
+            raise ValueError(
+                f"Received more input values {len(lm.literals)}" f" than allowed by the input spec {len(python_types)}"
+            )
 
         return {k: TypeEngine.to_python_value(ctx, lm.literals[k], v) for k, v in python_types.items()}
 
@@ -185,7 +192,6 @@ class TypeEngine(object):
 
 
 class ListTransformer(TypeTransformer[T]):
-
     def __init__(self):
         super().__init__("Typed List", list)
 
@@ -209,8 +215,9 @@ class ListTransformer(TypeTransformer[T]):
         except Exception as e:
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
-    def to_literal(self, ctx: FlyteContext, python_val: typing.Any, python_type: type,
-                   expected: LiteralType) -> Literal:
+    def to_literal(
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+    ) -> Literal:
         t = self.get_sub_type(python_type)
         lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]
         return Literal(collection=LiteralCollection(literals=lit_list))
@@ -221,7 +228,6 @@ class ListTransformer(TypeTransformer[T]):
 
 
 class DictTransformer(TypeTransformer[T]):
-
     def __init__(self):
         super().__init__("Typed Dict", dict)
 
@@ -246,8 +252,9 @@ class DictTransformer(TypeTransformer[T]):
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
         return _primitives.Generic.to_flyte_literal_type()
 
-    def to_literal(self, ctx: FlyteContext, python_val: typing.Any, python_type: type,
-                   expected: LiteralType) -> Literal:
+    def to_literal(
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+    ) -> Literal:
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
             return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(python_val), _struct.Struct())))
 
@@ -279,17 +286,15 @@ class TextIOTransformer(TypeTransformer):
 
     def _blob_type(self) -> _core_types.BlobType:
         return _core_types.BlobType(
-            format=mimetypes.types_map[".txt"],
-            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            format=mimetypes.types_map[".txt"], dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
         )
 
     def get_literal_type(self, t: type) -> LiteralType:
-        return _type_models.LiteralType(
-            blob=self._blob_type(),
-        )
+        return _type_models.LiteralType(blob=self._blob_type(),)
 
-    def to_literal(self, ctx: FlyteContext, python_val: typing.Any, python_type: type,
-                   expected: LiteralType) -> Literal:
+    def to_literal(
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+    ) -> Literal:
         raise NotImplementedError("Implement handle for TextIO")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: type) -> typing.Any:
@@ -306,17 +311,15 @@ class BinaryIOTransformer(TypeTransformer):
 
     def _blob_type(self) -> _core_types.BlobType:
         return _core_types.BlobType(
-            format=mimetypes.types_map[".bin"],
-            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            format=mimetypes.types_map[".bin"], dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
         )
 
     def get_literal_type(self, t: type) -> LiteralType:
-        return _type_models.LiteralType(
-            blob=self._blob_type(),
-        )
+        return _type_models.LiteralType(blob=self._blob_type(),)
 
-    def to_literal(self, ctx: FlyteContext, python_val: typing.Any, python_type: type,
-                   expected: LiteralType) -> Literal:
+    def to_literal(
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+    ) -> Literal:
         raise NotImplementedError("Implement handle for TextIO")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: type) -> typing.Any:
@@ -332,17 +335,15 @@ class PathLikeTransformer(TypeTransformer):
 
     def _blob_type(self) -> _core_types.BlobType:
         return _core_types.BlobType(
-            format=mimetypes.types_map[".bin"],
-            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            format=mimetypes.types_map[".bin"], dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
         )
 
     def get_literal_type(self, t: type) -> LiteralType:
-        return _type_models.LiteralType(
-            blob=self._blob_type(),
-        )
+        return _type_models.LiteralType(blob=self._blob_type(),)
 
-    def to_literal(self, ctx: FlyteContext, python_val: os.PathLike, python_type: type,
-                   expected: LiteralType) -> Literal:
+    def to_literal(
+        self, ctx: FlyteContext, python_val: os.PathLike, python_type: type, expected: LiteralType
+    ) -> Literal:
         # TODO we could guess the mimetype and allow the format to be changed at runtime. thus a non existent format
         #      could be replaced with a guess format?
         rpath = ctx.file_access.get_random_remote_path()
@@ -363,17 +364,15 @@ class FlyteFilePathTransformer(TypeTransformer):
 
     def _blob_type(self) -> _core_types.BlobType:
         return _core_types.BlobType(
-            format=mimetypes.types_map[".bin"],
-            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            format=mimetypes.types_map[".bin"], dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
         )
 
     def get_literal_type(self, t: type) -> LiteralType:
-        return _type_models.LiteralType(
-            blob=self._blob_type(),
-        )
+        return _type_models.LiteralType(blob=self._blob_type(),)
 
-    def to_literal(self, ctx: FlyteContext, python_val: flyte_typing.FlyteFilePath, python_type: type,
-                   expected: LiteralType) -> Literal:
+    def to_literal(
+        self, ctx: FlyteContext, python_val: flyte_typing.FlyteFilePath, python_type: type, expected: LiteralType
+    ) -> Literal:
         remote_path = python_val.remote_path if python_val.remote_path else ctx.file_access.get_random_remote_path()
         ctx.file_access.put_data(f"{python_val}", remote_path, is_multipart=False)
         meta = BlobMetadata(type=self._blob_type())
@@ -390,47 +389,71 @@ class FlyteFilePathTransformer(TypeTransformer):
 
 
 def _register_default_type_transformers():
-    TypeEngine.register(SimpleTransformer(
-        "int", int, _primitives.Integer.to_flyte_literal_type(),
-        lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
-        lambda x: x.scalar.primitive.integer,
-    ))
+    TypeEngine.register(
+        SimpleTransformer(
+            "int",
+            int,
+            _primitives.Integer.to_flyte_literal_type(),
+            lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
+            lambda x: x.scalar.primitive.integer,
+        )
+    )
 
-    TypeEngine.register(SimpleTransformer(
-        "float", float, _primitives.Float.to_flyte_literal_type(),
-        lambda x: Literal(scalar=Scalar(primitive=Primitive(float_value=x))),
-        lambda x: x.scalar.primitive.float_value,
-    ))
+    TypeEngine.register(
+        SimpleTransformer(
+            "float",
+            float,
+            _primitives.Float.to_flyte_literal_type(),
+            lambda x: Literal(scalar=Scalar(primitive=Primitive(float_value=x))),
+            lambda x: x.scalar.primitive.float_value,
+        )
+    )
 
-    TypeEngine.register(SimpleTransformer(
-        "bool", bool, _primitives.Boolean.to_flyte_literal_type(),
-        lambda x: Literal(scalar=Scalar(primitive=Primitive(boolean=x))),
-        lambda x: x.scalar.primitive.boolean,
-    ))
+    TypeEngine.register(
+        SimpleTransformer(
+            "bool",
+            bool,
+            _primitives.Boolean.to_flyte_literal_type(),
+            lambda x: Literal(scalar=Scalar(primitive=Primitive(boolean=x))),
+            lambda x: x.scalar.primitive.boolean,
+        )
+    )
 
-    TypeEngine.register(SimpleTransformer(
-        "str", str, _primitives.String.to_flyte_literal_type(),
-        lambda x: Literal(scalar=Scalar(primitive=Primitive(string_value=x))),
-        lambda x: x.scalar.primitive.string_value,
-    ))
+    TypeEngine.register(
+        SimpleTransformer(
+            "str",
+            str,
+            _primitives.String.to_flyte_literal_type(),
+            lambda x: Literal(scalar=Scalar(primitive=Primitive(string_value=x))),
+            lambda x: x.scalar.primitive.string_value,
+        )
+    )
 
-    TypeEngine.register(SimpleTransformer(
-        "datetime", _datetime.datetime, _primitives.Datetime.to_flyte_literal_type(),
-        lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x))),
-        lambda x: x.scalar.primitive.datetime,
-    ))
+    TypeEngine.register(
+        SimpleTransformer(
+            "datetime",
+            _datetime.datetime,
+            _primitives.Datetime.to_flyte_literal_type(),
+            lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x))),
+            lambda x: x.scalar.primitive.datetime,
+        )
+    )
 
-    TypeEngine.register(SimpleTransformer(
-        "timedelta", _datetime.timedelta, _primitives.Timedelta.to_flyte_literal_type(),
-        lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
-        lambda x: x.scalar.primitive.duration,
-    ))
+    TypeEngine.register(
+        SimpleTransformer(
+            "timedelta",
+            _datetime.timedelta,
+            _primitives.Timedelta.to_flyte_literal_type(),
+            lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
+            lambda x: x.scalar.primitive.duration,
+        )
+    )
 
-    TypeEngine.register(SimpleTransformer(
-        "none", None, _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
-        lambda x: None,
-        lambda x: None,
-    ))
+    TypeEngine.register(
+        SimpleTransformer(
+            "none", None, _type_models.LiteralType(simple=_type_models.SimpleType.NONE), lambda x: None, lambda x: None,
+        )
+    )
     TypeEngine.register(ListTransformer())
     TypeEngine.register(DictTransformer())
     TypeEngine.register(FlyteFilePathTransformer())
@@ -450,4 +473,3 @@ def _register_default_type_transformers():
 
 
 _register_default_type_transformers()
-

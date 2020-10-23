@@ -1,9 +1,8 @@
 import copy
 import inspect
+import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Tuple, Type, TypeVar, Union
-
-import typing
 
 from flytekit import logger
 from flytekit.annotated import type_engine
@@ -250,8 +249,8 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
 
     # Options 7 and 8.
     if hasattr(return_annotation, "_name") and (
-            (return_annotation._name == "List" and return_annotation.__origin__ == list)
-            or (return_annotation._name == "Dict" and return_annotation.__origin__ == dict)
+        (return_annotation._name == "List" and return_annotation.__origin__ == list)
+        or (return_annotation._name == "Dict" and return_annotation.__origin__ == dict)
     ):
         return {default_output_name(): return_annotation}
 

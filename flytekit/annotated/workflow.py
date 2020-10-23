@@ -139,9 +139,7 @@ class Workflow(object):
         for k, v in kwargs.items():
             if not isinstance(v, Promise):
                 t = self._native_interface.inputs[k]
-                kwargs[k] = Promise(
-                    var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type)
-                )
+                kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
 
         # TODO: function_outputs are all assumed to be Promise objects produced by task calls, but can they be
         #   other things as well? What if someone just returns 5? Should we disallow this?
@@ -177,7 +175,7 @@ class Workflow(object):
             return self._create_and_link_node(ctx, **kwargs)
 
         elif (
-                ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
             # We are already in a local execution, just continue the execution context
             return self._local_execute(ctx, **kwargs)
@@ -200,9 +198,11 @@ class Workflow(object):
                 result = self._local_execute(ctx, **kwargs)
 
             expected_outputs = len(self._native_interface.outputs)
-            if (expected_outputs == 0 and result is None) or (
-                    expected_outputs > 1 and len(result) == expected_outputs) or (
-                    expected_outputs == 1 and result is not None):
+            if (
+                (expected_outputs == 0 and result is None)
+                or (expected_outputs > 1 and len(result) == expected_outputs)
+                or (expected_outputs == 1 and result is not None)
+            ):
                 if result is None:
                     return None
                 elif isinstance(result, Promise):
@@ -214,7 +214,8 @@ class Workflow(object):
                             raise Exception("should be promises")
                         native_list = [
                             TypeEngine.to_python_value(ctx, promise.val, self._native_interface.outputs[promise.var])
-                            for promise in result]
+                            for promise in result
+                        ]
                         return tuple(native_list)
 
             raise ValueError(f"expected outputs and actual outputs do not match")

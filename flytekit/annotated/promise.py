@@ -1,21 +1,25 @@
 import collections
 import typing
 from enum import Enum
-from typing import Any, Dict, List, Tuple, Union, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from flytekit.annotated import type_engine, context_manager as _flyte_context
+from flytekit.annotated import context_manager as _flyte_context
+from flytekit.annotated import type_engine
 from flytekit.annotated.context_manager import FlyteContext
-from flytekit.annotated.type_engine import TypeEngine, ListTransformer, DictTransformer
+from flytekit.annotated.type_engine import DictTransformer, ListTransformer, TypeEngine
 from flytekit.common.promise import NodeOutput as _NodeOutput
-from flytekit.models import interface as _interface_models, types as _type_models, literals as _literals_models
+from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
+from flytekit.models import literals as _literals_models
 from flytekit.models import types as _type_models
 from flytekit.models.literals import Primitive
 
 
 def translate_inputs_to_literals(
-        ctx: FlyteContext, input_kwargs: Dict[str, Any], interface: _interface_models.TypedInterface,
-        native_input_types: Optional[Dict[str, type]],
+    ctx: FlyteContext,
+    input_kwargs: Dict[str, Any],
+    interface: _interface_models.TypedInterface,
+    native_input_types: Optional[Dict[str, type]],
 ) -> Dict[str, _literal_models.Literal]:
     """
     When calling a task inside a workflow, a user might do something like this.
@@ -40,7 +44,7 @@ def translate_inputs_to_literals(
     """
 
     def extract_value(
-            ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
+        ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
     ) -> _literal_models.Literal:
         if isinstance(input_val, list):
             if flyte_literal_type.collection_type is None:
@@ -62,7 +66,9 @@ def translate_inputs_to_literals(
                 if len(input_val) == 0:
                     raise
                 sub_type = type(input_val[0])
-            literals = {k: extract_value(ctx, v, sub_type, flyte_literal_type.map_value_type) for k, v in input_val.items()}
+            literals = {
+                k: extract_value(ctx, v, sub_type, flyte_literal_type.map_value_type) for k, v in input_val.items()
+            }
             return _literal_models.Literal(map=_literal_models.LiteralMap(literals=literals))
         elif isinstance(input_val, Promise):
             # In the example above, this handles the "in2=a" type of argument
@@ -367,8 +373,11 @@ def create_task_output(promises: Union[List[Promise], Promise, None]) -> Union[T
 
 
 def binding_data_from_python_std(
-        ctx: _flyte_context.FlyteContext, expected_literal_type: _type_models.LiteralType,
-        t_value: typing.Any, t_value_type: type) -> _literals_models.BindingData:
+    ctx: _flyte_context.FlyteContext,
+    expected_literal_type: _type_models.LiteralType,
+    t_value: typing.Any,
+    t_value_type: type,
+) -> _literals_models.BindingData:
     # This handles the case where the incoming value is a workflow-level input
     if isinstance(t_value, _type_models.OutputReference):
         binding_data = _literals_models.BindingData(promise=t_value)
@@ -383,8 +392,10 @@ def binding_data_from_python_std(
             raise Exception(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
 
         sub_type = ListTransformer.get_sub_type(t_value_type)
-        collection = _literals_models.BindingDataCollection(bindings=[
-            binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type) for t in t_value]
+        collection = _literals_models.BindingDataCollection(
+            bindings=[
+                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type) for t in t_value
+            ]
         )
 
         binding_data = _literals_models.BindingData(collection=collection)
@@ -403,8 +414,11 @@ def binding_data_from_python_std(
 
 
 def binding_from_python_std(
-        ctx: _flyte_context.FlyteContext, var_name: str,
-        expected_literal_type: _type_models.LiteralType, t_value: typing.Any,
-        t_value_type: type) -> _literals_models.Binding:
+    ctx: _flyte_context.FlyteContext,
+    var_name: str,
+    expected_literal_type: _type_models.LiteralType,
+    t_value: typing.Any,
+    t_value_type: type,
+) -> _literals_models.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
     return _literals_models.Binding(var=var_name, binding=binding_data)
