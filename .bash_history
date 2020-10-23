@@ -1,0 +1,1 @@
+FLYTE_INTERNAL_CONFIGURATION_PATH=/root/sandbox.config FLYTE_PLATFORM_CLOUD_PROVIDER=local pyflyte-execute --task-module recipes.aaa.dynamics --task-name my_subwf --inputs file:///tmp/output/inputs.pb --output-prefix file:///tmp/output

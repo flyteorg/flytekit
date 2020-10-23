@@ -7,7 +7,7 @@ import random as _random
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
-
+from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext, RegistrationSettings
 from flytekit.annotated.task import Task
 from flytekit.common import constants as _constants
@@ -194,9 +194,12 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                             idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
                             outputs = task_def.dispatch_execute(ctx, idl_input_literals)
 
-                            # TODO: How do we handle the fact that some tasks should fail (like hive/presto tasks) and
-                            #   some tasks don't produce output literals
-                            output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
+                            # TODO: Clean up how we handle the fact that some tasks should fail (like hive/presto tasks)
+                            #   and some tasks don't produce output literals
+                            if isinstance(outputs, _literal_models.LiteralMap):
+                                output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
+                            elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
+                                output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
 
                             for k, v in output_file_dict.items():
                                 _common_utils.write_proto_to_file(

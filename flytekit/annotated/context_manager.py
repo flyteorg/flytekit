@@ -48,9 +48,14 @@ class RegistrationSettings(object):
 
 
 class CompilationState(object):
-    def __init__(self):
+    def __init__(self, prefix: str):
         self.nodes: List[Node] = []
+        self._prefix = prefix
         self.mode = 1  # TODO: Turn into enum in the future, or remove if only one mode.
+
+    @property
+    def prefix(self) -> str:
+        return self._prefix
 
 
 class BranchEvalMode(Enum):
@@ -237,8 +242,8 @@ class FlyteContext(object):
             return None
 
     @contextmanager
-    def new_compilation_context(self) -> Generator["FlyteContext", None, None]:
-        new_ctx = FlyteContext(parent=self, compilation_state=CompilationState())
+    def new_compilation_context(self, prefix: Optional[str] = None) -> Generator["FlyteContext", None, None]:
+        new_ctx = FlyteContext(parent=self, compilation_state=CompilationState(prefix=prefix or ""))
         FlyteContext.OBJS.append(new_ctx)
         try:
             yield new_ctx

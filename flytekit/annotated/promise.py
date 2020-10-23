@@ -226,6 +226,8 @@ class ConjunctionExpression(object):
 
 
 class Promise(object):
+    # TODO: Currently, NodeOutput we're creating is the slimmer annotated package Node class, but since only the
+    #  id is used, it's okay for now. Let's clean all this up though.
     def __init__(self, var: str, val: Union[_NodeOutput, _literal_models.Literal]):
         self._var = var
         self._promise_ready = True
