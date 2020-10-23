@@ -57,14 +57,15 @@ class TypeTransformer(typing.Generic[T]):
 
     @abstractmethod
     def to_literal(
-            self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
     ) -> Literal:
         raise NotImplementedError(f"Conversion to Literal for python type {python_type} not implemented")
 
     @abstractmethod
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: type) -> typing.Any:
         raise NotImplementedError(
-            f"Conversion to python value expected type {expected_python_type} from literal not implemented")
+            f"Conversion to python value expected type {expected_python_type} from literal not implemented"
+        )
 
     def __repr__(self):
         return f"{self._name} Transforms ({self._t}) to Flyte native"
@@ -79,12 +80,12 @@ class SimpleTransformer(TypeTransformer[T]):
     """
 
     def __init__(
-            self,
-            name: str,
-            t: type,
-            lt: LiteralType,
-            to_literal_transformer: typing.Callable[[T], Literal],
-            from_literal_transformer: typing.Callable[[Literal], T],
+        self,
+        name: str,
+        t: type,
+        lt: LiteralType,
+        to_literal_transformer: typing.Callable[[T], Literal],
+        from_literal_transformer: typing.Callable[[Literal], T],
     ):
         super().__init__(name, t)
         self._lt = lt
@@ -95,7 +96,7 @@ class SimpleTransformer(TypeTransformer[T]):
         return self._lt
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
     ) -> Literal:
         return self._to_literal_transformer(python_val)
 
@@ -172,7 +173,7 @@ class TypeEngine(object):
 
     @classmethod
     def literal_map_to_kwargs(
-            cls, ctx: FlyteContext, lm: LiteralMap, python_types: typing.Dict[str, type]
+        cls, ctx: FlyteContext, lm: LiteralMap, python_types: typing.Dict[str, type]
     ) -> typing.Dict[str, typing.Any]:
         """
         Given a literal Map (usually an input into a task - intermediate), convert to kwargs for the task
@@ -217,7 +218,7 @@ class ListTransformer(TypeTransformer[T]):
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
     ) -> Literal:
         t = self.get_sub_type(python_type)
         lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]
@@ -254,7 +255,7 @@ class DictTransformer(TypeTransformer[T]):
         return _primitives.Generic.to_flyte_literal_type()
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
     ) -> Literal:
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
             return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(python_val), _struct.Struct())))
@@ -291,10 +292,10 @@ class TextIOTransformer(TypeTransformer):
         )
 
     def get_literal_type(self, t: type) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(), )
+        return _type_models.LiteralType(blob=self._blob_type(),)
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
     ) -> Literal:
         raise NotImplementedError("Implement handle for TextIO")
 
@@ -316,10 +317,10 @@ class BinaryIOTransformer(TypeTransformer):
         )
 
     def get_literal_type(self, t: type) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(), )
+        return _type_models.LiteralType(blob=self._blob_type(),)
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
     ) -> Literal:
         raise NotImplementedError("Implement handle for TextIO")
 
@@ -340,10 +341,10 @@ class PathLikeTransformer(TypeTransformer):
         )
 
     def get_literal_type(self, t: type) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(), )
+        return _type_models.LiteralType(blob=self._blob_type(),)
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: os.PathLike, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: os.PathLike, python_type: type, expected: LiteralType
     ) -> Literal:
         # TODO we could guess the mimetype and allow the format to be changed at runtime. thus a non existent format
         #      could be replaced with a guess format?
@@ -369,10 +370,10 @@ class FlyteFilePathTransformer(TypeTransformer):
         )
 
     def get_literal_type(self, t: type) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(), )
+        return _type_models.LiteralType(blob=self._blob_type(),)
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: flyte_typing.FlyteFilePath, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: flyte_typing.FlyteFilePath, python_type: type, expected: LiteralType
     ) -> Literal:
         remote_path = python_val.remote_path if python_val.remote_path else ctx.file_access.get_random_remote_path()
         ctx.file_access.put_data(f"{python_val}", remote_path, is_multipart=False)
