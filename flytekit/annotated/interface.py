@@ -5,10 +5,8 @@ from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Tuple, Type, TypeVar, Union
 
 from flytekit import logger
-from flytekit.annotated import type_engine
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.models import interface as _interface_models
-from flytekit.models import types as _type_models
 
 
 class Interface(object):

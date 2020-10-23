@@ -218,7 +218,7 @@ class Workflow(object):
                         ]
                         return tuple(native_list)
 
-            raise ValueError(f"expected outputs and actual outputs do not match")
+            raise ValueError("expected outputs and actual outputs do not match")
 
     def _create_and_link_node(self, ctx: FlyteContext, *args, **kwargs):
         """
