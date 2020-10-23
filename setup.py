@@ -1,7 +1,4 @@
 from setuptools import find_packages, setup  # noqa
-from setuptools.command.install import install
-import subprocess
-import sys
 
 import flytekit  # noqa
 from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
