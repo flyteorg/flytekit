@@ -14,7 +14,8 @@ class WrappedInstallCommand(install):
     def run(self):
         install.run(self)
         if "sagemaker-training" in extras_require.keys():
-            cmd = 'echo "/srv/service/venv/bin/activate; train" > /usr/local/bin/train; chmod a+x /usr/local/bin/train'
+            cmd = ('echo ". /srv/service/venv/bin/activate; train" > /usr/local/bin/train;'
+                   'chmod a+x /usr/local/bin/train')
             subprocess.run(cmd.split(), check=True, stdout=sys.stdout, stderr=sys.stderr, encoding="utf-8")
 
 
