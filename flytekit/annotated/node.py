@@ -3,7 +3,7 @@ from typing import Any, List
 from flytekit.common.nodes import SdkNode
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
-
+from flytekit.common.utils import _dnsify
 
 # TODO: Refactor this into something cleaner once we have a pattern for Tasks/Workflows/Launchplans
 class Node(object):
@@ -20,7 +20,7 @@ class Node(object):
         upstream_nodes: List["Node"],
         flyte_entity: Any,
     ):
-        self._id = id
+        self._id = _dnsify(id)
         self._metadata = metadata
         self._bindings = bindings
         self._upstream_nodes = upstream_nodes
