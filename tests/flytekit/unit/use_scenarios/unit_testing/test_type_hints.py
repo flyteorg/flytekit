@@ -3,6 +3,7 @@ import inspect
 import os
 import typing
 
+import pandas
 import pytest
 
 import flytekit.annotated.task
@@ -527,5 +528,24 @@ def test_wf1_branches_failing():
     with pytest.raises(AssertionError):
         my_wf(a=1, b="hello ")
 
+
+def test_wf1_df():
+    @task
+    def t1(a: int) -> pandas.DataFrame:
+        return pandas.DataFrame(data={'col1': [a, 2], 'col2': [a, 4]})
+
+    @task
+    def t2(df: pandas.DataFrame) -> pandas.DataFrame:
+        return df.append(pandas.DataFrame(data={'col1': [5, 10], 'col2': [5, 10]}))
+
+    @workflow
+    def my_wf(a: int) -> pandas.DataFrame:
+        df = t1(a=a)
+        return t2(df=df)
+
+    x = my_wf(a=20)
+    assert isinstance(x, pandas.DataFrame)
+    assert x.reset_index(drop=True) == \
+           pandas.DataFrame(data={'col1': [20, 2, 5, 10], 'col2': [20, 4, 5, 10]}).reset_index(drop=True)
 
 # TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!
