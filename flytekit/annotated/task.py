@@ -2,11 +2,10 @@ import collections
 import datetime as _datetime
 import functools
 import inspect
-import uuid
 import re
+import uuid
 from abc import abstractmethod
-from typing import Any, Callable, DefaultDict, Dict, List, Optional, Tuple, Type, Union, Set
-from flytekit.models import dynamic_job as _dynamic_job
+from typing import Any, Callable, DefaultDict, Dict, List, Optional, Tuple, Type, Union
 
 from flytekit import engine as flytekit_engine
 from flytekit import logger
@@ -25,6 +24,7 @@ from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.common.tasks.task import SdkTask
+from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
@@ -135,7 +135,7 @@ class Task(object):
 
     def dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
-    ) -> _literal_models.LiteralMap:
+    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
         This method is also invoked during runtime.
@@ -152,7 +152,14 @@ class Task(object):
         except Exception as e:
             logger.exception("Exception when executing", e)
             raise e
-        # logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
+        logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
+
+        # Short circuit the translation to literal map because what's returned may be a dj spec (or an
+        # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
+        if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
+            native_outputs, _dynamic_job.DynamicJobSpec
+        ):
+            return native_outputs
 
         expected_output_names = list(self.interface.outputs.keys())
         if len(expected_output_names) == 1:
@@ -409,7 +416,9 @@ class DynamicWorkflowTask(PythonFunctionTask):
     def __init__(self, dynamic_workflow_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
         super().__init__(dynamic_workflow_function, metadata, *args, **kwargs)
 
-    def compile_into_workflow(self, ctx: FlyteContext, **kwargs) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
+    def compile_into_workflow(
+        self, ctx: FlyteContext, **kwargs
+    ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
         with ctx.new_compilation_context(prefix=f"{uuid.uuid4().hex[:5]}"):
             self._wf = Workflow(self._task_function)
             self._wf.compile(**kwargs)
@@ -471,52 +480,6 @@ class DynamicWorkflowTask(PythonFunctionTask):
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             return self.compile_into_workflow(ctx, **kwargs)
-
-    def dispatch_execute(
-        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
-    ) -> _literal_models.LiteralMap:
-        """
-        This is a copy of the base dispatch_execute, except that we just return the dj spec generated when running
-        for real.
-        """
-
-        # Translate the input literals to Python native
-        native_inputs = flytekit_engine.idl_literal_map_to_python_value(ctx, input_literal_map)
-
-        # TODO: Logger should auto inject the current context information to indicate if the task is running within
-        #   a workflow or a subworkflow etc
-        logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
-        try:
-            native_outputs = self.execute(**native_inputs)
-        except Exception as e:
-            logger.exception("Exception when executing", e)
-            raise e
-        logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
-
-        # Short circuit the translation to literal map cuz what's returned is a dj spec (or an already-constructed
-        # LiteralMap if the dynamic task was a no-op), not python native values
-        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            return native_outputs
-
-        expected_output_names = list(self.interface.outputs.keys())
-        if len(expected_output_names) == 1:
-            native_outputs_as_map = {expected_output_names[0]: native_outputs}
-        else:
-            # Question: How do you know you're going to enumerate them in the correct order? Even if autonamed, will
-            # output2 come before output100 if there's a hundred outputs? We don't! We'll have to circle back to
-            # the Python task instance and inspect annotations again. Or we change the Python model representation
-            # of the interface to be an ordered dict and we fill it in correctly to begin with.
-            native_outputs_as_map = {expected_output_names[i]: native_outputs[i] for i, _ in enumerate(native_outputs)}
-
-        # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
-        # built into the IDL that all the values of a literal map are of the same type.
-        outputs_literal_map = _literal_models.LiteralMap(
-            literals={
-                k: flytekit_engine.python_value_to_idl_literal(ctx, v, self.interface.outputs[k].type)
-                for k, v in native_outputs_as_map.items()
-            }
-        )
-        return outputs_literal_map
 
 
 TaskTypePlugins: DefaultDict[str, Type[PythonFunctionTask]] = collections.defaultdict(

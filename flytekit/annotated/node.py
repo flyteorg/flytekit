@@ -1,9 +1,10 @@
 from typing import Any, List
 
 from flytekit.common.nodes import SdkNode
+from flytekit.common.utils import _dnsify
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.common.utils import _dnsify
+
 
 # TODO: Refactor this into something cleaner once we have a pattern for Tasks/Workflows/Launchplans
 class Node(object):
@@ -36,10 +37,6 @@ class Node(object):
 
         if self._flyte_entity is None:
             raise Exception("Node flyte entity none")
-
-        if self._flyte_entity._registerable_entity is None:
-            print("WARNING!!!!!!!!!!!!!!!!!!!  not really")
-            # raise Exception("Node registerable entity has not been set")
 
         for n in self._upstream_nodes:
             if n._sdk_node is None:

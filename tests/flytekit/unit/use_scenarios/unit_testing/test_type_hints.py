@@ -393,8 +393,14 @@ def test_wf1_with_dynamic():
     x = my_wf(a=v, b="hello ")
     assert x == ("hello hello ", ["world-" + str(i) for i in range(2, v + 2)])
 
-    compiled_sub_wf = my_subwf.compile_into_workflow(a=5)
-    assert len(compiled_sub_wf._nodes) == 5
+    with context_manager.FlyteContext.current_context().new_registration_settings(
+        registration_settings=context_manager.RegistrationSettings(
+            project="test_proj", domain="test_domain", version="abc", image="image:name", env={},
+        )
+    ) as ctx:
+        with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
+            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, a=5)
+            assert len(dynamic_job_spec._nodes) == 5
 
 
 def test_list_output():

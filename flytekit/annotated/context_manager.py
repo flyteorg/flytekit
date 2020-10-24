@@ -242,7 +242,7 @@ class FlyteContext(object):
             return None
 
     @contextmanager
-    def new_compilation_context(self, prefix: Optional[str] = None) -> Generator["FlyteContext", None, None]:
+    def new_compilation_context(self, prefix: Optional[str] = None) -> Generator[FlyteContext, None, None]:
         new_ctx = FlyteContext(parent=self, compilation_state=CompilationState(prefix=prefix or ""))
         FlyteContext.OBJS.append(new_ctx)
         try:
@@ -260,7 +260,9 @@ class FlyteContext(object):
             raise Exception("No registration_settings initialized")
 
     @contextmanager
-    def new_registration_settings(self, registration_settings):
+    def new_registration_settings(
+        self, registration_settings: RegistrationSettings
+    ) -> Generator[FlyteContext, None, None]:
         new_ctx = FlyteContext(parent=self, registration_settings=registration_settings)
         FlyteContext.OBJS.append(new_ctx)
         try:

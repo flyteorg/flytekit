@@ -7,7 +7,7 @@ import random as _random
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
-from flytekit.models import dynamic_job as _dynamic_job
+
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext, RegistrationSettings
 from flytekit.annotated.task import Task
 from flytekit.common import constants as _constants
@@ -26,6 +26,7 @@ from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
 from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
+from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import identifier as _identifier
 
@@ -175,14 +176,12 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                         domain=_internal_config.TASK_DOMAIN.get(),
                         version=_internal_config.TASK_VERSION.get(),
                         image=_internal_config.IMAGE.get(),
-                        env=env
+                        env=env,
                     )
                     # The reason we need this is because of dynamic tasks. Even if we move compilation all to Admin,
                     # if a dynamic task calls some task, t1, we have to write to the DJ Spec the correct task
                     # identifier for t1.
-                    with ctx.new_registration_settings(
-                            registration_settings=registration_settings
-                    ) as ctx:
+                    with ctx.new_registration_settings(registration_settings=registration_settings) as ctx:
                         # Because execution states do not look up the context chain, it has to be made last
                         with ctx.new_execution_context(
                             mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
