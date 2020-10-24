@@ -19,3 +19,4 @@ dist
 *.iml
 .eggs
 .demo
+.bash_history
