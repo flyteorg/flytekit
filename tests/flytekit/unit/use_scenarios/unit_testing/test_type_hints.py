@@ -7,14 +7,13 @@ import pytest
 
 import flytekit.annotated.task
 import flytekit.annotated.workflow
-from flytekit import engine as flytekit_engine
 from flytekit.annotated import context_manager, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import AbstractSQLTask, dynamic, maptask, metadata, task
-from flytekit.annotated.type_engine import BASE_TYPES
+from flytekit.annotated.task import AbstractSQLPythonTask, dynamic, maptask, metadata, task
+from flytekit.annotated.type_engine import TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
@@ -134,16 +133,14 @@ def test_engine_file_output():
         with open(test_file_location, "w") as fh:
             fh.write("Hello World\n")
 
-        lit = flytekit_engine.python_file_esque_to_idl_blob(
-            ctx, native_value=test_file_location, blob_type=basic_blob_type
-        )
+        lit = TypeEngine.to_literal(ctx, test_file_location, os.PathLike, LiteralType(blob=basic_blob_type))
 
         # Since we're using local as remote, we should be able to just read the file from the 'remote' location.
         with open(lit.scalar.blob.uri, "r") as fh:
             assert fh.readline() == "Hello World\n"
 
         # We should also be able to turn the thing back into regular python native thing.
-        redownloaded_local_file_location = flytekit_engine.blob_literal_to_python_value(ctx, lit.scalar.blob)
+        redownloaded_local_file_location = TypeEngine.to_python_value(ctx, lit, os.PathLike)
         with open(redownloaded_local_file_location, "r") as fh:
             assert fh.readline() == "Hello World\n"
 
@@ -284,7 +281,7 @@ def test_wf1_with_subwf():
 
 
 def test_wf1_with_sql():
-    sql = AbstractSQLTask(
+    sql = AbstractSQLPythonTask(
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
         inputs={"ds": datetime.datetime},
@@ -425,7 +422,7 @@ def test_list_output():
 
 def test_comparison_refs():
     def dummy_node(id) -> SdkNode:
-        n = SdkNode(id, [], None, None, sdk_task=AbstractSQLTask("x", "x", [], metadata()))
+        n = SdkNode(id, [], None, None, sdk_task=AbstractSQLPythonTask("x", "x", [], metadata()))
         n._id = id
         return n
 
@@ -444,8 +441,8 @@ def test_comparison_refs():
 
 
 def test_comparison_lits():
-    px = Promise("x", BASE_TYPES[int][1](5))
-    py = Promise("y", BASE_TYPES[int][1](8))
+    px = Promise("x", TypeEngine.to_literal(None, 5, int, None))
+    py = Promise("y", TypeEngine.to_literal(None, 8, int, None))
 
     def eval_expr(expr, expected: bool):
         print(f"{expr} evals to {expr.eval()}")

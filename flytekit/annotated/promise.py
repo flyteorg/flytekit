@@ -1,19 +1,25 @@
 import collections
+import typing
 from enum import Enum
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from flytekit import engine as flytekit_engine
+from flytekit.annotated import context_manager as _flyte_context
 from flytekit.annotated import type_engine
 from flytekit.annotated.context_manager import FlyteContext
+from flytekit.annotated.type_engine import DictTransformer, ListTransformer, TypeEngine
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
+from flytekit.models import literals as _literals_models
 from flytekit.models import types as _type_models
 from flytekit.models.literals import Primitive
 
 
 def translate_inputs_to_literals(
-    ctx: FlyteContext, input_kwargs: Dict[str, Any], interface: _interface_models.TypedInterface
+    ctx: FlyteContext,
+    input_kwargs: Dict[str, Any],
+    interface: _interface_models.TypedInterface,
+    native_input_types: Optional[Dict[str, type]],
 ) -> Dict[str, _literal_models.Literal]:
     """
     When calling a task inside a workflow, a user might do something like this.
@@ -38,30 +44,45 @@ def translate_inputs_to_literals(
     """
 
     def extract_value(
-        ctx: FlyteContext, input_val: Any, flyte_literal_type: _type_models.LiteralType
+        ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
     ) -> _literal_models.Literal:
         if isinstance(input_val, list):
             if flyte_literal_type.collection_type is None:
                 raise Exception(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
-            literals = [extract_value(ctx, v, flyte_literal_type.collection_type) for v in input_val]
+            try:
+                sub_type = ListTransformer.get_sub_type(val_type)
+            except ValueError:
+                if len(input_val) == 0:
+                    raise
+                sub_type = type(input_val[0])
+            literals = [extract_value(ctx, v, sub_type, flyte_literal_type.collection_type) for v in input_val]
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literals))
         elif isinstance(input_val, dict):
             if flyte_literal_type.map_value_type is None:
                 raise Exception(f"Not a map type {flyte_literal_type} but got a map {input_val}")
-            literals = {k: extract_value(ctx, v, flyte_literal_type.map_value_type) for k, v in input_val.items()}
+            try:
+                k_type, sub_type = DictTransformer.get_dict_types(val_type)
+            except ValueError:
+                if len(input_val) == 0:
+                    raise
+                sub_type = type(input_val[0])
+            literals = {
+                k: extract_value(ctx, v, sub_type, flyte_literal_type.map_value_type) for k, v in input_val.items()
+            }
             return _literal_models.Literal(map=_literal_models.LiteralMap(literals=literals))
         elif isinstance(input_val, Promise):
             # In the example above, this handles the "in2=a" type of argument
             return input_val.val
         else:
             # This handles native values, the 5 example
-            return flytekit_engine.python_value_to_idl_literal(ctx, input_val, flyte_literal_type)
+            return TypeEngine.to_literal(ctx, input_val, val_type, flyte_literal_type)
 
     for k, v in input_kwargs.items():
         if k not in interface.inputs:
             raise ValueError(f"Received unexpected keyword argument {k}")
         var = interface.inputs[k]
-        input_kwargs[k] = extract_value(ctx, v, var.type)
+        t = native_input_types[k] if native_input_types else type(v)
+        input_kwargs[k] = extract_value(ctx, v, t, var.type)
 
     return input_kwargs
 
@@ -124,9 +145,9 @@ class ComparisonExpression(object):
                 if rhs.val.scalar is None or rhs.val.scalar.primitive is None:
                     raise ValueError("Only primitive values can be used in comparison")
         if self._lhs is None:
-            self._lhs = type_engine.BASE_TYPES[type(lhs)][1](lhs)
+            self._lhs = type_engine.TypeEngine.to_literal(FlyteContext.current_context(), lhs, type(lhs), None)
         if self._rhs is None:
-            self._rhs = type_engine.BASE_TYPES[type(rhs)][1](rhs)
+            self._rhs = type_engine.TypeEngine.to_literal(FlyteContext.current_context(), rhs, type(rhs), None)
 
     @property
     def rhs(self) -> "Promise":
@@ -351,3 +372,55 @@ def create_task_output(promises: Union[List[Promise], Promise, None]) -> Union[T
             return self
 
     return Output(*promises)
+
+
+def binding_data_from_python_std(
+    ctx: _flyte_context.FlyteContext,
+    expected_literal_type: _type_models.LiteralType,
+    t_value: typing.Any,
+    t_value_type: type,
+) -> _literals_models.BindingData:
+    # This handles the case where the incoming value is a workflow-level input
+    if isinstance(t_value, _type_models.OutputReference):
+        binding_data = _literals_models.BindingData(promise=t_value)
+
+    # This handles the case where the given value is the output of another task
+    elif isinstance(t_value, Promise):
+        if not t_value.is_ready:
+            binding_data = _literals_models.BindingData(promise=t_value.ref)
+
+    elif isinstance(t_value, list):
+        if expected_literal_type.collection_type is None:
+            raise Exception(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
+
+        sub_type = ListTransformer.get_sub_type(t_value_type)
+        collection = _literals_models.BindingDataCollection(
+            bindings=[
+                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type) for t in t_value
+            ]
+        )
+
+        binding_data = _literals_models.BindingData(collection=collection)
+
+    elif isinstance(t_value, dict):
+        raise Exception("not yet handled - haytham will implement")
+
+    # This is the scalar case - e.g. my_task(in1=5)
+    else:
+        # Question: Haytham/Ketan - Is it okay for me to rely on the expected idl type, which comes from the task's
+        #   interface, to derive the scalar value?
+        scalar = TypeEngine.to_literal(ctx, t_value, t_value_type, expected_literal_type).scalar
+        binding_data = _literals_models.BindingData(scalar=scalar)
+
+    return binding_data
+
+
+def binding_from_python_std(
+    ctx: _flyte_context.FlyteContext,
+    var_name: str,
+    expected_literal_type: _type_models.LiteralType,
+    t_value: typing.Any,
+    t_value_type: type,
+) -> _literals_models.Binding:
+    binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
+    return _literals_models.Binding(var=var_name, binding=binding_data)
