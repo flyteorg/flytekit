@@ -5,20 +5,28 @@ import os
 import typing
 from abc import ABC, abstractmethod
 
-from flytekit.configuration import sdk
-from flytekit.plugins import pandas
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
 from flytekit import typing as flyte_typing
 from flytekit.annotated.context_manager import FlyteContext
 from flytekit.common.types import primitives as _primitives
+from flytekit.configuration import sdk
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, \
-    Schema
-from flytekit.models.types import LiteralType, SimpleType, SchemaType
+from flytekit.models.literals import (
+    Blob,
+    BlobMetadata,
+    Literal,
+    LiteralCollection,
+    LiteralMap,
+    Primitive,
+    Scalar,
+    Schema,
+)
+from flytekit.models.types import LiteralType, SchemaType, SimpleType
+from flytekit.plugins import pandas
 
 T = typing.TypeVar("T")
 
@@ -60,7 +68,7 @@ class TypeTransformer(typing.Generic[T]):
 
     @abstractmethod
     def to_literal(
-            self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
     ) -> Literal:
         raise NotImplementedError(f"Conversion to Literal for python type {python_type} not implemented")
 
@@ -83,12 +91,12 @@ class SimpleTransformer(TypeTransformer[T]):
     """
 
     def __init__(
-            self,
-            name: str,
-            t: type,
-            lt: LiteralType,
-            to_literal_transformer: typing.Callable[[T], Literal],
-            from_literal_transformer: typing.Callable[[Literal], T],
+        self,
+        name: str,
+        t: type,
+        lt: LiteralType,
+        to_literal_transformer: typing.Callable[[T], Literal],
+        from_literal_transformer: typing.Callable[[Literal], T],
     ):
         super().__init__(name, t)
         self._lt = lt
@@ -99,7 +107,7 @@ class SimpleTransformer(TypeTransformer[T]):
         return self._lt
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
     ) -> Literal:
         return self._to_literal_transformer(python_val)
 
@@ -176,7 +184,7 @@ class TypeEngine(object):
 
     @classmethod
     def literal_map_to_kwargs(
-            cls, ctx: FlyteContext, lm: LiteralMap, python_types: typing.Dict[str, type]
+        cls, ctx: FlyteContext, lm: LiteralMap, python_types: typing.Dict[str, type]
     ) -> typing.Dict[str, typing.Any]:
         """
         Given a literal Map (usually an input into a task - intermediate), convert to kwargs for the task
@@ -221,7 +229,7 @@ class ListTransformer(TypeTransformer[T]):
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
     ) -> Literal:
         t = self.get_sub_type(python_type)
         lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]
@@ -258,7 +266,7 @@ class DictTransformer(TypeTransformer[T]):
         return _primitives.Generic.to_flyte_literal_type()
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
     ) -> Literal:
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
             return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(python_val), _struct.Struct())))
@@ -295,10 +303,10 @@ class TextIOTransformer(TypeTransformer):
         )
 
     def get_literal_type(self, t: type) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(), )
+        return _type_models.LiteralType(blob=self._blob_type(),)
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
     ) -> Literal:
         raise NotImplementedError("Implement handle for TextIO")
 
@@ -320,10 +328,10 @@ class BinaryIOTransformer(TypeTransformer):
         )
 
     def get_literal_type(self, t: type) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(), )
+        return _type_models.LiteralType(blob=self._blob_type(),)
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: type, expected: LiteralType
     ) -> Literal:
         raise NotImplementedError("Implement handle for TextIO")
 
@@ -344,10 +352,10 @@ class PathLikeTransformer(TypeTransformer):
         )
 
     def get_literal_type(self, t: type) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(), )
+        return _type_models.LiteralType(blob=self._blob_type(),)
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: os.PathLike, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: os.PathLike, python_type: type, expected: LiteralType
     ) -> Literal:
         # TODO we could guess the mimetype and allow the format to be changed at runtime. thus a non existent format
         #      could be replaced with a guess format?
@@ -373,10 +381,10 @@ class FlyteFilePathTransformer(TypeTransformer):
         )
 
     def get_literal_type(self, t: type) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(), )
+        return _type_models.LiteralType(blob=self._blob_type(),)
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: flyte_typing.FlyteFilePath, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: flyte_typing.FlyteFilePath, python_type: type, expected: LiteralType
     ) -> Literal:
         remote_path = python_val.remote_path if python_val.remote_path else ctx.file_access.get_random_remote_path()
         ctx.file_access.put_data(f"{python_val}", remote_path, is_multipart=False)
@@ -400,19 +408,21 @@ class ParquetIO(object):
         return pandas.read_parquet(chunk, columns=columns, engine=self.PARQUET_ENGINE, **kwargs)
 
     def read(self, files: typing.List[os.PathLike], columns=None, **kwargs) -> pandas.DataFrame:
-        frames = [
-            self._read(chunk=f, columns=columns, **kwargs)
-            for f in files
-            if os.path.getsize(f) > 0
-        ]
+        frames = [self._read(chunk=f, columns=columns, **kwargs) for f in files if os.path.getsize(f) > 0]
         if len(frames) == 1:
             return frames[0]
         elif len(frames) > 1:
             return pandas.concat(frames, copy=True)
         return pandas.Dataframe()
 
-    def write(self, df: pandas.DataFrame, to_file: os.PathLike, coerce_timestamps: str = "us",
-              allow_truncated_timestamps: bool = False, **kwargs):
+    def write(
+        self,
+        df: pandas.DataFrame,
+        to_file: os.PathLike,
+        coerce_timestamps: str = "us",
+        allow_truncated_timestamps: bool = False,
+        **kwargs,
+    ):
         """
         Writes data frame as a chunk to the local directory owned by the Schema object.  Will later be uploaded to s3.
         :param df: data frame to write as parquet
@@ -427,17 +437,20 @@ class ParquetIO(object):
         # Convert all columns to unicode as pyarrow's parquet reader can not handle mixed strings and unicode.
         # Since columns from Hive are returned as unicode, if a user wants to add a column to a dataframe returned from
         # Hive, then output the new data, the user would have to provide a unicode column name which is unnatural.
-        df.to_parquet(to_file,
-                      coerce_timestamps=coerce_timestamps,
-                      allow_truncated_timestamps=allow_truncated_timestamps,
-                      **kwargs)
+        df.to_parquet(
+            to_file,
+            coerce_timestamps=coerce_timestamps,
+            allow_truncated_timestamps=allow_truncated_timestamps,
+            **kwargs,
+        )
 
 
 class FastParquetIO(ParquetIO):
     PARQUET_ENGINE = "fastparquet"
 
     def _read(self, chunk: os.PathLike, columns: typing.List[str], **kwargs):
-        from fastparquet import thrift_structures as _ts, ParquetFile as _ParquetFile
+        from fastparquet import ParquetFile as _ParquetFile
+        from fastparquet import thrift_structures as _ts
 
         # TODO Follow up to figure out if this is not needed anymore
         # https://github.com/dask/fastparquet/issues/414#issuecomment-478983811
@@ -464,7 +477,7 @@ _PARQUETIO_ENGINES: typing.Dict[str, ParquetIO] = {
 
 def generate_ordered_files(directory: os.PathLike, n: int) -> typing.Generator[os.PathLike, None, None]:
     for i in range(n):
-        yield os.path.join(directory, f'{i:05}')
+        yield os.path.join(directory, f"{i:05}")
 
 
 class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
@@ -483,8 +496,9 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
     def get_literal_type(self, t: type) -> LiteralType:
         return LiteralType(schema=self._get_schema_type())
 
-    def to_literal(self, ctx: FlyteContext, python_val: pandas.DataFrame, python_type: type,
-                   expected: LiteralType) -> Literal:
+    def to_literal(
+        self, ctx: FlyteContext, python_val: pandas.DataFrame, python_type: type, expected: LiteralType
+    ) -> Literal:
         remote_path = ctx.file_access.get_random_remote_directory()
         local_dir = ctx.file_access.get_random_local_directory()
         f = list(generate_ordered_files(local_dir, 1))[0]
