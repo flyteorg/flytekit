@@ -2,12 +2,14 @@ import abc as _abc
 import logging as _logging
 import os as _os
 
+import six as _six
 from flyteidl.core import literals_pb2 as _literals_pb2
 from sortedcontainers import SortedDict as _SortedDict
 
 from flytekit.clients.helpers import iterate_task_executions as _iterate_task_executions
 from flytekit.common import component_nodes as _component_nodes
 from flytekit.common import constants as _constants
+from flytekit.common import promise as _promise
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _common_utils
 from flytekit.common.exceptions import scopes as _exception_scopes
@@ -65,7 +67,7 @@ class ParameterMapper(_SortedDict, metaclass=_common_models.FlyteABCMeta):
         :param SdkNode node:
         """
         super(ParameterMapper, self).__init__()
-        for key, var in type_map.items():
+        for key, var in _six.iteritems(type_map):
             self[key] = self._return_mapping_object(node, _type_helpers.get_sdk_type_from_literal_type(var.type), key)
         self._initialized = True
 
@@ -105,8 +107,6 @@ class OutputParameterMapper(ParameterMapper):
         :param flytekit.common.types.FlyteSdkType sdk_type:
         :param Text name:
         """
-        from flytekit.common import promise as _promise
-
         return _promise.NodeOutput(sdk_node, sdk_type, name)
 
 

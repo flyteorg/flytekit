@@ -163,7 +163,10 @@ class Types(object):
 
     Generic = _helpers.get_sdk_type_from_literal_type(_primitives.Generic.to_flyte_literal_type())
     """
-    Use this to specify a simple JSON type.
+    Use this to specify a simple JSON type. The Generic type offer a flexible (but loose) extension to flyte's typing
+    system by allowing custom types/objects to be passed through. It's strongly recommended for producers & consumers of
+    entities that produce or consume a Generic type to perform their own expectations checks on the integrity of the
+    object.
 
     When used with an SDK-decorated method, expect this behavior from the default type engine:
 
@@ -183,6 +186,22 @@ class Types(object):
 
         @inputs(a=Types.Generic)
         @outputs(b=Types.Generic)
+        @python_task
+        def operate(wf_params, a, b):
+            if a['operation'] == 'add':
+                a['value'] += a['operand']  # a['value'] is a number
+            elif a['operation'] == 'merge':
+                a['value'].update(a['some']['nested'][0]['field'])
+            b.set(a)
+
+        # For better readability, it's strongly advised to leverage python's type aliasing.
+        MyTypeA = Types.Generic
+        MyTypeB = Types.Generic
+
+        # This makes it clearer that it received a certain type and produces a different one. Other tasks that consume
+        # MyTypeB should do so in their input declaration.
+        @inputs(a=MyTypeA)
+        @outputs(b=MyTypeB)
         @python_task
         def operate(wf_params, a, b):
             if a['operation'] == 'add':
@@ -357,7 +376,12 @@ class Types(object):
 
     Proto = staticmethod(_proto.create_protobuf)
     """
-    Use this to specify a custom protobuf type.
+    Proto type wraps a protobuf type to provide interoperability between protobuf and flyte typing system. Using this
+    type, you can define custom input/output variable types of flyte entities and continue to provide strong typing
+    syntax. Proto type serializes proto objects as binary (leveraging `flyteidl's Binary literal <https://github.com/lyft/flyteidl/blob/793b09d190148236f41ad8160b5cec9a3325c16f/protos/flyteidl/core/literals.proto#L45>`_).
+    Binary serialization of protobufs is the most space-efficient serialization form. Because of the way protobufs are
+    designed, unmarshalling the serialized proto requires access to the corresponding type. In order to use/visualize
+    the serialized proto, you will generally need to write custom code in the corresponding component.
 
     .. note::
 
@@ -383,6 +407,52 @@ class Types(object):
 
         @inputs(a=Types.Proto(my_protos_pb2.Custom))
         @outputs(b=Types.Proto(my_protos_pb2.Custom))
+        @python_task
+        def assert_and_create(wf_params, a, b):
+            assert a.field1 == 1
+            assert a.field2 == 'abc'
+            b.set(
+                my_protos_pb2.Custom(
+                    field1=100,
+                    field2='hello'
+                )
+            )
+    """
+
+    GenericProto = staticmethod(_proto.create_generic)
+    """
+    GenericProto type wraps a protobuf type to provide interoperability between protobuf and flyte typing system. Using
+    this type, you can define custom input/output variable types of flyte entities and continue to provide strong typing
+    syntax. Proto type serializes proto objects as binary (leveraging `flyteidl's Binary literal <https://github.com/lyft/flyteidl/blob/793b09d190148236f41ad8160b5cec9a3325c16f/protos/flyteidl/core/literals.proto#L63>`_).
+    A generic proto is a specialization of the Generic type with added convenience functions to support marshalling/
+    unmarshalling of the underlying protobuf object using the protobuf official json marshaller. While GenericProto type
+    does not produce the most space-efficient representation of protobufs, it's a suitable solution for making protobufs
+    easily accessible (i.e. humanly readable) in other flyte components (e.g. console, cli... etc.).
+
+    .. note::
+
+        The protobuf Python library should be installed on the PYTHONPATH to ensure the type engine can access the
+        appropriate Python code to deserialize the protobuf.
+
+    When used with an SDK-decorated method, expect this behavior from the default type engine:
+
+        As input:
+            1) If set, a Python protobuf object of the type specified in the definition.
+            2) If not set, a None value.
+
+        As output:
+            1) A Python protobuf object matching the type specified by the users.
+            2) Set None to null the output.
+
+        From command-line:
+            A base-64 encoded string of the serialized protobuf.
+
+    .. code-block:: python
+
+        from protos import my_protos_pb2
+
+        @inputs(a=Types.GenericProto(my_protos_pb2.Custom))
+        @outputs(b=Types.GenericProto(my_protos_pb2.Custom))
         @python_task
         def assert_and_create(wf_params, a, b):
             assert a.field1 == 1

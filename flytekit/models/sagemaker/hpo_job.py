@@ -1,7 +1,6 @@
 from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
 
 from flytekit.models import common as _common
-from flytekit.models.sagemaker import parameter_ranges as _parameter_ranges_models
 from flytekit.models.sagemaker import training_job as _training_job
 
 
@@ -72,24 +71,13 @@ class HyperparameterTuningJobConfig(_common.FlyteIdlEntity):
 
     def __init__(
         self,
-        hyperparameter_ranges: _parameter_ranges_models.ParameterRanges,
         tuning_strategy: int,
         tuning_objective: HyperparameterTuningObjective,
         training_job_early_stopping_type: int,
     ):
-        self._hyperparameter_ranges = hyperparameter_ranges
         self._tuning_strategy = tuning_strategy
         self._tuning_objective = tuning_objective
         self._training_job_early_stopping_type = training_job_early_stopping_type
-
-    @property
-    def hyperparameter_ranges(self) -> _parameter_ranges_models.ParameterRanges:
-        """
-        hyperparameter_ranges is a structure containing a map that maps hyperparameter name to the corresponding
-        hyperparameter range object
-        :rtype:  _parameter_ranges_models.ParameterRanges
-        """
-        return self._hyperparameter_ranges
 
     @property
     def tuning_strategy(self) -> int:
@@ -122,7 +110,6 @@ class HyperparameterTuningJobConfig(_common.FlyteIdlEntity):
     def to_flyte_idl(self) -> _pb2_hpo_job.HyperparameterTuningJobConfig:
 
         return _pb2_hpo_job.HyperparameterTuningJobConfig(
-            hyperparameter_ranges=self._hyperparameter_ranges.to_flyte_idl(),
             tuning_strategy=self._tuning_strategy,
             tuning_objective=self._tuning_objective.to_flyte_idl(),
             training_job_early_stopping_type=self._training_job_early_stopping_type,
@@ -132,9 +119,6 @@ class HyperparameterTuningJobConfig(_common.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object: _pb2_hpo_job.HyperparameterTuningJobConfig):
 
         return cls(
-            hyperparameter_ranges=(
-                _parameter_ranges_models.ParameterRanges.from_flyte_idl(pb2_object.hyperparameter_ranges)
-            ),
             tuning_strategy=pb2_object.tuning_strategy,
             tuning_objective=HyperparameterTuningObjective.from_flyte_idl(pb2_object.tuning_objective),
             training_job_early_stopping_type=pb2_object.training_job_early_stopping_type,

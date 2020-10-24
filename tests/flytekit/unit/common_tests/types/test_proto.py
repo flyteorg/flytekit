@@ -5,6 +5,7 @@ from flyteidl.core import errors_pb2 as _errors_pb2
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import proto as _proto
+from flytekit.common.types.proto import ProtobufType
 from flytekit.models import types as _type_models
 
 
@@ -26,7 +27,16 @@ def test_proto_to_literal_type():
 def test_proto():
     proto_type = _proto.create_protobuf(_errors_pb2.ContainerError)
     assert proto_type.short_class_string() == "Types.Proto(flyteidl.core.errors_pb2.ContainerError)"
+    run_test_proto_type(proto_type)
 
+
+def test_generic_proto():
+    proto_type = _proto.create_generic(_errors_pb2.ContainerError)
+    assert proto_type.short_class_string() == "Types.GenericProto(flyteidl.core.errors_pb2.ContainerError)"
+    run_test_proto_type(proto_type)
+
+
+def run_test_proto_type(proto_type: ProtobufType):
     pb = _errors_pb2.ContainerError(code="code", message="message")
     obj = proto_type.from_python_std(pb)
     obj2 = proto_type.from_flyte_idl(obj.to_flyte_idl())

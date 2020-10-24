@@ -19,6 +19,17 @@ def test_proto_from_literal_type():
     assert sdk_type.pb_type == _errors_pb2.ContainerError
 
 
+def test_generic_proto_from_literal_type():
+    sdk_type = _flyte_engine.FlyteDefaultTypeEngine().get_sdk_type_from_literal_type(
+        _type_models.LiteralType(
+            simple=_type_models.SimpleType.STRUCT,
+            metadata={_proto.Protobuf.PB_FIELD_KEY: "flyteidl.core.errors_pb2.ContainerError"},
+        )
+    )
+
+    assert sdk_type.pb_type == _errors_pb2.ContainerError
+
+
 def test_unloadable_module_from_literal_type():
     with pytest.raises(_user_exceptions.FlyteAssertion):
         _flyte_engine.FlyteDefaultTypeEngine().get_sdk_type_from_literal_type(
