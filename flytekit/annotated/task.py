@@ -446,7 +446,6 @@ class DynamicWorkflowTask(PythonFunctionTask):
                 subworkflows=list(sub_workflows),
             )
 
-            # import ipdb; ipdb.set_trace()
             return dj_spec
 
     @staticmethod
