@@ -10,6 +10,10 @@ from flytekit.annotated.type_engine import (
     TypeEngine,
 )
 from flytekit.models import types as model_types
+from flytekit.typing import FileFormat, FlyteFilePath, Text
+from flytekit.annotated.context_manager import FlyteContext
+from flytekit.models.literals import Literal, Scalar, Blob, BlobMetadata
+from flytekit.models.core.types import BlobType
 
 
 def test_type_engine():
@@ -41,3 +45,40 @@ def test_type_resolution():
     assert type(TypeEngine.get_transformer(int)) == SimpleTransformer
 
     assert type(TypeEngine.get_transformer(os.PathLike)) == PathLikeTransformer
+
+
+def test_file_formats_getting_literal_type():
+    transformer = TypeEngine.get_transformer(FlyteFilePath)
+
+    lt = transformer.get_literal_type(FlyteFilePath)
+    assert lt.blob.format == "application/octet-stream"
+
+    # Works with formats that we define
+    lt = transformer.get_literal_type(FlyteFilePath[Text])
+    assert lt.blob.format == "text/plain"
+
+    # Works with a user-defined file-format
+    class JPG(FileFormat):
+        @classmethod
+        def extension(cls) -> str:
+            return ".jpg"
+
+    lt = transformer.get_literal_type(FlyteFilePath[JPG])
+    assert lt.blob.format == "image/jpeg"
+
+    # Bad formats default to the default
+    lt = transformer.get_literal_type(FlyteFilePath[int])
+    assert lt.blob.format == "application/octet-stream"
+
+def test_file_format_getting_python_value():
+    transformer = TypeEngine.get_transformer(FlyteFilePath)
+
+    ctx = FlyteContext.current_context()
+
+    # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
+    lv = Literal(scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="text/plain", dimensionality=0)),
+                                         uri="file:///tmp/test")))
+
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFilePath[Text])
+    assert isinstance(pv, FlyteFilePath)
+    assert pv.__orig_class__ == FlyteFilePath[Text]

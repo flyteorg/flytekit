@@ -1,6 +1,8 @@
 import os
 import typing
 from enum import Enum
+from abc import abstractmethod
+from typing import TypeVar, Generic
 
 from flytekit import logger
 
@@ -33,7 +35,6 @@ There are a few possible types on the Python side that can be specified:
   * os.PathLike
   This is just a path on the filesystem accessible from the Python process. This is a native Python abstract class.
 
-    # NB: This is just normal Python, will not work in Flyte! Read below for more information.
     def path_task() -> os.PathLike:
         return os.path.abspath('/tmp/xyz.txt')
 
@@ -78,15 +79,24 @@ def noop():
     ...
 
 
-class FlyteFilePath(os.PathLike):
+class FileFormat(object):
     @classmethod
-    def format(cls) -> str:
-        """
-        When subclassing this, please make sure you do not use the same string as any of the ones already declared
-        in the FlyteFileFormats enum.
-        """
-        return FlyteFileFormats.BASE_FORMAT.value
+    @abstractmethod
+    def extension(cls) -> str:
+        return ""
 
+
+class Text(FileFormat):
+    @classmethod
+    def extension(cls) -> str:
+        return ".txt"
+
+
+# bound doesn't seem to do anything, I don't see any errors
+FF = TypeVar('FF', bound=FileFormat)
+
+
+class FlyteFilePath(os.PathLike, Generic[FF]):
     def __init__(self, path: str, downloader: typing.Callable = noop, remote_path=None):
         """
         :param path: The local path that users are expected to call open() on
@@ -107,7 +117,13 @@ class FlyteFilePath(os.PathLike):
         return self._abspath
 
     def __eq__(self, other):
-        if self.format() != other.format():
+        if hasattr(self, "__orig_class__"):
+            if hasattr(other, "__orig_class__"):
+                if self.__orig_class__ != other.__orig_class__:
+                    return False
+            else:
+                return False
+        elif hasattr(other, "__orig_class__"):
             return False
         return self._abspath == other._abspath and self._remote_path == other._remote_path
 

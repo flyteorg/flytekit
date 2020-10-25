@@ -152,6 +152,9 @@ class Workflow(object):
             else:
                 raise Exception("something returned from wf but shouldn't have outputs")
 
+        if len(output_names) == 1:
+            return function_outputs
+
         if len(output_names) != len(function_outputs):
             # Length check, clean up exception
             raise Exception(f"Length difference {len(output_names)} {len(function_outputs)}")
@@ -206,7 +209,7 @@ class Workflow(object):
                 if result is None:
                     return None
                 elif isinstance(result, Promise):
-                    k, v = self._native_interface.outputs.items()[0]
+                    k, v = next(iter(self._native_interface.outputs.items()))
                     return TypeEngine.to_python_value(ctx, result.val, v)
                 else:
                     for prom in result:
