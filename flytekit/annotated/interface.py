@@ -15,9 +15,7 @@ class Interface(object):
     """
 
     def __init__(
-        self,
-        inputs: typing.Dict[str, Union[Type, Tuple[Type, Any]]] = None,
-        outputs: typing.Dict[str, Type] = None,
+        self, inputs: typing.Dict[str, Union[Type, Tuple[Type, Any]]] = None, outputs: typing.Dict[str, Type] = None,
     ):
         """
         :param outputs: Output variables and their types as a dictionary

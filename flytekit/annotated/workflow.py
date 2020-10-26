@@ -30,7 +30,7 @@ from flytekit.models.core import workflow as _workflow_model
 
 def _workflow_fn_outputs_to_promise(
     ctx: FlyteContext,
-    native_outputs: typing.Dict[str, type], # Actually an orderedDict
+    native_outputs: typing.Dict[str, type],  # Actually an orderedDict
     typed_outputs: Dict[str, _interface_models.Variable],
     outputs: Union[Any, Tuple[Any]],
 ) -> List[Promise]:
