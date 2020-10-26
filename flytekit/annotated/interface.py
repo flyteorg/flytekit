@@ -242,8 +242,9 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
     if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:
         # Handle option 3
         logger.debug(f"Task returns unnamed typing.Tuple {return_annotation}")
-        return OrderedDict(zip(list(output_name_generator(len(return_annotation.__args__))),
-                               return_annotation.__args__))
+        return OrderedDict(
+            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)
+        )
     elif isinstance(return_annotation, tuple):
         return OrderedDict(zip(list(output_name_generator(len(return_annotation))), return_annotation))
 

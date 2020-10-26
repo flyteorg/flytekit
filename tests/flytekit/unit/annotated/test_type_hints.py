@@ -7,20 +7,20 @@ import pytest
 
 import flytekit.annotated.task
 import flytekit.annotated.workflow
+from flytekit import typing as flytekit_typing
 from flytekit.annotated import context_manager, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import AbstractSQLPythonTask, dynamic, maptask, metadata, task
-from flytekit.annotated.type_engine import TypeEngine, RestrictedTypeError
+from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
 from flytekit.models.types import LiteralType, SimpleType
-from flytekit import typing as flytekit_typing
 
 
 def test_default_wf_params_works():
@@ -478,6 +478,7 @@ def test_wf1_branches_failing():
 
 def test_cant_use_normal_tuples():
     with pytest.raises(RestrictedTypeError):
+
         @task
         def t1(a: str) -> tuple:
             return (a, 3)
@@ -496,5 +497,5 @@ def test_file_type_in_workflow_with_bad_format():
         return f
 
     res = my_wf()
-    with open(res, 'r') as fh:
+    with open(res, "r") as fh:
         assert fh.read() == "Hello World\n"

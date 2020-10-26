@@ -12,7 +12,7 @@ from flytekit.annotated.type_engine import (
 )
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Literal, Scalar, Blob, BlobMetadata
+from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.typing import FlyteFilePath
 
 
@@ -68,17 +68,18 @@ def test_file_formats_getting_literal_type():
     assert lt.blob.format == ".png"
 
 
-
 def test_file_format_getting_python_value():
     transformer = TypeEngine.get_transformer(FlyteFilePath)
 
     ctx = FlyteContext.current_context()
 
     # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
-    lv = Literal(scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="txt", dimensionality=0)),
-                                         uri="file:///tmp/test")))
+    lv = Literal(
+        scalar=Scalar(
+            blob=Blob(metadata=BlobMetadata(type=BlobType(format="txt", dimensionality=0)), uri="file:///tmp/test")
+        )
+    )
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFilePath[".txt"])
     assert isinstance(pv, FlyteFilePath)
     assert pv.extension() == ".txt"
-

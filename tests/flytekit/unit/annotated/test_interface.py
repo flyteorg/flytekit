@@ -2,86 +2,95 @@ import datetime
 import inspect
 import os
 import typing
-from typing import Dict, Generator, Union, Type, Tuple, List, TypeVar, Generic, Iterable
+from typing import Dict, Generator, Generic, Iterable, List, Tuple, Type, TypeVar, Union
 
 import pytest
 
 import flytekit.annotated.task
 import flytekit.annotated.workflow
+from flytekit import typing as flytekit_typing
 from flytekit.annotated import context_manager, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import AbstractSQLPythonTask, dynamic, maptask, metadata, task
-from flytekit.annotated.type_engine import TypeEngine, RestrictedTypeError
+from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
 from flytekit.models.types import LiteralType, SimpleType
-from flytekit import typing as flytekit_typing
 
 
 def test_extract_only():
     def x() -> typing.NamedTuple("NT1", x_str=str, y_int=int):
         ...
+
     return_types = extract_return_annotation(inspect.signature(x).return_annotation)
     assert len(return_types) == 2
-    assert return_types['x_str'] == str
-    assert return_types['y_int'] == int
+    assert return_types["x_str"] == str
+    assert return_types["y_int"] == int
 
     def t() -> List[int]:
         ...
+
     return_type = extract_return_annotation(inspect.signature(t).return_annotation)
     assert len(return_type) == 1
-    assert return_type['out_0']._name == "List"
-    assert return_type['out_0'].__origin__ == list
+    assert return_type["out_0"]._name == "List"
+    assert return_type["out_0"].__origin__ == list
 
     def t() -> Dict[str, int]:
         ...
+
     return_type = extract_return_annotation(inspect.signature(t).return_annotation)
     assert len(return_type) == 1
-    assert return_type['out_0']._name == "Dict"
-    assert return_type['out_0'].__origin__ == dict
+    assert return_type["out_0"]._name == "Dict"
+    assert return_type["out_0"].__origin__ == dict
 
     def t(a: int, b: str) -> typing.Tuple[int, str]:
         ...
+
     return_type = extract_return_annotation(inspect.signature(t).return_annotation)
     assert len(return_type) == 2
-    assert return_type['out_0'] == int
-    assert return_type['out_1'] == str
+    assert return_type["out_0"] == int
+    assert return_type["out_1"] == str
 
     def t(a: int, b: str) -> (int, str):
         ...
+
     return_type = extract_return_annotation(inspect.signature(t).return_annotation)
     assert len(return_type) == 2
-    assert return_type['out_0'] == int
-    assert return_type['out_1'] == str
+    assert return_type["out_0"] == int
+    assert return_type["out_1"] == str
 
     def t(a: int, b: str) -> str:
         ...
+
     return_type = extract_return_annotation(inspect.signature(t).return_annotation)
     assert len(return_type) == 1
-    assert return_type['out_0'] == str
+    assert return_type["out_0"] == str
 
     def t(a: int, b: str) -> None:
         ...
+
     return_type = extract_return_annotation(inspect.signature(t).return_annotation)
     assert len(return_type) == 0
 
     def t(a: int, b: str) -> List[int]:
         ...
+
     return_type = extract_return_annotation(inspect.signature(t).return_annotation)
     assert len(return_type) == 1
-    assert return_type['out_0'] == List[int]
+    assert return_type["out_0"] == List[int]
 
     def t(a: int, b: str) -> Dict[str, int]:
         ...
+
     return_type = extract_return_annotation(inspect.signature(t).return_annotation)
     assert len(return_type) == 1
-    assert return_type['out_0'] == Dict[str, int]
+    assert return_type["out_0"] == Dict[str, int]
 
 
 def test_named_tuples():
@@ -141,4 +150,4 @@ def test_file_types():
         ...
 
     return_type = extract_return_annotation(inspect.signature(t1).return_annotation)
-    assert return_type['out_0'] == flytekit_typing.FlyteFilePath[int]
+    assert return_type["out_0"] == flytekit_typing.FlyteFilePath[int]
