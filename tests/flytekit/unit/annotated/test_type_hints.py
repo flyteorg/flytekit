@@ -1,5 +1,4 @@
 import datetime
-import inspect
 import os
 import typing
 
@@ -11,7 +10,6 @@ from flytekit import typing as flytekit_typing
 from flytekit.annotated import context_manager, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
-from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import AbstractSQLPythonTask, dynamic, maptask, metadata, task
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
@@ -486,13 +484,13 @@ def test_cant_use_normal_tuples():
 
 def test_file_type_in_workflow_with_bad_format():
     @task
-    def t1() -> flytekit_typing.FlyteFilePath[int]:
+    def t1() -> flytekit_typing.FlyteFilePath["txt"]:
         with open("/tmp/flytekit_test", "w") as fh:
             fh.write("Hello World\n")
-        return flytekit_typing.FlyteFilePath[int]("/tmp/flytekit_test")
+        return flytekit_typing.FlyteFilePath["txt"]("/tmp/flytekit_test")
 
     @workflow
-    def my_wf() -> flytekit_typing.FlyteFilePath[int]:
+    def my_wf() -> flytekit_typing.FlyteFilePath["txt"]:
         f = t1()
         return f
 

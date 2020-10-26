@@ -1,27 +1,11 @@
-import datetime
 import inspect
 import os
 import typing
-from typing import Dict, Generator, Generic, Iterable, List, Tuple, Type, TypeVar, Union
+from typing import Dict, List
 
-import pytest
-
-import flytekit.annotated.task
-import flytekit.annotated.workflow
 from flytekit import typing as flytekit_typing
-from flytekit.annotated import context_manager, promise
-from flytekit.annotated.condition import conditional
-from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
-from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import AbstractSQLPythonTask, dynamic, maptask, metadata, task
-from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
-from flytekit.annotated.workflow import workflow
-from flytekit.common.nodes import SdkNode
-from flytekit.common.promise import NodeOutput
-from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
-from flytekit.models.types import LiteralType, SimpleType
 
 
 def test_extract_only():

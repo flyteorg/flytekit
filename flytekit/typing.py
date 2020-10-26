@@ -85,9 +85,13 @@ class FlyteFilePath(os.PathLike):
             raise Exception(f"{item} not a valid extension according to mimetypes.")
 
         class _SpecificFormatClass(FlyteFilePath):
+            # Get the type engine to see this as kind of a generic
+            __origin__ = FlyteFilePath
+
             @classmethod
             def extension(cls) -> str:
                 return item
+
 
         return _SpecificFormatClass
 
