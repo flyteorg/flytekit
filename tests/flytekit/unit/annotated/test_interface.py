@@ -130,8 +130,8 @@ def test_sig_files():
 
 
 def test_file_types():
-    def t1() -> flytekit_typing.FlyteFilePath[int]:
+    def t1() -> flytekit_typing.FlyteFilePath["svg"]:
         ...
 
     return_type = extract_return_annotation(inspect.signature(t1).return_annotation)
-    assert return_type["out_0"] == flytekit_typing.FlyteFilePath[int]
+    assert return_type["out_0"].extension() == flytekit_typing.FlyteFilePath["svg"].extension()
