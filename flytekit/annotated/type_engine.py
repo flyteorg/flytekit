@@ -16,6 +16,7 @@ from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
+from typing import Type
 
 T = typing.TypeVar("T")
 
@@ -365,41 +366,26 @@ class FlyteFilePathTransformer(TypeTransformer):
         super().__init__(name="FlyteFilePath", t=flyte_typing.FlyteFilePath)
 
     @staticmethod
-    def get_mime_type(format = None) -> str:
-        if format is None:
-            return mimetypes.types_map[".bin"]
-        if issubclass(format, flyte_typing.FileFormat):
-            # Ketan: Should FileFormats have a mime type function?
-            return mimetypes.types_map[format.extension()]
-        if isinstance(format, str) and format in mimetypes.types_map:
-            return mimetypes.types_map[format]
+    def get_format(t: Type[flyte_typing.FlyteFilePath]) -> str:
+        return t.extension()
 
-        return mimetypes.types_map[".bin"]
-
-    @staticmethod
-    def get_format(t: type) -> typing.Any:
-        # See if the user specified the format type, as in FlyteFilePath[Text]
-        if hasattr(t, "__args__") and len(t.__args__) > 0:
-            return t.__args__[0]
-        return None
-
-    def _blob_type(self, format = None) -> _core_types.BlobType:
+    def _blob_type(self, format: str) -> _core_types.BlobType:
         return _core_types.BlobType(
-            format=FlyteFilePathTransformer.get_mime_type(format), dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            format=format, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
         )
 
     def get_literal_type(self, t: type) -> LiteralType:
         return _type_models.LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
 
     def to_literal(
-        self, ctx: FlyteContext, python_val: flyte_typing.FlyteFilePath, python_type: type, expected: LiteralType
+        self, ctx: FlyteContext, python_val: flyte_typing.FlyteFilePath, python_type: Type[flyte_typing.FlyteFilePath], expected: LiteralType
     ) -> Literal:
         remote_path = python_val.remote_path if python_val.remote_path else ctx.file_access.get_random_remote_path()
         ctx.file_access.put_data(f"{python_val}", remote_path, is_multipart=False)
         meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: type) -> typing.Any:
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[flyte_typing.FlyteFilePath]) -> typing.Any:
         local_path = ctx.file_access.get_random_local_path()
 
         # TODO improve this to accept the blob uri and local path as an argument?
@@ -407,9 +393,7 @@ class FlyteFilePathTransformer(TypeTransformer):
             return ctx.file_access.get_data(lv.scalar.blob.uri, local_path, is_multipart=False)
 
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
-        if expected_format and issubclass(expected_format, flyte_typing.FileFormat):
-            return flyte_typing.FlyteFilePath[expected_format](local_path, _downloader, lv.scalar.blob.uri)
-        return flyte_typing.FlyteFilePath(local_path, _downloader, lv.scalar.blob.uri)
+        return flyte_typing.FlyteFilePath[expected_format](local_path, _downloader, lv.scalar.blob.uri)
 
 
 def _register_default_type_transformers():

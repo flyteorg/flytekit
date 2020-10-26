@@ -1,8 +1,8 @@
+from __future__ import annotations
+
+import mimetypes
 import os
 import typing
-from enum import Enum
-from abc import abstractmethod
-from typing import TypeVar, Generic
 
 from flytekit import logger
 
@@ -63,40 +63,34 @@ There are a few possible types on the Python side that can be specified:
 """
 
 
-class FlyteFileFormats(Enum):
-    """
-    When users are subclassing the FlyteFilePath type to create their own formats, they should not use these strings
-    as these have special meaning. Also please use lower case.
-    """
-
-    BASE_FORMAT = ""
-    TEXT_IO = "TextIO"
-    BINARY_IO = "BinaryIO"
-    CSV = "csv"
-
-
 def noop():
     ...
 
 
-class FileFormat(object):
+class FlyteFilePath(os.PathLike):
     @classmethod
-    @abstractmethod
     def extension(cls) -> str:
         return ""
 
+    def __class_getitem__(cls, item: str):
+        # TODO: Better checking
+        if type(item) != str:
+            raise Exception("format must be a string")
+        if item == "":
+            return cls
+        if not item.startswith("."):
+            item = "." + item
+        # TODO: I dunno if we want this
+        if item not in mimetypes.types_map and f".{item}" not in mimetypes.types_map:
+            raise Exception(f"{item} not a valid extension according to mimetypes.")
 
-class Text(FileFormat):
-    @classmethod
-    def extension(cls) -> str:
-        return ".txt"
+        class _SpecificFormatClass(FlyteFilePath):
+            @classmethod
+            def extension(cls) -> str:
+                return item
 
+        return _SpecificFormatClass
 
-# bound doesn't seem to do anything, I don't see any errors
-FF = TypeVar('FF', bound=FileFormat)
-
-
-class FlyteFilePath(os.PathLike, Generic[FF]):
     def __init__(self, path: str, downloader: typing.Callable = noop, remote_path=None):
         """
         :param path: The local path that users are expected to call open() on
@@ -117,15 +111,7 @@ class FlyteFilePath(os.PathLike, Generic[FF]):
         return self._abspath
 
     def __eq__(self, other):
-        if hasattr(self, "__orig_class__"):
-            if hasattr(other, "__orig_class__"):
-                if self.__orig_class__ != other.__orig_class__:
-                    return False
-            else:
-                return False
-        elif hasattr(other, "__orig_class__"):
-            return False
-        return self._abspath == other._abspath and self._remote_path == other._remote_path
+        return self._abspath == other._abspath and self._remote_path == other._remote_path and self.extension() == other.extension()
 
     @property
     def downloaded(self) -> bool:
@@ -140,9 +126,3 @@ class FlyteFilePath(os.PathLike, Generic[FF]):
 
     def __str__(self):
         return self._abspath
-
-
-class FlyteCSVFilePath(FlyteFilePath):
-    @classmethod
-    def format(cls) -> str:
-        return FlyteFileFormats.CSV.value

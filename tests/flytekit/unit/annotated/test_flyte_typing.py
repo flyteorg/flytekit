@@ -1,4 +1,4 @@
-from flytekit.typing import FlyteFilePath, Text
+from flytekit.typing import FlyteFilePath
 
 
 def test_filepath_equality():
@@ -7,22 +7,22 @@ def test_filepath_equality():
     assert a == b
 
     a = FlyteFilePath("/tmp")
-    b = FlyteFilePath[int]("/tmp")
+    b = FlyteFilePath["pdf"]("/tmp")
     assert a != b
-
-    a = FlyteFilePath("/tmp")
-    b = FlyteFilePath("/tmp/")
-    assert a == b
 
     a = FlyteFilePath("/tmp")
     b = FlyteFilePath("/tmp/c")
     assert a != b
 
-    a = FlyteFilePath[Text]("/tmp")
-    b = FlyteFilePath[str]("/tmp")
-    assert a != b
+    x = "jpg"
+    y = ".jpg"
+    a = FlyteFilePath[x]("/tmp")
+    b = FlyteFilePath[y]("/tmp")
+    assert a == b
 
-    alias = Text
-    a = FlyteFilePath[Text]("/tmp")
-    b = FlyteFilePath[alias]("/tmp")
+
+def test_fdff():
+    a = FlyteFilePath["txt"]("/tmp")
+    print(a)
+    b = FlyteFilePath["txt"]("/tmp")
     assert a == b
