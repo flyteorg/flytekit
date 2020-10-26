@@ -14,7 +14,8 @@ class Interface(object):
     A Python native interface object, like inspect.signature but simpler.
     """
 
-    def __init__(self, inputs: Dict[str, Union[Type, Tuple[Type, Any]]] = None, outputs: Dict[str, Type] = None):
+    def __init__(self, inputs: typing.OrderedDict[str, Union[Type, Tuple[Type, Any]]] = None,
+                 outputs: typing.OrderedDict[str, Type] = None):
         """
         :param outputs: Output variables and their types as a dictionary
         :param inputs: the variable and its type only
@@ -29,18 +30,18 @@ class Interface(object):
         self._outputs = outputs
 
     @property
-    def inputs(self) -> Dict[str, Type]:
+    def inputs(self) -> typing.OrderedDict[str, Type]:
         r = {}
         for k, v in self._inputs.items():
             r[k] = v[0]
         return r
 
     @property
-    def inputs_with_defaults(self) -> Dict[str, Tuple[Type, Any]]:
+    def inputs_with_defaults(self) -> typing.OrderedDict[str, Tuple[Type, Any]]:
         return self._inputs
 
     @property
-    def outputs(self):
+    def outputs(self) -> typing.OrderedDict[str, type]:
         return self._outputs
 
     def remove_inputs(self, vars: List[str]) -> "Interface":
@@ -247,8 +248,8 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
 
     # Options 7 and 8.
     if hasattr(return_annotation, "_name") and (
-        (return_annotation._name == "List" and return_annotation.__origin__ == list)
-        or (return_annotation._name == "Dict" and return_annotation.__origin__ == dict)
+            (return_annotation._name == "List" and return_annotation.__origin__ == list)
+            or (return_annotation._name == "Dict" and return_annotation.__origin__ == dict)
     ):
         return {default_output_name(): return_annotation}
 
