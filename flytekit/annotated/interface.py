@@ -16,8 +16,8 @@ class Interface(object):
 
     def __init__(
         self,
-        inputs: typing.OrderedDict[str, Union[Type, Tuple[Type, Any]]] = None,
-        outputs: typing.OrderedDict[str, Type] = None,
+        inputs: typing.Dict[str, Union[Type, Tuple[Type, Any]]] = None,
+        outputs: typing.Dict[str, Type] = None,
     ):
         """
         :param outputs: Output variables and their types as a dictionary
@@ -33,18 +33,18 @@ class Interface(object):
         self._outputs = outputs
 
     @property
-    def inputs(self) -> typing.OrderedDict[str, Type]:
+    def inputs(self) -> typing.Dict[str, Type]:
         r = {}
         for k, v in self._inputs.items():
             r[k] = v[0]
         return r
 
     @property
-    def inputs_with_defaults(self) -> typing.OrderedDict[str, Tuple[Type, Any]]:
+    def inputs_with_defaults(self) -> typing.Dict[str, Tuple[Type, Any]]:
         return self._inputs
 
     @property
-    def outputs(self) -> typing.OrderedDict[str, type]:
+    def outputs(self) -> typing.Dict[str, type]:
         return self._outputs
 
     def remove_inputs(self, vars: List[str]) -> "Interface":
