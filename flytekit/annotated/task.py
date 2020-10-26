@@ -3,7 +3,6 @@ import datetime as _datetime
 import functools
 import inspect
 import re
-import uuid
 from abc import abstractmethod
 from typing import Any, Callable, DefaultDict, Dict, List, Optional, Tuple, Type, Union
 
@@ -478,7 +477,7 @@ class DynamicWorkflowTask(PythonFunctionTask):
     def compile_into_workflow(
         self, ctx: FlyteContext, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
-        with ctx.new_compilation_context(prefix=f"{uuid.uuid4().hex[:5]}"):
+        with ctx.new_compilation_context(prefix="dynamic"):
             self._wf = Workflow(self._task_function)
             self._wf.compile(**kwargs)
 

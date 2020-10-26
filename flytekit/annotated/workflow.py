@@ -123,7 +123,8 @@ class Workflow(object):
 
     def compile(self, **kwargs):
         """
-        Supply static Python native values in the kwargs if you want them to be used in the compilation
+        Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics
+        a 'closure' in the traditional sense of the word.
         """
         # TODO: should we even define it here?
         self._input_parameters = transform_inputs_to_parameters(self._native_interface)

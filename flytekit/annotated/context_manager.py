@@ -49,6 +49,11 @@ class RegistrationSettings(object):
 
 class CompilationState(object):
     def __init__(self, prefix: str):
+        """
+        :param prefix: This is because we may one day want to be able to have subworkflows inside other workflows. If
+          users choose to not specify their node names, then we can end up with multiple "node-0"s. This prefix allows
+          us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
+        """
         self.nodes: List[Node] = []
         self._prefix = prefix
         self.mode = 1  # TODO: Turn into enum in the future, or remove if only one mode.
@@ -243,6 +248,9 @@ class FlyteContext(object):
 
     @contextmanager
     def new_compilation_context(self, prefix: Optional[str] = None) -> Generator[FlyteContext, None, None]:
+        """
+        :param prefix: See CompilationState comments
+        """
         new_ctx = FlyteContext(parent=self, compilation_state=CompilationState(prefix=prefix or ""))
         FlyteContext.OBJS.append(new_ctx)
         try:
