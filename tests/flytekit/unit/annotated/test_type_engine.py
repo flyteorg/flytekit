@@ -2,6 +2,7 @@ import os
 import typing
 from datetime import timedelta
 
+from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.type_engine import (
     DictTransformer,
     ListTransformer,
@@ -10,10 +11,9 @@ from flytekit.annotated.type_engine import (
     TypeEngine,
 )
 from flytekit.models import types as model_types
-from flytekit.typing import FileFormat, FlyteFilePath, Text
-from flytekit.annotated.context_manager import FlyteContext
-from flytekit.models.literals import Literal, Scalar, Blob, BlobMetadata
 from flytekit.models.core.types import BlobType
+from flytekit.models.literals import Literal, Scalar, Blob, BlobMetadata
+from flytekit.typing import FlyteFilePath
 
 
 def test_type_engine():
