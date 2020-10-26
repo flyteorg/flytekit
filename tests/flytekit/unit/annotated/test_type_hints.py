@@ -1,5 +1,4 @@
 import datetime
-import inspect
 import os
 import typing
 
@@ -8,13 +7,13 @@ import pytest
 
 import flytekit.annotated.task
 import flytekit.annotated.workflow
+from flytekit import typing as flytekit_typing
 from flytekit.annotated import context_manager, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
-from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import AbstractSQLPythonTask, dynamic, maptask, metadata, task
-from flytekit.annotated.type_engine import TypeEngine
+from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
@@ -70,58 +69,6 @@ def test_single_output():
         assert len(nodes) == 1
         assert outputs.is_ready is False
         assert outputs.ref.sdk_node is nodes[0]
-
-
-def test_named_tuples():
-    nt1 = typing.NamedTuple("NT1", x_str=str, y_int=int)
-
-    def x(a: int, b: str) -> typing.NamedTuple("NT1", x_str=str, y_int=int):
-        return ("hello world", 5)
-
-    def y(a: int, b: str) -> nt1:
-        return nt1("hello world", 5)
-
-    result = transform_variable_map(extract_return_annotation(inspect.signature(x).return_annotation))
-    assert result["x_str"].type.simple == 3
-    assert result["y_int"].type.simple == 1
-
-    result = transform_variable_map(extract_return_annotation(inspect.signature(y).return_annotation))
-    assert result["x_str"].type.simple == 3
-    assert result["y_int"].type.simple == 1
-
-
-def test_unnamed_typing_tuple():
-    def z(a: int, b: str) -> typing.Tuple[int, str]:
-        return 5, "hello world"
-
-    result = transform_variable_map(extract_return_annotation(inspect.signature(z).return_annotation))
-    assert result["out_0"].type.simple == 1
-    assert result["out_1"].type.simple == 3
-
-
-def test_regular_tuple():
-    def q(a: int, b: str) -> (int, str):
-        return 5, "hello world"
-
-    result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
-    assert result["out_0"].type.simple == 1
-    assert result["out_1"].type.simple == 3
-
-
-def test_single_output_new_decorator():
-    def q(a: int, b: str) -> int:
-        return a + len(b)
-
-    result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
-    assert result["out_0"].type.simple == 1
-
-
-def test_sig_files():
-    def q() -> os.PathLike:
-        ...
-
-    result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
-    assert isinstance(result["out_0"].type.blob, _core_types.BlobType)
 
 
 def test_engine_file_output():
@@ -577,12 +524,36 @@ def test_wf1_branches_failing():
     @workflow
     def my_wf(a: int, b: str) -> (int, str):
         x, y = t1(a=a)
-        print(x)
         d = conditional().if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("All Branches failed")
         return x, d
 
     with pytest.raises(AssertionError):
         my_wf(a=1, b="hello ")
+
+
+def test_cant_use_normal_tuples():
+    with pytest.raises(RestrictedTypeError):
+
+        @task
+        def t1(a: str) -> tuple:
+            return (a, 3)
+
+
+def test_file_type_in_workflow_with_bad_format():
+    @task
+    def t1() -> flytekit_typing.FlyteFilePath["txt"]:
+        with open("/tmp/flytekit_test", "w") as fh:
+            fh.write("Hello World\n")
+        return flytekit_typing.FlyteFilePath["txt"]("/tmp/flytekit_test")
+
+    @workflow
+    def my_wf() -> flytekit_typing.FlyteFilePath["txt"]:
+        f = t1()
+        return f
+
+    res = my_wf()
+    with open(res, "r") as fh:
+        assert fh.read() == "Hello World\n"
 
 
 def test_wf1_df():
@@ -605,6 +576,3 @@ def test_wf1_df():
         data={"col1": [20, 2, 5, 10], "col2": [20, 4, 5, 10]}
     ).reset_index(drop=True)
     assert result_df.all().all()
-
-
-# TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!

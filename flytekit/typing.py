@@ -1,6 +1,8 @@
+from __future__ import annotations
+
+import mimetypes
 import os
 import typing
-from enum import Enum
 
 from flytekit import logger
 
@@ -33,7 +35,6 @@ There are a few possible types on the Python side that can be specified:
   * os.PathLike
   This is just a path on the filesystem accessible from the Python process. This is a native Python abstract class.
 
-    # NB: This is just normal Python, will not work in Flyte! Read below for more information.
     def path_task() -> os.PathLike:
         return os.path.abspath('/tmp/xyz.txt')
 
@@ -62,30 +63,36 @@ There are a few possible types on the Python side that can be specified:
 """
 
 
-class FlyteFileFormats(Enum):
-    """
-    When users are subclassing the FlyteFilePath type to create their own formats, they should not use these strings
-    as these have special meaning. Also please use lower case.
-    """
-
-    BASE_FORMAT = ""
-    TEXT_IO = "TextIO"
-    BINARY_IO = "BinaryIO"
-    CSV = "csv"
-
-
 def noop():
     ...
 
 
 class FlyteFilePath(os.PathLike):
     @classmethod
-    def format(cls) -> str:
-        """
-        When subclassing this, please make sure you do not use the same string as any of the ones already declared
-        in the FlyteFileFormats enum.
-        """
-        return FlyteFileFormats.BASE_FORMAT.value
+    def extension(cls) -> str:
+        return ""
+
+    def __class_getitem__(cls, item: str):
+        # TODO: Better checking
+        if type(item) != str:
+            raise Exception("format must be a string")
+        if item == "":
+            return cls
+        if not item.startswith("."):
+            item = "." + item
+        # TODO: I dunno if we want this
+        if item not in mimetypes.types_map and f".{item}" not in mimetypes.types_map:
+            raise Exception(f"{item} not a valid extension according to mimetypes.")
+
+        class _SpecificFormatClass(FlyteFilePath):
+            # Get the type engine to see this as kind of a generic
+            __origin__ = FlyteFilePath
+
+            @classmethod
+            def extension(cls) -> str:
+                return item
+
+        return _SpecificFormatClass
 
     def __init__(self, path: str, downloader: typing.Callable = noop, remote_path=None):
         """
@@ -107,9 +114,11 @@ class FlyteFilePath(os.PathLike):
         return self._abspath
 
     def __eq__(self, other):
-        if self.format() != other.format():
-            return False
-        return self._abspath == other._abspath and self._remote_path == other._remote_path
+        return (
+            self._abspath == other._abspath
+            and self._remote_path == other._remote_path
+            and self.extension() == other.extension()
+        )
 
     @property
     def downloaded(self) -> bool:
@@ -124,9 +133,3 @@ class FlyteFilePath(os.PathLike):
 
     def __str__(self):
         return self._abspath
-
-
-class FlyteCSVFilePath(FlyteFilePath):
-    @classmethod
-    def format(cls) -> str:
-        return FlyteFileFormats.CSV.value
