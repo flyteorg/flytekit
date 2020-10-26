@@ -1,7 +1,7 @@
 import datetime
 import inspect
 import typing
-from typing import Callable, Dict, List, Optional, Tuple, Union, Any
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import flytekit.annotated.promise
 import flytekit.annotated.type_engine
@@ -28,9 +28,12 @@ from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
 
 
-def _workflow_fn_outputs_to_promise(ctx: FlyteContext, native_outputs: typing.OrderedDict[str, type],
-                                    typed_outputs: Dict[str, _interface_models.Variable],
-                                    outputs: Union[Any, Tuple[Any]]) -> List[Promise]:
+def _workflow_fn_outputs_to_promise(
+    ctx: FlyteContext,
+    native_outputs: typing.OrderedDict[str, type],
+    typed_outputs: Dict[str, _interface_models.Variable],
+    outputs: Union[Any, Tuple[Any]],
+) -> List[Promise]:
     if len(native_outputs) == 0:
         if outputs is not None:
             raise AssertionError("something returned from wf but shouldn't have outputs")
@@ -40,7 +43,8 @@ def _workflow_fn_outputs_to_promise(ctx: FlyteContext, native_outputs: typing.Or
         if isinstance(outputs, tuple):
             if len(outputs) != 1:
                 raise AssertionError(
-                    f"The Workflow specification indicates only one return value, received {len(outputs)}")
+                    f"The Workflow specification indicates only one return value, received {len(outputs)}"
+                )
         else:
             outputs = (outputs,)
 
@@ -48,7 +52,8 @@ def _workflow_fn_outputs_to_promise(ctx: FlyteContext, native_outputs: typing.Or
         if not isinstance(outputs, tuple) or len(native_outputs) != len(outputs):
             # Length check, clean up exception
             raise AssertionError(
-                f"The workflow specification indicates {len(native_outputs)} return vals, but received {len(outputs)}")
+                f"The workflow specification indicates {len(native_outputs)} return vals, but received {len(outputs)}"
+            )
 
     # This recasts the Promises provided by the outputs of the workflow's tasks into the correct output names
     # of the workflow itself
@@ -136,7 +141,8 @@ class Workflow(object):
         if len(output_names) == 1:
             if isinstance(workflow_outputs, tuple) and len(workflow_outputs) != 1:
                 raise AssertionError(
-                    f"The Workflow specification indicates only one return value, received {len(workflow_outputs)}")
+                    f"The Workflow specification indicates only one return value, received {len(workflow_outputs)}"
+                )
             t = self._native_interface.outputs[output_names[0]]
             b = flytekit.annotated.promise.binding_from_python_std(
                 ctx, output_names[0], self.interface.outputs[output_names[0]].type, workflow_outputs, t,
@@ -144,8 +150,7 @@ class Workflow(object):
             bindings.append(b)
         elif len(output_names) > 1:
             if not isinstance(workflow_outputs, tuple):
-                raise AssertionError(
-                    f"The Workflow specification indicates multiple return values, received only one")
+                raise AssertionError("The Workflow specification indicates multiple return values, received only one")
             if len(output_names) != len(workflow_outputs):
                 raise Exception(f"Length mismatch {len(output_names)} vs {len(workflow_outputs)}")
             for i, out in enumerate(output_names):
@@ -187,8 +192,9 @@ class Workflow(object):
         #   other things as well? What if someone just returns 5? Should we disallow this?
         function_outputs = self._workflow_function(**kwargs)
 
-        promises = _workflow_fn_outputs_to_promise(ctx, self._native_interface.outputs, self.interface.outputs,
-                                                   function_outputs)
+        promises = _workflow_fn_outputs_to_promise(
+            ctx, self._native_interface.outputs, self.interface.outputs, function_outputs
+        )
         return create_task_output(promises)
 
     def __call__(self, *args, **kwargs):
@@ -202,7 +208,7 @@ class Workflow(object):
             return self._create_and_link_node(ctx, **kwargs)
 
         elif (
-                ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
             # We are already in a local execution, just continue the execution context
             return self._local_execute(ctx, **kwargs)
@@ -226,9 +232,9 @@ class Workflow(object):
 
             expected_outputs = len(self._native_interface.outputs)
             if (
-                    (expected_outputs == 0 and result is None)
-                    or (expected_outputs > 1 and len(result) == expected_outputs)
-                    or (expected_outputs == 1 and result is not None)
+                (expected_outputs == 0 and result is None)
+                or (expected_outputs > 1 and len(result) == expected_outputs)
+                or (expected_outputs == 1 and result is not None)
             ):
                 if result is None:
                     return None

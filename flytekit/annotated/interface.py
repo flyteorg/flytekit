@@ -14,8 +14,11 @@ class Interface(object):
     A Python native interface object, like inspect.signature but simpler.
     """
 
-    def __init__(self, inputs: typing.OrderedDict[str, Union[Type, Tuple[Type, Any]]] = None,
-                 outputs: typing.OrderedDict[str, Type] = None):
+    def __init__(
+        self,
+        inputs: typing.OrderedDict[str, Union[Type, Tuple[Type, Any]]] = None,
+        outputs: typing.OrderedDict[str, Type] = None,
+    ):
         """
         :param outputs: Output variables and their types as a dictionary
         :param inputs: the variable and its type only
@@ -248,8 +251,8 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
 
     # Options 7 and 8.
     if hasattr(return_annotation, "_name") and (
-            (return_annotation._name == "List" and return_annotation.__origin__ == list)
-            or (return_annotation._name == "Dict" and return_annotation.__origin__ == dict)
+        (return_annotation._name == "List" and return_annotation.__origin__ == list)
+        or (return_annotation._name == "Dict" and return_annotation.__origin__ == dict)
     ):
         return {default_output_name(): return_annotation}
 

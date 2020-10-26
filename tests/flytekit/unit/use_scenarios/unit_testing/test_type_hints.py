@@ -229,7 +229,7 @@ def test_wf1_with_list_of_inputs():
     @workflow
     def my_wf2(a: int, b: str) -> int:
         x, y = t1(a=a)
-        d = t2(a=[b, y])
+        t2(a=[b, y])
         return x
 
     x = my_wf2(a=5, b="hello")
@@ -238,18 +238,20 @@ def test_wf1_with_list_of_inputs():
 
 def test_wf_output_mismatch():
     with pytest.raises(AssertionError):
+
         @workflow
         def my_wf(a: int, b: str) -> (int, str):
             return a
 
     with pytest.raises(AssertionError):
+
         @workflow
         def my_wf2(a: int, b: str) -> int:
             return a, b
 
     @workflow
     def my_wf3(a: int, b: str) -> int:
-        return a,
+        return (a,)
 
     my_wf3(a=10, b="hello")
 
