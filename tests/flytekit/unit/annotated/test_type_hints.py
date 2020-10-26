@@ -1,19 +1,19 @@
 import datetime
-import inspect
 import os
 import typing
 
+import pandas
 import pytest
 
 import flytekit.annotated.task
 import flytekit.annotated.workflow
+from flytekit import typing as flytekit_typing
 from flytekit.annotated import context_manager, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
-from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import AbstractSQLPythonTask, dynamic, maptask, metadata, task
-from flytekit.annotated.type_engine import TypeEngine
+from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
@@ -69,58 +69,6 @@ def test_single_output():
         assert len(nodes) == 1
         assert outputs.is_ready is False
         assert outputs.ref.sdk_node is nodes[0]
-
-
-def test_named_tuples():
-    nt1 = typing.NamedTuple("NT1", x_str=str, y_int=int)
-
-    def x(a: int, b: str) -> typing.NamedTuple("NT1", x_str=str, y_int=int):
-        return ("hello world", 5)
-
-    def y(a: int, b: str) -> nt1:
-        return nt1("hello world", 5)
-
-    result = transform_variable_map(extract_return_annotation(inspect.signature(x).return_annotation))
-    assert result["x_str"].type.simple == 3
-    assert result["y_int"].type.simple == 1
-
-    result = transform_variable_map(extract_return_annotation(inspect.signature(y).return_annotation))
-    assert result["x_str"].type.simple == 3
-    assert result["y_int"].type.simple == 1
-
-
-def test_unnamed_typing_tuple():
-    def z(a: int, b: str) -> typing.Tuple[int, str]:
-        return 5, "hello world"
-
-    result = transform_variable_map(extract_return_annotation(inspect.signature(z).return_annotation))
-    assert result["out_0"].type.simple == 1
-    assert result["out_1"].type.simple == 3
-
-
-def test_regular_tuple():
-    def q(a: int, b: str) -> (int, str):
-        return 5, "hello world"
-
-    result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
-    assert result["out_0"].type.simple == 1
-    assert result["out_1"].type.simple == 3
-
-
-def test_single_output_new_decorator():
-    def q(a: int, b: str) -> int:
-        return a + len(b)
-
-    result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
-    assert result["out_0"].type.simple == 1
-
-
-def test_sig_files():
-    def q() -> os.PathLike:
-        ...
-
-    result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
-    assert isinstance(result["out_0"].type.blob, _core_types.BlobType)
 
 
 def test_engine_file_output():
@@ -224,6 +172,35 @@ def test_wf1_with_list_of_inputs():
 
     x = my_wf(a=5, b="hello")
     assert x == (7, "hello world")
+
+    @workflow
+    def my_wf2(a: int, b: str) -> int:
+        x, y = t1(a=a)
+        t2(a=[b, y])
+        return x
+
+    x = my_wf2(a=5, b="hello")
+    assert x == 7
+
+
+def test_wf_output_mismatch():
+    with pytest.raises(AssertionError):
+
+        @workflow
+        def my_wf(a: int, b: str) -> (int, str):
+            return a
+
+    with pytest.raises(AssertionError):
+
+        @workflow
+        def my_wf2(a: int, b: str) -> int:
+            return a, b
+
+    @workflow
+    def my_wf3(a: int, b: str) -> int:
+        return (a,)
+
+    my_wf3(a=10, b="hello")
 
 
 def test_promise_return():
@@ -361,6 +338,33 @@ def test_wf1_compile_time_constant_vars():
 
     x = my_wf(a=5, b="hello ")
     assert x == (7, "hello This is my way")
+
+
+def test_wf1_with_constant_return():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a)
+        t2(a="This is my way", b=b)
+        return x, "A constant output"
+
+    x = my_wf(a=5, b="hello ")
+    assert x == (7, "A constant output")
+
+    @workflow
+    def my_wf2(a: int, b: str) -> int:
+        t1(a=a)
+        t2(a="This is my way", b=b)
+        return 10
+
+    assert my_wf2(a=5, b="hello ") == 10
 
 
 def test_wf1_with_dynamic():
@@ -526,7 +530,6 @@ def test_wf1_branches_failing():
     @workflow
     def my_wf(a: int, b: str) -> (int, str):
         x, y = t1(a=a)
-        print(x)
         d = conditional().if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("All Branches failed")
         return x, d
 
@@ -534,4 +537,48 @@ def test_wf1_branches_failing():
         my_wf(a=1, b="hello ")
 
 
-# TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!
+def test_cant_use_normal_tuples():
+    with pytest.raises(RestrictedTypeError):
+
+        @task
+        def t1(a: str) -> tuple:
+            return (a, 3)
+
+
+def test_file_type_in_workflow_with_bad_format():
+    @task
+    def t1() -> flytekit_typing.FlyteFilePath["txt"]:
+        with open("/tmp/flytekit_test", "w") as fh:
+            fh.write("Hello World\n")
+        return flytekit_typing.FlyteFilePath["txt"]("/tmp/flytekit_test")
+
+    @workflow
+    def my_wf() -> flytekit_typing.FlyteFilePath["txt"]:
+        f = t1()
+        return f
+
+    res = my_wf()
+    with open(res, "r") as fh:
+        assert fh.read() == "Hello World\n"
+
+
+def test_wf1_df():
+    @task
+    def t1(a: int) -> pandas.DataFrame:
+        return pandas.DataFrame(data={"col1": [a, 2], "col2": [a, 4]})
+
+    @task
+    def t2(df: pandas.DataFrame) -> pandas.DataFrame:
+        return df.append(pandas.DataFrame(data={"col1": [5, 10], "col2": [5, 10]}))
+
+    @workflow
+    def my_wf(a: int) -> pandas.DataFrame:
+        df = t1(a=a)
+        return t2(df=df)
+
+    x = my_wf(a=20)
+    assert isinstance(x, pandas.DataFrame)
+    result_df = x.reset_index(drop=True) == pandas.DataFrame(
+        data={"col1": [20, 2, 5, 10], "col2": [20, 4, 5, 10]}
+    ).reset_index(drop=True)
+    assert result_df.all().all()

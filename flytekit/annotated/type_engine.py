@@ -4,6 +4,7 @@ import mimetypes
 import os
 import typing
 from abc import ABC, abstractmethod
+from typing import Type
 
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -11,11 +12,22 @@ from google.protobuf import struct_pb2 as _struct
 from flytekit import typing as flyte_typing
 from flytekit.annotated.context_manager import FlyteContext
 from flytekit.common.types import primitives as _primitives
+from flytekit.configuration import sdk
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.literals import (
+    Blob,
+    BlobMetadata,
+    Literal,
+    LiteralCollection,
+    LiteralMap,
+    Primitive,
+    Scalar,
+    Schema,
+)
+from flytekit.models.types import LiteralType, SchemaType, SimpleType
+from flytekit.plugins import pandas
 
 T = typing.TypeVar("T")
 
@@ -364,30 +376,154 @@ class FlyteFilePathTransformer(TypeTransformer):
     def __init__(self):
         super().__init__(name="FlyteFilePath", t=flyte_typing.FlyteFilePath)
 
-    def _blob_type(self) -> _core_types.BlobType:
-        return _core_types.BlobType(
-            format=mimetypes.types_map[".bin"], dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
-        )
+    @staticmethod
+    def get_format(t: Type[flyte_typing.FlyteFilePath]) -> str:
+        return t.extension()
+
+    def _blob_type(self, format: str) -> _core_types.BlobType:
+        return _core_types.BlobType(format=format, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
 
     def get_literal_type(self, t: type) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(),)
+        return _type_models.LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
 
     def to_literal(
-        self, ctx: FlyteContext, python_val: flyte_typing.FlyteFilePath, python_type: type, expected: LiteralType
+        self,
+        ctx: FlyteContext,
+        python_val: flyte_typing.FlyteFilePath,
+        python_type: Type[flyte_typing.FlyteFilePath],
+        expected: LiteralType,
     ) -> Literal:
         remote_path = python_val.remote_path if python_val.remote_path else ctx.file_access.get_random_remote_path()
         ctx.file_access.put_data(f"{python_val}", remote_path, is_multipart=False)
-        meta = BlobMetadata(type=self._blob_type())
+        meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: type) -> typing.Any:
+    def to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[flyte_typing.FlyteFilePath]
+    ) -> typing.Any:
         local_path = ctx.file_access.get_random_local_path()
 
         # TODO improve this to accept the blob uri and local path as an argument?
         def _downloader():
             return ctx.file_access.get_data(lv.scalar.blob.uri, local_path, is_multipart=False)
 
-        return flyte_typing.FlyteFilePath(local_path, _downloader(), lv.scalar.blob.uri)
+        expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
+        return flyte_typing.FlyteFilePath[expected_format](local_path, _downloader, lv.scalar.blob.uri)
+
+
+class ParquetIO(object):
+    PARQUET_ENGINE = "pyarrow"
+
+    def _read(self, chunk: os.PathLike, columns: typing.List[str], **kwargs):
+        return pandas.read_parquet(chunk, columns=columns, engine=self.PARQUET_ENGINE, **kwargs)
+
+    def read(self, files: typing.List[os.PathLike], columns=None, **kwargs) -> pandas.DataFrame:
+        frames = [self._read(chunk=f, columns=columns, **kwargs) for f in files if os.path.getsize(f) > 0]
+        if len(frames) == 1:
+            return frames[0]
+        elif len(frames) > 1:
+            return pandas.concat(frames, copy=True)
+        return pandas.Dataframe()
+
+    def write(
+        self,
+        df: pandas.DataFrame,
+        to_file: os.PathLike,
+        coerce_timestamps: str = "us",
+        allow_truncated_timestamps: bool = False,
+        **kwargs,
+    ):
+        """
+        Writes data frame as a chunk to the local directory owned by the Schema object.  Will later be uploaded to s3.
+        :param df: data frame to write as parquet
+        :param to_file: Sink file to write the dataframe to
+        :param coerce_timestamps: format to store timestamp in parquet. 'us', 'ms', 's' are allowed values.
+            Note: if your timestamps will lose data due to the coercion, your write will fail!  Nanoseconds are
+            problematic in the Parquet format and will not work. See allow_truncated_timestamps.
+        :param allow_truncated_timestamps: default False. Allow truncation when coercing timestamps to a coarser
+            resolution.
+        """
+        # TODO @ketan validate and remove this comment, as python 3 all strings are unicode
+        # Convert all columns to unicode as pyarrow's parquet reader can not handle mixed strings and unicode.
+        # Since columns from Hive are returned as unicode, if a user wants to add a column to a dataframe returned from
+        # Hive, then output the new data, the user would have to provide a unicode column name which is unnatural.
+        df.to_parquet(
+            to_file,
+            coerce_timestamps=coerce_timestamps,
+            allow_truncated_timestamps=allow_truncated_timestamps,
+            **kwargs,
+        )
+
+
+class FastParquetIO(ParquetIO):
+    PARQUET_ENGINE = "fastparquet"
+
+    def _read(self, chunk: os.PathLike, columns: typing.List[str], **kwargs):
+        from fastparquet import ParquetFile as _ParquetFile
+        from fastparquet import thrift_structures as _ts
+
+        # TODO Follow up to figure out if this is not needed anymore
+        # https://github.com/dask/fastparquet/issues/414#issuecomment-478983811
+        df = pandas.read_parquet(chunk, columns=columns, engine=self.PARQUET_ENGINE, index=False)
+        df_column_types = df.dtypes
+        pf = _ParquetFile(chunk)
+        schema_column_dtypes = {l.name: l.type for l in list(pf.schema.schema_elements)}
+
+        for idx in df_column_types[df_column_types == "float16"].index.tolist():
+            # A hacky way to get the string representations of the column types of a parquet schema
+            # Reference:
+            # https://github.com/dask/fastparquet/blob/f4ecc67f50e7bf98b2d0099c9589c615ea4b06aa/fastparquet/schema.py
+            if _ts.parquet_thrift.Type._VALUES_TO_NAMES[schema_column_dtypes[idx]] == "BOOLEAN":
+                df[idx] = df[idx].astype("object")
+                df[idx].replace({0: False, 1: True, pandas.np.nan: None}, inplace=True)
+        return df
+
+
+_PARQUETIO_ENGINES: typing.Dict[str, ParquetIO] = {
+    ParquetIO.PARQUET_ENGINE: ParquetIO(),
+    FastParquetIO.PARQUET_ENGINE: FastParquetIO,
+}
+
+
+def generate_ordered_files(directory: os.PathLike, n: int) -> typing.Generator[os.PathLike, None, None]:
+    for i in range(n):
+        yield os.path.join(directory, f"{i:05}")
+
+
+class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
+    """
+    Transforms a pd.DataFrame to Schema without column types.
+    """
+
+    def __init__(self, parquet_engine: ParquetIO):
+        super().__init__("PandasDataFrame<->GenericSchema", pandas.DataFrame)
+        self._parquet_engine = parquet_engine
+
+    @staticmethod
+    def _get_schema_type() -> SchemaType:
+        return SchemaType(columns=[])
+
+    def get_literal_type(self, t: type) -> LiteralType:
+        return LiteralType(schema=self._get_schema_type())
+
+    def to_literal(
+        self, ctx: FlyteContext, python_val: pandas.DataFrame, python_type: type, expected: LiteralType
+    ) -> Literal:
+        remote_path = ctx.file_access.get_random_remote_directory()
+        local_dir = ctx.file_access.get_random_local_directory()
+        f = list(generate_ordered_files(local_dir, 1))[0]
+        self._parquet_engine.write(python_val, f)
+        ctx.file_access.put_data(local_dir, remote_path, is_multipart=True)
+        return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type())))
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: type) -> pandas.DataFrame:
+        if not (lv and lv.scalar and lv.scalar.schema):
+            return pandas.DataFrame()
+        local_dir = ctx.file_access.get_random_local_directory()
+        ctx.file_access.download_directory(lv.scalar.schema.uri, local_dir)
+        files = os.listdir(local_dir)
+        files = [os.path.join(local_dir, f) for f in files]
+        return self._parquet_engine.read(files)
 
 
 def _register_default_type_transformers():
@@ -462,6 +598,9 @@ def _register_default_type_transformers():
     TypeEngine.register(TextIOTransformer())
     TypeEngine.register(PathLikeTransformer())
     TypeEngine.register(BinaryIOTransformer())
+
+    parquet_io_engine = _PARQUETIO_ENGINES[sdk.PARQUET_ENGINE.get()]
+    TypeEngine.register(PandasDataFrameTransformer(parquet_io_engine))
 
     # inner type is. Also unsupported are typing's Tuples. Even though you can look inside them, Flyte's type system
     # doesn't support these currently.

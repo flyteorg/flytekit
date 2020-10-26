@@ -1,6 +1,7 @@
 import datetime
 import inspect
-from typing import Callable, Dict, List, Optional, Tuple, Union
+import typing
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import flytekit.annotated.promise
 import flytekit.annotated.type_engine
@@ -25,6 +26,46 @@ from flytekit.models import literals as _literal_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
+
+
+def _workflow_fn_outputs_to_promise(
+    ctx: FlyteContext,
+    native_outputs: typing.Dict[str, type],  # Actually an orderedDict
+    typed_outputs: Dict[str, _interface_models.Variable],
+    outputs: Union[Any, Tuple[Any]],
+) -> List[Promise]:
+    if len(native_outputs) == 0:
+        if outputs is not None:
+            raise AssertionError("something returned from wf but shouldn't have outputs")
+        return None
+
+    if len(native_outputs) == 1:
+        if isinstance(outputs, tuple):
+            if len(outputs) != 1:
+                raise AssertionError(
+                    f"The Workflow specification indicates only one return value, received {len(outputs)}"
+                )
+        else:
+            outputs = (outputs,)
+
+    if len(native_outputs) > 1:
+        if not isinstance(outputs, tuple) or len(native_outputs) != len(outputs):
+            # Length check, clean up exception
+            raise AssertionError(
+                f"The workflow specification indicates {len(native_outputs)} return vals, but received {len(outputs)}"
+            )
+
+    # This recasts the Promises provided by the outputs of the workflow's tasks into the correct output names
+    # of the workflow itself
+    return_vals = []
+    for (k, t), v in zip(native_outputs.items(), outputs):
+        if isinstance(v, Promise):
+            return_vals.append(v.with_var(k))
+        else:
+            # Found a return type that is not a promise, so we need to transform it
+            var = typed_outputs[k]
+            return_vals.append(Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, var.type)))
+    return return_vals
 
 
 class Workflow(object):
@@ -103,12 +144,18 @@ class Workflow(object):
         # iterate through the list here, instead we should let the binding creation unwrap it and make a binding
         # collection/map out of it.
         if len(output_names) == 1:
+            if isinstance(workflow_outputs, tuple) and len(workflow_outputs) != 1:
+                raise AssertionError(
+                    f"The Workflow specification indicates only one return value, received {len(workflow_outputs)}"
+                )
             t = self._native_interface.outputs[output_names[0]]
             b = flytekit.annotated.promise.binding_from_python_std(
                 ctx, output_names[0], self.interface.outputs[output_names[0]].type, workflow_outputs, t,
             )
             bindings.append(b)
         elif len(output_names) > 1:
+            if not isinstance(workflow_outputs, tuple):
+                raise AssertionError("The Workflow specification indicates multiple return values, received only one")
             if len(output_names) != len(workflow_outputs):
                 raise Exception(f"Length mismatch {len(output_names)} vs {len(workflow_outputs)}")
             for i, out in enumerate(output_names):
@@ -150,28 +197,14 @@ class Workflow(object):
         #   other things as well? What if someone just returns 5? Should we disallow this?
         function_outputs = self._workflow_function(**kwargs)
 
-        output_names = list(self._interface.outputs.keys())
-        if len(output_names) == 0:
-            if function_outputs is None:
-                return None
-            else:
-                raise Exception("something returned from wf but shouldn't have outputs")
-
-        if len(output_names) != len(function_outputs):
-            # Length check, clean up exception
-            raise Exception(f"Length difference {len(output_names)} {len(function_outputs)}")
-
-        # This recasts the Promises provided by the outputs of the workflow's tasks into the correct output names
-        # of the workflow itself
-        vals = [
-            Promise(var=output_names[idx], val=function_outputs[idx].val)
-            for idx, promise in enumerate(function_outputs)
-        ]
-        return create_task_output(vals)
+        promises = _workflow_fn_outputs_to_promise(
+            ctx, self._native_interface.outputs, self.interface.outputs, function_outputs
+        )
+        return create_task_output(promises)
 
     def __call__(self, *args, **kwargs):
         if len(args) > 0:
-            raise Exception("not allowed")
+            raise AssertionError("Only Keyword Arguments are supported for Workflow executions")
 
         ctx = FlyteContext.current_context()
 
@@ -211,7 +244,7 @@ class Workflow(object):
                 if result is None:
                     return None
                 elif isinstance(result, Promise):
-                    k, v = self._native_interface.outputs.items()[0]
+                    v = [v for k, v in self._native_interface.outputs.items()][0]
                     return TypeEngine.to_python_value(ctx, result.val, v)
                 else:
                     for prom in result:

@@ -258,6 +258,11 @@ class Promise(object):
             self._promise_ready = False
             self._val = None
 
+    def with_var(self, new_var: str) -> "Promise":
+        if self.is_ready:
+            return Promise(var=new_var, val=self.val)
+        return Promise(var=new_var, val=self.ref)
+
     @property
     def is_ready(self) -> bool:
         """
