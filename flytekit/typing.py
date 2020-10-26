@@ -92,7 +92,6 @@ class FlyteFilePath(os.PathLike):
             def extension(cls) -> str:
                 return item
 
-
         return _SpecificFormatClass
 
     def __init__(self, path: str, downloader: typing.Callable = noop, remote_path=None):
