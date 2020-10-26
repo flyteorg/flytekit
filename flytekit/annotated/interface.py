@@ -14,7 +14,9 @@ class Interface(object):
     A Python native interface object, like inspect.signature but simpler.
     """
 
-    def __init__(self, inputs: Dict[str, Union[Type, Tuple[Type, Any]]] = None, outputs: Dict[str, Type] = None):
+    def __init__(
+        self, inputs: typing.Dict[str, Union[Type, Tuple[Type, Any]]] = None, outputs: typing.Dict[str, Type] = None,
+    ):
         """
         :param outputs: Output variables and their types as a dictionary
         :param inputs: the variable and its type only
@@ -29,18 +31,18 @@ class Interface(object):
         self._outputs = outputs
 
     @property
-    def inputs(self) -> Dict[str, Type]:
+    def inputs(self) -> typing.Dict[str, Type]:
         r = {}
         for k, v in self._inputs.items():
             r[k] = v[0]
         return r
 
     @property
-    def inputs_with_defaults(self) -> Dict[str, Tuple[Type, Any]]:
+    def inputs_with_defaults(self) -> typing.Dict[str, Tuple[Type, Any]]:
         return self._inputs
 
     @property
-    def outputs(self):
+    def outputs(self) -> typing.Dict[str, type]:
         return self._outputs
 
     def remove_inputs(self, vars: List[str]) -> "Interface":

@@ -2,6 +2,7 @@ import datetime
 import os
 import typing
 
+import pandas
 import pytest
 
 import flytekit.annotated.task
@@ -172,6 +173,35 @@ def test_wf1_with_list_of_inputs():
     x = my_wf(a=5, b="hello")
     assert x == (7, "hello world")
 
+    @workflow
+    def my_wf2(a: int, b: str) -> int:
+        x, y = t1(a=a)
+        t2(a=[b, y])
+        return x
+
+    x = my_wf2(a=5, b="hello")
+    assert x == 7
+
+
+def test_wf_output_mismatch():
+    with pytest.raises(AssertionError):
+
+        @workflow
+        def my_wf(a: int, b: str) -> (int, str):
+            return a
+
+    with pytest.raises(AssertionError):
+
+        @workflow
+        def my_wf2(a: int, b: str) -> int:
+            return a, b
+
+    @workflow
+    def my_wf3(a: int, b: str) -> int:
+        return (a,)
+
+    my_wf3(a=10, b="hello")
+
 
 def test_promise_return():
     """
@@ -308,6 +338,33 @@ def test_wf1_compile_time_constant_vars():
 
     x = my_wf(a=5, b="hello ")
     assert x == (7, "hello This is my way")
+
+
+def test_wf1_with_constant_return():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a)
+        t2(a="This is my way", b=b)
+        return x, "A constant output"
+
+    x = my_wf(a=5, b="hello ")
+    assert x == (7, "A constant output")
+
+    @workflow
+    def my_wf2(a: int, b: str) -> int:
+        t1(a=a)
+        t2(a="This is my way", b=b)
+        return 10
+
+    assert my_wf2(a=5, b="hello ") == 10
 
 
 def test_wf1_with_dynamic():
@@ -497,3 +554,25 @@ def test_file_type_in_workflow_with_bad_format():
     res = my_wf()
     with open(res, "r") as fh:
         assert fh.read() == "Hello World\n"
+
+
+def test_wf1_df():
+    @task
+    def t1(a: int) -> pandas.DataFrame:
+        return pandas.DataFrame(data={"col1": [a, 2], "col2": [a, 4]})
+
+    @task
+    def t2(df: pandas.DataFrame) -> pandas.DataFrame:
+        return df.append(pandas.DataFrame(data={"col1": [5, 10], "col2": [5, 10]}))
+
+    @workflow
+    def my_wf(a: int) -> pandas.DataFrame:
+        df = t1(a=a)
+        return t2(df=df)
+
+    x = my_wf(a=20)
+    assert isinstance(x, pandas.DataFrame)
+    result_df = x.reset_index(drop=True) == pandas.DataFrame(
+        data={"col1": [20, 2, 5, 10], "col2": [20, 4, 5, 10]}
+    ).reset_index(drop=True)
+    assert result_df.all().all()
