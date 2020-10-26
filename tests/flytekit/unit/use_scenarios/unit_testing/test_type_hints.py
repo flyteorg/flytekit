@@ -13,7 +13,7 @@ from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import AbstractSQLPythonTask, dynamic, maptask, metadata, task
+from flytekit.annotated.task import SQLTask, dynamic, maptask, metadata, task
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
@@ -311,7 +311,7 @@ def test_wf1_with_subwf():
 
 
 def test_wf1_with_sql():
-    sql = AbstractSQLPythonTask(
+    sql = SQLTask(
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
         inputs={"ds": datetime.datetime},
@@ -473,7 +473,7 @@ def test_list_output():
 
 def test_comparison_refs():
     def dummy_node(id) -> SdkNode:
-        n = SdkNode(id, [], None, None, sdk_task=AbstractSQLPythonTask("x", "x", [], metadata()))
+        n = SdkNode(id, [], None, None, sdk_task=SQLTask("x", "x", [], metadata()))
         n._id = id
         return n
 
