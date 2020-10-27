@@ -347,7 +347,7 @@ class ContainerTask(PythonTask):
         metadata: _task_model.TaskMetadata,
         inputs: Dict[str, Type],
         command: List[str],
-        arguments: List[str],
+        arguments: List[str] = None,
         outputs: Dict[str, Type] = None,
         input_data_dir: str = None,
         output_data_dir: str = None,
