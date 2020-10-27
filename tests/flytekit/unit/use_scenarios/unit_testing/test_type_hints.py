@@ -1,3 +1,4 @@
+import collections
 import datetime
 import inspect
 import os
@@ -11,10 +12,10 @@ import flytekit.annotated.workflow
 from flytekit.annotated import context_manager, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
-from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
+from flytekit.annotated.interface import Interface, extract_return_annotation, transform_variable_map
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import SQLTask, dynamic, maptask, metadata, task
-from flytekit.annotated.type_engine import TypeEngine
+from flytekit.annotated.task import ContainerTask, SQLTask, dynamic, maptask, metadata, task
+from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
@@ -607,4 +608,32 @@ def test_wf1_df():
     assert result_df.all().all()
 
 
-# TODO Add an example that shows how tuple fails and it should fail cleanly. As tuple types are not supported!
+def test_wf_container_task():
+    @task
+    def t1(a: int) -> (int, str):
+        return a + 2, str(a) + "-HELLO"
+
+    t2 = ContainerTask(
+        "raw",
+        image="alpine",
+        interface=Interface(inputs=collections.OrderedDict({"a": int, "b": str}),),
+        input_data_dir="/tmp",
+        output_data_dir="/tmp",
+        command=["cat"],
+        arguments=["/tmp/a"],
+        metadata=metadata(),
+    )
+
+    def wf(a: int):
+        x, y = t1(a=a)
+        t2(a=x, b=y)
+
+    wf(a=10)
+
+
+def test_wf_tuple_fails():
+    with pytest.raises(RestrictedTypeError):
+
+        @task
+        def t1(a: tuple) -> (int, str):
+            return a[0] + 2, str(a) + "-HELLO"

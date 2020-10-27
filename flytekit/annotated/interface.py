@@ -176,8 +176,9 @@ def transform_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interfac
     Flyte Variable object with that type.
     """
     res = OrderedDict()
-    for k, v in variable_map.items():
-        res[k] = transform_type(v, k)
+    if variable_map:
+        for k, v in variable_map.items():
+            res[k] = transform_type(v, k)
 
     return res
 
