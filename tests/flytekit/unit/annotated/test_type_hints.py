@@ -601,6 +601,38 @@ def test_wf_container_task():
     wf(a=10)
 
 
+def test_wf_container_task_multiple():
+    square = ContainerTask(
+        name="square",
+        metadata=metadata(),
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
+        inputs=kwtypes(val=int),
+        outputs=kwtypes(out=int),
+        image="alpine",
+        command=["sh", "-c", "echo $(( {{.Inputs.val}} * {{.Inputs.val}} )) | tee /var/outputs/out"],
+        arguments=None,
+    )
+
+    sum = ContainerTask(
+        name="sum",
+        metadata=metadata(),
+        input_data_dir="/var/flyte/inputs",
+        output_data_dir="/var/flyte/outputs",
+        inputs=kwtypes(x=int, y=int),
+        outputs=kwtypes(out=int),
+        image="alpine",
+        command=["sh", "-c", "echo $(( {{.Inputs.x}} + {{.Inputs.y}} )) | tee /var/flyte/outputs/out"],
+        arguments=None,
+    )
+
+    @workflow
+    def raw_container_wf(val1: int, val2: int) -> int:
+        return sum(x=square(val=val1), y=square(val=val2))
+
+    raw_container_wf(val1=10, val2=10)
+
+
 def test_wf_tuple_fails():
     with pytest.raises(RestrictedTypeError):
 
