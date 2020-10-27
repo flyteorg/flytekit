@@ -352,7 +352,7 @@ class ContainerTask(PythonTask):
         input_data_dir: str = None,
         output_data_dir: str = None,
         metadata_format: MetadataFormat = MetadataFormat.JSON,
-        io_strategy: _task_model.IOStrategy = None,
+        io_strategy: IOStrategy = None,
         *args,
         **kwargs,
     ):
@@ -385,9 +385,9 @@ class ContainerTask(PythonTask):
             data_loading_config=_task_model.DataLoadingConfig(
                 input_path=self._input_data_dir,
                 output_path=self._output_data_dir,
-                format=self._md_format,
+                format=self._md_format.value,
                 enabled=True,
-                io_strategy=self._io_strategy,
+                io_strategy=self._io_strategy.value if self._io_strategy else None,
             ),
             environment=env,
         )
