@@ -473,7 +473,6 @@ def test_wf1_branches():
     @workflow
     def my_wf(a: int, b: str) -> (int, str):
         x, y = t1(a=a)
-        print(x)
         d = conditional().if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("Unable to choose branch")
         return x, d
 
@@ -496,14 +495,12 @@ def test_wf1_branches_no_else():
             @workflow
             def my_wf(a: int, b: str) -> (int, str):
                 x, y = t1(a=a)
-                print(x)
                 d = conditional().if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y))
                 return x, d
 
             @workflow
             def my_wf2(a: int, b: str) -> (int, str):
                 x, y = t1(a=a)
-                print(x)
                 d = (
                     conditional()
                     .if_(x == 4)

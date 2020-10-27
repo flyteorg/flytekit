@@ -365,7 +365,12 @@ class ContainerTask(PythonTask):
         **kwargs,
     ):
         super().__init__(
-            task_type="raw-container", name=name, interface=Interface(inputs, outputs), metadata=metadata, *args, **kwargs,
+            task_type="raw-container",
+            name=name,
+            interface=Interface(inputs, outputs),
+            metadata=metadata,
+            *args,
+            **kwargs,
         )
         self._image = image
         self._cmd = command
