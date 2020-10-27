@@ -365,7 +365,7 @@ class ContainerTask(PythonTask):
         **kwargs,
     ):
         super().__init__(
-            task_type="container", name=name, interface=Interface(inputs, outputs), metadata=metadata, *args, **kwargs,
+            task_type="raw-container", name=name, interface=Interface(inputs, outputs), metadata=metadata, *args, **kwargs,
         )
         self._image = image
         self._cmd = command
@@ -413,7 +413,7 @@ class PythonFunctionTask(PythonTask):
         task_function: Callable,
         metadata: _task_model.TaskMetadata,
         ignore_input_vars: List[str] = None,
-        task_type="python_task",
+        task_type="python-task",
         *args,
         **kwargs,
     ):
@@ -460,7 +460,7 @@ class PythonFunctionTask(PythonTask):
 class PysparkFunctionTask(PythonFunctionTask):
     def __init__(self, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
         super(PysparkFunctionTask, self).__init__(
-            task_type="spark_task",
+            task_type="spark",
             task_function=task_function,
             metadata=metadata,
             ignore_input_vars=["spark_session", "spark_context"],
@@ -593,7 +593,7 @@ class SQLTask(PythonTask):
 
 class DynamicWorkflowTask(PythonFunctionTask):
     def __init__(self, dynamic_workflow_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
-        super().__init__(dynamic_workflow_function, metadata, task_type="dynamic_task", *args, **kwargs)
+        super().__init__(dynamic_workflow_function, metadata, task_type="dynamic-task", *args, **kwargs)
 
     def compile_into_workflow(
         self, ctx: FlyteContext, **kwargs
