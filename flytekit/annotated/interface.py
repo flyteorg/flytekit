@@ -198,7 +198,8 @@ def output_name_generator(length: int) -> Generator[str, None, None]:
 
 def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str, Type]:
     """
-    Outputs can have various signatures, and we need to handle all of them:
+    The purpose of this function is to sort out whether a function is returning one thing, or multiple things, and to
+    name the outputs accordingly, either by using our default name function, or from a typing.NamedTuple.
 
         # Option 1
         nt1 = typing.NamedTuple("NT1", x_str=str, y_int=int)
@@ -223,47 +224,34 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
         def t(a: int, b: str) -> List[int]: ...
         def t(a: int, b: str) -> Dict[str, int]: ...
 
-    TODO: We'll need to check the actual return types for in all cases as well, to make sure Flyte IDL actually
-          supports it. For instance, typing.Tuple[Optional[int]] is not something we can represent currently.
-
     Note that Options 1 and 2 are identical, just syntactic sugar. In the NamedTuple case, we'll use the names in the
     definition. In all other cases, we'll automatically generate output names, indexed starting at 0.
     """
 
-    # TODO: Clean this up and add unit tests specifically for this function - there's a lot of duplication going on.
     # Handle Option 6
     # We can think about whether we should add a default output name with type None in the future.
     if return_annotation is None or return_annotation is inspect.Signature.empty:
         return {}
 
     # This statement results in true for typing.Namedtuple, single and void return types, so this
-    # handles Options 1, 2, and 5. Even though NamedTuple for us is multi-valued, it's a single value for Python
+    # handles Options 1, 2. Even though NamedTuple for us is multi-valued, it's a single value for Python
     if isinstance(return_annotation, Type) or isinstance(return_annotation, TypeVar):
         # isinstance / issubclass does not work for Namedtuple.
         # Options 1 and 2
         if hasattr(return_annotation, "_field_types"):
             logger.debug(f"Task returns named tuple {return_annotation}")
             return return_annotation._field_types
-        # Option 5
-        logger.debug(f"Task returns a single output of type {return_annotation}")
-        return {default_output_name(): return_annotation}
 
-    # Options 7 and 8.
-    if hasattr(return_annotation, "_name") and (
-        (return_annotation._name == "List" and return_annotation.__origin__ == list)
-        or (return_annotation._name == "Dict" and return_annotation.__origin__ == dict)
-    ):
-        return {default_output_name(): return_annotation}
-
-    # Now lets handle multi-valued return annotations
     if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:
         # Handle option 3
         logger.debug(f"Task returns unnamed typing.Tuple {return_annotation}")
-        return_types = return_annotation.__args__
-    else:
-        # Handle option 4
-        logger.debug(f"Task returns unnamed native tuple {return_annotation}")
-        return_types = return_annotation
+        return OrderedDict(
+            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)
+        )
+    elif isinstance(return_annotation, tuple):
+        return OrderedDict(zip(list(output_name_generator(len(return_annotation))), return_annotation))
 
-    return_map = OrderedDict(zip(list(output_name_generator(len(return_types))), return_types))
-    return return_map
+    else:
+        # Handle all other single return types
+        logger.debug(f"Task returns unnamed native tuple {return_annotation}")
+        return {default_output_name(): return_annotation}

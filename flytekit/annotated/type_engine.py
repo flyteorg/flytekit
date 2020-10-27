@@ -4,6 +4,7 @@ import mimetypes
 import os
 import typing
 from abc import ABC, abstractmethod
+from typing import Type
 
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -375,30 +376,39 @@ class FlyteFilePathTransformer(TypeTransformer):
     def __init__(self):
         super().__init__(name="FlyteFilePath", t=flyte_typing.FlyteFilePath)
 
-    def _blob_type(self) -> _core_types.BlobType:
-        return _core_types.BlobType(
-            format=mimetypes.types_map[".bin"], dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
-        )
+    @staticmethod
+    def get_format(t: Type[flyte_typing.FlyteFilePath]) -> str:
+        return t.extension()
+
+    def _blob_type(self, format: str) -> _core_types.BlobType:
+        return _core_types.BlobType(format=format, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
 
     def get_literal_type(self, t: type) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(),)
+        return _type_models.LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
 
     def to_literal(
-        self, ctx: FlyteContext, python_val: flyte_typing.FlyteFilePath, python_type: type, expected: LiteralType
+        self,
+        ctx: FlyteContext,
+        python_val: flyte_typing.FlyteFilePath,
+        python_type: Type[flyte_typing.FlyteFilePath],
+        expected: LiteralType,
     ) -> Literal:
         remote_path = python_val.remote_path if python_val.remote_path else ctx.file_access.get_random_remote_path()
         ctx.file_access.put_data(f"{python_val}", remote_path, is_multipart=False)
-        meta = BlobMetadata(type=self._blob_type())
+        meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: type) -> typing.Any:
+    def to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[flyte_typing.FlyteFilePath]
+    ) -> typing.Any:
         local_path = ctx.file_access.get_random_local_path()
 
         # TODO improve this to accept the blob uri and local path as an argument?
         def _downloader():
             return ctx.file_access.get_data(lv.scalar.blob.uri, local_path, is_multipart=False)
 
-        return flyte_typing.FlyteFilePath(local_path, _downloader(), lv.scalar.blob.uri)
+        expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
+        return flyte_typing.FlyteFilePath[expected_format](local_path, _downloader, lv.scalar.blob.uri)
 
 
 class ParquetIO(object):
