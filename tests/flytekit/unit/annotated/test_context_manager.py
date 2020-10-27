@@ -13,7 +13,7 @@ def test_levels():
         with FlyteContext(flyte_client=SampleTestClass(value=2)) as ctx:
             assert ctx.flyte_client.value == 2
 
-        with FlyteContext(compilation_state=CompilationState()) as ctx:
+        with FlyteContext(compilation_state=CompilationState(prefix="")) as ctx:
             assert ctx.flyte_client.value == 1
 
 

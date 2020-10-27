@@ -407,18 +407,6 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
                 ),
                 **inputs
             )
-        # else:
-        #     with ExecutionParametersContext(ExecutionParameters(
-        #             execution_date=context.execution_date,
-        #             # TODO: it might be better to consider passing the full struct
-        #             execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
-        #             stats=context.stats,
-        #             logging=context.logging,
-        #             tmp_dir=context.working_directory
-        #     )):
-        #         return _exception_scopes.user_entry_point(self.task_function)(
-        #             **inputs
-        #         )
 
     @_exception_scopes.system_entry_point
     def execute(self, context, inputs):
@@ -449,29 +437,6 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
                     literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
                 )
             }
-        # New style - V1: inputs are just inputs
-        # else:
-        #     native_inputs = flyte_engine.idl_literal_map_to_python_value(context, inputs)
-        #     outputs = self._execute_user_code(context, native_inputs)
-        #     expected_output_names = list(self.interface.outputs.keys())
-        #     if len(expected_output_names) == 1:
-        #         literals = {expected_output_names[0]: outputs}
-        #     else:
-        #         # Question: How do you know you're going to enumerate them in the correct order? Even if autonamed, will
-        #         # output2 come before output100 if there's a hundred outputs? We don't! We'll have to circle back to
-        #         # the Python task instance and inspect annotations again. Or we change the Python model representation
-        #         # of the interface to be an ordered dict and we fill it in correctly to begin with.
-        #         literals = {expected_output_names[i]: outputs[i] for i, _ in enumerate(outputs)}
-        #
-        #     # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
-        #     # built into the IDL that all the values of a literal map are of the same type.
-        #     outputs_literal_map = _literal_models.LiteralMap(literals={
-        #         k: flyte_engine.python_value_to_idl_literal(context, v, self.interface.outputs[k].type) for k, v in
-        #         literals.items()
-        #     })
-        #     return {
-        #         _constants.OUTPUT_FILE_NAME: outputs_literal_map,
-        #     }
 
     def _get_container_definition(
         self,

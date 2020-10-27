@@ -104,6 +104,10 @@ class Workflow(object):
         return self._name
 
     @property
+    def short_name(self) -> str:
+        return self._name.split(".")[-1]
+
+    @property
     def interface(self) -> _interface_models.TypedInterface:
         return self._interface
 
@@ -119,13 +123,15 @@ class Workflow(object):
 
     def compile(self, **kwargs):
         """
-        Supply static Python native values in the kwargs if you want them to be used in the compilation
+        Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics
+        a 'closure' in the traditional sense of the word.
         """
         # TODO: should we even define it here?
         self._input_parameters = transform_inputs_to_parameters(self._native_interface)
         all_nodes = []
         ctx = FlyteContext.current_context()
-        with ctx.new_compilation_context() as comp_ctx:
+        prefix = f"{ctx.compilation_state.prefix}-{self.short_name}-" if ctx.compilation_state is not None else None
+        with ctx.new_compilation_context(prefix=prefix) as comp_ctx:
             # Construct the default input promise bindings, but then override with the provided inputs, if any
             input_kwargs = self._construct_input_promises()
             input_kwargs.update(kwargs)
@@ -282,7 +288,7 @@ class Workflow(object):
         upstream_nodes = [input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)]
 
         node = Node(
-            id=f"node-{len(ctx.compilation_state.nodes)}",
+            id=f"{ctx.compilation_state.prefix}node-{len(ctx.compilation_state.nodes)}",
             metadata=_workflow_model.NodeMetadata(self._name, datetime.timedelta(), _literal_models.RetryStrategy(0)),
             bindings=sorted(bindings, key=lambda b: b.var),
             upstream_nodes=upstream_nodes,  # type: ignore
