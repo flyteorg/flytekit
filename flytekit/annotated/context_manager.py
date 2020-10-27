@@ -53,6 +53,7 @@ class CompilationState(object):
         :param prefix: This is because we may one day want to be able to have subworkflows inside other workflows. If
           users choose to not specify their node names, then we can end up with multiple "node-0"s. This prefix allows
           us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
+          # TODO: Ketan to revisit this whole concept when we re-organize the new structure
         """
         self.nodes: List[Node] = []
         self._prefix = prefix
