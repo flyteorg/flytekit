@@ -4,6 +4,7 @@ import functools
 import inspect
 import re
 from abc import abstractmethod
+from enum import Enum
 from typing import Any, Callable, DefaultDict, Dict, List, Optional, Tuple, Type, Union
 
 import flytekit.annotated.promise
@@ -46,12 +47,14 @@ from flytekit.models.core import workflow as _workflow_model
 class Task(object):
     def __init__(
         self,
+        task_type: str,
         name: str,
         interface: _interface_models.TypedInterface,
         metadata: _task_model.TaskMetadata,
         *args,
         **kwargs,
     ):
+        self._task_type = task_type
         self._name = name
         self._interface = interface
         self._metadata = metadata
@@ -74,15 +77,30 @@ class Task(object):
     def name(self) -> str:
         return self._name
 
+    @property
+    def task_type(self) -> str:
+        return self._task_type
+
     def get_type_for_input_var(self, k: str, v: Any) -> type:
+        """
+        Returns the python native type for the given input variable
         # TODO we could use literal type to determine this
+        """
         return type(v)
 
     def get_type_for_output_var(self, k: str, v: Any) -> type:
+        """
+        Returns the python native type for the given output variable
         # TODO we could use literal type to determine this
+        """
         return type(v)
 
     def get_input_types(self) -> Dict[str, type]:
+        """
+        Returns python native types for inputs. In case this is not a python native task (base class) and hence
+        returns a None. we could deduce the type from literal types, but that is not a required excercise
+        # TODO we could use literal type to determine this
+        """
         return None
 
     def _compile(self, ctx: FlyteContext, *args, **kwargs):
@@ -163,7 +181,7 @@ class Task(object):
         output_names = list(self.interface.outputs.keys())
         if len(output_names) != len(outputs_literals):
             # Length check, clean up exception
-            raise Exception(f"Length difference {len(output_names)} {len(outputs_literals)}")
+            raise AssertionError(f"Length difference {len(output_names)} {len(outputs_literals)}")
 
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
         return create_task_output(vals)
@@ -198,9 +216,31 @@ class Task(object):
             logger.warning("task run without context - executing raw function")
             return self.execute(**kwargs)
 
+    def get_task_structure(self) -> SdkTask:
+        settings = FlyteContext.current_context().registration_settings
+        tk = SdkTask(
+            type=self.task_type,
+            metadata=self.metadata,
+            interface=self.interface,
+            custom=self.get_custom(),
+            container=self.get_container(),
+        )
+        # Reset just to make sure it's what we give it
+        tk.id._project = settings.project
+        tk.id._domain = settings.domain
+        tk.id._name = self.name
+        tk.id._version = settings.version
+        return tk
+
+    def get_container(self) -> _task_model.Container:
+        return None
+
+    def get_custom(self) -> Dict[str, Any]:
+        return None
+
     @abstractmethod
     def dispatch_execute(
-        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
+        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap,
     ) -> _literal_models.LiteralMap:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
@@ -214,8 +254,10 @@ class Task(object):
 
 
 class PythonTask(Task):
-    def __init__(self, name: str, interface: Interface, metadata: _task_model.TaskMetadata, *args, **kwargs):
-        super().__init__(name, transform_interface_to_typed_interface(interface), metadata)
+    def __init__(
+        self, task_type: str, name: str, interface: Interface, metadata: _task_model.TaskMetadata, *args, **kwargs
+    ):
+        super().__init__(task_type, name, transform_interface_to_typed_interface(interface), metadata)
         self._python_interface = interface
 
     # TODO lets call this interface and the other as flyte_interface?
@@ -285,23 +327,105 @@ class PythonTask(Task):
     def execute(self, **kwargs) -> Any:
         pass
 
-    @abstractmethod
     def get_registerable_entity(self) -> _registerable.RegisterableEntity:
-        ...
+        if self._registerable_entity is not None:
+            return self._registerable_entity
+        self._registrable_entity = self.get_task_structure()
+        return self._registrable_entity
+
+
+class ContainerTask(PythonTask):
+    class MetadataFormat(Enum):
+        JSON = _task_model.DataLoadingConfig.LITERALMAP_FORMAT_JSON
+        YAML = _task_model.DataLoadingConfig.LITERALMAP_FORMAT_YAML
+        PROTO = _task_model.DataLoadingConfig.LITERALMAP_FORMAT_PROTO
+
+    class IOStrategy(Enum):
+        DOWNLOAD_EAGER = _task_model.IOStrategy.DOWNLOAD_MODE_EAGER
+        DOWNLOAD_STREAM = _task_model.IOStrategy.DOWNLOAD_MODE_STREAM
+        DO_NOT_DOWNLOAD = _task_model.IOStrategy.DOWNLOAD_MODE_NO_DOWNLOAD
+        UPLOAD_EAGER = _task_model.IOStrategy.UPLOAD_MODE_EAGER
+        UPLOAD_ON_EXIT = _task_model.IOStrategy.UPLOAD_MODE_ON_EXIT
+        DO_NOT_UPLOAD = _task_model.IOStrategy.UPLOAD_MODE_NO_UPLOAD
+
+    def __init__(
+        self,
+        name: str,
+        image: str,
+        metadata: _task_model.TaskMetadata,
+        inputs: Dict[str, Type],
+        command: List[str],
+        arguments: List[str] = None,
+        outputs: Dict[str, Type] = None,
+        input_data_dir: str = None,
+        output_data_dir: str = None,
+        metadata_format: MetadataFormat = MetadataFormat.JSON,
+        io_strategy: IOStrategy = None,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(
+            task_type="raw-container",
+            name=name,
+            interface=Interface(inputs, outputs),
+            metadata=metadata,
+            *args,
+            **kwargs,
+        )
+        self._image = image
+        self._cmd = command
+        self._args = arguments
+        self._input_data_dir = input_data_dir
+        self._output_data_dir = output_data_dir
+        self._md_format = metadata_format
+        self._io_strategy = io_strategy
+
+    def execute(self, **kwargs) -> Any:
+        print(kwargs)
+        print(
+            f"\ndocker run --rm -v /tmp/inputs:{self._input_data_dir} -v /tmp/outputs:{self._output_data_dir} -e x=y "
+            f"{self._image} {self._cmd} {self._args}"
+        )
+        return None
+
+    def get_container(self) -> _task_model.Container:
+        settings = FlyteContext.current_context().registration_settings
+        env = settings.env
+        return _get_container_definition(
+            image=settings.image,
+            command=self._cmd,
+            args=self._args,
+            data_loading_config=_task_model.DataLoadingConfig(
+                input_path=self._input_data_dir,
+                output_path=self._output_data_dir,
+                format=self._md_format.value,
+                enabled=True,
+                io_strategy=self._io_strategy.value if self._io_strategy else None,
+            ),
+            environment=env,
+        )
 
 
 class PythonFunctionTask(PythonTask):
+    """
+    A Python Function task should be used as the base for all extensions that have a python function.
+    This base has an interesting property, where it will auto configure the image and image version to be
+    used for all the derivatives.
+    """
+
     def __init__(
         self,
         task_function: Callable,
         metadata: _task_model.TaskMetadata,
         ignore_input_vars: List[str] = None,
+        task_type="python-task",
         *args,
         **kwargs,
     ):
         self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         super().__init__(
+            task_type=task_type,
             name=f"{task_function.__module__}.{task_function.__name__}",
             interface=mutated_interface,
             metadata=metadata,
@@ -313,14 +437,12 @@ class PythonFunctionTask(PythonTask):
     def execute(self, **kwargs) -> Any:
         return self._task_function(**kwargs)
 
+    @property
     def native_interface(self) -> Interface:
         return self._native_interface
 
-    def get_registerable_entity(self) -> _registerable.RegisterableEntity:
+    def get_container(self) -> _task_model.Container:
         settings = FlyteContext.current_context().registration_settings
-        if self._registerable_entity is not None:
-            return self._registerable_entity
-
         args = [
             "pyflyte-execute",
             "--task-module",
@@ -335,30 +457,26 @@ class PythonFunctionTask(PythonTask):
             "{{.rawOutputDataPrefix}}",
         ]
         env = settings.env
-        container = _get_container_definition(
+        return _get_container_definition(
             image=settings.image, command=[], args=args, data_loading_config=None, environment=env
         )
-        self._registerable_entity = SdkTask(
-            type="python_task", metadata=self.metadata, interface=self.interface, custom={}, container=container
-        )
-        # Reset just to make sure it's what we give it
-        self._registerable_entity.id._project = settings.project
-        self._registerable_entity.id._domain = settings.domain
-        self._registerable_entity.id._name = self.name
-        self._registerable_entity.id._version = settings.version
-        return self._registerable_entity
 
 
 class PysparkFunctionTask(PythonFunctionTask):
     def __init__(self, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
         super(PysparkFunctionTask, self).__init__(
-            task_function, metadata, ignore_input_vars=["spark_session", "spark_context"], *args, **kwargs
+            task_type="spark",
+            task_function=task_function,
+            metadata=metadata,
+            ignore_input_vars=["spark_session", "spark_context"],
+            *args,
+            **kwargs,
         )
 
     def execute(self, **kwargs) -> Any:
-        if "spark_session" in self.native_interface().inputs:
+        if "spark_session" in self.native_interface.inputs:
             kwargs["spark_session"] = None
-        if "spark_context" in self.native_interface().inputs:
+        if "spark_context" in self.native_interface.inputs:
             kwargs["spark_context"] = None
         return self._task_function(**kwargs)
 
@@ -376,7 +494,9 @@ class MapPythonTask(PythonTask):
         collection_interface = transform_interface_to_list_interface(tk.python_interface)
         name = "mapper_" + tk.name
         self._run_task = tk
-        super().__init__(name, collection_interface, metadata, *args, **kwargs)
+        super().__init__(
+            name=name, interface=collection_interface, metadata=metadata, task_type="map_task", *args, **kwargs
+        )
 
     @property
     def run_task(self) -> PythonTask:
@@ -424,7 +544,7 @@ def maptask(tk: PythonTask, concurrency="auto", metadata=None):
     return MapPythonTask(tk, metadata=metadata)
 
 
-class AbstractSQLPythonTask(PythonTask):
+class SQLTask(PythonTask):
     """
     Base task types for all SQL tasks
     """
@@ -439,11 +559,17 @@ class AbstractSQLPythonTask(PythonTask):
         query_template: str,
         inputs: Dict[str, Type],
         metadata: _task_model.TaskMetadata,
+        task_type="sql_task",
         *args,
         **kwargs,
     ):
         super().__init__(
-            name=name, interface=Interface(inputs=inputs, outputs=self._OUTPUTS), metadata=metadata, *args, **kwargs
+            task_type=task_type,
+            name=name,
+            interface=Interface(inputs=inputs, outputs=self._OUTPUTS),
+            metadata=metadata,
+            *args,
+            **kwargs,
         )
         self._query_template = query_template
 
@@ -472,7 +598,7 @@ class AbstractSQLPythonTask(PythonTask):
 
 class DynamicWorkflowTask(PythonFunctionTask):
     def __init__(self, dynamic_workflow_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
-        super().__init__(dynamic_workflow_function, metadata, *args, **kwargs)
+        super().__init__(dynamic_workflow_function, metadata, task_type="dynamic-task", *args, **kwargs)
 
     def compile_into_workflow(
         self, ctx: FlyteContext, **kwargs
@@ -615,3 +741,13 @@ def task(
 
 
 dynamic = functools.partial(task, task_type="_dynamic")
+
+
+def kwtypes(**kwargs) -> Dict[str, Type]:
+    """
+    Converts the keyword arguments to typed dictionary
+    """
+    d = collections.OrderedDict()
+    for k, v in kwargs.items():
+        d[k] = v
+    return d

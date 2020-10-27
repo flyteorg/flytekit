@@ -12,7 +12,7 @@ from flytekit.annotated import context_manager, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import AbstractSQLPythonTask, dynamic, maptask, metadata, task
+from flytekit.annotated.task import ContainerTask, SQLTask, dynamic, kwtypes, maptask, metadata, task
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
@@ -258,10 +258,10 @@ def test_wf1_with_subwf():
 
 
 def test_wf1_with_sql():
-    sql = AbstractSQLPythonTask(
+    sql = SQLTask(
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
-        inputs={"ds": datetime.datetime},
+        inputs=kwtypes(ds=datetime.datetime),
         metadata=metadata(retries=2),
     )
 
@@ -426,7 +426,7 @@ def test_list_output():
 
 def test_comparison_refs():
     def dummy_node(id) -> SdkNode:
-        n = SdkNode(id, [], None, None, sdk_task=AbstractSQLPythonTask("x", "x", [], metadata()))
+        n = SdkNode(id, [], None, None, sdk_task=SQLTask("x", "x", [], metadata()))
         n._id = id
         return n
 
@@ -473,7 +473,6 @@ def test_wf1_branches():
     @workflow
     def my_wf(a: int, b: str) -> (int, str):
         x, y = t1(a=a)
-        print(x)
         d = conditional().if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("Unable to choose branch")
         return x, d
 
@@ -496,14 +495,12 @@ def test_wf1_branches_no_else():
             @workflow
             def my_wf(a: int, b: str) -> (int, str):
                 x, y = t1(a=a)
-                print(x)
                 d = conditional().if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y))
                 return x, d
 
             @workflow
             def my_wf2(a: int, b: str) -> (int, str):
                 x, y = t1(a=a)
-                print(x)
                 d = (
                     conditional()
                     .if_(x == 4)
@@ -582,3 +579,64 @@ def test_wf1_df():
         data={"col1": [20, 2, 5, 10], "col2": [20, 4, 5, 10]}
     ).reset_index(drop=True)
     assert result_df.all().all()
+
+
+def test_wf_container_task():
+    @task
+    def t1(a: int) -> (int, str):
+        return a + 2, str(a) + "-HELLO"
+
+    t2 = ContainerTask(
+        "raw",
+        image="alpine",
+        inputs=kwtypes(a=int, b=str),
+        input_data_dir="/tmp",
+        output_data_dir="/tmp",
+        command=["cat"],
+        arguments=["/tmp/a"],
+        metadata=metadata(),
+    )
+
+    def wf(a: int):
+        x, y = t1(a=a)
+        t2(a=x, b=y)
+
+    wf(a=10)
+
+
+def test_wf_container_task_multiple():
+    square = ContainerTask(
+        name="square",
+        metadata=metadata(),
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
+        inputs=kwtypes(val=int),
+        outputs=kwtypes(out=int),
+        image="alpine",
+        command=["sh", "-c", "echo $(( {{.Inputs.val}} * {{.Inputs.val}} )) | tee /var/outputs/out"],
+    )
+
+    sum = ContainerTask(
+        name="sum",
+        metadata=metadata(),
+        input_data_dir="/var/flyte/inputs",
+        output_data_dir="/var/flyte/outputs",
+        inputs=kwtypes(x=int, y=int),
+        outputs=kwtypes(out=int),
+        image="alpine",
+        command=["sh", "-c", "echo $(( {{.Inputs.x}} + {{.Inputs.y}} )) | tee /var/flyte/outputs/out"],
+    )
+
+    @workflow
+    def raw_container_wf(val1: int, val2: int) -> int:
+        return sum(x=square(val=val1), y=square(val=val2))
+
+    raw_container_wf(val1=10, val2=10)
+
+
+def test_wf_tuple_fails():
+    with pytest.raises(RestrictedTypeError):
+
+        @task
+        def t1(a: tuple) -> (int, str):
+            return a[0] + 2, str(a) + "-HELLO"
