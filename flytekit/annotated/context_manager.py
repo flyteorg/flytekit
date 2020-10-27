@@ -48,9 +48,20 @@ class RegistrationSettings(object):
 
 
 class CompilationState(object):
-    def __init__(self):
+    def __init__(self, prefix: str):
+        """
+        :param prefix: This is because we may one day want to be able to have subworkflows inside other workflows. If
+          users choose to not specify their node names, then we can end up with multiple "node-0"s. This prefix allows
+          us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
+          # TODO: Ketan to revisit this whole concept when we re-organize the new structure
+        """
         self.nodes: List[Node] = []
+        self._prefix = prefix
         self.mode = 1  # TODO: Turn into enum in the future, or remove if only one mode.
+
+    @property
+    def prefix(self) -> str:
+        return self._prefix
 
 
 class BranchEvalMode(Enum):
@@ -237,8 +248,11 @@ class FlyteContext(object):
             return None
 
     @contextmanager
-    def new_compilation_context(self) -> Generator["FlyteContext", None, None]:
-        new_ctx = FlyteContext(parent=self, compilation_state=CompilationState())
+    def new_compilation_context(self, prefix: Optional[str] = None) -> Generator[FlyteContext, None, None]:
+        """
+        :param prefix: See CompilationState comments
+        """
+        new_ctx = FlyteContext(parent=self, compilation_state=CompilationState(prefix=prefix or ""))
         FlyteContext.OBJS.append(new_ctx)
         try:
             yield new_ctx
@@ -252,10 +266,12 @@ class FlyteContext(object):
         elif self._parent is not None:
             return self._parent.registration_settings
         else:
-            raise Exception("No local_file_access initialized")
+            raise Exception("No registration_settings initialized")
 
     @contextmanager
-    def new_registration_settings(self, registration_settings):
+    def new_registration_settings(
+        self, registration_settings: RegistrationSettings
+    ) -> Generator[FlyteContext, None, None]:
         new_ctx = FlyteContext(parent=self, registration_settings=registration_settings)
         FlyteContext.OBJS.append(new_ctx)
         try:

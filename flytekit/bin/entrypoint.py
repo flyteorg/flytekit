@@ -8,7 +8,7 @@ import random as _random
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext, RegistrationSettings
 from flytekit.annotated.task import PythonTask
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
@@ -26,6 +26,7 @@ from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
 from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
+from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import identifier as _identifier
 
@@ -164,27 +165,47 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                     raise Exception(f"Bad cloud provider {cloud_provider}")
 
                 with ctx.new_file_access_context(file_access_provider=file_access) as ctx:
-                    # Because execution states do not look up the context chain, it has to be made second.
-                    with ctx.new_execution_context(
-                        mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
-                    ) as ctx:
-                        # First download the contents of the input file
-                        local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
-                        ctx.file_access.get_data(inputs, local_inputs_file)
-                        input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-                        idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
-                        outputs = task_def.dispatch_execute(ctx, idl_input_literals)
+                    # TODO: This is copied from serialize, which means there's a similarity here I'm not seeing.
+                    env = {
+                        _internal_config.CONFIGURATION_PATH.env_var: _internal_config.CONFIGURATION_PATH.get(),
+                        _internal_config.IMAGE.env_var: _internal_config.IMAGE.get(),
+                    }
 
-                        # TODO: How do we handle the fact that some tasks should fail (like hive/presto tasks) and
-                        #   some tasks don't produce output literals
-                        output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
+                    registration_settings = RegistrationSettings(
+                        project=_internal_config.TASK_PROJECT.get(),
+                        domain=_internal_config.TASK_DOMAIN.get(),
+                        version=_internal_config.TASK_VERSION.get(),
+                        image=_internal_config.IMAGE.get(),
+                        env=env,
+                    )
+                    # The reason we need this is because of dynamic tasks. Even if we move compilation all to Admin,
+                    # if a dynamic task calls some task, t1, we have to write to the DJ Spec the correct task
+                    # identifier for t1.
+                    with ctx.new_registration_settings(registration_settings=registration_settings) as ctx:
+                        # Because execution states do not look up the context chain, it has to be made last
+                        with ctx.new_execution_context(
+                            mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
+                        ) as ctx:
+                            # First download the contents of the input file
+                            local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
+                            ctx.file_access.get_data(inputs, local_inputs_file)
+                            input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+                            idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
+                            outputs = task_def.dispatch_execute(ctx, idl_input_literals)
 
-                        for k, v in output_file_dict.items():
-                            _common_utils.write_proto_to_file(
-                                v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k)
-                            )
+                            # TODO: Clean up how we handle the fact that some tasks should fail (like hive/presto tasks)
+                            #   and some tasks don't produce output literals
+                            if isinstance(outputs, _literal_models.LiteralMap):
+                                output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
+                            elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
+                                output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
 
-                        ctx.file_access.upload_directory(ctx.execution_state.engine_dir, output_prefix)
+                            for k, v in output_file_dict.items():
+                                _common_utils.write_proto_to_file(
+                                    v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k)
+                                )
+
+                            ctx.file_access.upload_directory(ctx.execution_state.engine_dir, output_prefix)
 
 
 @_click.group()

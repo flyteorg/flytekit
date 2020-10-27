@@ -25,6 +25,7 @@ from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.common.tasks.task import SdkTask
+from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
@@ -115,7 +116,7 @@ class Task(object):
         # TODO: Make the metadata name the full name of the (function)?
         sdk_node = Node(
             # TODO
-            id=f"node-{len(ctx.compilation_state.nodes)}",
+            id=f"{ctx.compilation_state.prefix}node-{len(ctx.compilation_state.nodes)}",
             metadata=_workflow_model.NodeMetadata(
                 self._name, self.metadata.timeout, self.metadata.retries, self.metadata.interruptible
             ),
@@ -233,7 +234,7 @@ class PythonTask(Task):
 
     def dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
-    ) -> _literal_models.LiteralMap:
+    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
         This method is also invoked during runtime.
@@ -252,6 +253,13 @@ class PythonTask(Task):
             logger.exception("Exception when executing", e)
             raise e
         logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
+
+        # Short circuit the translation to literal map because what's returned may be a dj spec (or an
+        # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
+        if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
+            native_outputs, _dynamic_job.DynamicJobSpec
+        ):
+            return native_outputs
 
         expected_output_names = list(self.interface.outputs.keys())
         if len(expected_output_names) == 1:
@@ -466,12 +474,47 @@ class DynamicWorkflowTask(PythonFunctionTask):
     def __init__(self, dynamic_workflow_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
         super().__init__(dynamic_workflow_function, metadata, *args, **kwargs)
 
-    def compile_into_workflow(self, **kwargs) -> Workflow:
-        wf = Workflow(self._task_function)
-        # TODO: May need to tweak the workflow's interface since all inputs should be "bound" to static scalars. Not
-        #  sure how Admin/Propeller will react when sent throught the dj spec.
-        wf.compile(**kwargs)
-        return wf
+    def compile_into_workflow(
+        self, ctx: FlyteContext, **kwargs
+    ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
+        with ctx.new_compilation_context(prefix="dynamic"):
+            self._wf = Workflow(self._task_function)
+            self._wf.compile(**kwargs)
+
+            wf = self._wf
+            sdk_workflow = wf.get_registerable_entity()
+
+            # If no nodes were produced, let's just return the strict outputs
+            if len(sdk_workflow.nodes) == 0:
+                return _literal_models.LiteralMap(
+                    literals={binding.var: binding.binding.to_literal_model() for binding in sdk_workflow._outputs}
+                )
+
+            # Gather underlying tasks/workflows that get referenced. Launch plans are handled by propeller.
+            tasks = set()
+            sub_workflows = set()
+            for n in sdk_workflow.nodes:
+                DynamicWorkflowTask.aggregate(tasks, sub_workflows, n)
+
+            dj_spec = _dynamic_job.DynamicJobSpec(
+                min_successes=len(sdk_workflow.nodes),
+                tasks=list(tasks),
+                nodes=sdk_workflow.nodes,
+                outputs=sdk_workflow._outputs,
+                subworkflows=list(sub_workflows),
+            )
+
+            return dj_spec
+
+    @staticmethod
+    def aggregate(tasks, workflows, node) -> None:
+        if node.task_node is not None:
+            tasks.add(node.task_node.sdk_task)
+        if node.workflow_node is not None:
+            if node.workflow_node.sdk_workflow is not None:
+                workflows.add(node.workflow_node.sdk_workflow)
+                for sub_node in node.workflow_node.sdk_workflow.nodes:
+                    DynamicWorkflowTask.aggregate(tasks, workflows, sub_node)
 
     def execute(self, **kwargs) -> Any:
         """
@@ -491,6 +534,9 @@ class DynamicWorkflowTask(PythonFunctionTask):
             with ctx.new_execution_context(ExecutionState.Mode.TASK_EXECUTION):
                 logger.info("Executing Dynamic workflow, using raw inputs")
                 return self._task_function(**kwargs)
+
+        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+            return self.compile_into_workflow(ctx, **kwargs)
 
 
 TaskTypePlugins: DefaultDict[str, Type[PythonFunctionTask]] = collections.defaultdict(
