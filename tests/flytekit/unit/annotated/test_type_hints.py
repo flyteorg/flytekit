@@ -12,7 +12,7 @@ from flytekit import typing as flytekit_typing
 from flytekit.annotated import context_manager, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
-from flytekit.annotated.interface import Interface, extract_return_annotation, transform_variable_map
+from flytekit.annotated.interface import Interface
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import ContainerTask, SQLTask, dynamic, maptask, metadata, task
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
