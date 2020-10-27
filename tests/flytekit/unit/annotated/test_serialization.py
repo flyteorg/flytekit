@@ -35,11 +35,7 @@ def test_serialization():
     registration_settings = context_manager.RegistrationSettings(
         project="project", domain="domain", version="version", image="image", env=None,
     )
-    with ctx.current_context().new_registration_settings(
-            registration_settings=registration_settings
-    ):
-        tk1 = square.get_registerable_entity()
-        tk2 = sum.get_registerable_entity()
+    with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
         wf = raw_container_wf.get_registerable_entity()
         assert wf is not None
         print(wf)

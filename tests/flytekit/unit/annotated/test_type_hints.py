@@ -72,7 +72,7 @@ def test_single_output():
 
 
 def test_engine_file_output():
-    basic_blob_type = _core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE, )
+    basic_blob_type = _core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
 
     fs = FileAccessProvider(local_sandbox_dir="/tmp/flytetesting")
     with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
@@ -185,11 +185,13 @@ def test_wf1_with_list_of_inputs():
 
 def test_wf_output_mismatch():
     with pytest.raises(AssertionError):
+
         @workflow
         def my_wf(a: int, b: str) -> (int, str):
             return a
 
     with pytest.raises(AssertionError):
+
         @workflow
         def my_wf2(a: int, b: str) -> int:
             return a, b
@@ -481,6 +483,7 @@ def test_wf1_branches():
 
 def test_wf1_branches_no_else():
     with pytest.raises(AssertionError):
+
         def foo():
             @task
             def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
@@ -503,12 +506,12 @@ def test_wf1_branches_no_else():
                 print(x)
                 d = (
                     conditional()
-                        .if_(x == 4)
-                        .then(t2(a=b))
-                        .elif_(x >= 5)
-                        .then(t2(a=y))
-                        .else_()
-                        .then(t2(a="Ok I give up!"))
+                    .if_(x == 4)
+                    .then(t2(a=b))
+                    .elif_(x >= 5)
+                    .then(t2(a=y))
+                    .else_()
+                    .then(t2(a="Ok I give up!"))
                 )
                 return x, d
 
@@ -536,6 +539,7 @@ def test_wf1_branches_failing():
 
 def test_cant_use_normal_tuples():
     with pytest.raises(RestrictedTypeError):
+
         @task
         def t1(a: str) -> tuple:
             return (a, 3)
@@ -635,6 +639,7 @@ def test_wf_container_task_multiple():
 
 def test_wf_tuple_fails():
     with pytest.raises(RestrictedTypeError):
+
         @task
         def t1(a: tuple) -> (int, str):
             return a[0] + 2, str(a) + "-HELLO"
