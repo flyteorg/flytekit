@@ -1,4 +1,3 @@
-import collections
 import datetime
 import os
 import typing
@@ -12,9 +11,8 @@ from flytekit import typing as flytekit_typing
 from flytekit.annotated import context_manager, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
-from flytekit.annotated.interface import Interface
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import ContainerTask, SQLTask, dynamic, maptask, metadata, task
+from flytekit.annotated.task import ContainerTask, SQLTask, dynamic, kwtypes, maptask, metadata, task
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
@@ -263,7 +261,7 @@ def test_wf1_with_sql():
     sql = SQLTask(
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
-        inputs={"ds": datetime.datetime},
+        inputs=kwtypes(ds=datetime.datetime),
         metadata=metadata(retries=2),
     )
 
@@ -588,7 +586,7 @@ def test_wf_container_task():
     t2 = ContainerTask(
         "raw",
         image="alpine",
-        interface=Interface(inputs=collections.OrderedDict({"a": int, "b": str}),),
+        inputs=kwtypes(a=int, b=str),
         input_data_dir="/tmp",
         output_data_dir="/tmp",
         command=["cat"],

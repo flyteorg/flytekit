@@ -344,10 +344,11 @@ class ContainerTask(PythonTask):
         self,
         name: str,
         image: str,
-        interface: Interface,
+        metadata: _task_model.TaskMetadata,
+        inputs: Dict[str, Type],
         command: List[str],
         arguments: List[str],
-        metadata: _task_model.TaskMetadata,
+        outputs: Dict[str, Type] = None,
         input_data_dir: str = None,
         output_data_dir: str = None,
         metadata_format: MetadataFormat = MetadataFormat.JSON,
@@ -356,14 +357,14 @@ class ContainerTask(PythonTask):
         **kwargs,
     ):
         super().__init__(
-            task_type="container", name=name, interface=interface, metadata=metadata, *args, **kwargs,
+            task_type="container", name=name, interface=Interface(inputs, outputs), metadata=metadata, *args, **kwargs,
         )
         self._image = image
         self._cmd = command
         self._args = arguments
         self._input_data_dir = input_data_dir
         self._output_data_dir = output_data_dir
-        self._md_format = metadata
+        self._md_format = metadata_format
         self._io_strategy = io_strategy
 
     def execute(self, **kwargs) -> Any:
@@ -689,3 +690,13 @@ def task(
 
 
 dynamic = functools.partial(task, task_type="_dynamic")
+
+
+def kwtypes(**kwargs) -> Dict[str, Type]:
+    """
+    Converts the keyword arguments to typed dictionary
+    """
+    d = collections.OrderedDict()
+    for k, v in kwargs.items():
+        d[k] = v
+    return d
