@@ -12,7 +12,8 @@ from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import AbstractSQLPythonTask, dynamic, maptask, metadata, task
+from flytekit.annotated.task import ContainerTask, SQLTask, dynamic, kwtypes, maptask, metadata, task
+from flytekit.annotated.testing import task_mock
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
@@ -258,10 +259,10 @@ def test_wf1_with_subwf():
 
 
 def test_wf1_with_sql():
-    sql = AbstractSQLPythonTask(
+    sql = SQLTask(
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
-        inputs={"ds": datetime.datetime},
+        inputs=kwtypes(ds=datetime.datetime),
         metadata=metadata(retries=2),
     )
 
@@ -270,11 +271,13 @@ def test_wf1_with_sql():
         return datetime.datetime.now()
 
     @workflow
-    def my_wf():
+    def my_wf() -> str:
         dt = t1()
-        sql(ds=dt)
+        return sql(ds=dt)
 
-    my_wf()
+    with task_mock(sql) as mock:
+        mock.return_value = "Hello"
+        assert my_wf() == "Hello"
 
 
 def test_wf1_with_spark():
@@ -426,7 +429,7 @@ def test_list_output():
 
 def test_comparison_refs():
     def dummy_node(id) -> SdkNode:
-        n = SdkNode(id, [], None, None, sdk_task=AbstractSQLPythonTask("x", "x", [], metadata()))
+        n = SdkNode(id, [], None, None, sdk_task=SQLTask("x", "x", [], metadata()))
         n._id = id
         return n
 
@@ -473,7 +476,6 @@ def test_wf1_branches():
     @workflow
     def my_wf(a: int, b: str) -> (int, str):
         x, y = t1(a=a)
-        print(x)
         d = conditional().if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("Unable to choose branch")
         return x, d
 
@@ -496,14 +498,12 @@ def test_wf1_branches_no_else():
             @workflow
             def my_wf(a: int, b: str) -> (int, str):
                 x, y = t1(a=a)
-                print(x)
                 d = conditional().if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y))
                 return x, d
 
             @workflow
             def my_wf2(a: int, b: str) -> (int, str):
                 x, y = t1(a=a)
-                print(x)
                 d = (
                     conditional()
                     .if_(x == 4)
@@ -716,3 +716,75 @@ def test_lp_serialize():
         sdk_lp = lp_with_defaults.get_registerable_entity()
         assert len(sdk_lp.default_inputs.parameters) == 1
         assert len(sdk_lp.fixed_inputs.literals) == 0
+
+
+def test_wf_container_task():
+    @task
+    def t1(a: int) -> (int, str):
+        return a + 2, str(a) + "-HELLO"
+
+    t2 = ContainerTask(
+        "raw",
+        image="alpine",
+        inputs=kwtypes(a=int, b=str),
+        input_data_dir="/tmp",
+        output_data_dir="/tmp",
+        command=["cat"],
+        arguments=["/tmp/a"],
+        metadata=metadata(),
+    )
+
+    def wf(a: int):
+        x, y = t1(a=a)
+        t2(a=x, b=y)
+
+    with task_mock(t2) as mock:
+        mock.side_effect = lambda a, b: None
+        assert t2(a=10, b="hello") is None
+
+        wf(a=10)
+
+
+def test_wf_container_task_multiple():
+    square = ContainerTask(
+        name="square",
+        metadata=metadata(),
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
+        inputs=kwtypes(val=int),
+        outputs=kwtypes(out=int),
+        image="alpine",
+        command=["sh", "-c", "echo $(( {{.Inputs.val}} * {{.Inputs.val}} )) | tee /var/outputs/out"],
+    )
+
+    sum = ContainerTask(
+        name="sum",
+        metadata=metadata(),
+        input_data_dir="/var/flyte/inputs",
+        output_data_dir="/var/flyte/outputs",
+        inputs=kwtypes(x=int, y=int),
+        outputs=kwtypes(out=int),
+        image="alpine",
+        command=["sh", "-c", "echo $(( {{.Inputs.x}} + {{.Inputs.y}} )) | tee /var/flyte/outputs/out"],
+    )
+
+    @workflow
+    def raw_container_wf(val1: int, val2: int) -> int:
+        return sum(x=square(val=val1), y=square(val=val2))
+
+    with task_mock(square) as square_mock, task_mock(sum) as sum_mock:
+        square_mock.side_effect = lambda val: val * val
+        assert square(val=10) == 100
+
+        sum_mock.side_effect = lambda x, y: x + y
+        assert sum(x=10, y=10) == 20
+
+        assert raw_container_wf(val1=10, val2=10) == 200
+
+
+def test_wf_tuple_fails():
+    with pytest.raises(RestrictedTypeError):
+
+        @task
+        def t1(a: tuple) -> (int, str):
+            return a[0] + 2, str(a) + "-HELLO"

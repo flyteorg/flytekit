@@ -200,7 +200,8 @@ class NodeMetadata(_common.FlyteIdlEntity):
         node_metadata = _core_workflow.NodeMetadata(
             name=self.name, retries=self.retries.to_flyte_idl(), interruptible=self.interruptible,
         )
-        node_metadata.timeout.FromTimedelta(self.timeout)
+        if self.timeout:
+            node_metadata.timeout.FromTimedelta(self.timeout)
         return node_metadata
 
     @classmethod
