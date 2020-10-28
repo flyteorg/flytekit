@@ -584,15 +584,62 @@ def test_wf1_df():
     assert result_df.all().all()
 
 
-def test_wf1_with_lp_node():
+def test_lp_default_handling():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         a = a + 2
         return a, "world-" + str(a)
 
+    @workflow
+    def my_wf(a: int, b: int) -> (str, str, int, int):
+        x, y = t1(a=a)
+        u, v = t1(a=b)
+        return y, v, x, u
+
+    lp = launch_plan.LaunchPlan.create("test1", my_wf)
+    assert len(lp.parameters.parameters) == 0
+    assert len(lp.fixed_inputs.literals) == 0
+
+    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_wf, default_inputs={'a': 3})
+    assert len(lp_with_defaults.parameters.parameters) == 1
+    assert len(lp_with_defaults.fixed_inputs.literals) == 0
+
+    lp_with_fixed = launch_plan.LaunchPlan.create("test3", my_wf, fixed_inputs={'a': 3})
+    assert len(lp_with_fixed.parameters.parameters) == 0
+    assert len(lp_with_fixed.fixed_inputs.literals) == 1
+
+    @workflow
+    def my_wf2(a: int, b: int = 42) -> (str, str, int, int):
+        x, y = t1(a=a)
+        u, v = t1(a=b)
+        return y, v, x, u
+
+    lp = launch_plan.LaunchPlan.create("test4", my_wf2)
+    assert len(lp.parameters.parameters) == 1
+    assert len(lp.fixed_inputs.literals) == 0
+
+    lp_with_defaults = launch_plan.LaunchPlan.create("test5", my_wf2, default_inputs={'a': 3})
+    assert len(lp_with_defaults.parameters.parameters) == 2
+    assert len(lp_with_defaults.fixed_inputs.literals) == 0
+    # Launch plan defaults override wf defaults
+    assert lp_with_defaults(b=3) == ('world-5', 'world-5', 5, 5)
+
+    lp_with_fixed = launch_plan.LaunchPlan.create("test6", my_wf2, fixed_inputs={'a': 3})
+    assert len(lp_with_fixed.parameters.parameters) == 1
+    assert len(lp_with_fixed.fixed_inputs.literals) == 1
+    # Launch plan defaults override wf defaults
+    assert lp_with_fixed(b=3) == ('world-5', 'world-5', 5, 5)
+
+    lp_with_fixed = launch_plan.LaunchPlan.create("test7", my_wf2, fixed_inputs={'b': 3})
+    assert len(lp_with_fixed.parameters.parameters) == 0
+    assert len(lp_with_fixed.fixed_inputs.literals) == 1
+
+
+def test_wf1_with_lp_node():
     @task
-    def t2(a: str, b: str) -> str:
-        return b + a
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        a = a + 2
+        return a, "world-" + str(a)
 
     @workflow
     def my_subwf(a: int) -> (str, str):
@@ -601,7 +648,7 @@ def test_wf1_with_lp_node():
         return y, v
 
     lp = launch_plan.LaunchPlan.create("test1", my_subwf)
-    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_subwf, a=3)
+    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_subwf, default_inputs={'a': 3})
 
     @workflow
     def my_wf(a: int = 42) -> (int, str, str):
@@ -609,7 +656,7 @@ def test_wf1_with_lp_node():
         u, v = lp(a=x)
         return x, u, v
 
-    x = my_wf(a=5, b="hello ")
+    x = my_wf(a=5)
     assert x == (7, "world-9", "world-11")
 
     assert my_wf() == (44, "world-46", "world-48")
@@ -648,7 +695,7 @@ def test_lp_serialize():
         return y, v
 
     lp = launch_plan.LaunchPlan.create("test1", my_subwf)
-    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_subwf, a=3)
+    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_subwf, default_inputs={'a': 3})
 
     registration_settings = context_manager.RegistrationSettings(
         project="proj", domain="dom", version="123", image="asdf/fdsa:123", env={},
@@ -662,7 +709,5 @@ def test_lp_serialize():
         assert len(sdk_lp.fixed_inputs.literals) == 0
 
         sdk_lp = lp_with_defaults.get_registerable_entity()
-        assert len(sdk_lp.default_inputs.parameters) == 0
-        assert len(sdk_lp.fixed_inputs.literals) == 1
-
-        print(sdk_lp)
+        assert len(sdk_lp.default_inputs.parameters) == 1
+        assert len(sdk_lp.fixed_inputs.literals) == 0

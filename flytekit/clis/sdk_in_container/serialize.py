@@ -166,7 +166,7 @@ def serialize(ctx):
         object contains the WorkflowTemplate, along with the relevant tasks for that workflow.  In lieu of Admin,
         this serialization step will set the URN of the tasks to the fully qualified name of the task function.
     """
-    click.echo("Serializing Flyte elements with image {}".format(_internal_configuration.IMAGE.get()))
+    click.echo("Serializing Flyte elements with image {}".format(_internal_config.IMAGE.get()))
 
 
 @click.command("tasks")
@@ -189,7 +189,7 @@ def tasks(ctx, version=None, folder=None):
     version = (
         version
         or ctx.obj[CTX_VERSION]
-        or _internal_configuration.look_up_version_from_image_tag(_internal_configuration.IMAGE.get())
+        or _internal_config.look_up_version_from_image_tag(_internal_config.IMAGE.get())
     )
 
     internal_settings = {
@@ -199,7 +199,7 @@ def tasks(ctx, version=None, folder=None):
     }
     # Populate internal settings for project/domain/version from the environment so that the file names are resolved
     # with the correct strings. The file itself doesn't need to change though.
-    with TemporaryConfiguration(_internal_configuration.CONFIGURATION_PATH.get(), internal_settings):
+    with TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get(), internal_settings):
         _logging.debug(
             "Serializing with settings\n"
             "\n  Project: {}"
@@ -234,7 +234,7 @@ def workflows(ctx, version=None, folder=None):
     version = (
         version
         or ctx.obj[CTX_VERSION]
-        or _internal_configuration.look_up_version_from_image_tag(_internal_configuration.IMAGE.get())
+        or _internal_config.look_up_version_from_image_tag(_internal_config.IMAGE.get())
     )
 
     internal_settings = {
@@ -244,7 +244,7 @@ def workflows(ctx, version=None, folder=None):
     }
     # Populate internal settings for project/domain/version from the environment so that the file names are resolved
     # with the correct strings. The file itself doesn't need to change though.
-    with TemporaryConfiguration(_internal_configuration.CONFIGURATION_PATH.get(), internal_settings):
+    with TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get(), internal_settings):
         _logging.debug(
             "Serializing with settings\n"
             "\n  Project: {}"

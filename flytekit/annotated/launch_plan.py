@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from flytekit import logger
 from flytekit.annotated import workflow
@@ -49,23 +49,36 @@ class LaunchPlan(object):
         LaunchPlan.CACHE[workflow.name] = lp
         return lp
 
-    # TODO: Fix this, we need to have two sets of maps for inputs, one for fixed inputs, and one for default inputs.
-    #  cuz we have both of those in the launch plan spec.
     @staticmethod
-    def create(name: str, workflow: workflow.Workflow, **kwargs) -> LaunchPlan:
+    def create(name: str, workflow: workflow.Workflow, default_inputs: Dict[str, Any] = None, fixed_inputs: Dict[str, Any] = None) -> LaunchPlan:
         ctx = FlyteContext.current_context()
-        parameters = transform_inputs_to_parameters(ctx, workflow._native_interface)
-        fixed_inputs = LaunchPlan.native_kwargs_to_literal_map(ctx, workflow._native_interface, workflow.interface,
-                                                               **kwargs)
+        default_inputs = default_inputs or {}
+        fixed_inputs = fixed_inputs or {}
+        # Default inputs come from two places, the original signature of the workflow function, and the default_inputs
+        # argument to this function. We'll take the latter as having higher precedence.
+        wf_signature_parameters = transform_inputs_to_parameters(ctx, workflow._native_interface)
 
-        lp = LaunchPlan(name=name, workflow=workflow, parameters=parameters, fixed_inputs=fixed_inputs)
+        # Construct a new Interface object with just the default inputs given to get Parameters, maybe there's an
+        # easier way to do this, think about it later.
+        temp_inputs = {}
+        for k, v in default_inputs.items():
+            temp_inputs[k] = (workflow._native_interface.inputs[k], v)
+        temp_interface = Interface(inputs=temp_inputs, outputs={})
+        temp_signature = transform_inputs_to_parameters(ctx, temp_interface)
+        wf_signature_parameters.parameters.update(temp_signature.parameters)
+
+        # These are fixed inputs that cannot change at launch time. If the same argument is also in default inputs,
+        # it'll be taken out from defaults in the LaunchPlan constructor
+        fixed_lm = LaunchPlan.native_kwargs_to_literal_map(ctx, workflow._native_interface, workflow.interface,
+                                                               **fixed_inputs)
+
+        lp = LaunchPlan(name=name, workflow=workflow, parameters=wf_signature_parameters, fixed_inputs=fixed_lm)
+
         # This is just a convenience - we'll need the fixed inputs LiteralMap for when serializing the Launch Plan out
         # to protobuf, but for local execution and such, why not save the original Python native values as well so
         # we don't have to reverse it back every time.
-        lp._saved_inputs = kwargs
-
-        # This will eventually hold the registerable launch plan
-        lp._registerable_entity: SdkLaunchPlan = None
+        default_inputs.update(fixed_inputs)
+        lp._saved_inputs = default_inputs
 
         if name in LaunchPlan.CACHE:
             logger.warning(f"Launch plan named {name} was already created! Make sure your names are unique.")
@@ -88,6 +101,9 @@ class LaunchPlan(object):
         self._parameters = _interface_models.ParameterMap(parameters=parameters)
         self._fixed_inputs = fixed_inputs
         self._saved_inputs = {}
+
+        # This will eventually hold the registerable launch plan
+        self._registerable_entity: Optional[SdkLaunchPlan] = None
 
     @property
     def name(self) -> str:
