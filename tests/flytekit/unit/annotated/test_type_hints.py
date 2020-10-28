@@ -275,9 +275,9 @@ def test_wf1_with_sql():
         dt = t1()
         return sql(ds=dt)
 
-    mock = task_mock(sql)
-    mock.return_value = "Hello"
-    assert my_wf() == "Hello"
+    with task_mock(sql) as mock:
+        mock.return_value = "Hello"
+        assert my_wf() == "Hello"
 
 
 def test_wf1_with_spark():
@@ -600,15 +600,15 @@ def test_wf_container_task():
         metadata=metadata(),
     )
 
-    mock = task_mock(t2)
-    mock.side_effect = lambda a, b: None
-    assert t2(a=10, b="hello") is None
-
     def wf(a: int):
         x, y = t1(a=a)
         t2(a=x, b=y)
 
-    wf(a=10)
+    with task_mock(t2) as mock:
+        mock.side_effect = lambda a, b: None
+        assert t2(a=10, b="hello") is None
+
+        wf(a=10)
 
 
 def test_wf_container_task_multiple():
@@ -638,15 +638,14 @@ def test_wf_container_task_multiple():
     def raw_container_wf(val1: int, val2: int) -> int:
         return sum(x=square(val=val1), y=square(val=val2))
 
-    mock = task_mock(square)
-    mock.side_effect = lambda val: val * val
-    assert square(val=10) == 100
+    with task_mock(square) as square_mock, task_mock(sum) as sum_mock:
+        square_mock.side_effect = lambda val: val * val
+        assert square(val=10) == 100
 
-    mock = task_mock(sum)
-    mock.side_effect = lambda x, y: x + y
-    assert sum(x=10, y=10) == 20
+        sum_mock.side_effect = lambda x, y: x + y
+        assert sum(x=10, y=10) == 20
 
-    assert raw_container_wf(val1=10, val2=10) == 200
+        assert raw_container_wf(val1=10, val2=10) == 200
 
 
 def test_wf_tuple_fails():
