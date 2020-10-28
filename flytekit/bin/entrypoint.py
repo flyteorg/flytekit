@@ -129,9 +129,6 @@ def fast_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_out
 
     if additional_distribution is not None:
         download_distribution(additional_distribution, pathlib.Path(_os.getcwd()))
-    _logging.debug("additional distributions: {}".format(additional_distribution))
-    _logging.debug("cwd: {}".format(_os.getcwd()))
-    _logging.debug('ls: {}'.format(subprocess.run(["ls", "-lR"])))
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
@@ -151,6 +148,7 @@ def fast_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_out
         raw_output_data_prefix]
     if test:
         cmd.append("--test")
+    _click.echo("downloading ")
     _os.system(" ".join(cmd))
 
 
