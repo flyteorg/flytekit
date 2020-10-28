@@ -136,24 +136,6 @@ def fast_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_out
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
 
-    """
-    result = subprocess.run([
-        _sdk_config.SDK_PYTHON_VENV.get(),
-        "pyflyte-execute",
-        "--task-module",
-        task_module,
-        "--task-name",
-        task_name,
-        "--inputs",
-        inputs,
-        "--output-prefix",
-        output_prefix,
-        "--raw-output-data-prefix",
-        raw_output_data_prefix,
-        "--test",
-        test])
-    result.check_returncode()
-    """
     cmd = [
         ' '.join(str(v) for v in _sdk_config.SDK_PYTHON_VENV.get()),
         "pyflyte-execute",
@@ -169,7 +151,10 @@ def fast_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_out
         raw_output_data_prefix]
     if test:
         cmd.append("--test")
-    _os.system(" ".join(cmd))
+    # _os.system(" ".join(cmd))
+
+    result = subprocess.run(cmd)
+    result.check_returncode()
 
 
 if __name__ == "__main__":
