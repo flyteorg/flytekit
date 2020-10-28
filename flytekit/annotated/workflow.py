@@ -126,10 +126,9 @@ class Workflow(object):
         Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics
         a 'closure' in the traditional sense of the word.
         """
-        # TODO: should we even define it here?
-        self._input_parameters = transform_inputs_to_parameters(self._native_interface)
-        all_nodes = []
         ctx = FlyteContext.current_context()
+        self._input_parameters = transform_inputs_to_parameters(ctx, self._native_interface)
+        all_nodes = []
         prefix = f"{ctx.compilation_state.prefix}-{self.short_name}-" if ctx.compilation_state is not None else None
         with ctx.new_compilation_context(prefix=prefix) as comp_ctx:
             # Construct the default input promise bindings, but then override with the provided inputs, if any
@@ -343,14 +342,8 @@ def workflow(_workflow_function=None):
     # workflows need to have the body of the function itself run at module-load time. This is because the body of the
     # workflow is what expresses the workflow structure.
     def wrapper(fn):
-        # TODO: Again, at this point, we should be able to identify the name of the workflow
-        workflow_id = _identifier_model.Identifier(
-            _identifier_model.ResourceType.WORKFLOW, "proj", "dom", "moreblah", "1"
-        )
         workflow_instance = Workflow(fn)
         workflow_instance.compile()
-        workflow_instance.id = workflow_id
-
         return workflow_instance
 
     if _workflow_function:

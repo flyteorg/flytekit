@@ -20,7 +20,7 @@ from flytekit.common.promise import NodeOutput
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
 from flytekit.models.types import LiteralType, SimpleType
-
+from flytekit.annotated import launch_plan
 
 def test_default_wf_params_works():
     @task
@@ -582,3 +582,42 @@ def test_wf1_df():
         data={"col1": [20, 2, 5, 10], "col2": [20, 4, 5, 10]}
     ).reset_index(drop=True)
     assert result_df.all().all()
+
+
+def test_wf1_with_subwffdsa():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        a = a + 2
+        return a, "world-" + str(a)
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @workflow
+    def my_subwf(a: int) -> (str, str):
+        x, y = t1(a=a)
+        u, v = t1(a=x)
+        return y, v
+
+    lp = launch_plan.LaunchPlan.create("test1", my_subwf)
+    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_subwf, a=3)
+
+    @workflow
+    def my_wf(a: int = 42, b: str = "hi ") -> (int, str, str):
+        x, y = t1(a=a).with_overrides()
+        u, v = lp(a=x)
+        return x, u, v
+
+    x = my_wf(a=5, b="hello ")
+    assert x == (7, "world-9", "world-11")
+
+    assert my_wf() == (44, "world-46", "world-48")
+
+    @workflow
+    def my_wf2(a: int = 42, b: str = "hi ") -> (int, str, str, str):
+        x, y = t1(a=a).with_overrides()
+        u, v = lp_with_defaults()
+        return x, y, u, v
+
+    assert my_wf2() == (44, 'world-44', 'world-5', 'world-7')

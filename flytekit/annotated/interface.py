@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import inspect
 import typing
@@ -7,6 +9,7 @@ from typing import Any, Dict, Generator, List, Tuple, Type, TypeVar, Union
 from flytekit import logger
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.models import interface as _interface_models
+from flytekit.annotated import context_manager
 
 
 class Interface(object):
@@ -16,10 +19,13 @@ class Interface(object):
 
     def __init__(
         self, inputs: typing.Dict[str, Union[Type, Tuple[Type, Any]]] = None, outputs: typing.Dict[str, Type] = None,
+
     ):
         """
         :param outputs: Output variables and their types as a dictionary
-        :param inputs: the variable and its type only
+        :param inputs: Map of input name to either a tuple where the first element is the python type, and the second
+            value is the default, or just a single value which is the python type. The latter case is used by tasks
+            for which perhaps a default value does not make sense. For consistency, we turn it into a tuple.
         """
         self._inputs = {}
         if inputs:
@@ -59,7 +65,7 @@ class Interface(object):
                 del new_inputs[v]
         return Interface(new_inputs, self._outputs)
 
-    def with_inputs(self, extra_inputs: Dict[str, Type]) -> "Interface":
+    def with_inputs(self, extra_inputs: Dict[str, Type]) -> Interface:
         """
         Use this to add additional inputs to the interface. This is useful for adding additional implicit inputs that
         are added without the user requesting for them
@@ -73,7 +79,7 @@ class Interface(object):
             new_inputs[k] = v
         return Interface(new_inputs, self._outputs)
 
-    def with_outputs(self, extra_outputs: Dict[str, Type]) -> "Interface":
+    def with_outputs(self, extra_outputs: Dict[str, Type]) -> Interface:
         """
         This method allows addition of extra outputs are expected from a task specification
         """
@@ -87,7 +93,7 @@ class Interface(object):
         return Interface(self._inputs, new_outputs)
 
 
-def transform_inputs_to_parameters(interface: Interface) -> _interface_models.ParameterMap:
+def transform_inputs_to_parameters(ctx: context_manager.FlyteContext, interface: Interface) -> _interface_models.ParameterMap:
     """
     Transforms the given interface (with inputs) to a Parameter Map with defaults set
     :param interface: the interface object
@@ -99,9 +105,11 @@ def transform_inputs_to_parameters(interface: Interface) -> _interface_models.Pa
     inputs_with_def = interface.inputs_with_defaults
     for k, v in inputs_vars.items():
         val, _default = inputs_with_def[k]
-        # TODO: Fix defaults and required
         required = _default is None
-        params[k] = _interface_models.Parameter(var=v, default=_default, required=required)
+        default_lv = None
+        if _default is not None:
+            default_lv = TypeEngine.to_literal(ctx, _default, python_type=interface.inputs[k], expected=v.type)
+        params[k] = _interface_models.Parameter(var=v, default=default_lv, required=required)
     return _interface_models.ParameterMap(params)
 
 

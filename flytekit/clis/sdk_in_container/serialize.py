@@ -14,8 +14,7 @@ from flytekit.common.exceptions.scopes import system_entry_point
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
 from flytekit.configuration import TemporaryConfiguration
-from flytekit.configuration import internal as _internal_config
-from flytekit.configuration import internal as _internal_configuration
+from flytekit.configuration import internal as _internal_config, auth as _auth_config
 from flytekit.models.core import identifier as _identifier_models
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
@@ -90,7 +89,8 @@ def serialize_all(project, domain, pkgs, version, folder=None):
     }
 
     registration_settings = flyte_context.RegistrationSettings(
-        project=project, domain=domain, version=version, image=_internal_configuration.IMAGE.get(), env=env
+        project=project, domain=domain, version=version, image=_internal_config.IMAGE.get(), env=env,
+        iam_role=_auth_config.ASSUMABLE_IAM_ROLE.get(), service_account=_auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
     )
     with flyte_context.FlyteContext.current_context().new_registration_settings(
         registration_settings=registration_settings
