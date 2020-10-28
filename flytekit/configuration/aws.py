@@ -21,3 +21,5 @@ ENABLE_DEBUG = _config_common.FlyteBoolConfigurationEntry("aws", "enable_debug",
 RETRIES = _config_common.FlyteIntegerConfigurationEntry("aws", "retries", default=3)
 
 BACKOFF_SECONDS = _config_common.FlyteIntegerConfigurationEntry("aws", "backoff_seconds", default=5)
+
+FAST_REGISTRATION_DIR = _config_common.FlyteStringConfigurationEntry("aws", "fast_registration_dir")

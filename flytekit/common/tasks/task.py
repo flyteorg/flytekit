@@ -1,7 +1,11 @@
 import hashlib as _hashlib
 import json as _json
 import logging as _logging
+import os
 import uuid as _uuid
+
+import copy as _copy
+from pathlib import Path
 
 import six as _six
 from google.protobuf import json_format as _json_format
@@ -28,6 +32,8 @@ from flytekit.models import task as _task_model
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.tools.fast_registration import compute_digest, upload_package
+from flytekit.configuration import aws as _aws_config
 
 
 class SdkTask(
@@ -167,6 +173,36 @@ class SdkTask(
         except Exception:
             self._id = old_id
             raise
+
+    @_exception_scopes.system_entry_point
+    def fast_register(self, project=None, domain=None, name=None, already_uploaded_digest=None):
+        """
+        :param Text project: The project in which to register this task.
+        :param Text domain: The domain in which to register this task.
+        :param Text name: The name to give this task.
+        :param Text already_uploaded_digest: The version in which to register this task (if it's not already computed).
+        """
+        digest = already_uploaded_digest
+        if already_uploaded_digest is None:
+            cwd = Path(os.getcwd())
+            digest = compute_digest(cwd)
+            upload_package(cwd, digest, _aws_config.FAST_REGISTRATION_DIR.get())
+
+        original_container = self.container
+        container = _copy.deepcopy(original_container)
+        for idx, arg in enumerate(container.args):
+            if arg == "pyflyte-execute":
+                container._args[idx] = "pyflyte-fast-execute"
+        self._container = container
+
+        try:
+            registered_id = self.register(project, domain, name, digest)
+        except Exception:
+            self._container = original_container
+            raise
+        self._has_fast_registered = True
+        self._container = original_container
+        return str(registered_id)
 
     @_exception_scopes.system_entry_point
     def serialize(self):

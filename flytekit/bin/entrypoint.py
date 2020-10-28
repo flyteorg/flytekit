@@ -1,7 +1,10 @@
+import logging as _logging
 import datetime as _datetime
 import importlib as _importlib
 import os as _os
+import pathlib
 import random as _random
+import subprocess
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -11,10 +14,12 @@ from flytekit.common.exceptions import scopes as _scopes
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.configuration import internal as _internal_config
+from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import literals as _literal_models
+from flytekit.tools.fast_registration import download_distribution
 
 
 def _compute_array_job_index():
@@ -55,6 +60,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with _utils.AutoDeletingTempDir("input_dir") as input_dir:
             # Load user code
+
             task_module = _importlib.import_module(task_module)
             task_def = getattr(task_module, task_name)
 
@@ -108,6 +114,42 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
         raw_output_data_prefix = None
 
     _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
+
+
+@_pass_through.command("pyflyte-fast-execute")
+@_click.option("--task-module", required=True)
+@_click.option("--task-name", required=True)
+@_click.option("--inputs", required=True)
+@_click.option("--output-prefix", required=True)
+@_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--additional-distribution", required=False)
+@_click.option("--test", is_flag=True)
+def fast_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, additional_distribution, test):
+    _click.echo(_utils.get_version_message())
+
+    if additional_distribution is not None:
+        download_distribution(additional_distribution, pathlib.Path(_os.getcwd()))
+    _logging.debug("additional distributions: {}".format(additional_distribution))
+    _logging.debug("cwd: {}".format(_os.getcwd()))
+    _logging.debug('ls: {}'.format(subprocess.run(["ls", "-l"])))
+
+    # Use the commandline to run the task execute command rather than calling it directly in python code
+    # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
+    _sdk_config.SDK_PYTHON_VENV.get()
+    result = subprocess.run([
+        _sdk_config.SDK_PYTHON_VENV.get(),
+        "pyflyte-execute",
+        "--task-module",
+        task_module,
+        "--task-name",
+        task_name,
+        "--inputs",
+        inputs,
+        "--output-prefix",
+        output_prefix,
+        "--raw-output-data-prefix",
+        raw_output_data_prefix])
+    result.check_returncode()
 
 
 if __name__ == "__main__":

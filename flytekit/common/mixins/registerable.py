@@ -149,6 +149,7 @@ class TrackableEntity(FlyteEntity, metaclass=_InstanceTracker):
 class RegisterableEntity(TrackableEntity):
     def __init__(self, *args, **kwargs):
         self._has_registered = False
+        self._has_fast_registered = False
         super(RegisterableEntity, self).__init__(*args, **kwargs)
 
     @_abc.abstractmethod
@@ -158,6 +159,16 @@ class RegisterableEntity(TrackableEntity):
         :param Text domain: The domain in which to register this task.
         :param Text name: The name to give this task.
         :param Text version: The version in which to register this task.
+        """
+        pass
+
+    @_abc.abstractmethod
+    def fast_register(self, project=None, domain=None, name=None, already_uploaded_digest=None):
+        """
+        :param Text project: The project in which to register this task.
+        :param Text domain: The domain in which to register this task.
+        :param Text name: The name to give this task.
+        :param Text already_uploaded_digest: The version in which to register this task (if it's not already computed).
         """
         pass
 
@@ -173,6 +184,10 @@ class RegisterableEntity(TrackableEntity):
     @property
     def has_registered(self) -> bool:
         return self._has_registered
+
+    @property
+    def has_fast_registered(self) -> bool:
+        return self._has_fast_registered
 
 
 class HasDependencies(object):

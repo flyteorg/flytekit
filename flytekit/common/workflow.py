@@ -1,4 +1,6 @@
 import datetime as _datetime
+import os
+from pathlib import Path
 
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
@@ -16,6 +18,8 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.admin import workflow as _admin_workflow_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
+from flytekit.tools.fast_registration import compute_digest, upload_package
+from flytekit.configuration import aws as _aws_config
 
 
 class SdkWorkflow(
@@ -206,6 +210,29 @@ class SdkWorkflow(
         except Exception:
             self._id = old_id
             raise
+
+    @_exception_scopes.system_entry_point
+    def fast_register(self, project=None, domain=None, name=None, already_uploaded_digest=None):
+        """
+        :param Text project: The project in which to register this task.
+        :param Text domain: The domain in which to register this task.
+        :param Text name: The name to give this task.
+        :param Text already_uploaded_digest: The version in which to register this task (if it's not already computed).
+        """
+        digest = already_uploaded_digest
+        if already_uploaded_digest is None:
+            cwd = Path(os.getcwd())
+            digest = compute_digest(cwd)
+            upload_package(cwd, digest, _aws_config.FAST_REGISTRATION_DIR.get())
+        id_to_register = _identifier.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, digest)
+
+        try:
+            self.register(project, domain, name, digest)
+        except Exception:
+            raise
+        self._has_fast_registered = True
+        return str(id_to_register)
+
 
     @_exception_scopes.system_entry_point
     def serialize(self):
