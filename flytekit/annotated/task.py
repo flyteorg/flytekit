@@ -34,6 +34,16 @@ from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
 
 
+def kwtypes(**kwargs) -> Dict[str, Type]:
+    """
+    Converts the keyword arguments to typed dictionary
+    """
+    d = collections.OrderedDict()
+    for k, v in kwargs.items():
+        d[k] = v
+    return d
+
+
 # This is the least abstract task. It will have access to the loaded Python function
 # itself if run locally, so it will always be a Python task.
 # This is analogous to the current SdkRunnableTask. Need to analyze the benefits of duplicating the class versus
@@ -550,7 +560,7 @@ class SQLTask(PythonTask):
     """
 
     # TODO this should be replaced with Schema Type
-    _OUTPUTS = {"results": str}
+    _OUTPUTS = kwtypes(results=str)
     _INPUT_REGEX = re.compile(r"({{\s*.inputs.(\w+)\s*}})", re.IGNORECASE)
 
     def __init__(
@@ -741,13 +751,3 @@ def task(
 
 
 dynamic = functools.partial(task, task_type="_dynamic")
-
-
-def kwtypes(**kwargs) -> Dict[str, Type]:
-    """
-    Converts the keyword arguments to typed dictionary
-    """
-    d = collections.OrderedDict()
-    for k, v in kwargs.items():
-        d[k] = v
-    return d

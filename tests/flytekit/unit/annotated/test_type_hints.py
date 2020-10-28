@@ -13,6 +13,7 @@ from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import ContainerTask, SQLTask, dynamic, kwtypes, maptask, metadata, task
+from flytekit.annotated.testing import task_mock
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
@@ -270,11 +271,13 @@ def test_wf1_with_sql():
         return datetime.datetime.now()
 
     @workflow
-    def my_wf():
+    def my_wf() -> str:
         dt = t1()
-        sql(ds=dt)
+        return sql(ds=dt)
 
-    my_wf()
+    mock = task_mock(sql)
+    mock.return_value = "Hello"
+    assert my_wf() == "Hello"
 
 
 def test_wf1_with_spark():
@@ -597,6 +600,10 @@ def test_wf_container_task():
         metadata=metadata(),
     )
 
+    mock = task_mock(t2)
+    mock.side_effect = lambda a, b: None
+    assert t2(a=10, b="hello") is None
+
     def wf(a: int):
         x, y = t1(a=a)
         t2(a=x, b=y)
@@ -631,7 +638,15 @@ def test_wf_container_task_multiple():
     def raw_container_wf(val1: int, val2: int) -> int:
         return sum(x=square(val=val1), y=square(val=val2))
 
-    raw_container_wf(val1=10, val2=10)
+    mock = task_mock(square)
+    mock.side_effect = lambda val: val * val
+    assert square(val=10) == 100
+
+    mock = task_mock(sum)
+    mock.side_effect = lambda x, y: x + y
+    assert sum(x=10, y=10) == 20
+
+    assert raw_container_wf(val1=10, val2=10) == 200
 
 
 def test_wf_tuple_fails():
