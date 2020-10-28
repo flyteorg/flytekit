@@ -166,9 +166,9 @@ def fast_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_out
         "--output-prefix",
         output_prefix,
         "--raw-output-data-prefix",
-        raw_output_data_prefix,
-        "--test",
-        test]
+        raw_output_data_prefix]
+    if test:
+        cmd.append("--test")
     _os.system(" ".join(cmd))
 
 
