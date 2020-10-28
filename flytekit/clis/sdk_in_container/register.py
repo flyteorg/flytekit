@@ -32,7 +32,7 @@ def register_all(project, domain, pkgs, test, version):
             click.echo("Would register {:20} {}".format("{}:".format(o.entity_type_text), o.id.name))
         else:
             click.echo("Registering {:20} {}".format("{}:".format(o.entity_type_text), o.id.name))
-            o.bregister(project, domain, o.id.name, version)
+            o.register(project, domain, o.id.name, version)
 
 
 def register_tasks_only(project, domain, pkgs, test, version):
