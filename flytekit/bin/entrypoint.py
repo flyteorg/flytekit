@@ -131,11 +131,12 @@ def fast_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_out
         download_distribution(additional_distribution, pathlib.Path(_os.getcwd()))
     _logging.debug("additional distributions: {}".format(additional_distribution))
     _logging.debug("cwd: {}".format(_os.getcwd()))
-    _logging.debug('ls: {}'.format(subprocess.run(["ls", "-l"])))
+    _logging.debug('ls: {}'.format(subprocess.run(["ls", "-lR"])))
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    _sdk_config.SDK_PYTHON_VENV.get()
+
+    """
     result = subprocess.run([
         _sdk_config.SDK_PYTHON_VENV.get(),
         "pyflyte-execute",
@@ -148,8 +149,27 @@ def fast_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_out
         "--output-prefix",
         output_prefix,
         "--raw-output-data-prefix",
-        raw_output_data_prefix])
+        raw_output_data_prefix,
+        "--test",
+        test])
     result.check_returncode()
+    """
+    cmd = [
+        _sdk_config.SDK_PYTHON_VENV.get(),
+        "pyflyte-execute",
+        "--task-module",
+        task_module,
+        "--task-name",
+        task_name,
+        "--inputs",
+        inputs,
+        "--output-prefix",
+        output_prefix,
+        "--raw-output-data-prefix",
+        raw_output_data_prefix,
+        "--test",
+        test]
+    _os.system(" ".join(cmd))
 
 
 if __name__ == "__main__":
