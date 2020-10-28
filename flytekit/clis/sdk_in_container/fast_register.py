@@ -24,7 +24,7 @@ def fast_register_all(project, domain, pkgs, test, version, source_dir):
 
     click.echo(
         "Running task, workflow, and launch plan fast registration for {}, {}, {} with version {} and code dir {}".
-            format(project, domain, pkgs, version, source_dir)
+            format(project, domain, pkgs, digest, source_dir)
     )
 
     # m = module (i.e. python file)
@@ -32,7 +32,7 @@ def fast_register_all(project, domain, pkgs, test, version, source_dir):
     # o = object (e.g. SdkWorkflow)
     for m, k, o in iterate_registerable_entities_in_order(pkgs):
         name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
-        o._id = _identifier.Identifier(o.resource_type, project, domain, name, version)
+        o._id = _identifier.Identifier(o.resource_type, project, domain, name, digest)
 
         if test:
             click.echo("Would fast register {:20} {}".format("{}:".format(o.entity_type_text), o.id.name))
@@ -49,7 +49,7 @@ def fast_register_tasks_only(project: str, domain: str, pkgs, test: bool, versio
     upload_package(source_dir, digest, _aws_config.FAST_REGISTRATION_DIR.get())
 
     click.echo("Running task only fast registration for {}, {}, {} with version {} and code dir {}".format(
-        project, domain, pkgs, version, source_dir))
+        project, domain, pkgs, digest, source_dir))
 
     # Discover all tasks by loading the module
     for m, k, t in iterate_registerable_entities_in_order(pkgs, include_entities={_task.SdkTask}):

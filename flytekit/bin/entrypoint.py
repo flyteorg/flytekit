@@ -151,10 +151,7 @@ def fast_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_out
         raw_output_data_prefix]
     if test:
         cmd.append("--test")
-    # _os.system(" ".join(cmd))
-
-    result = subprocess.run(cmd)
-    result.check_returncode()
+    _os.system(" ".join(cmd))
 
 
 if __name__ == "__main__":
