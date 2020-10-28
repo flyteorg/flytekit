@@ -604,7 +604,7 @@ def test_wf1_with_subwffdsa():
     lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_subwf, a=3)
 
     @workflow
-    def my_wf(a: int = 42, b: str = "hi ") -> (int, str, str):
+    def my_wf(a: int = 42) -> (int, str, str):
         x, y = t1(a=a).with_overrides()
         u, v = lp(a=x)
         return x, u, v
@@ -615,9 +615,54 @@ def test_wf1_with_subwffdsa():
     assert my_wf() == (44, "world-46", "world-48")
 
     @workflow
-    def my_wf2(a: int = 42, b: str = "hi ") -> (int, str, str, str):
+    def my_wf2(a: int = 42) -> (int, str, str, str):
         x, y = t1(a=a).with_overrides()
         u, v = lp_with_defaults()
         return x, y, u, v
 
     assert my_wf2() == (44, 'world-44', 'world-5', 'world-7')
+
+    @workflow
+    def my_wf3(a: int = 42) -> (int, str, str, str):
+        x, y = t1(a=a).with_overrides()
+        u, v = lp_with_defaults(a=x)
+        return x, y, u, v
+
+    assert my_wf2() == (44, 'world-44', 'world-5', 'world-7')
+
+
+def test_wf1_with_subwffdsafdsa():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        a = a + 2
+        return a, "world-" + str(a)
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @workflow
+    def my_subwf(a: int) -> (str, str):
+        x, y = t1(a=a)
+        u, v = t1(a=x)
+        return y, v
+
+    lp = launch_plan.LaunchPlan.create("test1", my_subwf)
+    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_subwf, a=3)
+
+    registration_settings = context_manager.RegistrationSettings(
+        project="proj", domain="dom", version="123", image="asdf/fdsa:123", env={},
+        iam_role="test:iam:role", service_account=None,
+    )
+    with context_manager.FlyteContext.current_context().new_registration_settings(
+        registration_settings=registration_settings
+    ):
+        sdk_lp = lp.get_registerable_entity()
+        assert len(sdk_lp.default_inputs.parameters) == 0
+        assert len(sdk_lp.fixed_inputs.literals) == 0
+
+        sdk_lp = lp_with_defaults.get_registerable_entity()
+        assert len(sdk_lp.default_inputs.parameters) == 0
+        assert len(sdk_lp.fixed_inputs.literals) == 1
+
+        print(sdk_lp)

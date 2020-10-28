@@ -329,10 +329,10 @@ class Workflow(object):
             output_bindings=self._output_bindings,
         )
         # Reset just to make sure it's what we give it
-        self._registerable_entity.id._project = settings._project
-        self._registerable_entity.id._domain = settings._domain
+        self._registerable_entity.id._project = settings.project
+        self._registerable_entity.id._domain = settings.domain
         self._registerable_entity.id._name = self._name
-        self._registerable_entity.id._version = settings._version
+        self._registerable_entity.id._version = settings.version
 
         return self._registerable_entity
 

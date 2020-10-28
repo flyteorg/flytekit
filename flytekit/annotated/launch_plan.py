@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import Dict, Any
+
+from typing import Dict, Any, List
+
 from flytekit import logger
 from flytekit.annotated import workflow
 from flytekit.annotated.context_manager import FlyteContext
@@ -14,6 +16,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
+from flytekit.models.core import identifier as _identifier_model
 
 
 class LaunchPlan(object):
@@ -46,7 +49,8 @@ class LaunchPlan(object):
         LaunchPlan.CACHE[workflow.name] = lp
         return lp
 
-    # Should we add in things like schedules and annotations and make kwargs an explicit map of inputs?
+    # TODO: Fix this, we need to have two sets of maps for inputs, one for fixed inputs, and one for default inputs.
+    #  cuz we have both of those in the launch plan spec.
     @staticmethod
     def create(name: str, workflow: workflow.Workflow, **kwargs) -> LaunchPlan:
         ctx = FlyteContext.current_context()
@@ -60,6 +64,9 @@ class LaunchPlan(object):
         # we don't have to reverse it back every time.
         lp._saved_inputs = kwargs
 
+        # This will eventually hold the registerable launch plan
+        lp._registerable_entity: SdkLaunchPlan = None
+
         if name in LaunchPlan.CACHE:
             logger.warning(f"Launch plan named {name} was already created! Make sure your names are unique.")
         LaunchPlan.CACHE[name] = lp
@@ -68,16 +75,16 @@ class LaunchPlan(object):
     # TODO: Add schedule, notifications, labels, annotations, QoS, raw output data config
     def __init__(self, name: str, workflow: workflow.Workflow, parameters: _interface_models.ParameterMap,
                  fixed_inputs: _literal_models.LiteralMap,
-                 schedule = None,
-                 notifications = None,
-                 labels = None,
-                 annotations = None,
-                 qos = None,
-                 raw_output_data_config = None):
+                 schedule: _schedule_model.Schedule = None,
+                 notifications: List[_common_models.Notification] = None,
+                 labels: _common_models.Labels = None,
+                 annotations: _common_models.Annotations = None,
+                 raw_output_data_config: _common_models.RawOutputDataConfig = None):
         self._name = name
         self._workflow = workflow
         # Ensure fixed inputs are not in parameter map
-        parameters = {k: v for k, v in parameters.parameters.items() if k not in fixed_inputs.literals}
+        parameters = {k: v for k, v in parameters.parameters.items() if
+                      k not in fixed_inputs.literals and v.default is not None}
         self._parameters = _interface_models.ParameterMap(parameters=parameters)
         self._fixed_inputs = fixed_inputs
         self._saved_inputs = {}
@@ -141,7 +148,7 @@ class LaunchPlan(object):
 
         sdk_workflow = self.workflow.get_registerable_entity()
         self._registerable_entity = SdkLaunchPlan(
-            workflow_id = sdk_workflow.id,
+            workflow_id=sdk_workflow.id,
             entity_metadata=_launch_plan_models.LaunchPlanMetadata(
                 schedule=_schedule_model.Schedule(""), notifications=[],
             ),
@@ -152,11 +159,10 @@ class LaunchPlan(object):
             auth_role=auth_role,  # TODO: Is None here okay?
             raw_output_data_config=_common_models.RawOutputDataConfig(""),
         )
-
-        # Reset just to make sure it's what we give it
-        self._registerable_entity.id._project = settings._project
-        self._registerable_entity.id._domain = settings._domain
-        self._registerable_entity.id._name = self._name
-        self._registerable_entity.id._version = settings._version
-
+        self._registerable_entity._id = _identifier_model.Identifier(
+            resource_type=_identifier_model.ResourceType.LAUNCH_PLAN, project=settings.project,
+            domain=settings.domain,
+            name=self.name,
+            version=settings.version,
+        )
         return self._registerable_entity
