@@ -1,4 +1,5 @@
 import importlib as _importer
+from typing import Type
 
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
@@ -13,11 +14,11 @@ from flytekit.models import types as _literal_type_models
 from flytekit.models.core import types as _core_types
 
 
-def _proto_sdk_type_from_tag(tag):
+def _load_type_from_tag(tag: str) -> Type:
     """
-    :param Text tag:
-    :rtype: _proto.Protobuf
+    Loads python type from tag
     """
+
     if "." not in tag:
         raise _user_exceptions.FlyteValueException(
             tag, "Protobuf tag must include at least one '.' to delineate package and object name.",
@@ -34,11 +35,27 @@ def _proto_sdk_type_from_tag(tag):
     if not hasattr(pb_module, name):
         raise _user_exceptions.FlyteAssertion("Could not find the protobuf named: {} @ {}.".format(name, module))
 
-    return _proto.create_protobuf(getattr(pb_module, name))
+    return getattr(pb_module, name)
+
+
+def _proto_sdk_type_from_tag(tag):
+    """
+    :param Text tag:
+    :rtype: _proto.Protobuf
+    """
+    return _proto.create_protobuf(_load_type_from_tag(tag))
+
+
+def _generic_proto_sdk_type_from_tag(tag: str) -> Type[_proto.GenericProtobuf]:
+    """
+    :param Text tag:
+    :rtype: _proto.GenericProtobuf
+    """
+
+    return _proto.create_generic(_load_type_from_tag(tag))
 
 
 class FlyteDefaultTypeEngine(object):
-
     _SIMPLE_TYPE_LOOKUP_TABLE = {
         _literal_type_models.SimpleType.INTEGER: _primitive_types.Integer,
         _literal_type_models.SimpleType.FLOAT: _primitive_types.Float,
@@ -95,6 +112,12 @@ class FlyteDefaultTypeEngine(object):
                 and _proto.Protobuf.PB_FIELD_KEY in literal_type.metadata
             ):
                 return _proto_sdk_type_from_tag(literal_type.metadata[_proto.Protobuf.PB_FIELD_KEY])
+            if (
+                literal_type.simple == _literal_type_models.SimpleType.STRUCT
+                and literal_type.metadata
+                and _proto.Protobuf.PB_FIELD_KEY in literal_type.metadata
+            ):
+                return _generic_proto_sdk_type_from_tag(literal_type.metadata[_proto.Protobuf.PB_FIELD_KEY])
             sdk_type = self._SIMPLE_TYPE_LOOKUP_TABLE.get(literal_type.simple)
             if sdk_type is None:
                 raise NotImplementedError(

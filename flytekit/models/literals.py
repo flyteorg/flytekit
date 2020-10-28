@@ -3,6 +3,7 @@ from datetime import datetime as _datetime
 import pytz as _pytz
 import six as _six
 from flyteidl.core import literals_pb2 as _literals_pb2
+from google.protobuf.struct_pb2 import Struct
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
@@ -194,119 +195,6 @@ class Binary(_common.FlyteIdlEntity):
         :rtype: Binary
         """
         return cls(value=pb2_object.value, tag=pb2_object.tag)
-
-
-class Scalar(_common.FlyteIdlEntity):
-    def __init__(
-        self, primitive=None, blob=None, binary=None, schema=None, none_type=None, error=None, generic=None,
-    ):
-        """
-        Scalar wrapper around Flyte types.  Only one can be specified.
-
-        :param Primitive primitive:
-        :param Blob blob:
-        :param Binary binary:
-        :param Schema schema:
-        :param Void none_type:
-        :param error:
-        :param google.protobuf.struct_pb2.Struct generic:
-        """
-
-        self._primitive = primitive
-        self._blob = blob
-        self._binary = binary
-        self._schema = schema
-        self._none_type = none_type
-        self._error = error
-        self._generic = generic
-
-    @property
-    def primitive(self):
-        """
-        :rtype: Primitive
-        """
-        return self._primitive
-
-    @property
-    def blob(self):
-        """
-        :rtype: Blob
-        """
-        return self._blob
-
-    @property
-    def binary(self):
-        """
-        :rtype: Binary
-        """
-        return self._binary
-
-    @property
-    def schema(self):
-        """
-        :rtype: Schema
-        """
-        return self._schema
-
-    @property
-    def none_type(self):
-        """
-        :rtype: Void
-        """
-        return self._none_type
-
-    @property
-    def error(self):
-        """
-        :rtype: TODO
-        """
-        return self._error
-
-    @property
-    def generic(self):
-        """
-        :rtype: google.protobuf.struct_pb2.Struct
-        """
-        return self._generic
-
-    @property
-    def value(self):
-        """
-        Returns whichever value is set
-        :rtype: T
-        """
-        return self.primitive or self.blob or self.binary or self.schema or self.none_type or self.error
-
-    def to_flyte_idl(self):
-        """
-        :rtype: flyteidl.core.literals_pb2.Scalar
-        """
-        return _literals_pb2.Scalar(
-            primitive=self.primitive.to_flyte_idl() if self.primitive is not None else None,
-            blob=self.blob.to_flyte_idl() if self.blob is not None else None,
-            binary=self.binary.to_flyte_idl() if self.binary is not None else None,
-            schema=self.schema.to_flyte_idl() if self.schema is not None else None,
-            none_type=self.none_type.to_flyte_idl() if self.none_type is not None else None,
-            error=self.error if self.error is not None else None,
-            generic=self.generic,
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        """
-        :param flyteidl.core.literals_pb2.Scalar pb2_object:
-        :rtype: flytekit.models.literals.Scalar
-        """
-        # todo finish
-        return cls(
-            primitive=Primitive.from_flyte_idl(pb2_object.primitive) if pb2_object.HasField("primitive") else None,
-            blob=Blob.from_flyte_idl(pb2_object.blob) if pb2_object.HasField("blob") else None,
-            binary=Binary.from_flyte_idl(pb2_object.binary) if pb2_object.HasField("binary") else None,
-            schema=Schema.from_flyte_idl(pb2_object.schema) if pb2_object.HasField("schema") else None,
-            none_type=Void.from_flyte_idl(pb2_object.none_type) if pb2_object.HasField("none_type") else None,
-            error=pb2_object.error if pb2_object.HasField("error") else None,
-            generic=pb2_object.generic if pb2_object.HasField("generic") else None,
-        )
 
 
 class BlobMetadata(_common.FlyteIdlEntity):
@@ -701,8 +589,128 @@ class LiteralMap(_common.FlyteIdlEntity):
         return cls({k: Literal.from_flyte_idl(v) for k, v in _six.iteritems(pb2_object.literals)})
 
 
+class Scalar(_common.FlyteIdlEntity):
+    def __init__(
+        self,
+        primitive: Primitive = None,
+        blob: Blob = None,
+        binary: Binary = None,
+        schema: Schema = None,
+        none_type: Void = None,
+        error=None,
+        generic: Struct = None,
+    ):
+        """
+        Scalar wrapper around Flyte types.  Only one can be specified.
+
+        :param Primitive primitive:
+        :param Blob blob:
+        :param Binary binary:
+        :param Schema schema:
+        :param Void none_type:
+        :param error:
+        :param google.protobuf.struct_pb2.Struct generic:
+        """
+
+        self._primitive = primitive
+        self._blob = blob
+        self._binary = binary
+        self._schema = schema
+        self._none_type = none_type
+        self._error = error
+        self._generic = generic
+
+    @property
+    def primitive(self):
+        """
+        :rtype: Primitive
+        """
+        return self._primitive
+
+    @property
+    def blob(self):
+        """
+        :rtype: Blob
+        """
+        return self._blob
+
+    @property
+    def binary(self):
+        """
+        :rtype: Binary
+        """
+        return self._binary
+
+    @property
+    def schema(self):
+        """
+        :rtype: Schema
+        """
+        return self._schema
+
+    @property
+    def none_type(self):
+        """
+        :rtype: Void
+        """
+        return self._none_type
+
+    @property
+    def error(self):
+        """
+        :rtype: TODO
+        """
+        return self._error
+
+    @property
+    def generic(self):
+        """
+        :rtype: google.protobuf.struct_pb2.Struct
+        """
+        return self._generic
+
+    @property
+    def value(self):
+        """
+        Returns whichever value is set
+        :rtype: T
+        """
+        return self.primitive or self.blob or self.binary or self.schema or self.none_type or self.error
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.core.literals_pb2.Scalar
+        """
+        return _literals_pb2.Scalar(
+            primitive=self.primitive.to_flyte_idl() if self.primitive is not None else None,
+            blob=self.blob.to_flyte_idl() if self.blob is not None else None,
+            binary=self.binary.to_flyte_idl() if self.binary is not None else None,
+            schema=self.schema.to_flyte_idl() if self.schema is not None else None,
+            none_type=self.none_type.to_flyte_idl() if self.none_type is not None else None,
+            error=self.error if self.error is not None else None,
+            generic=self.generic,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.core.literals_pb2.Scalar pb2_object:
+        :rtype: flytekit.models.literals.Scalar
+        """
+        # todo finish
+        return cls(
+            primitive=Primitive.from_flyte_idl(pb2_object.primitive) if pb2_object.HasField("primitive") else None,
+            blob=Blob.from_flyte_idl(pb2_object.blob) if pb2_object.HasField("blob") else None,
+            binary=Binary.from_flyte_idl(pb2_object.binary) if pb2_object.HasField("binary") else None,
+            schema=Schema.from_flyte_idl(pb2_object.schema) if pb2_object.HasField("schema") else None,
+            none_type=Void.from_flyte_idl(pb2_object.none_type) if pb2_object.HasField("none_type") else None,
+            error=pb2_object.error if pb2_object.HasField("error") else None,
+            generic=pb2_object.generic if pb2_object.HasField("generic") else None,
+        )
+
+
 class Literal(_common.FlyteIdlEntity):
-    def __init__(self, scalar=None, collection=None, map=None):
+    def __init__(self, scalar: Scalar = None, collection: LiteralCollection = None, map: LiteralMap = None):
         """
         :param Scalar scalar:
         :param LiteralCollection collection:

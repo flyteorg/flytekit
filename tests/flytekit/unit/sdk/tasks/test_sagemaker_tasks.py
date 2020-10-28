@@ -1,15 +1,12 @@
 import datetime as _datetime
-import os
+import os as _os
 import unittest
 from unittest import mock
 
 import retry.api
-from flyteidl.plugins.sagemaker.hyperparameter_tuning_job_pb2 import HyperparameterTuningJobConfig as _pb2_HPOJobConfig
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
 from google.protobuf.json_format import ParseDict
 
-import flytekit.common.tasks.sagemaker.distributed_training
-import flytekit.models.core.types as _core_types
 from flytekit.common import constants as _common_constants
 from flytekit.common import utils as _utils
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
@@ -18,13 +15,30 @@ from flytekit.common.tasks.sagemaker import distributed_training as _sm_distribu
 from flytekit.common.tasks.sagemaker import hpo_job_task
 from flytekit.common.tasks.sagemaker.built_in_training_job_task import SdkBuiltinAlgorithmTrainingJobTask
 from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
-from flytekit.common.tasks.sagemaker.hpo_job_task import SdkSimpleHyperparameterTuningJobTask
+from flytekit.common.tasks.sagemaker.hpo_job_task import (
+    HyperparameterTuningJobConfig,
+    SdkSimpleHyperparameterTuningJobTask,
+)
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.engines import common as _common_engine
 from flytekit.engines.unit.mock_stats import MockStats
 from flytekit.models import literals as _literals
 from flytekit.models import types as _idl_types
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import types as _core_types
+from flytekit.models.sagemaker.hpo_job import HyperparameterTuningJobConfig as _HyperparameterTuningJobConfig
+from flytekit.models.sagemaker.hpo_job import (
+    HyperparameterTuningObjective,
+    HyperparameterTuningObjectiveType,
+    HyperparameterTuningStrategy,
+    TrainingJobEarlyStoppingType,
+)
+from flytekit.models.sagemaker.parameter_ranges import (
+    ContinuousParameterRange,
+    HyperparameterScalingType,
+    IntegerParameterRange,
+    ParameterRangeOneOf,
+)
 from flytekit.models.sagemaker.training_job import (
     AlgorithmName,
     AlgorithmSpecification,
@@ -37,6 +51,7 @@ from flytekit.sdk import types as _sdk_types
 from flytekit.sdk.sagemaker.task import custom_training_job_task
 from flytekit.sdk.tasks import inputs, outputs
 from flytekit.sdk.types import Types
+from flytekit.sdk.workflow import Input, workflow_class
 
 example_hyperparams = {
     "base_score": "0.5",
@@ -142,6 +157,7 @@ simple_xgboost_hpo_job_task = hpo_job_task.SdkSimpleHyperparameterTuningJobTask(
     cache_version="1",
     retries=2,
     cacheable=True,
+    tunable_parameters=["num_round", "gamma", "max_depth"],
 )
 
 simple_xgboost_hpo_job_task._id = _identifier.Identifier(
@@ -179,7 +195,7 @@ def test_simple_hpo_job_task():
     assert simple_xgboost_hpo_job_task.interface.inputs["hyperparameter_tuning_job_config"].description == ""
     assert (
         simple_xgboost_hpo_job_task.interface.inputs["hyperparameter_tuning_job_config"].type
-        == _sdk_types.Types.Proto(_pb2_HPOJobConfig).to_flyte_literal_type()
+        == HyperparameterTuningJobConfig.to_flyte_literal_type()
     )
     assert simple_xgboost_hpo_job_task.interface.outputs["model"].description == ""
     assert simple_xgboost_hpo_job_task.interface.outputs["model"].type == _sdk_types.Types.Blob.to_flyte_literal_type()
@@ -225,15 +241,47 @@ def test_custom_training_job():
     assert type(my_task) == CustomTrainingJobTask
 
 
+def test_simple_hpo_job_task_interface():
+    @workflow_class
+    class MyWf(object):
+        train_dataset = Input(Types.Blob)
+        validation_dataset = Input(Types.Blob)
+        static_hyperparameters = Input(Types.Generic)
+        hyperparameter_tuning_job_config = Input(
+            HyperparameterTuningJobConfig,
+            default=_HyperparameterTuningJobConfig(
+                tuning_strategy=HyperparameterTuningStrategy.BAYESIAN,
+                tuning_objective=HyperparameterTuningObjective(
+                    objective_type=HyperparameterTuningObjectiveType.MINIMIZE, metric_name="validation:error",
+                ),
+                training_job_early_stopping_type=TrainingJobEarlyStoppingType.AUTO,
+            ),
+        )
+
+        a = simple_xgboost_hpo_job_task(
+            train=train_dataset,
+            validation=validation_dataset,
+            static_hyperparameters=static_hyperparameters,
+            hyperparameter_tuning_job_config=hyperparameter_tuning_job_config,
+            num_round=ParameterRangeOneOf(
+                IntegerParameterRange(min_value=3, max_value=10, scaling_type=HyperparameterScalingType.LINEAR)
+            ),
+            max_depth=ParameterRangeOneOf(
+                IntegerParameterRange(min_value=5, max_value=7, scaling_type=HyperparameterScalingType.LINEAR)
+            ),
+            gamma=ParameterRangeOneOf(
+                ContinuousParameterRange(min_value=0.0, max_value=0.3, scaling_type=HyperparameterScalingType.LINEAR)
+            ),
+        )
+
+    assert MyWf.nodes[0].inputs[2].binding.scalar.generic is not None
+
+
 # Defining a output-persist predicate to indicate if the copy of the instance should persist its output
 def predicate(distributed_training_context):
     return (
-        distributed_training_context[
-            flytekit.common.tasks.sagemaker.distributed_training.DistributedTrainingContextKey.CURRENT_HOST
-        ]
-        == distributed_training_context[
-            flytekit.common.tasks.sagemaker.distributed_training.DistributedTrainingContextKey.HOSTS
-        ][1]
+        distributed_training_context[_sm_distribution.DistributedTrainingContextKey.CURRENT_HOST]
+        == distributed_training_context[_sm_distribution.DistributedTrainingContextKey.HOSTS][1]
     )
 
 
@@ -245,7 +293,6 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
     @mock.patch.dict("os.environ", {})
     def setUp(self):
         with _utils.AutoDeletingTempDir("input_dir") as input_dir:
-
             self._task_input = _literals.LiteralMap(
                 {"input_1": _literals.Literal(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=1)))}
             )
@@ -280,7 +327,7 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
 
     def test_missing_current_host_in_distributed_training_context_keys_lead_to_keyerrors(self):
         with mock.patch.dict(
-            os.environ,
+            _os.environ,
             {
                 _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
                 _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
@@ -293,7 +340,7 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
 
     def test_missing_hosts_distributed_training_context_keys_lead_to_keyerrors(self):
         with mock.patch.dict(
-            os.environ,
+            _os.environ,
             {
                 _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
                 _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
@@ -306,7 +353,7 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
 
     def test_missing_network_interface_name_in_distributed_training_context_keys_lead_to_keyerrors(self):
         with mock.patch.dict(
-            os.environ,
+            _os.environ,
             {
                 _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
                 _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
@@ -319,7 +366,7 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
 
     def test_with_default_predicate_with_rank0_master(self):
         with mock.patch.dict(
-            os.environ,
+            _os.environ,
             {
                 _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-0",
                 _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
@@ -333,7 +380,7 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
 
     def test_with_default_predicate_with_rank1_master(self):
         with mock.patch.dict(
-            os.environ,
+            _os.environ,
             {
                 _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
                 _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
@@ -346,7 +393,7 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
 
     def test_with_custom_predicate_with_none_dist_context(self):
         with mock.patch.dict(
-            os.environ,
+            _os.environ,
             {
                 _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
                 _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
@@ -363,7 +410,7 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
 
     def test_with_custom_predicate_with_valid_dist_context(self):
         with mock.patch.dict(
-            os.environ,
+            _os.environ,
             {
                 _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
                 _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
@@ -382,7 +429,7 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
 
     def test_if_wf_param_has_dist_context(self):
         with mock.patch.dict(
-            os.environ,
+            _os.environ,
             {
                 _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-1",
                 _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0", "algo-1", "algo-2"]',
