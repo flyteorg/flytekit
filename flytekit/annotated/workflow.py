@@ -19,7 +19,6 @@ from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
 from flytekit.common import promise as _common_promise
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -258,6 +257,8 @@ class Workflow(object):
 
             raise ValueError("expected outputs and actual outputs do not match")
 
+    # TODO: Let's think about this. I feel like it can be moved somewhere. This function is very close to the task
+    #  version of it, and the launch plan class basically just calls this too.
     def _create_and_link_node(self, ctx: FlyteContext, *args, **kwargs):
         """
         This method is used to create a node representing a subworkflow call in a workflow. It should closely mirror
@@ -308,7 +309,7 @@ class Workflow(object):
 
         return create_task_output(node_outputs)
 
-    def get_registerable_entity(self) -> _registerable.RegisterableEntity:
+    def get_registerable_entity(self) -> _SdkWorkflow:
         settings = FlyteContext.current_context().registration_settings
         if self._registerable_entity is not None:
             return self._registerable_entity

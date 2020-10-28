@@ -108,7 +108,7 @@ class LaunchPlan(object):
     @property
     def saved_inputs(self) -> Dict[str, Any]:
         # See note in create()
-        # Since the callsite will typically update the dict returned, and since update updates in place, let's return
+        # Since the call-site will typically update the dict returned, and since update updates in place, let's return
         # a copy.
         # TODO: What issues will there be when we start introducing custom classes as input types?
         return self._saved_inputs.copy()

@@ -584,7 +584,7 @@ def test_wf1_df():
     assert result_df.all().all()
 
 
-def test_wf1_with_subwffdsa():
+def test_wf1_with_lp_node():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         a = a + 2
@@ -631,7 +631,7 @@ def test_wf1_with_subwffdsa():
     assert my_wf2() == (44, 'world-44', 'world-5', 'world-7')
 
 
-def test_wf1_with_subwffdsafdsa():
+def test_lp_serialize():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         a = a + 2
