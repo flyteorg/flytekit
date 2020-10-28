@@ -155,7 +155,7 @@ def fast_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_out
     result.check_returncode()
     """
     cmd = [
-        _sdk_config.SDK_PYTHON_VENV.get(),
+        ' '.join(str(v) for v in _sdk_config.SDK_PYTHON_VENV.get()),
         "pyflyte-execute",
         "--task-module",
         task_module,
