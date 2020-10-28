@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from flytekit import logger
-from flytekit.annotated import workflow
+from flytekit.annotated import workflow as _annotated_workflow
 from flytekit.annotated.context_manager import FlyteContext
-from flytekit.annotated.interface import (
-    transform_inputs_to_parameters,
-    Interface,
-)
+from flytekit.annotated.interface import Interface, transform_inputs_to_parameters
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common.launch_plan import SdkLaunchPlan
 from flytekit.models import common as _common_models
@@ -25,32 +22,42 @@ class LaunchPlan(object):
     CACHE = {}
 
     @staticmethod
-    def native_kwargs_to_literal_map(ctx: FlyteContext, native_interface: Interface,
-                                     typed_interface: _interface_models.TypedInterface,
-                                     **kwargs) -> _literal_models.LiteralMap:
+    def native_kwargs_to_literal_map(
+        ctx: FlyteContext, native_interface: Interface, typed_interface: _interface_models.TypedInterface, **kwargs
+    ) -> _literal_models.LiteralMap:
         return _literal_models.LiteralMap(
             literals={
-                k: TypeEngine.to_literal(ctx, v, python_type=native_interface.inputs.get(k),
-                                         expected=typed_interface.inputs.get(k).type)
+                k: TypeEngine.to_literal(
+                    ctx, v, python_type=native_interface.inputs.get(k), expected=typed_interface.inputs.get(k).type
+                )
                 for k, v in kwargs.items()
             }
         )
 
     @staticmethod
-    def get_default_launch_plan(ctx: FlyteContext, workflow: workflow.Workflow) -> LaunchPlan:
+    def get_default_launch_plan(ctx: FlyteContext, workflow: _annotated_workflow.Workflow) -> LaunchPlan:
         if workflow.name in LaunchPlan.CACHE:
             return LaunchPlan.CACHE[workflow.name]
 
         parameter_map = transform_inputs_to_parameters(ctx, workflow._native_interface)
 
-        lp = LaunchPlan(name=workflow.name, workflow=workflow, parameters=parameter_map,
-                        fixed_inputs=_literal_models.LiteralMap(literals={}))
+        lp = LaunchPlan(
+            name=workflow.name,
+            workflow=workflow,
+            parameters=parameter_map,
+            fixed_inputs=_literal_models.LiteralMap(literals={}),
+        )
 
         LaunchPlan.CACHE[workflow.name] = lp
         return lp
 
     @staticmethod
-    def create(name: str, workflow: workflow.Workflow, default_inputs: Dict[str, Any] = None, fixed_inputs: Dict[str, Any] = None) -> LaunchPlan:
+    def create(
+        name: str,
+        workflow: _annotated_workflow.Workflow,
+        default_inputs: Dict[str, Any] = None,
+        fixed_inputs: Dict[str, Any] = None,
+    ) -> LaunchPlan:
         ctx = FlyteContext.current_context()
         default_inputs = default_inputs or {}
         fixed_inputs = fixed_inputs or {}
@@ -69,8 +76,9 @@ class LaunchPlan(object):
 
         # These are fixed inputs that cannot change at launch time. If the same argument is also in default inputs,
         # it'll be taken out from defaults in the LaunchPlan constructor
-        fixed_lm = LaunchPlan.native_kwargs_to_literal_map(ctx, workflow._native_interface, workflow.interface,
-                                                               **fixed_inputs)
+        fixed_lm = LaunchPlan.native_kwargs_to_literal_map(
+            ctx, workflow._native_interface, workflow.interface, **fixed_inputs
+        )
 
         lp = LaunchPlan(name=name, workflow=workflow, parameters=wf_signature_parameters, fixed_inputs=fixed_lm)
 
@@ -86,18 +94,24 @@ class LaunchPlan(object):
         return lp
 
     # TODO: Add schedule, notifications, labels, annotations, QoS, raw output data config
-    def __init__(self, name: str, workflow: workflow.Workflow, parameters: _interface_models.ParameterMap,
-                 fixed_inputs: _literal_models.LiteralMap,
-                 schedule: _schedule_model.Schedule = None,
-                 notifications: List[_common_models.Notification] = None,
-                 labels: _common_models.Labels = None,
-                 annotations: _common_models.Annotations = None,
-                 raw_output_data_config: _common_models.RawOutputDataConfig = None):
+    def __init__(
+        self,
+        name: str,
+        workflow: _annotated_workflow.Workflow,
+        parameters: _interface_models.ParameterMap,
+        fixed_inputs: _literal_models.LiteralMap,
+        schedule: _schedule_model.Schedule = None,
+        notifications: List[_common_models.Notification] = None,
+        labels: _common_models.Labels = None,
+        annotations: _common_models.Annotations = None,
+        raw_output_data_config: _common_models.RawOutputDataConfig = None,
+    ):
         self._name = name
         self._workflow = workflow
         # Ensure fixed inputs are not in parameter map
-        parameters = {k: v for k, v in parameters.parameters.items() if
-                      k not in fixed_inputs.literals and v.default is not None}
+        parameters = {
+            k: v for k, v in parameters.parameters.items() if k not in fixed_inputs.literals and v.default is not None
+        }
         self._parameters = _interface_models.ParameterMap(parameters=parameters)
         self._fixed_inputs = fixed_inputs
         self._saved_inputs = {}
@@ -118,7 +132,7 @@ class LaunchPlan(object):
         return self._fixed_inputs
 
     @property
-    def workflow(self) -> workflow.Workflow:
+    def workflow(self) -> _annotated_workflow.Workflow:
         return self._workflow
 
     @property
@@ -176,7 +190,8 @@ class LaunchPlan(object):
             raw_output_data_config=_common_models.RawOutputDataConfig(""),
         )
         self._registerable_entity._id = _identifier_model.Identifier(
-            resource_type=_identifier_model.ResourceType.LAUNCH_PLAN, project=settings.project,
+            resource_type=_identifier_model.ResourceType.LAUNCH_PLAN,
+            project=settings.project,
             domain=settings.domain,
             name=self.name,
             version=settings.version,

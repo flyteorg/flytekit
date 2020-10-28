@@ -7,9 +7,9 @@ from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Tuple, Type, TypeVar, Union
 
 from flytekit import logger
+from flytekit.annotated import context_manager
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.models import interface as _interface_models
-from flytekit.annotated import context_manager
 
 
 class Interface(object):
@@ -19,7 +19,6 @@ class Interface(object):
 
     def __init__(
         self, inputs: typing.Dict[str, Union[Type, Tuple[Type, Any]]] = None, outputs: typing.Dict[str, Type] = None,
-
     ):
         """
         :param outputs: Output variables and their types as a dictionary
@@ -93,7 +92,9 @@ class Interface(object):
         return Interface(self._inputs, new_outputs)
 
 
-def transform_inputs_to_parameters(ctx: context_manager.FlyteContext, interface: Interface) -> _interface_models.ParameterMap:
+def transform_inputs_to_parameters(
+    ctx: context_manager.FlyteContext, interface: Interface
+) -> _interface_models.ParameterMap:
     """
     Transforms the given interface (with inputs) to a Parameter Map with defaults set
     :param interface: the interface object

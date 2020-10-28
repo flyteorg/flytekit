@@ -19,7 +19,16 @@ from flytekit.models.core import identifier as _identifier
 
 
 class RegistrationSettings(object):
-    def __init__(self, project: str, domain: str, version: str, image: str, env: Optional[Dict[str, str]], iam_role: Optional[str] = None, service_account: Optional[str] = None):
+    def __init__(
+        self,
+        project: str,
+        domain: str,
+        version: str,
+        image: str,
+        env: Optional[Dict[str, str]],
+        iam_role: Optional[str] = None,
+        service_account: Optional[str] = None,
+    ):
         self._project = project
         self._domain = domain
         self._version = version
@@ -49,11 +58,11 @@ class RegistrationSettings(object):
         return self._env
 
     @property
-    def iam_role(self)-> Optional[str]:
+    def iam_role(self) -> Optional[str]:
         return self._iam_role
 
     @property
-    def service_account(self)-> Optional[str]:
+    def service_account(self) -> Optional[str]:
         return self._service_account
 
 

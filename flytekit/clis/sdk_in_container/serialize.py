@@ -5,9 +5,9 @@ import os as _os
 import click
 
 from flytekit.annotated import context_manager as flyte_context
+from flytekit.annotated.launch_plan import LaunchPlan
 from flytekit.annotated.task import PythonTask
 from flytekit.annotated.workflow import Workflow
-from flytekit.annotated.launch_plan import LaunchPlan
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_VERSION
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
@@ -15,8 +15,8 @@ from flytekit.common.exceptions.scopes import system_entry_point
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
 from flytekit.configuration import TemporaryConfiguration
-from flytekit.configuration import internal as _internal_config, auth as _auth_config
-from flytekit.models.core import identifier as _identifier_models
+from flytekit.configuration import auth as _auth_config
+from flytekit.configuration import internal as _internal_config
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
 
@@ -90,8 +90,13 @@ def serialize_all(project, domain, pkgs, version, folder=None):
     }
 
     registration_settings = flyte_context.RegistrationSettings(
-        project=project, domain=domain, version=version, image=_internal_config.IMAGE.get(), env=env,
-        iam_role=_auth_config.ASSUMABLE_IAM_ROLE.get(), service_account=_auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
+        project=project,
+        domain=domain,
+        version=version,
+        image=_internal_config.IMAGE.get(),
+        env=env,
+        iam_role=_auth_config.ASSUMABLE_IAM_ROLE.get(),
+        service_account=_auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
     )
     with flyte_context.FlyteContext.current_context().new_registration_settings(
         registration_settings=registration_settings
@@ -187,9 +192,7 @@ def tasks(ctx, version=None, folder=None):
         click.echo(f"Writing output to {folder}")
 
     version = (
-        version
-        or ctx.obj[CTX_VERSION]
-        or _internal_config.look_up_version_from_image_tag(_internal_config.IMAGE.get())
+        version or ctx.obj[CTX_VERSION] or _internal_config.look_up_version_from_image_tag(_internal_config.IMAGE.get())
     )
 
     internal_settings = {
@@ -232,9 +235,7 @@ def workflows(ctx, version=None, folder=None):
     pkgs = ctx.obj[CTX_PACKAGES]
 
     version = (
-        version
-        or ctx.obj[CTX_VERSION]
-        or _internal_config.look_up_version_from_image_tag(_internal_config.IMAGE.get())
+        version or ctx.obj[CTX_VERSION] or _internal_config.look_up_version_from_image_tag(_internal_config.IMAGE.get())
     )
 
     internal_settings = {

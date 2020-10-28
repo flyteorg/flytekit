@@ -8,7 +8,7 @@ import pytest
 import flytekit.annotated.task
 import flytekit.annotated.workflow
 from flytekit import typing as flytekit_typing
-from flytekit.annotated import context_manager, promise
+from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.promise import Promise
@@ -20,7 +20,7 @@ from flytekit.common.promise import NodeOutput
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
 from flytekit.models.types import LiteralType, SimpleType
-from flytekit.annotated import launch_plan
+
 
 def test_default_wf_params_works():
     @task
@@ -600,11 +600,11 @@ def test_lp_default_handling():
     assert len(lp.parameters.parameters) == 0
     assert len(lp.fixed_inputs.literals) == 0
 
-    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_wf, default_inputs={'a': 3})
+    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_wf, default_inputs={"a": 3})
     assert len(lp_with_defaults.parameters.parameters) == 1
     assert len(lp_with_defaults.fixed_inputs.literals) == 0
 
-    lp_with_fixed = launch_plan.LaunchPlan.create("test3", my_wf, fixed_inputs={'a': 3})
+    lp_with_fixed = launch_plan.LaunchPlan.create("test3", my_wf, fixed_inputs={"a": 3})
     assert len(lp_with_fixed.parameters.parameters) == 0
     assert len(lp_with_fixed.fixed_inputs.literals) == 1
 
@@ -618,19 +618,19 @@ def test_lp_default_handling():
     assert len(lp.parameters.parameters) == 1
     assert len(lp.fixed_inputs.literals) == 0
 
-    lp_with_defaults = launch_plan.LaunchPlan.create("test5", my_wf2, default_inputs={'a': 3})
+    lp_with_defaults = launch_plan.LaunchPlan.create("test5", my_wf2, default_inputs={"a": 3})
     assert len(lp_with_defaults.parameters.parameters) == 2
     assert len(lp_with_defaults.fixed_inputs.literals) == 0
     # Launch plan defaults override wf defaults
-    assert lp_with_defaults(b=3) == ('world-5', 'world-5', 5, 5)
+    assert lp_with_defaults(b=3) == ("world-5", "world-5", 5, 5)
 
-    lp_with_fixed = launch_plan.LaunchPlan.create("test6", my_wf2, fixed_inputs={'a': 3})
+    lp_with_fixed = launch_plan.LaunchPlan.create("test6", my_wf2, fixed_inputs={"a": 3})
     assert len(lp_with_fixed.parameters.parameters) == 1
     assert len(lp_with_fixed.fixed_inputs.literals) == 1
     # Launch plan defaults override wf defaults
-    assert lp_with_fixed(b=3) == ('world-5', 'world-5', 5, 5)
+    assert lp_with_fixed(b=3) == ("world-5", "world-5", 5, 5)
 
-    lp_with_fixed = launch_plan.LaunchPlan.create("test7", my_wf2, fixed_inputs={'b': 3})
+    lp_with_fixed = launch_plan.LaunchPlan.create("test7", my_wf2, fixed_inputs={"b": 3})
     assert len(lp_with_fixed.parameters.parameters) == 0
     assert len(lp_with_fixed.fixed_inputs.literals) == 1
 
@@ -648,7 +648,7 @@ def test_wf1_with_lp_node():
         return y, v
 
     lp = launch_plan.LaunchPlan.create("test1", my_subwf)
-    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_subwf, default_inputs={'a': 3})
+    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_subwf, default_inputs={"a": 3})
 
     @workflow
     def my_wf(a: int = 42) -> (int, str, str):
@@ -667,7 +667,7 @@ def test_wf1_with_lp_node():
         u, v = lp_with_defaults()
         return x, y, u, v
 
-    assert my_wf2() == (44, 'world-44', 'world-5', 'world-7')
+    assert my_wf2() == (44, "world-44", "world-5", "world-7")
 
     @workflow
     def my_wf3(a: int = 42) -> (int, str, str, str):
@@ -675,7 +675,7 @@ def test_wf1_with_lp_node():
         u, v = lp_with_defaults(a=x)
         return x, y, u, v
 
-    assert my_wf2() == (44, 'world-44', 'world-5', 'world-7')
+    assert my_wf2() == (44, "world-44", "world-5", "world-7")
 
 
 def test_lp_serialize():
@@ -695,11 +695,16 @@ def test_lp_serialize():
         return y, v
 
     lp = launch_plan.LaunchPlan.create("test1", my_subwf)
-    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_subwf, default_inputs={'a': 3})
+    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_subwf, default_inputs={"a": 3})
 
     registration_settings = context_manager.RegistrationSettings(
-        project="proj", domain="dom", version="123", image="asdf/fdsa:123", env={},
-        iam_role="test:iam:role", service_account=None,
+        project="proj",
+        domain="dom",
+        version="123",
+        image="asdf/fdsa:123",
+        env={},
+        iam_role="test:iam:role",
+        service_account=None,
     )
     with context_manager.FlyteContext.current_context().new_registration_settings(
         registration_settings=registration_settings
