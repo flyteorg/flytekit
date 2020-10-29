@@ -648,8 +648,8 @@ def test_wf1_with_lp_node():
         u, v = t1(a=x)
         return y, v
 
-    lp = launch_plan.LaunchPlan.create("test1", my_subwf)
-    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_subwf, default_inputs={"a": 3})
+    lp = launch_plan.LaunchPlan.create("lp_nodetest1", my_subwf)
+    lp_with_defaults = launch_plan.LaunchPlan.create("lp_nodetest2", my_subwf, default_inputs={"a": 3})
 
     @workflow
     def my_wf(a: int = 42) -> (int, str, str):
@@ -695,8 +695,8 @@ def test_lp_serialize():
         u, v = t1(a=x)
         return y, v
 
-    lp = launch_plan.LaunchPlan.create("test1", my_subwf)
-    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_subwf, default_inputs={"a": 3})
+    lp = launch_plan.LaunchPlan.create("serialize_test1", my_subwf)
+    lp_with_defaults = launch_plan.LaunchPlan.create("serialize_test2", my_subwf, default_inputs={"a": 3})
 
     registration_settings = context_manager.RegistrationSettings(
         project="proj",

@@ -51,8 +51,9 @@ class LaunchPlan(object):
         LaunchPlan.CACHE[workflow.name] = lp
         return lp
 
-    @staticmethod
+    @classmethod
     def create(
+        cls,
         name: str,
         workflow: _annotated_workflow.Workflow,
         default_inputs: Dict[str, Any] = None,
@@ -76,11 +77,9 @@ class LaunchPlan(object):
 
         # These are fixed inputs that cannot change at launch time. If the same argument is also in default inputs,
         # it'll be taken out from defaults in the LaunchPlan constructor
-        fixed_lm = LaunchPlan.native_kwargs_to_literal_map(
-            ctx, workflow._native_interface, workflow.interface, **fixed_inputs
-        )
+        fixed_lm = cls.native_kwargs_to_literal_map(ctx, workflow._native_interface, workflow.interface, **fixed_inputs)
 
-        lp = LaunchPlan(name=name, workflow=workflow, parameters=wf_signature_parameters, fixed_inputs=fixed_lm)
+        lp = cls(name=name, workflow=workflow, parameters=wf_signature_parameters, fixed_inputs=fixed_lm)
 
         # This is just a convenience - we'll need the fixed inputs LiteralMap for when serializing the Launch Plan out
         # to protobuf, but for local execution and such, why not save the original Python native values as well so
@@ -88,9 +87,9 @@ class LaunchPlan(object):
         default_inputs.update(fixed_inputs)
         lp._saved_inputs = default_inputs
 
-        if name in LaunchPlan.CACHE:
-            logger.warning(f"Launch plan named {name} was already created! Make sure your names are unique.")
-        LaunchPlan.CACHE[name] = lp
+        if name in cls.CACHE:
+            raise AssertionError(f"Launch plan named {name} was already created! Make sure your names are unique.")
+        cls.CACHE[name] = lp
         return lp
 
     # TODO: Add QoS after it's done
