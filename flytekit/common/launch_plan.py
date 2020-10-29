@@ -1,8 +1,8 @@
 import datetime as _datetime
 import logging as _logging
-import os
+import os as _os
 import uuid as _uuid
-from pathlib import Path
+from pathlib import Path as _Path
 
 import six as _six
 from deprecated import deprecated as _deprecated
@@ -30,7 +30,7 @@ from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
-from flytekit.tools.fast_registration import compute_digest, upload_package
+from flytekit.tools.fast_registration import compute_digest as _compute_digest, upload_package as _upload_package
 from flytekit.configuration import aws as _aws_config
 
 
@@ -102,9 +102,9 @@ class SdkLaunchPlan(
         """
         digest = already_uploaded_digest
         if already_uploaded_digest is None:
-            cwd = Path(os.getcwd())
-            digest = compute_digest(cwd)
-            upload_package(cwd, digest, _aws_config.FAST_REGISTRATION_DIR.get())
+            cwd = _Path(_os.getcwd())
+            digest = _compute_digest(cwd)
+            _upload_package(cwd, digest, _aws_config.FAST_REGISTRATION_DIR.get())
         id_to_register = _identifier.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, digest)
 
         try:

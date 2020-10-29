@@ -1,3 +1,4 @@
+import logging as _logging
 import os
 import tarfile
 import tempfile
@@ -77,5 +78,10 @@ def download_distribution(additional_distribution: str, destination: os.PathLike
         raise ValueError("Unrecognized additional distribution format for {}".format(additional_distribution))
 
     # This will overwrite the existing user flyte workflow code in the current working code dir.
-    result = subprocess.run(['tar', '-xvf', os.path.join(destination, tarfile_name), "-C", destination], stdout=subprocess.PIPE)
+
+    _logging.info("Downloading fast-registered code dir {} to {}".format(os.path.join(destination, tarfile_name), destination))
+    result = subprocess.run(['tar', '-xvf', os.path.join(destination, tarfile_name), "-C", destination],
+                            capture_output=True)
+    _logging.info("Output of call to extract tar {}".format(result))
+    _logging.info("And overview of destination dir {}".format(subprocess.run(["ls", destination], capture_output=True)))
     result.check_returncode()

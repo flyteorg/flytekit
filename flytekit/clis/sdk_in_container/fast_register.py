@@ -1,26 +1,27 @@
-import logging as _logging
-from pathlib import Path
+from pathlib import Path as _Path
 
 import click
 import os
 
-from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_TEST, CTX_VERSION, CTX_CURRENT_DIR
+from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_TEST, CTX_CURRENT_DIR
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.tasks import task as _task
-from flytekit.configuration.internal import IMAGE as _IMAGE
-from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
-from flytekit.tools.fast_registration import upload_package, compute_digest
+from flytekit.tools.fast_registration import upload_package as _upload_package
+from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.configuration import aws as _aws_config
 
 
-def fast_register_all(project, domain, pkgs, test, version, source_dir):
+def fast_register_all(project, domain, pkgs, test: bool, version: str, source_dir):
     if test:
         click.echo("Test switch enabled, not doing anything...")
 
-    digest = compute_digest(source_dir)
-    upload_package(source_dir, digest, _aws_config.FAST_REGISTRATION_DIR.get())
+    if not version:
+        digest = _compute_digest(source_dir)
+    else:
+        digest = version
+    _upload_package(source_dir, digest, _aws_config.FAST_REGISTRATION_DIR.get())
 
     click.echo(
         "Running task, workflow, and launch plan fast registration for {}, {}, {} with version {} and code dir {}".
@@ -41,12 +42,17 @@ def fast_register_all(project, domain, pkgs, test, version, source_dir):
             o.fast_register(project, domain, o.id.name, already_uploaded_digest=digest)
 
 
-def fast_register_tasks_only(project: str, domain: str, pkgs, test: bool, version: str, source_dir: os.PathLike):
+def fast_register_tasks_only(
+        project: str, domain: str, pkgs, test: bool, version: str, source_dir: os.PathLike):
     if test:
         click.echo("Test switch enabled, not doing anything...")
 
-    digest = compute_digest(source_dir)
-    upload_package(source_dir, digest, _aws_config.FAST_REGISTRATION_DIR.get())
+    if not version:
+        digest = _compute_digest(source_dir)
+    else:
+        digest = version
+    digest = _compute_digest(source_dir)
+    _upload_package(source_dir, digest, _aws_config.FAST_REGISTRATION_DIR.get())
 
     click.echo("Running task only fast registration for {}, {}, {} with version {} and code dir {}".format(
         project, domain, pkgs, digest, source_dir))
@@ -93,9 +99,8 @@ def tasks(ctx, version=None):
     domain = ctx.obj[CTX_DOMAIN]
     test = ctx.obj[CTX_TEST]
     pkgs = ctx.obj[CTX_PACKAGES]
-    source_dir = Path(ctx.obj[CTX_CURRENT_DIR])
+    source_dir = _Path(ctx.obj[CTX_CURRENT_DIR])
 
-    version = version or ctx.obj[CTX_VERSION] or _look_up_version_from_image_tag(_IMAGE.get())
     fast_register_tasks_only(project, domain, pkgs, test, version, source_dir)
 
 
@@ -115,9 +120,8 @@ def workflows(ctx, version=None):
     domain = ctx.obj[CTX_DOMAIN]
     test = ctx.obj[CTX_TEST]
     pkgs = ctx.obj[CTX_PACKAGES]
-    source_dir = Path(ctx.obj[CTX_CURRENT_DIR])
+    source_dir = _Path(ctx.obj[CTX_CURRENT_DIR])
 
-    version = version or ctx.obj[CTX_VERSION] or _look_up_version_from_image_tag(_IMAGE.get())
     fast_register_all(project, domain, pkgs, test, version, source_dir)
 
 

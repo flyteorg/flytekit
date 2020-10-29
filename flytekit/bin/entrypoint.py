@@ -148,7 +148,6 @@ def fast_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_out
         raw_output_data_prefix]
     if test:
         cmd.append("--test")
-    _click.echo("downloading ")
     _os.system(" ".join(cmd))
 
 
