@@ -93,7 +93,7 @@ class LaunchPlan(object):
         LaunchPlan.CACHE[name] = lp
         return lp
 
-    # TODO: Add schedule, notifications, labels, annotations, QoS, raw output data config
+    # TODO: Add QoS after it's done
     def __init__(
         self,
         name: str,
@@ -114,7 +114,14 @@ class LaunchPlan(object):
         }
         self._parameters = _interface_models.ParameterMap(parameters=parameters)
         self._fixed_inputs = fixed_inputs
+        # See create() for additional information
         self._saved_inputs = {}
+
+        self._schedule = schedule
+        self._notifications = notifications or []
+        self._labels = labels
+        self._annotations = annotations
+        self._raw_output_data_config = raw_output_data_config
 
         # This will eventually hold the registerable launch plan
         self._registerable_entity: Optional[SdkLaunchPlan] = None
@@ -144,6 +151,26 @@ class LaunchPlan(object):
         # a copy.
         # TODO: What issues will there be when we start introducing custom classes as input types?
         return self._saved_inputs.copy()
+
+    @property
+    def schedule(self) -> Optional[_schedule_model.Schedule]:
+        return self._schedule
+
+    @property
+    def notifications(self) -> List[_common_models.Notification]:
+        return self._notifications
+
+    @property
+    def labels(self) -> Optional[_common_models.Labels]:
+        return self._labels
+
+    @property
+    def annotations(self) -> Optional[_common_models.Annotations]:
+        return self._annotations
+
+    @property
+    def raw_output_data_config(self) -> Optional[_common_models.RawOutputDataConfig]:
+        return self._raw_output_data_config
 
     def __call__(self, *args, **kwargs):
         if len(args) > 0:
@@ -186,10 +213,10 @@ class LaunchPlan(object):
             ),
             default_inputs=self.parameters,
             fixed_inputs=self.fixed_inputs,
-            labels=_common_models.Labels({}),
-            annotations=_common_models.Annotations({}),
+            labels=self.labels or _common_models.Labels({}),
+            annotations=self.annotations or _common_models.Annotations({}),
             auth_role=auth_role,  # TODO: Is None here okay?
-            raw_output_data_config=_common_models.RawOutputDataConfig(""),
+            raw_output_data_config=self.raw_output_data_config or _common_models.RawOutputDataConfig(""),
         )
         self._registerable_entity._id = _identifier_model.Identifier(
             resource_type=_identifier_model.ResourceType.LAUNCH_PLAN,
