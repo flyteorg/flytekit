@@ -209,7 +209,7 @@ class LaunchPlan(object):
         self._registerable_entity = SdkLaunchPlan(
             workflow_id=sdk_workflow.id,
             entity_metadata=_launch_plan_models.LaunchPlanMetadata(
-                schedule=_schedule_model.Schedule(""), notifications=[],
+                schedule=self.schedule, notifications=self.notifications,
             ),
             default_inputs=self.parameters,
             fixed_inputs=self.fixed_inputs,
