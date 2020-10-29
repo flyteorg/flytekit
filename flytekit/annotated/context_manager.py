@@ -15,8 +15,8 @@ from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.models.core import identifier as _identifier
 from flytekit.models.common import RawOutputDataConfig
+from flytekit.models.core import identifier as _identifier
 
 
 class RegistrationSettings(object):
@@ -71,6 +71,7 @@ class RegistrationSettings(object):
     @property
     def raw_output_data_config(self) -> RawOutputDataConfig:
         return RawOutputDataConfig(self._raw_output_data_config or "")
+
 
 class CompilationState(object):
     def __init__(self, prefix: str):
