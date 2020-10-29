@@ -218,6 +218,11 @@ class LaunchPlan(object):
             auth_role=auth_role,  # TODO: Is None here okay?
             raw_output_data_config=self.raw_output_data_config or settings.raw_output_data_config,
         )
+
+        # These two things are normally set to None in the SdkLaunchPlan constructor and filled in by
+        # SdkRunnableLaunchPlan/the registration process, so we need to set them manually. The reason is because these
+        # fields are not part of the underlying LaunchPlanSpec
+        self._registerable_entity._interface = sdk_workflow.interface
         self._registerable_entity._id = _identifier_model.Identifier(
             resource_type=_identifier_model.ResourceType.LAUNCH_PLAN,
             project=settings.project,
