@@ -1,17 +1,17 @@
-from pathlib import Path as _Path
-
-import click
 import os as _os
+from pathlib import Path as _Path
 from typing import List as _List
 
-from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_TEST, CTX_CURRENT_DIR
+import click
+
+from flytekit.clis.sdk_in_container.constants import CTX_CURRENT_DIR, CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_TEST
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.tasks import task as _task
-from flytekit.tools.module_loader import iterate_registerable_entities_in_order
-from flytekit.tools.fast_registration import upload_package as _upload_package
-from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.configuration import aws as _aws_config
+from flytekit.tools.fast_registration import compute_digest as _compute_digest
+from flytekit.tools.fast_registration import upload_package as _upload_package
+from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
 
 def fast_register_all(project: str, domain: str, pkgs: _List[str], test: bool, version: str, source_dir):

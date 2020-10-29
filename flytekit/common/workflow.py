@@ -12,6 +12,7 @@ from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.mixins import registerable as _registerable
+from flytekit.configuration import aws as _aws_config
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import literals as _literal_models
@@ -19,7 +20,6 @@ from flytekit.models.admin import workflow as _admin_workflow_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
 from flytekit.tools.fast_registration import compute_digest, upload_package
-from flytekit.configuration import aws as _aws_config
 
 
 class SdkWorkflow(

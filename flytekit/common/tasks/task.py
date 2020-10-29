@@ -1,10 +1,9 @@
+import copy as _copy
 import hashlib as _hashlib
 import json as _json
 import logging as _logging
 import os as _os
 import uuid as _uuid
-
-import copy as _copy
 from pathlib import Path as _Path
 
 import six as _six
@@ -23,6 +22,7 @@ from flytekit.common.mixins import launchable as _launchable_mixin
 from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import auth as _auth_config
+from flytekit.configuration import aws as _aws_config
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.flyte import engine as _flyte_engine
@@ -32,12 +32,9 @@ from flytekit.models import task as _task_model
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.tools.fast_registration import (
-    compute_digest as _compute_digest,
-    upload_package as _upload_package,
-    get_additional_distribution_loc as _get_additional_distribution_loc,
-)
-from flytekit.configuration import aws as _aws_config
+from flytekit.tools.fast_registration import compute_digest as _compute_digest
+from flytekit.tools.fast_registration import get_additional_distribution_loc as _get_additional_distribution_loc
+from flytekit.tools.fast_registration import upload_package as _upload_package
 
 
 class SdkTask(

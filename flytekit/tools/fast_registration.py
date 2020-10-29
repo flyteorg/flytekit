@@ -1,16 +1,12 @@
-import logging as _logging
 import os as _os
+import subprocess as _subprocess
 import tarfile as _tarfile
 import tempfile as _tempfile
-import subprocess as _subprocess
 from pathlib import Path as _Path
 
 import dirhash as _dirhash
 
-import click as _click
-
 from flytekit.interfaces.data import data_proxy as _data_proxy
-
 from flytekit.interfaces.data.data_proxy import Data as _Data
 
 _tmp_versions_dir = "tmp/versions"

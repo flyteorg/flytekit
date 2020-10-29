@@ -20,6 +20,7 @@ from flytekit.common.mixins import launchable as _launchable_mixin
 from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import auth as _auth_config
+from flytekit.configuration import aws as _aws_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import common as _common_models
@@ -30,8 +31,8 @@ from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
-from flytekit.tools.fast_registration import compute_digest as _compute_digest, upload_package as _upload_package
-from flytekit.configuration import aws as _aws_config
+from flytekit.tools.fast_registration import compute_digest as _compute_digest
+from flytekit.tools.fast_registration import upload_package as _upload_package
 
 
 class SdkLaunchPlan(
