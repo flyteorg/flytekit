@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from flytekit import logger
 from flytekit.annotated import workflow as _annotated_workflow
-from flytekit.annotated.context_manager import FlyteContext
+from flytekit.annotated.context_manager import FlyteContext, FlyteEntities
 from flytekit.annotated.interface import Interface, transform_inputs_to_parameters
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common.launch_plan import SdkLaunchPlan
@@ -72,7 +72,7 @@ class LaunchPlan(object):
             temp_inputs[k] = (workflow._native_interface.inputs[k], v)
         temp_interface = Interface(inputs=temp_inputs, outputs={})
         temp_signature = transform_inputs_to_parameters(ctx, temp_interface)
-        wf_signature_parameters.parameters.update(temp_signature.parameters)
+        wf_signature_parameters._parameters.update(temp_signature.parameters)
 
         # These are fixed inputs that cannot change at launch time. If the same argument is also in default inputs,
         # it'll be taken out from defaults in the LaunchPlan constructor
@@ -118,6 +118,8 @@ class LaunchPlan(object):
 
         # This will eventually hold the registerable launch plan
         self._registerable_entity: Optional[SdkLaunchPlan] = None
+
+        FlyteEntities.entities.append(self)
 
     @property
     def name(self) -> str:

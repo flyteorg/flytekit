@@ -180,7 +180,7 @@ class Parameter(_common.FlyteIdlEntity):
         return _interface_pb2.Parameter(
             var=self.var.to_flyte_idl(),
             default=self.default.to_flyte_idl() if self.default is not None else None,
-            required=self.required,
+            required=self.required if self.default is None else None,
         )
 
     @classmethod

@@ -20,6 +20,7 @@ from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
+from flytekit.models.interface import Parameter
 from flytekit.models.types import LiteralType, SimpleType
 
 
@@ -716,6 +717,12 @@ def test_lp_serialize():
         sdk_lp = lp_with_defaults.get_registerable_entity()
         assert len(sdk_lp.default_inputs.parameters) == 1
         assert len(sdk_lp.fixed_inputs.literals) == 0
+
+        # Adding a check to make sure oneof is respected. Tricky with booleans... if a default is specified, the
+        # required field needs to be None, not False.
+        parameter_a = sdk_lp.default_inputs.parameters["a"]
+        parameter_a = Parameter.from_flyte_idl(parameter_a.to_flyte_idl())
+        assert parameter_a.default is not None
 
 
 def test_wf_container_task():
