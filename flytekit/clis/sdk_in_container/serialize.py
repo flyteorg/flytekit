@@ -97,6 +97,7 @@ def serialize_all(project, domain, pkgs, version, folder=None):
         env=env,
         iam_role=_auth_config.ASSUMABLE_IAM_ROLE.get(),
         service_account=_auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
+        raw_output_data_config=_auth_config.RAW_OUTPUT_DATA_PREFIX.get()
     )
     with flyte_context.FlyteContext.current_context().new_registration_settings(
         registration_settings=registration_settings

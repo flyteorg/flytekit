@@ -16,6 +16,7 @@ from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.common import RawOutputDataConfig
 
 
 class RegistrationSettings(object):
@@ -28,6 +29,7 @@ class RegistrationSettings(object):
         env: Optional[Dict[str, str]],
         iam_role: Optional[str] = None,
         service_account: Optional[str] = None,
+        raw_output_data_config: Optional[str] = None,
     ):
         self._project = project
         self._domain = domain
@@ -36,6 +38,7 @@ class RegistrationSettings(object):
         self._env = env or {}
         self._iam_role = iam_role
         self._service_account = service_account
+        self._raw_output_data_config = raw_output_data_config
 
     @property
     def project(self) -> str:
@@ -65,6 +68,9 @@ class RegistrationSettings(object):
     def service_account(self) -> Optional[str]:
         return self._service_account
 
+    @property
+    def raw_output_data_config(self) -> RawOutputDataConfig:
+        return RawOutputDataConfig(self._raw_output_data_config or "")
 
 class CompilationState(object):
     def __init__(self, prefix: str):

@@ -216,7 +216,7 @@ class LaunchPlan(object):
             labels=self.labels or _common_models.Labels({}),
             annotations=self.annotations or _common_models.Annotations({}),
             auth_role=auth_role,  # TODO: Is None here okay?
-            raw_output_data_config=self.raw_output_data_config or _common_models.RawOutputDataConfig(""),
+            raw_output_data_config=self.raw_output_data_config or settings.raw_output_data_config,
         )
         self._registerable_entity._id = _identifier_model.Identifier(
             resource_type=_identifier_model.ResourceType.LAUNCH_PLAN,
