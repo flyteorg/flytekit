@@ -67,7 +67,7 @@ def upload_package(source_dir: _os.PathLike, identifier: str, remote_location: s
     marker = _Path(_os.path.join(tmp_versions_dir, identifier))
     full_remote_path = get_additional_distribution_loc(remote_location, identifier)
     if _os.path.exists(marker):
-        print("Local marker for identifier {} already exists, skipping upload".format(identifier, remote_location))
+        print("Local marker for identifier {} already exists, skipping upload".format(identifier))
         return full_remote_path
 
     if _Data.data_exists(full_remote_path):
