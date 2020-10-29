@@ -209,8 +209,9 @@ class Workflow(object):
 
         # Handle subworkflows in compilation
         if ctx.compilation_state is not None:
-            return self._create_and_link_node(ctx, **kwargs)
-
+            input_kwargs = self._native_interface.default_inputs_as_kwargs
+            input_kwargs.update(kwargs)
+            return self._create_and_link_node(ctx, **input_kwargs)
         elif (
             ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):

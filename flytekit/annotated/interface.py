@@ -47,6 +47,10 @@ class Interface(object):
         return self._inputs
 
     @property
+    def default_inputs_as_kwargs(self) -> Dict[str, Any]:
+        return {k: v[1] for k, v in self._inputs.items() if v[1] is not None}
+
+    @property
     def outputs(self) -> typing.Dict[str, type]:
         return self._outputs
 
