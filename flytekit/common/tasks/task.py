@@ -32,7 +32,7 @@ from flytekit.models import task as _task_model
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.tools.fast_registration import compute_digest, upload_package
+from flytekit.tools.fast_registration import compute_digest, upload_package, get_additional_distribution_loc
 from flytekit.configuration import aws as _aws_config
 
 
@@ -186,13 +186,18 @@ class SdkTask(
         if already_uploaded_digest is None:
             cwd = Path(os.getcwd())
             digest = compute_digest(cwd)
-            upload_package(cwd, digest, _aws_config.FAST_REGISTRATION_DIR.get())
+            additional_distribution = upload_package(cwd, digest, _aws_config.FAST_REGISTRATION_DIR.get())
+        else:
+            additional_distribution = get_additional_distribution_loc(_aws_config.FAST_REGISTRATION_DIR.get(), digest)
 
         original_container = self.container
         container = _copy.deepcopy(original_container)
+        args = container.args
         for idx, arg in enumerate(container.args):
             if arg == "pyflyte-execute":
-                container._args[idx] = "pyflyte-fast-execute"
+                args[idx] = "pyflyte-fast-execute"
+        args.extend(["--additional-distribution", additional_distribution])
+        container._args = args
         self._container = container
 
         try:

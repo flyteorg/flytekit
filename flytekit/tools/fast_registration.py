@@ -41,6 +41,10 @@ def _filter_tar_file_fn(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo:
     return tarinfo
 
 
+def get_additional_distribution_loc(remote_location, identifier):
+    return os.path.join(remote_location, "{}.{}".format(identifier, "tar.gz"))
+
+
 def upload_package(source_dir: os.PathLike, identifier: str, remote_location: str, dry_run=False):
     # checks for a flag file in the current execution directory
     tmp_versions_dir = os.path.join(os.getcwd(), _tmp_versions_dir)
@@ -49,7 +53,7 @@ def upload_package(source_dir: os.PathLike, identifier: str, remote_location: st
     if os.path.exists(marker):
         print("Local marker for identifier {} already exists, skipping upload".format(identifier, remote_location))
         return
-    full_remote_path = os.path.join(remote_location, "{}.{}".format(identifier, "tar.gz"))
+    full_remote_path = get_additional_distribution_loc(remote_location, identifier)
     if _Data.data_exists(full_remote_path):
         print("File {} already exists, skipping upload".format(full_remote_path))
         _write_marker(marker)
@@ -68,6 +72,7 @@ def upload_package(source_dir: os.PathLike, identifier: str, remote_location: st
     # Finally, touch the marker file so we have a flag in the future to avoid re-uploading the package dir as an
     # optimization
     _write_marker(marker)
+    return full_remote_path
 
 
 def download_distribution(additional_distribution: str, destination: os.PathLike):
@@ -81,7 +86,8 @@ def download_distribution(additional_distribution: str, destination: os.PathLike
 
     _logging.info("Downloading fast-registered code dir {} to {}".format(os.path.join(destination, tarfile_name), destination))
     result = subprocess.run(['tar', '-xvf', os.path.join(destination, tarfile_name), "-C", destination],
-                            capture_output=True)
+                            stdout=subprocess.PIPE)
     _logging.info("Output of call to extract tar {}".format(result))
-    _logging.info("And overview of destination dir {}".format(subprocess.run(["ls", destination], capture_output=True)))
+    _logging.info("And overview of destination dir {}".format(subprocess.run(["ls", destination],
+                                                                             stdout=subprocess.PIPE)))
     result.check_returncode()
