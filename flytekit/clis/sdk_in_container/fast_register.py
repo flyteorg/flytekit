@@ -1,7 +1,8 @@
 from pathlib import Path as _Path
 
 import click
-import os
+import os as _os
+from typing import List as _List
 
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_TEST, CTX_CURRENT_DIR
 from flytekit.common import utils as _utils
@@ -13,7 +14,7 @@ from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.configuration import aws as _aws_config
 
 
-def fast_register_all(project, domain, pkgs, test: bool, version: str, source_dir):
+def fast_register_all(project: str, domain: str, pkgs: _List[str], test: bool, version: str, source_dir):
     if test:
         click.echo("Test switch enabled, not doing anything...")
 
@@ -24,8 +25,9 @@ def fast_register_all(project, domain, pkgs, test: bool, version: str, source_di
     _upload_package(source_dir, digest, _aws_config.FAST_REGISTRATION_DIR.get())
 
     click.echo(
-        "Running task, workflow, and launch plan fast registration for {}, {}, {} with version {} and code dir {}".
-            format(project, domain, pkgs, digest, source_dir)
+        "Running task, workflow, and launch plan fast registration for {}, {}, {} with version {} and code dir {}".format(
+            project, domain, pkgs, digest, source_dir
+        )
     )
 
     # m = module (i.e. python file)
@@ -43,7 +45,8 @@ def fast_register_all(project, domain, pkgs, test: bool, version: str, source_di
 
 
 def fast_register_tasks_only(
-        project: str, domain: str, pkgs, test: bool, version: str, source_dir: os.PathLike):
+    project: str, domain: str, pkgs: _List[str], test: bool, version: str, source_dir: _os.PathLike
+):
     if test:
         click.echo("Test switch enabled, not doing anything...")
 
@@ -51,11 +54,13 @@ def fast_register_tasks_only(
         digest = _compute_digest(source_dir)
     else:
         digest = version
-    digest = _compute_digest(source_dir)
     _upload_package(source_dir, digest, _aws_config.FAST_REGISTRATION_DIR.get())
 
-    click.echo("Running task only fast registration for {}, {}, {} with version {} and code dir {}".format(
-        project, domain, pkgs, digest, source_dir))
+    click.echo(
+        "Running task only fast registration for {}, {}, {} with version {} and code dir {}".format(
+            project, domain, pkgs, digest, source_dir
+        )
+    )
 
     # Discover all tasks by loading the module
     for m, k, t in iterate_registerable_entities_in_order(pkgs, include_entities={_task.SdkTask}):
@@ -80,7 +85,7 @@ def fast_register(ctx, test=None):
     """
 
     ctx.obj[CTX_TEST] = test
-    ctx.obj[CTX_CURRENT_DIR] = os.getcwd()
+    ctx.obj[CTX_CURRENT_DIR] = _os.getcwd()
 
 
 @click.command("tasks")

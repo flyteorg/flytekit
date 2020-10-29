@@ -1,10 +1,8 @@
-import logging as _logging
 import datetime as _datetime
 import importlib as _importlib
 import os as _os
-import pathlib
+import pathlib as _pathlib
 import random as _random
-import subprocess
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -19,7 +17,7 @@ from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import literals as _literal_models
-from flytekit.tools.fast_registration import download_distribution
+from flytekit.tools.fast_registration import download_distribution as _download_distribution
 
 
 def _compute_array_job_index():
@@ -124,17 +122,17 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--additional-distribution", required=False)
 @_click.option("--test", is_flag=True)
-def fast_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, additional_distribution, test):
-    _click.echo(_utils.get_version_message())
-
+def fast_execute_task_cmd(
+    task_module, task_name, inputs, output_prefix, raw_output_data_prefix, additional_distribution, test
+):
+    _click.echo(_os.system("cat recipes/katrina/fast.py"))
     if additional_distribution is not None:
-        download_distribution(additional_distribution, pathlib.Path(_os.getcwd()))
+        _download_distribution(additional_distribution, _pathlib.Path(_os.getcwd()))
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-
-    cmd = [
-        ' '.join(str(v) for v in _sdk_config.SDK_PYTHON_VENV.get()),
+    _click.echo(_os.system("cat recipes/katrina/fast.py"))
+    cmd = _sdk_config.SDK_PYTHON_VENV.get() + [
         "pyflyte-execute",
         "--task-module",
         task_module,
@@ -145,7 +143,8 @@ def fast_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_out
         "--output-prefix",
         output_prefix,
         "--raw-output-data-prefix",
-        raw_output_data_prefix]
+        raw_output_data_prefix,
+    ]
     if test:
         cmd.append("--test")
     _os.system(" ".join(cmd))

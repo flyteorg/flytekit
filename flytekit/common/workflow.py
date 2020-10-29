@@ -1,6 +1,6 @@
 import datetime as _datetime
-import os
-from pathlib import Path
+import os as _os
+from pathlib import Path as _Path
 
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
@@ -218,21 +218,17 @@ class SdkWorkflow(
         :param Text domain: The domain in which to register this task.
         :param Text name: The name to give this task.
         :param Text already_uploaded_digest: The version in which to register this task (if it's not already computed).
+        :rtype: Text: Registered identifier.
         """
         digest = already_uploaded_digest
         if already_uploaded_digest is None:
-            cwd = Path(os.getcwd())
+            cwd = _Path(_os.getcwd())
             digest = compute_digest(cwd)
             upload_package(cwd, digest, _aws_config.FAST_REGISTRATION_DIR.get())
-        id_to_register = _identifier.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, digest)
 
-        try:
-            self.register(project, domain, name, digest)
-        except Exception:
-            raise
+        registered_id = self.register(project, domain, name, digest)
         self._has_fast_registered = True
-        return str(id_to_register)
-
+        return str(registered_id)
 
     @_exception_scopes.system_entry_point
     def serialize(self):

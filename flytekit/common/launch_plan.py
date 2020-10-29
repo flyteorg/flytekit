@@ -93,26 +93,23 @@ class SdkLaunchPlan(
         return str(self.id)
 
     @_exception_scopes.system_entry_point
-    def fast_register(self, project, domain, name, already_uploaded_digest=None):
+    def fast_register(self, project, domain, name, already_uploaded_digest=None) -> str:
         """
         :param Text project: The project in which to register this task.
         :param Text domain: The domain in which to register this task.
         :param Text name: The name to give this task.
         :param Text already_uploaded_digest: The version in which to register this task (if it's not already computed).
+        :rtype: Text: Registered identifier.
         """
         digest = already_uploaded_digest
         if already_uploaded_digest is None:
             cwd = _Path(_os.getcwd())
             digest = _compute_digest(cwd)
             _upload_package(cwd, digest, _aws_config.FAST_REGISTRATION_DIR.get())
-        id_to_register = _identifier.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, digest)
 
-        try:
-            self.register(project, domain, name, digest)
-        except Exception:
-            raise
+        registered_id = self.register(project, domain, name, digest)
         self._has_fast_registered = True
-        return str(id_to_register)
+        return str(registered_id)
 
     @classmethod
     @_exception_scopes.system_entry_point

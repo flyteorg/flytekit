@@ -1,11 +1,11 @@
 import hashlib as _hashlib
 import json as _json
 import logging as _logging
-import os
+import os as _os
 import uuid as _uuid
 
 import copy as _copy
-from pathlib import Path
+from pathlib import Path as _Path
 
 import six as _six
 from google.protobuf import json_format as _json_format
@@ -32,7 +32,11 @@ from flytekit.models import task as _task_model
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.tools.fast_registration import compute_digest, upload_package, get_additional_distribution_loc
+from flytekit.tools.fast_registration import (
+    compute_digest as _compute_digest,
+    upload_package as _upload_package,
+    get_additional_distribution_loc as _get_additional_distribution_loc,
+)
 from flytekit.configuration import aws as _aws_config
 
 
@@ -175,20 +179,21 @@ class SdkTask(
             raise
 
     @_exception_scopes.system_entry_point
-    def fast_register(self, project=None, domain=None, name=None, already_uploaded_digest=None):
+    def fast_register(self, project=None, domain=None, name=None, already_uploaded_digest=None) -> str:
         """
         :param Text project: The project in which to register this task.
         :param Text domain: The domain in which to register this task.
         :param Text name: The name to give this task.
         :param Text already_uploaded_digest: The version in which to register this task (if it's not already computed).
+        :rtype: Text: Registered identifier.
         """
         digest = already_uploaded_digest
         if already_uploaded_digest is None:
-            cwd = Path(os.getcwd())
-            digest = compute_digest(cwd)
-            additional_distribution = upload_package(cwd, digest, _aws_config.FAST_REGISTRATION_DIR.get())
+            cwd = _Path(_os.getcwd())
+            digest = _compute_digest(cwd)
+            additional_distribution = _upload_package(cwd, digest, _aws_config.FAST_REGISTRATION_DIR.get())
         else:
-            additional_distribution = get_additional_distribution_loc(_aws_config.FAST_REGISTRATION_DIR.get(), digest)
+            additional_distribution = _get_additional_distribution_loc(_aws_config.FAST_REGISTRATION_DIR.get(), digest)
 
         original_container = self.container
         container = _copy.deepcopy(original_container)
