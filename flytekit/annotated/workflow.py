@@ -294,7 +294,7 @@ class Workflow(object):
             upstream_nodes=upstream_nodes,  # type: ignore
             flyte_entity=self,
         )
-        ctx.compilation_state.nodes.append(node)
+        ctx.compilation_state.add_node(node)
 
         # Create a node output object for each output, they should all point to this node of course.
         # TODO: Again, we need to be sure that we end up iterating through the output names in the correct order

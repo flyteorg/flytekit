@@ -29,6 +29,14 @@ class ConditionalSection(object):
         elif ctx.compilation_state:
             pass
 
+    # def __del__(self):
+    #     self.validate()
+    #
+    # def validate(self):
+    #     ctx = FlyteContext.current_context()
+    #     if ctx.execution_state and ctx.execution_state.branch_eval_mode is not None:
+    #         raise AssertionError("Conditional section not completed!")
+
     def set_condition(self, c: Condition):
         self._condition = c
 

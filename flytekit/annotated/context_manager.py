@@ -55,13 +55,20 @@ class CompilationState(object):
           us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
           # TODO: Ketan to revisit this whole concept when we re-organize the new structure
         """
-        self.nodes: List[Node] = []
+        self._nodes: List[Node] = []
         self._prefix = prefix
         self.mode = 1  # TODO: Turn into enum in the future, or remove if only one mode.
 
     @property
     def prefix(self) -> str:
         return self._prefix
+
+    def add_node(self, n: Node):
+        self._nodes.append(n)
+
+    @property
+    def nodes(self):
+        return self._nodes
 
 
 class BranchEvalMode(Enum):
@@ -80,7 +87,8 @@ class ExecutionState(object):
         LOCAL_WORKFLOW_EXECUTION = 2
 
     def __init__(
-        self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike, additional_context: Dict[Any, Any] = None
+            self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike,
+            additional_context: Dict[Any, Any] = None
     ):
         self._mode = mode
         self._working_dir = working_dir
@@ -142,14 +150,14 @@ class FlyteContext(object):
     OBJS = []
 
     def __init__(
-        self,
-        parent=None,
-        file_access: _data_proxy.FileAccessProvider = None,
-        compilation_state: CompilationState = None,
-        execution_state: ExecutionState = None,
-        flyte_client: friendly_client.SynchronousFlyteClient = None,
-        user_space_params: ExecutionParameters = None,
-        registration_settings: RegistrationSettings = None,
+            self,
+            parent=None,
+            file_access: _data_proxy.FileAccessProvider = None,
+            compilation_state: CompilationState = None,
+            execution_state: ExecutionState = None,
+            flyte_client: friendly_client.SynchronousFlyteClient = None,
+            user_space_params: ExecutionParameters = None,
+            registration_settings: RegistrationSettings = None,
     ):
         # TODO: Should we have this auto-parenting feature?
         if parent is None and len(FlyteContext.OBJS) > 0:
@@ -214,10 +222,10 @@ class FlyteContext(object):
 
     @contextmanager
     def new_execution_context(
-        self,
-        mode: ExecutionState.Mode,
-        additional_context: Dict[Any, Any] = None,
-        execution_params: Optional[ExecutionParameters] = None,
+            self,
+            mode: ExecutionState.Mode,
+            additional_context: Dict[Any, Any] = None,
+            execution_params: Optional[ExecutionParameters] = None,
     ) -> Generator[FlyteContext, None, None]:
 
         # Create a working directory for the execution to use
@@ -270,7 +278,7 @@ class FlyteContext(object):
 
     @contextmanager
     def new_registration_settings(
-        self, registration_settings: RegistrationSettings
+            self, registration_settings: RegistrationSettings
     ) -> Generator[FlyteContext, None, None]:
         new_ctx = FlyteContext(parent=self, registration_settings=registration_settings)
         FlyteContext.OBJS.append(new_ctx)

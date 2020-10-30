@@ -84,6 +84,10 @@ class BranchNode(object):
         self._condition = Condition(cs=self._cs)
         self._cs.set_condition(self._condition)
 
+    def __del__(self):
+        print("delete invoked")
+        self._cs.validate()
+
     @property
     def name(self):
         return self._name
