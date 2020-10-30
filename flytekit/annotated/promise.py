@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from flytekit.annotated import context_manager as _flyte_context
 from flytekit.annotated import type_engine
 from flytekit.annotated.context_manager import FlyteContext
-from flytekit.annotated.node import Node
 from flytekit.annotated.type_engine import DictTransformer, ListTransformer, TypeEngine
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.models import interface as _interface_models
@@ -17,10 +16,10 @@ from flytekit.models.literals import Primitive
 
 
 def translate_inputs_to_literals(
-        ctx: FlyteContext,
-        input_kwargs: Dict[str, Any],
-        interface: _interface_models.TypedInterface,
-        native_input_types: Optional[Dict[str, type]],
+    ctx: FlyteContext,
+    input_kwargs: Dict[str, Any],
+    interface: _interface_models.TypedInterface,
+    native_input_types: Optional[Dict[str, type]],
 ) -> Dict[str, _literal_models.Literal]:
     """
     When calling a task inside a workflow, a user might do something like this.
@@ -45,7 +44,7 @@ def translate_inputs_to_literals(
     """
 
     def extract_value(
-            ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
+        ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
     ) -> _literal_models.Literal:
         if isinstance(input_val, list):
             if flyte_literal_type.collection_type is None:
@@ -198,8 +197,12 @@ class ComparisonExpression(object):
 
 
 class ConjunctionExpression(object):
-    def __init__(self, lhs: Union[ComparisonExpression, "ConjunctionExpression"], op: ConjunctionOps,
-                 rhs: Union[ComparisonExpression, "ConjunctionExpression"]):
+    def __init__(
+        self,
+        lhs: Union[ComparisonExpression, "ConjunctionExpression"],
+        op: ConjunctionOps,
+        rhs: Union[ComparisonExpression, "ConjunctionExpression"],
+    ):
         self._lhs = lhs
         self._rhs = rhs
         self._op = op
@@ -381,10 +384,10 @@ def create_task_output(promises: Optional[Union[List[Promise], Promise]]) -> Opt
 
 
 def binding_data_from_python_std(
-        ctx: _flyte_context.FlyteContext,
-        expected_literal_type: _type_models.LiteralType,
-        t_value: typing.Any,
-        t_value_type: type,
+    ctx: _flyte_context.FlyteContext,
+    expected_literal_type: _type_models.LiteralType,
+    t_value: typing.Any,
+    t_value_type: type,
 ) -> _literals_models.BindingData:
     # This handles the case where the incoming value is a workflow-level input
     if isinstance(t_value, _type_models.OutputReference):
@@ -422,11 +425,11 @@ def binding_data_from_python_std(
 
 
 def binding_from_python_std(
-        ctx: _flyte_context.FlyteContext,
-        var_name: str,
-        expected_literal_type: _type_models.LiteralType,
-        t_value: typing.Any,
-        t_value_type: type,
+    ctx: _flyte_context.FlyteContext,
+    var_name: str,
+    expected_literal_type: _type_models.LiteralType,
+    t_value: typing.Any,
+    t_value_type: type,
 ) -> _literals_models.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
     return _literals_models.Binding(var=var_name, binding=binding_data)

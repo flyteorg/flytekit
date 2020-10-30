@@ -2,15 +2,22 @@ from __future__ import annotations
 
 import datetime
 import typing
-from typing import Tuple, Union, Optional
+from typing import Optional, Tuple, Union
 
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext
 from flytekit.annotated.node import Node
-from flytekit.annotated.promise import ComparisonExpression, ConjunctionExpression, Promise, ConjunctionOps, \
-    ComparisonOps, create_task_output
+from flytekit.annotated.promise import (
+    ComparisonExpression,
+    ComparisonOps,
+    ConjunctionExpression,
+    ConjunctionOps,
+    Promise,
+    create_task_output,
+)
 from flytekit.common.promise import NodeOutput
-from flytekit.models.core import condition as _core_cond, workflow as _core_wf
-from flytekit.models.literals import Literal, RetryStrategy, BindingData, Binding
+from flytekit.models.core import condition as _core_cond
+from flytekit.models.core import workflow as _core_wf
+from flytekit.models.literals import Binding, BindingData, Literal, RetryStrategy
 from flytekit.models.types import Error
 
 
@@ -101,7 +108,7 @@ class ConditionalSection(object):
             If so then return the promise, else return the condition
             """
             if self._last_case:
-                branch_nodes = ctx.compilation_state.nodes
+                # branch_nodes = ctx.compilation_state.nodes
                 node, promises = to_branch_node(self._name, self)
                 # Verify branch_nodes == nodes in bn
                 bindings: typing.List[Binding] = []
@@ -222,11 +229,10 @@ def merge_promises(*args: Promise) -> typing.List[Promise]:
 def transform_to_conj_expr(expr: ConjunctionExpression) -> (_core_cond.ConjunctionExpression, typing.List[Promise]):
     left, left_promises = transform_to_boolexpr(expr.lhs)
     right, right_promises = transform_to_boolexpr(expr.rhs)
-    return _core_cond.ConjunctionExpression(
-        left_expression=left,
-        right_expression=right,
-        operator=_logical_ops[expr.op],
-    ), merge_promises(*left_promises, *right_promises)
+    return (
+        _core_cond.ConjunctionExpression(left_expression=left, right_expression=right, operator=_logical_ops[expr.op],),
+        merge_promises(*left_promises, *right_promises),
+    )
 
 
 def transform_to_operand(v: Union[Promise, Literal]) -> (_core_cond.Operand, Optional[Promise]):
@@ -238,14 +244,15 @@ def transform_to_operand(v: Union[Promise, Literal]) -> (_core_cond.Operand, Opt
 def transform_to_comp_expr(expr: ComparisonExpression) -> (_core_cond.ComparisonExpression, typing.List[Promise]):
     o_lhs, b_lhs = transform_to_operand(expr.lhs)
     o_rhs, b_rhs = transform_to_operand(expr.rhs)
-    return _core_cond.ComparisonExpression(
-        left_value=o_lhs,
-        right_value=o_rhs,
-        operator=_comparators[expr.op]), merge_promises(b_lhs, b_rhs)
+    return (
+        _core_cond.ComparisonExpression(left_value=o_lhs, right_value=o_rhs, operator=_comparators[expr.op]),
+        merge_promises(b_lhs, b_rhs),
+    )
 
 
-def transform_to_boolexpr(expr: Union[ComparisonExpression, ConjunctionExpression]) -> (
-        _core_cond.BooleanExpression, typing.List[Promise]):
+def transform_to_boolexpr(
+    expr: Union[ComparisonExpression, ConjunctionExpression]
+) -> (_core_cond.BooleanExpression, typing.List[Promise]):
     if isinstance(expr, ConjunctionExpression):
         cexpr, promises = transform_to_conj_expr(expr)
         return _core_cond.BooleanExpression(conjunction=cexpr), promises
@@ -281,8 +288,10 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> (_core_wf.IfElseBlo
         node = last_case.output_promise.ref.sdk_node
     else:
         err = Error(failed_node_id=node_id, message=last_case.err if last_case.err else "Condition failed")
-    return _core_wf.IfElseBlock(case=first_case, other=other_cases, else_node=node, error=err), merge_promises(
-        *all_promises)
+    return (
+        _core_wf.IfElseBlock(case=first_case, other=other_cases, else_node=node, error=err),
+        merge_promises(*all_promises),
+    )
 
 
 def to_branch_node(name: str, cs: ConditionalSection) -> (_core_wf.BranchNode, typing.List[Promise]):

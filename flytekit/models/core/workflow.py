@@ -1,8 +1,8 @@
 from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit.models import common as _common
-from flytekit.models import types as _types
 from flytekit.models import interface as _interface
+from flytekit.models import types as _types
 from flytekit.models.core import condition as _condition
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.literals import Binding as _Binding
@@ -38,8 +38,9 @@ class IfBlock(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.IfBlock
         """
-        return _core_workflow.IfBlock(condition=self.condition.to_flyte_idl(),
-                                      then_node=self.then_node.get_registerable_entity().to_flyte_idl())
+        return _core_workflow.IfBlock(
+            condition=self.condition.to_flyte_idl(), then_node=self.then_node.get_registerable_entity().to_flyte_idl()
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
