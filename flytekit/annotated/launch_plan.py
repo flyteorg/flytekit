@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from flytekit import logger
 from flytekit.annotated import workflow as _annotated_workflow
 from flytekit.annotated.context_manager import FlyteContext, FlyteEntities
 from flytekit.annotated.interface import Interface, transform_inputs_to_parameters
