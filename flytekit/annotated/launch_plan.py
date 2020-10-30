@@ -15,23 +15,24 @@ from flytekit.models import schedule as _schedule_model
 from flytekit.models.core import identifier as _identifier_model
 
 
+# TODO: Find a place for this somewhere that doesn't cause a circular dependency
+def native_kwargs_to_literal_map(
+    ctx: FlyteContext, native_interface: Interface, typed_interface: _interface_models.TypedInterface, **kwargs
+) -> _literal_models.LiteralMap:
+    return _literal_models.LiteralMap(
+        literals={
+            k: TypeEngine.to_literal(
+                ctx, v, python_type=native_interface.inputs.get(k), expected=typed_interface.inputs.get(k).type
+            )
+            for k, v in kwargs.items()
+        }
+    )
+
+
 class LaunchPlan(object):
     # The reason we cache is simply because users may get the default launch plan twice for a single Workflow. We
     # don't want to create two defaults, could be confusing.
     CACHE = {}
-
-    @staticmethod
-    def native_kwargs_to_literal_map(
-        ctx: FlyteContext, native_interface: Interface, typed_interface: _interface_models.TypedInterface, **kwargs
-    ) -> _literal_models.LiteralMap:
-        return _literal_models.LiteralMap(
-            literals={
-                k: TypeEngine.to_literal(
-                    ctx, v, python_type=native_interface.inputs.get(k), expected=typed_interface.inputs.get(k).type
-                )
-                for k, v in kwargs.items()
-            }
-        )
 
     @staticmethod
     def get_default_launch_plan(ctx: FlyteContext, workflow: _annotated_workflow.Workflow) -> LaunchPlan:
@@ -76,7 +77,7 @@ class LaunchPlan(object):
 
         # These are fixed inputs that cannot change at launch time. If the same argument is also in default inputs,
         # it'll be taken out from defaults in the LaunchPlan constructor
-        fixed_lm = cls.native_kwargs_to_literal_map(ctx, workflow._native_interface, workflow.interface, **fixed_inputs)
+        fixed_lm = native_kwargs_to_literal_map(ctx, workflow._native_interface, workflow.interface, **fixed_inputs)
 
         lp = cls(name=name, workflow=workflow, parameters=wf_signature_parameters, fixed_inputs=fixed_lm)
 
