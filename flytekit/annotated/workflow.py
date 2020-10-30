@@ -345,7 +345,7 @@ def workflow(_workflow_function=None):
     def wrapper(fn):
         # TODO: Again, at this point, we should be able to identify the name of the workflow
         workflow_id = _identifier_model.Identifier(
-            _identifier_model.ResourceType.WORKFLOW, "proj", "dom", "moreblah", "1"
+            _identifier_model.ResourceType.WORKFLOW, "proj", "dom", "moreblah", "1",
         )
         workflow_instance = Workflow(fn)
         workflow_instance.compile()

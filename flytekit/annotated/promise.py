@@ -16,10 +16,10 @@ from flytekit.models.literals import Primitive
 
 
 def translate_inputs_to_literals(
-    ctx: FlyteContext,
-    input_kwargs: Dict[str, Any],
-    interface: _interface_models.TypedInterface,
-    native_input_types: Optional[Dict[str, type]],
+        ctx: FlyteContext,
+        input_kwargs: Dict[str, Any],
+        interface: _interface_models.TypedInterface,
+        native_input_types: Optional[Dict[str, type]],
 ) -> Dict[str, _literal_models.Literal]:
     """
     When calling a task inside a workflow, a user might do something like this.
@@ -44,7 +44,7 @@ def translate_inputs_to_literals(
     """
 
     def extract_value(
-        ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
+            ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
     ) -> _literal_models.Literal:
         if isinstance(input_val, list):
             if flyte_literal_type.collection_type is None:
@@ -150,11 +150,11 @@ class ComparisonExpression(object):
             self._rhs = type_engine.TypeEngine.to_literal(FlyteContext.current_context(), rhs, type(rhs), None)
 
     @property
-    def rhs(self) -> "Promise":
+    def rhs(self) -> Union["Promise", _literal_models.Literal]:
         return self._rhs
 
     @property
-    def lhs(self) -> Union[_NodeOutput, _literal_models.Primitive]:
+    def lhs(self) -> Union["Promise", _literal_models.Literal]:
         return self._lhs
 
     @property
@@ -197,17 +197,18 @@ class ComparisonExpression(object):
 
 
 class ConjunctionExpression(object):
-    def __init__(self, lhs: ComparisonExpression, op: ConjunctionOps, rhs: ComparisonExpression):
+    def __init__(self, lhs: Union[ComparisonExpression, "ConjunctionExpression"], op: ConjunctionOps,
+                 rhs: Union[ComparisonExpression, "ConjunctionExpression"]):
         self._lhs = lhs
         self._rhs = rhs
         self._op = op
 
     @property
-    def rhs(self) -> ComparisonExpression:
+    def rhs(self) -> Union[ComparisonExpression, "ConjunctionExpression"]:
         return self._rhs
 
     @property
-    def lhs(self) -> ComparisonExpression:
+    def lhs(self) -> Union[ComparisonExpression, "ConjunctionExpression"]:
         return self._lhs
 
     @property
@@ -228,11 +229,11 @@ class ConjunctionExpression(object):
 
         return l_eval or r_eval
 
-    def __and__(self, other: ComparisonExpression):
+    def __and__(self, other: Union[ComparisonExpression, "ConjunctionExpression"]):
         print("Conj AND called")
         return ConjunctionExpression(lhs=self, op=ConjunctionOps.AND, rhs=other)
 
-    def __or__(self, other):
+    def __or__(self, other: Union[ComparisonExpression, "ConjunctionExpression"]):
         print("Conj OR called")
         return ConjunctionExpression(lhs=self, op=ConjunctionOps.OR, rhs=other)
 
@@ -380,10 +381,10 @@ def create_task_output(promises: Union[List[Promise], Promise, None]) -> Union[T
 
 
 def binding_data_from_python_std(
-    ctx: _flyte_context.FlyteContext,
-    expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
-    t_value_type: type,
+        ctx: _flyte_context.FlyteContext,
+        expected_literal_type: _type_models.LiteralType,
+        t_value: typing.Any,
+        t_value_type: type,
 ) -> _literals_models.BindingData:
     # This handles the case where the incoming value is a workflow-level input
     if isinstance(t_value, _type_models.OutputReference):
@@ -421,11 +422,11 @@ def binding_data_from_python_std(
 
 
 def binding_from_python_std(
-    ctx: _flyte_context.FlyteContext,
-    var_name: str,
-    expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
-    t_value_type: type,
+        ctx: _flyte_context.FlyteContext,
+        var_name: str,
+        expected_literal_type: _type_models.LiteralType,
+        t_value: typing.Any,
+        t_value_type: type,
 ) -> _literals_models.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
     return _literals_models.Binding(var=var_name, binding=binding_data)
