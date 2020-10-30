@@ -4,7 +4,13 @@ import typing
 from typing import Dict, List
 
 from flytekit import typing as flytekit_typing
-from flytekit.annotated.interface import extract_return_annotation, transform_variable_map
+from flytekit.annotated import context_manager
+from flytekit.annotated.interface import (
+    extract_return_annotation,
+    transform_inputs_to_parameters,
+    transform_signature_to_interface,
+    transform_variable_map,
+)
 from flytekit.models.core import types as _core_types
 
 
@@ -135,3 +141,37 @@ def test_file_types():
 
     return_type = extract_return_annotation(inspect.signature(t1).return_annotation)
     assert return_type["out_0"].extension() == flytekit_typing.FlyteFilePath["svg"].extension()
+
+
+def test_parameters_and_defaults():
+    ctx = context_manager.FlyteContext.current_context()
+
+    def z(a: int, b: str) -> typing.Tuple[int, str]:
+        ...
+
+    our_interface = transform_signature_to_interface(inspect.signature(z))
+    params = transform_inputs_to_parameters(ctx, our_interface)
+    assert params.parameters["a"].required
+    assert params.parameters["a"].default is None
+    assert params.parameters["b"].required
+    assert params.parameters["b"].default is None
+
+    def z(a: int, b: str = "hello") -> typing.Tuple[int, str]:
+        ...
+
+    our_interface = transform_signature_to_interface(inspect.signature(z))
+    params = transform_inputs_to_parameters(ctx, our_interface)
+    assert params.parameters["a"].required
+    assert params.parameters["a"].default is None
+    assert not params.parameters["b"].required
+    assert params.parameters["b"].default.scalar.primitive.string_value == "hello"
+
+    def z(a: int = 7, b: str = "eleven") -> typing.Tuple[int, str]:
+        ...
+
+    our_interface = transform_signature_to_interface(inspect.signature(z))
+    params = transform_inputs_to_parameters(ctx, our_interface)
+    assert not params.parameters["a"].required
+    assert params.parameters["a"].default.scalar.primitive.integer == 7
+    assert not params.parameters["b"].required
+    assert params.parameters["b"].default.scalar.primitive.string_value == "eleven"

@@ -5,6 +5,7 @@ import os as _os
 import click
 
 from flytekit.annotated import context_manager as flyte_context
+from flytekit.annotated.launch_plan import LaunchPlan
 from flytekit.annotated.task import PythonTask
 from flytekit.annotated.workflow import Workflow
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_VERSION
@@ -14,9 +15,8 @@ from flytekit.common.exceptions.scopes import system_entry_point
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
 from flytekit.configuration import TemporaryConfiguration
+from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import internal as _internal_config
-from flytekit.configuration import internal as _internal_configuration
-from flytekit.models.core import identifier as _identifier_models
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
 
@@ -90,11 +90,18 @@ def serialize_all(project, domain, pkgs, version, folder=None):
     }
 
     registration_settings = flyte_context.RegistrationSettings(
-        project=project, domain=domain, version=version, image=_internal_configuration.IMAGE.get(), env=env
+        project=project,
+        domain=domain,
+        version=version,
+        image=_internal_config.IMAGE.get(),
+        env=env,
+        iam_role=_auth_config.ASSUMABLE_IAM_ROLE.get(),
+        service_account=_auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
+        raw_output_data_config=_auth_config.RAW_OUTPUT_DATA_PREFIX.get(),
     )
     with flyte_context.FlyteContext.current_context().new_registration_settings(
         registration_settings=registration_settings
-    ):
+    ) as ctx:
         loaded_entities = []
         for m, k, o in iterate_registerable_entities_in_order(pkgs):
             name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
@@ -104,7 +111,9 @@ def serialize_all(project, domain, pkgs, version, folder=None):
 
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
 
-        for entity in flyte_context.FlyteEntities.entities:
+        # TODO: Clean up the copy() - it's here because we call get_default_launch_plan, which may create a LaunchPlan
+        #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
+        for entity in flyte_context.FlyteEntities.entities.copy():
             # TODO: Add a reachable check. Since these entities are always added by the constructor, weird things can
             #  happen. If someone creates a workflow inside a workflow, we don't actually want the inner workflow to be
             #  registered. Or do we? Certainly, we don't want inner tasks to be registered because we don't know how
@@ -112,19 +121,13 @@ def serialize_all(project, domain, pkgs, version, folder=None):
             #  Also a user may import dir_b.workflows from dir_a.workflows but workflow packages might only
             #  specify dir_a
 
-            if isinstance(entity, PythonTask) or isinstance(entity, Workflow):
+            if isinstance(entity, PythonTask) or isinstance(entity, Workflow) or isinstance(entity, LaunchPlan):
                 serializable = entity.get_registerable_entity()
                 loaded_entities.append(serializable)
 
                 if isinstance(entity, Workflow):
-                    launch_plan = serializable.create_launch_plan()
-                    launch_plan._id = _identifier_models.Identifier(
-                        resource_type=_identifier_models.ResourceType.LAUNCH_PLAN,
-                        project=project,
-                        domain=domain,
-                        version=version,
-                        name=serializable.id.name,
-                    )
+                    lp = LaunchPlan.get_default_launch_plan(ctx, entity)
+                    launch_plan = lp.get_registerable_entity()
                     loaded_entities.append(launch_plan)
 
         zero_padded_length = _determine_text_chars(len(loaded_entities))
@@ -171,7 +174,7 @@ def serialize(ctx):
         object contains the WorkflowTemplate, along with the relevant tasks for that workflow.  In lieu of Admin,
         this serialization step will set the URN of the tasks to the fully qualified name of the task function.
     """
-    click.echo("Serializing Flyte elements with image {}".format(_internal_configuration.IMAGE.get()))
+    click.echo("Serializing Flyte elements with image {}".format(_internal_config.IMAGE.get()))
 
 
 @click.command("tasks")
@@ -192,9 +195,7 @@ def tasks(ctx, version=None, folder=None):
         click.echo(f"Writing output to {folder}")
 
     version = (
-        version
-        or ctx.obj[CTX_VERSION]
-        or _internal_configuration.look_up_version_from_image_tag(_internal_configuration.IMAGE.get())
+        version or ctx.obj[CTX_VERSION] or _internal_config.look_up_version_from_image_tag(_internal_config.IMAGE.get())
     )
 
     internal_settings = {
@@ -204,7 +205,7 @@ def tasks(ctx, version=None, folder=None):
     }
     # Populate internal settings for project/domain/version from the environment so that the file names are resolved
     # with the correct strings. The file itself doesn't need to change though.
-    with TemporaryConfiguration(_internal_configuration.CONFIGURATION_PATH.get(), internal_settings):
+    with TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get(), internal_settings):
         _logging.debug(
             "Serializing with settings\n"
             "\n  Project: {}"
@@ -237,9 +238,7 @@ def workflows(ctx, version=None, folder=None):
     pkgs = ctx.obj[CTX_PACKAGES]
 
     version = (
-        version
-        or ctx.obj[CTX_VERSION]
-        or _internal_configuration.look_up_version_from_image_tag(_internal_configuration.IMAGE.get())
+        version or ctx.obj[CTX_VERSION] or _internal_config.look_up_version_from_image_tag(_internal_config.IMAGE.get())
     )
 
     internal_settings = {
@@ -249,7 +248,7 @@ def workflows(ctx, version=None, folder=None):
     }
     # Populate internal settings for project/domain/version from the environment so that the file names are resolved
     # with the correct strings. The file itself doesn't need to change though.
-    with TemporaryConfiguration(_internal_configuration.CONFIGURATION_PATH.get(), internal_settings):
+    with TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get(), internal_settings):
         _logging.debug(
             "Serializing with settings\n"
             "\n  Project: {}"
