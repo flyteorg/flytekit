@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from flytekit.annotated import context_manager as _flyte_context
 from flytekit.annotated import type_engine
 from flytekit.annotated.context_manager import FlyteContext
+from flytekit.annotated.node import Node
 from flytekit.annotated.type_engine import DictTransformer, ListTransformer, TypeEngine
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.models import interface as _interface_models
@@ -254,7 +255,7 @@ class Promise(object):
         self._var = var
         self._promise_ready = True
         self._val = val
-        if isinstance(val, _NodeOutput):
+        if val and isinstance(val, _NodeOutput):
             self._ref = val
             self._promise_ready = False
             self._val = None
@@ -341,8 +342,7 @@ class Promise(object):
             # TODO, this should be forwarded, but right now this results in failure and we want to test this behavior
             # self.ref.sdk_node.with_overrides(*args, **kwargs)
             print(f"Forwarding to node {self.ref.sdk_node.id}")
-            if "node_name" in kwargs:
-                self.ref.sdk_node._id = kwargs["node_name"]
+            self.ref.sdk_node.with_overrides(*args, **kwargs)
         return self
 
     def __repr__(self):
@@ -355,7 +355,7 @@ class Promise(object):
 
 
 # To create a class that is a named tuple, we might have to create namedtuplemeta and manipulate the tuple
-def create_task_output(promises: Union[List[Promise], Promise, None]) -> Union[Tuple[Promise], Promise, None]:
+def create_task_output(promises: Optional[Union[List[Promise], Promise]]) -> Optional[Union[Tuple[Promise], Promise]]:
     if promises is None:
         return None
 
@@ -430,3 +430,7 @@ def binding_from_python_std(
 ) -> _literals_models.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
     return _literals_models.Binding(var=var_name, binding=binding_data)
+
+
+def to_binding(p: Promise) -> _literals_models.Binding:
+    return _literals_models.Binding(var=p.var, binding=_literals_models.BindingData(promise=p.ref))

@@ -1,17 +1,26 @@
 from __future__ import annotations
+
+import datetime
 import typing
 from typing import Tuple, Union, Optional
 
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext, BranchEvalMode
-from flytekit.annotated.promise import ComparisonExpression, ConjunctionExpression, Promise
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext
+from flytekit.annotated.node import Node
+from flytekit.annotated.promise import ComparisonExpression, ConjunctionExpression, Promise, ConjunctionOps, \
+    ComparisonOps, create_task_output
+from flytekit.common.promise import NodeOutput
+from flytekit.models.core import condition as _core_cond, workflow as _core_wf
+from flytekit.models.literals import Literal, RetryStrategy, BindingData, Binding
+from flytekit.models.types import Error
 
 
 class ConditionalSection(object):
-    def __init__(self):
+    def __init__(self, name: str):
         self._cases: typing.List[Case] = []
         self._selected_case = None
         self._last_case = False
         self._condition = None
+        self._name = name
 
         ctx = FlyteContext.current_context()
         if ctx.execution_state:
@@ -27,7 +36,7 @@ class ConditionalSection(object):
                 """
                 ctx.execution_state.enter_conditional_section()
         elif ctx.compilation_state:
-            pass
+            ctx.compilation_state.enter_conditional_section()
 
     # def __del__(self):
     #     self.validate()
@@ -92,10 +101,48 @@ class ConditionalSection(object):
             If so then return the promise, else return the condition
             """
             if self._last_case:
-                return self._cases[-1].output_promise
+                branch_nodes = ctx.compilation_state.nodes
+                node, promises = to_branch_node(self._name, self)
+                # Verify branch_nodes == nodes in bn
+                bindings: typing.List[Binding] = []
+                upstream_nodes = set()
+                for p in promises:
+                    if not p.is_ready:
+                        bindings.append(Binding(var=p.var, binding=BindingData(promise=p.ref)))
+                        upstream_nodes.add(p.ref.sdk_node)
+
+                ctx.compilation_state.exit_conditional_section()
+                n = Node(
+                    id=f"{ctx.compilation_state.prefix}node-{len(ctx.compilation_state.nodes)}",
+                    metadata=_core_wf.NodeMetadata(self._name, timeout=datetime.timedelta(), retries=RetryStrategy(0)),
+                    bindings=sorted(bindings, key=lambda b: b.var),
+                    upstream_nodes=list(upstream_nodes),  # type: ignore
+                    flyte_entity=node,
+                )
+                ctx.compilation_state.add_node(n)
+                return self._compute_outputs(n)
             return self._condition
 
         raise AssertionError("Branches can only be invoked within a workflow context!")
+
+    def _compute_outputs(self, n: Node) -> Union[Promise, Tuple[Promise]]:
+        output_var_sets: typing.List[typing.Set[str]] = []
+        for c in self._cases:
+            if c.output_promise is None and c.err is None:
+                # One node returns a void output and no error, we will default to a
+                # Void output
+                return None
+            if c.output_promise is not None:
+                if isinstance(c.output_promise, tuple):
+                    output_var_sets.append(set([i.var for i in c.output_promise]))
+                else:
+                    output_var_sets.append(set([c.output_promise.var]))
+        curr = output_var_sets[0]
+        if len(output_var_sets) > 1:
+            for x in output_var_sets[1:]:
+                curr = curr.intersection(x)
+        promises = [Promise(var=x, val=NodeOutput(sdk_node=n, sdk_type=None, var=x)) for x in curr]
+        return create_task_output(promises)
 
     @property
     def cases(self) -> typing.List[Case]:
@@ -106,7 +153,7 @@ class Case(object):
     def __init__(self, cs: ConditionalSection, expr: Optional[Union[ComparisonExpression, ConjunctionExpression]]):
         self._cs = cs
         self._expr = expr
-        self._output_promise = None
+        self._output_promise: Optional[Union[Tuple[Promise], Promise]] = None
         self._err = None
 
     @property
@@ -114,7 +161,7 @@ class Case(object):
         return self._expr
 
     @property
-    def output_promise(self) -> Optional[Promise]:
+    def output_promise(self) -> Optional[Union[Tuple[Promise], Promise]]:
         return self._output_promise
 
     @property
@@ -144,3 +191,127 @@ class Condition(object):
 
     def else_(self) -> Case:
         return self._cs.start_branch(Case(cs=self._cs, expr=None), last_case=True)
+
+
+_logical_ops = {
+    ConjunctionOps.AND: _core_cond.ConjunctionExpression.LogicalOperator.AND,
+    ConjunctionOps.OR: _core_cond.ConjunctionExpression.LogicalOperator.OR,
+}
+_comparators = {
+    ComparisonOps.EQ: _core_cond.ComparisonExpression.Operator.EQ,
+    ComparisonOps.NE: _core_cond.ComparisonExpression.Operator.NEQ,
+    ComparisonOps.GT: _core_cond.ComparisonExpression.Operator.GT,
+    ComparisonOps.GE: _core_cond.ComparisonExpression.Operator.GTE,
+    ComparisonOps.LT: _core_cond.ComparisonExpression.Operator.LT,
+    ComparisonOps.LE: _core_cond.ComparisonExpression.Operator.LTE,
+}
+
+
+def merge_promises(*args: Promise) -> typing.List[Promise]:
+    node_vars: typing.Set[typing.Tuple[str, str]] = set()
+    merged_promises: typing.List[Promise] = []
+    for p in args:
+        if p is not None and p.ref:
+            node_var = (p.ref.node_id, p.ref.var)
+            if node_var not in node_vars:
+                merged_promises.append(p)
+                node_vars.add(node_var)
+    return merged_promises
+
+
+def transform_to_conj_expr(expr: ConjunctionExpression) -> (_core_cond.ConjunctionExpression, typing.List[Promise]):
+    left, left_promises = transform_to_boolexpr(expr.lhs)
+    right, right_promises = transform_to_boolexpr(expr.rhs)
+    return _core_cond.ConjunctionExpression(
+        left_expression=left,
+        right_expression=right,
+        operator=_logical_ops[expr.op],
+    ), merge_promises(*left_promises, *right_promises)
+
+
+def transform_to_operand(v: Union[Promise, Literal]) -> (_core_cond.Operand, Optional[Promise]):
+    if isinstance(v, Promise):
+        return _core_cond.Operand(var=v.var), v
+    return _core_cond.Operand(primitive=v.scalar.primitive), None
+
+
+def transform_to_comp_expr(expr: ComparisonExpression) -> (_core_cond.ComparisonExpression, typing.List[Promise]):
+    o_lhs, b_lhs = transform_to_operand(expr.lhs)
+    o_rhs, b_rhs = transform_to_operand(expr.rhs)
+    return _core_cond.ComparisonExpression(
+        left_value=o_lhs,
+        right_value=o_rhs,
+        operator=_comparators[expr.op]), merge_promises(b_lhs, b_rhs)
+
+
+def transform_to_boolexpr(expr: Union[ComparisonExpression, ConjunctionExpression]) -> (
+        _core_cond.BooleanExpression, typing.List[Promise]):
+    if isinstance(expr, ConjunctionExpression):
+        cexpr, promises = transform_to_conj_expr(expr)
+        return _core_cond.BooleanExpression(conjunction=cexpr), promises
+    cexpr, promises = transform_to_comp_expr(expr)
+    return _core_cond.BooleanExpression(comparison=cexpr), promises
+
+
+def to_case_block(c: Case) -> (Union[_core_wf.IfBlock], typing.List[Promise]):
+    expr, promises = transform_to_boolexpr(c.expr)
+    n = c.output_promise.ref.sdk_node
+    return _core_wf.IfBlock(condition=expr, then_node=n), promises
+
+
+def to_ifelse_block(node_id: str, cs: ConditionalSection) -> (_core_wf.IfElseBlock, typing.List[Binding]):
+    if len(cs.cases) == 0:
+        raise AssertionError("Illegal Condition block, with no if-else cases")
+    if len(cs.cases) < 2:
+        raise AssertionError("Atleast an if/else is required. Dangling If is not allowed")
+    all_promises: typing.List[Promise] = []
+    first_case, promises = to_case_block(cs.cases[0])
+    all_promises.extend(promises)
+    other_cases: typing.List[_core_wf.IfBlock] = None
+    if len(cs.cases) > 2:
+        other_cases = []
+        for c in cs.cases[1:-1]:
+            case, promises = to_case_block(c)
+            all_promises.extend(promises)
+            other_cases.append(case)
+    last_case = cs.cases[-1]
+    node = None
+    err = None
+    if last_case.output_promise is not None:
+        node = last_case.output_promise.ref.sdk_node
+    else:
+        err = Error(failed_node_id=node_id, message=last_case.err if last_case.err else "Condition failed")
+    return _core_wf.IfElseBlock(case=first_case, other=other_cases, else_node=node, error=err), merge_promises(
+        *all_promises)
+
+
+def to_branch_node(name: str, cs: ConditionalSection) -> (_core_wf.BranchNode, typing.List[Promise]):
+    blocks, promises = to_ifelse_block(name, cs)
+    return _core_wf.BranchNode(if_else=blocks), promises
+
+
+class BranchNode(object):
+    def __init__(self, name: str):
+        self._name = name
+        self._cs = ConditionalSection(name=name)
+        self._condition = Condition(cs=self._cs)
+        self._cs.set_condition(self._condition)
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def condition(self):
+        return self._condition
+
+    def if_(self, expr: bool) -> Case:
+        ctx = FlyteContext.current_context()
+        if ctx.compilation_state:
+            # Set some compilation context
+            pass
+        return self.condition._if(expr)
+
+
+def conditional(name: str) -> BranchNode:
+    return BranchNode(name)

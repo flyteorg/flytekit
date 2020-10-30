@@ -56,13 +56,13 @@ def kwtypes(**kwargs) -> Dict[str, Type]:
 # already.)
 class Task(object):
     def __init__(
-        self,
-        task_type: str,
-        name: str,
-        interface: _interface_models.TypedInterface,
-        metadata: _task_model.TaskMetadata,
-        *args,
-        **kwargs,
+            self,
+            task_type: str,
+            name: str,
+            interface: _interface_models.TypedInterface,
+            metadata: _task_model.TaskMetadata,
+            *args,
+            **kwargs,
     ):
         self._task_type = task_type
         self._name = name
@@ -139,7 +139,8 @@ class Task(object):
 
         # Detect upstream nodes
         # These will be our annotated Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
-        upstream_nodes = [input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)]
+        upstream_nodes = list(
+            set([input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)]))
 
         # TODO: Make the metadata name the full name of the (function)?
         sdk_node = Node(
@@ -217,7 +218,7 @@ class Task(object):
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
             return self._compile(ctx, *args, **kwargs)
         elif (
-            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+                ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
             if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
                 return
@@ -250,7 +251,7 @@ class Task(object):
 
     @abstractmethod
     def dispatch_execute(
-        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap,
+            self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap,
     ) -> _literal_models.LiteralMap:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
@@ -265,7 +266,7 @@ class Task(object):
 
 class PythonTask(Task):
     def __init__(
-        self, task_type: str, name: str, interface: Interface, metadata: _task_model.TaskMetadata, *args, **kwargs
+            self, task_type: str, name: str, interface: Interface, metadata: _task_model.TaskMetadata, *args, **kwargs
     ):
         super().__init__(task_type, name, transform_interface_to_typed_interface(interface), metadata)
         self._python_interface = interface
@@ -285,7 +286,7 @@ class PythonTask(Task):
         return self._python_interface.inputs
 
     def dispatch_execute(
-        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
+            self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
     ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
@@ -309,7 +310,7 @@ class PythonTask(Task):
         # Short circuit the translation to literal map because what's returned may be a dj spec (or an
         # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
         if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
-            native_outputs, _dynamic_job.DynamicJobSpec
+                native_outputs, _dynamic_job.DynamicJobSpec
         ):
             return native_outputs
 
@@ -359,20 +360,20 @@ class ContainerTask(PythonTask):
         DO_NOT_UPLOAD = _task_model.IOStrategy.UPLOAD_MODE_NO_UPLOAD
 
     def __init__(
-        self,
-        name: str,
-        image: str,
-        metadata: _task_model.TaskMetadata,
-        inputs: Dict[str, Type],
-        command: List[str],
-        arguments: List[str] = None,
-        outputs: Dict[str, Type] = None,
-        input_data_dir: str = None,
-        output_data_dir: str = None,
-        metadata_format: MetadataFormat = MetadataFormat.JSON,
-        io_strategy: IOStrategy = None,
-        *args,
-        **kwargs,
+            self,
+            name: str,
+            image: str,
+            metadata: _task_model.TaskMetadata,
+            inputs: Dict[str, Type],
+            command: List[str],
+            arguments: List[str] = None,
+            outputs: Dict[str, Type] = None,
+            input_data_dir: str = None,
+            output_data_dir: str = None,
+            metadata_format: MetadataFormat = MetadataFormat.JSON,
+            io_strategy: IOStrategy = None,
+            *args,
+            **kwargs,
     ):
         super().__init__(
             task_type="raw-container",
@@ -424,13 +425,13 @@ class PythonFunctionTask(PythonTask):
     """
 
     def __init__(
-        self,
-        task_function: Callable,
-        metadata: _task_model.TaskMetadata,
-        ignore_input_vars: List[str] = None,
-        task_type="python-task",
-        *args,
-        **kwargs,
+            self,
+            task_function: Callable,
+            metadata: _task_model.TaskMetadata,
+            ignore_input_vars: List[str] = None,
+            task_type="python-task",
+            *args,
+            **kwargs,
     ):
         self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
@@ -564,14 +565,14 @@ class SQLTask(PythonTask):
     _INPUT_REGEX = re.compile(r"({{\s*.inputs.(\w+)\s*}})", re.IGNORECASE)
 
     def __init__(
-        self,
-        name: str,
-        query_template: str,
-        inputs: Dict[str, Type],
-        metadata: _task_model.TaskMetadata,
-        task_type="sql_task",
-        *args,
-        **kwargs,
+            self,
+            name: str,
+            query_template: str,
+            inputs: Dict[str, Type],
+            metadata: _task_model.TaskMetadata,
+            task_type="sql_task",
+            *args,
+            **kwargs,
     ):
         super().__init__(
             task_type=task_type,
@@ -611,7 +612,7 @@ class DynamicWorkflowTask(PythonFunctionTask):
         super().__init__(dynamic_workflow_function, metadata, task_type="dynamic-task", *args, **kwargs)
 
     def compile_into_workflow(
-        self, ctx: FlyteContext, **kwargs
+            self, ctx: FlyteContext, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
         with ctx.new_compilation_context(prefix="dynamic"):
             self._wf = Workflow(self._task_function)
@@ -695,12 +696,12 @@ class Resources(object):
 
 
 def metadata(
-    cache: bool = False,
-    cache_version: str = "",
-    retries: int = 0,
-    interruptible: bool = False,
-    deprecated: str = "",
-    timeout: Union[_datetime.timedelta, int] = None,
+        cache: bool = False,
+        cache_version: str = "",
+        retries: int = 0,
+        interruptible: bool = False,
+        deprecated: str = "",
+        timeout: Union[_datetime.timedelta, int] = None,
 ) -> _task_model.TaskMetadata:
     return _task_model.TaskMetadata(
         discoverable=cache,
@@ -714,17 +715,17 @@ def metadata(
 
 
 def task(
-    _task_function: Callable = None,
-    task_type: str = "",
-    cache: bool = False,
-    cache_version: str = "",
-    retries: int = 0,
-    interruptible: bool = False,
-    deprecated: str = "",
-    timeout: Union[_datetime.timedelta, int] = 0,
-    environment: Dict[str, str] = None,  # TODO: Ketan - what do we do with this?  Not sure how to use kwargs
-    *args,
-    **kwargs,
+        _task_function: Callable = None,
+        task_type: str = "",
+        cache: bool = False,
+        cache_version: str = "",
+        retries: int = 0,
+        interruptible: bool = False,
+        deprecated: str = "",
+        timeout: Union[_datetime.timedelta, int] = 0,
+        environment: Dict[str, str] = None,  # TODO: Ketan - what do we do with this?  Not sure how to use kwargs
+        *args,
+        **kwargs,
 ) -> Callable:
     def wrapper(fn) -> PythonFunctionTask:
         if isinstance(timeout, int):

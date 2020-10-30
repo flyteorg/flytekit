@@ -58,17 +58,42 @@ class CompilationState(object):
         self._nodes: List[Node] = []
         self._prefix = prefix
         self.mode = 1  # TODO: Turn into enum in the future, or remove if only one mode.
+        # TODO Branch mode should just be a new Compilation state context. But for now we are just
+        # storing the nodes separately
+        self._branch = False
+        self._branch_nodes: List[Node] = []
 
     @property
     def prefix(self) -> str:
         return self._prefix
 
     def add_node(self, n: Node):
-        self._nodes.append(n)
+        if self._branch:
+            self._branch_nodes.append(n)
+        else:
+            self._nodes.append(n)
 
     @property
     def nodes(self):
+        if self._branch:
+            return self._branch_nodes
         return self._nodes
+
+    def enter_conditional_section(self):
+        """
+        We cannot use a context manager here, so we will mimic the context manager API
+        """
+        self._branch = True
+
+    def exit_conditional_section(self):
+        """
+        Disables that we are in a branch
+        """
+        self._branch = False
+        self._branch_nodes = []
+
+    def is_in_a_branch(self) -> bool:
+        return self._branch
 
 
 class BranchEvalMode(Enum):

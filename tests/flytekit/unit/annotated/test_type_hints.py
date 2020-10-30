@@ -9,7 +9,7 @@ import flytekit.annotated.task
 import flytekit.annotated.workflow
 from flytekit import typing as flytekit_typing
 from flytekit.annotated import context_manager, promise
-from flytekit.annotated.branch_node import conditional
+from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import ContainerTask, SQLTask, dynamic, kwtypes, maptask, metadata, task
