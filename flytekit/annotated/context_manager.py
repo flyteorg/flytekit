@@ -82,6 +82,7 @@ class CompilationState(object):
           # TODO: Ketan to revisit this whole concept when we re-organize the new structure
         """
         self._nodes: List[Node] = []
+        self._old_prefix = ""
         self._prefix = prefix
         self.mode = 1  # TODO: Turn into enum in the future, or remove if only one mode.
         # TODO Branch mode should just be a new Compilation state context. But for now we are just
@@ -110,6 +111,8 @@ class CompilationState(object):
         We cannot use a context manager here, so we will mimic the context manager API
         """
         self._branch = True
+        self._old_prefix = self._prefix
+        self._prefix = self._prefix + "branch"
 
     def exit_conditional_section(self):
         """
@@ -117,6 +120,7 @@ class CompilationState(object):
         """
         self._branch = False
         self._branch_nodes = []
+        self._prefix = self._old_prefix
 
     def is_in_a_branch(self) -> bool:
         return self._branch

@@ -44,6 +44,40 @@ def test_serialization():
         print(wf)
 
 
+def test_serialization_branch_complex():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: str) -> str:
+        return a
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a)
+        d = (
+            conditional("test1")
+                .if_(x == 4)
+                .then(t2(a=b))
+                .elif_(x >= 5)
+                .then(t2(a=y))
+                .else_()
+                .fail("Unable to choose branch")
+        )
+        f = conditional("test2").if_(d == "hello ").then(t2(a="It is hello")).else_().then(t2(a="Not Hello!"))
+        return x, f
+
+    ctx = FlyteContext.current_context()
+    registration_settings = context_manager.RegistrationSettings(
+        project="project", domain="domain", version="version", image="image", env=None,
+    )
+    with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
+        wf = my_wf.get_registerable_entity()
+        assert wf is not None
+        print(wf)
+
+
 def test_serialization_branch():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
@@ -58,15 +92,15 @@ def test_serialization_branch():
         x, y = t1(a=a)
         d = (
             conditional("test1")
-            .if_(x == 4)
-            .then(t2(a=b))
-            .elif_(x >= 5)
-            .then(t2(a=y))
-            .else_()
-            .fail("Unable to choose branch")
+                .if_(x == 4)
+                .then(t2(a=y))
+                .else_()
+                .then(t2(a=b))
         )
-        f = conditional("test2").if_(d == "hello ").then(t2(a="It is hello")).else_().then(t2(a="Not Hello!"))
-        return x, f
+        return x, d
+
+    assert my_wf(a=4, b="what") == (6, "what")
+    assert my_wf(a=2, b="what") == (4, "world")
 
     ctx = FlyteContext.current_context()
     registration_settings = context_manager.RegistrationSettings(
