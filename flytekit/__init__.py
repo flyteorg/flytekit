@@ -2,7 +2,7 @@ import logging as _logging
 
 import flytekit.plugins  # noqa: F401
 
-__version__ = "0.14.1"
+__version__ = "0.14.2"
 
 logger = _logging.getLogger("flytekit")
 
