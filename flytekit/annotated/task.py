@@ -30,7 +30,6 @@ from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
-from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
 
 
@@ -737,10 +736,6 @@ def task(
         _metadata = metadata(cache, cache_version, retries, interruptible, deprecated, _timeout)
 
         task_instance = TaskTypePlugins[task_type](fn, _metadata, *args, **kwargs)
-        # TODO: One of the things I want to make sure to do is better naming support. At this point, we should already
-        #       be able to determine the name of the task right? Can anyone think of situations where we can't?
-        #       Where does the current instance tracker come into play?
-        task_instance.id = _identifier_model.Identifier(_identifier_model.ResourceType.TASK, "proj", "dom", "blah", "1")
 
         return task_instance
 

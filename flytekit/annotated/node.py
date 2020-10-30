@@ -32,6 +32,7 @@ class Node(object):
         if self._sdk_node is not None:
             return self._sdk_node
         # TODO: Figure out import cycles in the future
+        from flytekit.annotated.launch_plan import LaunchPlan
         from flytekit.annotated.task import PythonTask
         from flytekit.annotated.workflow import Workflow
 
@@ -59,7 +60,14 @@ class Node(object):
                 metadata=self._metadata,
                 sdk_workflow=self._flyte_entity.get_registerable_entity(),
             )
-        # TODO: Add new annotated LaunchPlan when done
+        elif isinstance(self._flyte_entity, LaunchPlan):
+            self._sdk_node = SdkNode(
+                self._id,
+                upstream_nodes=sdk_nodes,
+                bindings=self._bindings,
+                metadata=self._metadata,
+                sdk_launch_plan=self._flyte_entity.get_registerable_entity(),
+            )
         else:
             raise Exception("not a task or workflow, not sure what to do")
 

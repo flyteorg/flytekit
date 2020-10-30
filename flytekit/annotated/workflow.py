@@ -19,7 +19,6 @@ from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
 from flytekit.common import promise as _common_promise
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -126,10 +125,9 @@ class Workflow(object):
         Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics
         a 'closure' in the traditional sense of the word.
         """
-        # TODO: should we even define it here?
-        self._input_parameters = transform_inputs_to_parameters(self._native_interface)
-        all_nodes = []
         ctx = FlyteContext.current_context()
+        self._input_parameters = transform_inputs_to_parameters(ctx, self._native_interface)
+        all_nodes = []
         prefix = f"{ctx.compilation_state.prefix}-{self.short_name}-" if ctx.compilation_state is not None else None
         with ctx.new_compilation_context(prefix=prefix) as comp_ctx:
             # Construct the default input promise bindings, but then override with the provided inputs, if any
@@ -211,8 +209,9 @@ class Workflow(object):
 
         # Handle subworkflows in compilation
         if ctx.compilation_state is not None:
-            return self._create_and_link_node(ctx, **kwargs)
-
+            input_kwargs = self._native_interface.default_inputs_as_kwargs
+            input_kwargs.update(kwargs)
+            return self._create_and_link_node(ctx, **input_kwargs)
         elif (
             ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
@@ -259,6 +258,8 @@ class Workflow(object):
 
             raise ValueError("expected outputs and actual outputs do not match")
 
+    # TODO: Let's think about this. I feel like it can be moved somewhere. This function is very close to the task
+    #  version of it, and the launch plan class basically just calls this too.
     def _create_and_link_node(self, ctx: FlyteContext, *args, **kwargs):
         """
         This method is used to create a node representing a subworkflow call in a workflow. It should closely mirror
@@ -309,7 +310,7 @@ class Workflow(object):
 
         return create_task_output(node_outputs)
 
-    def get_registerable_entity(self) -> _registerable.RegisterableEntity:
+    def get_registerable_entity(self) -> _SdkWorkflow:
         settings = FlyteContext.current_context().registration_settings
         if self._registerable_entity is not None:
             return self._registerable_entity
@@ -330,10 +331,10 @@ class Workflow(object):
             output_bindings=self._output_bindings,
         )
         # Reset just to make sure it's what we give it
-        self._registerable_entity.id._project = settings._project
-        self._registerable_entity.id._domain = settings._domain
+        self._registerable_entity.id._project = settings.project
+        self._registerable_entity.id._domain = settings.domain
         self._registerable_entity.id._name = self._name
-        self._registerable_entity.id._version = settings._version
+        self._registerable_entity.id._version = settings.version
 
         return self._registerable_entity
 
@@ -343,14 +344,8 @@ def workflow(_workflow_function=None):
     # workflows need to have the body of the function itself run at module-load time. This is because the body of the
     # workflow is what expresses the workflow structure.
     def wrapper(fn):
-        # TODO: Again, at this point, we should be able to identify the name of the workflow
-        workflow_id = _identifier_model.Identifier(
-            _identifier_model.ResourceType.WORKFLOW, "proj", "dom", "moreblah", "1"
-        )
         workflow_instance = Workflow(fn)
         workflow_instance.compile()
-        workflow_instance.id = workflow_id
-
         return workflow_instance
 
     if _workflow_function:
