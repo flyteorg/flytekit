@@ -8,7 +8,7 @@ from flytekit.clis.sdk_in_container.constants import CTX_CURRENT_DIR, CTX_DOMAIN
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.tasks import task as _task
-from flytekit.configuration import aws as _aws_config
+from flytekit.configuration import sdk as _sdk_config
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import upload_package as _upload_package
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
@@ -22,7 +22,7 @@ def fast_register_all(project: str, domain: str, pkgs: _List[str], test: bool, v
         digest = _compute_digest(source_dir)
     else:
         digest = version
-    _upload_package(source_dir, digest, _aws_config.FAST_REGISTRATION_DIR.get())
+    _upload_package(source_dir, digest, _sdk_config.FAST_REGISTRATION_DIR.get())
 
     click.echo(
         "Running task, workflow, and launch plan fast registration for {}, {}, {} with version {} and code dir {}".format(
@@ -54,7 +54,7 @@ def fast_register_tasks_only(
         digest = _compute_digest(source_dir)
     else:
         digest = version
-    _upload_package(source_dir, digest, _aws_config.FAST_REGISTRATION_DIR.get())
+    _upload_package(source_dir, digest, _sdk_config.FAST_REGISTRATION_DIR.get())
 
     click.echo(
         "Running task only fast registration for {}, {}, {} with version {} and code dir {}".format(
@@ -93,10 +93,16 @@ def fast_register(ctx, test=None):
     "-v",
     "--version",
     type=str,
-    help="Version to register tasks with. This is normally parsed from the" "image, but you can override here.",
+    help="Version to register tasks with. This is normally parsed from the image, but you can override here.",
+)
+@click.option(
+    "--source-dir",
+    type=str,
+    help="The root dir of the code that should be uploaded for fast registration. "
+    "This is normally cwd but you can override here.",
 )
 @click.pass_context
-def tasks(ctx, version=None):
+def tasks(ctx, version=None, source_dir=None):
     """
     Only fast register tasks.
     """
@@ -104,7 +110,8 @@ def tasks(ctx, version=None):
     domain = ctx.obj[CTX_DOMAIN]
     test = ctx.obj[CTX_TEST]
     pkgs = ctx.obj[CTX_PACKAGES]
-    source_dir = _Path(ctx.obj[CTX_CURRENT_DIR])
+    if not source_dir:
+        source_dir = _Path(ctx.obj[CTX_CURRENT_DIR])
 
     fast_register_tasks_only(project, domain, pkgs, test, version, source_dir)
 
@@ -116,8 +123,14 @@ def tasks(ctx, version=None):
     type=str,
     help="Version to register tasks with. This is normally parsed from the" "image, but you can override here.",
 )
+@click.option(
+    "--source-dir",
+    type=str,
+    help="The root dir of the code that should be uploaded for fast registration. "
+    "This is normally cwd but you can override here.",
+)
 @click.pass_context
-def workflows(ctx, version=None):
+def workflows(ctx, version=None, source_dir=None):
     """
     Fast register both tasks and workflows.  Also create and register a default launch plan for all workflows.
     """
@@ -125,7 +138,9 @@ def workflows(ctx, version=None):
     domain = ctx.obj[CTX_DOMAIN]
     test = ctx.obj[CTX_TEST]
     pkgs = ctx.obj[CTX_PACKAGES]
-    source_dir = _Path(ctx.obj[CTX_CURRENT_DIR])
+
+    if not source_dir:
+        source_dir = _Path(ctx.obj[CTX_CURRENT_DIR])
 
     fast_register_all(project, domain, pkgs, test, version, source_dir)
 

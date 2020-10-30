@@ -20,7 +20,6 @@ from flytekit.common.mixins import launchable as _launchable_mixin
 from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import auth as _auth_config
-from flytekit.configuration import aws as _aws_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import common as _common_models
@@ -94,19 +93,21 @@ class SdkLaunchPlan(
         return str(self.id)
 
     @_exception_scopes.system_entry_point
-    def fast_register(self, project, domain, name, already_uploaded_digest=None) -> str:
+    def fast_register(self, project, domain, name, already_uploaded_digest=None, working_dir=None) -> str:
         """
         :param Text project: The project in which to register this task.
         :param Text domain: The domain in which to register this task.
         :param Text name: The name to give this task.
         :param Text already_uploaded_digest: The version in which to register this task (if it's not already computed).
+        :param Text working_dir: Optional, user-specified root dir to use in place of the current working dir for which
+            to serialize
         :rtype: Text: Registered identifier.
         """
         digest = already_uploaded_digest
         if already_uploaded_digest is None:
             cwd = _Path(_os.getcwd())
             digest = _compute_digest(cwd)
-            _upload_package(cwd, digest, _aws_config.FAST_REGISTRATION_DIR.get())
+            _upload_package(cwd, digest, _sdk_config.FAST_REGISTRATION_DIR.get())
 
         registered_id = self.register(project, domain, name, digest)
         self._has_fast_registered = True

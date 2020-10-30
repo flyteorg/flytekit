@@ -125,13 +125,11 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
 def fast_execute_task_cmd(
     task_module, task_name, inputs, output_prefix, raw_output_data_prefix, additional_distribution, test
 ):
-    _click.echo(_os.system("cat recipes/katrina/fast.py"))
     if additional_distribution is not None:
         _download_distribution(additional_distribution, _pathlib.Path(_os.getcwd()))
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    _click.echo(_os.system("cat recipes/katrina/fast.py"))
     cmd = _sdk_config.SDK_PYTHON_VENV.get() + [
         "pyflyte-execute",
         "--task-module",

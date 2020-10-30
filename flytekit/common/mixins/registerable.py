@@ -163,12 +163,14 @@ class RegisterableEntity(TrackableEntity):
         pass
 
     @_abc.abstractmethod
-    def fast_register(self, project=None, domain=None, name=None, already_uploaded_digest=None) -> str:
+    def fast_register(self, project, domain, name, already_uploaded_digest=None, working_dir=None) -> str:
         """
         :param Text project: The project in which to register this task.
         :param Text domain: The domain in which to register this task.
         :param Text name: The name to give this task.
         :param Text already_uploaded_digest: The version in which to register this task (if it's not already computed).
+        :param Text working_dir: Optional, user-specified root dir to use in place of the current working dir for which
+            to serialize
         :rtype: Text: Registered identifier.
         """
         pass
