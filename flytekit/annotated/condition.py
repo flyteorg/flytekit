@@ -159,6 +159,9 @@ class ConditionalSection(object):
 class Case(object):
     def __init__(self, cs: ConditionalSection, expr: Optional[Union[ComparisonExpression, ConjunctionExpression]]):
         self._cs = cs
+        if expr is not None and not isinstance(expr, ConjunctionExpression) and not \
+                isinstance(expr, ComparisonExpression):
+            raise AssertionError("Whack, can only use comparison expression to in conditions")
         self._expr = expr
         self._output_promise: Optional[Union[Tuple[Promise], Promise]] = None
         self._err = None
@@ -230,7 +233,8 @@ def transform_to_conj_expr(expr: ConjunctionExpression) -> (_core_cond.Conjuncti
     left, left_promises = transform_to_boolexpr(expr.lhs)
     right, right_promises = transform_to_boolexpr(expr.rhs)
     return (
-        _core_cond.ConjunctionExpression(left_expression=left, right_expression=right, operator=_logical_ops[expr.op],),
+        _core_cond.ConjunctionExpression(left_expression=left, right_expression=right,
+                                         operator=_logical_ops[expr.op], ),
         merge_promises(*left_promises, *right_promises),
     )
 
@@ -251,7 +255,7 @@ def transform_to_comp_expr(expr: ComparisonExpression) -> (_core_cond.Comparison
 
 
 def transform_to_boolexpr(
-    expr: Union[ComparisonExpression, ConjunctionExpression]
+        expr: Union[ComparisonExpression, ConjunctionExpression]
 ) -> (_core_cond.BooleanExpression, typing.List[Promise]):
     if isinstance(expr, ConjunctionExpression):
         cexpr, promises = transform_to_conj_expr(expr)

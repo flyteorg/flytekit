@@ -80,27 +80,29 @@ def test_serialization_branch_complex():
 
 def test_serialization_branch():
     @task
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
-        return a + 2, "world"
-
-    @task
-    def t2(a: str) -> str:
+    def mimic(a: int) -> typing.NamedTuple("OutputsBC", c=int):
         return a
 
-    @workflow
-    def my_wf(a: int, b: str) -> (int, str):
-        x, y = t1(a=a)
-        d = (
-            conditional("test1")
-                .if_(x == 4)
-                .then(t2(a=y))
-                .else_()
-                .then(t2(a=b))
-        )
-        return x, d
+    @task
+    def t1() -> typing.NamedTuple("OutputsBC", c=str):
+        return "world"
 
-    assert my_wf(a=4, b="what") == (6, "what")
-    assert my_wf(a=2, b="what") == (4, "world")
+    @task
+    def t2() -> typing.NamedTuple("OutputsBC", c=str):
+        return "hello"
+
+    @workflow
+    def my_wf(a: int) -> str:
+        c = mimic(a=a)
+        return (conditional("test1")
+                .if_(c == 4)
+                .then(t1())
+                .else_()
+                .then(t2())
+                )
+
+    assert my_wf(a=4) == "world"
+    assert my_wf(a=2) == "hello"
 
     ctx = FlyteContext.current_context()
     registration_settings = context_manager.RegistrationSettings(
