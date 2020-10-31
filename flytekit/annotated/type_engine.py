@@ -11,7 +11,6 @@ from google.protobuf import struct_pb2 as _struct
 
 from flytekit import typing as flyte_typing
 from flytekit.annotated.context_manager import FlyteContext
-from flytekit.common.types import primitives as _primitives
 from flytekit.configuration import sdk
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
@@ -258,7 +257,7 @@ class DictTransformer(TypeTransformer[dict]):
                     return _type_models.LiteralType(map_value_type=sub_type)
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
-        return _primitives.Generic.to_flyte_literal_type()
+        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
 
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
@@ -535,7 +534,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "int",
             int,
-            _primitives.Integer.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
             lambda x: x.scalar.primitive.integer,
         )
@@ -545,7 +544,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "float",
             float,
-            _primitives.Float.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.FLOAT),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(float_value=x))),
             lambda x: x.scalar.primitive.float_value,
         )
@@ -555,7 +554,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "bool",
             bool,
-            _primitives.Boolean.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.BOOLEAN),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(boolean=x))),
             lambda x: x.scalar.primitive.boolean,
         )
@@ -565,7 +564,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "str",
             str,
-            _primitives.String.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.STRING),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(string_value=x))),
             lambda x: x.scalar.primitive.string_value,
         )
@@ -575,7 +574,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "datetime",
             _datetime.datetime,
-            _primitives.Datetime.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x))),
             lambda x: x.scalar.primitive.datetime,
         )
@@ -585,7 +584,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "timedelta",
             _datetime.timedelta,
-            _primitives.Timedelta.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.DURATION),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
             lambda x: x.scalar.primitive.duration,
         )
