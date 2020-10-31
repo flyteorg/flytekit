@@ -84,7 +84,7 @@ def test_serialization_branch():
         return a
 
     @task
-    def t1() -> typing.NamedTuple("OutputsBC", c=str):
+    def t1(c: int) -> typing.NamedTuple("OutputsBC", c=str):
         return "world"
 
     @task
@@ -96,7 +96,7 @@ def test_serialization_branch():
         c = mimic(a=a)
         return (conditional("test1")
                 .if_(c == 4)
-                .then(t1())
+                .then(t1(c=c))
                 .else_()
                 .then(t2())
                 )
