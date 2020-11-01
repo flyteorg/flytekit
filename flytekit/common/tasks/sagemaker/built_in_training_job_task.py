@@ -30,7 +30,7 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
         retries: int = 0,
         cacheable: bool = False,
         cache_version: str = "",
-        timeout: _datetime.timedelta = 0,
+        timeout: _datetime.timedelta = None,
     ):
         """
 
@@ -57,7 +57,7 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
                     type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, version=__version__, flavor="sagemaker",
                 ),
                 discoverable=cacheable,
-                timeout=timeout,
+                timeout=timeout or _datetime.timedelta(seconds=0),
                 retries=_literal_models.RetryStrategy(retries=retries),
                 interruptible=False,
                 discovery_version=cache_version,

@@ -30,6 +30,7 @@ greenlet==0.4.17          # via gevent
 grpcio==1.33.2            # via flytekit
 hmsclient==0.1.1          # via flytekit
 idna==2.10                # via requests
+importlib-metadata==2.0.0  # via jsonschema, keyring
 inotify_simple==1.2.1     # via sagemaker-training
 ipykernel==5.3.4          # via flytekit
 ipython-genutils==0.2.0   # via nbformat, traitlets
@@ -93,6 +94,7 @@ urllib3==1.25.11          # via botocore, flytekit, requests, responses
 wcwidth==0.2.5            # via prompt-toolkit
 werkzeug==1.0.1           # via sagemaker-training
 wrapt==1.12.1             # via deprecated, flytekit
+zipp==3.4.0               # via importlib-metadata
 zope.event==4.5.0         # via gevent
 zope.interface==5.1.2     # via gevent
 

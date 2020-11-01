@@ -28,7 +28,7 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
         retries: int = 0,
         cacheable: bool = False,
         cache_version: str = "",
-        timeout: _datetime.timedelta = 0,
+        timeout: _datetime.timedelta = None,
     ):
         """
         :param int max_number_of_training_jobs: The maximum number of training jobs that can be launched by this
@@ -87,7 +87,8 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
                     type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, version=__version__, flavor="sagemaker",
                 ),
                 discoverable=cacheable,
-                timeout=timeout,  # This is the HyperparameterTuningJob's timeout, not the timeout of the underlying job
+                # This is the HyperparameterTuningJob's timeout, not the timeout of the underlying job
+                timeout=timeout or _datetime.timedelta(seconds=0),
                 retries=_literal_models.RetryStrategy(retries=retries),
                 interruptible=False,
                 discovery_version=cache_version,
