@@ -1,4 +1,5 @@
 from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
+from flyteidl.core import tasks_pb2 as _tasks_pb2
 
 from flytekit.models import common as _common
 from flytekit.models.sagemaker import training_job as _training_job
@@ -131,10 +132,12 @@ class HyperparameterTuningJob(_common.FlyteIdlEntity):
         max_number_of_training_jobs: int,
         max_parallel_training_jobs: int,
         training_job: _training_job.TrainingJob,
+        training_job_metadata: _tasks_pb2.TaskMetadata,
     ):
         self._max_number_of_training_jobs = max_number_of_training_jobs
         self._max_parallel_training_jobs = max_parallel_training_jobs
         self._training_job = training_job
+        self._training_job_metadata = training_job_metadata
 
     @property
     def max_number_of_training_jobs(self) -> int:
@@ -162,11 +165,21 @@ class HyperparameterTuningJob(_common.FlyteIdlEntity):
         """
         return self._training_job
 
+    @property
+    def training_job_metadata(self) -> _tasks_pb2.TaskMetadata:
+        """
+        The TaskMetadata of the underlying training job. We pass along this metadata because information such as the
+        timeout of the underlying training job is useful when filling in the HyperparameterTuningJob CRD.
+        :return: _task_pb2.TaskMetadata
+        """
+        return self._training_job_metadata
+
     def to_flyte_idl(self) -> _pb2_hpo_job.HyperparameterTuningJob:
         return _pb2_hpo_job.HyperparameterTuningJob(
             max_number_of_training_jobs=self._max_number_of_training_jobs,
             max_parallel_training_jobs=self._max_parallel_training_jobs,
             training_job=self._training_job.to_flyte_idl(),  # SDK task has already serialized it
+            training_job_metadata=self._training_job_metadata.to_flyte_idl(),
         )
 
     @classmethod
@@ -175,4 +188,5 @@ class HyperparameterTuningJob(_common.FlyteIdlEntity):
             max_number_of_training_jobs=pb2_object.max_number_of_training_jobs,
             max_parallel_training_jobs=pb2_object.max_parallel_training_jobs,
             training_job=_training_job.TrainingJob.from_flyte_idl(pb2_object.training_job),
+            training_job_metadata=_tasks_pb2.TaskMetadata.from_flyte_idl(pb2_object.training_job_metadata),
         )

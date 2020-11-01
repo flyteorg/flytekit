@@ -22,9 +22,12 @@ from flytekit.models.sagemaker.training_job import (
     InputContentType,
     InputMode,
     TrainingJobResourceConfig,
+    MetricDefinition,
 )
 from flytekit.sdk.types import Types
 from flytekit.sdk.workflow import Input, workflow_class
+from flytekit.sdk.tasks import inputs, outputs
+from flytekit.sdk.sagemaker.task import custom_training_job_task
 
 example_hyperparams = {
     "base_score": "0.5",
@@ -76,7 +79,7 @@ simple_xgboost_hpo_job_task = hpo_job_task.SdkSimpleHyperparameterTuningJobTask(
 
 
 @workflow_class
-class SageMakerHPO(object):
+class SageMakerHPOwithBuiltinAlgorithmTraining(object):
     train_dataset = Input(Types.MultiPartCSV, default="s3://somelocation")
     validation_dataset = Input(Types.MultiPartCSV, default="s3://somelocation")
     static_hyperparameters = Input(Types.Generic, default=example_hyperparams)
@@ -102,14 +105,64 @@ class SageMakerHPO(object):
     )
 
 
-sagemaker_hpo_lp = SageMakerHPO.create_launch_plan()
+sagemaker_hpo_lp = SageMakerHPOwithBuiltinAlgorithmTraining.create_launch_plan()
 
 with _configuration.TemporaryConfiguration(
     _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../common/configs/local.config",),
     internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
 ):
     print("Printing WF definition")
-    print(SageMakerHPO)
+    print(SageMakerHPOwithBuiltinAlgorithmTraining)
 
     print("Printing LP definition")
     print(sagemaker_hpo_lp)
+
+
+@inputs(input_1=Types.Integer)
+@outputs(model=Types.Blob)
+@custom_training_job_task(
+    training_job_resource_config=TrainingJobResourceConfig(
+        instance_type="ml.m4.xlarge", instance_count=2, volume_size_in_gb=25,
+    ),
+    algorithm_specification=AlgorithmSpecification(
+        input_mode=InputMode.FILE,
+        input_content_type=InputContentType.TEXT_CSV,
+        metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")],
+    ),
+)
+def my_distributed_task_with_valid_dist_training_context(wf_params, input_1, model):
+    if not wf_params.distributed_training_context:
+        raise ValueError
+
+
+hpo_with_custom_training = hpo_job_task.SdkSimpleHyperparameterTuningJobTask(
+    tunable_parameters=["input_1"],
+    training_job=my_distributed_task_with_valid_dist_training_context,
+    max_number_of_training_jobs=10,
+    max_parallel_training_jobs=5,
+)
+
+
+@workflow_class
+class SageMakerHPOWithCustomTraining(object):
+    train_dataset = Input(Types.MultiPartCSV, default="s3://somelocation")
+    validation_dataset = Input(Types.MultiPartCSV, default="s3://somelocation")
+    static_hyperparameters = Input(Types.Generic, default=example_hyperparams)
+    hyperparameter_tuning_job_config = Input(
+        HyperparameterTuningJobConfig,
+        default=_HyperparameterTuningJobConfig(
+            tuning_strategy=HyperparameterTuningStrategy.BAYESIAN,
+            tuning_objective=HyperparameterTuningObjective(
+                objective_type=HyperparameterTuningObjectiveType.MINIMIZE, metric_name="validation:error",
+            ),
+            training_job_early_stopping_type=TrainingJobEarlyStoppingType.AUTO,
+        ),
+    )
+
+    a = hpo_with_custom_training(
+        train=train_dataset,
+        validation=validation_dataset,
+        static_hyperparameters=static_hyperparameters,
+        hyperparameter_tuning_job_config=hyperparameter_tuning_job_config,
+        input_1=IntegerParameterRange(min_value=2, max_value=8, scaling_type=HyperparameterScalingType.LINEAR),
+    )

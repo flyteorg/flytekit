@@ -49,6 +49,7 @@ from flytekit.models.sagemaker.training_job import (
 )
 from flytekit.sdk import types as _sdk_types
 from flytekit.sdk.sagemaker.task import custom_training_job_task
+from flytekit.common.tasks.sagemaker.hpo_job_task import SdkSimpleHyperparameterTuningJobTask
 from flytekit.sdk.tasks import inputs, outputs
 from flytekit.sdk.types import Types
 from flytekit.sdk.workflow import Input, workflow_class
@@ -463,3 +464,29 @@ class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
                 my_distributed_task_with_valid_dist_training_context.execute(self._context, self._task_input)
             except ValueError:
                 self.fail("The distributed_training_context is not passed into task function successfully")
+
+
+class HPOOnCustomTrainingJobTaskTests(unittest.TestCase):
+    def test_a(self):
+        @inputs(input_1=Types.Integer)
+        @outputs(model=Types.Blob)
+        @custom_training_job_task(
+            training_job_resource_config=TrainingJobResourceConfig(
+                instance_type="ml.m4.xlarge", instance_count=2, volume_size_in_gb=25,
+            ),
+            algorithm_specification=AlgorithmSpecification(
+                input_mode=InputMode.FILE,
+                input_content_type=InputContentType.TEXT_CSV,
+                metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")],
+            ),
+        )
+        def my_distributed_task_with_valid_dist_training_context(wf_params, input_1, model):
+            if not wf_params.distributed_training_context:
+                raise ValueError
+
+        hpo_task = SdkSimpleHyperparameterTuningJobTask(
+            training_job=my_distributed_task_with_valid_dist_training_context,
+            max_parallel_training_jobs=5,
+            max_number_of_training_jobs=10,
+            tunable_parameters=['input_1'],
+        )
