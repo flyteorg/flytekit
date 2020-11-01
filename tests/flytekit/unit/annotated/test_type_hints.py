@@ -549,9 +549,10 @@ def test_cant_use_normal_tuples():
 def test_file_type_in_workflow_with_bad_format():
     @task
     def t1() -> flytekit_typing.FlyteFilePath["txt"]:
-        with open("/tmp/flytekit_test", "w") as fh:
+        fname = "/tmp/flytekit_test"
+        with open(fname, "w") as fh:
             fh.write("Hello World\n")
-        return flytekit_typing.FlyteFilePath["txt"]("/tmp/flytekit_test")
+        return fname
 
     @workflow
     def my_wf() -> flytekit_typing.FlyteFilePath["txt"]:
