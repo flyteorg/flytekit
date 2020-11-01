@@ -24,20 +24,17 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
         max_number_of_training_jobs: int,
         max_parallel_training_jobs: int,
         training_job: typing.Union[SdkBuiltinAlgorithmTrainingJobTask, CustomTrainingJobTask],
+        tunable_parameters: typing.List[str] = None,
         retries: int = 0,
         cacheable: bool = False,
         cache_version: str = "",
-        tunable_parameters: typing.List[str] = None,
+        timeout: _datetime.timedelta = 0,
     ):
         """
         :param int max_number_of_training_jobs: The maximum number of training jobs that can be launched by this
         hyperparameter tuning job
         :param int max_parallel_training_jobs: The maximum number of training jobs that can launched by this hyperparameter
         tuning job in parallel
-        :param typing.Union[SdkBuiltinAlgorithmTrainingJobTask, CustomTrainingJobTask] training_job: The reference to the training job definition
-        :param int retries: Number of retries to attempt
-        :param bool cacheable: The flag to set if the user wants the output of the task execution to be cached
-        :param str cache_version: String describing the caching version for task discovery purposes
         :param typing.List[str] tunable_parameters: A list of parameters that to tune. If you are tuning a built-int
                 algorithm, refer to the algorithm's documentation to understand the possible values for the tunable
                 parameters. E.g. Refer to https://docs.aws.amazon.com/sagemaker/latest/dg/IC-Hyperparameter.html for the
@@ -45,18 +42,25 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
                 training job, the list of tunable parameters must be a strict subset of the list of inputs defined on
                 that job. Refer to https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-define-ranges.html
                 for the list of supported hyperparameter types.
+        :param typing.Union[SdkBuiltinAlgorithmTrainingJobTask, CustomTrainingJobTask] training_job: The reference to the training job definition
+        :param int retries: Number of retries to attempt
+        :param bool cacheable: The flag to set if the user wants the output of the task execution to be cached
+        :param str cache_version: String describing the caching version for task discovery purposes
+        :param _datetime.timedelta timeout: timeout of the node specified in seconds
         """
         # Use the training job model as a measure of type checking
         hpo_job = _hpo_job_model.HyperparameterTuningJob(
             max_number_of_training_jobs=max_number_of_training_jobs,
             max_parallel_training_jobs=max_parallel_training_jobs,
             training_job=training_job.training_job_model,
+            training_job_metadata=training_job.metadata,
+            # training_job_timeout=training_job.metadata.timeout,
         ).to_flyte_idl()
 
         # Setting flyte-level timeout to 0, and let SageMaker respect the StoppingCondition of
         #   the underlying training job
         # TODO: Discuss whether this is a viable interface or contract
-        timeout = _datetime.timedelta(seconds=0)
+        # timeout = _datetime.timedelta(seconds=0)
 
         inputs = {}
         inputs.update(training_job.interface.inputs)
@@ -83,7 +87,7 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
                     type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, version=__version__, flavor="sagemaker",
                 ),
                 discoverable=cacheable,
-                timeout=timeout,
+                timeout=timeout,  # This is the HyperparameterTuningJob's timeout, not the timeout of the underlying job
                 retries=_literal_models.RetryStrategy(retries=retries),
                 interruptible=False,
                 discovery_version=cache_version,
@@ -103,6 +107,7 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
                 },
             ),
             custom=MessageToDict(hpo_job),
+            container=training_job.container if isinstance(training_job, CustomTrainingJobTask) else None
         )
 
     def __call__(self, *args, **kwargs):

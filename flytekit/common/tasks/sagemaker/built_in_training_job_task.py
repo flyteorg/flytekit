@@ -30,6 +30,7 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
         retries: int = 0,
         cacheable: bool = False,
         cache_version: str = "",
+        timeout: _datetime.timedelta = 0,
     ):
         """
 
@@ -38,6 +39,7 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
         :param retries: Number of retries to attempt
         :param cacheable: The flag to set if the user wants the output of the task execution to be cached
         :param cache_version: String describing the caching version for task discovery purposes
+        :param datetime.timedelta timeout: timeout of the node specified in seconds
         """
         # Use the training job model as a measure of type checking
         self._training_job_model = _training_job_models.TrainingJob(
@@ -46,7 +48,7 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
 
         # Setting flyte-level timeout to 0, and let SageMaker takes the StoppingCondition and terminate the training
         # job gracefully
-        timeout = _datetime.timedelta(seconds=0)
+        # timeout_datetime = _datetime.timedelta(seconds=timeout)
 
         super(SdkBuiltinAlgorithmTrainingJobTask, self).__init__(
             type=SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK,
