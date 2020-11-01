@@ -115,9 +115,9 @@ class FlyteFilePath(os.PathLike):
 
     def __eq__(self, other):
         return (
-            self._abspath == other._abspath
-            and self._remote_path == other._remote_path
-            and self.extension() == other.extension()
+                self._abspath == other._abspath
+                and self._remote_path == other._remote_path
+                and self.extension() == other.extension()
         )
 
     @property
@@ -133,3 +133,58 @@ class FlyteFilePath(os.PathLike):
 
     def __str__(self):
         return self._abspath
+
+
+class IOManager(object):
+    def download(self):
+        pass
+
+    def upload(self):
+        pass
+
+
+class FlyteSchema(object):
+    # _SUPPORTED_TYPES = {
+    #     {_np.int32, _np.int64, _np.uint32, _np.uint64},
+    #     {_np.float32, _np.float64},
+    #     {_np.bool},
+    #     {_np.datetime64},
+    #     {_np.timedelta64},
+    #     {_np.object_, _np.str_, _np.string_},
+    # }
+
+    @classmethod
+    def columns(cls) -> typing.Dict[str, typing.Type]:
+        return {}
+
+    def __class_getitem__(cls, columns: typing.Dict[str, typing.Type]):
+        if columns is None:
+            return cls
+
+        if type(columns) != dict:
+            raise Exception("Columns should be specified as an ordered dict of column names and their types")
+
+        if len(columns) == 0:
+            return cls
+
+        class _TypedSchema(FlyteSchema):
+            # Get the type engine to see this as kind of a generic
+            __origin__ = FlyteSchema
+
+            @classmethod
+            def columns(cls) -> typing.Dict[str, typing.Type]:
+                return columns
+
+        return _TypedSchema
+
+    def __init__(self, objs: typing.Any, ):
+        """
+        Want to support
+         - different types of df (pandas, vaex, spark etc)
+         - different number of dfs
+         - or a list of files or a directory. Each of the files can be in one of the supported formats for a schema
+           - in the beginning only parquet
+         - it should support lazy streaming download and lazy streaming upload
+        :param obj:
+        """
+        self._obj = objs
