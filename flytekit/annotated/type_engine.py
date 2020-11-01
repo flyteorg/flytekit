@@ -391,7 +391,16 @@ class FlyteFilePathTransformer(TypeTransformer[flyte_typing.FlyteFilePath]):
         python_type: Type[flyte_typing.FlyteFilePath],
         expected: LiteralType,
     ) -> Literal:
-        remote_path = python_val.remote_path if python_val.remote_path else ctx.file_access.get_random_remote_path()
+        remote_path = ""
+        if isinstance(python_val, flyte_typing.FlyteFilePath):
+            remote_path = python_val.remote_path if python_val.remote_path else ""
+        else:
+            if not (isinstance(python_val, os.PathLike) or isinstance(python_val, str)):
+                raise AssertionError(f"Expected FlyteFilePath or os.PathLike object, received {type(python_val)}")
+
+        if remote_path == "":
+            remote_path = ctx.file_access.get_random_remote_path()
+
         ctx.file_access.put_data(f"{python_val}", remote_path, is_multipart=False)
         meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
