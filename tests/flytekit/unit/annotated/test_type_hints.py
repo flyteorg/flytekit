@@ -795,3 +795,28 @@ def test_wf_tuple_fails():
         @task
         def t1(a: tuple) -> (int, str):
             return a[0] + 2, str(a) + "-HELLO"
+
+
+def test_wf_node():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        n1 = create_node("fds", t1, inputs={'a': a})  # x, y = t1(a=a)
+        d = t2(a=y, b=n1.t1_int_output)
+        return n1.c, d
+
+
+    # task with no outputs
+    # task with one output
+    # task with two outputs
+    # first task taking in inputs from the workflow
+    # dynamic task
+    # workflow inside dynamic task
+

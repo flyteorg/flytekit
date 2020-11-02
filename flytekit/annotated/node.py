@@ -1,10 +1,13 @@
-from typing import Any, List
+from __future__ import annotations
 
+from typing import Any, Dict, List, Union, Optional
+
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext
 from flytekit.common.nodes import SdkNode
 from flytekit.common.utils import _dnsify
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
-
+import collections
 
 # TODO: Refactor this into something cleaner once we have a pattern for Tasks/Workflows/Launchplans
 class Node(object):
@@ -14,12 +17,12 @@ class Node(object):
     """
 
     def __init__(
-        self,
-        id: str,
-        metadata: _workflow_model.NodeMetadata,
-        bindings: List[_literal_models.Binding],
-        upstream_nodes: List["Node"],
-        flyte_entity: Any,
+            self,
+            id: str,
+            metadata: _workflow_model.NodeMetadata,
+            bindings: List[_literal_models.Binding],
+            upstream_nodes: List["Node"],
+            flyte_entity: Any,
     ):
         self._id = _dnsify(id)
         self._metadata = metadata
@@ -76,3 +79,39 @@ class Node(object):
     @property
     def id(self) -> str:
         return self._id
+
+    def __getattr__(self, item):
+        """
+        There's two syntaxes we can go for. When a user does
+            n1 = create_node("fds", t1, inputs={'a': a})  # x, y = t1(a=a)
+        we can have the user access the outputs via
+            n1.output_0 OR n1.outputs.output_0.
+        I think the former is cleaner for two reasons
+        """
+        # if has
+
+    # TODO: Figure out import cycles in the future
+    from flytekit.annotated.launch_plan import LaunchPlan
+    from flytekit.annotated.task import PythonTask
+    from flytekit.annotated.workflow import Workflow
+
+    @classmethod
+    def create_node(cls, node_id: str, flyte_entity: Union[PythonTask, Workflow, LaunchPlan],
+                    inputs: Optional[Dict[str, Any]]) -> Node:
+
+        inputs = inputs or {}  # in cases where the task doesn't take inputs
+        result = flyte_entity(**inputs)  # Can be None, Promise, Tuple[Promise], native value(s)
+
+
+        ctx = FlyteContext.current_context()
+        # When in compilation, need to actually create a node
+        if ctx.compilation_state is not None:
+            # Creating the node is done by calling the given task/launch plan/subworkflow, since those __call__ methods
+            # will automatically create the node.
+            flyte_entity(**inputs)
+
+        # When in local execution we need to call the function and retrieve args.
+        elif (
+                ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+        ):
+            ...

@@ -55,6 +55,9 @@ class FlyteSdkType(_sdk_bases.ExtendedSdkType, metaclass=_common_models.FlyteABC
 
 
 class FlyteSdkValue(_literal_models.Literal, metaclass=FlyteSdkType):
+    # To make the new type engine work
+    __origin__ = FlyteSdkType
+
     @classmethod
     def from_flyte_idl(cls, pb2_object: Literal):
         """

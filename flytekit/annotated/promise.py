@@ -354,7 +354,12 @@ class Promise(object):
 
 
 # To create a class that is a named tuple, we might have to create namedtuplemeta and manipulate the tuple
-def create_task_output(promises: Union[List[Promise], Promise, None]) -> Union[Tuple[Promise], Promise, None]:
+def create_task_output(promises: Union[List[Promise], Promise, None], force_unary_tuple: bool = False) -> Union[Tuple[Promise], Promise, None]:
+    """
+    :param promises:
+    :param force_unary_tuple: When users want to create an explicit node, it's helpful to create a named tuple even if
+      the task only has one output. For zero outputs, we still return None.
+    """
     if promises is None:
         return None
 
@@ -365,7 +370,8 @@ def create_task_output(promises: Union[List[Promise], Promise, None]) -> Union[T
         return None
 
     if len(promises) == 1:
-        return promises[0]
+        if not force_unary_tuple:
+            return promises[0]
 
     # More than one promises, let us wrap it into a tuple
     variables = [p.var for p in promises]
@@ -412,8 +418,6 @@ def binding_data_from_python_std(
 
     # This is the scalar case - e.g. my_task(in1=5)
     else:
-        # Question: Haytham/Ketan - Is it okay for me to rely on the expected idl type, which comes from the task's
-        #   interface, to derive the scalar value?
         scalar = TypeEngine.to_literal(ctx, t_value, t_value_type, expected_literal_type).scalar
         binding_data = _literals_models.BindingData(scalar=scalar)
 

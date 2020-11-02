@@ -27,8 +27,11 @@ from flytekit.models.literals import (
 )
 from flytekit.models.types import LiteralType, SchemaType, SimpleType
 from flytekit.plugins import pandas
+from flytekit.type_engines.default.flyte import FlyteDefaultTypeEngine
+from flytekit.common.types.base_sdk_types import FlyteSdkType, FlyteSdkValue
 
 T = typing.TypeVar("T")
+legacy_engine = FlyteDefaultTypeEngine()
 
 
 class TypeTransformer(typing.Generic[T]):
@@ -529,6 +532,30 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
         return self._parquet_engine.read(files)
 
 
+class LegacyWrapper(TypeTransformer[FlyteSdkValue]):
+    def __init__(self):
+        super().__init__(name="fdsafds", t=FlyteSdkType)
+
+    def get_literal_type(self, t: Type[FlyteSdkValue]) -> LiteralType:
+        return t.to_flyte_literal_type()
+
+    def to_literal(
+        self,
+        ctx: FlyteContext,
+        python_val: flyte_typing.FlyteFilePath,
+        python_type: Type[FlyteSdkValue],
+        expected: LiteralType,
+    ) -> Literal:
+        return python_type.from_python_std(python_val).to_flyte_idl()
+
+    def to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSdkValue]
+    ) -> FlyteSdkValue:
+        sdk_type = legacy_engine.python_std_to_sdk_type(expected_python_type)
+        sdk_type.from_flyte_idl(lv)
+        return expected_python_type.from_flyte_idl(lv)
+
+
 def _register_default_type_transformers():
     TypeEngine.register(
         SimpleTransformer(
@@ -614,6 +641,7 @@ def _register_default_type_transformers():
     TypeEngine.register(RestrictedType("non typed tuple", tuple))
     TypeEngine.register(RestrictedType("non typed tuple", typing.Tuple))
     TypeEngine.register(RestrictedType("named tuple", typing.NamedTuple))
+    TypeEngine.register(LegacyWrapper())
 
 
 _register_default_type_transformers()
