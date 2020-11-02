@@ -3,12 +3,13 @@ import typing
 from datetime import timedelta
 
 from flytekit.annotated.context_manager import FlyteContext
+from flytekit.annotated.task import kwtypes
 from flytekit.annotated.type_engine import (
     DictTransformer,
     ListTransformer,
     PathLikeTransformer,
     SimpleTransformer,
-    TypeEngine,
+    TypeEngine, FlyteSchema,
 )
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
@@ -83,3 +84,9 @@ def test_file_format_getting_python_value():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFilePath[".txt"])
     assert isinstance(pv, FlyteFilePath)
     assert pv.extension() == ".txt"
+
+
+def test_typed_schema():
+    s = FlyteSchema[kwtypes(x=int, y=float)]
+    assert s.format() == FlyteSchema.FlyteSchemaFormat.PARQUET
+    assert s.columns() == {"x": int, "y": float}
