@@ -75,7 +75,9 @@ def test_serialization_branch_complex():
     with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
         wf = my_wf.get_registerable_entity()
         assert wf is not None
-        print(wf)
+        assert len(wf.nodes) == 3
+        assert wf.nodes[1].branch_node is not None
+        assert wf.nodes[2].branch_node is not None
 
 
 def test_serialization_branch():
@@ -106,6 +108,5 @@ def test_serialization_branch():
     with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
         wf = my_wf.get_registerable_entity()
         assert wf is not None
-        print(wf)
-        idl = wf.to_flyte_idl()
-        print(idl.SerializeToString())
+        assert len(wf.nodes) == 2
+        assert wf.nodes[1].branch_node is not None

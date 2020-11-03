@@ -196,7 +196,7 @@ class ConditionalSection(object):
                 """
                 ctx.execution_state.enter_conditional_section()
         elif ctx.compilation_state:
-            if ctx.compilation_state.is_in_a_branch() is not None:
+            if ctx.compilation_state.is_in_a_branch():
                 """
                 TODO implement nested branches
                 """
