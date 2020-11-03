@@ -58,12 +58,12 @@ def test_serialization_branch_complex():
         x, y = t1(a=a)
         d = (
             conditional("test1")
-                .if_(x == 4)
-                .then(t2(a=b))
-                .elif_(x >= 5)
-                .then(t2(a=y))
-                .else_()
-                .fail("Unable to choose branch")
+            .if_(x == 4)
+            .then(t2(a=b))
+            .elif_(x >= 5)
+            .then(t2(a=y))
+            .else_()
+            .fail("Unable to choose branch")
         )
         f = conditional("test2").if_(d == "hello ").then(t2(a="It is hello")).else_().then(t2(a="Not Hello!"))
         return x, f
@@ -94,12 +94,7 @@ def test_serialization_branch():
     @workflow
     def my_wf(a: int) -> str:
         c = mimic(a=a)
-        return (conditional("test1")
-                .if_(c == 4)
-                .then(t1(c=c))
-                .else_()
-                .then(t2())
-                )
+        return conditional("test1").if_(c == 4).then(t1(c=c)).else_().then(t2())
 
     assert my_wf(a=4) == "world"
     assert my_wf(a=2) == "hello"
@@ -112,3 +107,5 @@ def test_serialization_branch():
         wf = my_wf.get_registerable_entity()
         assert wf is not None
         print(wf)
+        idl = wf.to_flyte_idl()
+        print(idl.SerializeToString())

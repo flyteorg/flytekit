@@ -14,12 +14,12 @@ class Node(object):
     """
 
     def __init__(
-            self,
-            id: str,
-            metadata: _workflow_model.NodeMetadata,
-            bindings: List[_literal_models.Binding],
-            upstream_nodes: List["Node"],
-            flyte_entity: Any,
+        self,
+        id: str,
+        metadata: _workflow_model.NodeMetadata,
+        bindings: List[_literal_models.Binding],
+        upstream_nodes: List["Node"],
+        flyte_entity: Any,
     ):
         self._id = _dnsify(id)
         self._metadata = metadata
