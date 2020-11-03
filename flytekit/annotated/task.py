@@ -339,8 +339,8 @@ class PythonTask(Task):
     def get_registerable_entity(self) -> _registerable.RegisterableEntity:
         if self._registerable_entity is not None:
             return self._registerable_entity
-        self._registrable_entity = self.get_task_structure()
-        return self._registrable_entity
+        self._registerable_entity = self.get_task_structure()
+        return self._registerable_entity
 
 
 class ContainerTask(PythonTask):
