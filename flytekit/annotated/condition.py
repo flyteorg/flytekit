@@ -196,6 +196,11 @@ class ConditionalSection(object):
                 """
                 ctx.execution_state.enter_conditional_section()
         elif ctx.compilation_state:
+            if ctx.compilation_state.is_in_a_branch() is not None:
+                """
+                TODO implement nested branches
+                """
+                raise NotImplementedError("Nested branches are not yet supported")
             ctx.compilation_state.enter_conditional_section()
         return self._condition._if(expr)
 

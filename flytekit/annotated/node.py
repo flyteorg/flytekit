@@ -80,7 +80,6 @@ class Node(object):
                 metadata=self._metadata,
                 sdk_launch_plan=self._flyte_entity.get_registerable_entity(),
             )
-        # TODO: Add new annotated LaunchPlan when done
         else:
             raise Exception("not a task or workflow, not sure what to do")
 

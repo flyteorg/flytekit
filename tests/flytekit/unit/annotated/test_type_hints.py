@@ -496,30 +496,26 @@ def test_wf1_branches():
     assert x == (4, "It is hello")
 
 
-# def test_wf1_branches_no_else():
-#     with pytest.raises(AssertionError):
-#         def foo():
-#             @task
-#             def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
-#                 return a + 2, "world"
-#
-#             @task
-#             def t2(a: str) -> str:
-#                 return a
-#
-#             @workflow
-#             def my_wf(a: int, b: str) -> (int, str):
-#                 x, y = t1(a=a)
-#                 d = conditional("test1").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y))
-#                 return x, d
-#
-#             @workflow
-#             def my_wf2(a: int, b: str) -> (int, str):
-#                 x, y = t1(a=a)
-#                 d = conditional("test1").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("blah")
-#                 return x, d
-#
-#         foo()
+def test_wf1_branches_no_else():
+    with pytest.raises(NotImplementedError):
+
+        def foo():
+            @task
+            def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+                return a + 2, "world"
+
+            @task
+            def t2(a: str) -> str:
+                return a
+
+            @workflow
+            def my_wf(a: int, b: str) -> (int, str):
+                x, y = t1(a=a)
+                d = conditional("test1").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y))
+                conditional("test2").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("blah")
+                return x, d
+
+        foo()
 
 
 def test_wf1_branches_failing():
