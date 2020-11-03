@@ -38,9 +38,7 @@ class IfBlock(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.IfBlock
         """
-        return _core_workflow.IfBlock(
-            condition=self.condition.to_flyte_idl(), then_node=self.then_node.get_registerable_entity().to_flyte_idl()
-        )
+        return _core_workflow.IfBlock(condition=self.condition.to_flyte_idl(), then_node=self.then_node.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -110,7 +108,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
         return _core_workflow.IfElseBlock(
             case=self.case.to_flyte_idl(),
             other=[a.to_flyte_idl() for a in self.other] if self.other else None,
-            else_node=self.else_node.get_registerable_entity().to_flyte_idl() if self.else_node else None,
+            else_node=self.else_node.to_flyte_idl() if self.else_node else None,
             error=self.error.to_flyte_idl() if self.error else None,
         )
 

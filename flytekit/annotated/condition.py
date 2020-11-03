@@ -19,22 +19,50 @@ from flytekit.models.core import condition as _core_cond
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.literals import Binding, BindingData, Literal, RetryStrategy
 from flytekit.models.types import Error
-from flytekit.common.mixins import registerable as _registerable
+
+
+def to_registrable_case(c: _core_wf.IfBlock) -> _core_wf.IfBlock:
+    if c is None:
+        raise ValueError("Cannot convert none cases to registrable")
+    return _core_wf.IfBlock(condition=c.condition, then_node=c.then_node.get_registerable_entity())
+
+
+def to_registrable_cases(cases: typing.List[_core_wf.IfBlock]) -> Optional[typing.List[_core_wf.IfBlock]]:
+    if cases is None:
+        return None
+    ret_cases = []
+    for c in cases:
+        ret_cases.append(to_registrable_case(c))
+    return ret_cases
 
 
 class BranchNode(object):
-    def __init__(self, name: str):
+    def __init__(self, name: str, ifelse_block: _core_wf.IfElseBlock):
         self._name = name
         self._registerable_entity = None
+        self._ifelse_block = ifelse_block
 
     @property
     def name(self):
         return self._name
 
-    def get_registerable_entity(self) -> _registerable.RegisterableEntity:
+    def get_branch_node(self) -> _core_wf.BranchNode:
+        # We have to iterate through the blocks to convert the nodes from their current type to SDKNode
+        # TODO this should be cleaned up instead of mutation, we probaby should just create a new object
+        first = to_registrable_case(self._ifelse_block.case)
+        other = to_registrable_cases(self._ifelse_block.other)
+        else_node = None
+        if self._ifelse_block.else_node:
+            else_node = self._ifelse_block.else_node.get_registerable_entity()
+
+        return _core_wf.BranchNode(
+            if_else=_core_wf.IfElseBlock(case=first, other=other, else_node=else_node, error=self._ifelse_block.error)
+        )
+
+    def get_registerable_entity(self) -> _core_wf.BranchNode:
         if self._registerable_entity is not None:
             return self._registerable_entity
-        self._registerable_entity = self.get_task_structure()
+        self._registerable_entity = self.get_branch_node()
         return self._registerable_entity
 
 
@@ -53,9 +81,6 @@ class ConditionalSection(object):
     #     ctx = FlyteContext.current_context()
     #     if ctx.execution_state and ctx.execution_state.branch_eval_mode is not None:
     #         raise AssertionError("Conditional section not completed!")
-
-    def set_condition(self, c: Condition):
-        self._condition = c
 
     def start_branch(self, c: Case, last_case: bool = False) -> Case:
         """
@@ -109,6 +134,7 @@ class ConditionalSection(object):
             If so then return the promise, else return the condition
             """
             if self._last_case:
+                ctx.compilation_state.exit_conditional_section()
                 # branch_nodes = ctx.compilation_state.nodes
                 node, promises = to_branch_node(self._name, self)
                 # Verify branch_nodes == nodes in bn
@@ -119,7 +145,6 @@ class ConditionalSection(object):
                         bindings.append(Binding(var=p.var, binding=BindingData(promise=p.ref)))
                         upstream_nodes.add(p.ref.sdk_node)
 
-                ctx.compilation_state.exit_conditional_section()
                 n = Node(
                     id=f"{ctx.compilation_state.prefix}node-{len(ctx.compilation_state.nodes)}",
                     metadata=_core_wf.NodeMetadata(self._name, timeout=datetime.timedelta(), retries=RetryStrategy(0)),
@@ -172,16 +197,16 @@ class ConditionalSection(object):
                 ctx.execution_state.enter_conditional_section()
         elif ctx.compilation_state:
             ctx.compilation_state.enter_conditional_section()
-        return self.condition._if(expr)
+        return self._condition._if(expr)
 
 
 class Case(object):
     def __init__(self, cs: ConditionalSection, expr: Optional[Union[ComparisonExpression, ConjunctionExpression]]):
         self._cs = cs
         if (
-                expr is not None
-                and not isinstance(expr, ConjunctionExpression)
-                and not isinstance(expr, ComparisonExpression)
+            expr is not None
+            and not isinstance(expr, ConjunctionExpression)
+            and not isinstance(expr, ComparisonExpression)
         ):
             raise AssertionError("Whack, can only use comparison expression to in conditions")
         self._expr = expr
@@ -255,8 +280,7 @@ def transform_to_conj_expr(expr: ConjunctionExpression) -> (_core_cond.Conjuncti
     left, left_promises = transform_to_boolexpr(expr.lhs)
     right, right_promises = transform_to_boolexpr(expr.rhs)
     return (
-        _core_cond.ConjunctionExpression(left_expression=left, right_expression=right,
-                                         operator=_logical_ops[expr.op], ),
+        _core_cond.ConjunctionExpression(left_expression=left, right_expression=right, operator=_logical_ops[expr.op],),
         merge_promises(*left_promises, *right_promises),
     )
 
@@ -277,7 +301,7 @@ def transform_to_comp_expr(expr: ComparisonExpression) -> (_core_cond.Comparison
 
 
 def transform_to_boolexpr(
-        expr: Union[ComparisonExpression, ConjunctionExpression]
+    expr: Union[ComparisonExpression, ConjunctionExpression]
 ) -> (_core_cond.BooleanExpression, typing.List[Promise]):
     if isinstance(expr, ConjunctionExpression):
         cexpr, promises = transform_to_conj_expr(expr)
@@ -322,8 +346,8 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> (_core_wf.IfElseBlo
 
 def to_branch_node(name: str, cs: ConditionalSection) -> (BranchNode, typing.List[Promise]):
     blocks, promises = to_ifelse_block(name, cs)
-    return _core_wf.BranchNode(if_else=blocks), promises
+    return BranchNode(name=name, ifelse_block=blocks), promises
 
 
-def conditional(name: str) -> BranchNode:
+def conditional(name: str) -> ConditionalSection:
     return ConditionalSection(name)

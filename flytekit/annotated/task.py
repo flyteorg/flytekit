@@ -22,7 +22,6 @@ from flytekit.annotated.promise import Promise, create_task_output, translate_in
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.annotated.workflow import Workflow
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.common.tasks.task import SdkTask
@@ -338,7 +337,7 @@ class PythonTask(Task):
     def execute(self, **kwargs) -> Any:
         pass
 
-    def get_registerable_entity(self) -> _registerable.RegisterableEntity:
+    def get_registerable_entity(self) -> SdkTask:
         if self._registerable_entity is not None:
             return self._registerable_entity
         self._registrable_entity = self.get_task_structure()

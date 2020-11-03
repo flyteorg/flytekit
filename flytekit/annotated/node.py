@@ -33,6 +33,7 @@ class Node(object):
         if self._sdk_node is not None:
             return self._sdk_node
         # TODO: Figure out import cycles in the future
+        from flytekit.annotated.condition import BranchNode
         from flytekit.annotated.launch_plan import LaunchPlan
         from flytekit.annotated.task import PythonTask
         from flytekit.annotated.workflow import Workflow
@@ -63,13 +64,13 @@ class Node(object):
                 metadata=self._metadata,
                 sdk_workflow=self._flyte_entity.get_registerable_entity(),
             )
-        elif isinstance(self._flyte_entity, _workflow_model.BranchNode):
+        elif isinstance(self._flyte_entity, BranchNode):
             self._sdk_node = SdkNode(
                 self._id,
                 upstream_nodes=sdk_nodes,
                 bindings=self._bindings,
                 metadata=self._metadata,
-                sdk_branch=self._flyte_entity,
+                sdk_branch=self._flyte_entity.get_registerable_entity(),
             )
         elif isinstance(self._flyte_entity, LaunchPlan):
             self._sdk_node = SdkNode(
