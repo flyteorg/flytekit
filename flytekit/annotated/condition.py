@@ -19,31 +19,32 @@ from flytekit.models.core import condition as _core_cond
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.literals import Binding, BindingData, Literal, RetryStrategy
 from flytekit.models.types import Error
+from flytekit.common.mixins import registerable as _registerable
+
+
+class BranchNode(object):
+    def __init__(self, name: str):
+        self._name = name
+        self._registerable_entity = None
+
+    @property
+    def name(self):
+        return self._name
+
+    def get_registerable_entity(self) -> _registerable.RegisterableEntity:
+        if self._registerable_entity is not None:
+            return self._registerable_entity
+        self._registerable_entity = self.get_task_structure()
+        return self._registerable_entity
 
 
 class ConditionalSection(object):
     def __init__(self, name: str):
+        self._name = name
         self._cases: typing.List[Case] = []
         self._selected_case = None
         self._last_case = False
-        self._condition = None
-        self._name = name
-
-        ctx = FlyteContext.current_context()
-        if ctx.execution_state:
-            if ctx.execution_state.branch_eval_mode is not None:
-                """
-                TODO implement nested branches
-                """
-                raise NotImplementedError("Nested branches are not yet supported")
-            if ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-                """
-                In case of local workflow execution we should ensure a conditional section
-                is created so that skipped branches result in tasks not being executed
-                """
-                ctx.execution_state.enter_conditional_section()
-        elif ctx.compilation_state:
-            ctx.compilation_state.enter_conditional_section()
+        self._condition = Condition(self)
 
     # def __del__(self):
     #     self.validate()
@@ -155,14 +156,32 @@ class ConditionalSection(object):
     def cases(self) -> typing.List[Case]:
         return self._cases
 
+    def if_(self, expr: bool) -> Case:
+        ctx = FlyteContext.current_context()
+        if ctx.execution_state:
+            if ctx.execution_state.branch_eval_mode is not None:
+                """
+                TODO implement nested branches
+                """
+                raise NotImplementedError("Nested branches are not yet supported")
+            if ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+                """
+                In case of local workflow execution we should ensure a conditional section
+                is created so that skipped branches result in tasks not being executed
+                """
+                ctx.execution_state.enter_conditional_section()
+        elif ctx.compilation_state:
+            ctx.compilation_state.enter_conditional_section()
+        return self.condition._if(expr)
+
 
 class Case(object):
     def __init__(self, cs: ConditionalSection, expr: Optional[Union[ComparisonExpression, ConjunctionExpression]]):
         self._cs = cs
         if (
-            expr is not None
-            and not isinstance(expr, ConjunctionExpression)
-            and not isinstance(expr, ComparisonExpression)
+                expr is not None
+                and not isinstance(expr, ConjunctionExpression)
+                and not isinstance(expr, ComparisonExpression)
         ):
             raise AssertionError("Whack, can only use comparison expression to in conditions")
         self._expr = expr
@@ -236,7 +255,8 @@ def transform_to_conj_expr(expr: ConjunctionExpression) -> (_core_cond.Conjuncti
     left, left_promises = transform_to_boolexpr(expr.lhs)
     right, right_promises = transform_to_boolexpr(expr.rhs)
     return (
-        _core_cond.ConjunctionExpression(left_expression=left, right_expression=right, operator=_logical_ops[expr.op],),
+        _core_cond.ConjunctionExpression(left_expression=left, right_expression=right,
+                                         operator=_logical_ops[expr.op], ),
         merge_promises(*left_promises, *right_promises),
     )
 
@@ -257,7 +277,7 @@ def transform_to_comp_expr(expr: ComparisonExpression) -> (_core_cond.Comparison
 
 
 def transform_to_boolexpr(
-    expr: Union[ComparisonExpression, ConjunctionExpression]
+        expr: Union[ComparisonExpression, ConjunctionExpression]
 ) -> (_core_cond.BooleanExpression, typing.List[Promise]):
     if isinstance(expr, ConjunctionExpression):
         cexpr, promises = transform_to_conj_expr(expr)
@@ -300,33 +320,10 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> (_core_wf.IfElseBlo
     )
 
 
-def to_branch_node(name: str, cs: ConditionalSection) -> (_core_wf.BranchNode, typing.List[Promise]):
+def to_branch_node(name: str, cs: ConditionalSection) -> (BranchNode, typing.List[Promise]):
     blocks, promises = to_ifelse_block(name, cs)
     return _core_wf.BranchNode(if_else=blocks), promises
 
 
-class BranchNode(object):
-    def __init__(self, name: str):
-        self._name = name
-        self._cs = ConditionalSection(name=name)
-        self._condition = Condition(cs=self._cs)
-        self._cs.set_condition(self._condition)
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def condition(self):
-        return self._condition
-
-    def if_(self, expr: bool) -> Case:
-        ctx = FlyteContext.current_context()
-        if ctx.compilation_state:
-            # Set some compilation context
-            pass
-        return self.condition._if(expr)
-
-
 def conditional(name: str) -> BranchNode:
-    return BranchNode(name)
+    return ConditionalSection(name)
