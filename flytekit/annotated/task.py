@@ -22,7 +22,6 @@ from flytekit.annotated.promise import Promise, create_task_output, translate_in
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.annotated.workflow import Workflow
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.common.tasks.task import SdkTask
@@ -138,7 +137,9 @@ class Task(object):
 
         # Detect upstream nodes
         # These will be our annotated Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
-        upstream_nodes = [input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)]
+        upstream_nodes = list(
+            set([input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)])
+        )
 
         # TODO: Make the metadata name the full name of the (function)?
         sdk_node = Node(
@@ -151,7 +152,7 @@ class Task(object):
             upstream_nodes=upstream_nodes,  # type: ignore
             flyte_entity=self,
         )
-        ctx.compilation_state.nodes.append(sdk_node)
+        ctx.compilation_state.add_node(sdk_node)
 
         # Create a node output object for each output, they should all point to this node of course.
         # TODO: Again, we need to be sure that we end up iterating through the output names in the correct order
@@ -336,7 +337,7 @@ class PythonTask(Task):
     def execute(self, **kwargs) -> Any:
         pass
 
-    def get_registerable_entity(self) -> _registerable.RegisterableEntity:
+    def get_registerable_entity(self) -> SdkTask:
         if self._registerable_entity is not None:
             return self._registerable_entity
         self._registerable_entity = self.get_task_structure()

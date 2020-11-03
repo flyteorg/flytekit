@@ -477,15 +477,27 @@ def test_wf1_branches():
     @workflow
     def my_wf(a: int, b: str) -> (int, str):
         x, y = t1(a=a)
-        d = conditional().if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("Unable to choose branch")
-        return x, d
+        d = (
+            conditional("test1")
+            .if_(x == 4)
+            .then(t2(a=b))
+            .elif_(x >= 5)
+            .then(t2(a=y))
+            .else_()
+            .fail("Unable to choose branch")
+        )
+        f = conditional("test2").if_(d == "hello ").then(t2(a="It is hello")).else_().then(t2(a="Not Hello!"))
+        return x, f
 
     x = my_wf(a=5, b="hello ")
-    assert x == (7, "world")
+    assert x == (7, "Not Hello!")
+
+    x = my_wf(a=2, b="hello ")
+    assert x == (4, "It is hello")
 
 
 def test_wf1_branches_no_else():
-    with pytest.raises(AssertionError):
+    with pytest.raises(NotImplementedError):
 
         def foo():
             @task
@@ -499,21 +511,8 @@ def test_wf1_branches_no_else():
             @workflow
             def my_wf(a: int, b: str) -> (int, str):
                 x, y = t1(a=a)
-                d = conditional().if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y))
-                return x, d
-
-            @workflow
-            def my_wf2(a: int, b: str) -> (int, str):
-                x, y = t1(a=a)
-                d = (
-                    conditional()
-                    .if_(x == 4)
-                    .then(t2(a=b))
-                    .elif_(x >= 5)
-                    .then(t2(a=y))
-                    .else_()
-                    .then(t2(a="Ok I give up!"))
-                )
+                d = conditional("test1").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y))
+                conditional("test2").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("blah")
                 return x, d
 
         foo()
@@ -531,10 +530,18 @@ def test_wf1_branches_failing():
     @workflow
     def my_wf(a: int, b: str) -> (int, str):
         x, y = t1(a=a)
-        d = conditional().if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("All Branches failed")
+        d = (
+            conditional("test1")
+            .if_(x == 4)
+            .then(t2(a=b))
+            .elif_(x >= 5)
+            .then(t2(a=y))
+            .else_()
+            .fail("All Branches failed")
+        )
         return x, d
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         my_wf(a=1, b="hello ")
 
 
