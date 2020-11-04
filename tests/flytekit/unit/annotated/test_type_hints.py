@@ -14,7 +14,7 @@ from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import ContainerTask, SQLTask, dynamic, kwtypes, maptask, metadata, task
 from flytekit.annotated.testing import task_mock
-from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
+from flytekit.annotated.type_engine import FlyteSchemaReader, FlyteSchemaWriter, RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
@@ -796,3 +796,43 @@ def test_wf_tuple_fails():
         @task
         def t1(a: tuple) -> (int, str):
             return a[0] + 2, str(a) + "-HELLO"
+
+
+def test_wf_typed_schema():
+    out_schema = FlyteSchemaWriter[kwtypes(x=int, y=str)]
+
+    @task
+    def t1() -> out_schema:
+        w = out_schema()
+        df = pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})
+        w.write(df)
+        return w
+
+    @task
+    def t2(schema: FlyteSchemaReader[kwtypes(x=int, y=str)]) -> FlyteSchemaWriter[kwtypes(x=int)]:
+        assert isinstance(schema, FlyteSchemaReader)
+        df: pandas.DataFrame = schema.all()
+        return df[schema.column_names()[:-1]]
+
+    @workflow
+    def wf() -> FlyteSchemaWriter[kwtypes(x=int)]:
+        return t2(schema=t1())
+
+    w = t1()
+    assert w is not None
+    r = FlyteSchemaReader.from_writer(w)
+    df = r.all()
+    result_df = df.reset_index(drop=True) == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}).reset_index(
+        drop=True
+    )
+    assert result_df.all().all()
+
+    df = t2(schema=r)
+    assert df is not None
+    result_df = df.reset_index(drop=True) == pandas.DataFrame(data={"x": [1, 2]}).reset_index(drop=True)
+    assert result_df.all().all()
+
+    x = wf()
+    df = x.all()
+    result_df = df.reset_index(drop=True) == pandas.DataFrame(data={"x": [1, 2]}).reset_index(drop=True)
+    assert result_df.all().all()

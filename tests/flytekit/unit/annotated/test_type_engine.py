@@ -6,10 +6,11 @@ from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.task import kwtypes
 from flytekit.annotated.type_engine import (
     DictTransformer,
+    FlyteSchema,
     ListTransformer,
     PathLikeTransformer,
     SimpleTransformer,
-    TypeEngine, FlyteSchema,
+    TypeEngine,
 )
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType

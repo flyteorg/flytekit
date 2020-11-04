@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Type
 
+import numpy as _np
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
@@ -93,12 +94,12 @@ class SimpleTransformer(TypeTransformer[T]):
     """
 
     def __init__(
-            self,
-            name: str,
-            t: Type[T],
-            lt: LiteralType,
-            to_literal_transformer: typing.Callable[[T], Literal],
-            from_literal_transformer: typing.Callable[[Literal], T],
+        self,
+        name: str,
+        t: Type[T],
+        lt: LiteralType,
+        to_literal_transformer: typing.Callable[[T], Literal],
+        from_literal_transformer: typing.Callable[[Literal], T],
     ):
         super().__init__(name, t)
         self._lt = lt
@@ -184,7 +185,7 @@ class TypeEngine(object):
 
     @classmethod
     def literal_map_to_kwargs(
-            cls, ctx: FlyteContext, lm: LiteralMap, python_types: typing.Dict[str, type]
+        cls, ctx: FlyteContext, lm: LiteralMap, python_types: typing.Dict[str, type]
     ) -> typing.Dict[str, typing.Any]:
         """
         Given a literal Map (usually an input into a task - intermediate), convert to kwargs for the task
@@ -264,7 +265,7 @@ class DictTransformer(TypeTransformer[dict]):
         return _primitives.Generic.to_flyte_literal_type()
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
     ) -> Literal:
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
             return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(python_val), _struct.Struct())))
@@ -301,15 +302,15 @@ class TextIOTransformer(TypeTransformer[typing.TextIO]):
         )
 
     def get_literal_type(self, t: typing.TextIO) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(), )
+        return _type_models.LiteralType(blob=self._blob_type(),)
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: typing.TextIO, python_type: Type[typing.TextIO], expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.TextIO, python_type: Type[typing.TextIO], expected: LiteralType
     ) -> Literal:
         raise NotImplementedError("Implement handle for TextIO")
 
     def to_python_value(
-            self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[typing.TextIO]
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[typing.TextIO]
     ) -> typing.TextIO:
         # TODO rename to get_auto_local_path()
         local_path = ctx.file_access.get_random_local_path()
@@ -328,16 +329,15 @@ class BinaryIOTransformer(TypeTransformer[typing.BinaryIO]):
         )
 
     def get_literal_type(self, t: Type[typing.BinaryIO]) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(), )
+        return _type_models.LiteralType(blob=self._blob_type(),)
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: typing.BinaryIO, python_type: Type[typing.BinaryIO],
-            expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.BinaryIO, python_type: Type[typing.BinaryIO], expected: LiteralType
     ) -> Literal:
         raise NotImplementedError("Implement handle for TextIO")
 
     def to_python_value(
-            self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[typing.BinaryIO]
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[typing.BinaryIO]
     ) -> typing.BinaryIO:
         local_path = ctx.file_access.get_random_local_path()
         ctx.file_access.get_data(lv.scalar.blob.uri, local_path, is_multipart=False)
@@ -355,10 +355,10 @@ class PathLikeTransformer(TypeTransformer[os.PathLike]):
         )
 
     def get_literal_type(self, t: Type[os.PathLike]) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(), )
+        return _type_models.LiteralType(blob=self._blob_type(),)
 
     def to_literal(
-            self, ctx: FlyteContext, python_val: os.PathLike, python_type: Type[os.PathLike], expected: LiteralType
+        self, ctx: FlyteContext, python_val: os.PathLike, python_type: Type[os.PathLike], expected: LiteralType
     ) -> Literal:
         # TODO we could guess the mimetype and allow the format to be changed at runtime. thus a non existent format
         #      could be replaced with a guess format?
@@ -383,17 +383,17 @@ class FlyteFilePathTransformer(TypeTransformer[flyte_typing.FlyteFilePath]):
         return t.extension()
 
     def _blob_type(self, format: str) -> _core_types.BlobType:
-        return _core_types.BlobType(format=format, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE, )
+        return _core_types.BlobType(format=format, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
 
     def get_literal_type(self, t: Type[flyte_typing.FlyteFilePath]) -> LiteralType:
         return _type_models.LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
 
     def to_literal(
-            self,
-            ctx: FlyteContext,
-            python_val: flyte_typing.FlyteFilePath,
-            python_type: Type[flyte_typing.FlyteFilePath],
-            expected: LiteralType,
+        self,
+        ctx: FlyteContext,
+        python_val: flyte_typing.FlyteFilePath,
+        python_type: Type[flyte_typing.FlyteFilePath],
+        expected: LiteralType,
     ) -> Literal:
         remote_path = ""
         if isinstance(python_val, flyte_typing.FlyteFilePath):
@@ -410,7 +410,7 @@ class FlyteFilePathTransformer(TypeTransformer[flyte_typing.FlyteFilePath]):
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def to_python_value(
-            self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[flyte_typing.FlyteFilePath]
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[flyte_typing.FlyteFilePath]
     ) -> flyte_typing.FlyteFilePath:
         local_path = ctx.file_access.get_random_local_path()
 
@@ -423,7 +423,6 @@ class FlyteFilePathTransformer(TypeTransformer[flyte_typing.FlyteFilePath]):
 
 
 class SchemaIO(typing.Generic[T]):
-
     @abstractmethod
     def read(self, *files: typing.List[os.PathLike], columns=None, **kwargs) -> T:
         pass
@@ -439,7 +438,7 @@ class ParquetIO(SchemaIO):
     def _read(self, chunk: os.PathLike, columns: typing.List[str], **kwargs):
         return pandas.read_parquet(chunk, columns=columns, engine=self.PARQUET_ENGINE, **kwargs)
 
-    def read(self, files: typing.List[os.PathLike], columns=None, **kwargs) -> pandas.DataFrame:
+    def read(self, *files: os.PathLike, columns=None, **kwargs) -> pandas.DataFrame:
         frames = [self._read(chunk=f, columns=columns, **kwargs) for f in files if os.path.getsize(f) > 0]
         if len(frames) == 1:
             return frames[0]
@@ -448,12 +447,12 @@ class ParquetIO(SchemaIO):
         return pandas.Dataframe()
 
     def write(
-            self,
-            df: pandas.DataFrame,
-            to_file: os.PathLike,
-            coerce_timestamps: str = "us",
-            allow_truncated_timestamps: bool = False,
-            **kwargs,
+        self,
+        df: pandas.DataFrame,
+        to_file: os.PathLike,
+        coerce_timestamps: str = "us",
+        allow_truncated_timestamps: bool = False,
+        **kwargs,
     ):
         """
         Writes data frame as a chunk to the local directory owned by the Schema object.  Will later be uploaded to s3.
@@ -511,16 +510,7 @@ class FlyteSchema(object):
     class FlyteSchemaFormat(Enum):
         PARQUET = "parquet"
 
-    # _SUPPORTED_TYPES = {
-    #     {_np.int32, _np.int64, _np.uint32, _np.uint64},
-    #     {_np.float32, _np.float64},
-    #     {_np.bool},
-    #     {_np.datetime64},
-    #     {_np.timedelta64},
-    #     {_np.object_, _np.str_, _np.string_},
-    # }
-
-    _SCHEMA_IO: typing.Dict[FlyteSchema.FlyteSchemaFormat: SchemaIO] = {
+    _SCHEMA_IO: typing.Dict[FlyteSchema.FlyteSchemaFormat : SchemaIO] = {
         FlyteSchemaFormat.PARQUET: _PARQUETIO_ENGINES[sdk.PARQUET_ENGINE.get()],
     }
 
@@ -531,32 +521,43 @@ class FlyteSchema(object):
         return cls._SCHEMA_IO[cls.format()]
 
     @classmethod
+    def _get_origin(cls):
+        raise AssertionError("Cannot create based type schema")
+
+    @classmethod
     def columns(cls) -> typing.Dict[str, typing.Type]:
         return {}
+
+    @classmethod
+    def column_names(cls) -> typing.List[str]:
+        return [k for k, v in cls.columns().items()]
 
     @classmethod
     def format(cls) -> FlyteSchemaFormat:
         return FlyteSchema.FlyteSchemaFormat.PARQUET
 
-    def __class_getitem__(cls, columns: typing.Dict[str, typing.Type],
-                          fmt: FlyteSchemaFormat = FlyteSchemaFormat.PARQUET):
+    def __class_getitem__(
+        cls, columns: typing.Dict[str, typing.Type], fmt: FlyteSchemaFormat = FlyteSchemaFormat.PARQUET
+    ):
         if columns is None:
             return cls
 
         if not isinstance(columns, dict):
             raise AssertionError(
-                f"Columns should be specified as an ordered dict of column names and their types, received {type(columns)}")
+                f"Columns should be specified as an ordered dict of column names and their types, received {type(columns)}"
+            )
 
         if len(columns) == 0:
             return cls
 
         if not isinstance(fmt, FlyteSchema.FlyteSchemaFormat):
             raise AssertionError(
-                f"Only FlyteSchemaFormat types are supported, received format is {fmt} of type {type(fmt)}")
+                f"Only FlyteSchemaFormat types are supported, received format is {fmt} of type {type(fmt)}"
+            )
 
-        class _TypedSchema(FlyteSchema):
+        class _TypedSchema(cls):
             # Get the type engine to see this as kind of a generic
-            __origin__ = FlyteSchema
+            __origin__ = cls._get_origin()
 
             @classmethod
             def columns(cls) -> typing.Dict[str, typing.Type]:
@@ -591,13 +592,24 @@ class FlyteSchemaReader(FlyteSchema):
     provides an iterator to read all
     """
 
-    def __init__(self, remote_prefix: str, downloader: typing.Callable[[str, os.PathLike], typing.Any],
-                 local_dir: os.PathLike):
+    def __init__(
+        self, remote_prefix: str, downloader: typing.Callable[[str, os.PathLike], typing.Any], local_dir: os.PathLike
+    ):
         super().__init__()
         self._remote_prefx = remote_prefix
         self._downloader = downloader
         self._downloaded = False
         self._local_dir = local_dir
+
+    @classmethod
+    def _get_origin(cls):
+        return FlyteSchemaReader
+
+    @classmethod
+    def from_writer(cls, w: FlyteSchemaWriter):
+        return cls.__class_getitem__(columns=w.columns(), fmt=w.format())(
+            remote_prefix=w.remote_path, local_dir=w.local_dir, downloader=lambda x, y: None
+        )
 
     def download(self):
         if self._downloaded:
@@ -610,7 +622,7 @@ class FlyteSchemaReader(FlyteSchema):
         io = self.get_schema_io()
         with os.scandir(self._local_dir) as it:
             for entry in it:
-                if not entry.name.startswith('.') and entry.is_file():
+                if not entry.name.startswith(".") and entry.is_file():
                     yield io.read(entry.path, **kwargs)
 
     def all(self, **kwargs):
@@ -619,24 +631,34 @@ class FlyteSchemaReader(FlyteSchema):
         files = []
         with os.scandir(self._local_dir) as it:
             for entry in it:
-                if not entry.name.startswith('.') and entry.is_file():
+                if not entry.name.startswith(".") and entry.is_file():
                     files.append(entry.path)
 
         return io.read(*files, **kwargs)
 
 
 class FlyteSchemaWriter(FlyteSchema):
-    def __init__(self, local_dir: os.PathLike = None):
+    def __init__(self, remote_path: str = None, local_dir: os.PathLike = None):
         super().__init__()
         if local_dir is None or local_dir == "":
             # Create default local dir
-            pass
+            ctx = FlyteContext.current_context()
+            local_dir = ctx.file_access.get_random_local_directory()
         self._local_dir = local_dir
+        self._remote_path = remote_path
+        self._file_names = generate_ordered_files(self._local_dir, n=100)
 
-        self._file_names = generate_ordered_files(self._local_dir)
+    @classmethod
+    def _get_origin(cls):
+        return FlyteSchemaWriter
 
+    @property
     def local_dir(self) -> os.PathLike:
         return self._local_dir
+
+    @property
+    def remote_path(self) -> str:
+        return self._remote_path
 
     def write(self, *dfs, **kwargs):
         io = self.get_schema_io()
@@ -649,9 +671,9 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
     Transforms a pd.DataFrame to Schema without column types.
     """
 
-    def __init__(self, parquet_engine: ParquetIO):
+    def __init__(self):
         super().__init__("PandasDataFrame<->GenericSchema", pandas.DataFrame)
-        self._parquet_engine = parquet_engine
+        self._parquet_engine = _PARQUETIO_ENGINES[sdk.PARQUET_ENGINE.get()]
 
     @staticmethod
     def _get_schema_type() -> SchemaType:
@@ -661,11 +683,11 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
         return LiteralType(schema=self._get_schema_type())
 
     def to_literal(
-            self,
-            ctx: FlyteContext,
-            python_val: pandas.DataFrame,
-            python_type: Type[pandas.DataFrame],
-            expected: LiteralType,
+        self,
+        ctx: FlyteContext,
+        python_val: pandas.DataFrame,
+        python_type: Type[pandas.DataFrame],
+        expected: LiteralType,
     ) -> Literal:
         remote_path = ctx.file_access.get_random_remote_directory()
         local_dir = ctx.file_access.get_random_local_directory()
@@ -675,7 +697,7 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
         return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type())))
 
     def to_python_value(
-            self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[pandas.DataFrame]
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[pandas.DataFrame]
     ) -> pandas.DataFrame:
         if not (lv and lv.scalar and lv.scalar.schema):
             return pandas.DataFrame()
@@ -684,6 +706,75 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
         files = os.listdir(local_dir)
         files = [os.path.join(local_dir, f) for f in files]
         return self._parquet_engine.read(files)
+
+
+class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
+    _SUPPORTED_TYPES: typing.Dict[type : SchemaType.SchemaColumn.SchemaColumnType] = {
+        _np.int32: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+        _np.int64: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+        _np.uint32: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+        _np.uint64: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+        int: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+        _np.float32: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
+        _np.float64: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
+        float: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
+        _np.bool: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,
+        bool: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,
+        _np.datetime64: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
+        _datetime.datetime: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
+        _np.timedelta64: SchemaType.SchemaColumn.SchemaColumnType.DURATION,
+        _datetime.timedelta: SchemaType.SchemaColumn.SchemaColumnType.DURATION,
+        _np.string_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
+        _np.str_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
+        _np.object_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
+        str: SchemaType.SchemaColumn.SchemaColumnType.STRING,
+    }
+
+    def __init__(self, t: type):
+        super().__init__("FlyteSchema Transformer", t)
+
+    def _get_schema_type(self, t: Type[FlyteSchema]) -> SchemaType:
+        converted_cols: typing.List[SchemaType.SchemaColumn] = []
+        for k, v in t.columns().items():
+            if v not in self._SUPPORTED_TYPES:
+                raise AssertionError(f"type {v} is currently not supported by FlyteSchema")
+            converted_cols.append(SchemaType.SchemaColumn(name=k, type=self._SUPPORTED_TYPES[v]))
+        return SchemaType(columns=converted_cols)
+
+    def get_literal_type(self, t: Type[FlyteSchema]) -> LiteralType:
+        return LiteralType(schema=self._get_schema_type(t))
+
+    def to_literal(
+        self, ctx: FlyteContext, python_val: FlyteSchema, python_type: Type[FlyteSchema], expected: LiteralType
+    ) -> Literal:
+        if isinstance(python_val, FlyteSchemaWriter):
+            remote_path = python_val.remote_path
+            if remote_path is None or remote_path == "":
+                remote_path = ctx.file_access.get_random_remote_path()
+            ctx.file_access.put_data(python_val.local_dir, remote_path, is_multipart=True)
+            return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
+        elif isinstance(python_val, pandas.DataFrame):
+            pdf = PandasDataFrameTransformer()
+            lv = pdf.to_literal(ctx, python_val, pandas.DataFrame, expected)
+            return Literal(scalar=Scalar(schema=Schema(lv.scalar.schema.uri, self._get_schema_type(python_type))))
+        else:
+            raise AssertionError(
+                f"Only FlyteSchemaWriter or Pandas Dataframe object can be returned from a task, returned object type {type(python_val)}"
+            )
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
+        if not (lv and lv.scalar and lv.scalar.schema):
+            raise AssertionError("Can only covert a literal schema to a FlyteSchema")
+
+        def downloader(x, y):
+            ctx.file_access.download_directory(x, y)
+
+        r = FlyteSchemaReader.__class_getitem__(expected_python_type.columns(), expected_python_type.format())(
+            remote_prefix=lv.scalar.schema.uri,
+            downloader=downloader,
+            local_dir=ctx.file_access.get_random_local_directory(),
+        )
+        return r
 
 
 def _register_default_type_transformers():
@@ -759,8 +850,10 @@ def _register_default_type_transformers():
     TypeEngine.register(PathLikeTransformer())
     TypeEngine.register(BinaryIOTransformer())
 
-    parquet_io_engine = _PARQUETIO_ENGINES[sdk.PARQUET_ENGINE.get()]
-    TypeEngine.register(PandasDataFrameTransformer(parquet_io_engine))
+    TypeEngine.register(PandasDataFrameTransformer())
+
+    TypeEngine.register(FlyteSchemaTransformer(FlyteSchemaWriter))
+    TypeEngine.register(FlyteSchemaTransformer(FlyteSchemaReader))
 
     # inner type is. Also unsupported are typing's Tuples. Even though you can look inside them, Flyte's type system
     # doesn't support these currently.

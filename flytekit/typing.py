@@ -115,9 +115,9 @@ class FlyteFilePath(os.PathLike):
 
     def __eq__(self, other):
         return (
-                self._abspath == other._abspath
-                and self._remote_path == other._remote_path
-                and self.extension() == other.extension()
+            self._abspath == other._abspath
+            and self._remote_path == other._remote_path
+            and self.extension() == other.extension()
         )
 
     @property
