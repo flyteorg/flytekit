@@ -20,7 +20,6 @@ from flytekit.annotated.promise import Promise, create_task_output, translate_in
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.annotated.workflow import Workflow
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.common.tasks.task import SdkTask
 from flytekit.models import dynamic_job as _dynamic_job
@@ -230,8 +229,14 @@ class PythonTask(Task):
         return self._python_interface.inputs
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
-        return create_and_link_node(ctx, entity=self, interface=self.python_interface, timeout=self.metadata.timeout,
-                                    retry_strategy=self.metadata.retries, **kwargs)
+        return create_and_link_node(
+            ctx,
+            entity=self,
+            interface=self.python_interface,
+            timeout=self.metadata.timeout,
+            retry_strategy=self.metadata.retries,
+            **kwargs,
+        )
 
     def dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
@@ -286,11 +291,11 @@ class PythonTask(Task):
     def execute(self, **kwargs) -> Any:
         pass
 
-    def get_registerable_entity(self) -> _registerable.RegisterableEntity:
+    def get_registerable_entity(self) -> SdkTask:
         if self._registerable_entity is not None:
             return self._registerable_entity
-        self._registrable_entity = self.get_task_structure()
-        return self._registrable_entity
+        self._registerable_entity = self.get_task_structure()
+        return self._registerable_entity
 
 
 class ContainerTask(PythonTask):

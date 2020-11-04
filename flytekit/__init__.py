@@ -1,9 +1,9 @@
 import flytekit.plugins  # noqa: F401
-from flytekit.loggers import logger
 from flytekit.annotated.context_manager import FlyteContext
-from flytekit.annotated.task import task, dynamic, ContainerTask, SQLTask, maptask, metadata
-from flytekit.annotated.workflow import workflow
 from flytekit.annotated.launch_plan import LaunchPlan
+from flytekit.annotated.task import ContainerTask, SQLTask, dynamic, maptask, metadata, task
+from flytekit.annotated.workflow import workflow
+from flytekit.loggers import logger
 
 __version__ = "1.0.0a0"
 

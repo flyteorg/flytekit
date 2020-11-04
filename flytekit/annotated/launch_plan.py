@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional
 from flytekit.annotated import workflow as _annotated_workflow
 from flytekit.annotated.context_manager import FlyteContext, FlyteEntities
 from flytekit.annotated.interface import Interface, transform_inputs_to_parameters
-from flytekit.annotated.type_engine import TypeEngine
 from flytekit.annotated.node import create_and_link_node
+from flytekit.annotated.promise import translate_inputs_to_literals
 from flytekit.common.launch_plan import SdkLaunchPlan
 from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
@@ -14,7 +14,6 @@ from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
 from flytekit.models.core import identifier as _identifier_model
-from flytekit.annotated.promise import translate_inputs_to_literals
 
 
 class LaunchPlan(object):
@@ -65,8 +64,12 @@ class LaunchPlan(object):
 
         # These are fixed inputs that cannot change at launch time. If the same argument is also in default inputs,
         # it'll be taken out from defaults in the LaunchPlan constructor
-        fixed_literals = translate_inputs_to_literals(ctx, input_kwargs=fixed_inputs, interface=workflow.interface,
-                                                native_input_types=workflow._native_interface.inputs)
+        fixed_literals = translate_inputs_to_literals(
+            ctx,
+            input_kwargs=fixed_inputs,
+            interface=workflow.interface,
+            native_input_types=workflow._native_interface.inputs,
+        )
         fixed_lm = _literal_models.LiteralMap(literals=fixed_literals)
 
         lp = cls(name=name, workflow=workflow, parameters=wf_signature_parameters, fixed_inputs=fixed_lm)
