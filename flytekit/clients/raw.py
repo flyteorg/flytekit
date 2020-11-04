@@ -1,4 +1,5 @@
 import logging as _logging
+import time
 
 import six as _six
 from flyteidl.service import admin_pb2_grpc as _admin_service
@@ -73,7 +74,7 @@ def _handle_rpc_error(fn):
         :param kwargs:
         :return:
         """
-        retries = 2
+        retries = 5
         try:
             for i in range(retries):
                 try:
@@ -86,7 +87,11 @@ def _handle_rpc_error(fn):
                         refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
                         refresh_handler_fn(args[0])
                     else:
-                        raise
+                        if i == (retries - 1):
+                            raise
+                        else:
+                            _logging.error(f"Non-auth RPC error {e}, sleeping 5 seconds and retrying")
+                            time.sleep(5)
         except _RpcError as e:
             if e.code() == _GrpcStatusCode.ALREADY_EXISTS:
                 raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
