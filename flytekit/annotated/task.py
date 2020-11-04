@@ -696,3 +696,6 @@ def task(
 
 
 dynamic = functools.partial(task, task_type="_dynamic")
+
+
+# TODO: We need an enum for Task types, don't want users to use strings

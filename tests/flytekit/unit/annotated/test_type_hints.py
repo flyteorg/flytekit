@@ -4,18 +4,17 @@ import typing
 
 import pandas
 import pytest
+import flytekit
+from flytekit import task, workflow, dynamic, ContainerTask, SQLTask, maptask, metadata
 
-import flytekit.annotated.task
-import flytekit.annotated.workflow
 from flytekit import typing as flytekit_typing
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import ContainerTask, SQLTask, dynamic, kwtypes, maptask, metadata, task
+from flytekit.annotated.task import kwtypes
 from flytekit.annotated.testing import task_mock
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
-from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
