@@ -510,7 +510,7 @@ class FlyteSchema(object):
     class FlyteSchemaFormat(Enum):
         PARQUET = "parquet"
 
-    _SCHEMA_IO: typing.Dict[FlyteSchema.FlyteSchemaFormat : SchemaIO] = {
+    _SCHEMA_IO: typing.Dict[FlyteSchema.FlyteSchemaFormat: SchemaIO] = {
         FlyteSchemaFormat.PARQUET: _PARQUETIO_ENGINES[sdk.PARQUET_ENGINE.get()],
     }
 
