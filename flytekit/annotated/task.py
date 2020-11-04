@@ -7,8 +7,6 @@ from abc import abstractmethod
 from enum import Enum
 from typing import Any, Callable, DefaultDict, Dict, List, Optional, Tuple, Type, Union
 
-import flytekit.annotated.promise
-import flytekit.annotated.type_engine
 from flytekit import logger
 from flytekit.annotated.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteEntities
 from flytekit.annotated.interface import (
@@ -17,20 +15,18 @@ from flytekit.annotated.interface import (
     transform_interface_to_typed_interface,
     transform_signature_to_interface,
 )
-from flytekit.annotated.node import Node
+from flytekit.annotated.node import create_and_link_node
 from flytekit.annotated.promise import Promise, create_task_output, translate_inputs_to_literals
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.annotated.workflow import Workflow
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import registerable as _registerable
-from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.common.tasks.task import SdkTask
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
-from flytekit.models.core import workflow as _workflow_model
 
 
 def kwtypes(**kwargs) -> Dict[str, Type]:
@@ -112,59 +108,6 @@ class Task(object):
         """
         return None
 
-    def _compile(self, ctx: FlyteContext, *args, **kwargs):
-        """
-        This method is used to generate a node with bindings. This is not used in the execution path.
-        """
-        used_inputs = set()
-        bindings = []
-
-        for k in sorted(self.interface.inputs):
-            var = self.interface.inputs[k]
-            if k not in kwargs:
-                raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
-            bindings.append(
-                flytekit.annotated.promise.binding_from_python_std(
-                    ctx, k, var.type, kwargs[k], self.get_type_for_input_var(k, kwargs[k])
-                )
-            )
-            used_inputs.add(k)
-
-        extra_inputs = used_inputs ^ set(kwargs.keys())
-        if len(extra_inputs) > 0:
-            raise _user_exceptions.FlyteAssertion(
-                "Too many inputs were specified for the interface.  Extra inputs were: {}".format(extra_inputs)
-            )
-
-        # Detect upstream nodes
-        # These will be our annotated Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
-        upstream_nodes = [input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)]
-
-        # TODO: Make the metadata name the full name of the (function)?
-        sdk_node = Node(
-            # TODO
-            id=f"{ctx.compilation_state.prefix}node-{len(ctx.compilation_state.nodes)}",
-            metadata=_workflow_model.NodeMetadata(
-                self._name, self.metadata.timeout, self.metadata.retries, self.metadata.interruptible
-            ),
-            bindings=sorted(bindings, key=lambda b: b.var),
-            upstream_nodes=upstream_nodes,  # type: ignore
-            flyte_entity=self,
-        )
-        ctx.compilation_state.nodes.append(sdk_node)
-
-        # Create a node output object for each output, they should all point to this node of course.
-        # TODO: Again, we need to be sure that we end up iterating through the output names in the correct order
-        #  investigate this and document here.
-        node_outputs = []
-        for output_name, output_var_model in self.interface.outputs.items():
-            # TODO: If node id gets updated later, we have to make sure to update the NodeOutput model's ID, which
-            #  is currently just a static str
-            node_outputs.append(Promise(output_name, _NodeOutput(sdk_node=sdk_node, sdk_type=None, var=output_name)))
-        # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
-
-        return create_task_output(node_outputs)
-
     def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, None]:
         """
         This code is used only in the case when we want to dispatch_execute with outputs from a previous node
@@ -214,7 +157,7 @@ class Task(object):
 
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
-            return self._compile(ctx, *args, **kwargs)
+            return self.compile(ctx, *args, **kwargs)
         elif (
             ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
@@ -224,6 +167,9 @@ class Task(object):
         else:
             logger.warning("task run without context - executing raw function")
             return self.execute(**kwargs)
+
+    def compile(self, ctx: FlyteContext, *args, **kwargs):
+        raise Exception("not implemented")
 
     def get_task_structure(self) -> SdkTask:
         settings = FlyteContext.current_context().registration_settings
@@ -282,6 +228,10 @@ class PythonTask(Task):
 
     def get_input_types(self) -> Dict[str, type]:
         return self._python_interface.inputs
+
+    def compile(self, ctx: FlyteContext, *args, **kwargs):
+        return create_and_link_node(ctx, entity=self, interface=self.python_interface, timeout=self.metadata.timeout,
+                                    retry_strategy=self.metadata.retries, **kwargs)
 
     def dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap

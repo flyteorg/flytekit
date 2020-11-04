@@ -54,7 +54,7 @@ class Interface(object):
     def outputs(self) -> typing.Dict[str, type]:
         return self._outputs
 
-    def remove_inputs(self, vars: List[str]) -> "Interface":
+    def remove_inputs(self, vars: List[str]) -> Interface:
         """
         This method is useful in removing some variables from the Flyte backend inputs specification, as these are
         implicit local only inputs or will be supplied by the library at runtime. For example, spark-session etc

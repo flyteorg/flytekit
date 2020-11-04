@@ -19,7 +19,7 @@ def translate_inputs_to_literals(
     ctx: FlyteContext,
     input_kwargs: Dict[str, Any],
     interface: _interface_models.TypedInterface,
-    native_input_types: Optional[Dict[str, type]],
+    native_input_types: Dict[str, type],
 ) -> Dict[str, _literal_models.Literal]:
     """
     When calling a task inside a workflow, a user might do something like this.
@@ -81,14 +81,10 @@ def translate_inputs_to_literals(
         if k not in interface.inputs:
             raise ValueError(f"Received unexpected keyword argument {k}")
         var = interface.inputs[k]
-        t = native_input_types[k] if native_input_types else type(v)
+        t = native_input_types[k]
         input_kwargs[k] = extract_value(ctx, v, t, var.type)
 
     return input_kwargs
-
-
-# TODO: The NodeOutput object, which this Promise wraps, has an sdk_type. Since we're no longer using sdk types,
-#  we should consider adding a literal type to this object as well for downstream checking when Bindings are created.
 
 
 def get_primitive_val(prim: Primitive) -> Any:
@@ -246,6 +242,8 @@ class ConjunctionExpression(object):
         return f"( {self._lhs} {self._op} {self._rhs} )"
 
 
+# TODO: The NodeOutput object, which this Promise wraps, has an sdk_type. Since we're no longer using sdk types,
+#  we should consider adding a literal type to this object as well for downstream checking when Bindings are created.
 class Promise(object):
     # TODO: Currently, NodeOutput we're creating is the slimmer annotated package Node class, but since only the
     #  id is used, it's okay for now. Let's clean all this up though.

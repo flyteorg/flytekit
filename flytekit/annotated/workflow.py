@@ -1,4 +1,4 @@
-import datetime
+import inspect
 import inspect
 import typing
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
@@ -13,12 +13,10 @@ from flytekit.annotated.interface import (
     transform_interface_to_typed_interface,
     transform_signature_to_interface,
 )
-from flytekit.annotated.node import Node
+from flytekit.annotated.node import create_and_link_node
 from flytekit.annotated.promise import Promise, create_task_output
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
-from flytekit.common import promise as _common_promise
-from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -211,7 +209,7 @@ class Workflow(object):
         if ctx.compilation_state is not None:
             input_kwargs = self._native_interface.default_inputs_as_kwargs
             input_kwargs.update(kwargs)
-            return self._create_and_link_node(ctx, **input_kwargs)
+            return create_and_link_node(ctx, entity=self, interface=self._native_interface, **input_kwargs)
         elif (
             ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
@@ -257,58 +255,6 @@ class Workflow(object):
                         return tuple(native_list)
 
             raise ValueError("expected outputs and actual outputs do not match")
-
-    # TODO: Let's think about this. I feel like it can be moved somewhere. This function is very close to the task
-    #  version of it, and the launch plan class basically just calls this too.
-    def _create_and_link_node(self, ctx: FlyteContext, *args, **kwargs):
-        """
-        This method is used to create a node representing a subworkflow call in a workflow. It should closely mirror
-        the _compile function found in Task.
-        """
-
-        # TODO: Add handling of defaults
-        used_inputs = set()
-        bindings = []
-
-        for k in sorted(self.interface.inputs):
-            var = self.interface.inputs[k]
-            if k not in kwargs:
-                raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
-            t = self._native_interface.inputs[k]
-            bindings.append(flytekit.annotated.promise.binding_from_python_std(ctx, k, var.type, kwargs[k], t))
-            used_inputs.add(k)
-
-        extra_inputs = used_inputs ^ set(kwargs.keys())
-        if len(extra_inputs) > 0:
-            raise _user_exceptions.FlyteAssertion(
-                "Too many inputs were specified for the interface.  Extra inputs were: {}".format(extra_inputs)
-            )
-
-        # Detect upstream nodes
-        # These will be our annotated Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
-        upstream_nodes = [input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)]
-
-        node = Node(
-            id=f"{ctx.compilation_state.prefix}node-{len(ctx.compilation_state.nodes)}",
-            metadata=_workflow_model.NodeMetadata(self._name, datetime.timedelta(), _literal_models.RetryStrategy(0)),
-            bindings=sorted(bindings, key=lambda b: b.var),
-            upstream_nodes=upstream_nodes,  # type: ignore
-            flyte_entity=self,
-        )
-        ctx.compilation_state.nodes.append(node)
-
-        # Create a node output object for each output, they should all point to this node of course.
-        # TODO: Again, we need to be sure that we end up iterating through the output names in the correct order
-        #  investigate this and document here.
-        node_outputs = []
-        for output_name, output_var_model in self.interface.outputs.items():
-            # TODO: If node id gets updated later, we have to make sure to update the NodeOutput model's ID, which
-            #  is currently just a static str
-            node_outputs.append(
-                Promise(output_name, _common_promise.NodeOutput(sdk_node=node, sdk_type=None, var=output_name))
-            )
-
-        return create_task_output(node_outputs)
 
     def get_registerable_entity(self) -> _SdkWorkflow:
         settings = FlyteContext.current_context().registration_settings
