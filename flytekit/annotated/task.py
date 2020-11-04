@@ -7,7 +7,7 @@ from abc import abstractmethod
 from enum import Enum
 from typing import Any, Callable, DefaultDict, Dict, List, Optional, Tuple, Type, Union
 
-from flytekit import logger
+from flytekit.loggers import logger
 from flytekit.annotated.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteEntities
 from flytekit.annotated.interface import (
     Interface,

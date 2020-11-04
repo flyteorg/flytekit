@@ -4,7 +4,7 @@ import mimetypes
 import os
 import typing
 
-from flytekit import logger
+from flytekit.loggers import logger
 
 """
 Since there is no native equivalent of the int type for files and directories, we need to create one so that users

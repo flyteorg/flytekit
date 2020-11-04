@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import flytekit.annotated.promise
 import flytekit.annotated.type_engine
-from flytekit import logger
+from flytekit.loggers import logger
 from flytekit.annotated.condition import ConditionalSection
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext, FlyteEntities
 from flytekit.annotated.interface import (
