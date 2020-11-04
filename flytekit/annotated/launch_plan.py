@@ -14,21 +14,7 @@ from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
 from flytekit.models.core import identifier as _identifier_model
-
-
-# TODO: Find a place for this somewhere that doesn't cause a circular dependency
-#   Move to interface
-def native_kwargs_to_literal_map(
-    ctx: FlyteContext, native_interface: Interface, typed_interface: _interface_models.TypedInterface, **kwargs
-) -> _literal_models.LiteralMap:
-    return _literal_models.LiteralMap(
-        literals={
-            k: TypeEngine.to_literal(
-                ctx, v, python_type=native_interface.inputs.get(k), expected=typed_interface.inputs.get(k).type
-            )
-            for k, v in kwargs.items()
-        }
-    )
+from flytekit.annotated.promise import translate_inputs_to_literals
 
 
 class LaunchPlan(object):
@@ -79,7 +65,9 @@ class LaunchPlan(object):
 
         # These are fixed inputs that cannot change at launch time. If the same argument is also in default inputs,
         # it'll be taken out from defaults in the LaunchPlan constructor
-        fixed_lm = native_kwargs_to_literal_map(ctx, workflow._native_interface, workflow.interface, **fixed_inputs)
+        fixed_literals = translate_inputs_to_literals(ctx, input_kwargs=fixed_inputs, interface=workflow.interface,
+                                                native_input_types=workflow._native_interface.inputs)
+        fixed_lm = _literal_models.LiteralMap(literals=fixed_literals)
 
         lp = cls(name=name, workflow=workflow, parameters=wf_signature_parameters, fixed_inputs=fixed_lm)
 
@@ -182,9 +170,7 @@ class LaunchPlan(object):
             # This would literally be a copy paste of the workflow one with the one line change
             inputs = self.saved_inputs
             inputs.update(kwargs)
-            results = create_and_link_node(ctx, entity=self, interface=self.workflow._native_interface, **inputs)
-
-            return results
+            return create_and_link_node(ctx, entity=self, interface=self.workflow._native_interface, **inputs)
         else:
             # Calling a launch plan should just forward the call to the workflow, nothing more. But let's add in the
             # saved inputs.

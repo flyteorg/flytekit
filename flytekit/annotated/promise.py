@@ -77,14 +77,15 @@ def translate_inputs_to_literals(
             # This handles native values, the 5 example
             return TypeEngine.to_literal(ctx, input_val, val_type, flyte_literal_type)
 
+    result = {}  # So as to not overwrite the input_kwargs
     for k, v in input_kwargs.items():
         if k not in interface.inputs:
             raise ValueError(f"Received unexpected keyword argument {k}")
         var = interface.inputs[k]
         t = native_input_types[k]
-        input_kwargs[k] = extract_value(ctx, v, t, var.type)
+        result[k] = extract_value(ctx, v, t, var.type)
 
-    return input_kwargs
+    return result
 
 
 def get_primitive_val(prim: Primitive) -> Any:
