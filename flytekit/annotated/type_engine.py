@@ -522,7 +522,7 @@ class FlyteSchema(object):
 
     @classmethod
     def _get_origin(cls):
-        raise AssertionError("Cannot create based type schema")
+        return FlyteSchema
 
     @classmethod
     def columns(cls) -> typing.Dict[str, typing.Type]:
@@ -705,7 +705,7 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
         ctx.file_access.download_directory(lv.scalar.schema.uri, local_dir)
         files = os.listdir(local_dir)
         files = [os.path.join(local_dir, f) for f in files]
-        return self._parquet_engine.read(files)
+        return self._parquet_engine.read(*files)
 
 
 class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
