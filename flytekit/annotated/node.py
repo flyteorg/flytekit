@@ -27,11 +27,13 @@ class Node(object):
         self._upstream_nodes = upstream_nodes
         self._flyte_entity = flyte_entity
         self._sdk_node = None
+        self._aliases: _workflow_model.Alias = None
 
     def get_registerable_entity(self) -> SdkNode:
         if self._sdk_node is not None:
             return self._sdk_node
         # TODO: Figure out import cycles in the future
+        from flytekit.annotated.condition import BranchNode
         from flytekit.annotated.launch_plan import LaunchPlan
         from flytekit.annotated.task import PythonTask
         from flytekit.annotated.workflow import Workflow
@@ -52,6 +54,8 @@ class Node(object):
                 metadata=self._metadata,
                 sdk_task=self._flyte_entity.get_registerable_entity(),
             )
+            if self._aliases:
+                self._sdk_node._output_aliases = self._aliases
         elif isinstance(self._flyte_entity, Workflow):
             self._sdk_node = SdkNode(
                 self._id,
@@ -59,6 +63,14 @@ class Node(object):
                 bindings=self._bindings,
                 metadata=self._metadata,
                 sdk_workflow=self._flyte_entity.get_registerable_entity(),
+            )
+        elif isinstance(self._flyte_entity, BranchNode):
+            self._sdk_node = SdkNode(
+                self._id,
+                upstream_nodes=sdk_nodes,
+                bindings=self._bindings,
+                metadata=self._metadata,
+                sdk_branch=self._flyte_entity.get_registerable_entity(),
             )
         elif isinstance(self._flyte_entity, LaunchPlan):
             self._sdk_node = SdkNode(
@@ -76,3 +88,22 @@ class Node(object):
     @property
     def id(self) -> str:
         return self._id
+
+    @property
+    def bindings(self) -> List[_literal_models.Binding]:
+        return self._bindings
+
+    @property
+    def upstream_nodes(self) -> List["Node"]:
+        return self._upstream_nodes
+
+    def with_overrides(self, *args, **kwargs):
+        if "node_name" in kwargs:
+            self._id = kwargs["node_name"]
+        if "aliases" in kwargs:
+            alias_dict = kwargs["aliases"]
+            if not isinstance(alias_dict, dict):
+                raise AssertionError("Aliases should be specified as dict[str, str]")
+            self._aliases = []
+            for k, v in alias_dict.items():
+                self._aliases.append(_workflow_model.Alias(var=k, alias=v))

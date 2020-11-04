@@ -250,3 +250,20 @@ class OutputReference(_common.FlyteIdlEntity):
         :rtype: OutputReference
         """
         return cls(node_id=pb2_object.node_id, var=pb2_object.var)
+
+
+class Error(_common.FlyteIdlEntity):
+    def __init__(self, failed_node_id: str, message: str):
+        self._message = message
+        self._failed_node_id = failed_node_id
+
+    def to_flyte_idl(self) -> _types_pb2.Error:
+        return _types_pb2.Error(message=self._message, failed_node_id=self._failed_node_id,)
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _types_pb2.Error) -> "Error":
+        """
+        :param flyteidl.core.types.OutputReference pb2_object:
+        :rtype: OutputReference
+        """
+        return cls(failed_node_id=pb2_object.failed_node_id, message=pb2_object.message)

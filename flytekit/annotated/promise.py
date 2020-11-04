@@ -150,11 +150,11 @@ class ComparisonExpression(object):
             self._rhs = type_engine.TypeEngine.to_literal(FlyteContext.current_context(), rhs, type(rhs), None)
 
     @property
-    def rhs(self) -> "Promise":
+    def rhs(self) -> Union["Promise", _literal_models.Literal]:
         return self._rhs
 
     @property
-    def lhs(self) -> Union[_NodeOutput, _literal_models.Primitive]:
+    def lhs(self) -> Union["Promise", _literal_models.Literal]:
         return self._lhs
 
     @property
@@ -197,17 +197,22 @@ class ComparisonExpression(object):
 
 
 class ConjunctionExpression(object):
-    def __init__(self, lhs: ComparisonExpression, op: ConjunctionOps, rhs: ComparisonExpression):
+    def __init__(
+        self,
+        lhs: Union[ComparisonExpression, "ConjunctionExpression"],
+        op: ConjunctionOps,
+        rhs: Union[ComparisonExpression, "ConjunctionExpression"],
+    ):
         self._lhs = lhs
         self._rhs = rhs
         self._op = op
 
     @property
-    def rhs(self) -> ComparisonExpression:
+    def rhs(self) -> Union[ComparisonExpression, "ConjunctionExpression"]:
         return self._rhs
 
     @property
-    def lhs(self) -> ComparisonExpression:
+    def lhs(self) -> Union[ComparisonExpression, "ConjunctionExpression"]:
         return self._lhs
 
     @property
@@ -228,11 +233,11 @@ class ConjunctionExpression(object):
 
         return l_eval or r_eval
 
-    def __and__(self, other: ComparisonExpression):
+    def __and__(self, other: Union[ComparisonExpression, "ConjunctionExpression"]):
         print("Conj AND called")
         return ConjunctionExpression(lhs=self, op=ConjunctionOps.AND, rhs=other)
 
-    def __or__(self, other):
+    def __or__(self, other: Union[ComparisonExpression, "ConjunctionExpression"]):
         print("Conj OR called")
         return ConjunctionExpression(lhs=self, op=ConjunctionOps.OR, rhs=other)
 
@@ -253,7 +258,7 @@ class Promise(object):
         self._var = var
         self._promise_ready = True
         self._val = val
-        if isinstance(val, _NodeOutput):
+        if val and isinstance(val, _NodeOutput):
             self._ref = val
             self._promise_ready = False
             self._val = None
@@ -340,8 +345,7 @@ class Promise(object):
             # TODO, this should be forwarded, but right now this results in failure and we want to test this behavior
             # self.ref.sdk_node.with_overrides(*args, **kwargs)
             print(f"Forwarding to node {self.ref.sdk_node.id}")
-            if "node_name" in kwargs:
-                self.ref.sdk_node._id = kwargs["node_name"]
+            self.ref.sdk_node.with_overrides(*args, **kwargs)
         return self
 
     def __repr__(self):
@@ -354,7 +358,7 @@ class Promise(object):
 
 
 # To create a class that is a named tuple, we might have to create namedtuplemeta and manipulate the tuple
-def create_task_output(promises: Union[List[Promise], Promise, None]) -> Union[Tuple[Promise], Promise, None]:
+def create_task_output(promises: Optional[Union[List[Promise], Promise]]) -> Optional[Union[Tuple[Promise], Promise]]:
     if promises is None:
         return None
 
@@ -429,3 +433,7 @@ def binding_from_python_std(
 ) -> _literals_models.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
     return _literals_models.Binding(var=var_name, binding=binding_data)
+
+
+def to_binding(p: Promise) -> _literals_models.Binding:
+    return _literals_models.Binding(var=p.var, binding=_literals_models.BindingData(promise=p.ref))
