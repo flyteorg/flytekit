@@ -16,10 +16,10 @@ from flytekit.models.literals import Primitive
 
 
 def translate_inputs_to_literals(
-    ctx: FlyteContext,
-    input_kwargs: Dict[str, Any],
-    interface: _interface_models.TypedInterface,
-    native_input_types: Optional[Dict[str, type]],
+        ctx: FlyteContext,
+        input_kwargs: Dict[str, Any],
+        interface: _interface_models.TypedInterface,
+        native_input_types: Optional[Dict[str, type]],
 ) -> Dict[str, _literal_models.Literal]:
     """
     When calling a task inside a workflow, a user might do something like this.
@@ -44,7 +44,7 @@ def translate_inputs_to_literals(
     """
 
     def extract_value(
-        ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
+            ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
     ) -> _literal_models.Literal:
         if isinstance(input_val, list):
             if flyte_literal_type.collection_type is None:
@@ -198,10 +198,10 @@ class ComparisonExpression(object):
 
 class ConjunctionExpression(object):
     def __init__(
-        self,
-        lhs: Union[ComparisonExpression, "ConjunctionExpression"],
-        op: ConjunctionOps,
-        rhs: Union[ComparisonExpression, "ConjunctionExpression"],
+            self,
+            lhs: Union[ComparisonExpression, "ConjunctionExpression"],
+            op: ConjunctionOps,
+            rhs: Union[ComparisonExpression, "ConjunctionExpression"],
     ):
         self._lhs = lhs
         self._rhs = rhs
@@ -384,10 +384,10 @@ def create_task_output(promises: Optional[Union[List[Promise], Promise]]) -> Opt
 
 
 def binding_data_from_python_std(
-    ctx: _flyte_context.FlyteContext,
-    expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
-    t_value_type: type,
+        ctx: _flyte_context.FlyteContext,
+        expected_literal_type: _type_models.LiteralType,
+        t_value: typing.Any,
+        t_value_type: type,
 ) -> _literals_models.BindingData:
     # This handles the case where the incoming value is a workflow-level input
     if isinstance(t_value, _type_models.OutputReference):
@@ -400,7 +400,7 @@ def binding_data_from_python_std(
 
     elif isinstance(t_value, list):
         if expected_literal_type.collection_type is None:
-            raise Exception(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
+            raise AssertionError(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
 
         sub_type = ListTransformer.get_sub_type(t_value_type)
         collection = _literals_models.BindingDataCollection(
@@ -412,7 +412,17 @@ def binding_data_from_python_std(
         binding_data = _literals_models.BindingData(collection=collection)
 
     elif isinstance(t_value, dict):
-        raise Exception("not yet handled - haytham will implement")
+        if expected_literal_type.map_value_type is None:
+            raise AssertionError(
+                f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}")
+        k_type, v_type = DictTransformer.get_dict_types(t_value_type)
+        m = _literals_models.BindingDataMap(
+            bindings={k: binding_data_from_python_std(ctx, expected_literal_type.collection_type, v, v_type)
+                      for k, v in t_value.items()
+                      }
+        )
+
+        binding_data = _literals_models.BindingData(map=m)
 
     # This is the scalar case - e.g. my_task(in1=5)
     else:
@@ -425,11 +435,11 @@ def binding_data_from_python_std(
 
 
 def binding_from_python_std(
-    ctx: _flyte_context.FlyteContext,
-    var_name: str,
-    expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
-    t_value_type: type,
+        ctx: _flyte_context.FlyteContext,
+        var_name: str,
+        expected_literal_type: _type_models.LiteralType,
+        t_value: typing.Any,
+        t_value_type: type,
 ) -> _literals_models.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
     return _literals_models.Binding(var=var_name, binding=binding_data)

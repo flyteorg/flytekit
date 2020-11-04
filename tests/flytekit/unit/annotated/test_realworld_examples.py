@@ -139,7 +139,7 @@ def test_diabetes():
     @workflow
     def diabetes_xgboost_model(
             dataset: FlyteFilePath[
-                ".csv"] = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv",
+                ".csv"], #= "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv",
             test_split_ratio: float = 0.33, seed: int = 7) \
             -> typing.NamedTuple("Outputs", model=FlyteFilePath[".bin"], accuracy=float):
         """

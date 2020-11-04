@@ -73,16 +73,12 @@ class FlyteFilePath(os.PathLike):
         return ""
 
     def __class_getitem__(cls, item: str):
-        # TODO: Better checking
         if type(item) != str:
             raise Exception("format must be a string")
         if item == "":
             return cls
         if not item.startswith("."):
             item = "." + item
-        # TODO: I dunno if we want this
-        if item not in mimetypes.types_map and f".{item}" not in mimetypes.types_map:
-            raise Exception(f"{item} not a valid extension according to mimetypes.")
 
         class _SpecificFormatClass(FlyteFilePath):
             # Get the type engine to see this as kind of a generic
