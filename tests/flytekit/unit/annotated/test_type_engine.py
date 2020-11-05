@@ -10,7 +10,7 @@ from flytekit.annotated.type_engine import (
     ListTransformer,
     PathLikeTransformer,
     SimpleTransformer,
-    TypeEngine,
+    TypeEngine, SchemaFormat,
 )
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
@@ -89,5 +89,5 @@ def test_file_format_getting_python_value():
 
 def test_typed_schema():
     s = FlyteSchema[kwtypes(x=int, y=float)]
-    assert s.format() == FlyteSchema.FlyteSchemaFormat.PARQUET
+    assert s.format() == SchemaFormat.PARQUET
     assert s.columns() == {"x": int, "y": float}
