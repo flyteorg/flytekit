@@ -25,18 +25,17 @@ def test_diabetes():
     #  9. Class variable (0 or 1)
     # Example Row: 6,148,72,35,0,33.6,0.627,50,1
     # the input dataset schema
-    DATASET_COLUMNS = OrderedDict(
-        {
-            '#preg': int,
-            'pgc_2h': int,
-            'diastolic_bp': int,
-            'tricep_skin_fold_mm': int,
-            'serum_insulin_2h': int,
-            'bmi': float,
-            'diabetes_pedigree': float,
-            'age': int,
-            'class': int,
-        })
+    DATASET_COLUMNS = OrderedDict({
+        '#preg': int,
+        'pgc_2h': int,
+        'diastolic_bp': int,
+        'tricep_skin_fold_mm': int,
+        'serum_insulin_2h': int,
+        'bmi': float,
+        'diabetes_pedigree': float,
+        'age': int,
+        'class': int,
+    })
     # the first 8 columns are features
     FEATURE_COLUMNS = OrderedDict({k: v for k, v in DATASET_COLUMNS.items() if k != 'class'})
     # the last column is the class
