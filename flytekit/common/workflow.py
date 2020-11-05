@@ -212,27 +212,6 @@ class SdkWorkflow(
             raise
 
     @_exception_scopes.system_entry_point
-    def fast_register(self, project, domain, name, already_uploaded_digest=None, working_dir=None) -> str:
-        """
-        :param Text project: The project in which to register this task.
-        :param Text domain: The domain in which to register this task.
-        :param Text name: The name to give this task.
-        :param Text already_uploaded_digest: The version in which to register this task (if it's not already computed).
-        :param Text working_dir: Optional, user-specified root dir to use in place of the current working dir for which
-            to serialize
-        :rtype: Text: Registered identifier.
-        """
-        digest = already_uploaded_digest
-        if already_uploaded_digest is None:
-            cwd = _Path(_os.getcwd())
-            digest = compute_digest(cwd)
-            upload_package(cwd, digest, _sdk_config.FAST_REGISTRATION_DIR.get())
-
-        registered_id = self.register(project, domain, name, digest)
-        self._has_fast_registered = True
-        return str(registered_id)
-
-    @_exception_scopes.system_entry_point
     def serialize(self):
         """
         Serializing a workflow should produce an object similar to what the registration step produces, in preparation

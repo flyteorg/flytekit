@@ -68,6 +68,7 @@ class SdkTask(
             custom,
             container=container,
         )
+        self._has_fast_registered = False
 
     @property
     def interface(self):
@@ -175,23 +176,15 @@ class SdkTask(
             raise
 
     @_exception_scopes.system_entry_point
-    def fast_register(self, project, domain, name, already_uploaded_digest=None, working_dir=None) -> str:
+    def fast_register(self, project, domain, name, digest, additional_distribution) -> str:
         """
         :param Text project: The project in which to register this task.
         :param Text domain: The domain in which to register this task.
         :param Text name: The name to give this task.
-        :param Text already_uploaded_digest: The version in which to register this task (if it's not already computed).
-        :param Text working_dir: Optional, user-specified root dir to use in place of the current working dir for which
-            to serialize
+        :param Text digest: The version in which to register this task (if it's not already computed).
+        :param Text additional_distribution: User-specified location for remote source code distribution.
         :rtype: Text: Registered identifier.
         """
-        digest = already_uploaded_digest
-        if already_uploaded_digest is None:
-            cwd = _Path(_os.getcwd())
-            digest = _compute_digest(cwd)
-            additional_distribution = _upload_package(cwd, digest, _sdk_config.FAST_REGISTRATION_DIR.get())
-        else:
-            additional_distribution = _get_additional_distribution_loc(_sdk_config.FAST_REGISTRATION_DIR.get(), digest)
 
         original_container = self.container
         container = _copy.deepcopy(original_container)
@@ -200,6 +193,8 @@ class SdkTask(
             if arg == "pyflyte-execute":
                 args[idx] = "pyflyte-fast-execute"
         args.extend(["--additional-distribution", additional_distribution])
+        for virtual_env in _sdk_config.SDK_PYTHON_VENV.get():
+            args.extend(["--virtual-env", virtual_env])
         container._args = args
         self._container = container
 
@@ -211,6 +206,10 @@ class SdkTask(
         self._has_fast_registered = True
         self._container = original_container
         return str(registered_id)
+
+    @property
+    def has_fast_registered(self) -> bool:
+        return self._has_fast_registered
 
     @_exception_scopes.system_entry_point
     def serialize(self):

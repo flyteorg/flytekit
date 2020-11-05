@@ -9,7 +9,9 @@ from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.tasks import task as _task
 from flytekit.configuration import sdk as _sdk_config
+from flytekit.models.core import identifier as _identifier_model
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
+from flytekit.tools.fast_registration import get_additional_distribution_loc as _get_additional_distribution_loc
 from flytekit.tools.fast_registration import upload_package as _upload_package
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
@@ -22,7 +24,7 @@ def fast_register_all(project: str, domain: str, pkgs: _List[str], test: bool, v
         digest = _compute_digest(source_dir)
     else:
         digest = version
-    _upload_package(source_dir, digest, _sdk_config.FAST_REGISTRATION_DIR.get())
+    remote_package_path = _upload_package(source_dir, digest, _sdk_config.FAST_REGISTRATION_DIR.get())
 
     click.echo(
         "Running task, workflow, and launch plan fast registration for {}, {}, {} with version {} and code dir {}".format(
@@ -41,7 +43,11 @@ def fast_register_all(project: str, domain: str, pkgs: _List[str], test: bool, v
             click.echo("Would fast register {:20} {}".format("{}:".format(o.entity_type_text), o.id.name))
         else:
             click.echo("Fast registering {:20} {}".format("{}:".format(o.entity_type_text), o.id.name))
-            o.fast_register(project, domain, o.id.name, already_uploaded_digest=digest)
+            _get_additional_distribution_loc(_sdk_config.FAST_REGISTRATION_DIR.get(), digest)
+            if o.resource_type == _identifier_model.ResourceType.TASK:
+                o.fast_register(project, domain, o.id.name, digest, remote_package_path)
+            else:
+                o.register(project, domain, o.id.name, digest)
 
 
 def fast_register_tasks_only(
@@ -54,7 +60,7 @@ def fast_register_tasks_only(
         digest = _compute_digest(source_dir)
     else:
         digest = version
-    _upload_package(source_dir, digest, _sdk_config.FAST_REGISTRATION_DIR.get())
+    remote_package_path = _upload_package(source_dir, digest, _sdk_config.FAST_REGISTRATION_DIR.get())
 
     click.echo(
         "Running task only fast registration for {}, {}, {} with version {} and code dir {}".format(
@@ -70,7 +76,7 @@ def fast_register_tasks_only(
             click.echo("Would fast register task {:20} {}".format("{}:".format(t.entity_type_text), name))
         else:
             click.echo("Fast registering task {:20} {}".format("{}:".format(t.entity_type_text), name))
-            t.fast_register(project, domain, name, already_uploaded_digest=digest)
+            t.fast_register(project, domain, name, digest, remote_package_path)
 
 
 @click.group("fast-register")

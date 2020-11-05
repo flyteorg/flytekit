@@ -46,6 +46,7 @@ setup(
         "ipykernel>=5.0.0",
         "black==19.10b0",
         "retry==0.9.2",
+        "natsort>=7.0.1",
         "dirhash>=0.2.1",
     ],
     extras_require=extras_require,

@@ -12,7 +12,6 @@ from flytekit.common.exceptions import scopes as _scopes
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.configuration import internal as _internal_config
-from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -96,13 +95,21 @@ def _pass_through():
     pass
 
 
+_task_module_option = _click.option("--task-module", required=True)
+_task_name_option = _click.option("--task-name", required=True)
+_inputs_option = _click.option("--inputs", required=True)
+_output_prefix_option = _click.option("--output-prefix", required=True)
+_raw_output_date_prefix_option = _click.option("--raw-output-data-prefix", required=False)
+_test = _click.option("--test", is_flag=True)
+
+
 @_pass_through.command("pyflyte-execute")
-@_click.option("--task-module", required=True)
-@_click.option("--task-name", required=True)
-@_click.option("--inputs", required=True)
-@_click.option("--output-prefix", required=True)
-@_click.option("--raw-output-data-prefix", required=False)
-@_click.option("--test", is_flag=True)
+@_task_module_option
+@_task_name_option
+@_inputs_option
+@_output_prefix_option
+@_raw_output_date_prefix_option
+@_test
 def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
     _click.echo(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
@@ -115,22 +122,23 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
 
 
 @_pass_through.command("pyflyte-fast-execute")
-@_click.option("--task-module", required=True)
-@_click.option("--task-name", required=True)
-@_click.option("--inputs", required=True)
-@_click.option("--output-prefix", required=True)
-@_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--virutal-env", multiple=True, help="Virtual envs to invoke the comamnd with")
+@_task_module_option
+@_task_name_option
+@_inputs_option
+@_output_prefix_option
+@_raw_output_date_prefix_option
+@_test
 @_click.option("--additional-distribution", required=False)
-@_click.option("--test", is_flag=True)
 def fast_execute_task_cmd(
-    task_module, task_name, inputs, output_prefix, raw_output_data_prefix, additional_distribution, test
+    virtual_envs, task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test, additional_distribution
 ):
     if additional_distribution is not None:
         _download_distribution(additional_distribution, _pathlib.Path(_os.getcwd()))
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    cmd = _sdk_config.SDK_PYTHON_VENV.get() + [
+    cmd = list(virtual_envs) + [
         "pyflyte-execute",
         "--task-module",
         task_module,

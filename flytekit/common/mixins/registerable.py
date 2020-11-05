@@ -163,19 +163,6 @@ class RegisterableEntity(TrackableEntity):
         pass
 
     @_abc.abstractmethod
-    def fast_register(self, project, domain, name, already_uploaded_digest=None, working_dir=None) -> str:
-        """
-        :param Text project: The project in which to register this task.
-        :param Text domain: The domain in which to register this task.
-        :param Text name: The name to give this task.
-        :param Text already_uploaded_digest: The version in which to register this task (if it's not already computed).
-        :param Text working_dir: Optional, user-specified root dir to use in place of the current working dir for which
-            to serialize
-        :rtype: Text: Registered identifier.
-        """
-        pass
-
-    @_abc.abstractmethod
     def serialize(self):
         """
         Registerable entities also are required to be serialized. This allows flytekit to separate serialization from
@@ -187,10 +174,6 @@ class RegisterableEntity(TrackableEntity):
     @property
     def has_registered(self) -> bool:
         return self._has_registered
-
-    @property
-    def has_fast_registered(self) -> bool:
-        return self._has_fast_registered
 
 
 class HasDependencies(object):
