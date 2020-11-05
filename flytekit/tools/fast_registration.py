@@ -38,7 +38,7 @@ def _filter_tar_file_fn(tarinfo: _tarfile.TarInfo) -> _tarfile.TarInfo:
         return None
     if tarinfo.name.startswith(".cache"):
         return None
-    if "__pycache__" in tarinfo:
+    if "__pycache__" in tarinfo.name:
         return None
     return tarinfo
 

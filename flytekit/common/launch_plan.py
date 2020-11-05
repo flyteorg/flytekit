@@ -1,8 +1,6 @@
 import datetime as _datetime
 import logging as _logging
-import os as _os
 import uuid as _uuid
-from pathlib import Path as _Path
 
 import six as _six
 from deprecated import deprecated as _deprecated
@@ -30,8 +28,6 @@ from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
-from flytekit.tools.fast_registration import compute_digest as _compute_digest
-from flytekit.tools.fast_registration import upload_package as _upload_package
 
 
 class SdkLaunchPlan(
@@ -91,27 +87,6 @@ class SdkLaunchPlan(
 
         self._id = id_to_register
         return str(self.id)
-
-    @_exception_scopes.system_entry_point
-    def fast_register(self, project, domain, name, already_uploaded_digest=None, working_dir=None) -> str:
-        """
-        :param Text project: The project in which to register this task.
-        :param Text domain: The domain in which to register this task.
-        :param Text name: The name to give this task.
-        :param Text already_uploaded_digest: The version in which to register this task (if it's not already computed).
-        :param Text working_dir: Optional, user-specified root dir to use in place of the current working dir for which
-            to serialize
-        :rtype: Text: Registered identifier.
-        """
-        digest = already_uploaded_digest
-        if already_uploaded_digest is None:
-            cwd = _Path(_os.getcwd())
-            digest = _compute_digest(cwd)
-            _upload_package(cwd, digest, _sdk_config.FAST_REGISTRATION_DIR.get())
-
-        registered_id = self.register(project, domain, name, digest)
-        self._has_fast_registered = True
-        return str(registered_id)
 
     @classmethod
     @_exception_scopes.system_entry_point

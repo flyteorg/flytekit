@@ -122,7 +122,7 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
 
 
 @_pass_through.command("pyflyte-fast-execute")
-@_click.option("--virutal-env", multiple=True, help="Virtual envs to invoke the comamnd with")
+@_click.option("--virtual-env", multiple=True, help="Virtual envs to invoke the comamnd with")
 @_task_module_option
 @_task_name_option
 @_inputs_option
