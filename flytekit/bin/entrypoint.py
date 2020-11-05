@@ -122,7 +122,6 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
 
 
 @_pass_through.command("pyflyte-fast-execute")
-@_click.option("--virtual-env", multiple=True, help="Virtual envs to invoke the comamnd with")
 @_task_module_option
 @_task_name_option
 @_inputs_option
@@ -130,15 +129,16 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
 @_raw_output_date_prefix_option
 @_test
 @_click.option("--additional-distribution", required=False)
+@_click.option("--virtual-env", multiple=True, help="Virtual envs to invoke the command with")
 def fast_execute_task_cmd(
-    virtual_envs, task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test, additional_distribution
+    task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test, additional_distribution, virtual_env
 ):
     if additional_distribution is not None:
         _download_distribution(additional_distribution, _pathlib.Path(_os.getcwd()))
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    cmd = list(virtual_envs) + [
+    cmd = list(virtual_env) + [
         "pyflyte-execute",
         "--task-module",
         task_module,
