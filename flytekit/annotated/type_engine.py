@@ -423,17 +423,7 @@ class FlyteFilePathTransformer(TypeTransformer[flyte_typing.FlyteFilePath]):
         return flyte_typing.FlyteFilePath[expected_format](local_path, _downloader, lv.scalar.blob.uri)
 
 
-class SchemaIO(typing.Generic[T]):
-    @abstractmethod
-    def read(self, *files: typing.List[os.PathLike], columns=None, **kwargs) -> T:
-        pass
-
-    @abstractmethod
-    def write(self, df: T, to_file: os.PathLike, **kwargs):
-        pass
-
-
-class ParquetIO(SchemaIO):
+class ParquetIO(object):
     PARQUET_ENGINE = "pyarrow"
 
     def _read(self, chunk: os.PathLike, columns: typing.List[str], **kwargs) -> pandas.DataFrame:
