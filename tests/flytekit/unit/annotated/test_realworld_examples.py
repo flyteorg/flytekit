@@ -2,8 +2,9 @@ import typing
 from collections import OrderedDict
 
 import pandas as pd
+
 from flytekit.annotated.task import task
-from flytekit.annotated.type_engine import FlyteSchemaWriter, FlyteSchemaReader
+from flytekit.annotated.type_engine import FlyteSchema
 from flytekit.annotated.workflow import workflow
 from flytekit.typing import FlyteFilePath
 
@@ -67,8 +68,8 @@ def test_diabetes():
     # Example file: https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv
     @task(cache_version='1.0', cache=True, memory_limit="200Mi")
     def split_traintest_dataset(dataset: FlyteFilePath["csv"], seed: int, test_split_ratio: float) -> (
-            FlyteSchemaWriter[FEATURE_COLUMNS], FlyteSchemaWriter[FEATURE_COLUMNS], FlyteSchemaWriter[CLASSES_COLUMNS],
-            FlyteSchemaWriter[CLASSES_COLUMNS]):
+            FlyteSchema[FEATURE_COLUMNS], FlyteSchema[FEATURE_COLUMNS], FlyteSchema[CLASSES_COLUMNS],
+            FlyteSchema[CLASSES_COLUMNS]):
         """
         Retrieves the training dataset from the given blob location and then splits it using the split ratio and returns the result
         This splitter is only for the dataset that has the format as specified in the example csv. The last column is assumed to be
@@ -88,15 +89,15 @@ def test_diabetes():
         return x, x, y, y
 
     @task(cache_version='1.0', cache=True, memory_limit="200Mi")
-    def fit(x: FlyteSchemaReader[FEATURE_COLUMNS], y: FlyteSchemaReader[CLASSES_COLUMNS],
+    def fit(x: FlyteSchema[FEATURE_COLUMNS], y: FlyteSchema[CLASSES_COLUMNS],
             hyperparams: dict) -> typing.NamedTuple("Outputs", model=FlyteFilePath[".joblib.dat"]):
         """
         This function takes the given input features and their corresponding classes to train a XGBClassifier.
         NOTE: We have simplified the number of hyper parameters we take for demo purposes
         """
-        x_df = x.all()
+        x_df = x.open().all()
         print(x_df)
-        y_df = y.all()
+        y_df = y.open().all()
         print(y_df)
 
         hp = XGBoostModelHyperparams.from_dict(hyperparams)
@@ -105,19 +106,19 @@ def test_diabetes():
         # Faking fit
 
         fname = "model.joblib.dat"
-        with open(fname) as f:
+        with open(fname, "w") as f:
             f.write("Some binary data")
         return fname
 
     @task(cache_version='1.0', cache=True, memory_limit="200Mi")
-    def predict(x: FlyteSchemaReader[FEATURE_COLUMNS], model_ser: FlyteFilePath[".joblib.dat"]) \
-            -> FlyteSchemaWriter[CLASSES_COLUMNS]:
+    def predict(x: FlyteSchema[FEATURE_COLUMNS], model_ser: FlyteFilePath[".joblib.dat"]) \
+            -> FlyteSchema[CLASSES_COLUMNS]:
         """
         Given a any trained model, serialized using joblib (this method can be shared!) and features, this method returns
         predictions.
         """
         # make predictions for test data
-        x_df = x.all()
+        x_df = x.open().all()
         print(x_df)
         col = [k for k in CLASSES_COLUMNS.keys()]
         y_pred_df = pd.DataFrame(data=[{col[0]: [0, 1]}], columns=col, dtype="int64")
@@ -125,21 +126,21 @@ def test_diabetes():
         return y_pred_df
 
     @task(cache_version='1.0', cache=True, memory_limit="200Mi")
-    def score(predictions: FlyteSchemaReader[CLASSES_COLUMNS], y: FlyteSchemaReader[CLASSES_COLUMNS]) -> float:
+    def score(predictions: FlyteSchema[CLASSES_COLUMNS], y: FlyteSchema[CLASSES_COLUMNS]) -> float:
         """
         Compares the predictions with the actuals and returns the accuracy score.
         """
-        pred_df = predictions.all()
+        pred_df = predictions.open().all()
         print(pred_df)
-        y_df = y.all()
+        y_df = y.open().all()
         print(y_df)
         # evaluate predictions
         return 0.2
 
     @workflow
     def diabetes_xgboost_model(
-            dataset: FlyteFilePath[
-                ".csv"], #= "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv",
+            dataset: FlyteFilePath[".csv"],
+            # = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv",
             test_split_ratio: float = 0.33, seed: int = 7) \
             -> typing.NamedTuple("Outputs", model=FlyteFilePath[".bin"], accuracy=float):
         """
@@ -152,4 +153,4 @@ def test_diabetes():
         predictions = predict(x=x_test, model_ser=model)
         return model, score(predictions=predictions, y=y_test)
 
-    diabetes_xgboost_model()
+    diabetes_xgboost_model(dataset="/Users/kumare/Downloads/pima-indians-diabetes.data.csv")

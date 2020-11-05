@@ -58,18 +58,17 @@ def translate_inputs_to_literals(
             literals = [extract_value(ctx, v, sub_type, flyte_literal_type.collection_type) for v in input_val]
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literals))
         elif isinstance(input_val, dict):
-            if flyte_literal_type.map_value_type is None:
+            if flyte_literal_type.map_value_type is None and\
+                    flyte_literal_type.simple != _type_models.SimpleType.STRUCT:
                 raise Exception(f"Not a map type {flyte_literal_type} but got a map {input_val}")
-            try:
-                k_type, sub_type = DictTransformer.get_dict_types(val_type)
-            except ValueError:
-                if len(input_val) == 0:
-                    raise
-                sub_type = type(input_val[0])
-            literals = {
-                k: extract_value(ctx, v, sub_type, flyte_literal_type.map_value_type) for k, v in input_val.items()
-            }
-            return _literal_models.Literal(map=_literal_models.LiteralMap(literals=literals))
+            k_type, sub_type = DictTransformer.get_dict_types(val_type)
+            if flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
+                return TypeEngine.to_literal(ctx, input_val, type(input_val), flyte_literal_type)
+            else:
+                literals = {
+                    k: extract_value(ctx, v, sub_type, flyte_literal_type.map_value_type) for k, v in input_val.items()
+                }
+                return _literal_models.Literal(map=_literal_models.LiteralMap(literals=literals))
         elif isinstance(input_val, Promise):
             # In the example above, this handles the "in2=a" type of argument
             return input_val.val
@@ -412,15 +411,19 @@ def binding_data_from_python_std(
         binding_data = _literals_models.BindingData(collection=collection)
 
     elif isinstance(t_value, dict):
-        if expected_literal_type.map_value_type is None:
+        if expected_literal_type.map_value_type is None and expected_literal_type.simple != _type_models.SimpleType.STRUCT:
             raise AssertionError(
                 f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}")
         k_type, v_type = DictTransformer.get_dict_types(t_value_type)
-        m = _literals_models.BindingDataMap(
-            bindings={k: binding_data_from_python_std(ctx, expected_literal_type.collection_type, v, v_type)
-                      for k, v in t_value.items()
-                      }
-        )
+        if expected_literal_type.simple == _type_models.SimpleType.STRUCT:
+            lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
+            return _literals_models.BindingData(scalar=lit.scalar)
+        else:
+            m = _literals_models.BindingDataMap(
+                bindings={k: binding_data_from_python_std(ctx, expected_literal_type.collection_type, v, v_type)
+                          for k, v in t_value.items()
+                          }
+            )
 
         binding_data = _literals_models.BindingData(map=m)
 

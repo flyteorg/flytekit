@@ -251,7 +251,7 @@ class DictTransformer(TypeTransformer[dict]):
         if hasattr(t, "__origin__") and t.__origin__ is dict:
             if hasattr(t, "__args__"):
                 return t.__args__
-        return None
+        return None, None
 
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         tp = self.get_dict_types(t)
