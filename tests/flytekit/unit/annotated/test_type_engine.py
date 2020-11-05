@@ -9,8 +9,9 @@ from flytekit.annotated.type_engine import (
     FlyteSchema,
     ListTransformer,
     PathLikeTransformer,
+    SchemaFormat,
     SimpleTransformer,
-    TypeEngine, SchemaFormat,
+    TypeEngine,
 )
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
