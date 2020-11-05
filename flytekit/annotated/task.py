@@ -7,7 +7,6 @@ from abc import abstractmethod
 from enum import Enum
 from typing import Any, Callable, DefaultDict, Dict, List, Optional, Tuple, Type, Union
 
-from flytekit.loggers import logger
 from flytekit.annotated.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteEntities
 from flytekit.annotated.interface import (
     Interface,
@@ -22,6 +21,7 @@ from flytekit.annotated.workflow import Workflow
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.common.tasks.task import SdkTask
+from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models

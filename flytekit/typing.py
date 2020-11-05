@@ -7,7 +7,7 @@ import typing
 from flytekit.loggers import logger
 
 """
-Since there is no native equivalent of the int type for files and directories, we need to create one so that users
+Since there is no native implementation of the int type for files and directories, we need to create one so that users
 can express that their tasks take in or return a File.
 
 There are a few possible types on the Python side that can be specified:
@@ -36,15 +36,14 @@ There are a few possible types on the Python side that can be specified:
   This is just a path on the filesystem accessible from the Python process. This is a native Python abstract class.
 
     def path_task() -> os.PathLike:
-        return os.path.abspath('/tmp/xyz.txt')
+        return '/tmp/xyz.txt'
 
   If you specify a PathLike as an input, the task will receive a PathLike at task start, and you can open() it as
   normal. However, since we want to control when files are downloaded, Flyte provides its own PathLike object.
 
-    # This is how you should write it instead.
     from flytekit import typing as flytekit_typing
-
-    def t1(in1: flytekit_typing.FlyteFilePath) -> str:
+    
+    def t1(in1: flytekit_typing.FlyteFile) -> str:
         with open(in1, 'r') as fh:
             lines = fh.readlines()
             return "".join(lines)
@@ -52,14 +51,14 @@ There are a few possible types on the Python side that can be specified:
   As mentioned above, since Flyte file types have a string embedded in it as part of the type, flytekit.typing
   includes a CSV variant as well.
 
-    def t2() -> flytekit_typing.FlyteCSVFilePath:
+    def t2() -> flytekit_typing.FlyteFile["csv"]:
         from random import sample
         sequence = [i for i in range(20)]
         subset = sample(sequence, 5)
         results = ",".join([str(x) for x in subset])
         with open("/tmp/blah.csv", "w") as fh:
             fh.write(results)
-        return FlyteCSVFilePath("/tmp/blah.csv")
+        return "/tmp/blah.csv"
 """
 
 
@@ -68,6 +67,40 @@ def noop():
 
 
 class FlyteFilePath(os.PathLike):
+    """
+    S3, http, https are all treated as remote - the behavior should be the same, they are never copied unless
+    explicitly told to do so.
+
+    Local paths always get uploaded, unless explicitly told not to do so.
+
+    If you specify a path as a string, you get the default behavior, not possible to override. To override, you must use
+    the FlyteFilePath class.
+
+    More succinctly, regardless of whether it is input or output, these rules apply:
+      - "s3://bucket/path" -> will never get uploaded
+      - "https://a.b.com/path" -> will never get uploaded
+      - "/tmp/blah" -> will always get uploaded
+
+    To specify non-default behavior:
+
+    * Copy the s3 path to a new location.
+      FlyteFilePath("s3://bucket/path", remote_path=True)
+
+    * Copy the s3 path to a specific location.
+      FlyteFilePath("s3://bucket/path", remote_path="s3://other-bucket/path")
+
+    * Copy local path to a specific location.
+      FlyteFilePath("/tmp/blah", remote_path="s3://other-bucket/path")
+
+    * Do not copy local path, this will copy the string into the literal. For example, let's say your docker image has a
+      thousand files in it, and you want to tell the next task, which file to look at. (Dumb example, you shouldn't have that
+      many files in your image.)
+      FlyteFilePath("/tmp/blah", remote_path=False)
+
+    * However, we have a shorthand.
+      "file:///tmp/blah" is treated as "remote" and is by default not copied.
+    """
+
     @classmethod
     def extension(cls) -> str:
         return ""
@@ -96,7 +129,7 @@ class FlyteFilePath(os.PathLike):
 
     def __init__(self, path: str, downloader: typing.Callable = noop, remote_path=None):
         """
-        :param path: The local path that users are expected to call open() on
+        :param path: The source path that users are expected to call open() on
         :param downloader: Optional function that can be passed that used to delay downloading of the actual fil
             until a user actually calls open().
         :param remote_path: If the user wants to return something and also specify where it should be uploaded to.

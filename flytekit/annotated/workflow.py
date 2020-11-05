@@ -4,7 +4,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import flytekit.annotated.promise
 import flytekit.annotated.type_engine
-from flytekit.loggers import logger
 from flytekit.annotated.condition import ConditionalSection
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext, FlyteEntities
 from flytekit.annotated.interface import (
@@ -17,6 +16,7 @@ from flytekit.annotated.promise import Promise, create_task_output
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
+from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import types as _type_models

@@ -6,9 +6,9 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Tuple, Type, TypeVar, Union
 
-from flytekit.loggers import logger
 from flytekit.annotated import context_manager
 from flytekit.annotated.type_engine import TypeEngine
+from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 
 

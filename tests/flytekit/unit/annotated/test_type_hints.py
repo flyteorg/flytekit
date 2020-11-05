@@ -571,6 +571,61 @@ def test_file_type_in_workflow_with_bad_format():
         assert fh.read() == "Hello World\n"
 
 
+# def test_fdsfdsa():
+#     @task
+#     def t1(
+#         fname: flytekit_typing.FlyteFilePath[
+#             "csv"
+#         ] = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv",
+#     ) -> int:
+#         # Should not copy the data to s3, should download the link and put into tmp dir every time it's run, either
+#         # locally or in production
+#         with open(fname, "r") as fh:
+#             ...
+#         return 3
+#
+#     @task
+#     def t12(
+#         fname: flytekit_typing.FlyteFilePath[
+#             "csv"
+#         ] = "/some/local/pima-indians-diabetes.data.csv",
+#     ) -> int:
+#         # This should copy to s3
+#         with open(fname, "r") as fh:
+#             ...
+#         return 3
+#
+#     @task
+#     def t2() -> flytekit_typing.FlyteFilePath:
+#         # I want to download a copy of blah, store it in s3 and return the new path in the literal
+#         return "https://raw.github.com/blah"
+#
+#     @task
+#     def t3() -> flytekit_typing.FlyteFilePath:
+#         # I don't want to download a copy of blah, I want this path in the literal.
+#         return "https://raw.github.com/blah"
+#
+#     @task
+#     def t4() -> flytekit_typing.FlyteFilePath:
+#         # Upload this to S3, the downstream task will read it from S3
+#         return "/opt/some/new/file"
+#
+#     @task
+#     def t5() -> flytekit_typing.FlyteFilePath:
+#         # Don't upload this to s3, the next task that takes this output relies on this exact path.
+#         return "/opt/some/file/in/the/container"
+#
+#     @task
+#     def t6(
+#         fname: flytekit_typing.FlyteFilePath[
+#             "csv"
+#         ] = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv",
+#     ) -> int:
+#         with open(fname, "r") as fh:
+#             ...
+#         return 3
+#
+
 def test_wf1_df():
     @task
     def t1(a: int) -> pandas.DataFrame:
