@@ -251,7 +251,7 @@ class DictTransformer(TypeTransformer[dict]):
         if hasattr(t, "__origin__") and t.__origin__ is dict:
             if hasattr(t, "__args__"):
                 return t.__args__
-        return None
+        return None, None
 
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         tp = self.get_dict_types(t)
@@ -281,15 +281,21 @@ class DictTransformer(TypeTransformer[dict]):
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[dict]) -> dict:
         if lv and lv.map and lv.map.literals:
             tp = self.get_dict_types(expected_python_type)
+            if tp is None or tp[0] is None:
+                raise TypeError(
+                    "TypeMismatch: Cannot convert to python dictionary from Flyte Literal Dictionary as the given "
+                    "dictionary ddoes not have sub-type hints or they do not match with the originating dictionary "
+                    "source. Flytekit does not currently support implicit conversions"
+                )
+            if tp[0] != str:
+                raise TypeError("TypeMismatch. Destination dictionary does not accept 'str' key")
             py_map = {}
             for k, v in lv.map.literals.items():
-                # TODO the type of the key is not known here?
-                # TODO we could just just a reverse map in the engine from literal type to find the right converter
                 py_map[k] = TypeEngine.to_python_value(ctx, v, tp[1])
             return py_map
         if lv and lv.scalar and lv.scalar.generic:
             return _json.loads(_json_format.MessageToJson(lv.scalar.generic))
-        raise ValueError(f"Cannot convert from {lv} to {expected_python_type}")
+        raise TypeError(f"Cannot convert from {lv} to {expected_python_type}")
 
 
 class TextIOTransformer(TypeTransformer[typing.TextIO]):

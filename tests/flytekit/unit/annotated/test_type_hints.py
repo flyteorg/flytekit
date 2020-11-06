@@ -840,3 +840,40 @@ def test_wf_typed_schema():
     df = x.open().all()
     result_df = df.reset_index(drop=True) == pandas.DataFrame(data={"x": [1, 2]}).reset_index(drop=True)
     assert result_df.all().all()
+
+
+def test_dict_wf_with_constants():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: typing.Dict[str, str]) -> str:
+        return " ".join([v for k, v in a.items()])
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a)
+        d = t2(a={"key1": b, "key2": y})
+        return x, d
+
+    x = my_wf(a=5, b="hello")
+    assert x == (7, "hello world")
+
+
+def test_dict_wf_with_conversion():
+    @task
+    def t1(a: int) -> typing.Dict[str, str]:
+        return {"a": str(a)}
+
+    @task
+    def t2(a: dict) -> str:
+        print(f"HAHAH {a}")
+        return " ".join([v for k, v in a.items()])
+
+    @workflow
+    def my_wf(a: int) -> str:
+        return t2(a=t1(a=a))
+
+    with pytest.raises(TypeError):
+        my_wf(a=5)
