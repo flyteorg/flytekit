@@ -12,7 +12,7 @@ from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import ContainerTask, SQLTask, dynamic, kwtypes, maptask, metadata, task
+from flytekit.annotated.task import ContainerTask, Spark, SQLTask, dynamic, kwtypes, maptask, metadata, task
 from flytekit.annotated.testing import task_mock
 from flytekit.annotated.type_engine import FlyteSchema, RestrictedTypeError, SchemaOpenMode, TypeEngine
 from flytekit.annotated.workflow import workflow
@@ -282,7 +282,7 @@ def test_wf1_with_sql():
 
 
 def test_wf1_with_spark():
-    @task(task_type="spark")
+    @task(task_config=Spark())
     def my_spark(spark_session, a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         return a + 2, "world"
 
