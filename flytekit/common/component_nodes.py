@@ -42,8 +42,9 @@ class SdkTaskNode(_workflow_model.TaskNode, metaclass=_sdk_bases.ExtendedSdkType
 
         if base_model.reference_id in tasks:
             t = tasks[base_model.reference_id]
-            _logging.debug("Found existing task template for {}, will not retrieve from Admin".format(t.id))
+            _logging.info(f"Found existing task template for {t.id}, will not retrieve from Admin")
             sdk_task = _task.SdkTask.promote_from_model(t)
+            sdk_task._has_registered = True
             return cls(sdk_task)
 
         # If not found, fetch it from Admin
