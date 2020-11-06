@@ -44,6 +44,7 @@ class SdkLaunchPlan(
 
         # The interface is not set explicitly unless fetched in an engine context
         self._interface = None
+        self._has_registered = False
 
     @classmethod
     def promote_from_model(cls, model) -> "SdkLaunchPlan":
@@ -86,6 +87,7 @@ class SdkLaunchPlan(
             pass
 
         self._id = id_to_register
+        self._has_registered = True
         return str(self.id)
 
     @classmethod

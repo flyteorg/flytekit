@@ -132,6 +132,9 @@ def serialize_all(project, domain, pkgs, version, folder=None):
 
         zero_padded_length = _determine_text_chars(len(loaded_entities))
         for i, entity in enumerate(loaded_entities):
+            if entity.has_registered:
+                _logging.info(f"Skipping entity {entity.id} because already registered")
+                continue
             serialized = entity.serialize()
             fname_index = str(i).zfill(zero_padded_length)
             fname = "{}_{}.pb".format(fname_index, entity.id.name)

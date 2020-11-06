@@ -952,3 +952,51 @@ def test_wf_typed_schema():
     df = x.open().all()
     result_df = df.reset_index(drop=True) == pandas.DataFrame(data={"x": [1, 2]}).reset_index(drop=True)
     assert result_df.all().all()
+
+
+def test_ref():
+    @task(task_type="reference", project="flytesnacks", domain="development", name="recipes.aaa.simple.join_strings", version="553018f39e519bdb2597b652639c30ce16b99c79")
+    def ref_t1(a: typing.List[str]) -> str:
+        ...
+
+    assert ref_t1.id.project == "flytesnacks"
+    assert ref_t1.id.domain == "development"
+    assert ref_t1.id.name == "recipes.aaa.simple.join_strings"
+    assert ref_t1.id.version == "553018f39e519bdb2597b652639c30ce16b99c79"
+
+    registration_settings = context_manager.RegistrationSettings(
+        project="proj",
+        domain="dom",
+        version="123",
+        image="asdf/fdsa:123",
+        env={},
+        iam_role="test:iam:role",
+        service_account=None,
+    )
+    with context_manager.FlyteContext.current_context().new_registration_settings(
+        registration_settings=registration_settings
+    ):
+        sdk_task = ref_t1.get_registerable_entity()
+        assert sdk_task.has_registered
+        assert sdk_task.id.project == "flytesnacks"
+        assert sdk_task.id.domain == "development"
+        assert sdk_task.id.name == "recipes.aaa.simple.join_strings"
+        assert sdk_task.id.version == "553018f39e519bdb2597b652639c30ce16b99c79"
+
+
+def test_ref_task_more():
+    @task(task_type="reference", project="flytesnacks", domain="development", name="recipes.aaa.simple.join_strings", version="553018f39e519bdb2597b652639c30ce16b99c79")
+    def ref_t1(a: typing.List[str]) -> str:
+        ...
+
+    @workflow
+    def wf1(in1: typing.List[str]) -> str:
+        return ref_t1(a=in1)
+
+    with pytest.raises(Exception) as e:
+        wf1(in1=["hello", "world"])
+    assert "Remote reference tasks cannot be run" in f"{e}"
+
+    with task_mock(ref_t1) as mock:
+        mock.return_value = "hello"
+        assert wf1(in1=["hello", "world"]) == "hello"

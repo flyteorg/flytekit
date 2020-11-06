@@ -26,6 +26,7 @@ from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
+from flytekit.models.core import identifier as _identifier_model
 
 
 def kwtypes(**kwargs) -> Dict[str, Type]:
@@ -256,7 +257,7 @@ class PythonTask(Task):
         try:
             native_outputs = self.execute(**native_inputs)
         except Exception as e:
-            logger.exception("Exception when executing", e)
+            logger.exception(f"Exception when executing {e}")
             raise e
         logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
 
@@ -629,6 +630,60 @@ class DynamicWorkflowTask(PythonFunctionTask):
             return self.compile_into_workflow(ctx, **kwargs)
 
 
+class ReferenceTask(PythonTask):
+    """
+    fdsa
+    """
+
+    def __init__(
+        self,
+        task_function: Callable,
+        ignored_metadata: _task_model.TaskMetadata,
+        project: str,
+        domain: str,
+        name: str,
+        version: str,
+        *args,
+        task_type="reference-task",
+        **kwargs,
+    ):
+        self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
+        super().__init__(
+            task_type=task_type,
+            name=name,
+            interface=self._native_interface,
+            metadata=metadata(),
+            *args,
+            **kwargs,
+        )
+        self._task_function = task_function
+        self._id = _identifier_model.Identifier(_identifier_model.ResourceType.TASK, project,domain, name, version)
+
+    def execute(self, **kwargs) -> Any:
+        raise Exception("Remote reference tasks cannot be run locally. You must mock this out.")
+
+    @property
+    def native_interface(self) -> Interface:
+        return self._native_interface
+
+    def get_task_structure(self) -> SdkTask:
+        tk = SdkTask(
+            type=self.task_type,
+            metadata=self.metadata,
+            interface=self.interface,
+            custom=self.get_custom(),
+            container=None,
+        )
+        # Reset id to ensure it matches user input
+        tk._id = self._id
+        tk._has_registered = True
+        return tk
+
+    @property
+    def id(self) -> _identifier_model.Identifier:
+        return self._id
+
+
 TaskTypePlugins: DefaultDict[str, Type[PythonFunctionTask]] = collections.defaultdict(
     lambda: PythonFunctionTask,
     {
@@ -636,6 +691,7 @@ TaskTypePlugins: DefaultDict[str, Type[PythonFunctionTask]] = collections.defaul
         "task": PythonFunctionTask,
         "spark": PysparkFunctionTask,
         "_dynamic": DynamicWorkflowTask,
+        "reference": ReferenceTask,
     },
 )
 
@@ -701,6 +757,3 @@ def task(
 
 
 dynamic = functools.partial(task, task_type="_dynamic")
-
-
-# TODO: We need an enum for Task types, don't want users to use strings
