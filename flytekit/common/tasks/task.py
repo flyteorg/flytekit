@@ -176,7 +176,7 @@ class SdkTask(
         :param Text project: The project in which to register this task.
         :param Text domain: The domain in which to register this task.
         :param Text name: The name to give this task.
-        :param Text digest: The version in which to register this task (if it's not already computed).
+        :param Text digest: The version in which to register this task.
         :param Text additional_distribution: User-specified location for remote source code distribution.
         :rtype: Text: Registered identifier.
         """

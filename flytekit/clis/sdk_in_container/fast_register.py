@@ -136,7 +136,7 @@ def tasks(ctx, version=None, source_dir=None):
     "-v",
     "--version",
     type=str,
-    help="Version to register tasks with. This is normally parsed from the" "image, but you can override here.",
+    help="Version to register tasks with. This is normally parsed from the image, but you can override here.",
 )
 @click.option(
     "--source-dir",
