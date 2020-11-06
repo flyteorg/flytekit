@@ -571,21 +571,26 @@ def test_file_type_in_workflow_with_bad_format():
         assert fh.read() == "Hello World\n"
 
 
-# def test_more_file_handling():
-#     SAMPLE_DATA = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv",
-#
-#     @task
-#     def t1(fname: os.PathLike) -> int:
-#         # Should not copy the data to s3, should download the link and put into tmp dir every time it's run, either
-#         # locally or in production
-#         with open(fname, "r") as fh:
-#             print(fh.readlines())
-#         return 3
-#
-#     @workflow
-#     def my_wf() -> flytekit_typing.FlyteFilePath["txt"]:
-#         f = t1()
-#         return f
+def test_more_file_handling():
+    SAMPLE_DATA = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
+
+    @task
+    def t1(fname: os.PathLike) -> int:
+        print(f"File: {fname}")
+        with open(fname, "r") as fh:
+            x = len(fh.readlines())
+
+        return x
+
+    @workflow
+    def my_wf(fname: os.PathLike = SAMPLE_DATA) -> int:
+        length = t1(fname=fname)
+        return length
+
+    assert my_wf._native_interface.inputs_with_defaults['fname'][1] == SAMPLE_DATA
+
+    # fs = FileAccessProvider(local_sandbox_dir="/tmp/flytetesting")
+    # with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
 
 
 #
