@@ -127,8 +127,9 @@ def test_diabetes():
         return fname
 
     @task(cache_version="1.0", cache=True, memory_limit="200Mi")
-    def predict(x: FlyteSchema[FEATURE_COLUMNS], model_ser: FlyteFilePath[MODELSER_JOBLIB]) \
-            -> FlyteSchema[CLASSES_COLUMNS]:
+    def predict(
+        x: FlyteSchema[FEATURE_COLUMNS], model_ser: FlyteFilePath[MODELSER_JOBLIB]
+    ) -> FlyteSchema[CLASSES_COLUMNS]:
         """
         Given a any trained model, serialized using joblib (this method can be shared!) and features, this method returns
         predictions.
