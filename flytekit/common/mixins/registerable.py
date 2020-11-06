@@ -149,7 +149,6 @@ class TrackableEntity(FlyteEntity, metaclass=_InstanceTracker):
 class RegisterableEntity(TrackableEntity):
     def __init__(self, *args, **kwargs):
         self._has_registered = False
-        self._has_fast_registered = False
         super(RegisterableEntity, self).__init__(*args, **kwargs)
 
     @_abc.abstractmethod

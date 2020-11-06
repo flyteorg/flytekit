@@ -34,6 +34,7 @@ def _filter_tar_file_fn(tarinfo: _tarfile.TarInfo) -> _tarfile.TarInfo:
     :param _tarfile.TarInfo tarinfo:
     :return _tarfile.TarInfo:
     """
+    print("name:  {}".format(tarinfo.name))
     if tarinfo.name.endswith(".pyc"):
         return None
     if tarinfo.name.startswith(".cache"):
