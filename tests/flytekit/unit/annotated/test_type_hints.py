@@ -8,14 +8,14 @@ import pytest
 import flytekit
 from flytekit import ContainerTask, SQLTask, dynamic, maptask, metadata, task
 from flytekit import typing as flytekit_typing
-from flytekit import workflow
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import kwtypes
 from flytekit.annotated.testing import task_mock
-from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
+from flytekit.annotated.type_engine import FlyteSchema, RestrictedTypeError, SchemaOpenMode, TypeEngine
+from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
@@ -626,6 +626,7 @@ def test_file_type_in_workflow_with_bad_format():
 #         return 3
 #
 
+
 def test_wf1_df():
     @task
     def t1(a: int) -> pandas.DataFrame:
@@ -858,3 +859,40 @@ def test_wf_tuple_fails():
         @task
         def t1(a: tuple) -> (int, str):
             return a[0] + 2, str(a) + "-HELLO"
+
+
+def test_wf_typed_schema():
+    schema1 = FlyteSchema[kwtypes(x=int, y=str)]
+
+    @task
+    def t1() -> schema1:
+        s = schema1()
+        s.open().write(pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}))
+        return s
+
+    @task
+    def t2(s: FlyteSchema[kwtypes(x=int, y=str)]) -> FlyteSchema[kwtypes(x=int)]:
+        df = s.open().all()
+        return df[s.column_names()[:-1]]
+
+    @workflow
+    def wf() -> FlyteSchema[kwtypes(x=int)]:
+        return t2(s=t1())
+
+    w = t1()
+    assert w is not None
+    df = w.open(override_mode=SchemaOpenMode.READ).all()
+    result_df = df.reset_index(drop=True) == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}).reset_index(
+        drop=True
+    )
+    assert result_df.all().all()
+
+    df = t2(s=w.as_readonly())
+    assert df is not None
+    result_df = df.reset_index(drop=True) == pandas.DataFrame(data={"x": [1, 2]}).reset_index(drop=True)
+    assert result_df.all().all()
+
+    x = wf()
+    df = x.open().all()
+    result_df = df.reset_index(drop=True) == pandas.DataFrame(data={"x": [1, 2]}).reset_index(drop=True)
+    assert result_df.all().all()
