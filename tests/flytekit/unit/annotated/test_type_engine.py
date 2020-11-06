@@ -62,17 +62,17 @@ def test_file_formats_getting_literal_type():
 
     # Works with formats that we define
     lt = transformer.get_literal_type(FlyteFilePath["txt"])
-    assert lt.blob.format == ".txt"
+    assert lt.blob.format == "txt"
 
-    lt = transformer.get_literal_type(FlyteFilePath["jpg"])
-    assert lt.blob.format == ".jpg"
+    lt = transformer.get_literal_type(FlyteFilePath[typing.TypeVar("jpg")])
+    assert lt.blob.format == "jpg"
 
     # Empty default to the default
     lt = transformer.get_literal_type(FlyteFilePath)
     assert lt.blob.format == ""
 
-    lt = transformer.get_literal_type(FlyteFilePath[".png"])
-    assert lt.blob.format == ".png"
+    lt = transformer.get_literal_type(FlyteFilePath[typing.TypeVar(".png")])
+    assert lt.blob.format == "png"
 
 
 def test_file_format_getting_python_value():
@@ -87,9 +87,9 @@ def test_file_format_getting_python_value():
         )
     )
 
-    pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFilePath[".txt"])
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFilePath["txt"])
     assert isinstance(pv, FlyteFilePath)
-    assert pv.extension() == ".txt"
+    assert pv.extension() == "txt"
 
 
 def test_typed_schema():
