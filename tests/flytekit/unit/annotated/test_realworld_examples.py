@@ -172,4 +172,5 @@ def test_diabetes():
         predictions = predict(x=x_test, model_ser=model)
         return model, score(predictions=predictions, y=y_test)
 
-    diabetes_xgboost_model(dataset="/Users/kumare/Downloads/pima-indians-diabetes.data.csv")
+    # TODO enable this after the defaults are working
+    # diabetes_xgboost_model(dataset="/Users/kumare/Downloads/pima-indians-diabetes.data.csv")
