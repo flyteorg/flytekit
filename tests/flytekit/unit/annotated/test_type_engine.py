@@ -83,3 +83,5 @@ def test_file_format_getting_python_value():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFilePath[".txt"])
     assert isinstance(pv, FlyteFilePath)
     assert pv.extension() == ".txt"
+
+    # pv = transformer.to_python_value(ctx, lv, expected_python_type=os.PathLike)

@@ -134,21 +134,22 @@ class FlyteFilePath(os.PathLike):
             until a user actually calls open().
         :param remote_path: If the user wants to return something and also specify where it should be uploaded to.
         """
-        self._abspath = os.path.abspath(path)
+        self._path = os.path.abspath(path)
         self._downloader = downloader
         self._downloaded = False
         self._remote_path = remote_path
-        logger.debug(f"Path is: {self._abspath}")
+
+        self._remote_source = None
 
     def __fspath__(self):
         # This is where a delayed downloading of the file will happen
         self._downloader()
         self._downloaded = True
-        return self._abspath
+        return self._path
 
     def __eq__(self, other):
         return (
-            self._abspath == other._abspath
+            self._path == other._path
             and self._remote_path == other._remote_path
             and self.extension() == other.extension()
         )
@@ -161,8 +162,20 @@ class FlyteFilePath(os.PathLike):
     def remote_path(self) -> typing.Optional[str]:
         return self._remote_path
 
+    @property
+    def path(self) -> str:
+        return self._path
+
+    @property
+    def remote_source(self) -> str:
+        """
+        If this is an input to a task, and the original path is s3://something, flytekit will download the
+        file for the user. In case the user wants access to the original path, it will be here.
+        """
+        return self._remote_source
+
     def __repr__(self):
-        return self._abspath
+        return self._path
 
     def __str__(self):
-        return self._abspath
+        return self._path
