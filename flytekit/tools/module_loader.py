@@ -49,6 +49,8 @@ def _topo_sort_helper(
 
     if isinstance(obj, _registerable.HasDependencies):
         for upstream in obj.upstream_entities:
+            if upstream.has_registered:
+                continue
             if upstream not in visited:
                 for m1, k1, o1 in _topo_sort_helper(
                     upstream,
@@ -71,10 +73,8 @@ def _topo_sort_helper(
             yield entity_to_module_key[obj] + (obj,)
         elif detect_unreferenced_entities:
             raise _user_exceptions.FlyteAssertion(
-                "An entity was not found in modules accessible from the workflow packages configuration.  Please "
-                "ensure that entities in '{}' are moved to a configured packaged, or adjust the configuration.".format(
-                    obj.instantiated_in
-                )
+                f"An entity ({obj.id}) was not found in modules accessible from the workflow packages configuration.  Please "
+                f"ensure that entities in '{obj.instantiated_in}' are moved to a configured packaged, or adjust the configuration."
             )
 
 
@@ -108,6 +108,8 @@ def iterate_registerable_entities_in_order(
         for k in dir(m):
             o = m.__dict__[k]
             if isinstance(o, _registerable.RegisterableEntity):
+                if o.has_registered:
+                    continue
                 if o.instantiated_in == m.__name__:
                     entity_to_module_key[o] = (m, k)
                     if isinstance(o, _SdkRunnableWorkflow) and o.should_create_default_launch_plan:
