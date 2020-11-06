@@ -1,13 +1,6 @@
 import tarfile
-from pathlib import Path
 
-from flytekit.tools.fast_registration import _filter_tar_file_fn, compute_digest, get_additional_distribution_loc
-
-
-def test_compute_digest():
-    test_path = Path.joinpath(Path(__file__).parent.absolute(), "testdata")
-    digest = compute_digest(test_path)
-    assert digest == "b9c5465a43c6d99f2efce3185ef11440"
+from flytekit.tools.fast_registration import _filter_tar_file_fn, get_additional_distribution_loc
 
 
 def test_filter_tar_file_fn():
