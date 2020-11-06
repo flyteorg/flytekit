@@ -859,3 +859,21 @@ def test_dict_wf_with_constants():
 
     x = my_wf(a=5, b="hello")
     assert x == (7, "hello world")
+
+
+def test_dict_wf_with_conversion():
+    @task
+    def t1(a: int) -> typing.Dict[str, str]:
+        return {"a": str(a)}
+
+    @task
+    def t2(a: dict) -> str:
+        print(f"HAHAH {a}")
+        return " ".join([v for k, v in a.items()])
+
+    @workflow
+    def my_wf(a: int) -> str:
+        return t2(a=t1(a=a))
+
+    with pytest.raises(TypeError):
+        my_wf(a=5)

@@ -71,13 +71,13 @@ class FlyteFilePath(os.PathLike):
     def extension(cls) -> str:
         return ""
 
-    def __class_getitem__(cls, item: typing.Type):
+    def __class_getitem__(cls, item: typing.Type) -> FlyteFilePath:
+        if item is None:
+            return cls
         item = str(item)
-        item.lstrip("~")
+        item = item.strip().lstrip("~").lstrip(".")
         if item == "":
             return cls
-        if not item.startswith("."):
-            item = "." + item
 
         class _SpecificFormatClass(FlyteFilePath):
             # Get the type engine to see this as kind of a generic

@@ -1,6 +1,9 @@
+import datetime
 import os
 import typing
 from datetime import timedelta
+
+import pytest
 
 from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.task import kwtypes
@@ -15,7 +18,8 @@ from flytekit.annotated.type_engine import (
 )
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Primitive, Scalar
+from flytekit.models.types import LiteralType, SimpleType
 from flytekit.typing import FlyteFilePath
 
 
@@ -92,3 +96,70 @@ def test_typed_schema():
     s = FlyteSchema[kwtypes(x=int, y=float)]
     assert s.format() == SchemaFormat.PARQUET
     assert s.columns() == {"x": int, "y": float}
+
+
+def test_dict_transformer():
+    d = DictTransformer()
+
+    def assert_struct(lit: LiteralType):
+        assert lit is not None
+        assert lit.simple == SimpleType.STRUCT
+
+    def recursive_assert(lit: LiteralType, expected: LiteralType, expected_depth: int = 1, curr_depth: int = 0):
+        assert curr_depth <= expected_depth
+        assert lit is not None
+        if lit.map_value_type is None:
+            assert lit == expected
+            return
+        recursive_assert(lit.map_value_type, expected, expected_depth, curr_depth + 1)
+
+    # Type inference
+    assert_struct(d.get_literal_type(dict))
+    assert_struct(d.get_literal_type(typing.Dict[int, int]))
+    recursive_assert(d.get_literal_type(typing.Dict[str, str]), LiteralType(simple=SimpleType.STRING))
+    recursive_assert(d.get_literal_type(typing.Dict[str, int]), LiteralType(simple=SimpleType.INTEGER))
+    recursive_assert(d.get_literal_type(typing.Dict[str, datetime.datetime]), LiteralType(simple=SimpleType.DATETIME))
+    recursive_assert(d.get_literal_type(typing.Dict[str, datetime.timedelta]), LiteralType(simple=SimpleType.DURATION))
+    recursive_assert(d.get_literal_type(typing.Dict[str, dict]), LiteralType(simple=SimpleType.STRUCT))
+    recursive_assert(
+        d.get_literal_type(typing.Dict[str, typing.Dict[str, str]]),
+        LiteralType(simple=SimpleType.STRING),
+        expected_depth=2,
+    )
+    recursive_assert(
+        d.get_literal_type(typing.Dict[str, typing.Dict[int, str]]),
+        LiteralType(simple=SimpleType.STRUCT),
+        expected_depth=2,
+    )
+    recursive_assert(
+        d.get_literal_type(typing.Dict[str, typing.Dict[str, typing.Dict[str, str]]]),
+        LiteralType(simple=SimpleType.STRING),
+        expected_depth=3,
+    )
+    recursive_assert(
+        d.get_literal_type(typing.Dict[str, typing.Dict[str, typing.Dict[str, dict]]]),
+        LiteralType(simple=SimpleType.STRUCT),
+        expected_depth=3,
+    )
+    recursive_assert(
+        d.get_literal_type(typing.Dict[str, typing.Dict[str, typing.Dict[int, dict]]]),
+        LiteralType(simple=SimpleType.STRUCT),
+        expected_depth=2,
+    )
+
+    # Literal to python
+    ctx = FlyteContext.current_context()
+    with pytest.raises(TypeError):
+        d.to_python_value(ctx, Literal(scalar=Scalar(primitive=Primitive(integer=10))), dict)
+    with pytest.raises(TypeError):
+        d.to_python_value(ctx, Literal(), dict)
+    with pytest.raises(TypeError):
+        d.to_python_value(ctx, Literal(map=LiteralMap(literals={"x": None})), dict)
+    with pytest.raises(TypeError):
+        d.to_python_value(ctx, Literal(map=LiteralMap(literals={"x": None})), typing.Dict[int, str])
+
+    d.to_python_value(
+        ctx,
+        Literal(map=LiteralMap(literals={"x": Literal(scalar=Scalar(primitive=Primitive(integer=1)))})),
+        typing.Dict[str, int],
+    )
