@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import mimetypes
 import os
 import typing
 
@@ -72,9 +71,9 @@ class FlyteFilePath(os.PathLike):
     def extension(cls) -> str:
         return ""
 
-    def __class_getitem__(cls, item: str):
-        if type(item) != str:
-            raise Exception("format must be a string")
+    def __class_getitem__(cls, item: typing.Type):
+        item = str(item)
+        item.lstrip("~")
         if item == "":
             return cls
         if not item.startswith("."):

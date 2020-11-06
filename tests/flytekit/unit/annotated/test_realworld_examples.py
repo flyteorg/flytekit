@@ -25,30 +25,41 @@ def test_diabetes():
     #  9. Class variable (0 or 1)
     # Example Row: 6,148,72,35,0,33.6,0.627,50,1
     # the input dataset schema
-    DATASET_COLUMNS = OrderedDict({
-        '#preg': int,
-        'pgc_2h': int,
-        'diastolic_bp': int,
-        'tricep_skin_fold_mm': int,
-        'serum_insulin_2h': int,
-        'bmi': float,
-        'diabetes_pedigree': float,
-        'age': int,
-        'class': int,
-    })
+    DATASET_COLUMNS = OrderedDict(
+        {
+            "#preg": int,
+            "pgc_2h": int,
+            "diastolic_bp": int,
+            "tricep_skin_fold_mm": int,
+            "serum_insulin_2h": int,
+            "bmi": float,
+            "diabetes_pedigree": float,
+            "age": int,
+            "class": int,
+        }
+    )
     # the first 8 columns are features
-    FEATURE_COLUMNS = OrderedDict({k: v for k, v in DATASET_COLUMNS.items() if k != 'class'})
+    FEATURE_COLUMNS = OrderedDict({k: v for k, v in DATASET_COLUMNS.items() if k != "class"})
     # the last column is the class
-    CLASSES_COLUMNS = OrderedDict({'class': int})
+    CLASSES_COLUMNS = OrderedDict({"class": int})
+
+    MODELSER_JOBLIB = typing.TypeVar("joblib.dat")
 
     class XGBoostModelHyperparams(object):
         """
         These are the xgboost hyper parameters available in scikit-learn library.
         """
 
-        def __init__(self, max_depth=3, learning_rate=0.1, n_estimators=100,
-                     objective="binary:logistic", booster='gbtree',
-                     n_jobs=1, **kwargs):
+        def __init__(
+            self,
+            max_depth=3,
+            learning_rate=0.1,
+            n_estimators=100,
+            objective="binary:logistic",
+            booster="gbtree",
+            n_jobs=1,
+            **kwargs
+        ):
             self.n_jobs = int(n_jobs)
             self.booster = booster
             self.objective = objective
@@ -65,10 +76,15 @@ def test_diabetes():
 
     # load data
     # Example file: https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv
-    @task(cache_version='1.0', cache=True, memory_limit="200Mi")
-    def split_traintest_dataset(dataset: FlyteFilePath["csv"], seed: int, test_split_ratio: float) -> (
-            FlyteSchema[FEATURE_COLUMNS], FlyteSchema[FEATURE_COLUMNS], FlyteSchema[CLASSES_COLUMNS],
-            FlyteSchema[CLASSES_COLUMNS]):
+    @task(cache_version="1.0", cache=True, memory_limit="200Mi")
+    def split_traintest_dataset(
+        dataset: FlyteFilePath[typing.TypeVar("csv")], seed: int, test_split_ratio: float
+    ) -> (
+        FlyteSchema[FEATURE_COLUMNS],
+        FlyteSchema[FEATURE_COLUMNS],
+        FlyteSchema[CLASSES_COLUMNS],
+        FlyteSchema[CLASSES_COLUMNS],
+    ):
         """
         Retrieves the training dataset from the given blob location and then splits it using the split ratio and returns the result
         This splitter is only for the dataset that has the format as specified in the example csv. The last column is assumed to be
@@ -87,9 +103,10 @@ def test_diabetes():
         # We will fake train test split. Just return the same dataset multiple times
         return x, x, y, y
 
-    @task(cache_version='1.0', cache=True, memory_limit="200Mi")
-    def fit(x: FlyteSchema[FEATURE_COLUMNS], y: FlyteSchema[CLASSES_COLUMNS],
-            hyperparams: dict) -> typing.NamedTuple("Outputs", model=FlyteFilePath[".joblib.dat"]):
+    @task(cache_version="1.0", cache=True, memory_limit="200Mi")
+    def fit(
+        x: FlyteSchema[FEATURE_COLUMNS], y: FlyteSchema[CLASSES_COLUMNS], hyperparams: dict
+    ) -> typing.NamedTuple("Outputs", model=FlyteFilePath[MODELSER_JOBLIB]):
         """
         This function takes the given input features and their corresponding classes to train a XGBClassifier.
         NOTE: We have simplified the number of hyper parameters we take for demo purposes
@@ -109,8 +126,8 @@ def test_diabetes():
             f.write("Some binary data")
         return fname
 
-    @task(cache_version='1.0', cache=True, memory_limit="200Mi")
-    def predict(x: FlyteSchema[FEATURE_COLUMNS], model_ser: FlyteFilePath[".joblib.dat"]) \
+    @task(cache_version="1.0", cache=True, memory_limit="200Mi")
+    def predict(x: FlyteSchema[FEATURE_COLUMNS], model_ser: FlyteFilePath[MODELSER_JOBLIB]) \
             -> FlyteSchema[CLASSES_COLUMNS]:
         """
         Given a any trained model, serialized using joblib (this method can be shared!) and features, this method returns
@@ -124,7 +141,7 @@ def test_diabetes():
         y_pred_df.round(0)
         return y_pred_df
 
-    @task(cache_version='1.0', cache=True, memory_limit="200Mi")
+    @task(cache_version="1.0", cache=True, memory_limit="200Mi")
     def score(predictions: FlyteSchema[CLASSES_COLUMNS], y: FlyteSchema[CLASSES_COLUMNS]) -> float:
         """
         Compares the predictions with the actuals and returns the accuracy score.
@@ -138,16 +155,18 @@ def test_diabetes():
 
     @workflow
     def diabetes_xgboost_model(
-            dataset: FlyteFilePath[".csv"],
-            # = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv",
-            test_split_ratio: float = 0.33, seed: int = 7) \
-            -> typing.NamedTuple("Outputs", model=FlyteFilePath[".bin"], accuracy=float):
+        dataset: FlyteFilePath[typing.TypeVar("csv")],
+        # = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv",
+        test_split_ratio: float = 0.33,
+        seed: int = 7,
+    ) -> typing.NamedTuple("Outputs", model=FlyteFilePath[MODELSER_JOBLIB], accuracy=float):
         """
         This pipeline trains an XGBoost mode for any given dataset that matches the schema as specified in
         https://github.com/jbrownlee/Datasets/blob/master/pima-indians-diabetes.names.
         """
-        x_train, x_test, y_train, y_test = split_traintest_dataset(dataset=dataset, seed=seed,
-                                                                   test_split_ratio=test_split_ratio)
+        x_train, x_test, y_train, y_test = split_traintest_dataset(
+            dataset=dataset, seed=seed, test_split_ratio=test_split_ratio
+        )
         model = fit(x=x_train, y=y_train, hyperparams=XGBoostModelHyperparams(max_depth=4).to_dict())
         predictions = predict(x=x_test, model_ser=model)
         return model, score(predictions=predictions, y=y_test)

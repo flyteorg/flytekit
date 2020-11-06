@@ -16,10 +16,10 @@ from flytekit.models.literals import Primitive
 
 
 def translate_inputs_to_literals(
-        ctx: FlyteContext,
-        input_kwargs: Dict[str, Any],
-        interface: _interface_models.TypedInterface,
-        native_input_types: Optional[Dict[str, type]],
+    ctx: FlyteContext,
+    input_kwargs: Dict[str, Any],
+    interface: _interface_models.TypedInterface,
+    native_input_types: Optional[Dict[str, type]],
 ) -> Dict[str, _literal_models.Literal]:
     """
     When calling a task inside a workflow, a user might do something like this.
@@ -44,7 +44,7 @@ def translate_inputs_to_literals(
     """
 
     def extract_value(
-            ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
+        ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
     ) -> _literal_models.Literal:
         if isinstance(input_val, list):
             if flyte_literal_type.collection_type is None:
@@ -58,8 +58,10 @@ def translate_inputs_to_literals(
             literals = [extract_value(ctx, v, sub_type, flyte_literal_type.collection_type) for v in input_val]
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literals))
         elif isinstance(input_val, dict):
-            if flyte_literal_type.map_value_type is None and\
-                    flyte_literal_type.simple != _type_models.SimpleType.STRUCT:
+            if (
+                flyte_literal_type.map_value_type is None
+                and flyte_literal_type.simple != _type_models.SimpleType.STRUCT
+            ):
                 raise Exception(f"Not a map type {flyte_literal_type} but got a map {input_val}")
             k_type, sub_type = DictTransformer.get_dict_types(val_type)
             if flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
@@ -197,10 +199,10 @@ class ComparisonExpression(object):
 
 class ConjunctionExpression(object):
     def __init__(
-            self,
-            lhs: Union[ComparisonExpression, "ConjunctionExpression"],
-            op: ConjunctionOps,
-            rhs: Union[ComparisonExpression, "ConjunctionExpression"],
+        self,
+        lhs: Union[ComparisonExpression, "ConjunctionExpression"],
+        op: ConjunctionOps,
+        rhs: Union[ComparisonExpression, "ConjunctionExpression"],
     ):
         self._lhs = lhs
         self._rhs = rhs
@@ -383,10 +385,10 @@ def create_task_output(promises: Optional[Union[List[Promise], Promise]]) -> Opt
 
 
 def binding_data_from_python_std(
-        ctx: _flyte_context.FlyteContext,
-        expected_literal_type: _type_models.LiteralType,
-        t_value: typing.Any,
-        t_value_type: type,
+    ctx: _flyte_context.FlyteContext,
+    expected_literal_type: _type_models.LiteralType,
+    t_value: typing.Any,
+    t_value_type: type,
 ) -> _literals_models.BindingData:
     # This handles the case where the incoming value is a workflow-level input
     if isinstance(t_value, _type_models.OutputReference):
@@ -411,18 +413,23 @@ def binding_data_from_python_std(
         binding_data = _literals_models.BindingData(collection=collection)
 
     elif isinstance(t_value, dict):
-        if expected_literal_type.map_value_type is None and expected_literal_type.simple != _type_models.SimpleType.STRUCT:
+        if (
+            expected_literal_type.map_value_type is None
+            and expected_literal_type.simple != _type_models.SimpleType.STRUCT
+        ):
             raise AssertionError(
-                f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}")
+                f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}"
+            )
         k_type, v_type = DictTransformer.get_dict_types(t_value_type)
         if expected_literal_type.simple == _type_models.SimpleType.STRUCT:
             lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
             return _literals_models.BindingData(scalar=lit.scalar)
         else:
             m = _literals_models.BindingDataMap(
-                bindings={k: binding_data_from_python_std(ctx, expected_literal_type.collection_type, v, v_type)
-                          for k, v in t_value.items()
-                          }
+                bindings={
+                    k: binding_data_from_python_std(ctx, expected_literal_type.collection_type, v, v_type)
+                    for k, v in t_value.items()
+                }
             )
 
         binding_data = _literals_models.BindingData(map=m)
@@ -438,11 +445,11 @@ def binding_data_from_python_std(
 
 
 def binding_from_python_std(
-        ctx: _flyte_context.FlyteContext,
-        var_name: str,
-        expected_literal_type: _type_models.LiteralType,
-        t_value: typing.Any,
-        t_value_type: type,
+    ctx: _flyte_context.FlyteContext,
+    var_name: str,
+    expected_literal_type: _type_models.LiteralType,
+    t_value: typing.Any,
+    t_value_type: type,
 ) -> _literals_models.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
     return _literals_models.Binding(var=var_name, binding=binding_data)
