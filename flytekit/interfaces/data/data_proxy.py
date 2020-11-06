@@ -174,7 +174,7 @@ class Data(object):
 class FileAccessProvider(object):
     def __init__(
         self,
-        local_sandbox_dir: os.PathLike,
+        local_sandbox_dir: Union[str, os.PathLike],
         remote_proxy: Union[_s3proxy.AwsS3Proxy, _gcs_proxy.GCSProxy, None] = None,
     ):
 

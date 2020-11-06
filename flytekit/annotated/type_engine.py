@@ -432,7 +432,7 @@ class FlyteFilePathTransformer(TypeTransformer[flyte_typing.FlyteFilePath]):
             if remote_path is not None:
                 ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
             meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))
-            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
+            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path or source_path)))
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[flyte_typing.FlyteFilePath]
@@ -448,7 +448,7 @@ class FlyteFilePathTransformer(TypeTransformer[flyte_typing.FlyteFilePath]):
         local_path = ctx.file_access.get_random_local_path()
 
         def _downloader():
-            return ctx.file_access.get_data(lv.scalar.blob.uri, local_path, is_multipart=False)
+            return ctx.file_access.get_data(uri, local_path, is_multipart=False)
 
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
         ff = flyte_typing.FlyteFilePath[expected_format](local_path, _downloader)

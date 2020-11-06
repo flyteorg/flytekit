@@ -571,12 +571,11 @@ def test_file_type_in_workflow_with_bad_format():
         assert fh.read() == "Hello World\n"
 
 
-def test_more_file_handling():
+def test_file_handling_remote_default_wf_input():
     SAMPLE_DATA = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
 
     @task
     def t1(fname: os.PathLike) -> int:
-        print(f"File: {fname}")
         with open(fname, "r") as fh:
             x = len(fh.readlines())
 
@@ -587,54 +586,101 @@ def test_more_file_handling():
         length = t1(fname=fname)
         return length
 
-    assert my_wf._native_interface.inputs_with_defaults['fname'][1] == SAMPLE_DATA
+    assert my_wf._native_interface.inputs_with_defaults["fname"][1] == SAMPLE_DATA
+    sample_lp = flytekit.LaunchPlan.create("test_launch_plan", my_wf)
+    assert sample_lp.parameters.parameters['fname'].default.scalar.blob.uri == SAMPLE_DATA
 
-    # fs = FileAccessProvider(local_sandbox_dir="/tmp/flytetesting")
-    # with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
+
+def test_file_handling_local_file_gets_copied():
+    @task
+    def t1() -> flytekit_typing.FlyteFilePath:
+        # Use this test file itself, since we know it exists.
+        return __file__
+
+    @workflow
+    def my_wf() -> flytekit_typing.FlyteFilePath:
+        return t1()
+
+    random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
+    fs = FileAccessProvider(local_sandbox_dir=random_dir)
+    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
+        top_level_files = os.listdir(random_dir)
+        assert len(top_level_files) == 1  # the mock_remote folder
+
+        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
+        assert len(mock_remote_files) == 0  # the mock_remote folder itself is empty
+
+        x = my_wf()
+
+        # After running, this test file should've been copied to the mock remote location.
+        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
+        assert len(mock_remote_files) == 1
+        # File should've been copied to the mock remote folder
+        assert x.path.startswith(random_dir)
 
 
-#
-#     @task
-#     def t12(
-#         fname: flytekit_typing.FlyteFilePath[
-#             "csv"
-#         ] = "/some/local/pima-indians-diabetes.data.csv",
-#     ) -> int:
-#         # This should copy to s3
-#         with open(fname, "r") as fh:
-#             ...
-#         return 3
-#
-#     @task
-#     def t2() -> flytekit_typing.FlyteFilePath:
-#         # I want to download a copy of blah, store it in s3 and return the new path in the literal
-#         return "https://raw.github.com/blah"
-#
-#     @task
-#     def t3() -> flytekit_typing.FlyteFilePath:
-#         # I don't want to download a copy of blah, I want this path in the literal.
-#         return "https://raw.github.com/blah"
-#
-#     @task
-#     def t4() -> flytekit_typing.FlyteFilePath:
-#         # Upload this to S3, the downstream task will read it from S3
-#         return "/opt/some/new/file"
-#
-#     @task
-#     def t5() -> flytekit_typing.FlyteFilePath:
-#         # Don't upload this to s3, the next task that takes this output relies on this exact path.
-#         return "/opt/some/file/in/the/container"
-#
-#     @task
-#     def t6(
-#         fname: flytekit_typing.FlyteFilePath[
-#             "csv"
-#         ] = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv",
-#     ) -> int:
-#         with open(fname, "r") as fh:
-#             ...
-#         return 3
-#
+def test_file_handling_local_file_gets_force_no_copy():
+    @task
+    def t1() -> flytekit_typing.FlyteFilePath:
+        # Use this test file itself, since we know it exists.
+        return flytekit_typing.FlyteFilePath(__file__, remote_path=False)
+
+    @workflow
+    def my_wf() -> flytekit_typing.FlyteFilePath:
+        return t1()
+
+    random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
+    fs = FileAccessProvider(local_sandbox_dir=random_dir)
+    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
+        top_level_files = os.listdir(random_dir)
+        assert len(top_level_files) == 1  # the mock_remote folder
+
+        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
+        assert len(mock_remote_files) == 0  # the mock_remote folder itself is empty
+
+        workflow_output = my_wf()
+
+        # After running, this test file should've been copied to the mock remote location.
+        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
+        assert len(mock_remote_files) == 0
+
+        # Because Flyte doesn't presume to handle a uri that look like a raw path, the path that is returned is
+        # the original.
+        assert workflow_output.path == __file__
+
+
+def test_file_handling_remote_file_handling():
+    SAMPLE_DATA = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
+
+    @task
+    def t1() -> flytekit_typing.FlyteFilePath:
+        return SAMPLE_DATA
+
+    @workflow
+    def my_wf() -> flytekit_typing.FlyteFilePath:
+        return t1()
+
+    random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
+    print(f"dir: {random_dir}")
+    fs = FileAccessProvider(local_sandbox_dir=random_dir)
+    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
+        top_level_files = os.listdir(random_dir)
+        assert len(top_level_files) == 1  # the mock_remote folder
+
+        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
+        assert len(mock_remote_files) == 0  # the mock_remote folder itself is empty
+
+        workflow_output = my_wf()
+
+        # After running the mock remote dir should still be empty, since the workflow_output has not been used
+        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
+        assert len(mock_remote_files) == 0
+
+        # While the literal returned by t1 does contain the web address as the uri, because it's a remote address,
+        # flytekit will translate it back into a FlyteFile object on the local drive (but not download it)
+        assert workflow_output.path.startswith(random_dir)
+        # But the remote source should still be the https address
+        assert workflow_output.remote_source == SAMPLE_DATA
 
 
 def test_wf1_df():
