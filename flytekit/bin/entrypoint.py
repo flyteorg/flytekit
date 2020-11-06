@@ -104,12 +104,12 @@ _test = _click.option("--test", is_flag=True)
 
 
 @_pass_through.command("pyflyte-execute")
-@_task_module_option
-@_task_name_option
-@_inputs_option
-@_output_prefix_option
-@_raw_output_date_prefix_option
-@_test
+@_click.option("--task-module", required=True)
+@_click.option("--task-name", required=True)
+@_click.option("--inputs", required=True)
+@_click.option("--output-prefix", required=True)
+@_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--test", is_flag=True)
 def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
     _click.echo(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
@@ -122,38 +122,15 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
 
 
 @_pass_through.command("pyflyte-fast-execute")
-@_task_module_option
-@_task_name_option
-@_inputs_option
-@_output_prefix_option
-@_raw_output_date_prefix_option
-@_test
 @_click.option("--additional-distribution", required=False)
-@_click.option("--virtual-env", multiple=True, help="Virtual envs to invoke the command with")
-def fast_execute_task_cmd(
-    task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test, additional_distribution, virtual_env
-):
+@_click.argument("task-execute-cmd", nargs=-1, type=_click.UNPROCESSED)
+def fast_execute_task_cmd(additional_distribution, task_execute_cmd):
     if additional_distribution is not None:
         _download_distribution(additional_distribution, _pathlib.Path(_os.getcwd()))
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    cmd = list(virtual_env) + [
-        "pyflyte-execute",
-        "--task-module",
-        task_module,
-        "--task-name",
-        task_name,
-        "--inputs",
-        inputs,
-        "--output-prefix",
-        output_prefix,
-        "--raw-output-data-prefix",
-        raw_output_data_prefix,
-    ]
-    if test:
-        cmd.append("--test")
-    _os.system(" ".join(cmd))
+    _os.system(" ".join(task_execute_cmd))
 
 
 if __name__ == "__main__":
