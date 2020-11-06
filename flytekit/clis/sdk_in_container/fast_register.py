@@ -84,7 +84,16 @@ def fast_register_tasks_only(
 @click.pass_context
 def fast_register(ctx, test=None):
     """
-    Run registration steps for the workflows in this container.
+    Run registration steps for the Flyte entities in this container. This is an optimization to avoid the conventional
+    container build and upload cycle. This can be useful for fast iteration when making code changes. If you do need
+    to change the container itself (e.g. by adding a new dependency/import) you must rebuild and upload a container.
+
+    Caveats: Your flyte config must specify a fast registration dir like so:
+    [sdk]
+    fast_registration_dir=s3://my-s3-bucket/dir
+
+    **and** ensure that the role specified in [auth] section of your config has read access to this remote location.
+    Furhtermore, the role you assume to call fast-register must have **write** permission to this remote location.
 
     Run with the --test switch for a dry run to see what will be registered.  A default launch plan will also be
     created, if a role can be found in the environment variables.

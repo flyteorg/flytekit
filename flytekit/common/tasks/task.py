@@ -183,13 +183,7 @@ class SdkTask(
 
         original_container = self.container
         container = _copy.deepcopy(original_container)
-        args = container.args
-        for idx, arg in enumerate(container.args):
-            if arg == "pyflyte-execute":
-                args[idx] = "pyflyte-fast-execute"
-        args.extend(["--additional-distribution", additional_distribution])
-        for virtual_env in _sdk_config.SDK_PYTHON_VENV.get():
-            args.extend(["--virtual-env", virtual_env])
+        args = ["pyflyte-fast-execute", "--additional-distribution", additional_distribution, "--"] + container.args
         container._args = args
         self._container = container
 
