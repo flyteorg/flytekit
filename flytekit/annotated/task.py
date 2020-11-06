@@ -5,7 +5,7 @@ import inspect
 import re
 from abc import abstractmethod
 from enum import Enum
-from typing import Any, Callable, DefaultDict, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
 import flytekit.annotated.promise
 import flytekit.annotated.type_engine
@@ -416,7 +416,10 @@ class ContainerTask(PythonTask):
         )
 
 
-class PythonFunctionTask(PythonTask):
+T = TypeVar("T")
+
+
+class PythonFunctionTask(PythonTask, Generic[T]):
     """
     A Python Function task should be used as the base for all extensions that have a python function.
     This base has an interesting property, where it will auto configure the image and image version to be
@@ -425,6 +428,7 @@ class PythonFunctionTask(PythonTask):
 
     def __init__(
         self,
+        task_config: T,
         task_function: Callable,
         metadata: _task_model.TaskMetadata,
         ignore_input_vars: List[str] = None,
@@ -443,6 +447,7 @@ class PythonFunctionTask(PythonTask):
             **kwargs,
         )
         self._task_function = task_function
+        self._task_config = task_config
 
     def execute(self, **kwargs) -> Any:
         return self._task_function(**kwargs)
@@ -450,6 +455,10 @@ class PythonFunctionTask(PythonTask):
     @property
     def native_interface(self) -> Interface:
         return self._native_interface
+
+    @property
+    def task_config(self) -> T:
+        return self._task_config
 
     def get_container(self) -> _task_model.Container:
         settings = FlyteContext.current_context().registration_settings
@@ -472,9 +481,16 @@ class PythonFunctionTask(PythonTask):
         )
 
 
-class PysparkFunctionTask(PythonFunctionTask):
-    def __init__(self, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
+class Spark(object):
+    pass
+
+
+class PysparkFunctionTask(PythonFunctionTask[Spark]):
+    def __init__(
+        self, task_config: Spark, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs
+    ):
         super(PysparkFunctionTask, self).__init__(
+            task_config=task_config,
             task_type="spark",
             task_function=task_function,
             metadata=metadata,
@@ -606,9 +622,27 @@ class SQLTask(PythonTask):
         return None
 
 
-class DynamicWorkflowTask(PythonFunctionTask):
-    def __init__(self, dynamic_workflow_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs):
-        super().__init__(dynamic_workflow_function, metadata, task_type="dynamic-task", *args, **kwargs)
+class _Dynamic(object):
+    pass
+
+
+class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
+    def __init__(
+        self,
+        task_config: _Dynamic,
+        dynamic_workflow_function: Callable,
+        metadata: _task_model.TaskMetadata,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(
+            task_config=task_config,
+            task_function=dynamic_workflow_function,
+            metadata=metadata,
+            task_type="dynamic-task",
+            *args,
+            **kwargs,
+        )
 
     def compile_into_workflow(
         self, ctx: FlyteContext, **kwargs
@@ -675,15 +709,28 @@ class DynamicWorkflowTask(PythonFunctionTask):
             return self.compile_into_workflow(ctx, **kwargs)
 
 
-TaskTypePlugins: DefaultDict[str, Type[PythonFunctionTask]] = collections.defaultdict(
-    lambda: PythonFunctionTask,
-    {
-        "python_task": PythonFunctionTask,
-        "task": PythonFunctionTask,
-        "spark": PysparkFunctionTask,
-        "_dynamic": DynamicWorkflowTask,
-    },
-)
+class TaskPlugins(object):
+    _PYTHONFUNCTION_TASK_PLUGINS: Dict[type, Type[PythonFunctionTask]] = {}
+
+    @classmethod
+    def register_pythontask_plugin(cls, plugin_config_type: type, plugin: Type[PythonFunctionTask]):
+        if plugin_config_type in cls._PYTHONFUNCTION_TASK_PLUGINS:
+            found = cls._PYTHONFUNCTION_TASK_PLUGINS[plugin_config_type]
+            if found == plugin:
+                return
+            raise TypeError(
+                f"Requesting to register plugin {plugin} - collides with existing plugin {found}"
+                f" for type {plugin_config_type}"
+            )
+
+        cls._PYTHONFUNCTION_TASK_PLUGINS[plugin_config_type] = plugin
+
+    @classmethod
+    def find_pythontask_plugin(cls, plugin_config_type: type) -> Type[PythonFunctionTask]:
+        if plugin_config_type in cls._PYTHONFUNCTION_TASK_PLUGINS:
+            return cls._PYTHONFUNCTION_TASK_PLUGINS[plugin_config_type]
+        # Defaults to returning Base PythonFunctionTask
+        return PythonFunctionTask
 
 
 class Resources(object):
@@ -715,7 +762,7 @@ def metadata(
 
 def task(
     _task_function: Callable = None,
-    task_type: str = "",
+    task_config: Any = None,
     cache: bool = False,
     cache_version: str = "",
     retries: int = 0,
@@ -736,7 +783,9 @@ def task(
 
         _metadata = metadata(cache, cache_version, retries, interruptible, deprecated, _timeout)
 
-        task_instance = TaskTypePlugins[task_type](fn, _metadata, *args, **kwargs)
+        task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
+            task_config, fn, _metadata, *args, **kwargs
+        )
 
         return task_instance
 
@@ -746,4 +795,12 @@ def task(
         return wrapper
 
 
-dynamic = functools.partial(task, task_type="_dynamic")
+dynamic = functools.partial(task, task_config=_Dynamic())
+
+
+def _load_default_plugins():
+    TaskPlugins.register_pythontask_plugin(Spark, PysparkFunctionTask)
+    TaskPlugins.register_pythontask_plugin(_Dynamic, DynamicWorkflowTask)
+
+
+_load_default_plugins()
