@@ -588,7 +588,7 @@ def test_file_handling_remote_default_wf_input():
 
     assert my_wf._native_interface.inputs_with_defaults["fname"][1] == SAMPLE_DATA
     sample_lp = flytekit.LaunchPlan.create("test_launch_plan", my_wf)
-    assert sample_lp.parameters.parameters['fname'].default.scalar.blob.uri == SAMPLE_DATA
+    assert sample_lp.parameters.parameters["fname"].default.scalar.blob.uri == SAMPLE_DATA
 
 
 def test_file_handling_local_file_gets_copied():
@@ -603,7 +603,7 @@ def test_file_handling_local_file_gets_copied():
 
     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
     fs = FileAccessProvider(local_sandbox_dir=random_dir)
-    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
+    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs):
         top_level_files = os.listdir(random_dir)
         assert len(top_level_files) == 1  # the mock_remote folder
 
@@ -631,7 +631,7 @@ def test_file_handling_local_file_gets_force_no_copy():
 
     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
     fs = FileAccessProvider(local_sandbox_dir=random_dir)
-    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
+    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs):
         top_level_files = os.listdir(random_dir)
         assert len(top_level_files) == 1  # the mock_remote folder
 
@@ -663,7 +663,7 @@ def test_file_handling_remote_file_handling():
     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
     print(f"dir: {random_dir}")
     fs = FileAccessProvider(local_sandbox_dir=random_dir)
-    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
+    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs):
         top_level_files = os.listdir(random_dir)
         assert len(top_level_files) == 1  # the mock_remote folder
 
@@ -681,7 +681,6 @@ def test_file_handling_remote_file_handling():
         assert workflow_output.path.startswith(random_dir)
         # But the remote source should still be the https address
         assert workflow_output.remote_source == SAMPLE_DATA
-
 
 
 def test_wf1_df():

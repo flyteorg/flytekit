@@ -6,7 +6,6 @@ import mimetypes
 import os
 import typing
 from abc import ABC, abstractmethod
-from typing import Type, Union
 from enum import Enum
 from typing import Type
 
