@@ -1,3 +1,4 @@
+import copy as _copy
 from inspect import getfullargspec as _getargspec
 
 import six as _six
@@ -272,6 +273,7 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
             ),
         )
         self.id._name = "{}.{}".format(self.task_module, self.task_function_name)
+        self._has_fast_registered = False
 
     _banned_inputs = {}
     _banned_outputs = {}
@@ -419,6 +421,32 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
                 literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
             )
         }
+
+    @_exception_scopes.system_entry_point
+    def fast_register(self, project, domain, name, digest, additional_distribution) -> str:
+        """
+        :param Text project: The project in which to register this task.
+        :param Text domain: The domain in which to register this task.
+        :param Text name: The name to give this task.
+        :param Text digest: The version in which to register this task.
+        :param Text additional_distribution: User-specified location for remote source code distribution.
+        :rtype: Text: Registered identifier.
+        """
+
+        original_container = self.container
+        container = _copy.deepcopy(original_container)
+        args = ["pyflyte-fast-execute", "--additional-distribution", additional_distribution, "--"] + container.args
+        container._args = args
+        self._container = container
+
+        try:
+            registered_id = self.register(project, domain, name, digest)
+        except Exception:
+            self._container = original_container
+            raise
+        self._has_fast_registered = True
+        self._container = original_container
+        return str(registered_id)
 
     def _get_container_definition(
         self,
