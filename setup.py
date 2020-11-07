@@ -1,13 +1,13 @@
 from setuptools import find_packages, setup  # noqa
 
-import plugins
+import plugins  # noqa: F401
 from tools.lazy_loader import LazyLoadPlugin  # noqa
 
 extras_require = LazyLoadPlugin.get_extras_require()
 
 setup(
     name="flytekit",
-    version='1.0.0a0',
+    version="1.0.0a0",
     maintainer="Lyft",
     maintainer_email="flyte-eng@lyft.com",
     packages=find_packages(exclude=["tests*"]),

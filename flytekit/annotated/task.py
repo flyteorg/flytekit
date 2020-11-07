@@ -31,7 +31,6 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
-from flytekit.models.core import workflow as _workflow_model
 from flytekit.sdk.spark_types import SparkType
 
 
@@ -731,19 +730,14 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
 
 class Reference(object):
     def __init__(
-        self,
-        project: str,
-        domain: str,
-        name: str,
-        version: str,
-        *args,
-            **kwargs,
+        self, project: str, domain: str, name: str, version: str, *args, **kwargs,
     ):
-        self._id = _identifier_model.Identifier(_identifier_model.ResourceType.TASK, project,domain, name, version)
+        self._id = _identifier_model.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, version)
 
     @property
     def id(self) -> _identifier_model.Identifier:
         return self._id
+
 
 class ReferenceTask(PythonTask):
     """
@@ -888,9 +882,11 @@ def task(
 
 dynamic = functools.partial(task, task_config=_Dynamic())
 
+
 def _load_default_plugins():
     TaskPlugins.register_pythontask_plugin(Spark, PysparkFunctionTask)
     TaskPlugins.register_pythontask_plugin(_Dynamic, DynamicWorkflowTask)
     TaskPlugins.register_pythontask_plugin(Reference, ReferenceTask)
+
 
 _load_default_plugins()

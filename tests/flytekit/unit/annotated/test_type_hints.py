@@ -6,14 +6,12 @@ import pandas
 import pytest
 
 import flytekit
-from flytekit import ContainerTask, SQLTask, dynamic, maptask, metadata, task
 from flytekit import typing as flytekit_typing
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import kwtypes
-from flytekit.annotated.task import ContainerTask, Spark, SQLTask, dynamic, kwtypes, maptask, metadata, task, Reference
+from flytekit.annotated.task import ContainerTask, Reference, Spark, SQLTask, dynamic, kwtypes, maptask, metadata, task
 from flytekit.annotated.testing import task_mock
 from flytekit.annotated.type_engine import FlyteSchema, RestrictedTypeError, SchemaOpenMode, TypeEngine
 from flytekit.annotated.workflow import workflow
@@ -956,7 +954,14 @@ def test_wf_typed_schema():
 
 
 def test_ref():
-    @task(task_config=Reference(project="flytesnacks", domain="development", name="recipes.aaa.simple.join_strings", version="553018f39e519bdb2597b652639c30ce16b99c79"))
+    @task(
+        task_config=Reference(
+            project="flytesnacks",
+            domain="development",
+            name="recipes.aaa.simple.join_strings",
+            version="553018f39e519bdb2597b652639c30ce16b99c79",
+        )
+    )
     def ref_t1(a: typing.List[str]) -> str:
         ...
 
@@ -986,7 +991,14 @@ def test_ref():
 
 
 def test_ref_task_more():
-    @task(task_config=Reference(project="flytesnacks", domain="development", name="recipes.aaa.simple.join_strings", version="553018f39e519bdb2597b652639c30ce16b99c79"))
+    @task(
+        task_config=Reference(
+            project="flytesnacks",
+            domain="development",
+            name="recipes.aaa.simple.join_strings",
+            version="553018f39e519bdb2597b652639c30ce16b99c79",
+        )
+    )
     def ref_t1(a: typing.List[str]) -> str:
         ...
 
