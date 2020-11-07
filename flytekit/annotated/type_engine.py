@@ -31,7 +31,7 @@ from flytekit.models.literals import (
     Schema,
 )
 from flytekit.models.types import LiteralType, SchemaType, SimpleType
-from flytekit.plugins import pandas
+from plugins import pandas
 
 T = typing.TypeVar("T")
 

@@ -1,6 +1,7 @@
 from setuptools import find_packages, setup  # noqa
 
-from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
+import plugins
+from tools.lazy_loader import LazyLoadPlugin  # noqa
 
 extras_require = LazyLoadPlugin.get_extras_require()
 

@@ -17,7 +17,7 @@ from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models.core import identifier as _identifier
-from flytekit.plugins import flyteidl as _lazy_flyteidl
+from plugins import flyteidl as _lazy_flyteidl
 from flytekit.sdk.spark_types import SparkType as _spark_type
 
 
