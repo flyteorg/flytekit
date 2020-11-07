@@ -58,18 +58,19 @@ def translate_inputs_to_literals(
             literals = [extract_value(ctx, v, sub_type, flyte_literal_type.collection_type) for v in input_val]
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literals))
         elif isinstance(input_val, dict):
-            if flyte_literal_type.map_value_type is None:
+            if (
+                flyte_literal_type.map_value_type is None
+                and flyte_literal_type.simple != _type_models.SimpleType.STRUCT
+            ):
                 raise Exception(f"Not a map type {flyte_literal_type} but got a map {input_val}")
-            try:
-                k_type, sub_type = DictTransformer.get_dict_types(val_type)
-            except ValueError:
-                if len(input_val) == 0:
-                    raise
-                sub_type = type(input_val[0])
-            literals = {
-                k: extract_value(ctx, v, sub_type, flyte_literal_type.map_value_type) for k, v in input_val.items()
-            }
-            return _literal_models.Literal(map=_literal_models.LiteralMap(literals=literals))
+            k_type, sub_type = DictTransformer.get_dict_types(val_type)
+            if flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
+                return TypeEngine.to_literal(ctx, input_val, type(input_val), flyte_literal_type)
+            else:
+                literals = {
+                    k: extract_value(ctx, v, sub_type, flyte_literal_type.map_value_type) for k, v in input_val.items()
+                }
+                return _literal_models.Literal(map=_literal_models.LiteralMap(literals=literals))
         elif isinstance(input_val, Promise):
             # In the example above, this handles the "in2=a" type of argument
             return input_val.val
@@ -390,16 +391,16 @@ def binding_data_from_python_std(
 ) -> _literals_models.BindingData:
     # This handles the case where the incoming value is a workflow-level input
     if isinstance(t_value, _type_models.OutputReference):
-        binding_data = _literals_models.BindingData(promise=t_value)
+        return _literals_models.BindingData(promise=t_value)
 
     # This handles the case where the given value is the output of another task
     elif isinstance(t_value, Promise):
         if not t_value.is_ready:
-            binding_data = _literals_models.BindingData(promise=t_value.ref)
+            return _literals_models.BindingData(promise=t_value.ref)
 
     elif isinstance(t_value, list):
         if expected_literal_type.collection_type is None:
-            raise Exception(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
+            raise AssertionError(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
 
         sub_type = ListTransformer.get_sub_type(t_value_type)
         collection = _literals_models.BindingDataCollection(
@@ -408,19 +409,35 @@ def binding_data_from_python_std(
             ]
         )
 
-        binding_data = _literals_models.BindingData(collection=collection)
+        return _literals_models.BindingData(collection=collection)
 
     elif isinstance(t_value, dict):
-        raise Exception("not yet handled - haytham will implement")
+        if (
+            expected_literal_type.map_value_type is None
+            and expected_literal_type.simple != _type_models.SimpleType.STRUCT
+        ):
+            raise AssertionError(
+                f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}"
+            )
+        k_type, v_type = DictTransformer.get_dict_types(t_value_type)
+        if expected_literal_type.simple == _type_models.SimpleType.STRUCT:
+            lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
+            return _literals_models.BindingData(scalar=lit.scalar)
+        else:
+            m = _literals_models.BindingDataMap(
+                bindings={
+                    k: binding_data_from_python_std(ctx, expected_literal_type.map_value_type, v, v_type)
+                    for k, v in t_value.items()
+                }
+            )
+
+        return _literals_models.BindingData(map=m)
 
     # This is the scalar case - e.g. my_task(in1=5)
-    else:
-        # Question: Haytham/Ketan - Is it okay for me to rely on the expected idl type, which comes from the task's
-        #   interface, to derive the scalar value?
-        scalar = TypeEngine.to_literal(ctx, t_value, t_value_type, expected_literal_type).scalar
-        binding_data = _literals_models.BindingData(scalar=scalar)
-
-    return binding_data
+    # Question: Haytham/Ketan - Is it okay for me to rely on the expected idl type, which comes from the task's
+    #   interface, to derive the scalar value?
+    scalar = TypeEngine.to_literal(ctx, t_value, t_value_type, expected_literal_type).scalar
+    return _literals_models.BindingData(scalar=scalar)
 
 
 def binding_from_python_std(

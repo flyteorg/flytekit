@@ -13,6 +13,7 @@ from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import kwtypes
+from flytekit.annotated.task import ContainerTask, Spark, SQLTask, dynamic, kwtypes, maptask, metadata, task, Reference
 from flytekit.annotated.testing import task_mock
 from flytekit.annotated.type_engine import FlyteSchema, RestrictedTypeError, SchemaOpenMode, TypeEngine
 from flytekit.annotated.workflow import workflow
@@ -282,7 +283,7 @@ def test_wf1_with_sql():
 
 
 def test_wf1_with_spark():
-    @task(task_type="spark")
+    @task(task_config=Spark())
     def my_spark(spark_session, a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         return a + 2, "world"
 
@@ -955,7 +956,7 @@ def test_wf_typed_schema():
 
 
 def test_ref():
-    @task(task_type="reference", project="flytesnacks", domain="development", name="recipes.aaa.simple.join_strings", version="553018f39e519bdb2597b652639c30ce16b99c79")
+    @task(task_config=Reference(project="flytesnacks", domain="development", name="recipes.aaa.simple.join_strings", version="553018f39e519bdb2597b652639c30ce16b99c79"))
     def ref_t1(a: typing.List[str]) -> str:
         ...
 
@@ -985,7 +986,7 @@ def test_ref():
 
 
 def test_ref_task_more():
-    @task(task_type="reference", project="flytesnacks", domain="development", name="recipes.aaa.simple.join_strings", version="553018f39e519bdb2597b652639c30ce16b99c79")
+    @task(task_config=Reference(project="flytesnacks", domain="development", name="recipes.aaa.simple.join_strings", version="553018f39e519bdb2597b652639c30ce16b99c79"))
     def ref_t1(a: typing.List[str]) -> str:
         ...
 
@@ -1000,3 +1001,40 @@ def test_ref_task_more():
     with task_mock(ref_t1) as mock:
         mock.return_value = "hello"
         assert wf1(in1=["hello", "world"]) == "hello"
+
+
+def test_dict_wf_with_constants():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: typing.Dict[str, str]) -> str:
+        return " ".join([v for k, v in a.items()])
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a)
+        d = t2(a={"key1": b, "key2": y})
+        return x, d
+
+    x = my_wf(a=5, b="hello")
+    assert x == (7, "hello world")
+
+
+def test_dict_wf_with_conversion():
+    @task
+    def t1(a: int) -> typing.Dict[str, str]:
+        return {"a": str(a)}
+
+    @task
+    def t2(a: dict) -> str:
+        print(f"HAHAH {a}")
+        return " ".join([v for k, v in a.items()])
+
+    @workflow
+    def my_wf(a: int) -> str:
+        return t2(a=t1(a=a))
+
+    with pytest.raises(TypeError):
+        my_wf(a=5)
