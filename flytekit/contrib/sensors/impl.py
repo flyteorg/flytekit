@@ -1,5 +1,5 @@
 from flytekit.contrib.sensors.base_sensor import Sensor as _Sensor
-from plugins import hmsclient as _hmsclient
+from flytekit.plugins import hmsclient as _hmsclient
 
 
 class _HiveSensor(_Sensor):

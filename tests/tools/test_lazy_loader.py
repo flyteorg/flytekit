@@ -1,7 +1,7 @@
 import pytest
 import six
 
-from tools import lazy_loader
+from flytekit.tools import lazy_loader
 
 
 def test_lazy_loader_error_message():

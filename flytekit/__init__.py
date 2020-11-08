@@ -1,4 +1,3 @@
-import plugins  # noqa: F401
 from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.launch_plan import LaunchPlan
 from flytekit.annotated.task import ContainerTask, SQLTask, dynamic, maptask, metadata, task

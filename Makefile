@@ -33,8 +33,6 @@ lint: ## Run linters
 .PHONY: test
 test: lint ## Run tests
 	pytest tests/flytekit/unit -k "not test_task"
-	pytest tests/tools
-	pytest tests/plugins
 	pytest tests/scripts
 	shellcheck **/*.sh
 

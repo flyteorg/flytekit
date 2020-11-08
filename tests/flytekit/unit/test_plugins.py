@@ -1,7 +1,7 @@
 import pytest
 
-import plugins
-from tools import lazy_loader
+from flytekit import plugins
+from flytekit.tools import lazy_loader
 
 
 @pytest.mark.run(order=0)

@@ -1,6 +1,6 @@
 import mock
 
-from tools import subprocess
+from flytekit.tools import subprocess
 
 
 class _MockProcess(object):

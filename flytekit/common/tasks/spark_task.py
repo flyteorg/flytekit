@@ -22,7 +22,7 @@ from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_models
-from plugins import pyspark as _pyspark
+from flytekit.plugins import pyspark as _pyspark
 
 
 class GlobalSparkContext(object):
