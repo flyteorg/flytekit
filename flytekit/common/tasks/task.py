@@ -63,8 +63,6 @@ class SdkTask(
             container=container,
         )
 
-        self._has_registered = False
-
     @property
     def interface(self):
         """
