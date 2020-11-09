@@ -1478,6 +1478,36 @@ def register_project(identifier, name, description, host, insecure):
     _click.echo("Registered project [id: {}, name: {}, description: {}]".format(identifier, name, description))
 
 
+@_flyte_cli.command("archive-project", cls=_FlyteSubCommand)
+@_project_identifier_option
+@_host_option
+@_insecure_option
+def archive_project(identifier, host, insecure):
+    """
+    Archive a project.
+
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client.update_project(_Project.archived_project(identifier))
+    _click.echo("Archived project [id: {}]".format(identifier))
+
+
+@_flyte_cli.command("activate-project", cls=_FlyteSubCommand)
+@_project_identifier_option
+@_host_option
+@_insecure_option
+def activate_project(identifier, host, insecure):
+    """
+    Activate a project.
+
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client.update_project(_Project.active_project(identifier))
+    _click.echo("Activated project [id: {}]".format(identifier))
+
+
 def _extract_pair(identifier_file, object_file):
     """
     :param Text identifier_file:
