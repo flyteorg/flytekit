@@ -20,6 +20,7 @@ from flytekit.annotated.interface import (
 )
 from flytekit.annotated.node import create_and_link_node
 from flytekit.annotated.promise import Promise, create_task_output, translate_inputs_to_literals
+from flytekit.annotated.reference import TaskReference
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.annotated.workflow import Workflow
 from flytekit.common.exceptions import user as _user_exceptions
@@ -728,17 +729,6 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
             return self.compile_into_workflow(ctx, **kwargs)
 
 
-class Reference(object):
-    def __init__(
-        self, project: str, domain: str, name: str, version: str, *args, **kwargs,
-    ):
-        self._id = _identifier_model.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, version)
-
-    @property
-    def id(self) -> _identifier_model.Identifier:
-        return self._id
-
-
 class ReferenceTask(PythonTask):
     """
     fdsa
@@ -746,7 +736,7 @@ class ReferenceTask(PythonTask):
 
     def __init__(
         self,
-        task_config: Reference,
+        task_config: TaskReference,
         task_function: Callable,
         ignored_metadata: _task_model.TaskMetadata,
         *args,
@@ -769,7 +759,7 @@ class ReferenceTask(PythonTask):
         raise Exception("Remote reference tasks cannot be run locally. You must mock this out.")
 
     @property
-    def reference(self) -> Reference:
+    def reference(self) -> TaskReference:
         return self._reference
 
     @property
@@ -886,7 +876,7 @@ dynamic = functools.partial(task, task_config=_Dynamic())
 def _load_default_plugins():
     TaskPlugins.register_pythontask_plugin(Spark, PysparkFunctionTask)
     TaskPlugins.register_pythontask_plugin(_Dynamic, DynamicWorkflowTask)
-    TaskPlugins.register_pythontask_plugin(Reference, ReferenceTask)
+    TaskPlugins.register_pythontask_plugin(TaskReference, TaskReference)
 
 
 _load_default_plugins()

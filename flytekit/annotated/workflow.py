@@ -11,6 +11,7 @@ from flytekit.annotated.interface import (
     transform_interface_to_typed_interface,
     transform_signature_to_interface,
 )
+from flytekit.annotated.reference import WorkflowReference
 from flytekit.annotated.node import create_and_link_node
 from flytekit.annotated.promise import Promise, create_task_output
 from flytekit.annotated.type_engine import TypeEngine
@@ -284,11 +285,92 @@ class Workflow(object):
         return self._registerable_entity
 
 
-def workflow(_workflow_function=None):
+class ReferenceWorkflow(Workflow):
+    """
+    When you assign a name to a node.
+    * Any upstream node that is not assigned, recursively assign
+    * When you get the call to the constructor, keep in mind there may be duplicate nodes, because they all should
+      be wrapper nodes.
+    """
+
+    def __init__(self, workflow_function: Callable, reference: WorkflowReference):
+        self._name = reference.id.name
+        self._workflow_function = workflow_function
+        self._native_interface = transform_signature_to_interface(inspect.signature(workflow_function))
+        self._interface = transform_interface_to_typed_interface(self._native_interface)
+        self._reference = reference
+
+        # These will get populated on compile only
+        self._nodes = None
+        self._output_bindings: Optional[List[_literal_models.Binding]] = None
+
+        # This will get populated only at registration time, when we retrieve the rest of the environment variables like
+        # project/domain/version/image and anything else we might need from the environment in the future.
+        self._registerable_entity: Optional[_SdkWorkflow] = None
+
+        # TODO do we need this - can this not be in launchplan only?
+        #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or
+        #    we can re-evaluate.
+        self._input_parameters = None
+        FlyteEntities.entities.append(self)
+
+    @property
+    def reference(self) -> WorkflowReference:
+        return self._reference
+
+    def compile(self, **kwargs):
+        raise Exception("Cannot be compiled")
+
+    def execute(self, *args, **kwargs):
+        raise Exception("Cannot run reference workflow locally, must use mock.")
+
+    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, None]:
+        """
+        """
+        logger.info(f"Executing reference workflow {self._name}, ctx{ctx.execution_state.Mode}")
+
+        # This is done to support the invariant that Workflow local executions always work with Promise objects
+        # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
+        for k, v in kwargs.items():
+            if not isinstance(v, Promise):
+                t = self._native_interface.inputs[k]
+                kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
+
+        function_outputs = self.execute(**kwargs)
+
+        promises = _workflow_fn_outputs_to_promise(
+            ctx, self._native_interface.outputs, self.interface.outputs, function_outputs
+        )
+        return create_task_output(promises)
+
+    def get_registerable_entity(self) -> _SdkWorkflow:
+        settings = FlyteContext.current_context().registration_settings
+        if self._registerable_entity is not None:
+            return self._registerable_entity
+
+        self._registerable_entity = _SdkWorkflow(
+            nodes=[],  # Fake an empty list for nodes,
+            id=self.reference.id,
+            metadata=_workflow_model.WorkflowMetadata(),
+            metadata_defaults=_workflow_model.WorkflowMetadataDefaults(),
+            interface=self._interface,
+            output_bindings=self._output_bindings,
+        )
+        # Make sure we don't serialize this
+        self._registerable_entity._has_registered = True
+
+        return self._registerable_entity
+
+
+def workflow(_workflow_function=None, *args, reference: Optional[WorkflowReference] = None, **kwargs):
     # Unlike for tasks, where we can determine the entire structure of the task by looking at the function's signature,
     # workflows need to have the body of the function itself run at module-load time. This is because the body of the
     # workflow is what expresses the workflow structure.
     def wrapper(fn):
+        if reference:
+            workflow_instance = ReferenceWorkflow(fn)
+            return workflow_instance
+
         workflow_instance = Workflow(fn)
         workflow_instance.compile()
         return workflow_instance
