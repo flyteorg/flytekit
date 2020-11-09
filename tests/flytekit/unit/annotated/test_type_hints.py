@@ -6,8 +6,6 @@ import pandas
 import pytest
 
 import flytekit
-import flytekit.typing.flyte_file
-from flytekit import typing as flytekit_typing
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
@@ -22,6 +20,7 @@ from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.types import LiteralType, SimpleType
+from flytekit.typing.flyte_file import FlyteFile
 
 
 def test_default_wf_params_works():
@@ -555,14 +554,14 @@ def test_cant_use_normal_tuples():
 
 def test_file_type_in_workflow_with_bad_format():
     @task
-    def t1() -> flytekit.typing.flyte_file.FlyteFile["txt"]:
+    def t1() -> FlyteFile["txt"]:
         fname = "/tmp/flytekit_test"
         with open(fname, "w") as fh:
             fh.write("Hello World\n")
         return fname
 
     @workflow
-    def my_wf() -> flytekit.typing.flyte_file.FlyteFile["txt"]:
+    def my_wf() -> FlyteFile["txt"]:
         f = t1()
         return f
 
@@ -593,12 +592,12 @@ def test_file_handling_remote_default_wf_input():
 
 def test_file_handling_local_file_gets_copied():
     @task
-    def t1() -> flytekit.typing.flyte_file.FlyteFile:
+    def t1() -> FlyteFile:
         # Use this test file itself, since we know it exists.
         return __file__
 
     @workflow
-    def my_wf() -> flytekit.typing.flyte_file.FlyteFile:
+    def my_wf() -> FlyteFile:
         return t1()
 
     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
@@ -621,12 +620,12 @@ def test_file_handling_local_file_gets_copied():
 
 def test_file_handling_local_file_gets_force_no_copy():
     @task
-    def t1() -> flytekit.typing.flyte_file.FlyteFile:
+    def t1() -> FlyteFile:
         # Use this test file itself, since we know it exists.
-        return flytekit.typing.flyte_file.FlyteFile(__file__, remote_path=False)
+        return FlyteFile(__file__, remote_path=False)
 
     @workflow
-    def my_wf() -> flytekit.typing.flyte_file.FlyteFile:
+    def my_wf() -> FlyteFile:
         return t1()
 
     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
@@ -653,11 +652,11 @@ def test_file_handling_remote_file_handling():
     SAMPLE_DATA = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
 
     @task
-    def t1() -> flytekit.typing.flyte_file.FlyteFile:
+    def t1() -> FlyteFile:
         return SAMPLE_DATA
 
     @workflow
-    def my_wf() -> flytekit.typing.flyte_file.FlyteFile:
+    def my_wf() -> FlyteFile:
         return t1()
 
     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()

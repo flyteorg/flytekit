@@ -14,7 +14,6 @@ from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
 import flytekit.typing.flyte_file
-from flytekit import typing as flyte_typing
 from flytekit.annotated.context_manager import FlyteContext
 from flytekit.common.types import primitives as _primitives
 from flytekit.configuration import sdk
