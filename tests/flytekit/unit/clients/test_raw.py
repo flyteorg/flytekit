@@ -9,9 +9,13 @@ from flytekit.clis.auth.discovery import AuthorizationEndpoints as _Authorizatio
 from flytekit.configuration.creds import CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET
 
 
+@mock.patch("flytekit.clients.raw.RawSynchronousFlyteClient.force_auth_flow")
 @mock.patch("flytekit.clients.raw._admin_service")
 @mock.patch("flytekit.clients.raw._insecure_channel")
-def test_client_set_token(mock_channel, mock_admin):
+@mock.patch("flytekit.clients.raw._secure_channel")
+def test_client_set_token(mock_secure_channel, mock_channel, mock_admin, mock_force):
+    mock_force.return_value = True
+    mock_secure_channel.return_value = True
     mock_channel.return_value = True
     mock_admin.AdminServiceStub.return_value = True
     client = _RawSynchronousFlyteClient(url="a.b.com", insecure=True)

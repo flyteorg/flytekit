@@ -1,13 +1,15 @@
+from __future__ import annotations
+
 import importlib as _importlib
 import sys as _sys
 import types as _types
+from typing import List
 
 
 class LazyLoadPlugin(object):
-
     LAZY_LOADING_PLUGINS = {}
 
-    def __init__(self, plugin_name, plugin_requirements, related_modules):
+    def __init__(self, plugin_name, plugin_requirements, related_modules: List[_LazyLoadModule]):
         """
         :param Text plugin_name:
         :param list[Text] plugin_requirements:
@@ -39,7 +41,7 @@ class LazyLoadPlugin(object):
         return d
 
 
-def lazy_load_module(module):
+def lazy_load_module(module: str) -> _types.ModuleType:
     """
     :param Text module:
     :rtype: _types.ModuleType
@@ -54,7 +56,6 @@ def lazy_load_module(module):
 
 
 class _LazyLoadModule(_types.ModuleType):
-
     _ERROR_MSG_FMT = (
         "Attempting to use a plugin functionality that requires module "
         "`{module}`, but it couldn't be loaded. Please pip install at least one of {plugins} or "
@@ -109,7 +110,7 @@ class _LazyLoadModule(_types.ModuleType):
         return m
 
     @classmethod
-    def tag_with_plugin(cls, p):
+    def tag_with_plugin(cls, p: LazyLoadPlugin):
         """
         :param LazyLoadPlugin p:
         """

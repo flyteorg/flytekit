@@ -73,6 +73,7 @@ class SdkWorkflow(
             outputs=output_bindings,
         )
         self._sdk_nodes = nodes
+        self._has_registered = False
 
     @property
     def upstream_entities(self):

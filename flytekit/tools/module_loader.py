@@ -116,7 +116,7 @@ def iterate_registerable_entities_in_order(
     for m in iterate_modules(pkgs):
         for k in dir(m):
             o = m.__dict__[k]
-            if isinstance(o, _registerable.RegisterableEntity):
+            if isinstance(o, _registerable.RegisterableEntity) and not o.has_registered:
                 if o.instantiated_in == m.__name__:
                     entity_to_module_key[o] = (m, k)
                     if isinstance(o, _SdkRunnableWorkflow) and o.should_create_default_launch_plan:

@@ -1,13 +1,43 @@
 from setuptools import find_packages, setup  # noqa
 
-import flytekit  # noqa
-from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
+# from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
+# extras_require = LazyLoadPlugin.get_extras_require()
+extras_require = {
+    "spark": ["pyspark>=2.4.0,<3.0.0"],
+    "spark3": ["pyspark>=3.0.0"],
+    "sidecar": ["k8s-proto>=0.0.3,<1.0.0"],
+    "schema": ["numpy>=1.14.0,<2.0.0", "pandas>=0.22.0,<2.0.0", "pyarrow>=0.11.0,<1.0.0"],
+    "hive_sensor": ["hmsclient>=0.0.1,<1.0.0"],
+    "all-spark2.4": [
+        "pyspark>=2.4.0,<3.0.0",
+        "k8s-proto>=0.0.3,<1.0.0",
+        "numpy>=1.14.0,<2.0.0",
+        "pandas>=0.22.0,<2.0.0",
+        "pyarrow>=0.11.0,<1.0.0",
+        "hmsclient>=0.0.1,<1.0.0",
+    ],
+    "all-spark3": [
+        "pyspark>=3.0.0",
+        "k8s-proto>=0.0.3,<1.0.0",
+        "numpy>=1.14.0,<2.0.0",
+        "pandas>=0.22.0,<2.0.0",
+        "pyarrow>=0.11.0,<1.0.0",
+        "hmsclient>=0.0.1,<1.0.0",
+    ],
+    "all": [
+        "pyspark>=2.4.0,<3.0.0",
+        "k8s-proto>=0.0.3,<1.0.0",
+        "numpy>=1.14.0,<2.0.0",
+        "pandas>=0.22.0,<2.0.0",
+        "pyarrow>=0.11.0,<1.0.0",
+        "hmsclient>=0.0.1,<1.0.0",
+    ],
+}
 
-extras_require = LazyLoadPlugin.get_extras_require()
 
 setup(
     name="flytekit",
-    version=flytekit.__version__,
+    version="1.0.0a0",
     maintainer="Lyft",
     maintainer_email="flyte-eng@lyft.com",
     packages=find_packages(exclude=["tests*"]),

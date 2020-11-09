@@ -15,7 +15,6 @@ from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 
 
 class LocalWorkingDirectoryContext(object):
-
     _CONTEXTS = []
 
     def __init__(self, directory):
@@ -33,7 +32,6 @@ class LocalWorkingDirectoryContext(object):
 
 
 class _OutputDataContext(object):
-
     _CONTEXTS = [_local_file_proxy.LocalFileProxy(_sdk_config.LOCAL_SANDBOX.get())]
 
     def __init__(self, context):
@@ -63,7 +61,6 @@ class LocalDataContext(_OutputDataContext):
 
 
 class RemoteDataContext(_OutputDataContext):
-
     _CLOUD_PROVIDER_TO_PROXIES = {
         _constants.CloudProvider.AWS: _s3proxy.AwsS3Proxy,
         _constants.CloudProvider.GCP: _gcs_proxy.GCSProxy,
@@ -177,7 +174,7 @@ class Data(object):
 class FileAccessProvider(object):
     def __init__(
         self,
-        local_sandbox_dir: os.PathLike,
+        local_sandbox_dir: Union[str, os.PathLike],
         remote_proxy: Union[_s3proxy.AwsS3Proxy, _gcs_proxy.GCSProxy, None] = None,
     ):
 
@@ -203,7 +200,13 @@ class FileAccessProvider(object):
         # HTTP access
         self._http_proxy = _http_data_proxy.HttpFileProxy()
 
-    def _get_data_proxy_by_path(self, path):
+    @staticmethod
+    def is_remote(path: Union[str, os.PathLike]) -> bool:
+        if path.startswith("s3:/") or path.startswith("gs:/") or path.startswith("file:/") or path.startswith("http"):
+            return True
+        return False
+
+    def _get_data_proxy_by_path(self, path: Union[str, os.PathLike]):
         """
         :param Text path:
         :rtype: flytekit.interfaces.data.common.DataProxy
@@ -320,7 +323,7 @@ class FileAccessProvider(object):
                 )
             )
 
-    def put_data(self, local_path: str, remote_path: str, is_multipart=False):
+    def put_data(self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart=False):
         """
         The implication here is that we're always going to put data to the remote location, so we .remote to ensure
         we don't use the true local proxy if the remote path is a file://

@@ -8,7 +8,6 @@ from contextlib import contextmanager
 from enum import Enum
 from typing import Any, Dict, Generator, List, Optional
 
-from flytekit.annotated.node import Node
 from flytekit.clients import friendly as friendly_client  # noqa
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
@@ -81,6 +80,8 @@ class CompilationState(object):
           us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
           # TODO: Ketan to revisit this whole concept when we re-organize the new structure
         """
+        from flytekit.annotated.node import Node
+
         self._nodes: List[Node] = []
         self._old_prefix = ""
         self._prefix = prefix

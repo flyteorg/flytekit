@@ -6,7 +6,7 @@ import pandas as pd
 from flytekit.annotated.task import task
 from flytekit.annotated.type_engine import FlyteSchema
 from flytekit.annotated.workflow import workflow
-from flytekit.typing import FlyteFilePath
+from flytekit.typing.flyte_file import FlyteFile
 
 
 def test_diabetes():
@@ -78,7 +78,7 @@ def test_diabetes():
     # Example file: https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv
     @task(cache_version="1.0", cache=True, memory_limit="200Mi")
     def split_traintest_dataset(
-        dataset: FlyteFilePath[typing.TypeVar("csv")], seed: int, test_split_ratio: float
+        dataset: FlyteFile[typing.TypeVar("csv")], seed: int, test_split_ratio: float
     ) -> (
         FlyteSchema[FEATURE_COLUMNS],
         FlyteSchema[FEATURE_COLUMNS],
@@ -106,7 +106,7 @@ def test_diabetes():
     @task(cache_version="1.0", cache=True, memory_limit="200Mi")
     def fit(
         x: FlyteSchema[FEATURE_COLUMNS], y: FlyteSchema[CLASSES_COLUMNS], hyperparams: dict
-    ) -> typing.NamedTuple("Outputs", model=FlyteFilePath[MODELSER_JOBLIB]):
+    ) -> typing.NamedTuple("Outputs", model=FlyteFile[MODELSER_JOBLIB]):
         """
         This function takes the given input features and their corresponding classes to train a XGBClassifier.
         NOTE: We have simplified the number of hyper parameters we take for demo purposes
@@ -127,9 +127,7 @@ def test_diabetes():
         return fname
 
     @task(cache_version="1.0", cache=True, memory_limit="200Mi")
-    def predict(
-        x: FlyteSchema[FEATURE_COLUMNS], model_ser: FlyteFilePath[MODELSER_JOBLIB]
-    ) -> FlyteSchema[CLASSES_COLUMNS]:
+    def predict(x: FlyteSchema[FEATURE_COLUMNS], model_ser: FlyteFile[MODELSER_JOBLIB]) -> FlyteSchema[CLASSES_COLUMNS]:
         """
         Given a any trained model, serialized using joblib (this method can be shared!) and features, this method returns
         predictions.
@@ -156,11 +154,11 @@ def test_diabetes():
 
     @workflow
     def diabetes_xgboost_model(
-        dataset: FlyteFilePath[typing.TypeVar("csv")],
+        dataset: FlyteFile[typing.TypeVar("csv")],
         # = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv",
         test_split_ratio: float = 0.33,
         seed: int = 7,
-    ) -> typing.NamedTuple("Outputs", model=FlyteFilePath[MODELSER_JOBLIB], accuracy=float):
+    ) -> typing.NamedTuple("Outputs", model=FlyteFile[MODELSER_JOBLIB], accuracy=float):
         """
         This pipeline trains an XGBoost mode for any given dataset that matches the schema as specified in
         https://github.com/jbrownlee/Datasets/blob/master/pima-indians-diabetes.names.

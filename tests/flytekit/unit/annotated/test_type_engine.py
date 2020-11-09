@@ -20,7 +20,7 @@ from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
-from flytekit.typing import FlyteFilePath
+from flytekit.typing.flyte_file import FlyteFile
 
 
 def test_type_engine():
@@ -55,28 +55,28 @@ def test_type_resolution():
 
 
 def test_file_formats_getting_literal_type():
-    transformer = TypeEngine.get_transformer(FlyteFilePath)
+    transformer = TypeEngine.get_transformer(FlyteFile)
 
-    lt = transformer.get_literal_type(FlyteFilePath)
+    lt = transformer.get_literal_type(FlyteFile)
     assert lt.blob.format == ""
 
     # Works with formats that we define
-    lt = transformer.get_literal_type(FlyteFilePath["txt"])
+    lt = transformer.get_literal_type(FlyteFile["txt"])
     assert lt.blob.format == "txt"
 
-    lt = transformer.get_literal_type(FlyteFilePath[typing.TypeVar("jpg")])
+    lt = transformer.get_literal_type(FlyteFile[typing.TypeVar("jpg")])
     assert lt.blob.format == "jpg"
 
     # Empty default to the default
-    lt = transformer.get_literal_type(FlyteFilePath)
+    lt = transformer.get_literal_type(FlyteFile)
     assert lt.blob.format == ""
 
-    lt = transformer.get_literal_type(FlyteFilePath[typing.TypeVar(".png")])
+    lt = transformer.get_literal_type(FlyteFile[typing.TypeVar(".png")])
     assert lt.blob.format == "png"
 
 
 def test_file_format_getting_python_value():
-    transformer = TypeEngine.get_transformer(FlyteFilePath)
+    transformer = TypeEngine.get_transformer(FlyteFile)
 
     ctx = FlyteContext.current_context()
 
@@ -87,8 +87,8 @@ def test_file_format_getting_python_value():
         )
     )
 
-    pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFilePath["txt"])
-    assert isinstance(pv, FlyteFilePath)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile["txt"])
+    assert isinstance(pv, FlyteFile)
     assert pv.extension() == "txt"
 
 

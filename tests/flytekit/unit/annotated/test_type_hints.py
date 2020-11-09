@@ -5,14 +5,12 @@ import typing
 import pandas
 import pytest
 
-import flytekit.annotated.task
-import flytekit.annotated.workflow
-from flytekit import typing as flytekit_typing
+import flytekit
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import ContainerTask, Spark, SQLTask, dynamic, kwtypes, maptask, metadata, task
+from flytekit.annotated.task import ContainerTask, Reference, Spark, SQLTask, dynamic, kwtypes, maptask, metadata, task
 from flytekit.annotated.testing import task_mock
 from flytekit.annotated.type_engine import FlyteSchema, RestrictedTypeError, SchemaOpenMode, TypeEngine
 from flytekit.annotated.workflow import workflow
@@ -22,6 +20,7 @@ from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.types import LiteralType, SimpleType
+from flytekit.typing.flyte_file import FlyteFile
 
 
 def test_default_wf_params_works():
@@ -555,20 +554,132 @@ def test_cant_use_normal_tuples():
 
 def test_file_type_in_workflow_with_bad_format():
     @task
-    def t1() -> flytekit_typing.FlyteFilePath["txt"]:
+    def t1() -> FlyteFile["txt"]:
         fname = "/tmp/flytekit_test"
         with open(fname, "w") as fh:
             fh.write("Hello World\n")
         return fname
 
     @workflow
-    def my_wf() -> flytekit_typing.FlyteFilePath["txt"]:
+    def my_wf() -> FlyteFile["txt"]:
         f = t1()
         return f
 
     res = my_wf()
     with open(res, "r") as fh:
         assert fh.read() == "Hello World\n"
+
+
+def test_file_handling_remote_default_wf_input():
+    SAMPLE_DATA = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
+
+    @task
+    def t1(fname: os.PathLike) -> int:
+        with open(fname, "r") as fh:
+            x = len(fh.readlines())
+
+        return x
+
+    @workflow
+    def my_wf(fname: os.PathLike = SAMPLE_DATA) -> int:
+        length = t1(fname=fname)
+        return length
+
+    assert my_wf._native_interface.inputs_with_defaults["fname"][1] == SAMPLE_DATA
+    sample_lp = flytekit.LaunchPlan.create("test_launch_plan", my_wf)
+    assert sample_lp.parameters.parameters["fname"].default.scalar.blob.uri == SAMPLE_DATA
+
+
+def test_file_handling_local_file_gets_copied():
+    @task
+    def t1() -> FlyteFile:
+        # Use this test file itself, since we know it exists.
+        return __file__
+
+    @workflow
+    def my_wf() -> FlyteFile:
+        return t1()
+
+    random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
+    fs = FileAccessProvider(local_sandbox_dir=random_dir)
+    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs):
+        top_level_files = os.listdir(random_dir)
+        assert len(top_level_files) == 1  # the mock_remote folder
+
+        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
+        assert len(mock_remote_files) == 0  # the mock_remote folder itself is empty
+
+        x = my_wf()
+
+        # After running, this test file should've been copied to the mock remote location.
+        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
+        assert len(mock_remote_files) == 1
+        # File should've been copied to the mock remote folder
+        assert x.path.startswith(random_dir)
+
+
+def test_file_handling_local_file_gets_force_no_copy():
+    @task
+    def t1() -> FlyteFile:
+        # Use this test file itself, since we know it exists.
+        return FlyteFile(__file__, remote_path=False)
+
+    @workflow
+    def my_wf() -> FlyteFile:
+        return t1()
+
+    random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
+    fs = FileAccessProvider(local_sandbox_dir=random_dir)
+    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs):
+        top_level_files = os.listdir(random_dir)
+        assert len(top_level_files) == 1  # the mock_remote folder
+
+        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
+        assert len(mock_remote_files) == 0  # the mock_remote folder itself is empty
+
+        workflow_output = my_wf()
+
+        # After running, this test file should've been copied to the mock remote location.
+        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
+        assert len(mock_remote_files) == 0
+
+        # Because Flyte doesn't presume to handle a uri that look like a raw path, the path that is returned is
+        # the original.
+        assert workflow_output.path == __file__
+
+
+def test_file_handling_remote_file_handling():
+    SAMPLE_DATA = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
+
+    @task
+    def t1() -> FlyteFile:
+        return SAMPLE_DATA
+
+    @workflow
+    def my_wf() -> FlyteFile:
+        return t1()
+
+    random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
+    print(f"dir: {random_dir}")
+    fs = FileAccessProvider(local_sandbox_dir=random_dir)
+    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs):
+        top_level_files = os.listdir(random_dir)
+        assert len(top_level_files) == 1  # the mock_remote folder
+
+        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
+        assert len(mock_remote_files) == 0  # the mock_remote folder itself is empty
+
+        workflow_output = my_wf()
+
+        # After running the mock remote dir should still be empty, since the workflow_output has not been used
+        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
+        assert len(mock_remote_files) == 0
+
+        # While the literal returned by t1 does contain the web address as the uri, because it's a remote address,
+        # flytekit will translate it back into a FlyteFile object on the local drive (but not download it)
+        assert workflow_output.path.startswith(random_dir)
+        # But the remote source should still be the https address
+        assert workflow_output.remote_source == SAMPLE_DATA
 
 
 def test_wf1_df():
@@ -840,6 +951,68 @@ def test_wf_typed_schema():
     df = x.open().all()
     result_df = df.reset_index(drop=True) == pandas.DataFrame(data={"x": [1, 2]}).reset_index(drop=True)
     assert result_df.all().all()
+
+
+def test_ref():
+    @task(
+        task_config=Reference(
+            project="flytesnacks",
+            domain="development",
+            name="recipes.aaa.simple.join_strings",
+            version="553018f39e519bdb2597b652639c30ce16b99c79",
+        )
+    )
+    def ref_t1(a: typing.List[str]) -> str:
+        ...
+
+    assert ref_t1.id.project == "flytesnacks"
+    assert ref_t1.id.domain == "development"
+    assert ref_t1.id.name == "recipes.aaa.simple.join_strings"
+    assert ref_t1.id.version == "553018f39e519bdb2597b652639c30ce16b99c79"
+
+    registration_settings = context_manager.RegistrationSettings(
+        project="proj",
+        domain="dom",
+        version="123",
+        image="asdf/fdsa:123",
+        env={},
+        iam_role="test:iam:role",
+        service_account=None,
+    )
+    with context_manager.FlyteContext.current_context().new_registration_settings(
+        registration_settings=registration_settings
+    ):
+        sdk_task = ref_t1.get_registerable_entity()
+        assert sdk_task.has_registered
+        assert sdk_task.id.project == "flytesnacks"
+        assert sdk_task.id.domain == "development"
+        assert sdk_task.id.name == "recipes.aaa.simple.join_strings"
+        assert sdk_task.id.version == "553018f39e519bdb2597b652639c30ce16b99c79"
+
+
+def test_ref_task_more():
+    @task(
+        task_config=Reference(
+            project="flytesnacks",
+            domain="development",
+            name="recipes.aaa.simple.join_strings",
+            version="553018f39e519bdb2597b652639c30ce16b99c79",
+        )
+    )
+    def ref_t1(a: typing.List[str]) -> str:
+        ...
+
+    @workflow
+    def wf1(in1: typing.List[str]) -> str:
+        return ref_t1(a=in1)
+
+    with pytest.raises(Exception) as e:
+        wf1(in1=["hello", "world"])
+    assert "Remote reference tasks cannot be run" in f"{e}"
+
+    with task_mock(ref_t1) as mock:
+        mock.return_value = "hello"
+        assert wf1(in1=["hello", "world"]) == "hello"
 
 
 def test_dict_wf_with_constants():
