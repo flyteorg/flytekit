@@ -1,4 +1,5 @@
 import enum
+import pathlib
 from inspect import getfullargspec as _getargspec
 
 import six as _six
@@ -33,6 +34,7 @@ class ExecutionParameters(object):
         self._working_directory = tmp_dir
         self._execution_id = execution_id
         self._logging = logging
+        pathlib.Path(self._working_directory).mkdir(parents=True, exist_ok=True)
 
     @property
     def stats(self):
