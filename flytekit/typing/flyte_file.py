@@ -8,7 +8,7 @@ def noop():
     ...
 
 
-class FlyteFilePath(os.PathLike):
+class FlyteFile(os.PathLike):
     """
     Since there is no native implementation of the int type for files and directories, we need to create one so that users
     can express that their tasks take in or return a File.
@@ -103,7 +103,7 @@ class FlyteFilePath(os.PathLike):
     def extension(cls) -> str:
         return ""
 
-    def __class_getitem__(cls, item: typing.Type) -> typing.Type[FlyteFilePath]:
+    def __class_getitem__(cls, item: typing.Type) -> typing.Type[FlyteFile]:
         if item is None:
             return cls
         item = str(item)
@@ -111,9 +111,9 @@ class FlyteFilePath(os.PathLike):
         if item == "":
             return cls
 
-        class _SpecificFormatClass(FlyteFilePath):
+        class _SpecificFormatClass(FlyteFile):
             # Get the type engine to see this as kind of a generic
-            __origin__ = FlyteFilePath
+            __origin__ = FlyteFile
 
             @classmethod
             def extension(cls) -> str:

@@ -13,6 +13,7 @@ import numpy as _np
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
+import flytekit.typing.flyte_file
 from flytekit import typing as flyte_typing
 from flytekit.annotated.context_manager import FlyteContext
 from flytekit.common.types import primitives as _primitives
@@ -393,30 +394,30 @@ class PathLikeTransformer(TypeTransformer[os.PathLike]):
         return local_destination_path
 
 
-class FlyteFilePathTransformer(TypeTransformer[flyte_typing.FlyteFilePath]):
+class FlyteFilePathTransformer(TypeTransformer[flytekit.typing.flyte_file.FlyteFile]):
     def __init__(self):
-        super().__init__(name="FlyteFilePath", t=flyte_typing.FlyteFilePath)
+        super().__init__(name="FlyteFilePath", t=flytekit.typing.flyte_file.FlyteFile)
 
     @staticmethod
-    def get_format(t: Type[flyte_typing.FlyteFilePath]) -> str:
+    def get_format(t: Type[flytekit.typing.flyte_file.FlyteFile]) -> str:
         return t.extension()
 
     def _blob_type(self, format: str) -> _core_types.BlobType:
         return _core_types.BlobType(format=format, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
 
-    def get_literal_type(self, t: Type[flyte_typing.FlyteFilePath]) -> LiteralType:
+    def get_literal_type(self, t: Type[flytekit.typing.flyte_file.FlyteFile]) -> LiteralType:
         return _type_models.LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
 
     def to_literal(
         self,
         ctx: FlyteContext,
-        python_val: flyte_typing.FlyteFilePath,
-        python_type: Type[flyte_typing.FlyteFilePath],
+        python_val: flytekit.typing.flyte_file.FlyteFile,
+        python_type: Type[flytekit.typing.flyte_file.FlyteFile],
         expected: LiteralType,
     ) -> Literal:
         remote_path = ctx.file_access.get_random_remote_path()
 
-        if isinstance(python_val, flyte_typing.FlyteFilePath):
+        if isinstance(python_val, flytekit.typing.flyte_file.FlyteFile):
             if python_val.remote_path is False:
                 # If the user specified the remote_path to be False, that means no matter what, do not upload
                 remote_path = None
@@ -445,8 +446,8 @@ class FlyteFilePathTransformer(TypeTransformer[flyte_typing.FlyteFilePath]):
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path or source_path)))
 
     def to_python_value(
-        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[flyte_typing.FlyteFilePath]
-    ) -> flyte_typing.FlyteFilePath:
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[flytekit.typing.flyte_file.FlyteFile]
+    ) -> flytekit.typing.flyte_file.FlyteFile:
 
         uri = lv.scalar.blob.uri
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
@@ -461,7 +462,7 @@ class FlyteFilePathTransformer(TypeTransformer[flyte_typing.FlyteFilePath]):
             return ctx.file_access.get_data(uri, local_path, is_multipart=False)
 
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
-        ff = flyte_typing.FlyteFilePath[expected_format](local_path, _downloader)
+        ff = flytekit.typing.flyte_file.FlyteFile[expected_format](local_path, _downloader)
         ff._remote_source = uri
 
         return ff

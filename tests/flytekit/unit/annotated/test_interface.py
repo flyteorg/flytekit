@@ -3,6 +3,7 @@ import os
 import typing
 from typing import Dict, List
 
+import flytekit.typing.flyte_file
 from flytekit import typing as flytekit_typing
 from flytekit.annotated import context_manager
 from flytekit.annotated.interface import (
@@ -136,11 +137,11 @@ def test_sig_files():
 
 
 def test_file_types():
-    def t1() -> flytekit_typing.FlyteFilePath["svg"]:
+    def t1() -> flytekit.typing.flyte_file.FlyteFile["svg"]:
         ...
 
     return_type = extract_return_annotation(inspect.signature(t1).return_annotation)
-    assert return_type["out_0"].extension() == flytekit_typing.FlyteFilePath["svg"].extension()
+    assert return_type["out_0"].extension() == flytekit.typing.flyte_file.FlyteFile["svg"].extension()
 
 
 def test_parameters_and_defaults():
