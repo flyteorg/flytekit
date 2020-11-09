@@ -11,7 +11,7 @@ from flytekit.annotated.interface import (
     transform_interface_to_typed_interface,
     transform_signature_to_interface,
 )
-from flytekit.annotated.node import create_and_link_node
+from flytekit.annotated.node import create_and_link_node, construct_input_promises
 from flytekit.annotated.promise import Promise, create_task_output
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
@@ -128,7 +128,7 @@ class Workflow(object):
         prefix = f"{ctx.compilation_state.prefix}-{self.short_name}-" if ctx.compilation_state is not None else None
         with ctx.new_compilation_context(prefix=prefix) as comp_ctx:
             # Construct the default input promise bindings, but then override with the provided inputs, if any
-            input_kwargs = self._construct_input_promises()
+            input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
             input_kwargs.update(kwargs)
             workflow_outputs = self._workflow_function(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)

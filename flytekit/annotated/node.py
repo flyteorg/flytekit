@@ -8,6 +8,7 @@ from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.promise import Promise, binding_from_python_std, create_task_output
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.nodes import SdkNode
+from flytekit.common import constants as _common_constants
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.utils import _dnsify
 from flytekit.models import literals as _literal_models
@@ -21,12 +22,12 @@ class Node(object):
     """
 
     def __init__(
-        self,
-        id: str,
-        metadata: _workflow_model.NodeMetadata,
-        bindings: List[_literal_models.Binding],
-        upstream_nodes: List[Node],
-        flyte_entity: Any,
+            self,
+            id: str,
+            metadata: _workflow_model.NodeMetadata,
+            bindings: List[_literal_models.Binding],
+            upstream_nodes: List[Node],
+            flyte_entity: Any,
     ):
         self._id = _dnsify(id)
         self._metadata = metadata
@@ -117,13 +118,13 @@ class Node(object):
 
 
 def create_and_link_node(
-    ctx: FlyteContext,
-    entity,
-    interface: flyte_interface.Interface,
-    *args,
-    timeout: Optional[datetime.timedelta] = None,
-    retry_strategy: Optional[_literal_models.RetryStrategy] = None,
-    **kwargs,
+        ctx: FlyteContext,
+        entity,
+        interface: flyte_interface.Interface,
+        *args,
+        timeout: Optional[datetime.timedelta] = None,
+        retry_strategy: Optional[_literal_models.RetryStrategy] = None,
+        **kwargs,
 ):
     """
     This method is used to generate a node with bindings. This is not used in the execution path.
@@ -185,3 +186,13 @@ def create_and_link_node(
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
     return create_task_output(node_outputs)
+
+
+def construct_input_promises(inputs: List[str]):
+    return {
+        input_name: Promise(var=input_name,
+                            val=_NodeOutput(
+                                sdk_node=Node(id=_common_constants.GLOBAL_INPUT_NODE_ID, metadata=None, bindings=[],
+                                              upstream_nodes=[]), var=input_name))
+        for input_name in inputs
+    }
