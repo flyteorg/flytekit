@@ -1,11 +1,13 @@
 import mock as _mock
 import pytest
+from click.testing import CliRunner as _CliRunner
 
 from flytekit.clis.flyte_cli import main as _main
 from flytekit.common.exceptions.user import FlyteAssertion
 from flytekit.common.types import primitives
 from flytekit.configuration import TemporaryConfiguration
 from flytekit.models.core import identifier as _core_identifier
+from flytekit.models.project import Project as _Project
 from flytekit.sdk.tasks import inputs, outputs, python_task
 
 mm = _mock.MagicMock()
@@ -60,3 +62,19 @@ def _identity_dummy(a, b):
 def test__extract_files_pair_iterator():
     results = _main._extract_files([1, 2, 3, 4])
     assert [(1, 2), (3, 4)] == results
+
+
+@_mock.patch("flytekit.clis.flyte_cli.main._friendly_client.SynchronousFlyteClient")
+def test_archive_project(mock_client):
+    runner = _CliRunner()
+    result = runner.invoke(_main._flyte_cli, ["archive-project", "-p", "foo", "-h", "a.b.com", "-i"])
+    assert result.exit_code == 0
+    mock_client().update_project.assert_called_with(_Project.archived_project("foo"))
+
+
+@_mock.patch("flytekit.clis.flyte_cli.main._friendly_client.SynchronousFlyteClient")
+def test_activate_project(mock_client):
+    runner = _CliRunner()
+    result = runner.invoke(_main._flyte_cli, ["activate-project", "-p", "foo", "-h", "a.b.com", "-i"])
+    assert result.exit_code == 0
+    mock_client().update_project.assert_called_with(_Project.active_project("foo"))
