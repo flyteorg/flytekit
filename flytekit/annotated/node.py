@@ -8,11 +8,11 @@ from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.promise import Promise, binding_from_python_std, create_task_output
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.nodes import SdkNode
-from flytekit.common import constants as _common_constants
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.utils import _dnsify
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.common import constants as _common_constants
 
 
 class Node(object):
@@ -47,12 +47,12 @@ class Node(object):
         from flytekit.annotated.workflow import Workflow
 
         if self._flyte_entity is None:
-            raise Exception("Node flyte entity none")
+            raise Exception(f"Node {self.id} has no flyte entity")
 
-        for n in self._upstream_nodes:
-            if n._sdk_node is None:
-                n.get_registerable_entity()
-        sdk_nodes = [n.get_registerable_entity() for n in self._upstream_nodes]
+        # for n in self._upstream_nodes:
+        #     if n._sdk_node is None:
+        #         n.get_registerable_entity()
+        sdk_nodes = [n.get_registerable_entity() for n in self._upstream_nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]
 
         if isinstance(self._flyte_entity, PythonTask):
             self._sdk_node = SdkNode(
@@ -186,13 +186,3 @@ def create_and_link_node(
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
     return create_task_output(node_outputs)
-
-
-def construct_input_promises(inputs: List[str]):
-    return {
-        input_name: Promise(var=input_name,
-                            val=_NodeOutput(
-                                sdk_node=Node(id=_common_constants.GLOBAL_INPUT_NODE_ID, metadata=None, bindings=[],
-                                              upstream_nodes=[]), var=input_name))
-        for input_name in inputs
-    }
