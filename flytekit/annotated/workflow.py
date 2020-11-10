@@ -26,6 +26,10 @@ from flytekit.models import types as _type_models
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
 
+GLOBAL_START_NODE = Node(
+    id=_common_constants.GLOBAL_INPUT_NODE_ID, metadata=None, bindings=[], upstream_nodes=[], flyte_entity=None,
+)
+
 
 def _workflow_fn_outputs_to_promise(
     ctx: FlyteContext,
@@ -70,18 +74,7 @@ def _workflow_fn_outputs_to_promise(
 def construct_input_promises(workflow: Workflow, inputs: List[str]):
     return {
         input_name: Promise(
-            var=input_name,
-            val=_NodeOutput(
-                sdk_node=Node(
-                    id=_common_constants.GLOBAL_INPUT_NODE_ID,
-                    metadata=None,
-                    bindings=[],
-                    upstream_nodes=[],
-                    flyte_entity=None,
-                ),
-                sdk_type=None,
-                var=input_name,
-            ),
+            var=input_name, val=_NodeOutput(sdk_node=GLOBAL_START_NODE, sdk_type=None, var=input_name,),
         )
         for input_name in inputs
     }
@@ -129,16 +122,6 @@ class Workflow(object):
     @property
     def interface(self) -> _interface_models.TypedInterface:
         return self._interface
-
-    def _construct_input_promises(self) -> Dict[str, _type_models.OutputReference]:
-        """
-        This constructs input promises for all the inputs of the workflow, binding them to the global
-        input node id which you should think about as the start node.
-        """
-        return {
-            k: _type_models.OutputReference(_common_constants.GLOBAL_INPUT_NODE_ID, k)
-            for k in self.interface.inputs.keys()
-        }
 
     def compile(self, **kwargs):
         """
