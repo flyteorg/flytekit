@@ -168,10 +168,6 @@ class SdkTask(
             self._id = old_id
             raise
 
-    @property
-    def has_fast_registered(self) -> bool:
-        return self._has_fast_registered
-
     @_exception_scopes.system_entry_point
     def serialize(self):
         """

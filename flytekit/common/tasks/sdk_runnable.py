@@ -425,6 +425,17 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
     @_exception_scopes.system_entry_point
     def fast_register(self, project, domain, name, digest, additional_distribution) -> str:
         """
+        The fast register call essentially hijacks the task container commandline.
+        Say an existing task container definition had a commandline like so:
+            flyte_venv pyflyte-execute --task-module app.workflows.my_workflow --task-name my_task
+
+        The fast register command introduces a wrapper call to fast-execute the original commandline like so:
+            flyte_venv pyflyte-fast-execute --additional-distribution s3://my-s3-bucket/foo/bar/12345.tar.gz --
+                flyte_venv pyflyte-execute --task-module app.workflows.my_workflow --task-name my_task
+
+        At execution time pyflyte-fast-execute will ensure the additional distribution (i.e. the fast-registered code)
+        exists before calling the original task commandline.
+
         :param Text project: The project in which to register this task.
         :param Text domain: The domain in which to register this task.
         :param Text name: The name to give this task.
@@ -435,7 +446,11 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
 
         original_container = self.container
         container = _copy.deepcopy(original_container)
-        args = ["pyflyte-fast-execute", "--additional-distribution", additional_distribution, "--"] + container.args
+        args = (
+            _sdk_config.SDK_PYTHON_VENV.get()
+            + ["pyflyte-fast-execute", "--additional-distribution", additional_distribution, "--"]
+            + container.args
+        )
         container._args = args
         self._container = container
 
@@ -447,6 +462,10 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         self._has_fast_registered = True
         self._container = original_container
         return str(registered_id)
+
+    @property
+    def has_fast_registered(self) -> bool:
+        return self._has_fast_registered
 
     def _get_container_definition(
         self,

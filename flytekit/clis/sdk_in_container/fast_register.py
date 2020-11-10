@@ -1,10 +1,9 @@
 import os as _os
-from pathlib import Path as _Path
 from typing import List as _List
 
 import click
 
-from flytekit.clis.sdk_in_container.constants import CTX_CURRENT_DIR, CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_TEST
+from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_TEST
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.tasks import task as _task
@@ -84,78 +83,131 @@ def fast_register_tasks_only(
 @click.pass_context
 def fast_register(ctx, test=None):
     """
-    Run registration steps for the Flyte entities in this container. This is an optimization to avoid the conventional
-    container build and upload cycle. This can be useful for fast iteration when making code changes. If you do need
-    to change the container itself (e.g. by adding a new dependency/import) you must rebuild and upload a container.
+    Run fast registration steps for the Flyte entities in this container. This is an optimization to avoid the
+    conventional container build and upload cycle. This can be useful for fast iteration when making code changes.
+    If you do need to change the container itself (e.g. by adding a new dependency/import) you must rebuild and
+    upload a container.
 
     Caveats: Your flyte config must specify a fast registration dir like so:
     [sdk]
     fast_registration_dir=s3://my-s3-bucket/dir
 
     **and** ensure that the role specified in [auth] section of your config has read access to this remote location.
-    Furhtermore, the role you assume to call fast-register must have **write** permission to this remote location.
+    Furthermore, the role you assume to call fast-register must have **write** permission to this remote location.
 
     Run with the --test switch for a dry run to see what will be registered.  A default launch plan will also be
     created, if a role can be found in the environment variables.
     """
 
     ctx.obj[CTX_TEST] = test
-    ctx.obj[CTX_CURRENT_DIR] = _os.getcwd()
 
 
 @click.command("tasks")
 @click.option(
+    "--source-dir",
+    type=str,
+    help="The root dir of the code that should be uploaded for fast registration.",
+    required=True,
+)
+@click.option(
     "-v",
     "--version",
     type=str,
-    help="Version to register tasks with. This is normally parsed from the image, but you can override here.",
-)
-@click.option(
-    "--source-dir",
-    type=str,
-    help="The root dir of the code that should be uploaded for fast registration. "
-    "This is normally cwd but you can override here.",
+    help="Version to register tasks with. This is normally computed deterministically from your code, "
+    "but you can override here.",
 )
 @click.pass_context
-def tasks(ctx, version=None, source_dir=None):
+def tasks(ctx, source_dir, version=None):
     """
     Only fast register tasks.
+
+    For example, consider a sample directory where tasks defined in workflows/ imports code from util/ like so:
+
+    \b
+    $ tree /root/code/
+    /root/code/
+    ├── Dockerfile
+    ├── Makefile
+    ├── README.md
+    ├── conf.py
+    ├── notebook.config
+    ├── workflows
+    │   ├── __init__.py
+    │   ├── compose
+    │   │   ├── README.md
+    │   │   ├── __init__.py
+    │   │   ├── a_workflow.py
+    │   │   ├── b_workflow.py
+    ├── util
+    │   ├── __init__.py
+    │   ├── shared_task_code.py
+    ├── requirements.txt
+    ├── flyte.config
+
+    Your source dir will need to be /root/code/ rather than the workflow packages dir /root/code/workflows you might
+    have specified in your flyte.config because all of the code your workflows depends on needs to be encapsulated in
+    `source_dir`.
+
     """
     project = ctx.obj[CTX_PROJECT]
     domain = ctx.obj[CTX_DOMAIN]
     test = ctx.obj[CTX_TEST]
     pkgs = ctx.obj[CTX_PACKAGES]
-    if not source_dir:
-        source_dir = _Path(ctx.obj[CTX_CURRENT_DIR])
 
     fast_register_tasks_only(project, domain, pkgs, test, version, source_dir)
 
 
 @click.command("workflows")
 @click.option(
+    "--source-dir",
+    type=str,
+    help="The root dir of the code that should be uploaded for fast registration.",
+    required=True,
+)
+@click.option(
     "-v",
     "--version",
     type=str,
-    help="Version to register tasks with. This is normally parsed from the image, but you can override here.",
-)
-@click.option(
-    "--source-dir",
-    type=str,
-    help="The root dir of the code that should be uploaded for fast registration. "
-    "This is normally cwd but you can override here.",
+    help="Version to register entities with. This is normally computed deterministically from your code, "
+    "but you can override here.",
 )
 @click.pass_context
-def workflows(ctx, version=None, source_dir=None):
+def workflows(ctx, source_dir, version=None):
     """
     Fast register both tasks and workflows.  Also create and register a default launch plan for all workflows.
+    The `source_dir` param should point to the root directory of your project that contains all of your working code.
+
+    For example, consider a sample directory structure where code in workflows/ imports code from util/ like so:
+
+    \b
+    $ tree /root/code/
+    /root/code/
+    ├── Dockerfile
+    ├── Makefile
+    ├── README.md
+    ├── conf.py
+    ├── notebook.config
+    ├── workflows
+    │   ├── __init__.py
+    │   ├── compose
+    │   │   ├── README.md
+    │   │   ├── __init__.py
+    │   │   ├── a_workflow.py
+    │   │   ├── b_workflow.py
+    ├── util
+    │   ├── __init__.py
+    │   ├── shared_workflow_code.py
+    ├── requirements.txt
+    ├── flyte.config
+
+    Your source dir will need to be /root/code/ rather than the workflow packages dir /root/code/workflows you might
+    have specified in your flyte.config because all of the code your workflows depends on needs to be encapsulated in
+    `source_dir`.
     """
     project = ctx.obj[CTX_PROJECT]
     domain = ctx.obj[CTX_DOMAIN]
     test = ctx.obj[CTX_TEST]
     pkgs = ctx.obj[CTX_PACKAGES]
-
-    if not source_dir:
-        source_dir = _Path(ctx.obj[CTX_CURRENT_DIR])
 
     fast_register_all(project, domain, pkgs, test, version, source_dir)
 
