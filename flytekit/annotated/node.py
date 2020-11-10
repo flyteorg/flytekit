@@ -6,6 +6,7 @@ from typing import Any, List, Optional
 from flytekit.annotated import interface as flyte_interface
 from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.promise import Promise, binding_from_python_std, create_task_output
+from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput as _NodeOutput
@@ -46,9 +47,11 @@ class Node(object):
         from flytekit.annotated.workflow import Workflow
 
         if self._flyte_entity is None:
-            raise Exception("Node flyte entity none")
+            raise Exception(f"Node {self.id} has no flyte entity")
 
-        sdk_nodes = [n.get_registerable_entity() for n in self._upstream_nodes]
+        sdk_nodes = [
+            n.get_registerable_entity() for n in self._upstream_nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
+        ]
 
         if isinstance(self._flyte_entity, PythonTask):
             self._sdk_node = SdkNode(
@@ -153,7 +156,13 @@ def create_and_link_node(
     # Detect upstream nodes
     # These will be our annotated Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
     upstream_nodes = list(
-        set([input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise)])
+        set(
+            [
+                input_val.ref.sdk_node
+                for input_val in kwargs.values()
+                if isinstance(input_val, Promise) and input_val.ref.node_id != _common_constants.GLOBAL_INPUT_NODE_ID
+            ]
+        )
     )
 
     node_metadata = _workflow_model.NodeMetadata(

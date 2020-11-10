@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import inspect
 import typing
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
@@ -11,17 +13,21 @@ from flytekit.annotated.interface import (
     transform_interface_to_typed_interface,
     transform_signature_to_interface,
 )
-from flytekit.annotated.node import create_and_link_node
+from flytekit.annotated.node import Node, create_and_link_node
 from flytekit.annotated.promise import Promise, create_task_output
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
+from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
-from flytekit.models import types as _type_models
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
+
+GLOBAL_START_NODE = Node(
+    id=_common_constants.GLOBAL_INPUT_NODE_ID, metadata=None, bindings=[], upstream_nodes=[], flyte_entity=None,
+)
 
 
 def _workflow_fn_outputs_to_promise(
@@ -62,6 +68,15 @@ def _workflow_fn_outputs_to_promise(
             var = typed_outputs[k]
             return_vals.append(Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, var.type)))
     return return_vals
+
+
+def construct_input_promises(workflow: Workflow, inputs: List[str]):
+    return {
+        input_name: Promise(
+            var=input_name, val=_NodeOutput(sdk_node=GLOBAL_START_NODE, sdk_type=None, var=input_name,),
+        )
+        for input_name in inputs
+    }
 
 
 class Workflow(object):
@@ -107,16 +122,6 @@ class Workflow(object):
     def interface(self) -> _interface_models.TypedInterface:
         return self._interface
 
-    def _construct_input_promises(self) -> Dict[str, _type_models.OutputReference]:
-        """
-        This constructs input promises for all the inputs of the workflow, binding them to the global
-        input node id which you should think about as the start node.
-        """
-        return {
-            k: _type_models.OutputReference(_common_constants.GLOBAL_INPUT_NODE_ID, k)
-            for k in self.interface.inputs.keys()
-        }
-
     def compile(self, **kwargs):
         """
         Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics
@@ -128,7 +133,7 @@ class Workflow(object):
         prefix = f"{ctx.compilation_state.prefix}-{self.short_name}-" if ctx.compilation_state is not None else None
         with ctx.new_compilation_context(prefix=prefix) as comp_ctx:
             # Construct the default input promise bindings, but then override with the provided inputs, if any
-            input_kwargs = self._construct_input_promises()
+            input_kwargs = construct_input_promises(self, [k for k in self.interface.inputs.keys()])
             input_kwargs.update(kwargs)
             workflow_outputs = self._workflow_function(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
@@ -265,7 +270,7 @@ class Workflow(object):
         )
 
         # Translate nodes
-        sdk_nodes = [n.get_registerable_entity() for n in self._nodes]
+        sdk_nodes = [n.get_registerable_entity() for n in self._nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]
 
         self._registerable_entity = _SdkWorkflow(
             nodes=sdk_nodes,
