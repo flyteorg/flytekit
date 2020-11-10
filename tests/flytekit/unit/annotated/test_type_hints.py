@@ -11,7 +11,7 @@ from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import ContainerTask, Reference, SQLTask, dynamic, kwtypes, maptask, metadata, task
-from flytekit.taskplugins.spark.task import Spark
+from flytekit.taskplugins.spark import Spark
 from flytekit.annotated.testing import task_mock
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
