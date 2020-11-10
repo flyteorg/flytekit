@@ -146,7 +146,9 @@ def tasks(ctx, source_dir, version=None):
 
     Your source dir will need to be /root/code/ rather than the workflow packages dir /root/code/workflows you might
     have specified in your flyte.config because all of the code your workflows depends on needs to be encapsulated in
-    `source_dir`.
+    `source_dir`, like so:
+
+    pyflyte -p myproject -d development fast-register tasks --source-dir /root/code/
 
     """
     project = ctx.obj[CTX_PROJECT]
@@ -202,7 +204,9 @@ def workflows(ctx, source_dir, version=None):
 
     Your source dir will need to be /root/code/ rather than the workflow packages dir /root/code/workflows you might
     have specified in your flyte.config because all of the code your workflows depends on needs to be encapsulated in
-    `source_dir`.
+    `source_dir`, like so:
+
+    pyflyte -p myproject -d development fast-register workflows --source-dir /root/code/
     """
     project = ctx.obj[CTX_PROJECT]
     domain = ctx.obj[CTX_DOMAIN]
