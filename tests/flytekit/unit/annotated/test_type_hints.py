@@ -12,15 +12,16 @@ from flytekit.annotated.context_manager import ExecutionState
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import ContainerTask, Reference, Spark, SQLTask, dynamic, kwtypes, maptask, metadata, task
 from flytekit.annotated.testing import task_mock
-from flytekit.annotated.type_engine import FlyteSchema, RestrictedTypeError, SchemaOpenMode, TypeEngine
+from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
+from flytekit.extended_typing.flyte_file import FlyteFile
+from flytekit.extended_typing.schema import FlyteSchema, SchemaOpenMode
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.types import LiteralType, SimpleType
-from flytekit.typing.flyte_file import FlyteFile
 
 
 def test_default_wf_params_works():

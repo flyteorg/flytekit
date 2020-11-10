@@ -4,9 +4,9 @@ from collections import OrderedDict
 import pandas as pd
 
 from flytekit.annotated.task import task
-from flytekit.annotated.type_engine import FlyteSchema
 from flytekit.annotated.workflow import workflow
-from flytekit.typing.flyte_file import FlyteFile
+from flytekit.extended_typing.flyte_file import FlyteFile
+from flytekit.extended_typing.schema import FlyteSchema
 
 
 def test_diabetes():

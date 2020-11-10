@@ -9,18 +9,17 @@ from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.task import kwtypes
 from flytekit.annotated.type_engine import (
     DictTransformer,
-    FlyteSchema,
     ListTransformer,
     PathLikeTransformer,
-    SchemaFormat,
     SimpleTransformer,
     TypeEngine,
 )
+from flytekit.extended_typing.flyte_file import FlyteFile
+from flytekit.extended_typing.schema import FlyteSchema, SchemaFormat
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
-from flytekit.typing.flyte_file import FlyteFile
 
 
 def test_type_engine():

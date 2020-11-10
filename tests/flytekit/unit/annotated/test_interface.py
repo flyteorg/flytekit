@@ -10,8 +10,8 @@ from flytekit.annotated.interface import (
     transform_signature_to_interface,
     transform_variable_map,
 )
+from flytekit.extended_typing import FlyteFile
 from flytekit.models.core import types as _core_types
-from flytekit.typing import FlyteFile
 
 
 def test_extract_only():
