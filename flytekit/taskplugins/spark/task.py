@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Dict, Callable, Any
+from typing import Any, Callable, Dict
 
 from google.protobuf.json_format import MessageToDict
 
@@ -56,7 +56,7 @@ class GlobalSparkContext(object):
 
 class PysparkFunctionTask(PythonFunctionTask[Spark]):
     def __init__(
-            self, task_config: Spark, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs
+        self, task_config: Spark, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs
     ):
         super(PysparkFunctionTask, self).__init__(
             task_config=task_config,
