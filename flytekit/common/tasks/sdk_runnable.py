@@ -35,9 +35,8 @@ class ExecutionParameters(object):
         self._working_directory = tmp_dir
         self._execution_id = execution_id
         self._logging = logging
-        if isinstance(self._working_directory, _common_utils.AutoDeletingTempDir):
-            pathlib.Path(self._working_directory.name).mkdir(parents=True, exist_ok=True)
-        else:
+        # AutoDeletingTempDir's should be used with a with block, which creates upon entry
+        if not isinstance(self._working_directory, _common_utils.AutoDeletingTempDir):
             pathlib.Path(self._working_directory).mkdir(parents=True, exist_ok=True)
 
     @property
