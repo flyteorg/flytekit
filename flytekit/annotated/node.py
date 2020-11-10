@@ -156,7 +156,13 @@ def create_and_link_node(
     # Detect upstream nodes
     # These will be our annotated Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
     upstream_nodes = list(
-        set([input_val.ref.sdk_node for input_val in kwargs.values() if isinstance(input_val, Promise) and input_val.ref.node_id != _common_constants.GLOBAL_INPUT_NODE_ID])
+        set(
+            [
+                input_val.ref.sdk_node
+                for input_val in kwargs.values()
+                if isinstance(input_val, Promise) and input_val.ref.node_id != _common_constants.GLOBAL_INPUT_NODE_ID
+            ]
+        )
     )
 
     node_metadata = _workflow_model.NodeMetadata(

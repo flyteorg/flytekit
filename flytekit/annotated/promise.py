@@ -392,7 +392,7 @@ def binding_data_from_python_std(
     # This handles the case where the incoming value is a workflow-level input
     if isinstance(t_value, _type_models.OutputReference):
         # return _literals_models.BindingData(promise=t_value)
-        raise Exception('should not happen.')
+        raise Exception("should not happen.")
     # This handles the case where the given value is the output of another task
     elif isinstance(t_value, Promise):
         if not t_value.is_ready:
