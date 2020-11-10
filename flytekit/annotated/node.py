@@ -48,9 +48,6 @@ class Node(object):
         if self._flyte_entity is None:
             raise Exception("Node flyte entity none")
 
-        for n in self._upstream_nodes:
-            if n._sdk_node is None:
-                n.get_registerable_entity()
         sdk_nodes = [n.get_registerable_entity() for n in self._upstream_nodes]
 
         if isinstance(self._flyte_entity, PythonTask):
