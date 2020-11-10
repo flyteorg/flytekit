@@ -142,11 +142,14 @@ class FlyteFile(os.PathLike):
         return self._path
 
     def __eq__(self, other):
-        return (
-            self._path == other._path
-            and self._remote_path == other._remote_path
-            and self.extension() == other.extension()
-        )
+        if isinstance(other, FlyteFile):
+            return (
+                self._path == other._path
+                and self._remote_path == other._remote_path
+                and self.extension() == other.extension()
+            )
+        else:
+            return self._path == other
 
     @property
     def downloaded(self) -> bool:
