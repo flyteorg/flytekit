@@ -49,9 +49,6 @@ class Node(object):
         if self._flyte_entity is None:
             raise Exception(f"Node {self.id} has no flyte entity")
 
-        for n in self._upstream_nodes:
-            if n._sdk_node is None:
-                n.get_registerable_entity()
         sdk_nodes = [
             n.get_registerable_entity() for n in self._upstream_nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
         ]
