@@ -6,13 +6,13 @@ from typing import Any, List, Optional
 from flytekit.annotated import interface as flyte_interface
 from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.promise import Promise, binding_from_python_std, create_task_output
+from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.utils import _dnsify
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.common import constants as _common_constants
 
 
 class Node(object):
@@ -22,12 +22,12 @@ class Node(object):
     """
 
     def __init__(
-            self,
-            id: str,
-            metadata: _workflow_model.NodeMetadata,
-            bindings: List[_literal_models.Binding],
-            upstream_nodes: List[Node],
-            flyte_entity: Any,
+        self,
+        id: str,
+        metadata: _workflow_model.NodeMetadata,
+        bindings: List[_literal_models.Binding],
+        upstream_nodes: List[Node],
+        flyte_entity: Any,
     ):
         self._id = _dnsify(id)
         self._metadata = metadata
@@ -49,10 +49,12 @@ class Node(object):
         if self._flyte_entity is None:
             raise Exception(f"Node {self.id} has no flyte entity")
 
-        # for n in self._upstream_nodes:
-        #     if n._sdk_node is None:
-        #         n.get_registerable_entity()
-        sdk_nodes = [n.get_registerable_entity() for n in self._upstream_nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]
+        for n in self._upstream_nodes:
+            if n._sdk_node is None:
+                n.get_registerable_entity()
+        sdk_nodes = [
+            n.get_registerable_entity() for n in self._upstream_nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
+        ]
 
         if isinstance(self._flyte_entity, PythonTask):
             self._sdk_node = SdkNode(
@@ -118,13 +120,13 @@ class Node(object):
 
 
 def create_and_link_node(
-        ctx: FlyteContext,
-        entity,
-        interface: flyte_interface.Interface,
-        *args,
-        timeout: Optional[datetime.timedelta] = None,
-        retry_strategy: Optional[_literal_models.RetryStrategy] = None,
-        **kwargs,
+    ctx: FlyteContext,
+    entity,
+    interface: flyte_interface.Interface,
+    *args,
+    timeout: Optional[datetime.timedelta] = None,
+    retry_strategy: Optional[_literal_models.RetryStrategy] = None,
+    **kwargs,
 ):
     """
     This method is used to generate a node with bindings. This is not used in the execution path.

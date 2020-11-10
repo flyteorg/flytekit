@@ -13,7 +13,7 @@ from flytekit.annotated.interface import (
     transform_interface_to_typed_interface,
     transform_signature_to_interface,
 )
-from flytekit.annotated.node import create_and_link_node, Node
+from flytekit.annotated.node import Node, create_and_link_node
 from flytekit.annotated.promise import Promise, create_task_output
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
@@ -69,12 +69,20 @@ def _workflow_fn_outputs_to_promise(
 
 def construct_input_promises(workflow: Workflow, inputs: List[str]):
     return {
-        input_name: Promise(var=input_name,
-                            val=_NodeOutput(
-                                sdk_node=Node(id=_common_constants.GLOBAL_INPUT_NODE_ID, metadata=None, bindings=[],
-                                              upstream_nodes=[], flyte_entity=None),
-                                sdk_type=None,
-                                var=input_name))
+        input_name: Promise(
+            var=input_name,
+            val=_NodeOutput(
+                sdk_node=Node(
+                    id=_common_constants.GLOBAL_INPUT_NODE_ID,
+                    metadata=None,
+                    bindings=[],
+                    upstream_nodes=[],
+                    flyte_entity=None,
+                ),
+                sdk_type=None,
+                var=input_name,
+            ),
+        )
         for input_name in inputs
     }
 
