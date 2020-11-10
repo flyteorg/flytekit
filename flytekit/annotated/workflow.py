@@ -22,7 +22,6 @@ from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
-from flytekit.models import types as _type_models
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
 
