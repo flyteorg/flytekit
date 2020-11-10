@@ -16,12 +16,12 @@ from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
-from flytekit.extended_typing.flyte_file import FlyteFile
-from flytekit.extended_typing.schema import FlyteSchema, SchemaOpenMode
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.types import LiteralType, SimpleType
+from flytekit.types.flyte_file import FlyteFile
+from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 
 
 def test_default_wf_params_works():

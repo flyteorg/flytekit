@@ -5,8 +5,8 @@ import pandas as pd
 
 from flytekit.annotated.task import task
 from flytekit.annotated.workflow import workflow
-from flytekit.extended_typing.flyte_file import FlyteFile
-from flytekit.extended_typing.schema import FlyteSchema
+from flytekit.types.flyte_file import FlyteFile
+from flytekit.types.schema import FlyteSchema
 
 
 def test_diabetes():

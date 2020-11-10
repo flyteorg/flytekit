@@ -1,5 +1,5 @@
-from flytekit.extended_typing.flyte_file import FlyteFile
-from flytekit.extended_typing.schema import (
+from flytekit.types.flyte_file import FlyteFile
+from flytekit.types.schema import (
     FlyteSchema,
     PandasSchemaReader,
     PandasSchemaWriter,
