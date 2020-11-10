@@ -389,12 +389,8 @@ def binding_data_from_python_std(
     t_value: typing.Any,
     t_value_type: type,
 ) -> _literals_models.BindingData:
-    # This handles the case where the incoming value is a workflow-level input
-    if isinstance(t_value, _type_models.OutputReference):
-        # return _literals_models.BindingData(promise=t_value)
-        raise Exception("should not happen.")
     # This handles the case where the given value is the output of another task
-    elif isinstance(t_value, Promise):
+    if isinstance(t_value, Promise):
         if not t_value.is_ready:
             return _literals_models.BindingData(promise=t_value.ref)
 
@@ -434,8 +430,6 @@ def binding_data_from_python_std(
         return _literals_models.BindingData(map=m)
 
     # This is the scalar case - e.g. my_task(in1=5)
-    # Question: Haytham/Ketan - Is it okay for me to rely on the expected idl type, which comes from the task's
-    #   interface, to derive the scalar value?
     scalar = TypeEngine.to_literal(ctx, t_value, t_value_type, expected_literal_type).scalar
     return _literals_models.BindingData(scalar=scalar)
 
