@@ -446,11 +446,7 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
 
         original_container = self.container
         container = _copy.deepcopy(original_container)
-        args = (
-            _sdk_config.SDK_PYTHON_VENV.get()
-            + ["pyflyte-fast-execute", "--additional-distribution", additional_distribution, "--"]
-            + container.args
-        )
+        args = ["pyflyte-fast-execute", "--additional-distribution", additional_distribution, "--"] + container.args
         container._args = args
         self._container = container
 
