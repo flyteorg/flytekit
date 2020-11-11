@@ -84,7 +84,7 @@ def test_task_metadata():
 
 @pytest.mark.parametrize(
     "in_tuple",
-    product(parameterizers.LIST_OF_TASK_METADATA, parameterizers.LIST_OF_INTERFACES, parameterizers.LIST_OF_RESOURCES,),
+    product(parameterizers.LIST_OF_TASK_METADATA, parameterizers.LIST_OF_INTERFACES, parameterizers.LIST_OF_RESOURCES),
 )
 def test_task_template(in_tuple):
     task_metadata, interfaces, resources = in_tuple
