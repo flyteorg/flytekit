@@ -5,7 +5,7 @@ from flytekit.annotated.task import ContainerTask, Reference, SQLTask, dynamic, 
 from flytekit.annotated.workflow import workflow
 from flytekit.loggers import logger
 
-__version__ = "1.0.0a0"
+__version__ = "0.16.0b0"
 
 
 def current_context():
