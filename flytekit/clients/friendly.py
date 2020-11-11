@@ -788,6 +788,14 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             _project_pb2.ProjectRegisterRequest(project=project.to_flyte_idl(),)
         )
 
+    def update_project(self, project):
+        """
+        Update an existing project specified by id.
+        :param flytekit.models.project.Project project:
+        :rtype: flyteidl.admin.project_pb2.ProjectUpdateResponse
+        """
+        super(SynchronousFlyteClient, self).update_project(project.to_flyte_idl())
+
     ####################################################################################################################
     #
     #  Matching Attributes Endpoints

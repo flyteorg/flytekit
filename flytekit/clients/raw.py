@@ -595,6 +595,15 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.RegisterProject(project_register_request, metadata=self._metadata)
 
+    @_handle_rpc_error
+    def update_project(self, project):
+        """
+        Update an existing project specified by id.
+        :param flyteidl.admin.project_pb2.Project project:
+        :rtype: flyteidl.admin.project_pb2.ProjectUpdateResponse
+        """
+        return self._stub.UpdateProject(project)
+
     ####################################################################################################################
     #
     #  Matching Attributes Endpoints
