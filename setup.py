@@ -18,6 +18,7 @@ setup(
     entry_points={
         "console_scripts": [
             "pyflyte-execute=flytekit.bin.entrypoint:execute_task_cmd",
+            "pyflyte-fast-execute=flytekit.bin.entrypoint:fast_execute_task_cmd",
             "pyflyte=flytekit.clis.sdk_in_container.pyflyte:main",
             "flyte-cli=flytekit.clis.flyte_cli.main:_flyte_cli",
         ]
@@ -39,13 +40,14 @@ setup(
         "six>=1.9.0,<2.0.0",
         "sortedcontainers>=1.5.9<3.0.0",
         "statsd>=3.0.0,<4.0.0",
-        "urllib3>=1.22,<2.0.0",
+        "urllib3>=1.22,<1.26",
         "wrapt>=1.0.0,<2.0.0",
         "papermill>=1.2.0",
         "ipykernel>=5.0.0",
         "black==19.10b0",
         "retry==0.9.2",
         "natsort>=7.0.1",
+        "dirhash>=0.2.1",
     ],
     extras_require=extras_require,
     scripts=[
