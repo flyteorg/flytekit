@@ -6,9 +6,9 @@ import click
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_TEST
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
+from flytekit.common.tasks import sdk_runnable as _sdk_runnable_task
 from flytekit.common.tasks import task as _task
 from flytekit.configuration import sdk as _sdk_config
-from flytekit.models.core import identifier as _identifier_model
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import get_additional_distribution_loc as _get_additional_distribution_loc
 from flytekit.tools.fast_registration import upload_package as _upload_package
@@ -43,7 +43,7 @@ def fast_register_all(project: str, domain: str, pkgs: _List[str], test: bool, v
         else:
             click.echo("Fast registering {:20} {}".format("{}:".format(o.entity_type_text), o.id.name))
             _get_additional_distribution_loc(_sdk_config.FAST_REGISTRATION_DIR.get(), digest)
-            if o.resource_type == _identifier_model.ResourceType.TASK:
+            if isinstance(o, _sdk_runnable_task.SdkRunnableTask):
                 o.fast_register(project, domain, o.id.name, digest, remote_package_path)
             else:
                 o.register(project, domain, o.id.name, digest)
@@ -75,7 +75,10 @@ def fast_register_tasks_only(
             click.echo("Would fast register task {:20} {}".format("{}:".format(t.entity_type_text), name))
         else:
             click.echo("Fast registering task {:20} {}".format("{}:".format(t.entity_type_text), name))
-            t.fast_register(project, domain, name, digest, remote_package_path)
+            if isinstance(t, _sdk_runnable_task.SdkRunnableTask):
+                t.fast_register(project, domain, name, digest, remote_package_path)
+            else:
+                t.register(project, domain, name, digest)
 
 
 @click.group("fast-register")
