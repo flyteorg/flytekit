@@ -1,5 +1,7 @@
+import configparser
 import typing
 
+from flytekit import logger
 from flytekit.configuration import common as _config_common
 
 
@@ -14,7 +16,11 @@ def get_specified_images() -> typing.Dict[str, str]:
 
     :returns a dictionary of name: image<fqn+version> Version is optional
     """
-    image_names = _config_common.CONFIGURATION_SINGLETON.config.options("images")
+    try:
+        image_names = _config_common.CONFIGURATION_SINGLETON.config.options("images")
+    except configparser.NoSectionError as e:
+        logger.warning(f"No images specified, will use the default image only")
+        image_names = None
     images: typing.Dict[str, str] = {}
     if image_names:
         for i in image_names:
