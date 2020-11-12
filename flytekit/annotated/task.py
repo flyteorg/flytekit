@@ -403,7 +403,10 @@ def get_registerable_container_image(img: Optional[str], cfg: ImageConfig) -> st
             if img_cfg is None:
                 raise AssertionError(f"Image Config with name {name} not found in the configuration")
             if attr == "version":
-                img = img.replace(replace_group, img_cfg.tag)
+                if img_cfg.tag is not None:
+                    img = img.replace(replace_group, img_cfg.tag)
+                else:
+                    img = img.replace(replace_group, cfg.default_image.tag)
             elif attr == "fqn":
                 img = img.replace(replace_group, img_cfg.fqn)
             else:

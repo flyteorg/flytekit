@@ -13,7 +13,7 @@ from typing import Any, Dict, Generator, List, Optional
 from flytekit.clients import friendly as friendly_client  # noqa
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.configuration import internal
+from flytekit.configuration import internal, images
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -43,7 +43,7 @@ class ImageConfig(object):
 _IMAGE_FQN_TAG_REGEX = re.compile("(.*):(.+)")
 
 
-def look_up_image_info(tag) -> Image:
+def look_up_image_info(name: str, tag: str, optional_tag: bool = False) -> Image:
     """
     Looks up the image tag from environment variable (should be set from the Dockerfile).
         FLYTE_INTERNAL_IMAGE should be the environment variable.
@@ -53,34 +53,44 @@ def look_up_image_info(tag) -> Image:
     and tasks with Admin should be the version of the image itself, which should ideally be something unique
     like the sha of the latest commit.
 
+    :param optional_tag:
+    :param name:
     :param Text tag: e.g. somedocker.com/myimage:someversion123
     :rtype: Text
     """
     if tag is None or tag == "":
         raise Exception("Bad input for image tag {}".format(tag))
     m = _IMAGE_FQN_TAG_REGEX.match(tag)
-    if m is not None and len(m.groups()) == 2:
-        return Image(name="default", fqn=m.group(1), tag=m.group(2))
+    if m is not None and len(m.groups()) > 0:
+        fqn = m.group(1)
+        tag = None
+        if len(m.groups()) == 2:
+            tag = m.group(2)
+        if not optional_tag and tag is None:
+            raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
+        return Image(name=name, fqn=fqn, tag=tag)
 
-    raise Exception("Could not parse image version from configuration. Did you set it in the" "Dockerfile?")
+    raise Exception("Could not parse given image and version from configuration.")
 
 
 def get_image_config() -> ImageConfig:
-    default_img = internal.look_up_image_info(internal.IMAGE.get())
-    return ImageConfig(default_image=default_img, images=[default_img])
+    default_img = look_up_image_info("default", internal.IMAGE.get())
+    other_images = [look_up_image_info(k, tag=v, optional_tag=True) for k, v in images.get_specified_images()]
+    other_images.append(default_img)
+    return ImageConfig(default_image=default_img, images=other_images)
 
 
 class RegistrationSettings(object):
     def __init__(
-        self,
-        project: str,
-        domain: str,
-        version: str,
-        image_config: ImageConfig,
-        env: Optional[Dict[str, str]],
-        iam_role: Optional[str] = None,
-        service_account: Optional[str] = None,
-        raw_output_data_config: Optional[str] = None,
+            self,
+            project: str,
+            domain: str,
+            version: str,
+            image_config: ImageConfig,
+            env: Optional[Dict[str, str]],
+            iam_role: Optional[str] = None,
+            service_account: Optional[str] = None,
+            raw_output_data_config: Optional[str] = None,
     ):
         self._project = project
         self._domain = domain
@@ -195,7 +205,8 @@ class ExecutionState(object):
         LOCAL_WORKFLOW_EXECUTION = 2
 
     def __init__(
-        self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike, additional_context: Dict[Any, Any] = None
+            self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike,
+            additional_context: Dict[Any, Any] = None
     ):
         self._mode = mode
         self._working_dir = working_dir
@@ -257,14 +268,14 @@ class FlyteContext(object):
     OBJS = []
 
     def __init__(
-        self,
-        parent=None,
-        file_access: _data_proxy.FileAccessProvider = None,
-        compilation_state: CompilationState = None,
-        execution_state: ExecutionState = None,
-        flyte_client: friendly_client.SynchronousFlyteClient = None,
-        user_space_params: ExecutionParameters = None,
-        registration_settings: RegistrationSettings = None,
+            self,
+            parent=None,
+            file_access: _data_proxy.FileAccessProvider = None,
+            compilation_state: CompilationState = None,
+            execution_state: ExecutionState = None,
+            flyte_client: friendly_client.SynchronousFlyteClient = None,
+            user_space_params: ExecutionParameters = None,
+            registration_settings: RegistrationSettings = None,
     ):
         # TODO: Should we have this auto-parenting feature?
         if parent is None and len(FlyteContext.OBJS) > 0:
@@ -329,10 +340,10 @@ class FlyteContext(object):
 
     @contextmanager
     def new_execution_context(
-        self,
-        mode: ExecutionState.Mode,
-        additional_context: Dict[Any, Any] = None,
-        execution_params: Optional[ExecutionParameters] = None,
+            self,
+            mode: ExecutionState.Mode,
+            additional_context: Dict[Any, Any] = None,
+            execution_params: Optional[ExecutionParameters] = None,
     ) -> Generator[FlyteContext, None, None]:
 
         # Create a working directory for the execution to use
@@ -385,7 +396,7 @@ class FlyteContext(object):
 
     @contextmanager
     def new_registration_settings(
-        self, registration_settings: RegistrationSettings
+            self, registration_settings: RegistrationSettings
     ) -> Generator[FlyteContext, None, None]:
         new_ctx = FlyteContext(parent=self, registration_settings=registration_settings)
         FlyteContext.OBJS.append(new_ctx)
