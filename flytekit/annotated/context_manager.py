@@ -13,7 +13,7 @@ from typing import Any, Dict, Generator, List, Optional
 from flytekit.clients import friendly as friendly_client  # noqa
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.configuration import internal, images
+from flytekit.configuration import images, internal
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -82,15 +82,15 @@ def get_image_config() -> ImageConfig:
 
 class RegistrationSettings(object):
     def __init__(
-            self,
-            project: str,
-            domain: str,
-            version: str,
-            image_config: ImageConfig,
-            env: Optional[Dict[str, str]],
-            iam_role: Optional[str] = None,
-            service_account: Optional[str] = None,
-            raw_output_data_config: Optional[str] = None,
+        self,
+        project: str,
+        domain: str,
+        version: str,
+        image_config: ImageConfig,
+        env: Optional[Dict[str, str]],
+        iam_role: Optional[str] = None,
+        service_account: Optional[str] = None,
+        raw_output_data_config: Optional[str] = None,
     ):
         self._project = project
         self._domain = domain
@@ -205,8 +205,7 @@ class ExecutionState(object):
         LOCAL_WORKFLOW_EXECUTION = 2
 
     def __init__(
-            self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike,
-            additional_context: Dict[Any, Any] = None
+        self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike, additional_context: Dict[Any, Any] = None
     ):
         self._mode = mode
         self._working_dir = working_dir
@@ -268,14 +267,14 @@ class FlyteContext(object):
     OBJS = []
 
     def __init__(
-            self,
-            parent=None,
-            file_access: _data_proxy.FileAccessProvider = None,
-            compilation_state: CompilationState = None,
-            execution_state: ExecutionState = None,
-            flyte_client: friendly_client.SynchronousFlyteClient = None,
-            user_space_params: ExecutionParameters = None,
-            registration_settings: RegistrationSettings = None,
+        self,
+        parent=None,
+        file_access: _data_proxy.FileAccessProvider = None,
+        compilation_state: CompilationState = None,
+        execution_state: ExecutionState = None,
+        flyte_client: friendly_client.SynchronousFlyteClient = None,
+        user_space_params: ExecutionParameters = None,
+        registration_settings: RegistrationSettings = None,
     ):
         # TODO: Should we have this auto-parenting feature?
         if parent is None and len(FlyteContext.OBJS) > 0:
@@ -340,10 +339,10 @@ class FlyteContext(object):
 
     @contextmanager
     def new_execution_context(
-            self,
-            mode: ExecutionState.Mode,
-            additional_context: Dict[Any, Any] = None,
-            execution_params: Optional[ExecutionParameters] = None,
+        self,
+        mode: ExecutionState.Mode,
+        additional_context: Dict[Any, Any] = None,
+        execution_params: Optional[ExecutionParameters] = None,
     ) -> Generator[FlyteContext, None, None]:
 
         # Create a working directory for the execution to use
@@ -396,7 +395,7 @@ class FlyteContext(object):
 
     @contextmanager
     def new_registration_settings(
-            self, registration_settings: RegistrationSettings
+        self, registration_settings: RegistrationSettings
     ) -> Generator[FlyteContext, None, None]:
         new_ctx = FlyteContext(parent=self, registration_settings=registration_settings)
         FlyteContext.OBJS.append(new_ctx)
