@@ -7,7 +7,8 @@ from abc import abstractmethod
 from enum import Enum
 from typing import Any, Callable, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
-from flytekit.annotated.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteEntities
+from flytekit.annotated.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteEntities, \
+    ImageConfig
 from flytekit.annotated.interface import (
     Interface,
     transform_interface_to_list_interface,
@@ -51,13 +52,13 @@ def kwtypes(**kwargs) -> Dict[str, Type]:
 # already.)
 class Task(object):
     def __init__(
-        self,
-        task_type: str,
-        name: str,
-        interface: _interface_models.TypedInterface,
-        metadata: _task_model.TaskMetadata,
-        *args,
-        **kwargs,
+            self,
+            task_type: str,
+            name: str,
+            interface: _interface_models.TypedInterface,
+            metadata: _task_model.TaskMetadata,
+            *args,
+            **kwargs,
     ):
         self._task_type = task_type
         self._name = name
@@ -159,7 +160,7 @@ class Task(object):
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
             return self.compile(ctx, *args, **kwargs)
         elif (
-            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+                ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
             if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
                 return
@@ -195,7 +196,7 @@ class Task(object):
 
     @abstractmethod
     def dispatch_execute(
-        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap,
+            self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap,
     ) -> _literal_models.LiteralMap:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
@@ -210,7 +211,7 @@ class Task(object):
 
 class PythonTask(Task):
     def __init__(
-        self, task_type: str, name: str, interface: Interface, metadata: _task_model.TaskMetadata, *args, **kwargs
+            self, task_type: str, name: str, interface: Interface, metadata: _task_model.TaskMetadata, *args, **kwargs
     ):
         super().__init__(task_type, name, transform_interface_to_typed_interface(interface), metadata)
         self._python_interface = interface
@@ -240,7 +241,7 @@ class PythonTask(Task):
         )
 
     def dispatch_execute(
-        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
+            self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
     ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
@@ -264,7 +265,7 @@ class PythonTask(Task):
         # Short circuit the translation to literal map because what's returned may be a dj spec (or an
         # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
         if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
-            native_outputs, _dynamic_job.DynamicJobSpec
+                native_outputs, _dynamic_job.DynamicJobSpec
         ):
             return native_outputs
 
@@ -314,20 +315,20 @@ class ContainerTask(PythonTask):
         DO_NOT_UPLOAD = _task_model.IOStrategy.UPLOAD_MODE_NO_UPLOAD
 
     def __init__(
-        self,
-        name: str,
-        image: str,
-        metadata: _task_model.TaskMetadata,
-        inputs: Dict[str, Type],
-        command: List[str],
-        arguments: List[str] = None,
-        outputs: Dict[str, Type] = None,
-        input_data_dir: str = None,
-        output_data_dir: str = None,
-        metadata_format: MetadataFormat = MetadataFormat.JSON,
-        io_strategy: IOStrategy = None,
-        *args,
-        **kwargs,
+            self,
+            name: str,
+            image: str,
+            metadata: _task_model.TaskMetadata,
+            inputs: Dict[str, Type],
+            command: List[str],
+            arguments: List[str] = None,
+            outputs: Dict[str, Type] = None,
+            input_data_dir: str = None,
+            output_data_dir: str = None,
+            metadata_format: MetadataFormat = MetadataFormat.JSON,
+            io_strategy: IOStrategy = None,
+            *args,
+            **kwargs,
     ):
         super().__init__(
             task_type="raw-container",
@@ -371,6 +372,40 @@ class ContainerTask(PythonTask):
         )
 
 
+_IMAGE_REPLACE_REGEX = re.compile(r"({{\s*.image.(\w+).(\w+)\s*}})", re.IGNORECASE)
+
+
+def get_registerable_container_image(img: Optional[str], cfg: ImageConfig) -> str:
+    """
+    :param img: Configured image
+    :param cfg: Registration configuration
+    :return:
+    """
+    if img is not None and img != "":
+        matches = _IMAGE_REPLACE_REGEX.findall(img)
+        if matches is None or len(matches) == 0:
+            return img
+        for m in matches:
+            if len(m) < 2:
+                raise AssertionError(
+                    f"Image specification should be of the form <fqn>:<tag> OR <fqn>:{{.image.default.version}} OR "
+                    "{{.image.xyz.fqn}}:{{.image.xyz.version}} - Received {m}")
+            replace_group, name, attr = m
+            if name is None or name == "" or attr is None or attr == "":
+                raise AssertionError(f"Image format is incorrect {m}")
+            img_cfg = cfg.find_image(name)
+            if img_cfg is None:
+                raise AssertionError(f"Image Config with name {name} not found in the configuration")
+            if attr == "version":
+                img = img.replace(replace_group, img_cfg.tag)
+            elif attr == "fqn":
+                img = img.replace(replace_group, img_cfg.fqn)
+            else:
+                raise AssertionError(f"Only fqn and version are supported replacements, {attr} is not supported")
+        return img
+    return f"{cfg.default_image.fqn}:{cfg.default_image.tag}"
+
+
 T = TypeVar("T")
 
 
@@ -382,15 +417,24 @@ class PythonFunctionTask(PythonTask, Generic[T]):
     """
 
     def __init__(
-        self,
-        task_config: T,
-        task_function: Callable,
-        metadata: _task_model.TaskMetadata,
-        ignore_input_vars: List[str] = None,
-        task_type="python-task",
-        *args,
-        **kwargs,
+            self,
+            task_config: T,
+            task_function: Callable,
+            metadata: _task_model.TaskMetadata,
+            ignore_input_vars: List[str] = None,
+            task_type="python-task",
+            container_image: str = None,
+            *args,
+            **kwargs,
     ):
+        """
+        :param task_config: Configuration object for Task. Should be a unique type for that specific Task
+        :param task_function: Python function that has type annotations and works for the task
+        :param metadata: Task execution metadata e.g. retries, timeout etc
+        :param ignore_input_vars:
+        :param task_type: String task type to be associated with this Task
+        :param container_image: String FQN for the image.
+        """
         self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         super().__init__(
@@ -403,6 +447,7 @@ class PythonFunctionTask(PythonTask, Generic[T]):
         )
         self._task_function = task_function
         self._task_config = task_config
+        self._container_image = container_image
 
     def execute(self, **kwargs) -> Any:
         return self._task_function(**kwargs)
@@ -414,6 +459,10 @@ class PythonFunctionTask(PythonTask, Generic[T]):
     @property
     def task_config(self) -> T:
         return self._task_config
+
+    @property
+    def container_image(self) -> str:
+        return self.container_image
 
     def get_container(self) -> _task_model.Container:
         settings = FlyteContext.current_context().registration_settings
@@ -509,14 +558,14 @@ class SQLTask(PythonTask):
     _INPUT_REGEX = re.compile(r"({{\s*.inputs.(\w+)\s*}})", re.IGNORECASE)
 
     def __init__(
-        self,
-        name: str,
-        query_template: str,
-        inputs: Dict[str, Type],
-        metadata: _task_model.TaskMetadata,
-        task_type="sql_task",
-        *args,
-        **kwargs,
+            self,
+            name: str,
+            query_template: str,
+            inputs: Dict[str, Type],
+            metadata: _task_model.TaskMetadata,
+            task_type="sql_task",
+            *args,
+            **kwargs,
     ):
         super().__init__(
             task_type=task_type,
@@ -557,12 +606,12 @@ class _Dynamic(object):
 
 class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
     def __init__(
-        self,
-        task_config: _Dynamic,
-        dynamic_workflow_function: Callable,
-        metadata: _task_model.TaskMetadata,
-        *args,
-        **kwargs,
+            self,
+            task_config: _Dynamic,
+            dynamic_workflow_function: Callable,
+            metadata: _task_model.TaskMetadata,
+            *args,
+            **kwargs,
     ):
         super().__init__(
             task_config=task_config,
@@ -574,7 +623,7 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
         )
 
     def compile_into_workflow(
-        self, ctx: FlyteContext, **kwargs
+            self, ctx: FlyteContext, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
         with ctx.new_compilation_context(prefix="dynamic"):
             self._wf = Workflow(self._task_function)
@@ -640,7 +689,7 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
 
 class Reference(object):
     def __init__(
-        self, project: str, domain: str, name: str, version: str, *args, **kwargs,
+            self, project: str, domain: str, name: str, version: str, *args, **kwargs,
     ):
         self._id = _identifier_model.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, version)
 
@@ -655,13 +704,13 @@ class ReferenceTask(PythonTask):
     """
 
     def __init__(
-        self,
-        task_config: Reference,
-        task_function: Callable,
-        ignored_metadata: _task_model.TaskMetadata,
-        *args,
-        task_type="reference-task",
-        **kwargs,
+            self,
+            task_config: Reference,
+            task_function: Callable,
+            ignored_metadata: _task_model.TaskMetadata,
+            *args,
+            task_type="reference-task",
+            **kwargs,
     ):
         self._reference = task_config
         self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
@@ -737,12 +786,12 @@ class Resources(object):
 
 
 def metadata(
-    cache: bool = False,
-    cache_version: str = "",
-    retries: int = 0,
-    interruptible: bool = False,
-    deprecated: str = "",
-    timeout: Union[_datetime.timedelta, int] = None,
+        cache: bool = False,
+        cache_version: str = "",
+        retries: int = 0,
+        interruptible: bool = False,
+        deprecated: str = "",
+        timeout: Union[_datetime.timedelta, int] = None,
 ) -> _task_model.TaskMetadata:
     return _task_model.TaskMetadata(
         discoverable=cache,
@@ -756,17 +805,17 @@ def metadata(
 
 
 def task(
-    _task_function: Callable = None,
-    task_config: Any = None,
-    cache: bool = False,
-    cache_version: str = "",
-    retries: int = 0,
-    interruptible: bool = False,
-    deprecated: str = "",
-    timeout: Union[_datetime.timedelta, int] = 0,
-    environment: Dict[str, str] = None,  # TODO: Ketan - what do we do with this?  Not sure how to use kwargs
-    *args,
-    **kwargs,
+        _task_function: Callable = None,
+        task_config: Any = None,
+        cache: bool = False,
+        cache_version: str = "",
+        retries: int = 0,
+        interruptible: bool = False,
+        deprecated: str = "",
+        timeout: Union[_datetime.timedelta, int] = 0,
+        environment: Dict[str, str] = None,  # TODO: Ketan - what do we do with this?  Not sure how to use kwargs
+        *args,
+        **kwargs,
 ) -> Callable:
     def wrapper(fn) -> PythonFunctionTask:
         if isinstance(timeout, int):

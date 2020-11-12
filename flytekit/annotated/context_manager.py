@@ -4,36 +4,87 @@ import datetime as _datetime
 import logging as _logging
 import os
 import pathlib
+import re
 from contextlib import contextmanager
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Generator, List, Optional
 
 from flytekit.clients import friendly as friendly_client  # noqa
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.configuration import sdk as _sdk_config
+from flytekit.configuration import sdk as _sdk_config, internal
 from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models.common import RawOutputDataConfig
 from flytekit.models.core import identifier as _identifier
 
 
+@dataclass(init=True, repr=True, eq=True, frozen=True)
+class Image(object):
+    name: str
+    fqn: str
+    tag: str
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
+class ImageConfig(object):
+    default_image: Image
+    images: List[Image] = None
+
+    def find_image(self, name) -> Optional[Image]:
+        for i in self.images:
+            if i.name == name:
+                return i
+        return None
+
+
+_IMAGE_FQN_TAG_REGEX = re.compile("(.*):(.+)")
+
+
+def look_up_image_info(tag) -> Image:
+    """
+    Looks up the image tag from environment variable (should be set from the Dockerfile).
+        FLYTE_INTERNAL_IMAGE should be the environment variable.
+
+    This function is used when registering tasks/workflows with Admin.
+    When using the canonical Python-based development cycle, the version that is used to register workflows
+    and tasks with Admin should be the version of the image itself, which should ideally be something unique
+    like the sha of the latest commit.
+
+    :param Text tag: e.g. somedocker.com/myimage:someversion123
+    :rtype: Text
+    """
+    if tag is None or tag == "":
+        raise Exception("Bad input for image tag {}".format(tag))
+    m = _IMAGE_FQN_TAG_REGEX.match(tag)
+    if m is not None and len(m.groups()) == 2:
+        return Image(name="default", fqn=m.group(1), tag=m.group(2))
+
+    raise Exception("Could not parse image version from configuration. Did you set it in the" "Dockerfile?")
+
+
+def get_image_config() -> ImageConfig:
+    default_img = internal.look_up_image_info(internal.IMAGE.get())
+    return ImageConfig(default_image=default_img, images=[default_img])
+
+
 class RegistrationSettings(object):
     def __init__(
-        self,
-        project: str,
-        domain: str,
-        version: str,
-        image: str,
-        env: Optional[Dict[str, str]],
-        iam_role: Optional[str] = None,
-        service_account: Optional[str] = None,
-        raw_output_data_config: Optional[str] = None,
+            self,
+            project: str,
+            domain: str,
+            version: str,
+            image_config: ImageConfig,
+            env: Optional[Dict[str, str]],
+            iam_role: Optional[str] = None,
+            service_account: Optional[str] = None,
+            raw_output_data_config: Optional[str] = None,
     ):
         self._project = project
         self._domain = domain
         self._version = version
-        self._image = image
+        self._image_config = image_config
         self._env = env or {}
         self._iam_role = iam_role
         self._service_account = service_account
@@ -52,8 +103,8 @@ class RegistrationSettings(object):
         return self._version
 
     @property
-    def image(self) -> str:
-        return self._image
+    def image(self) -> ImageConfig:
+        return self._image_config
 
     @property
     def env(self) -> Dict[str, str]:
@@ -143,7 +194,8 @@ class ExecutionState(object):
         LOCAL_WORKFLOW_EXECUTION = 2
 
     def __init__(
-        self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike, additional_context: Dict[Any, Any] = None
+            self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike,
+            additional_context: Dict[Any, Any] = None
     ):
         self._mode = mode
         self._working_dir = working_dir
@@ -205,14 +257,14 @@ class FlyteContext(object):
     OBJS = []
 
     def __init__(
-        self,
-        parent=None,
-        file_access: _data_proxy.FileAccessProvider = None,
-        compilation_state: CompilationState = None,
-        execution_state: ExecutionState = None,
-        flyte_client: friendly_client.SynchronousFlyteClient = None,
-        user_space_params: ExecutionParameters = None,
-        registration_settings: RegistrationSettings = None,
+            self,
+            parent=None,
+            file_access: _data_proxy.FileAccessProvider = None,
+            compilation_state: CompilationState = None,
+            execution_state: ExecutionState = None,
+            flyte_client: friendly_client.SynchronousFlyteClient = None,
+            user_space_params: ExecutionParameters = None,
+            registration_settings: RegistrationSettings = None,
     ):
         # TODO: Should we have this auto-parenting feature?
         if parent is None and len(FlyteContext.OBJS) > 0:
@@ -277,10 +329,10 @@ class FlyteContext(object):
 
     @contextmanager
     def new_execution_context(
-        self,
-        mode: ExecutionState.Mode,
-        additional_context: Dict[Any, Any] = None,
-        execution_params: Optional[ExecutionParameters] = None,
+            self,
+            mode: ExecutionState.Mode,
+            additional_context: Dict[Any, Any] = None,
+            execution_params: Optional[ExecutionParameters] = None,
     ) -> Generator[FlyteContext, None, None]:
 
         # Create a working directory for the execution to use
@@ -333,7 +385,7 @@ class FlyteContext(object):
 
     @contextmanager
     def new_registration_settings(
-        self, registration_settings: RegistrationSettings
+            self, registration_settings: RegistrationSettings
     ) -> Generator[FlyteContext, None, None]:
         new_ctx = FlyteContext(parent=self, registration_settings=registration_settings)
         FlyteContext.OBJS.append(new_ctx)

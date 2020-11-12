@@ -175,7 +175,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                         project=_internal_config.TASK_PROJECT.get(),
                         domain=_internal_config.TASK_DOMAIN.get(),
                         version=_internal_config.TASK_VERSION.get(),
-                        image=_internal_config.IMAGE.get(),
+                        image_config=_internal_config.get_image_config(),
                         env=env,
                     )
                     # The reason we need this is because of dynamic tasks. Even if we move compilation all to Admin,
@@ -184,7 +184,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                     with ctx.new_registration_settings(registration_settings=registration_settings) as ctx:
                         # Because execution states do not look up the context chain, it has to be made last
                         with ctx.new_execution_context(
-                            mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
+                                mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
                         ) as ctx:
                             # First download the contents of the input file
                             local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")

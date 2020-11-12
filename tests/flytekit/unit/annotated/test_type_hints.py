@@ -382,6 +382,7 @@ def test_wf1_with_dynamic():
     def t2(a: str, b: str) -> str:
         return b + a
 
+
     @dynamic
     def my_subwf(a: int) -> typing.List[str]:
         s = []
