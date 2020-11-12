@@ -91,6 +91,7 @@ class FlyteConfigurationFile(object):
 
     @property
     def config(self) -> _configparser.ConfigParser:
+        self._load_config()
         return self._config
 
 

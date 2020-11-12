@@ -16,6 +16,7 @@ def get_specified_images() -> typing.Dict[str, str]:
     """
     image_names = _config_common.CONFIGURATION_SINGLETON.config.options("images")
     images: typing.Dict[str, str] = {}
-    for i in image_names:
-        images[str(i)] = _config_common.FlyteStringConfigurationEntry("images", i).get()
+    if image_names:
+        for i in image_names:
+            images[str(i)] = _config_common.FlyteStringConfigurationEntry("images", i).get()
     return images
