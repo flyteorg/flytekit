@@ -206,6 +206,12 @@ class FileAccessProvider(object):
             return True
         return False
 
+    @staticmethod
+    def get_filename_only(path: Union[str, os.PathLike]) -> str:
+        path_str = str(path)  # in case it's not a str
+        _, tail = os.path.split(path_str)
+        return tail
+
     def _get_data_proxy_by_path(self, path: Union[str, os.PathLike]):
         """
         :param Text path:

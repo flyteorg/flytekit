@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import typing
 
+import flytekit
 from flytekit import FlyteContext
 from flytekit.annotated.type_engine import TypeEngine, TypeTransformer
 from flytekit.models import types as _type_models
@@ -237,13 +238,23 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     ) -> FlyteFile:
 
         uri = lv.scalar.blob.uri
+
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
         if not ctx.file_access.is_remote(uri):
             return expected_python_type(uri)
 
         # For the remote case, return an FlyteFile object that can download
-        local_path = ctx.file_access.get_random_local_path()
+        source_file_name = ctx.file_access.get_filename_only(uri)
+        if source_file_name:
+            # Let's check to make sure we're not overwriting anything
+            local_path = os.path.join(ctx.file_access.local_access.sandbox, source_file_name)
+            if os.path.exists(local_path):
+                flytekit.logger.info(f"Intended path already exists {local_path}, using random")
+                local_path = ctx.file_access.get_random_local_path()
+        else:
+            flytekit.logger.debug(f"Flyte ")
+            local_path = ctx.file_access.get_random_local_path()
 
         def _downloader():
             return ctx.file_access.get_data(uri, local_path, is_multipart=False)
