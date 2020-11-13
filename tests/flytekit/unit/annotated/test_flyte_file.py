@@ -141,7 +141,7 @@ def test_file_handling_remote_file_handling():
         assert len(working_dir) == 2
 
         # The act of opening it should trigger the download, since we do lazy downloading.
-        with open(workflow_output, 'rb') as fh:
+        with open(workflow_output, "rb"):
             ...
         working_dir = os.listdir(random_dir)
         assert len(working_dir) == 3
