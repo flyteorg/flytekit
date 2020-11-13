@@ -3,10 +3,10 @@ import typing
 
 from flytekit.annotated import context_manager
 from flytekit.annotated.condition import conditional
-from flytekit.annotated.context_manager import FlyteContext, ImageConfig, Image, get_image_config
+from flytekit.annotated.context_manager import FlyteContext, Image, ImageConfig, get_image_config
 from flytekit.annotated.task import ContainerTask, kwtypes, metadata, task
 from flytekit.annotated.workflow import workflow
-from flytekit.configuration import set_flyte_config_file, images
+from flytekit.configuration import set_flyte_config_file
 
 
 def test_serialization():
@@ -39,7 +39,10 @@ def test_serialization():
     ctx = FlyteContext.current_context()
     default_img = Image(name="default", fqn="test", tag="tag")
     registration_settings = context_manager.RegistrationSettings(
-        project="project", domain="domain", version="version", env=None,
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
     with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
@@ -62,12 +65,12 @@ def test_serialization_branch_complex():
         x, y = t1(a=a)
         d = (
             conditional("test1")
-                .if_(x == 4)
-                .then(t2(a=b))
-                .elif_(x >= 5)
-                .then(t2(a=y))
-                .else_()
-                .fail("Unable to choose branch")
+            .if_(x == 4)
+            .then(t2(a=b))
+            .elif_(x >= 5)
+            .then(t2(a=y))
+            .else_()
+            .fail("Unable to choose branch")
         )
         f = conditional("test2").if_(d == "hello ").then(t2(a="It is hello")).else_().then(t2(a="Not Hello!"))
         return x, f
@@ -75,7 +78,10 @@ def test_serialization_branch_complex():
     ctx = FlyteContext.current_context()
     default_img = Image(name="default", fqn="test", tag="tag")
     registration_settings = context_manager.RegistrationSettings(
-        project="project", domain="domain", version="version", env=None,
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
     with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
@@ -110,7 +116,10 @@ def test_serialization_branch():
     ctx = FlyteContext.current_context()
     default_img = Image(name="default", fqn="test", tag="tag")
     registration_settings = context_manager.RegistrationSettings(
-        project="project", domain="domain", version="version", env=None,
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
     with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
@@ -136,8 +145,7 @@ def test_serialization_images():
     os.environ["FLYTE_INTERNAL_IMAGE"] = "docker.io/default:version"
     set_flyte_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config"))
     rs = context_manager.RegistrationSettings(
-        project="project", domain="domain", version="version", env=None,
-        image_config=get_image_config(),
+        project="project", domain="domain", version="version", env=None, image_config=get_image_config(),
     )
     ctx = FlyteContext.current_context()
     with ctx.current_context().new_registration_settings(registration_settings=rs):

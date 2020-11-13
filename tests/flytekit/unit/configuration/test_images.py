@@ -1,6 +1,6 @@
 import os
 
-from flytekit.configuration import set_flyte_config_file, images
+from flytekit.configuration import images, set_flyte_config_file
 
 
 def test_load_images():
