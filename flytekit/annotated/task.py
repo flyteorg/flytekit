@@ -826,6 +826,7 @@ def task(
     interruptible: bool = False,
     deprecated: str = "",
     timeout: Union[_datetime.timedelta, int] = 0,
+    container_image: str = None,
     environment: Dict[str, str] = None,  # TODO: Ketan - what do we do with this?  Not sure how to use kwargs
     *args,
     **kwargs,
@@ -841,7 +842,7 @@ def task(
         _metadata = metadata(cache, cache_version, retries, interruptible, deprecated, _timeout)
 
         task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
-            task_config, fn, _metadata, *args, **kwargs
+            task_config, fn, _metadata, container_image=container_image, *args, **kwargs
         )
 
         return task_instance

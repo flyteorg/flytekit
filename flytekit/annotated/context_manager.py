@@ -40,7 +40,7 @@ class ImageConfig(object):
         return None
 
 
-_IMAGE_FQN_TAG_REGEX = re.compile("(.*):(.+)")
+_IMAGE_FQN_TAG_REGEX = re.compile(r"([^:]+)(?=:.+)?")
 
 
 def look_up_image_info(name: str, tag: str, optional_tag: bool = False) -> Image:
@@ -60,22 +60,21 @@ def look_up_image_info(name: str, tag: str, optional_tag: bool = False) -> Image
     """
     if tag is None or tag == "":
         raise Exception("Bad input for image tag {}".format(tag))
-    m = _IMAGE_FQN_TAG_REGEX.match(tag)
-    if m is not None and len(m.groups()) > 0:
-        fqn = m.group(1)
-        tag = None
-        if len(m.groups()) == 2:
-            tag = m.group(2)
-        if not optional_tag and tag is None:
+    matches = _IMAGE_FQN_TAG_REGEX.findall(tag)
+    if matches is not None:
+        if len(matches) == 1 and optional_tag:
+            return Image(name=name, fqn=matches[0], tag=None)
+        elif len(matches) == 2:
+            return Image(name=name, fqn=matches[0], tag=matches[1])
+        else:
             raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
-        return Image(name=name, fqn=fqn, tag=tag)
 
     raise Exception("Could not parse given image and version from configuration.")
 
 
 def get_image_config() -> ImageConfig:
     default_img = look_up_image_info("default", internal.IMAGE.get())
-    other_images = [look_up_image_info(k, tag=v, optional_tag=True) for k, v in images.get_specified_images()]
+    other_images = [look_up_image_info(k, tag=v, optional_tag=True) for k, v in images.get_specified_images().items()]
     other_images.append(default_img)
     return ImageConfig(default_image=default_img, images=other_images)
 
