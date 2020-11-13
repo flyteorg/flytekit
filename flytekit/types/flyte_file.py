@@ -253,7 +253,6 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
                 flytekit.logger.info(f"Intended path already exists {local_path}, using random")
                 local_path = ctx.file_access.get_random_local_path()
         else:
-            flytekit.logger.debug(f"Flyte ")
             local_path = ctx.file_access.get_random_local_path()
 
         def _downloader():
