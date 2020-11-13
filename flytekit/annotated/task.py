@@ -363,7 +363,7 @@ class ContainerTask(PythonTask):
     def get_container(self, settings: RegistrationSettings) -> _task_model.Container:
         env = settings.env
         return _get_container_definition(
-            image=settings.image,
+            image=self._image,
             command=self._cmd,
             args=self._args,
             data_loading_config=_task_model.DataLoadingConfig(

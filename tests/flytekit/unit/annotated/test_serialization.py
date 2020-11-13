@@ -48,7 +48,11 @@ def test_serialization():
     with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
         wf = raw_container_wf.get_registerable_entity()
         assert wf is not None
-        print(wf)
+        assert len(wf.nodes) == 3
+        sqn = square.get_registerable_entity()
+        assert sqn.container.image == "alpine"
+        sumn = sum.get_registerable_entity()
+        assert sumn.container.image == "alpine"
 
 
 def test_serialization_branch_complex():
@@ -151,6 +155,7 @@ def test_serialization_images():
     with ctx.current_context().new_registration_settings(registration_settings=rs):
         t1_ser = t1.get_registerable_entity()
         assert t1_ser.container.image == "docker.io/xyz:version"
+        t1_ser.to_flyte_idl()
 
         t2_ser = t2.get_registerable_entity()
         assert t2_ser.container.image == "docker.io/default:version"
