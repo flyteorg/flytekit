@@ -276,7 +276,8 @@ def merge_promises(*args: Promise) -> typing.List[Promise]:
         if p is not None and p.ref:
             node_var = (p.ref.node_id, p.ref.var)
             if node_var not in node_vars:
-                merged_promises.append(p)
+                new_p = p.with_var(f"{p.ref.node_id}.{p.ref.var}")
+                merged_promises.append(new_p)
                 node_vars.add(node_var)
     return merged_promises
 
@@ -292,7 +293,7 @@ def transform_to_conj_expr(expr: ConjunctionExpression) -> (_core_cond.Conjuncti
 
 def transform_to_operand(v: Union[Promise, Literal]) -> (_core_cond.Operand, Optional[Promise]):
     if isinstance(v, Promise):
-        return _core_cond.Operand(var=v.var), v
+        return _core_cond.Operand(var=f"{v.ref.node_id}.{v.var}"), v
     return _core_cond.Operand(primitive=v.scalar.primitive), None
 
 
