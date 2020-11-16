@@ -423,7 +423,7 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         }
 
     @_exception_scopes.system_entry_point
-    def fast_register(self, project, domain, name, digest, additional_distribution) -> str:
+    def fast_register(self, project, domain, name, digest, additional_distribution, dest_dir) -> str:
         """
         The fast register call essentially hijacks the task container commandline.
         Say an existing task container definition had a commandline like so:
@@ -441,12 +441,20 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         :param Text name: The name to give this task.
         :param Text digest: The version in which to register this task.
         :param Text additional_distribution: User-specified location for remote source code distribution.
+        :param Text The optional location for where to install the additional distribution at runtime
         :rtype: Text: Registered identifier.
         """
 
         original_container = self.container
         container = _copy.deepcopy(original_container)
-        args = ["pyflyte-fast-execute", "--additional-distribution", additional_distribution, "--"] + container.args
+        args = [
+            "pyflyte-fast-execute",
+            "--additional-distribution",
+            additional_distribution,
+            "--dest-dir",
+            dest_dir,
+            "--",
+        ] + container.args
         container._args = args
         self._container = container
 
