@@ -447,14 +447,10 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
 
         original_container = self.container
         container = _copy.deepcopy(original_container)
-        args = [
-            "pyflyte-fast-execute",
-            "--additional-distribution",
-            additional_distribution,
-            "--dest-dir",
-            dest_dir,
-            "--",
-        ] + container.args
+        args = ["pyflyte-fast-execute", "--additional-distribution", additional_distribution]
+        if dest_dir:
+            args += ["--dest-dir", dest_dir]
+        args += ["--"] + container.args
         container._args = args
         self._container = container
 
