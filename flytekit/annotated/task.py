@@ -470,7 +470,7 @@ class PythonFunctionTask(PythonTask, Generic[T]):
         return self._task_config
 
     @property
-    def container_image(self) -> str:
+    def container_image(self) -> Optional[str]:
         return self._container_image
 
     def get_container(self, settings: RegistrationSettings) -> _task_model.Container:
@@ -489,7 +489,7 @@ class PythonFunctionTask(PythonTask, Generic[T]):
         ]
         env = settings.env
         return _get_container_definition(
-            image=get_registerable_container_image(self.container_image, settings.image),
+            image=get_registerable_container_image(self.container_image, settings.image_config),
             command=[],
             args=args,
             data_loading_config=None,
@@ -826,7 +826,7 @@ def task(
     interruptible: bool = False,
     deprecated: str = "",
     timeout: Union[_datetime.timedelta, int] = 0,
-    container_image: str = None,
+    container_image: Optional[str] = None,
     environment: Dict[str, str] = None,  # TODO: Ketan - what do we do with this?  Not sure how to use kwargs
     *args,
     **kwargs,

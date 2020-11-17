@@ -113,7 +113,7 @@ class RegistrationSettings(object):
         return self._version
 
     @property
-    def image(self) -> ImageConfig:
+    def image_config(self) -> ImageConfig:
         return self._image_config
 
     @property

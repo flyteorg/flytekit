@@ -8,7 +8,7 @@ import pytest
 import flytekit
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
-from flytekit.annotated.context_manager import ExecutionState
+from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import ContainerTask, Reference, SQLTask, dynamic, kwtypes, maptask, metadata, task
 from flytekit.annotated.testing import task_mock
@@ -401,7 +401,11 @@ def test_wf1_with_dynamic():
 
     with context_manager.FlyteContext.current_context().new_registration_settings(
         registration_settings=context_manager.RegistrationSettings(
-            project="test_proj", domain="test_domain", version="abc", image="image:name", env={},
+            project="test_proj",
+            domain="test_domain",
+            version="abc",
+            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+            env={},
         )
     ) as ctx:
         with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
@@ -823,7 +827,7 @@ def test_lp_serialize():
         project="proj",
         domain="dom",
         version="123",
-        image="asdf/fdsa:123",
+        image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
         iam_role="test:iam:role",
         service_account=None,
@@ -976,7 +980,7 @@ def test_ref():
         project="proj",
         domain="dom",
         version="123",
-        image="asdf/fdsa:123",
+        image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
         iam_role="test:iam:role",
         service_account=None,

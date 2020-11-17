@@ -146,6 +146,14 @@ def test_serialization_images():
     def t3():
         pass
 
+    @task(container_image="docker.io/org/myimage:latest")
+    def t4():
+        pass
+
+    @task(container_image="docker.io/org/myimage:{{.image.default.version}}")
+    def t5(a: int) -> int:
+        return a
+
     os.environ["FLYTE_INTERNAL_IMAGE"] = "docker.io/default:version"
     set_flyte_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config"))
     rs = context_manager.RegistrationSettings(
@@ -162,3 +170,9 @@ def test_serialization_images():
 
         t3_ser = t3.get_registerable_entity()
         assert t3_ser.container.image == "docker.io/default:version"
+
+        t4_ser = t4.get_registerable_entity()
+        assert t4_ser.container.image == "docker.io/org/myimage:latest"
+
+        t5_ser = t5.get_registerable_entity()
+        assert t5_ser.container.image == "docker.io/org/myimage:version"
