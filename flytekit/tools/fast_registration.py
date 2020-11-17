@@ -49,7 +49,7 @@ def get_additional_distribution_loc(remote_location: str, identifier: str) -> st
     :param Text identifier:
     :return Text:
     """
-    return _os.path.join(remote_location, "{}.{}".format(identifier, "tar.gz"))
+    return _os.path.join(remote_location, "fast-{}.{}".format(identifier, "tar.gz"))
 
 
 def upload_package(source_dir: _os.PathLike, identifier: str, remote_location: str, dry_run=False) -> str:
