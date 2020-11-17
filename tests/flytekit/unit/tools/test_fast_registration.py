@@ -18,6 +18,4 @@ def test_filter_tar_file_fn():
 
 
 def test_get_additional_distribution_loc():
-    assert (
-        get_additional_distribution_loc("s3://my-s3-bucket/dir", "123abc") == "s3://my-s3-bucket/dir/fast-123abc.tar.gz"
-    )
+    assert get_additional_distribution_loc("s3://my-s3-bucket/dir", "123abc") == "s3://my-s3-bucket/dir/123abc.tar.gz"
