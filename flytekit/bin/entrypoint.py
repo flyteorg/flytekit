@@ -123,17 +123,21 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
 
 @_pass_through.command("pyflyte-fast-execute")
 @_click.option("--additional-distribution", required=False)
+@_click.option("--dest-dir", required=False)
 @_click.argument("task-execute-cmd", nargs=-1, type=_click.UNPROCESSED)
-def fast_execute_task_cmd(additional_distribution, task_execute_cmd):
+def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
     """
     Downloads a compressed code distribution specified by additional-distribution and then calls the underlying
     task execute command for the updated code.
     :param Text additional_distribution:
+    :param Text dest_dir:
     :param task_execute_cmd:
     :return:
     """
     if additional_distribution is not None:
-        _download_distribution(additional_distribution, _pathlib.Path(_os.getcwd()))
+        if not dest_dir:
+            dest_dir = _os.getcwd()
+        _download_distribution(additional_distribution, _pathlib.Path(dest_dir))
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.

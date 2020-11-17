@@ -15,7 +15,15 @@ from flytekit.tools.fast_registration import upload_package as _upload_package
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
 
-def fast_register_all(project: str, domain: str, pkgs: _List[str], test: bool, version: str, source_dir):
+def fast_register_all(
+    project: str,
+    domain: str,
+    pkgs: _List[str],
+    test: bool,
+    version: str,
+    source_dir: _os.PathLike,
+    dest_dir: _os.PathLike = None,
+):
     if test:
         click.echo("Test switch enabled, not doing anything...")
 
@@ -44,13 +52,19 @@ def fast_register_all(project: str, domain: str, pkgs: _List[str], test: bool, v
             click.echo("Fast registering {:20} {}".format("{}:".format(o.entity_type_text), o.id.name))
             _get_additional_distribution_loc(_sdk_config.FAST_REGISTRATION_DIR.get(), digest)
             if isinstance(o, _sdk_runnable_task.SdkRunnableTask):
-                o.fast_register(project, domain, o.id.name, digest, remote_package_path)
+                o.fast_register(project, domain, o.id.name, digest, remote_package_path, dest_dir)
             else:
                 o.register(project, domain, o.id.name, digest)
 
 
 def fast_register_tasks_only(
-    project: str, domain: str, pkgs: _List[str], test: bool, version: str, source_dir: _os.PathLike
+    project: str,
+    domain: str,
+    pkgs: _List[str],
+    test: bool,
+    version: str,
+    source_dir: _os.PathLike,
+    dest_dir: _os.PathLike = None,
 ):
     if test:
         click.echo("Test switch enabled, not doing anything...")
@@ -76,7 +90,7 @@ def fast_register_tasks_only(
         else:
             click.echo("Fast registering task {:20} {}".format("{}:".format(t.entity_type_text), name))
             if isinstance(t, _sdk_runnable_task.SdkRunnableTask):
-                t.fast_register(project, domain, name, digest, remote_package_path)
+                t.fast_register(project, domain, name, digest, remote_package_path, dest_dir)
             else:
                 t.register(project, domain, name, digest)
 
@@ -113,6 +127,12 @@ def fast_register(ctx, test=None):
     required=True,
 )
 @click.option(
+    "--dest-dir",
+    type=str,
+    help="[Optional] The output directory of code which is downloaded during fast registration. "
+    "If the current working directory at the time of installation is not desired",
+)
+@click.option(
     "-v",
     "--version",
     type=str,
@@ -120,7 +140,7 @@ def fast_register(ctx, test=None):
     "but you can override here.",
 )
 @click.pass_context
-def tasks(ctx, source_dir, version=None):
+def tasks(ctx, source_dir, dest_dir=None, version=None):
     """
     Only fast register tasks.
 
@@ -159,7 +179,7 @@ def tasks(ctx, source_dir, version=None):
     test = ctx.obj[CTX_TEST]
     pkgs = ctx.obj[CTX_PACKAGES]
 
-    fast_register_tasks_only(project, domain, pkgs, test, version, source_dir)
+    fast_register_tasks_only(project, domain, pkgs, test, version, source_dir, dest_dir)
 
 
 @click.command("workflows")
@@ -170,6 +190,12 @@ def tasks(ctx, source_dir, version=None):
     required=True,
 )
 @click.option(
+    "--dest-dir",
+    type=str,
+    help="[Optional] The output directory of code which is downloaded during fast registration. "
+    "If the current working directory at the time of installation is not desired",
+)
+@click.option(
     "-v",
     "--version",
     type=str,
@@ -177,7 +203,7 @@ def tasks(ctx, source_dir, version=None):
     "but you can override here.",
 )
 @click.pass_context
-def workflows(ctx, source_dir, version=None):
+def workflows(ctx, source_dir, dest_dir=None, version=None):
     """
     Fast register both tasks and workflows.  Also create and register a default launch plan for all workflows.
     The `source_dir` param should point to the root directory of your project that contains all of your working code.
@@ -216,7 +242,7 @@ def workflows(ctx, source_dir, version=None):
     test = ctx.obj[CTX_TEST]
     pkgs = ctx.obj[CTX_PACKAGES]
 
-    fast_register_all(project, domain, pkgs, test, version, source_dir)
+    fast_register_all(project, domain, pkgs, test, version, source_dir, dest_dir)
 
 
 fast_register.add_command(tasks)
