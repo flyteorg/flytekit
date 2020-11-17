@@ -25,7 +25,7 @@ elif [ -f "$1" ]; then
   DIRPATH=$(cd "$(dirname "$1")" && pwd)
   DOCKERFILE_PATH=${DIRPATH}/$(basename "$1")
 else
-  exit -1
+  exit 1
 fi
 
 PREFIX="$2-"
@@ -34,7 +34,7 @@ if [ -z "$2" ]; then
 fi
 
 # Go into the directory representing the user's repo
-pushd ${DIRPATH}
+pushd "${DIRPATH}"
 
 # Grab the repo name from the argument if not already defined
 # Note that this repo name will be the name of the Docker image.
