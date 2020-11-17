@@ -64,16 +64,12 @@ fi
 echo "Building: $FLYTE_INTERNAL_IMAGE"
 
 # This build command is the raison d'etre of this script, it ensures that the version is injected into the image itself
-docker build . --build-arg tag="$FLYTE_INTERNAL_IMAGE" -t "$IMAGE_NAME" -f ${DOCKERFILE_PATH}
+docker build . --build-arg tag="$FLYTE_INTERNAL_IMAGE" -t "$FLYTE_INTERNAL_IMAGE" -f ${DOCKERFILE_PATH}
 echo "$IMAGE_NAME built locally."
 
 # Create the appropriate tags
-docker tag "${IMAGE_NAME}:latest" "${IMAGE_NAME}:${TAG}"
-echo "${IMAGE_NAME}:latest also tagged with ${IMAGE_NAME}:${TAG}"
+echo "${FLYTE_INTERNAL_IMAGE} tagged"
 if [ -n "$REGISTRY" ]; then
-  docker tag "${IMAGE_NAME}:latest" "${FLYTE_INTERNAL_IMAGE}"
-  echo "${IMAGE_NAME}:latest also tagged with ${FLYTE_INTERNAL_IMAGE}"
-
   # Also push if there's a registry to push to
   if [[ "${REGISTRY}" == "docker.io"*  && -z "${NOPUSH}" ]]; then
     docker login --username="${DOCKERHUB_USERNAME}" --password="${DOCKERHUB_PASSWORD}"
