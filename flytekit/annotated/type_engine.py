@@ -59,10 +59,26 @@ class TypeTransformer(typing.Generic[T]):
 
     @abstractmethod
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        """
+        Converts a given python_val to a Flyte Literal, assuming the given python_val matches the declared python_type.
+        Implementers should refrain from using type(python_val) instead rely on the passed in python_type. If these
+        do not match (or are not allowed) the Transformer implementer should raise an AssertionError, clearly stating
+        what was the mismatch
+        :param ctx: A FlyteContext, useful in accessing the filesystem and other attributes
+        :param python_val: The actual value to be transformed
+        :param python_type: The assumed type of the value (this matches the declared type on the function)
+        :param expected: Expected Literal Type
+        """
         raise NotImplementedError(f"Conversion to Literal for python type {python_type} not implemented")
 
     @abstractmethod
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        """
+        Converts the given Literal to a Python Type. If the conversion cannot be done an AssertionError should be raised
+        :param ctx: FlyteContext
+        :param lv: The received literal Value
+        :param expected_python_type: Expected native python type that should be returned
+        """
         raise NotImplementedError(
             f"Conversion to python value expected type {expected_python_type} from literal not implemented"
         )
@@ -119,6 +135,12 @@ class RestrictedType(TypeTransformer[T], ABC):
 
 
 class TypeEngine(object):
+    """
+    Core Extensible TypeEngine of Flytekit. This should be used to extend the capabilities of FlyteKits type system.
+    Users can implement their own TypeTransformers and register them with the TypeEngine. This will allow special handling
+    of user objects
+    """
+
     _REGISTRY: typing.Dict[type, TypeTransformer[T]] = {}
 
     @classmethod
@@ -192,6 +214,10 @@ class TypeEngine(object):
 
 
 class ListTransformer(TypeTransformer[T]):
+    """
+    Transformer that handles a univariate typing.List[T]
+    """
+
     def __init__(self):
         super().__init__("Typed List", list)
 
@@ -226,6 +252,11 @@ class ListTransformer(TypeTransformer[T]):
 
 
 class DictTransformer(TypeTransformer[dict]):
+    """
+    Transformer that transforms a univariate dictionary Dict[str, T] to a Literal Map or
+    transforms a untyped dictionary to a JSON (struct/Generic)
+    """
+
     def __init__(self):
         super().__init__("Typed Dict", dict)
 
@@ -285,6 +316,10 @@ class DictTransformer(TypeTransformer[dict]):
 
 
 class TextIOTransformer(TypeTransformer[typing.TextIO]):
+    """
+    Handler for TextIO
+    """
+
     def __init__(self):
         super().__init__(name="TextIO", t=typing.TextIO)
 
@@ -312,6 +347,10 @@ class TextIOTransformer(TypeTransformer[typing.TextIO]):
 
 
 class BinaryIOTransformer(TypeTransformer[typing.BinaryIO]):
+    """
+    Handler for BinaryIO
+    """
+
     def __init__(self):
         super().__init__(name="BinaryIO", t=typing.BinaryIO)
 
@@ -338,6 +377,10 @@ class BinaryIOTransformer(TypeTransformer[typing.BinaryIO]):
 
 
 class PathLikeTransformer(TypeTransformer[os.PathLike]):
+    """
+    Handler for os.PathLike
+    """
+
     def __init__(self):
         super().__init__(name="os.PathLike", t=os.PathLike)
 

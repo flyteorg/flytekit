@@ -6,11 +6,12 @@ import pandas
 import pytest
 
 import flytekit
+from flytekit import ContainerTask, Reference, SQLTask, dynamic, kwtypes, maptask
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import ContainerTask, Reference, SQLTask, dynamic, kwtypes, maptask, metadata, task
+from flytekit.annotated.task import metadata, task
 from flytekit.annotated.testing import task_mock
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
