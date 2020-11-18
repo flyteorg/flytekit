@@ -8,7 +8,7 @@ import random as _random
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext, RegistrationSettings
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext, RegistrationSettings, get_image_config
 from flytekit.annotated.task import PythonTask
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
@@ -175,7 +175,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                         project=_internal_config.TASK_PROJECT.get(),
                         domain=_internal_config.TASK_DOMAIN.get(),
                         version=_internal_config.TASK_VERSION.get(),
-                        image=_internal_config.IMAGE.get(),
+                        image_config=get_image_config(),
                         env=env,
                     )
                     # The reason we need this is because of dynamic tasks. Even if we move compilation all to Admin,

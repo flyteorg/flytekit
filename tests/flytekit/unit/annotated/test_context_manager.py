@@ -1,4 +1,4 @@
-from flytekit.annotated.context_manager import CompilationState, FlyteContext
+from flytekit.annotated.context_manager import CompilationState, FlyteContext, look_up_image_info
 
 
 class SampleTestClass(object):
@@ -20,3 +20,20 @@ def test_levels():
 def test_default():
     ctx = FlyteContext.current_context()
     assert ctx.file_access is not None
+
+
+def test_look_up_image_info():
+    img = look_up_image_info(name="x", tag="docker.io/xyz", optional_tag=True)
+    assert img.name == "x"
+    assert img.tag is None
+    assert img.fqn == "docker.io/xyz"
+
+    img = look_up_image_info(name="x", tag="docker.io/xyz:latest", optional_tag=True)
+    assert img.name == "x"
+    assert img.tag == "latest"
+    assert img.fqn == "docker.io/xyz"
+
+    img = look_up_image_info(name="x", tag="docker.io/xyz:latest", optional_tag=False)
+    assert img.name == "x"
+    assert img.tag == "latest"
+    assert img.fqn == "docker.io/xyz"

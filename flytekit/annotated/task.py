@@ -7,7 +7,14 @@ from abc import abstractmethod
 from enum import Enum
 from typing import Any, Callable, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
-from flytekit.annotated.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteEntities
+from flytekit.annotated.context_manager import (
+    BranchEvalMode,
+    ExecutionState,
+    FlyteContext,
+    FlyteEntities,
+    ImageConfig,
+    RegistrationSettings,
+)
 from flytekit.annotated.interface import (
     Interface,
     transform_interface_to_list_interface,
@@ -177,8 +184,8 @@ class Task(object):
             type=self.task_type,
             metadata=self.metadata,
             interface=self.interface,
-            custom=self.get_custom(),
-            container=self.get_container(),
+            custom=self.get_custom(settings),
+            container=self.get_container(settings),
         )
         # Reset just to make sure it's what we give it
         tk.id._project = settings.project
@@ -187,10 +194,10 @@ class Task(object):
         tk.id._version = settings.version
         return tk
 
-    def get_container(self) -> _task_model.Container:
+    def get_container(self, settings: RegistrationSettings) -> _task_model.Container:
         return None
 
-    def get_custom(self) -> Dict[str, Any]:
+    def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
         return None
 
     @abstractmethod
@@ -353,11 +360,10 @@ class ContainerTask(PythonTask):
         )
         return None
 
-    def get_container(self) -> _task_model.Container:
-        settings = FlyteContext.current_context().registration_settings
+    def get_container(self, settings: RegistrationSettings) -> _task_model.Container:
         env = settings.env
         return _get_container_definition(
-            image=settings.image,
+            image=self._image,
             command=self._cmd,
             args=self._args,
             data_loading_config=_task_model.DataLoadingConfig(
@@ -369,6 +375,44 @@ class ContainerTask(PythonTask):
             ),
             environment=env,
         )
+
+
+_IMAGE_REPLACE_REGEX = re.compile(r"({{\s*.image.(\w+).(\w+)\s*}})", re.IGNORECASE)
+
+
+def get_registerable_container_image(img: Optional[str], cfg: ImageConfig) -> str:
+    """
+    :param img: Configured image
+    :param cfg: Registration configuration
+    :return:
+    """
+    if img is not None and img != "":
+        matches = _IMAGE_REPLACE_REGEX.findall(img)
+        if matches is None or len(matches) == 0:
+            return img
+        for m in matches:
+            if len(m) < 2:
+                raise AssertionError(
+                    "Image specification should be of the form <fqn>:<tag> OR <fqn>:{{.image.default.version}} OR "
+                    f"{{.image.xyz.fqn}}:{{.image.xyz.version}} - Received {m}"
+                )
+            replace_group, name, attr = m
+            if name is None or name == "" or attr is None or attr == "":
+                raise AssertionError(f"Image format is incorrect {m}")
+            img_cfg = cfg.find_image(name)
+            if img_cfg is None:
+                raise AssertionError(f"Image Config with name {name} not found in the configuration")
+            if attr == "version":
+                if img_cfg.tag is not None:
+                    img = img.replace(replace_group, img_cfg.tag)
+                else:
+                    img = img.replace(replace_group, cfg.default_image.tag)
+            elif attr == "fqn":
+                img = img.replace(replace_group, img_cfg.fqn)
+            else:
+                raise AssertionError(f"Only fqn and version are supported replacements, {attr} is not supported")
+        return img
+    return f"{cfg.default_image.fqn}:{cfg.default_image.tag}"
 
 
 T = TypeVar("T")
@@ -388,9 +432,18 @@ class PythonFunctionTask(PythonTask, Generic[T]):
         metadata: _task_model.TaskMetadata,
         ignore_input_vars: List[str] = None,
         task_type="python-task",
+        container_image: str = None,
         *args,
         **kwargs,
     ):
+        """
+        :param task_config: Configuration object for Task. Should be a unique type for that specific Task
+        :param task_function: Python function that has type annotations and works for the task
+        :param metadata: Task execution metadata e.g. retries, timeout etc
+        :param ignore_input_vars:
+        :param task_type: String task type to be associated with this Task
+        :param container_image: String FQN for the image.
+        """
         self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         super().__init__(
@@ -403,6 +456,7 @@ class PythonFunctionTask(PythonTask, Generic[T]):
         )
         self._task_function = task_function
         self._task_config = task_config
+        self._container_image = container_image
 
     def execute(self, **kwargs) -> Any:
         return self._task_function(**kwargs)
@@ -415,8 +469,11 @@ class PythonFunctionTask(PythonTask, Generic[T]):
     def task_config(self) -> T:
         return self._task_config
 
-    def get_container(self) -> _task_model.Container:
-        settings = FlyteContext.current_context().registration_settings
+    @property
+    def container_image(self) -> Optional[str]:
+        return self._container_image
+
+    def get_container(self, settings: RegistrationSettings) -> _task_model.Container:
         args = [
             "pyflyte-execute",
             "--task-module",
@@ -432,7 +489,11 @@ class PythonFunctionTask(PythonTask, Generic[T]):
         ]
         env = settings.env
         return _get_container_definition(
-            image=settings.image, command=[], args=args, data_loading_config=None, environment=env
+            image=get_registerable_container_image(self.container_image, settings.image_config),
+            command=[],
+            args=args,
+            data_loading_config=None,
+            environment=env,
         )
 
 
@@ -687,11 +748,12 @@ class ReferenceTask(PythonTask):
         return self._native_interface
 
     def get_task_structure(self) -> SdkTask:
+        settings = FlyteContext.current_context().registration_settings
         tk = SdkTask(
             type=self.task_type,
             metadata=self.metadata,
             interface=self.interface,
-            custom=self.get_custom(),
+            custom=self.get_custom(settings),
             container=None,
         )
         # Reset id to ensure it matches user input
@@ -764,6 +826,7 @@ def task(
     interruptible: bool = False,
     deprecated: str = "",
     timeout: Union[_datetime.timedelta, int] = 0,
+    container_image: Optional[str] = None,
     environment: Dict[str, str] = None,  # TODO: Ketan - what do we do with this?  Not sure how to use kwargs
     *args,
     **kwargs,
@@ -779,7 +842,7 @@ def task(
         _metadata = metadata(cache, cache_version, retries, interruptible, deprecated, _timeout)
 
         task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
-            task_config, fn, _metadata, *args, **kwargs
+            task_config, fn, _metadata, container_image=container_image, *args, **kwargs
         )
 
         return task_instance
