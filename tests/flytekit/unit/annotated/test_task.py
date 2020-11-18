@@ -1,7 +1,7 @@
 import pytest
 
 from flytekit.annotated.context_manager import Image, ImageConfig, RegistrationSettings
-from flytekit.annotated.task import PythonFunctionTask, get_registerable_container_image
+from flytekit.annotated.python_function_task import PythonFunctionTask, get_registerable_container_image
 
 
 def test_container_image_conversion():

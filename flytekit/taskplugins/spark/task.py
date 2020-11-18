@@ -5,7 +5,8 @@ from typing import Any, Callable, Dict
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.annotated.context_manager import RegistrationSettings
-from flytekit.annotated.task import PythonFunctionTask, TaskPlugins
+from flytekit.annotated.python_function_task import PythonFunctionTask
+from flytekit.annotated.task import TaskPlugins
 from flytekit.models import task as _task_model
 from flytekit.sdk.spark_types import SparkType
 

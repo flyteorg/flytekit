@@ -5,8 +5,8 @@ import os as _os
 import click
 
 from flytekit.annotated import context_manager as flyte_context
+from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.launch_plan import LaunchPlan
-from flytekit.annotated.task import PythonTask
 from flytekit.annotated.workflow import Workflow
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_VERSION
 from flytekit.common import utils as _utils

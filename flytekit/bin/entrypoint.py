@@ -8,8 +8,8 @@ import random as _random
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
+from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext, RegistrationSettings, get_image_config
-from flytekit.annotated.task import PythonTask
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common import utils as _utils
