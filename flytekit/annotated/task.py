@@ -511,9 +511,10 @@ class SQLTask(PythonTask):
     def __init__(
         self,
         name: str,
+        metadata: _task_model.TaskMetadata,
         query_template: str,
         inputs: Dict[str, Type],
-        metadata: _task_model.TaskMetadata,
+        outputs: Dict[str, Type] = None,
         task_type="sql_task",
         *args,
         **kwargs,
@@ -521,7 +522,7 @@ class SQLTask(PythonTask):
         super().__init__(
             task_type=task_type,
             name=name,
-            interface=Interface(inputs=inputs, outputs=self._OUTPUTS),
+            interface=Interface(inputs=inputs, outputs=outputs or self._OUTPUTS),
             metadata=metadata,
             *args,
             **kwargs,
@@ -533,6 +534,13 @@ class SQLTask(PythonTask):
         return self._query_template
 
     def execute(self, **kwargs) -> Any:
+        raise Exception("Cannot run a SQL Task natively, please mock.")
+
+    def interpolate_query(self, **kwargs) -> Any:
+        """
+        This function will fill in the query template with the provided kwargs and return the interpolated query
+        Please note that when SQL tasks run in Flyte, this step is done by the
+        """
         modified_query = self._query_template
         matched = set()
         for match in self._INPUT_REGEX.finditer(self._query_template):
@@ -639,6 +647,13 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
 
 
 class Reference(object):
+    """
+    Create a reference task when you want to use a previously registered task in a new workflow. The user is
+    responsible for ensuring that the task exists and that the interface matches.
+    Note that this task does not make a network call to the Flyte control plane to determine the interface. As such,
+    this task must be used along with a Python function declaration from which the interface is derived. However, the
+    body of the function will never be run so we suggest just leaving it as ... or pass.
+    """
     def __init__(
         self, project: str, domain: str, name: str, version: str, *args, **kwargs,
     ):
@@ -651,9 +666,8 @@ class Reference(object):
 
 class ReferenceTask(PythonTask):
     """
-    fdsa
+    Please see the Reference object notes
     """
-
     def __init__(
         self,
         task_config: Reference,

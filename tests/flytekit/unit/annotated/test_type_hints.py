@@ -431,7 +431,7 @@ def test_list_output():
 
 def test_comparison_refs():
     def dummy_node(id) -> SdkNode:
-        n = SdkNode(id, [], None, None, sdk_task=SQLTask("x", "x", [], metadata()))
+        n = SdkNode(id, [], None, None, sdk_task=SQLTask(name="x", query_template="x", inputs={}, metadata=metadata()))
         n._id = id
         return n
 
@@ -1052,3 +1052,24 @@ def test_dict_wf_with_conversion():
 
     with pytest.raises(TypeError):
         my_wf(a=5)
+
+
+# def test_fhdsa():
+#
+#     hive_task = HiveQueryTask(
+#         task_inputs=kwtypes(),
+#         statement="SELECT * from unnest(sequence(1, {{ .Inputs.length }}))",
+#         output_schema=schema,
+#     )
+
+
+
+
+
+
+
+
+
+
+
+
