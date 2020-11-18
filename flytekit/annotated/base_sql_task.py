@@ -1,7 +1,7 @@
 import re
 from typing import Any, Dict, Type
 
-from flytekit.annotated.base_task import kwtypes, PythonTask
+from flytekit.annotated.base_task import PythonTask, kwtypes
 from flytekit.annotated.interface import Interface
 from flytekit.models import task as _task_model
 

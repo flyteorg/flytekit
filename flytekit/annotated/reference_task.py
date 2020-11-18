@@ -1,8 +1,8 @@
 import inspect
 from typing import Any, Callable
 
-from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.base_task import PythonTask
+from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.interface import Interface, transform_signature_to_interface
 from flytekit.annotated.task import TaskPlugins, metadata
 from flytekit.common.tasks.task import SdkTask

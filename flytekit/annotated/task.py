@@ -61,12 +61,12 @@ class Resources(object):
 
 
 def metadata(
-        cache: bool = False,
-        cache_version: str = "",
-        retries: int = 0,
-        interruptible: bool = False,
-        deprecated: str = "",
-        timeout: Union[_datetime.timedelta, int] = None,
+    cache: bool = False,
+    cache_version: str = "",
+    retries: int = 0,
+    interruptible: bool = False,
+    deprecated: str = "",
+    timeout: Union[_datetime.timedelta, int] = None,
 ) -> _task_model.TaskMetadata:
     """
     Create Metadata to be associated with this Task
@@ -92,18 +92,18 @@ def metadata(
 
 
 def task(
-        _task_function: Optional[Callable] = None,
-        task_config: Optional[Any] = None,
-        cache: bool = False,
-        cache_version: str = "",
-        retries: int = 0,
-        interruptible: bool = False,
-        deprecated: str = "",
-        timeout: Union[_datetime.timedelta, int] = 0,
-        container_image: Optional[str] = None,
-        environment: Dict[str, str] = None,  # TODO: Ketan - what do we do with this?  Not sure how to use kwargs
-        *args,
-        **kwargs,
+    _task_function: Optional[Callable] = None,
+    task_config: Optional[Any] = None,
+    cache: bool = False,
+    cache_version: str = "",
+    retries: int = 0,
+    interruptible: bool = False,
+    deprecated: str = "",
+    timeout: Union[_datetime.timedelta, int] = 0,
+    container_image: Optional[str] = None,
+    environment: Dict[str, str] = None,  # TODO: Ketan - what do we do with this?  Not sure how to use kwargs
+    *args,
+    **kwargs,
 ) -> Union[Callable, PythonFunctionTask]:
     """
     This is the core decorator to use for any task type in FlyteKit.

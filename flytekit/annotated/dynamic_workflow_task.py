@@ -2,11 +2,11 @@ import functools
 from typing import Any, Callable, Union
 
 from flytekit.annotated import task
-from flytekit.annotated.context_manager import FlyteContext, ExecutionState
-from flytekit.annotated.task import TaskPlugins
-from flytekit.loggers import logger
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext
 from flytekit.annotated.python_function_task import PythonFunctionTask
+from flytekit.annotated.task import TaskPlugins
 from flytekit.annotated.workflow import Workflow
+from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
@@ -18,12 +18,12 @@ class _Dynamic(object):
 
 class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
     def __init__(
-            self,
-            task_config: _Dynamic,
-            dynamic_workflow_function: Callable,
-            metadata: _task_model.TaskMetadata,
-            *args,
-            **kwargs,
+        self,
+        task_config: _Dynamic,
+        dynamic_workflow_function: Callable,
+        metadata: _task_model.TaskMetadata,
+        *args,
+        **kwargs,
     ):
         super().__init__(
             task_config=task_config,
@@ -35,7 +35,7 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
         )
 
     def compile_into_workflow(
-            self, ctx: FlyteContext, **kwargs
+        self, ctx: FlyteContext, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
         with ctx.new_compilation_context(prefix="dynamic"):
             self._wf = Workflow(self._task_function)

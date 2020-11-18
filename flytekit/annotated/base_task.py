@@ -2,15 +2,20 @@ import collections
 from abc import abstractmethod
 from typing import Any, Dict, Optional, Tuple, Type, Union
 
-from flytekit.loggers import logger
-from flytekit.annotated.context_manager import FlyteContext
-from flytekit.annotated.context_manager import BranchEvalMode, ExecutionState, FlyteEntities, RegistrationSettings
+from flytekit.annotated.context_manager import (
+    BranchEvalMode,
+    ExecutionState,
+    FlyteContext,
+    FlyteEntities,
+    RegistrationSettings,
+)
 from flytekit.annotated.interface import Interface, transform_interface_to_typed_interface
 from flytekit.annotated.node import create_and_link_node
 from flytekit.annotated.promise import Promise, create_task_output, translate_inputs_to_literals
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.task import SdkTask
+from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
