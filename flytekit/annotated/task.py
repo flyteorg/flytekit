@@ -536,14 +536,18 @@ class SQLTask(PythonTask):
     def execute(self, **kwargs) -> Any:
         raise Exception("Cannot run a SQL Task natively, please mock.")
 
-    def interpolate_query(self, **kwargs) -> Any:
+    def get_query(self, **kwargs) -> str:
+        return self.interpolate_query(self.query_template, **kwargs)
+
+    @classmethod
+    def interpolate_query(cls, query_template, **kwargs) -> Any:
         """
         This function will fill in the query template with the provided kwargs and return the interpolated query
         Please note that when SQL tasks run in Flyte, this step is done by the
         """
-        modified_query = self._query_template
+        modified_query = query_template
         matched = set()
-        for match in self._INPUT_REGEX.finditer(self._query_template):
+        for match in cls._INPUT_REGEX.finditer(query_template):
             expr = match.groups()[0]
             var = match.groups()[1]
             if var not in kwargs:
@@ -555,7 +559,7 @@ class SQLTask(PythonTask):
 
         if len(matched) < len(kwargs.keys()):
             diff = set(kwargs.keys()).difference(matched)
-            raise ValueError(f"Extra Inputs have not matches in query template - missing {diff}")
+            raise ValueError(f"Extra Inputs have no matches in query template - missing {diff}")
         return None
 
 

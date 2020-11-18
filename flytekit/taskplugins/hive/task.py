@@ -4,7 +4,7 @@ from google.protobuf.json_format import MessageToDict
 
 from flytekit.annotated.task import SQLTask, TaskPlugins, PythonTask
 from flytekit.models import task as _task_model
-from flytekit.models.qubole import QuboleHiveJob
+from flytekit.models.qubole import QuboleHiveJob, HiveQuery
 from flytekit.types.schema import FlyteSchema
 
 
@@ -19,6 +19,7 @@ class HiveTask(SQLTask):
         cluster_label: str,
         inputs: Dict[str, Type],
         output_schema_type: Type[FlyteSchema],
+        stage_query_template: str,
         query_template: str,
         *args,
         **kwargs,
@@ -48,6 +49,7 @@ class HiveTask(SQLTask):
         return self._output_schema_type
 
     def get_custom(self) -> Dict[str, Any]:
+        query = HiveQuery()
         job = QuboleHiveJob(
             query=self.query_template,
             cluster_label=self

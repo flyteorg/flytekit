@@ -1054,15 +1054,34 @@ def test_dict_wf_with_conversion():
         my_wf(a=5)
 
 
-# def test_fhdsa():
-#
-#     hive_task = HiveQueryTask(
-#         task_inputs=kwtypes(),
-#         statement="SELECT * from unnest(sequence(1, {{ .Inputs.length }}))",
-#         output_schema=schema,
-#     )
+def test_fhdsa():
+    my_schema = None  # tddype: our new schema
+
+    hive_task = HiveQueryTask(
+        task_inputs=kwtypes(ds=str),
+        statement="SELECT * from unnest(sequence(1, {{ .Inputs.ds }}))",
+        output_schema=my_schema,
+        remote_location_prefix="s3://modelbuilder/blah/",
+        staging_query="",
+    )
+
+    def wf():
+        results = hive_task(ds="2020-01-11")
 
 
+    def create_data_task() -> FlyteSchema:
+        ...
+
+
+    # https://sql.lyft.net/queries/22952389
+    write_hive_task = HivePartitionUpdateTask()
+
+
+    def wf():
+        s = create_data_task()
+        results = write_hive_task(required_schema=s, table_name="table", paritions = {
+            'ds': 2020-08-12
+        })
 
 
 
