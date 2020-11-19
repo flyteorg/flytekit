@@ -271,6 +271,8 @@ _comparators = {
 
 def create_branch_node_promise_var(node_id: str, var: str) -> str:
     """
+    Generates a globally (wf-level) unique id for a variable.
+    
     When building bindings for the branch node, the inputs to the conditions (e.g. (x==5)) need to have variable names
     (e.g. x). Because it's currently infeasible to get the name (e.g. x), we resolve to using the referenced node's
     output name (e.g. out_0, my_out,... etc.). In order to avoid naming collisions (in cases when, for example, the
