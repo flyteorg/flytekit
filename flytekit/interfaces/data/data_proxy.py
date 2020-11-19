@@ -1,7 +1,7 @@
 import datetime
 import os
 import pathlib
-from typing import Union, Optional
+from typing import Optional, Union
 
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils

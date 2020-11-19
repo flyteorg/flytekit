@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import typing
 
-import flytekit
 from flytekit import FlyteContext
 from flytekit.annotated.type_engine import TypeEngine, TypeTransformer
 from flytekit.models import types as _type_models
