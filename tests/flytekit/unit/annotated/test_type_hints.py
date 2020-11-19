@@ -12,7 +12,7 @@ from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import metadata, task
-from flytekit.annotated.testing import task_mock
+from flytekit.annotated.testing import task_mock, patch
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
@@ -283,23 +283,49 @@ def test_wf1_with_sql():
         assert my_wf() == "Hello"
 
 
-def test_wf1_with_spark():
-    @task(task_config=Spark())
-    def my_spark(spark_session, a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
-        return a + 2, "world"
+def test_wf1_with_sql():
+    sql = SQLTask(
+        "my-query",
+        query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
+        inputs=kwtypes(ds=datetime.datetime),
+        metadata=metadata(retries=2),
+    )
 
     @task
-    def t2(a: str, b: str) -> str:
-        return b + a
+    def t1() -> datetime.datetime:
+        return datetime.datetime.now()
 
     @workflow
-    def my_wf(a: int, b: str) -> (int, str):
-        x, y = my_spark(a=a)
-        d = t2(a=y, b=b)
-        return x, d
+    def my_wf() -> str:
+        dt = t1()
+        return sql(ds=dt)
 
-    x = my_wf(a=5, b="hello ")
-    assert x == (7, "hello world")
+    @patch(sql)
+    def test_user_demo_test(mock_sql):
+        mock_sql.return_value = "Hello"
+        assert my_wf() == "Hello"
+
+    # Have to call because tests inside tests don't run
+    test_user_demo_test()
+
+
+# def test_wf1_with_spark():
+#     @task(task_config=Spark())
+#     def my_spark(spark_session, a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+#         return a + 2, "world"
+#
+#     @task
+#     def t2(a: str, b: str) -> str:
+#         return b + a
+#
+#     @workflow
+#     def my_wf(a: int, b: str) -> (int, str):
+#         x, y = my_spark(a=a)
+#         d = t2(a=y, b=b)
+#         return x, d
+#
+#     x = my_wf(a=5, b="hello ")
+#     assert x == (7, "hello world")
 
 
 def test_wf1_with_map():
@@ -1057,3 +1083,33 @@ def test_dict_wf_with_conversion():
 
     with pytest.raises(TypeError):
         my_wf(a=5)
+
+
+def test_fff():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        a = a + 2
+        return a, "world-" + str(a)
+
+    @workflow(reference=Reference(project='proj', domain='developement', name='wf_name', version='abc'))
+    def ref_wf1(a: int) -> (str, str):
+        ...
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str, str):
+        x, y = t1(a=a).with_overrides()
+        u, v = ref_wf1(a=x)
+        return x, u, v
+
+    with pytest.raises(Exception):
+        my_wf(a=3, b="foo")
+
+    @patch(ref_wf1)
+    def inner_test(ref_mock):
+        ref_mock.return_value = ("hello", "alice")
+        x, y, z = my_wf(a=3, b="foo")
+        assert x == 5
+        assert y == "hello"
+        assert z == "alice"
+
+    inner_test()
