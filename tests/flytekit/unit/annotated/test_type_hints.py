@@ -1113,3 +1113,8 @@ def test_reference_workflow():
         assert z == "alice"
 
     inner_test()
+
+    # Ensure that the patching is only for the duration of that test
+    with pytest.raises(Exception):
+        my_wf(a=3, b="foo")
+

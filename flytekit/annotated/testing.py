@@ -27,6 +27,10 @@ def task_mock(t: PythonTask) -> MagicMock:
                t1(10)
                # The mock is valid only within this context
     """
+
+    if not isinstance(t, PythonTask):
+        raise Exception("Can only be used for tasks")
+
     m = MagicMock()
 
     def _log(*args, **kwargs):
