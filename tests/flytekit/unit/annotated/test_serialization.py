@@ -7,7 +7,6 @@ from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import FlyteContext, Image, ImageConfig, get_image_config
 from flytekit.annotated.task import metadata, task
 from flytekit.annotated.workflow import workflow
-from flytekit.models.workflow_closure import WorkflowClosure
 from flytekit.configuration import set_flyte_config_file
 
 
@@ -123,23 +122,15 @@ def test_serialization_branch_complex_2():
         return x, f
 
     ctx = FlyteContext.current_context()
+    default_img = Image(name="default", fqn="test", tag="tag")
     registration_settings = context_manager.RegistrationSettings(
-        project="project", domain="domain", version="version", image="image", env=None,
+        project="project", domain="domain", version="version", env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img])
     )
     with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
         wf = my_wf.get_registerable_entity()
-        t11 = t1.get_registerable_entity()
-        t22 = t2.get_registerable_entity()
-        # t33 = t3.get_registerable_entity()
         assert wf is not None
-
-        from google.protobuf import json_format as _json_format
-
-        closure = WorkflowClosure(workflow=wf, tasks=[t11, t22])
-        raw = _json_format.MessageToJson(closure.to_flyte_idl())
-        with open("my_wf.json", "w") as fh:
-            fh.write(raw)
-        print(wf.to_flyte_idl())
+        assert wf.nodes[1].inputs[0].var == "node-0.t1_int_output"
 
 
 def test_serialization_branch():
