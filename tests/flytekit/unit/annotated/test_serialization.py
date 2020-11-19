@@ -95,12 +95,12 @@ def test_serialization_branch_complex_2():
         x, y = t1(a=a)
         d = (
             conditional("test1")
-                .if_(x == 4)
-                .then(t2(a=b))
-                .elif_(x >= 5)
-                .then(t2(a=y))
-                .else_()
-                .fail("Unable to choose branch")
+            .if_(x == 4)
+            .then(t2(a=b))
+            .elif_(x >= 5)
+            .then(t2(a=y))
+            .else_()
+            .fail("Unable to choose branch")
         )
         f = conditional("test2").if_(d == "hello ").then(t2(a="It is hello")).else_().then(t2(a="Not Hello!"))
         return x, f
@@ -117,9 +117,10 @@ def test_serialization_branch_complex_2():
         assert wf is not None
 
         from google.protobuf import json_format as _json_format
+
         closure = WorkflowClosure(workflow=wf, tasks=[t11, t22])
         raw = _json_format.MessageToJson(closure.to_flyte_idl())
-        with open('my_wf.json', 'w') as fh:
+        with open("my_wf.json", "w") as fh:
             fh.write(raw)
         print(wf.to_flyte_idl())
 
