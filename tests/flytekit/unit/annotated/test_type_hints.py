@@ -6,14 +6,14 @@ import pandas
 import pytest
 
 import flytekit
+from flytekit import ContainerTask, Reference, SQLTask, dynamic, kwtypes, maptask
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
-from flytekit.annotated.context_manager import ExecutionState
+from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import ContainerTask, Spark, SQLTask, dynamic, kwtypes, maptask, metadata, task
-from flytekit.annotated.reference import TaskReference
+from flytekit.annotated.task import metadata, task
 from flytekit.annotated.testing import task_mock
-from flytekit.annotated.type_engine import FlyteSchema, RestrictedTypeError, SchemaOpenMode, TypeEngine
+from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
 from flytekit.common.promise import NodeOutput
@@ -21,7 +21,9 @@ from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.types import LiteralType, SimpleType
-from flytekit.typing.flyte_file import FlyteFile
+from flytekit.taskplugins.spark import Spark
+from flytekit.types.flyte_file import FlyteFile
+from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 
 
 def test_default_wf_params_works():
@@ -400,7 +402,11 @@ def test_wf1_with_dynamic():
 
     with context_manager.FlyteContext.current_context().new_registration_settings(
         registration_settings=context_manager.RegistrationSettings(
-            project="test_proj", domain="test_domain", version="abc", image="image:name", env={},
+            project="test_proj",
+            domain="test_domain",
+            version="abc",
+            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+            env={},
         )
     ) as ctx:
         with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
@@ -822,7 +828,7 @@ def test_lp_serialize():
         project="proj",
         domain="dom",
         version="123",
-        image="asdf/fdsa:123",
+        image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
         iam_role="test:iam:role",
         service_account=None,
@@ -956,7 +962,7 @@ def test_wf_typed_schema():
 
 def test_ref():
     @task(
-        task_config=TaskReference(
+        task_config=Reference(
             project="flytesnacks",
             domain="development",
             name="recipes.aaa.simple.join_strings",
@@ -975,7 +981,7 @@ def test_ref():
         project="proj",
         domain="dom",
         version="123",
-        image="asdf/fdsa:123",
+        image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
         iam_role="test:iam:role",
         service_account=None,
@@ -993,7 +999,7 @@ def test_ref():
 
 def test_ref_task_more():
     @task(
-        task_config=TaskReference(
+        task_config=Reference(
             project="flytesnacks",
             domain="development",
             name="recipes.aaa.simple.join_strings",

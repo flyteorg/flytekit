@@ -89,6 +89,11 @@ class FlyteConfigurationFile(object):
         self._location = location or _os.environ.get("FLYTE_INTERNAL_CONFIGURATION_PATH")
         self._config = None
 
+    @property
+    def config(self) -> _configparser.ConfigParser:
+        self._load_config()
+        return self._config
+
 
 class _FlyteConfigurationPatcher(object):
     def __init__(self, new_value, config):

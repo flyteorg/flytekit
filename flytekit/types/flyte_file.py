@@ -3,6 +3,13 @@ from __future__ import annotations
 import os
 import typing
 
+from flytekit import FlyteContext
+from flytekit.annotated.type_engine import TypeEngine, TypeTransformer
+from flytekit.models import types as _type_models
+from flytekit.models.core import types as _core_types
+from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.types import LiteralType
+
 
 def noop():
     ...
@@ -142,11 +149,14 @@ class FlyteFile(os.PathLike):
         return self._path
 
     def __eq__(self, other):
-        return (
-            self._path == other._path
-            and self._remote_path == other._remote_path
-            and self.extension() == other.extension()
-        )
+        if isinstance(other, FlyteFile):
+            return (
+                self._path == other._path
+                and self._remote_path == other._remote_path
+                and self.extension() == other.extension()
+            )
+        else:
+            return self._path == other
 
     @property
     def downloaded(self) -> bool:
@@ -173,3 +183,76 @@ class FlyteFile(os.PathLike):
 
     def __str__(self):
         return self._path
+
+
+class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
+    def __init__(self):
+        super().__init__(name="FlyteFilePath", t=FlyteFile)
+
+    @staticmethod
+    def get_format(t: typing.Type[FlyteFile]) -> str:
+        return t.extension()
+
+    def _blob_type(self, format: str) -> _core_types.BlobType:
+        return _core_types.BlobType(format=format, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
+
+    def get_literal_type(self, t: typing.Type[FlyteFile]) -> LiteralType:
+        return _type_models.LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
+
+    def to_literal(
+        self, ctx: FlyteContext, python_val: FlyteFile, python_type: typing.Type[FlyteFile], expected: LiteralType,
+    ) -> Literal:
+        remote_path = ctx.file_access.get_random_remote_path()
+
+        if isinstance(python_val, FlyteFile):
+            if python_val.remote_path is False:
+                # If the user specified the remote_path to be False, that means no matter what, do not upload
+                remote_path = None
+            else:
+                # Otherwise, if not an "" use the user-specified remote path instead of the random one
+                remote_path = python_val.remote_path or remote_path
+            source_path = python_val.path
+        else:
+            if not (isinstance(python_val, os.PathLike) or isinstance(python_val, str)):
+                raise AssertionError(f"Expected FlyteFilePath or os.PathLike object, received {type(python_val)}")
+            source_path = python_val
+
+        # For remote values, say https://raw.github.com/demo_data.csv, we will not upload to Flyte's store (S3/GCS)
+        # and just return a literal with a uri equal to the path given
+        if ctx.file_access.is_remote(source_path):
+            # TODO: Add copying functionality so that FlyteFile(path="s3://a", remote_path="s3://b") will copy.
+            meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))
+            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
+
+        # For local paths, we will upload to the Flyte store (note that for local execution, the remote store is just
+        # a subfolder), unless remote_path=False was given
+        else:
+            if remote_path is not None:
+                ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
+            meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))
+            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path or source_path)))
+
+    def to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteFile]
+    ) -> FlyteFile:
+
+        uri = lv.scalar.blob.uri
+        # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
+        # make any sense.
+        if not ctx.file_access.is_remote(uri):
+            return expected_python_type(uri)
+
+        # For the remote case, return an FlyteFile object that can download
+        local_path = ctx.file_access.get_random_local_path()
+
+        def _downloader():
+            return ctx.file_access.get_data(uri, local_path, is_multipart=False)
+
+        expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
+        ff = FlyteFile[expected_format](local_path, _downloader)
+        ff._remote_source = uri
+
+        return ff
+
+
+TypeEngine.register(FlyteFilePathTransformer())

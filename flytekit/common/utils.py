@@ -43,7 +43,7 @@ def _dnsify(value):  # type: (str) -> str
                 res += "-"
             res += ch.lower()
 
-    if res[-1] == "-":
+    if len(res) > 0 and res[-1] == "-":
         res = res[: len(res) - 1]
 
     return res

@@ -37,7 +37,7 @@ extras_require = {
 
 setup(
     name="flytekit",
-    version="1.0.0a0",
+    version="0.16.0a0",
     maintainer="Lyft",
     maintainer_email="flyte-eng@lyft.com",
     packages=find_packages(exclude=["tests*"]),
@@ -69,7 +69,7 @@ setup(
         "six>=1.9.0,<2.0.0",
         "sortedcontainers>=1.5.9<3.0.0",
         "statsd>=3.0.0,<4.0.0",
-        "urllib3>=1.22,<2.0.0",
+        "urllib3>=1.22,<1.26.0",
         "wrapt>=1.0.0,<2.0.0",
         "papermill>=1.2.0",
         "ipykernel>=5.0.0",

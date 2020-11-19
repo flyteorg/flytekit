@@ -11,7 +11,7 @@ from flytekit.annotated.interface import (
     transform_variable_map,
 )
 from flytekit.models.core import types as _core_types
-from flytekit.typing import FlyteFile
+from flytekit.types import FlyteFile
 
 
 def test_extract_only():

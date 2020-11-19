@@ -4,18 +4,79 @@ import datetime as _datetime
 import logging as _logging
 import os
 import pathlib
+import re
 from contextlib import contextmanager
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Generator, List, Optional
 
 from flytekit.clients import friendly as friendly_client  # noqa
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
+from flytekit.configuration import images, internal
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models.common import RawOutputDataConfig
 from flytekit.models.core import identifier as _identifier
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
+class Image(object):
+    name: str
+    fqn: str
+    tag: str
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
+class ImageConfig(object):
+    default_image: Image
+    images: List[Image] = None
+
+    def find_image(self, name) -> Optional[Image]:
+        for i in self.images:
+            if i.name == name:
+                return i
+        return None
+
+
+_IMAGE_FQN_TAG_REGEX = re.compile(r"([^:]+)(?=:.+)?")
+
+
+def look_up_image_info(name: str, tag: str, optional_tag: bool = False) -> Image:
+    """
+    Looks up the image tag from environment variable (should be set from the Dockerfile).
+        FLYTE_INTERNAL_IMAGE should be the environment variable.
+
+    This function is used when registering tasks/workflows with Admin.
+    When using the canonical Python-based development cycle, the version that is used to register workflows
+    and tasks with Admin should be the version of the image itself, which should ideally be something unique
+    like the sha of the latest commit.
+
+    :param optional_tag:
+    :param name:
+    :param Text tag: e.g. somedocker.com/myimage:someversion123
+    :rtype: Text
+    """
+    if tag is None or tag == "":
+        raise Exception("Bad input for image tag {}".format(tag))
+    matches = _IMAGE_FQN_TAG_REGEX.findall(tag)
+    if matches is not None:
+        if len(matches) == 1 and optional_tag:
+            return Image(name=name, fqn=matches[0], tag=None)
+        elif len(matches) == 2:
+            return Image(name=name, fqn=matches[0], tag=matches[1])
+        else:
+            raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
+
+    raise Exception("Could not parse given image and version from configuration.")
+
+
+def get_image_config() -> ImageConfig:
+    default_img = look_up_image_info("default", internal.IMAGE.get())
+    other_images = [look_up_image_info(k, tag=v, optional_tag=True) for k, v in images.get_specified_images().items()]
+    other_images.append(default_img)
+    return ImageConfig(default_image=default_img, images=other_images)
 
 
 class RegistrationSettings(object):
@@ -24,7 +85,7 @@ class RegistrationSettings(object):
         project: str,
         domain: str,
         version: str,
-        image: str,
+        image_config: ImageConfig,
         env: Optional[Dict[str, str]],
         iam_role: Optional[str] = None,
         service_account: Optional[str] = None,
@@ -33,7 +94,7 @@ class RegistrationSettings(object):
         self._project = project
         self._domain = domain
         self._version = version
-        self._image = image
+        self._image_config = image_config
         self._env = env or {}
         self._iam_role = iam_role
         self._service_account = service_account
@@ -52,8 +113,8 @@ class RegistrationSettings(object):
         return self._version
 
     @property
-    def image(self) -> str:
-        return self._image
+    def image_config(self) -> ImageConfig:
+        return self._image_config
 
     @property
     def env(self) -> Dict[str, str]:

@@ -1,4 +1,5 @@
 import enum
+import pathlib
 from inspect import getfullargspec as _getargspec
 
 import six as _six
@@ -6,6 +7,7 @@ import six as _six
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common import sdk_bases as _sdk_bases
+from flytekit.common import utils as _common_utils
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import user as _user_exceptions
@@ -33,6 +35,9 @@ class ExecutionParameters(object):
         self._working_directory = tmp_dir
         self._execution_id = execution_id
         self._logging = logging
+        # AutoDeletingTempDir's should be used with a with block, which creates upon entry
+        if not isinstance(self._working_directory, _common_utils.AutoDeletingTempDir):
+            pathlib.Path(self._working_directory).mkdir(parents=True, exist_ok=True)
 
     @property
     def stats(self):
