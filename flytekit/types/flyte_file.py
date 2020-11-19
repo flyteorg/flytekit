@@ -203,16 +203,17 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def to_literal(
         self, ctx: FlyteContext, python_val: FlyteFile, python_type: typing.Type[FlyteFile], expected: LiteralType,
     ) -> Literal:
-        remote_path = ctx.file_access.get_random_remote_path()
+        remote_path = None
+        should_upload = True
 
         if isinstance(python_val, FlyteFile):
+            source_path = python_val.path
             if python_val.remote_path is False:
                 # If the user specified the remote_path to be False, that means no matter what, do not upload
-                remote_path = None
+                should_upload = False
             else:
                 # Otherwise, if not an "" use the user-specified remote path instead of the random one
-                remote_path = python_val.remote_path or remote_path
-            source_path = python_val.path
+                remote_path = python_val.remote_path or None
         else:
             if not (isinstance(python_val, os.PathLike) or isinstance(python_val, str)):
                 raise AssertionError(f"Expected FlyteFilePath or os.PathLike object, received {type(python_val)}")
@@ -220,7 +221,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         # For remote values, say https://raw.github.com/demo_data.csv, we will not upload to Flyte's store (S3/GCS)
         # and just return a literal with a uri equal to the path given
-        if ctx.file_access.is_remote(source_path):
+        if ctx.file_access.is_remote(source_path) or not should_upload:
             # TODO: Add copying functionality so that FlyteFile(path="s3://a", remote_path="s3://b") will copy.
             meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
@@ -228,8 +229,10 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         # For local paths, we will upload to the Flyte store (note that for local execution, the remote store is just
         # a subfolder), unless remote_path=False was given
         else:
-            if remote_path is not None:
-                ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
+            if remote_path is None:
+                file_name = ctx.file_access.get_filename_only(source_path)
+                remote_path = ctx.file_access.get_random_remote_path(file_name)
+            ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
             meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path or source_path)))
 
@@ -246,14 +249,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         # For the remote case, return an FlyteFile object that can download
         source_file_name = ctx.file_access.get_filename_only(uri)
-        if source_file_name:
-            # Let's check to make sure we're not overwriting anything
-            local_path = os.path.join(ctx.file_access.local_access.sandbox, source_file_name)
-            if os.path.exists(local_path):
-                flytekit.logger.info(f"Intended path already exists {local_path}, using random")
-                local_path = ctx.file_access.get_random_local_path()
-        else:
-            local_path = ctx.file_access.get_random_local_path()
+        local_path = ctx.file_access.get_random_local_path(source_file_name)
 
         def _downloader():
             return ctx.file_access.get_data(uri, local_path, is_multipart=False)

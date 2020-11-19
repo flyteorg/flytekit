@@ -86,4 +86,6 @@ class LocalFileProxy(_common_data.DataProxy):
         """
         :rtype: Text
         """
-        return self.get_random_path() + "/"
+        random_dir = self.get_random_path() + "/"
+        _make_local_path(random_dir)
+        return random_dir

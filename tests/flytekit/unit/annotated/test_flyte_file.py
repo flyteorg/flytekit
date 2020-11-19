@@ -136,15 +136,16 @@ def test_file_handling_remote_file_handling():
         # But the remote source should still be the https address
         assert workflow_output.remote_source == SAMPLE_DATA
 
-        # The act of running the workflow should create the engine dir
-        working_dir = os.listdir(random_dir)
-        assert len(working_dir) == 2
-
-        # The act of opening it should trigger the download, since we do lazy downloading.
-        with open(workflow_output, "rb"):
-            ...
+        # The act of running the workflow should create the engine dir, and the directory that will contain the
+        # file but the file itself isn't downloaded yet.
         working_dir = os.listdir(random_dir)
         assert len(working_dir) == 3
 
-        # The file name is maintained (if no conflicts) on download.
+        assert not os.path.exists(workflow_output.path)
+        # The act of opening it should trigger the download, since we do lazy downloading.
+        with open(workflow_output, "rb"):
+            ...
+        assert os.path.exists(workflow_output.path)
+
+        # The file name is maintained on download.
         assert str(workflow_output).endswith(os.path.split(SAMPLE_DATA)[1])

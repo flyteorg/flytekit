@@ -1,7 +1,7 @@
 import datetime
 import os
 import pathlib
-from typing import Union
+from typing import Union, Optional
 
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
@@ -261,14 +261,23 @@ class FileAccessProvider(object):
     def local_access(self) -> _local_file_proxy.LocalFileProxy:
         return self._local
 
-    def get_random_remote_path(self) -> str:
-        return self.remote.get_random_path()
+    def get_random_remote_path(self, file_name: Optional[str] = None) -> str:
+        """
+        :param file_name: For when you want a random directory, but want to preserve the leaf file name
+        """
+        if file_name:
+            return f"{self.remote.get_random_directory()}{file_name}"
+        else:
+            return self.remote.get_random_path()
 
     def get_random_remote_directory(self):
         return self.remote.get_random_directory()
 
-    def get_random_local_path(self) -> str:
-        return self.local_access.get_random_path()
+    def get_random_local_path(self, file_name: Optional[str] = None) -> str:
+        if file_name:
+            return os.path.join(self.local_access.get_random_directory(), file_name)
+        else:
+            return self.local_access.get_random_path()
 
     def get_random_local_directory(self) -> str:
         dir = self.local_access.get_random_directory()
