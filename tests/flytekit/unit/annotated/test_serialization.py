@@ -97,6 +97,71 @@ def test_serialization_branch_complex():
         assert wf.nodes[2].branch_node is not None
 
 
+def test_serialization_branch_sub_wf():
+    @task
+    def t1(a: int) -> int:
+        return a + 2
+
+    @workflow
+    def my_sub_wf(a: int) -> int:
+        return t1(a=a)
+
+    @workflow
+    def my_wf(a: int) -> int:
+        d = conditional("test1").if_(a > 3).then(t1(a=a)).else_().then(my_sub_wf(a=a))
+        return d
+
+    ctx = FlyteContext.current_context()
+    default_img = Image(name="default", fqn="test", tag="tag")
+    registration_settings = context_manager.RegistrationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+    with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
+        wf = my_wf.get_registerable_entity()
+        assert wf is not None
+        assert len(wf.nodes[0].inputs) == 1
+        assert wf.nodes[0].inputs[0].var == ".a"
+        assert wf.nodes[0] is not None
+
+
+def test_serialization_branch_compound_conditions():
+    @task
+    def t1(a: int) -> int:
+        return a + 2
+
+    @workflow
+    def my_wf(a: int) -> int:
+        d = (
+            conditional("test1")
+            .if_((a == 4) | (a == 3))
+            .then(t1(a=a))
+            .elif_(a < 6)
+            .then(t1(a=a))
+            .else_()
+            .fail("Unable to choose branch")
+        )
+        return d
+
+    ctx = FlyteContext.current_context()
+    default_img = Image(name="default", fqn="test", tag="tag")
+    registration_settings = context_manager.RegistrationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+    with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
+        wf = my_wf.get_registerable_entity()
+        assert wf is not None
+        assert len(wf.nodes[0].inputs) == 1
+        assert wf.nodes[0].inputs[0].var == ".a"
+
+
 def test_serialization_branch_complex_2():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
@@ -124,8 +189,11 @@ def test_serialization_branch_complex_2():
     ctx = FlyteContext.current_context()
     default_img = Image(name="default", fqn="test", tag="tag")
     registration_settings = context_manager.RegistrationSettings(
-        project="project", domain="domain", version="version", env=None,
-        image_config=ImageConfig(default_image=default_img, images=[default_img])
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
     with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
         wf = my_wf.get_registerable_entity()

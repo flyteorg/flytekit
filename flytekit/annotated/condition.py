@@ -269,6 +269,13 @@ _comparators = {
 }
 
 
+# When building bindings for the branch node, the inputs to the conditions (e.g. (x==5)) need to have variable names
+# (e.g. x). Because it's currently infeasible to get the name (e.g. x), we resolve to using the referenced node's output
+# name (e.g. out_0, my_out,... etc.). In order to avoid naming collisions (in cases when, for example, the conditions
+# reference two outputs of two different nodes named the same), we build a variable name composed of the referenced node
+# name + '.' + the referenced output name. Ideally we use something like (https://github.com/pwwang/python-varname) to
+# retrieve the assigned variable name (e.g. x). However, because of https://github.com/pwwang/python-varname/issues/28,
+# this is not currently supported for all AST nodes types.
 def create_branch_node_promise_var(node_id: str, var: str) -> str:
     return f"{node_id}.{var}"
 
