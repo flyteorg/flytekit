@@ -12,6 +12,11 @@ def iterate_modules(pkgs):
     for package_name in pkgs:
         package = importlib.import_module(package_name)
         yield package
+
+        # Check if package is a python file. If so, there is no reason to walk.
+        if not hasattr(package, "__path__"):
+            continue
+
         for _, name, _ in pkgutil.walk_packages(package.__path__, prefix="{}.".format(package_name)):
             yield importlib.import_module(name)
 
