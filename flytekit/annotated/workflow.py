@@ -13,10 +13,9 @@ from flytekit.annotated.interface import (
     transform_interface_to_typed_interface,
     transform_signature_to_interface,
 )
-from flytekit.annotated.reference import WorkflowReference
-from flytekit.annotated.node import create_and_link_node
 from flytekit.annotated.node import Node, create_and_link_node
 from flytekit.annotated.promise import Promise, create_task_output
+from flytekit.annotated.reference_task import WorkflowReference
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
 from flytekit.common.promise import NodeOutput as _NodeOutput

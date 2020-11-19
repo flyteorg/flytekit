@@ -1,5 +1,5 @@
-from typing import Union
 from contextlib import contextmanager
+from typing import Union
 from unittest.mock import MagicMock
 
 from flytekit import logger
@@ -59,6 +59,7 @@ def patch(target: Union[PythonTask, Workflow]):
             else:
                 target._workflow_function = saved
             return results
+
         return new_test
 
     return wrapper
