@@ -41,9 +41,9 @@ class Node(object):
         if self._sdk_node is not None:
             return self._sdk_node
         # TODO: Figure out import cycles in the future
+        from flytekit.annotated.base_task import PythonTask
         from flytekit.annotated.condition import BranchNode
         from flytekit.annotated.launch_plan import LaunchPlan
-        from flytekit.annotated.task import PythonTask
         from flytekit.annotated.workflow import Workflow
 
         if self._flyte_entity is None:
