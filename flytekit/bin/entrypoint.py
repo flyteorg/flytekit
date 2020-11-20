@@ -185,7 +185,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                     with ctx.new_registration_settings(registration_settings=registration_settings) as ctx:
                         # Because execution states do not look up the context chain, it has to be made last
                         with ctx.new_execution_context(
-                                mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
+                            mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
                         ) as ctx:
                             # First download the contents of the input file
                             local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
@@ -196,7 +196,8 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                             if isinstance(outputs, VoidPromise):
                                 _logging.getLogger().warning("Task produces no outputs")
                                 output_file_dict = {
-                                    _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
+                                    _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})
+                                }
                             else:
                                 # TODO: Clean up how we handle the fact that some tasks should fail
                                 #      (like hive/presto tasks) and some tasks don't produce output literals

@@ -76,7 +76,7 @@ def test_single_output():
 
 
 def test_engine_file_output():
-    basic_blob_type = _core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE, )
+    basic_blob_type = _core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
 
     fs = FileAccessProvider(local_sandbox_dir="/tmp/flytetesting")
     with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
@@ -189,11 +189,13 @@ def test_wf1_with_list_of_inputs():
 
 def test_wf_output_mismatch():
     with pytest.raises(AssertionError):
+
         @workflow
         def my_wf(a: int, b: str) -> (int, str):
             return a
 
     with pytest.raises(AssertionError):
+
         @workflow
         def my_wf2(a: int, b: str) -> int:
             return a, b
@@ -399,13 +401,13 @@ def test_wf1_with_dynamic():
     assert x == ("hello hello ", ["world-" + str(i) for i in range(2, v + 2)])
 
     with context_manager.FlyteContext.current_context().new_registration_settings(
-            registration_settings=context_manager.RegistrationSettings(
-                project="test_proj",
-                domain="test_domain",
-                version="abc",
-                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-                env={},
-            )
+        registration_settings=context_manager.RegistrationSettings(
+            project="test_proj",
+            domain="test_domain",
+            version="abc",
+            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+            env={},
+        )
     ) as ctx:
         with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
             dynamic_job_spec = my_subwf.compile_into_workflow(ctx, a=5)
@@ -483,12 +485,12 @@ def test_wf1_branches():
         x, y = t1(a=a)
         d = (
             conditional("test1")
-                .if_(x == 4)
-                .then(t2(a=b))
-                .elif_(x >= 5)
-                .then(t2(a=y))
-                .else_()
-                .fail("Unable to choose branch")
+            .if_(x == 4)
+            .then(t2(a=b))
+            .elif_(x >= 5)
+            .then(t2(a=y))
+            .else_()
+            .fail("Unable to choose branch")
         )
         f = conditional("test2").if_(d == "hello ").then(t2(a="It is hello")).else_().then(t2(a="Not Hello!"))
         return x, f
@@ -502,6 +504,7 @@ def test_wf1_branches():
 
 def test_wf1_branches_no_else():
     with pytest.raises(NotImplementedError):
+
         def foo():
             @task
             def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
@@ -535,12 +538,12 @@ def test_wf1_branches_failing():
         x, y = t1(a=a)
         d = (
             conditional("test1")
-                .if_(x == 4)
-                .then(t2(a=b))
-                .elif_(x >= 5)
-                .then(t2(a=y))
-                .else_()
-                .fail("All Branches failed")
+            .if_(x == 4)
+            .then(t2(a=b))
+            .elif_(x >= 5)
+            .then(t2(a=y))
+            .else_()
+            .fail("All Branches failed")
         )
         return x, d
 
@@ -550,6 +553,7 @@ def test_wf1_branches_failing():
 
 def test_cant_use_normal_tuples():
     with pytest.raises(RestrictedTypeError):
+
         @task
         def t1(a: str) -> tuple:
             return (a, 3)
@@ -830,7 +834,7 @@ def test_lp_serialize():
         service_account=None,
     )
     with context_manager.FlyteContext.current_context().new_registration_settings(
-            registration_settings=registration_settings
+        registration_settings=registration_settings
     ):
         sdk_lp = lp.get_registerable_entity()
         assert len(sdk_lp.default_inputs.parameters) == 0
@@ -913,6 +917,7 @@ def test_wf_container_task_multiple():
 
 def test_wf_tuple_fails():
     with pytest.raises(RestrictedTypeError):
+
         @task
         def t1(a: tuple) -> (int, str):
             return a[0] + 2, str(a) + "-HELLO"
@@ -982,7 +987,7 @@ def test_ref():
         service_account=None,
     )
     with context_manager.FlyteContext.current_context().new_registration_settings(
-            registration_settings=registration_settings
+        registration_settings=registration_settings
     ):
         sdk_task = ref_t1.get_registerable_entity()
         assert sdk_task.has_registered

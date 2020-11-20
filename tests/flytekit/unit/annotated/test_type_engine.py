@@ -166,4 +166,3 @@ def test_dict_transformer():
     lit = d.to_literal(ctx, {}, typing.Dict, LiteralType(SimpleType.STRUCT))
     pv = d.to_python_value(ctx, lit, typing.Dict)
     assert pv == {}
-
