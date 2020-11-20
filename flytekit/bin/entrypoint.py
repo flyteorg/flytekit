@@ -10,6 +10,7 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext, RegistrationSettings, get_image_config
+from flytekit.annotated.promise import VoidPromise
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common import utils as _utils
@@ -184,7 +185,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                     with ctx.new_registration_settings(registration_settings=registration_settings) as ctx:
                         # Because execution states do not look up the context chain, it has to be made last
                         with ctx.new_execution_context(
-                            mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
+                                mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
                         ) as ctx:
                             # First download the contents of the input file
                             local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
@@ -192,13 +193,17 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                             input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
                             idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
                             outputs = task_def.dispatch_execute(ctx, idl_input_literals)
-
-                            # TODO: Clean up how we handle the fact that some tasks should fail (like hive/presto tasks)
-                            #   and some tasks don't produce output literals
-                            if isinstance(outputs, _literal_models.LiteralMap):
-                                output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
-                            elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
-                                output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
+                            if isinstance(outputs, VoidPromise):
+                                _logging.getLogger().warning("Task produces no outputs")
+                                output_file_dict = {
+                                    _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
+                            else:
+                                # TODO: Clean up how we handle the fact that some tasks should fail
+                                #      (like hive/presto tasks) and some tasks don't produce output literals
+                                if isinstance(outputs, _literal_models.LiteralMap):
+                                    output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
+                                elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
+                                    output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
 
                             for k, v in output_file_dict.items():
                                 _common_utils.write_proto_to_file(

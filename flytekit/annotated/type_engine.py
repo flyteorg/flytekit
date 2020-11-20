@@ -312,6 +312,8 @@ class DictTransformer(TypeTransformer[dict]):
             return py_map
         if lv and lv.scalar and lv.scalar.generic:
             return _json.loads(_json_format.MessageToJson(lv.scalar.generic))
+        if expected_python_type in [dict, typing.Dict]:
+            return {}
         raise TypeError(f"Cannot convert from {lv} to {expected_python_type}")
 
 

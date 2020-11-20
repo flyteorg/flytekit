@@ -162,3 +162,8 @@ def test_dict_transformer():
         Literal(map=LiteralMap(literals={"x": Literal(scalar=Scalar(primitive=Primitive(integer=1)))})),
         typing.Dict[str, int],
     )
+
+    lit = d.to_literal(ctx, {}, typing.Dict, LiteralType(SimpleType.STRUCT))
+    pv = d.to_python_value(ctx, lit, typing.Dict)
+    assert pv == {}
+

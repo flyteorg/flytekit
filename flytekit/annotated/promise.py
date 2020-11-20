@@ -16,10 +16,10 @@ from flytekit.models.literals import Primitive
 
 
 def translate_inputs_to_literals(
-    ctx: FlyteContext,
-    input_kwargs: Dict[str, Any],
-    interface: _interface_models.TypedInterface,
-    native_input_types: Dict[str, type],
+        ctx: FlyteContext,
+        input_kwargs: Dict[str, Any],
+        interface: _interface_models.TypedInterface,
+        native_input_types: Dict[str, type],
 ) -> Dict[str, _literal_models.Literal]:
     """
     When calling a task inside a workflow, a user might do something like this.
@@ -44,7 +44,7 @@ def translate_inputs_to_literals(
     """
 
     def extract_value(
-        ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
+            ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
     ) -> _literal_models.Literal:
         if isinstance(input_val, list):
             if flyte_literal_type.collection_type is None:
@@ -59,8 +59,8 @@ def translate_inputs_to_literals(
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literals))
         elif isinstance(input_val, dict):
             if (
-                flyte_literal_type.map_value_type is None
-                and flyte_literal_type.simple != _type_models.SimpleType.STRUCT
+                    flyte_literal_type.map_value_type is None
+                    and flyte_literal_type.simple != _type_models.SimpleType.STRUCT
             ):
                 raise Exception(f"Not a map type {flyte_literal_type} but got a map {input_val}")
             k_type, sub_type = DictTransformer.get_dict_types(val_type)
@@ -74,6 +74,9 @@ def translate_inputs_to_literals(
         elif isinstance(input_val, Promise):
             # In the example above, this handles the "in2=a" type of argument
             return input_val.val
+        elif isinstance(input_val, VoidPromise):
+            raise AssertionError(
+                f"Outputs of a non-output producing task {input_val.task_name} cannot be passed to another task.")
         else:
             # This handles native values, the 5 example
             return TypeEngine.to_literal(ctx, input_val, val_type, flyte_literal_type)
@@ -196,10 +199,10 @@ class ComparisonExpression(object):
 
 class ConjunctionExpression(object):
     def __init__(
-        self,
-        lhs: Union[ComparisonExpression, "ConjunctionExpression"],
-        op: ConjunctionOps,
-        rhs: Union[ComparisonExpression, "ConjunctionExpression"],
+            self,
+            lhs: Union[ComparisonExpression, "ConjunctionExpression"],
+            op: ConjunctionOps,
+            rhs: Union[ComparisonExpression, "ConjunctionExpression"],
     ):
         self._lhs = lhs
         self._rhs = rhs
@@ -384,15 +387,19 @@ def create_task_output(promises: Optional[Union[List[Promise], Promise]]) -> Opt
 
 
 def binding_data_from_python_std(
-    ctx: _flyte_context.FlyteContext,
-    expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
-    t_value_type: type,
+        ctx: _flyte_context.FlyteContext,
+        expected_literal_type: _type_models.LiteralType,
+        t_value: typing.Any,
+        t_value_type: type,
 ) -> _literals_models.BindingData:
     # This handles the case where the given value is the output of another task
     if isinstance(t_value, Promise):
         if not t_value.is_ready:
             return _literals_models.BindingData(promise=t_value.ref)
+
+    elif isinstance(t_value, VoidPromise):
+        raise AssertionError(
+            f"Cannot pass output from task {t_value.task_name} that produces no outputs to a downstream task")
 
     elif isinstance(t_value, list):
         if expected_literal_type.collection_type is None:
@@ -409,8 +416,8 @@ def binding_data_from_python_std(
 
     elif isinstance(t_value, dict):
         if (
-            expected_literal_type.map_value_type is None
-            and expected_literal_type.simple != _type_models.SimpleType.STRUCT
+                expected_literal_type.map_value_type is None
+                and expected_literal_type.simple != _type_models.SimpleType.STRUCT
         ):
             raise AssertionError(
                 f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}"
@@ -435,11 +442,11 @@ def binding_data_from_python_std(
 
 
 def binding_from_python_std(
-    ctx: _flyte_context.FlyteContext,
-    var_name: str,
-    expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
-    t_value_type: type,
+        ctx: _flyte_context.FlyteContext,
+        var_name: str,
+        expected_literal_type: _type_models.LiteralType,
+        t_value: typing.Any,
+        t_value_type: type,
 ) -> _literals_models.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
     return _literals_models.Binding(var=var_name, binding=binding_data)
@@ -447,3 +454,59 @@ def binding_from_python_std(
 
 def to_binding(p: Promise) -> _literals_models.Binding:
     return _literals_models.Binding(var=p.var, binding=_literals_models.BindingData(promise=p.ref))
+
+
+class VoidPromise(object):
+    """
+    This object is returned for tasks that do not return any outputs (declared interface is empty)
+    VoidPromise cannot be interacted with and does not allow comparisons or any operations
+    """
+
+    def __init__(self, task_name: str):
+        self._task_name = task_name
+
+    @property
+    def task_name(self):
+        return self._task_name
+
+    def __eq__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __and__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __or__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __le__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __ge__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __gt__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __lt__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __add__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __cmp__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __bool__(self):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __mod__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __xor__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __str__(self):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __repr__(self):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
