@@ -12,6 +12,7 @@ from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
 from flytekit.interfaces.data.http import http_data_proxy as _http_data_proxy
 from flytekit.interfaces.data.local import local_file_proxy as _local_file_proxy
 from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
+from flytekit.loggers import logger
 
 
 class LocalWorkingDirectoryContext(object):
@@ -206,12 +207,6 @@ class FileAccessProvider(object):
             return True
         return False
 
-    @staticmethod
-    def get_filename_only(path: Union[str, os.PathLike]) -> str:
-        path_str = str(path)  # in case it's not a str
-        _, tail = os.path.split(path_str)
-        return tail
-
     def _get_data_proxy_by_path(self, path: Union[str, os.PathLike]):
         """
         :param Text path:
@@ -261,23 +256,32 @@ class FileAccessProvider(object):
     def local_access(self) -> _local_file_proxy.LocalFileProxy:
         return self._local
 
-    def get_random_remote_path(self, file_name: Optional[str] = None) -> str:
+    def get_random_remote_path(self, file_path_or_file_name: Optional[str] = None) -> str:
         """
-        :param file_name: For when you want a random directory, but want to preserve the leaf file name
+        :param file_path_or_file_name: For when you want a random directory, but want to preserve the leaf file name
         """
-        if file_name:
-            return f"{self.remote.get_random_directory()}{file_name}"
-        else:
-            return self.remote.get_random_path()
+        if file_path_or_file_name:
+            _, tail = os.path.split(file_path_or_file_name)
+            if tail:
+                return f"{self.remote.get_random_directory()}{tail}"
+            else:
+                logger.warning(f"No filename detected in {file_path_or_file_name}, using random remote path...")
+        return self.remote.get_random_path()
 
     def get_random_remote_directory(self):
         return self.remote.get_random_directory()
 
-    def get_random_local_path(self, file_name: Optional[str] = None) -> str:
-        if file_name:
-            return os.path.join(self.local_access.get_random_directory(), file_name)
-        else:
-            return self.local_access.get_random_path()
+    def get_random_local_path(self, file_path_or_file_name: Optional[str] = None) -> str:
+        """
+        :param file_path_or_file_name:  For when you want a random directory, but want to preserve the leaf file name
+        """
+        if file_path_or_file_name:
+            _, tail = os.path.split(file_path_or_file_name)
+            if tail:
+                return os.path.join(self.local_access.get_random_directory(), tail)
+            else:
+                logger.warning(f"No filename detected in {file_path_or_file_name}, using random local path...")
+        return self.local_access.get_random_path()
 
     def get_random_local_directory(self) -> str:
         dir = self.local_access.get_random_directory()

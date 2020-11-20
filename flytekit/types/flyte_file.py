@@ -229,8 +229,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         # a subfolder), unless remote_path=False was given
         else:
             if remote_path is None:
-                file_name = ctx.file_access.get_filename_only(source_path)
-                remote_path = ctx.file_access.get_random_remote_path(file_name)
+                remote_path = ctx.file_access.get_random_remote_path(source_path)
             ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
             meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path or source_path)))
@@ -247,8 +246,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return expected_python_type(uri)
 
         # For the remote case, return an FlyteFile object that can download
-        source_file_name = ctx.file_access.get_filename_only(uri)
-        local_path = ctx.file_access.get_random_local_path(source_file_name)
+        local_path = ctx.file_access.get_random_local_path(uri)
 
         def _downloader():
             return ctx.file_access.get_data(uri, local_path, is_multipart=False)
