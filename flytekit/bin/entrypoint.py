@@ -193,18 +193,21 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                             input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
                             idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
                             outputs = task_def.dispatch_execute(ctx, idl_input_literals)
+                            # TODO: Clean up how we handle the fact that some tasks should fail
+                            #      (like hive/presto tasks) and some tasks don't produce output literals
                             if isinstance(outputs, VoidPromise):
                                 _logging.getLogger().warning("Task produces no outputs")
                                 output_file_dict = {
                                     _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})
                                 }
+                            elif isinstance(outputs, _literal_models.LiteralMap):
+                                output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
+                            elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
+                                output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
                             else:
-                                # TODO: Clean up how we handle the fact that some tasks should fail
-                                #      (like hive/presto tasks) and some tasks don't produce output literals
-                                if isinstance(outputs, _literal_models.LiteralMap):
-                                    output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
-                                elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
-                                    output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
+                                _logging.getLogger().error(f"SystemError: received unknown outputs from task {outputs}")
+                                # TODO This should probably cause an error file
+                                return
 
                             for k, v in output_file_dict.items():
                                 _common_utils.write_proto_to_file(
