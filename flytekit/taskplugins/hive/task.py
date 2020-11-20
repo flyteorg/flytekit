@@ -1,10 +1,11 @@
-from typing import Any, Callable, Dict, Type
+from typing import Any, Dict, List, Optional, Type
 
 from google.protobuf.json_format import MessageToDict
 
-from flytekit.annotated.task import SQLTask, TaskPlugins, PythonTask
+from flytekit.annotated.task import SQLTask
+from flytekit.annotated.task import metadata as task_metadata_creator
 from flytekit.models import task as _task_model
-from flytekit.models.qubole import QuboleHiveJob, HiveQuery
+from flytekit.models.qubole import HiveQuery, QuboleHiveJob
 from flytekit.types.schema import FlyteSchema
 
 
@@ -12,24 +13,25 @@ class HiveTask(SQLTask):
     """
     Hive Task
     """
+
     def __init__(
         self,
         name: str,
-        metadata: _task_model.TaskMetadata,
         cluster_label: str,
         inputs: Dict[str, Type],
-        output_schema_type: Type[FlyteSchema],
-        stage_query_template: str,
         query_template: str,
+        metadata: Optional[_task_model.TaskMetadata] = None,
+        output_schema_type: Optional[Type[FlyteSchema]] = None,
+        tags: Optional[List[str]] = None,
         *args,
         **kwargs,
     ):
         outputs = {
-            "results": output_schema_type,
+            "results": output_schema_type or FlyteSchema,
         }
         super().__init__(
             name=name,
-            metadata=metadata,
+            metadata=metadata or task_metadata_creator(),
             query_template=query_template,
             inputs=inputs,
             outputs=outputs,
@@ -39,19 +41,22 @@ class HiveTask(SQLTask):
         )
         self._output_schema_type = output_schema_type
         self._cluster_label = cluster_label
+        self._tags = tags or []
 
     @property
     def cluster_label(self) -> str:
         return self._cluster_label
 
     @property
-    def output_schema_type(self):
+    def output_schema_type(self) -> Type[FlyteSchema]:
         return self._output_schema_type
 
+    @property
+    def tags(self) -> List[str]:
+        return self._tags
+
     def get_custom(self) -> Dict[str, Any]:
-        query = HiveQuery()
-        job = QuboleHiveJob(
-            query=self.query_template,
-            cluster_label=self
-        )
+        # timeout_sec and retry_count will become deprecated, please use timeout and retry settings on the Task
+        query = HiveQuery(query=self.query_template, timeout_sec=0, retry_count=0)
+        job = QuboleHiveJob(query=query, cluster_label=self.cluster_label, tags=self.tags,)
         return MessageToDict(job.to_flyte_idl())

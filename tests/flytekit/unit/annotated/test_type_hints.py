@@ -9,6 +9,7 @@ import flytekit
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState
+from flytekit.annotated.launch_plan import LaunchPlan
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import ContainerTask, Reference, SQLTask, dynamic, kwtypes, maptask, metadata, task
 from flytekit.annotated.testing import task_mock
@@ -588,7 +589,7 @@ def test_file_handling_remote_default_wf_input():
         return length
 
     assert my_wf._native_interface.inputs_with_defaults["fname"][1] == SAMPLE_DATA
-    sample_lp = flytekit.LaunchPlan.create("test_launch_plan", my_wf)
+    sample_lp = LaunchPlan.create("test_launch_plan", my_wf)
     assert sample_lp.parameters.parameters["fname"].default.scalar.blob.uri == SAMPLE_DATA
 
 
@@ -955,6 +956,27 @@ def test_wf_typed_schema():
     assert result_df.all().all()
 
 
+def test_wf_schema_to_df():
+    schema1 = FlyteSchema[kwtypes(x=int, y=str)]
+
+    @task
+    def t1() -> schema1:
+        s = schema1()
+        s.open().write(pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}))
+        return s
+
+    @task
+    def t2(df: pandas.DataFrame) -> int:
+        return len(df.columns.values)
+
+    @workflow
+    def wf() -> int:
+        return t2(df=t1())
+
+    x = wf()
+    assert x == 2
+
+
 def test_ref():
     @task(
         task_config=Reference(
@@ -1052,20 +1074,3 @@ def test_dict_wf_with_conversion():
 
     with pytest.raises(TypeError):
         my_wf(a=5)
-
-
-def test_fhdsa():
-    my_schema = None
-
-    hive_task = HiveQueryTask(
-        task_inputs=kwtypes(my_schema=FlyteSchema, ds=str),
-        statement="""
-            set engine=tez;
-            insert overwrite directory '{{ .raw_output_data }}' stored as parquet  -- will be unique per retry
-            select *
-            from blah
-            where ds = '{{ .Inputs.ds }}' and uri = '{{ .inputs.my_schema }}'
-        """,
-        output_schema=my_schema,  # the schema literal's backend uri will be equal to the value of .raw_output_data
-    )
-

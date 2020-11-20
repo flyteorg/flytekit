@@ -27,6 +27,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
+from flytekit.types.schema import FlyteSchema
 
 
 def kwtypes(**kwargs) -> Dict[str, Type]:
@@ -504,8 +505,7 @@ class SQLTask(PythonTask):
     Base task types for all SQL tasks
     """
 
-    # TODO this should be replaced with Schema Type
-    _OUTPUTS = kwtypes(results=str)
+    _OUTPUTS = kwtypes(results=FlyteSchema)
     _INPUT_REGEX = re.compile(r"({{\s*.inputs.(\w+)\s*}})", re.IGNORECASE)
 
     def __init__(
@@ -658,6 +658,7 @@ class Reference(object):
     this task must be used along with a Python function declaration from which the interface is derived. However, the
     body of the function will never be run so we suggest just leaving it as ... or pass.
     """
+
     def __init__(
         self, project: str, domain: str, name: str, version: str, *args, **kwargs,
     ):
@@ -672,6 +673,7 @@ class ReferenceTask(PythonTask):
     """
     Please see the Reference object notes
     """
+
     def __init__(
         self,
         task_config: Reference,
