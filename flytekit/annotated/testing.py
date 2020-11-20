@@ -49,7 +49,7 @@ def patch(target: Union[PythonTask, Workflow]):
 
     def wrapper(test_fn):
         def new_test(*args, **kwargs):
-            logger.warning(f"Invoking mock method for task: '{target.name}'")
+            logger.warning(f"Invoking mock method for target: '{target.name}'")
             m = MagicMock()
             if isinstance(target, PythonTask):
                 saved = target.execute
