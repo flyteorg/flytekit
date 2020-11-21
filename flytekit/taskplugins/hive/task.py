@@ -3,9 +3,7 @@ from typing import Any, Dict, List, Optional, Type
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.annotated.base_sql_task import SQLTask
-from flytekit.annotated.context_manager import (
-    RegistrationSettings,
-)
+from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.task import metadata as task_metadata_creator
 from flytekit.models import task as _task_model
 from flytekit.models.qubole import HiveQuery, QuboleHiveJob

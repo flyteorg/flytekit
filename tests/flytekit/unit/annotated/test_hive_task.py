@@ -3,11 +3,11 @@ import pytest
 
 from flytekit.annotated import context_manager
 from flytekit.annotated.base_task import kwtypes
+from flytekit.annotated.context_manager import Image, ImageConfig
 from flytekit.annotated.testing import task_mock
 from flytekit.annotated.workflow import workflow
 from flytekit.taskplugins.hive.task import HiveTask
 from flytekit.types.schema import FlyteSchema
-from flytekit.annotated.context_manager import FlyteContext, Image, ImageConfig, get_image_config
 
 
 def test_serialization():
