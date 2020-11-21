@@ -11,6 +11,8 @@ from flytekit.annotated.task import metadata, task
 from flytekit.annotated.workflow import workflow
 from flytekit.loggers import logger
 
+__version__ = "0.16.0a1"
+
 
 def current_context():
     return FlyteContext.current_context().user_space_params
