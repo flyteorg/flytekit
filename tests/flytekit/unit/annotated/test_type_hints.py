@@ -954,6 +954,48 @@ def test_dict_wf_with_conversion():
         my_wf(a=5)
 
 
+def test_wf_with_empty_dict():
+    @task
+    def t1() -> typing.Dict:
+        return {}
+
+    @task
+    def t2(d: typing.Dict):
+        assert d == {}
+
+    @workflow
+    def wf():
+        d = t1()
+        t2(d=d)
+
+    wf()
+
+
+def test_wf_with_catching_no_return():
+    @task
+    def t1() -> typing.Dict:
+        return {}
+
+    @task
+    def t2(d: typing.Dict):
+        assert d == {}
+
+    @task
+    def t3(s: str):
+        pass
+
+    @workflow
+    def wf():
+        d = t1()
+        # The following statement is wrong, this should not be allowed to pass to another task
+        x = t2(d=d)
+        # Passing x is wrong in this case
+        t3(s=x)
+
+    with pytest.raises(AssertionError):
+        wf()
+
+
 def test_reference_workflow():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
