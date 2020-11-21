@@ -6,13 +6,13 @@ import pandas
 import pytest
 
 import flytekit
-from flytekit import ContainerTask, Reference, SQLTask, dynamic, kwtypes, maptask
+from flytekit import ContainerTask, SQLTask, TaskReference, WorkflowReference, dynamic, kwtypes, maptask
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.task import metadata, task
-from flytekit.annotated.testing import task_mock
+from flytekit.annotated.testing import patch, task_mock
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.common.nodes import SdkNode
@@ -280,6 +280,32 @@ def test_wf1_with_sql():
     with task_mock(sql) as mock:
         mock.return_value = "Hello"
         assert my_wf() == "Hello"
+
+
+def test_wf1_with_sql_with_patch():
+    sql = SQLTask(
+        "my-query",
+        query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
+        inputs=kwtypes(ds=datetime.datetime),
+        metadata=metadata(retries=2),
+    )
+
+    @task
+    def t1() -> datetime.datetime:
+        return datetime.datetime.now()
+
+    @workflow
+    def my_wf() -> str:
+        dt = t1()
+        return sql(ds=dt)
+
+    @patch(sql)
+    def test_user_demo_test(mock_sql):
+        mock_sql.return_value = "Hello"
+        assert my_wf() == "Hello"
+
+    # Have to call because tests inside tests don't run
+    test_user_demo_test()
 
 
 def test_wf1_with_spark():
@@ -831,7 +857,7 @@ def test_wf_typed_schema():
 
 def test_ref():
     @task(
-        task_config=Reference(
+        task_config=TaskReference(
             project="flytesnacks",
             domain="development",
             name="recipes.aaa.simple.join_strings",
@@ -868,7 +894,7 @@ def test_ref():
 
 def test_ref_task_more():
     @task(
-        task_config=Reference(
+        task_config=TaskReference(
             project="flytesnacks",
             domain="development",
             name="recipes.aaa.simple.join_strings",
@@ -926,3 +952,37 @@ def test_dict_wf_with_conversion():
 
     with pytest.raises(TypeError):
         my_wf(a=5)
+
+
+def test_reference_workflow():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        a = a + 2
+        return a, "world-" + str(a)
+
+    @workflow(reference=WorkflowReference(project="proj", domain="developement", name="wf_name", version="abc"))
+    def ref_wf1(a: int) -> (str, str):
+        ...
+
+    @workflow
+    def my_wf(a: int, b: str) -> (int, str, str):
+        x, y = t1(a=a).with_overrides()
+        u, v = ref_wf1(a=x)
+        return x, u, v
+
+    with pytest.raises(Exception):
+        my_wf(a=3, b="foo")
+
+    @patch(ref_wf1)
+    def inner_test(ref_mock):
+        ref_mock.return_value = ("hello", "alice")
+        x, y, z = my_wf(a=3, b="foo")
+        assert x == 5
+        assert y == "hello"
+        assert z == "alice"
+
+    inner_test()
+
+    # Ensure that the patching is only for the duration of that test
+    with pytest.raises(Exception):
+        my_wf(a=3, b="foo")
