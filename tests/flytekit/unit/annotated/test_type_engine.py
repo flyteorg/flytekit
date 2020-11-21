@@ -146,8 +146,13 @@ def test_dict_transformer():
         expected_depth=2,
     )
 
-    # Literal to python
     ctx = FlyteContext.current_context()
+
+    lit = d.to_literal(ctx, {}, typing.Dict, LiteralType(SimpleType.STRUCT))
+    pv = d.to_python_value(ctx, lit, typing.Dict)
+    assert pv == {}
+
+    # Literal to python
     with pytest.raises(TypeError):
         d.to_python_value(ctx, Literal(scalar=Scalar(primitive=Primitive(integer=10))), dict)
     with pytest.raises(TypeError):
@@ -162,7 +167,3 @@ def test_dict_transformer():
         Literal(map=LiteralMap(literals={"x": Literal(scalar=Scalar(primitive=Primitive(integer=1)))})),
         typing.Dict[str, int],
     )
-
-    lit = d.to_literal(ctx, {}, typing.Dict, LiteralType(SimpleType.STRUCT))
-    pv = d.to_python_value(ctx, lit, typing.Dict)
-    assert pv == {}
