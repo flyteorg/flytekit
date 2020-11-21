@@ -310,7 +310,10 @@ class DictTransformer(TypeTransformer[dict]):
             for k, v in lv.map.literals.items():
                 py_map[k] = TypeEngine.to_python_value(ctx, v, tp[1])
             return py_map
-        if lv is not None and lv.scalar is not None and lv.scalar.generic is not None:
+
+        # for empty generic we have to explicitly test for lv.scalar.generic is not None as empty dict
+        # evaluates to false
+        if lv and lv.scalar and lv.scalar.generic is not None:
             return _json.loads(_json_format.MessageToJson(lv.scalar.generic))
         raise TypeError(f"Cannot convert from {lv} to {expected_python_type}")
 
