@@ -6,12 +6,12 @@ import pandas
 import pytest
 
 import flytekit
+from flytekit import ContainerTask, Reference, SQLTask, dynamic, kwtypes, maptask
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
-from flytekit.annotated.context_manager import ExecutionState
-from flytekit.annotated.launch_plan import LaunchPlan
+from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
 from flytekit.annotated.promise import Promise
-from flytekit.annotated.task import ContainerTask, Reference, SQLTask, dynamic, kwtypes, maptask, metadata, task
+from flytekit.annotated.task import metadata, task
 from flytekit.annotated.testing import task_mock
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
@@ -22,7 +22,6 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.taskplugins.spark import Spark
-from flytekit.types.flyte_file import FlyteFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 
 
@@ -274,13 +273,13 @@ def test_wf1_with_sql():
         return datetime.datetime.now()
 
     @workflow
-    def my_wf() -> str:
+    def my_wf() -> FlyteSchema:
         dt = t1()
         return sql(ds=dt)
 
     with task_mock(sql) as mock:
-        mock.return_value = "Hello"
-        assert my_wf() == "Hello"
+        mock.return_value = pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})
+        assert (my_wf().open().all() == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
 
 
 def test_wf1_with_spark():
@@ -402,7 +401,11 @@ def test_wf1_with_dynamic():
 
     with context_manager.FlyteContext.current_context().new_registration_settings(
         registration_settings=context_manager.RegistrationSettings(
-            project="test_proj", domain="test_domain", version="abc", image="image:name", env={},
+            project="test_proj",
+            domain="test_domain",
+            version="abc",
+            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+            env={},
         )
     ) as ctx:
         with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
@@ -555,136 +558,6 @@ def test_cant_use_normal_tuples():
             return (a, 3)
 
 
-def test_file_type_in_workflow_with_bad_format():
-    @task
-    def t1() -> FlyteFile["txt"]:
-        fname = "/tmp/flytekit_test"
-        with open(fname, "w") as fh:
-            fh.write("Hello World\n")
-        return fname
-
-    @workflow
-    def my_wf() -> FlyteFile["txt"]:
-        f = t1()
-        return f
-
-    res = my_wf()
-    with open(res, "r") as fh:
-        assert fh.read() == "Hello World\n"
-
-
-def test_file_handling_remote_default_wf_input():
-    SAMPLE_DATA = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
-
-    @task
-    def t1(fname: os.PathLike) -> int:
-        with open(fname, "r") as fh:
-            x = len(fh.readlines())
-
-        return x
-
-    @workflow
-    def my_wf(fname: os.PathLike = SAMPLE_DATA) -> int:
-        length = t1(fname=fname)
-        return length
-
-    assert my_wf._native_interface.inputs_with_defaults["fname"][1] == SAMPLE_DATA
-    sample_lp = LaunchPlan.create("test_launch_plan", my_wf)
-    assert sample_lp.parameters.parameters["fname"].default.scalar.blob.uri == SAMPLE_DATA
-
-
-def test_file_handling_local_file_gets_copied():
-    @task
-    def t1() -> FlyteFile:
-        # Use this test file itself, since we know it exists.
-        return __file__
-
-    @workflow
-    def my_wf() -> FlyteFile:
-        return t1()
-
-    random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
-    fs = FileAccessProvider(local_sandbox_dir=random_dir)
-    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs):
-        top_level_files = os.listdir(random_dir)
-        assert len(top_level_files) == 1  # the mock_remote folder
-
-        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
-        assert len(mock_remote_files) == 0  # the mock_remote folder itself is empty
-
-        x = my_wf()
-
-        # After running, this test file should've been copied to the mock remote location.
-        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
-        assert len(mock_remote_files) == 1
-        # File should've been copied to the mock remote folder
-        assert x.path.startswith(random_dir)
-
-
-def test_file_handling_local_file_gets_force_no_copy():
-    @task
-    def t1() -> FlyteFile:
-        # Use this test file itself, since we know it exists.
-        return FlyteFile(__file__, remote_path=False)
-
-    @workflow
-    def my_wf() -> FlyteFile:
-        return t1()
-
-    random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
-    fs = FileAccessProvider(local_sandbox_dir=random_dir)
-    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs):
-        top_level_files = os.listdir(random_dir)
-        assert len(top_level_files) == 1  # the mock_remote folder
-
-        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
-        assert len(mock_remote_files) == 0  # the mock_remote folder itself is empty
-
-        workflow_output = my_wf()
-
-        # After running, this test file should've been copied to the mock remote location.
-        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
-        assert len(mock_remote_files) == 0
-
-        # Because Flyte doesn't presume to handle a uri that look like a raw path, the path that is returned is
-        # the original.
-        assert workflow_output.path == __file__
-
-
-def test_file_handling_remote_file_handling():
-    SAMPLE_DATA = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
-
-    @task
-    def t1() -> FlyteFile:
-        return SAMPLE_DATA
-
-    @workflow
-    def my_wf() -> FlyteFile:
-        return t1()
-
-    random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
-    print(f"dir: {random_dir}")
-    fs = FileAccessProvider(local_sandbox_dir=random_dir)
-    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs):
-        top_level_files = os.listdir(random_dir)
-        assert len(top_level_files) == 1  # the mock_remote folder
-
-        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
-        assert len(mock_remote_files) == 0  # the mock_remote folder itself is empty
-
-        workflow_output = my_wf()
-
-        # After running the mock remote dir should still be empty, since the workflow_output has not been used
-        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
-        assert len(mock_remote_files) == 0
-
-        # While the literal returned by t1 does contain the web address as the uri, because it's a remote address,
-        # flytekit will translate it back into a FlyteFile object on the local drive (but not download it)
-        assert workflow_output.path.startswith(random_dir)
-        # But the remote source should still be the https address
-        assert workflow_output.remote_source == SAMPLE_DATA
-
-
 def test_wf1_df():
     @task
     def t1(a: int) -> pandas.DataFrame:
@@ -824,7 +697,7 @@ def test_lp_serialize():
         project="proj",
         domain="dom",
         version="123",
-        image="asdf/fdsa:123",
+        image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
         iam_role="test:iam:role",
         service_account=None,
@@ -998,7 +871,7 @@ def test_ref():
         project="proj",
         domain="dom",
         version="123",
-        image="asdf/fdsa:123",
+        image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
         iam_role="test:iam:role",
         service_account=None,

@@ -2,11 +2,12 @@ import pandas
 import pytest
 
 from flytekit.annotated import context_manager
-from flytekit.annotated.task import kwtypes
+from flytekit.annotated.base_task import kwtypes
 from flytekit.annotated.testing import task_mock
 from flytekit.annotated.workflow import workflow
 from flytekit.taskplugins.hive.task import HiveTask
 from flytekit.types.schema import FlyteSchema
+from flytekit.annotated.context_manager import FlyteContext, Image, ImageConfig, get_image_config
 
 
 def test_serialization():
@@ -30,11 +31,12 @@ def test_serialization():
     def my_wf(in_schema: FlyteSchema, ds: str) -> FlyteSchema:
         return hive_task(my_schema=in_schema, ds=ds)
 
+    default_img = Image(name="default", fqn="test", tag="tag")
     registration_settings = context_manager.RegistrationSettings(
         project="proj",
         domain="dom",
         version="123",
-        image="asdf/fdsa:123",
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
         env={},
         iam_role="test:iam:role",
         service_account=None,

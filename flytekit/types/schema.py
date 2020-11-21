@@ -9,7 +9,7 @@ from typing import Type
 
 import numpy as _np
 
-from flytekit import FlyteContext
+from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.type_engine import T, TypeEngine, TypeTransformer
 from flytekit.configuration import sdk
 from flytekit.models.literals import Literal, Scalar, Schema

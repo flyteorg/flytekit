@@ -29,6 +29,10 @@ class LocalFileProxy(_common_data.DataProxy):
         """
         self._sandbox = sandbox
 
+    @property
+    def sandbox(self) -> str:
+        return self._sandbox
+
     def exists(self, path):
         """
         :param Text path: the path of the file
@@ -82,4 +86,6 @@ class LocalFileProxy(_common_data.DataProxy):
         """
         :rtype: Text
         """
-        return self.get_random_path() + "/"
+        random_dir = self.get_random_path() + "/"
+        _make_local_path(random_dir)
+        return random_dir
