@@ -82,7 +82,6 @@ def test_local_exec():
         hive_task()
 
     my_demo_output = pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})
-    print(my_demo_output)
 
     @workflow
     def my_wf() -> FlyteSchema:
