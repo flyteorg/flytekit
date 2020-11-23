@@ -52,14 +52,6 @@ class TaskPlugins(object):
         return PythonFunctionTask
 
 
-@dataclass
-class Resources(object):
-    cpu: str = None
-    mem: str = None
-    gpu: str = None
-    storage: str = None
-
-
 def metadata(
     cache: bool = False,
     cache_version: str = "",

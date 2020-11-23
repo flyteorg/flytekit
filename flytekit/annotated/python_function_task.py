@@ -5,6 +5,7 @@ from typing import Any, Callable, Generic, List, Optional, TypeVar
 from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.context_manager import ImageConfig, RegistrationSettings
 from flytekit.annotated.interface import Interface, transform_signature_to_interface
+from flytekit.annotated.resources import _get_resources
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.models import task as _task_model
 
@@ -88,6 +89,8 @@ class PythonFunctionTask(PythonTask, Generic[T]):
         self._task_function = task_function
         self._task_config = task_config
         self._container_image = container_image
+        # TODO(katrogan): Implement resource overrides
+        self._resources = _get_resources(**kwargs)
 
     def execute(self, **kwargs) -> Any:
         return self._task_function(**kwargs)
@@ -125,4 +128,12 @@ class PythonFunctionTask(PythonTask, Generic[T]):
             args=args,
             data_loading_config=None,
             environment=env,
+            storage_request=self._resources.requests.storage,
+            cpu_request=self._resources.requests.cpu,
+            gpu_request=self._resources.requests.gpu,
+            memory_request=self._resources.requests.mem,
+            storage_limit=self._resources.limits.storage,
+            cpu_limit=self._resources.limits.cpu,
+            gpu_limit=self._resources.limits.gpu,
+            memory_limit=self._resources.limits.mem,
         )
