@@ -269,6 +269,25 @@ _comparators = {
 }
 
 
+def create_branch_node_promise_var(node_id: str, var: str) -> str:
+    """
+    Generates a globally (wf-level) unique id for a variable.
+
+    When building bindings for the branch node, the inputs to the conditions (e.g. (x==5)) need to have variable names
+    (e.g. x). Because it's currently infeasible to get the name (e.g. x), we resolve to using the referenced node's
+    output name (e.g. out_0, my_out,... etc.). In order to avoid naming collisions (in cases when, for example, the
+    conditions reference two outputs of two different nodes named the same), we build a variable name composed of the
+    referenced node name + '.' + the referenced output name. Ideally we use something like
+    (https://github.com/pwwang/python-varname) to retrieve the assigned variable name (e.g. x). However, because of
+    https://github.com/pwwang/python-varname/issues/28, this is not currently supported for all AST nodes types.
+
+    :param str node_id: the original node_id that produced the variable.
+    :param str var: the output variable name from the original node.
+    :return: The generated unique id of the variable.
+    """
+    return f"{node_id}.{var}"
+
+
 def merge_promises(*args: Promise) -> typing.List[Promise]:
     node_vars: typing.Set[typing.Tuple[str, str]] = set()
     merged_promises: typing.List[Promise] = []
@@ -276,7 +295,8 @@ def merge_promises(*args: Promise) -> typing.List[Promise]:
         if p is not None and p.ref:
             node_var = (p.ref.node_id, p.ref.var)
             if node_var not in node_vars:
-                merged_promises.append(p)
+                new_p = p.with_var(create_branch_node_promise_var(p.ref.node_id, p.ref.var))
+                merged_promises.append(new_p)
                 node_vars.add(node_var)
     return merged_promises
 
@@ -292,7 +312,7 @@ def transform_to_conj_expr(expr: ConjunctionExpression) -> (_core_cond.Conjuncti
 
 def transform_to_operand(v: Union[Promise, Literal]) -> (_core_cond.Operand, Optional[Promise]):
     if isinstance(v, Promise):
-        return _core_cond.Operand(var=v.var), v
+        return _core_cond.Operand(var=create_branch_node_promise_var(v.ref.node_id, v.var)), v
     return _core_cond.Operand(primitive=v.scalar.primitive), None
 
 
