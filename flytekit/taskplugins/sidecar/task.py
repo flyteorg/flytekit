@@ -3,10 +3,7 @@ from typing import Any, Callable, Dict, Tuple, Union
 from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf.json_format import MessageToDict
 
-from flytekit.annotated.context_manager import (
-    FlyteContext,
-    RegistrationSettings,
-)
+from flytekit.annotated.context_manager import FlyteContext, RegistrationSettings
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
