@@ -1,25 +1,16 @@
-import functools
 from typing import Any, Callable, Dict, Tuple, Union
 
 from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf.json_format import MessageToDict
 
-from flytekit.annotated import task
 from flytekit.annotated.context_manager import (
-    BranchEvalMode,
-    ExecutionState,
     FlyteContext,
-    FlyteEntities,
     RegistrationSettings,
 )
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
-from flytekit.annotated.workflow import Workflow
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.loggers import logger
-from flytekit.models import dynamic_job as _dynamic_job
-from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models import task as _task_models
 from flytekit.plugins import k8s as _lazy_k8s

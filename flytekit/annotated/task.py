@@ -1,5 +1,4 @@
 import datetime as _datetime
-from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Type, Union
 
 from flytekit.annotated.python_function_task import PythonFunctionTask
