@@ -19,7 +19,7 @@ def test_serialization():
         cluster_label="flyte",
         query_template="""
             set engine=tez;
-            insert overwrite directory '{{ .raw_output_data }}' stored as parquet  -- will be unique per retry
+            insert overwrite directory '{{ .rawOutputDataPrefix }}' stored as parquet  -- will be unique per retry
             select *
             from blah
             where ds = '{{ .Inputs.ds }}' and uri = '{{ .inputs.my_schema }}'
@@ -45,7 +45,7 @@ def test_serialization():
         registration_settings=registration_settings
     ):
         sdk_task = hive_task.get_registerable_entity()
-        assert "{{ .raw_output_data" in sdk_task.custom["query"]["query"]
+        assert "{{ .rawOutputDataPrefix" in sdk_task.custom["query"]["query"]
         assert "insert overwrite directory" in sdk_task.custom["query"]["query"]
         assert len(sdk_task.interface.inputs) == 2
         assert len(sdk_task.interface.outputs) == 1
