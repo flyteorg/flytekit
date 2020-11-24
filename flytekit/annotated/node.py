@@ -140,9 +140,14 @@ def create_and_link_node(
         var = typed_interface.inputs[k]
         if k not in kwargs:
             raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
+        v = kwargs[k]
+        if isinstance(v, tuple):
+            raise AssertionError(
+                f"Variable({k}) for function({entity.name}) cannot receive a multi-valued tuple {v}."
+                f" Check if the predecessor function returning more than one value?")
         bindings.append(
             binding_from_python_std(
-                ctx, var_name=k, expected_literal_type=var.type, t_value=kwargs[k], t_value_type=interface.inputs[k]
+                ctx, var_name=k, expected_literal_type=var.type, t_value=v, t_value_type=interface.inputs[k]
             )
         )
         used_inputs.add(k)

@@ -16,10 +16,10 @@ from flytekit.models.literals import Primitive
 
 
 def translate_inputs_to_literals(
-    ctx: FlyteContext,
-    input_kwargs: Dict[str, Any],
-    interface: _interface_models.TypedInterface,
-    native_input_types: Dict[str, type],
+        ctx: FlyteContext,
+        input_kwargs: Dict[str, Any],
+        interface: _interface_models.TypedInterface,
+        native_input_types: Dict[str, type],
 ) -> Dict[str, _literal_models.Literal]:
     """
     When calling a task inside a workflow, a user might do something like this.
@@ -44,7 +44,7 @@ def translate_inputs_to_literals(
     """
 
     def extract_value(
-        ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
+            ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
     ) -> _literal_models.Literal:
         if isinstance(input_val, list):
             if flyte_literal_type.collection_type is None:
@@ -59,8 +59,8 @@ def translate_inputs_to_literals(
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literals))
         elif isinstance(input_val, dict):
             if (
-                flyte_literal_type.map_value_type is None
-                and flyte_literal_type.simple != _type_models.SimpleType.STRUCT
+                    flyte_literal_type.map_value_type is None
+                    and flyte_literal_type.simple != _type_models.SimpleType.STRUCT
             ):
                 raise Exception(f"Not a map type {flyte_literal_type} but got a map {input_val}")
             k_type, sub_type = DictTransformer.get_dict_types(val_type)
@@ -200,10 +200,10 @@ class ComparisonExpression(object):
 
 class ConjunctionExpression(object):
     def __init__(
-        self,
-        lhs: Union[ComparisonExpression, "ConjunctionExpression"],
-        op: ConjunctionOps,
-        rhs: Union[ComparisonExpression, "ConjunctionExpression"],
+            self,
+            lhs: Union[ComparisonExpression, "ConjunctionExpression"],
+            op: ConjunctionOps,
+            rhs: Union[ComparisonExpression, "ConjunctionExpression"],
     ):
         self._lhs = lhs
         self._rhs = rhs
@@ -355,7 +355,7 @@ class Promise(object):
     def __repr__(self):
         if self._promise_ready:
             return f"Var({self._var}={self._val})"
-        return f"Promise({self._var},{self.ref.node_id})"
+        return f"Promise({self.ref.node_id}.{self._var})"
 
     def __str__(self):
         return str(self.__repr__())
@@ -388,10 +388,10 @@ def create_task_output(promises: Optional[Union[List[Promise], Promise]]) -> Opt
 
 
 def binding_data_from_python_std(
-    ctx: _flyte_context.FlyteContext,
-    expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
-    t_value_type: type,
+        ctx: _flyte_context.FlyteContext,
+        expected_literal_type: _type_models.LiteralType,
+        t_value: typing.Any,
+        t_value_type: type,
 ) -> _literals_models.BindingData:
     # This handles the case where the given value is the output of another task
     if isinstance(t_value, Promise):
@@ -418,8 +418,8 @@ def binding_data_from_python_std(
 
     elif isinstance(t_value, dict):
         if (
-            expected_literal_type.map_value_type is None
-            and expected_literal_type.simple != _type_models.SimpleType.STRUCT
+                expected_literal_type.map_value_type is None
+                and expected_literal_type.simple != _type_models.SimpleType.STRUCT
         ):
             raise AssertionError(
                 f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}"
@@ -435,7 +435,6 @@ def binding_data_from_python_std(
                     for k, v in t_value.items()
                 }
             )
-
         return _literals_models.BindingData(map=m)
 
     # This is the scalar case - e.g. my_task(in1=5)
@@ -444,11 +443,11 @@ def binding_data_from_python_std(
 
 
 def binding_from_python_std(
-    ctx: _flyte_context.FlyteContext,
-    var_name: str,
-    expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
-    t_value_type: type,
+        ctx: _flyte_context.FlyteContext,
+        var_name: str,
+        expected_literal_type: _type_models.LiteralType,
+        t_value: typing.Any,
+        t_value_type: type,
 ) -> _literals_models.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
     return _literals_models.Binding(var=var_name, binding=binding_data)
