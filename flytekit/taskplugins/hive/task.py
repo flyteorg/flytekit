@@ -27,9 +27,11 @@ class HiveTask(SQLTask):
         *args,
         **kwargs,
     ):
-        outputs = {
-            "results": output_schema_type or FlyteSchema,
-        }
+        outputs = None
+        if output_schema_type is not None:
+            outputs = {
+                "results": output_schema_type,
+            }
         super().__init__(
             name=name,
             metadata=metadata or task_metadata_creator(),

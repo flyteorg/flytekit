@@ -93,3 +93,38 @@ def test_local_exec():
         df = x.open().all()
         y = df == my_demo_output
         assert y.all().all()
+
+
+def test_query_no_inputs_or_outputs():
+    hive_task = HiveTask(
+        name="flytekit.demo.hive_task.hivequery1",
+        inputs={},
+        cluster_label="flyte",
+        query_template="""
+            insert into extant_table (1, 'two')
+        """,
+        output_schema_type=None,
+    )
+
+    @workflow
+    def my_wf():
+        hive_task()
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    registration_settings = context_manager.RegistrationSettings(
+        project="proj",
+        domain="dom",
+        version="123",
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        env={},
+        iam_role="test:iam:role",
+        service_account=None,
+    )
+    with context_manager.FlyteContext.current_context().new_registration_settings(
+        registration_settings=registration_settings
+    ):
+        sdk_task = hive_task.get_registerable_entity()
+        assert len(sdk_task.interface.inputs) == 0
+        assert len(sdk_task.interface.outputs) == 0
+
+        my_wf.get_registerable_entity()
