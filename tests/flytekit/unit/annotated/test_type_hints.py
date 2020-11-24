@@ -265,6 +265,7 @@ def test_wf1_with_sql():
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
         inputs=kwtypes(ds=datetime.datetime),
+        outputs=kwtypes(results=FlyteSchema),
         metadata=metadata(retries=2),
     )
 

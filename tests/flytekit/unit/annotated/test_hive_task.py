@@ -11,8 +11,6 @@ from flytekit.types.schema import FlyteSchema
 
 
 def test_serialization():
-    my_schema = None
-
     hive_task = HiveTask(
         name="flytekit.demo.hive_task.hivequery1",
         inputs=kwtypes(my_schema=FlyteSchema, ds=str),
@@ -24,7 +22,8 @@ def test_serialization():
             from blah
             where ds = '{{ .Inputs.ds }}' and uri = '{{ .inputs.my_schema }}'
         """,
-        output_schema_type=my_schema,  # the schema literal's backend uri will be equal to the value of .raw_output_data
+        # the schema literal's backend uri will be equal to the value of .raw_output_data
+        output_schema_type=FlyteSchema,
     )
 
     @workflow
@@ -58,8 +57,6 @@ def test_serialization():
 
 
 def test_local_exec():
-    my_schema = None
-
     hive_task = HiveTask(
         name="flytekit.demo.hive_task.hivequery1",
         inputs={},
@@ -71,7 +68,7 @@ def test_local_exec():
             from blah
             where ds = '{{ .Inputs.ds }}' and uri = '{{ .inputs.my_schema }}'
         """,
-        output_schema_type=my_schema,  # the schema literal's backend uri will be equal to the value of .raw_output_data
+        output_schema_type=FlyteSchema,
     )
 
     assert len(hive_task.interface.inputs) == 0
