@@ -12,7 +12,6 @@ class SQLTask(PythonTask):
     Base task types for all SQL tasks
     """
 
-    _OUTPUTS = kwtypes(results=FlyteSchema)
     _INPUT_REGEX = re.compile(r"({{\s*.inputs.(\w+)\s*}})", re.IGNORECASE)
 
     def __init__(
@@ -29,7 +28,7 @@ class SQLTask(PythonTask):
         super().__init__(
             task_type=task_type,
             name=name,
-            interface=Interface(inputs=inputs, outputs=outputs or self._OUTPUTS),
+            interface=Interface(inputs=inputs, outputs=outputs or {}),
             metadata=metadata,
             *args,
             **kwargs,
