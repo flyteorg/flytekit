@@ -144,7 +144,8 @@ def create_and_link_node(
         if isinstance(v, tuple):
             raise AssertionError(
                 f"Variable({k}) for function({entity.name}) cannot receive a multi-valued tuple {v}."
-                f" Check if the predecessor function returning more than one value?")
+                f" Check if the predecessor function returning more than one value?"
+            )
         bindings.append(
             binding_from_python_std(
                 ctx, var_name=k, expected_literal_type=var.type, t_value=v, t_value_type=interface.inputs[k]

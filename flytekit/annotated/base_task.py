@@ -44,13 +44,13 @@ def kwtypes(**kwargs) -> Dict[str, Type]:
 # already.)
 class Task(object):
     def __init__(
-            self,
-            task_type: str,
-            name: str,
-            interface: _interface_models.TypedInterface,
-            metadata: _task_model.TaskMetadata,
-            *args,
-            **kwargs,
+        self,
+        task_type: str,
+        name: str,
+        interface: _interface_models.TypedInterface,
+        metadata: _task_model.TaskMetadata,
+        *args,
+        **kwargs,
     ):
         self._task_type = task_type
         self._name = name
@@ -154,7 +154,7 @@ class Task(object):
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
             return self.compile(ctx, *args, **kwargs)
         elif (
-                ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
             if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
                 return
@@ -190,7 +190,7 @@ class Task(object):
 
     @abstractmethod
     def dispatch_execute(
-            self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap,
+        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap,
     ) -> _literal_models.LiteralMap:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
@@ -205,7 +205,7 @@ class Task(object):
 
 class PythonTask(Task):
     def __init__(
-            self, task_type: str, name: str, interface: Interface, metadata: _task_model.TaskMetadata, *args, **kwargs
+        self, task_type: str, name: str, interface: Interface, metadata: _task_model.TaskMetadata, *args, **kwargs
     ):
         super().__init__(task_type, name, transform_interface_to_typed_interface(interface), metadata)
         self._python_interface = interface
@@ -235,7 +235,7 @@ class PythonTask(Task):
         )
 
     def dispatch_execute(
-            self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
+        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
     ) -> Union[VoidPromise, _literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
@@ -263,7 +263,7 @@ class PythonTask(Task):
         # Short circuit the translation to literal map because what's returned may be a dj spec (or an
         # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
         if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
-                native_outputs, _dynamic_job.DynamicJobSpec
+            native_outputs, _dynamic_job.DynamicJobSpec
         ):
             return native_outputs
 
