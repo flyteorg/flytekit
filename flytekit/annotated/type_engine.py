@@ -170,7 +170,14 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Dataclass {expected_python_type} should be decorated with @dataclass_json to be "
                 f"serialized correctly"
             )
-        return expected_python_type.from_json(_json_format.MessageToJson(lv.scalar.generic))
+        dc = expected_python_type.from_json(_json_format.MessageToJson(lv.scalar.generic))
+        # NOTE: Protobuf Struct does not support explicit int types, int types are upconverted to a double value
+        # https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Value
+        # Thus we will have to walk the given dataclass and typecast values to int, where expected.
+        for f in dataclasses.fields(expected_python_type):
+            if f.type == int:
+                dc.__setattr__(f.name, int(dc.__getattribute__(f.name)))
+        return dc
 
 
 class TypeEngine(object):
