@@ -1,9 +1,11 @@
 import datetime
 import os
 import typing
+from dataclasses import dataclass
 
 import pandas
 import pytest
+from dataclasses_json import dataclass_json
 
 import flytekit
 from flytekit import ContainerTask, SQLTask, TaskReference, WorkflowReference, dynamic, kwtypes, maptask
@@ -1028,3 +1030,51 @@ def test_reference_workflow():
     # Ensure that the patching is only for the duration of that test
     with pytest.raises(Exception):
         my_wf(a=3, b="foo")
+
+
+def test_wf_custom_types_missing_dataclass_json():
+    with pytest.raises(AssertionError):
+
+        @dataclass
+        class MyCustomType(object):
+            pass
+
+        @task
+        def t1(a: int) -> MyCustomType:
+            return MyCustomType()
+
+
+def test_wf_custom_types():
+    @dataclass_json
+    @dataclass
+    class MyCustomType(object):
+        x: int
+        y: str
+
+    @task
+    def t1(a: int) -> MyCustomType:
+        return MyCustomType(x=a, y="t1")
+
+    @task
+    def t2(a: MyCustomType, b: str) -> (MyCustomType, int):
+        return MyCustomType(x=a.x, y=f"{a.y} {b}"), 5
+
+    @workflow
+    def my_wf(a: int, b: str) -> (MyCustomType, int):
+        return t2(a=t1(a=a), b=b)
+
+    c, v = my_wf(a=10, b="hello")
+    assert v == 5
+    assert c.x == 10
+    assert c.y == "t1 hello"
+
+
+def test_arbit_class():
+    class Foo(object):
+        pass
+
+    with pytest.raises(ValueError):
+
+        @task
+        def t1(a: int) -> Foo:
+            return Foo()
