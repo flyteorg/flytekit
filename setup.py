@@ -75,6 +75,7 @@ setup(
         "ipykernel>=5.0.0",
         "black==19.10b0",
         "retry==0.9.2",
+        "dataclasses-json>=0.5.2",
     ],
     extras_require=extras_require,
     scripts=[
