@@ -281,12 +281,14 @@ class PythonTask(Task):
 
         # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
         # built into the IDL that all the values of a literal map are of the same type.
-        outputs_literal_map = _literal_models.LiteralMap(
-            literals={
-                k: TypeEngine.to_literal(ctx, v, self.get_type_for_output_var(k, v), self.interface.outputs[k].type)
-                for k, v in native_outputs_as_map.items()
-            }
-        )
+        literals = {}
+        for k, v in native_outputs_as_map.items():
+            literal_type = self.interface.outputs[k].type
+            py_type = self.get_type_for_output_var(k, v)
+            if isinstance(v, tuple):
+                raise AssertionError(f"Output({k}) in task{self.name} received a tuple {v}, instead of {py_type}")
+            literals[k] = TypeEngine.to_literal(ctx, v, py_type, literal_type)
+        outputs_literal_map = _literal_models.LiteralMap(literals=literals)
         return outputs_literal_map
 
     @abstractmethod

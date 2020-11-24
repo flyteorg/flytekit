@@ -355,7 +355,7 @@ class Promise(object):
     def __repr__(self):
         if self._promise_ready:
             return f"Var({self._var}={self._val})"
-        return f"Promise({self._var},{self.ref.node_id})"
+        return f"Promise({self.ref.node_id}.{self._var})"
 
     def __str__(self):
         return str(self.__repr__())
@@ -435,7 +435,6 @@ def binding_data_from_python_std(
                     for k, v in t_value.items()
                 }
             )
-
         return _literals_models.BindingData(map=m)
 
     # This is the scalar case - e.g. my_task(in1=5)

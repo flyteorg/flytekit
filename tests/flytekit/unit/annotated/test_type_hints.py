@@ -1078,3 +1078,27 @@ def test_arbit_class():
         @task
         def t1(a: int) -> Foo:
             return Foo()
+
+
+def test_dataclass_more():
+    @dataclass_json
+    @dataclass
+    class Datum(object):
+        x: int
+        y: str
+        z: typing.Dict[int, str]
+
+    @task
+    def stringify(x: int) -> Datum:
+        return Datum(x=x, y=str(x), z={x: str(x)})
+
+    @task
+    def add(x: Datum, y: Datum) -> Datum:
+        x.z.update(y.z)
+        return Datum(x=x.x + y.x, y=x.y + y.y, z=x.z)
+
+    @workflow
+    def wf(x: int, y: int) -> Datum:
+        return add(x=stringify(x=x), y=stringify(x=y))
+
+    wf(x=10, y=20)
