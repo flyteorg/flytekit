@@ -15,25 +15,33 @@ class ResourceSpec(object):
     limits: Resource = None
 
 
-def _get_resources(**kwargs):
+def get_resources(
+    memory_request=None,
+    memory_limit=None,
+    cpu_request=None,
+    cpu_limit=None,
+    storage_request=None,
+    storage_limit=None,
+    gpu_request=None,
+    gpu_limit=None,
+) -> ResourceSpec:
     resources = ResourceSpec()
     resources.requests = Resource()
     resources.limits = Resource()
-    for key, value in kwargs.items():
-        if key == "memory_request":
-            resources.requests.mem = value
-        elif key == "memory_limit":
-            resources.limits.mem = value
-        elif key == "cpu_request":
-            resources.requests.cpu = value
-        elif key == "cpu_limit":
-            resources.limits.cpu = value
-        elif key == "storage_request":
-            resources.requests.storage = value
-        elif key == "storage_limit":
-            resources.limits.storage = value
-        elif key == "gpu_request":
-            resources.requests.gpu = value
-        elif key == "gpu_limit":
-            resources.limits.gpu = value
+    if memory_request:
+        resources.requests.mem = memory_request
+    if memory_limit:
+        resources.limits.mem = memory_limit
+    if cpu_request:
+        resources.requests.cpu = cpu_request
+    if cpu_limit:
+        resources.limits.cpu = cpu_limit
+    if storage_request:
+        resources.requests.storage = storage_request
+    if storage_limit:
+        resources.limits.storage = storage_limit
+    if gpu_request:
+        resources.requests.gpu = gpu_request
+    if gpu_limit:
+        resources.limits.gpu = gpu_limit
     return resources
