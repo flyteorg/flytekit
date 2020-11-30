@@ -1,10 +1,11 @@
 import os
 import sys
+from contextlib import contextmanager
 from typing import Any, Callable, Dict
 
 from google.protobuf.json_format import MessageToDict
 
-from flytekit.annotated.context_manager import RegistrationSettings
+from flytekit.annotated.context_manager import FlyteContext, RegistrationSettings
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
 from flytekit.models import task as _task_model
@@ -25,35 +26,13 @@ class Spark(object):
         return self._hadoop_conf
 
 
-class GlobalSparkContext(object):
-    """
-    TODO revisit this class - it has been copied over from the spark task to avoid cyclic imports
-    """
+@contextmanager
+def new_spark_session(name: str):
+    import pyspark as _pyspark
 
-    _SPARK_CONTEXT = None
-    _SPARK_SESSION = None
-
-    @classmethod
-    def get_spark_context(cls):
-        return cls._SPARK_CONTEXT
-
-    @classmethod
-    def get_spark_session(cls):
-        return cls._SPARK_SESSION
-
-    def __enter__(self):
-        import pyspark as _pyspark
-
-        GlobalSparkContext._SPARK_CONTEXT = _pyspark.SparkContext()
-        GlobalSparkContext._SPARK_SESSION = _pyspark.sql.SparkSession.builder.appName(
-            "Flyte Spark SQL Context"
-        ).getOrCreate()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        GlobalSparkContext._SPARK_CONTEXT.stop()
-        GlobalSparkContext._SPARK_CONTEXT = None
-        return False
+    sess = _pyspark.sql.SparkSession.builder.appName(f"FlyteSpark: {name}").getOrCreate()
+    yield sess
+    sess.stop()
 
 
 class PysparkFunctionTask(PythonFunctionTask[Spark]):
@@ -61,13 +40,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         self, task_config: Spark, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs
     ):
         super(PysparkFunctionTask, self).__init__(
-            task_config=task_config,
-            task_type="spark",
-            task_function=task_function,
-            metadata=metadata,
-            ignore_input_vars=["spark_session", "spark_context"],
-            *args,
-            **kwargs,
+            task_config=task_config, task_type="spark", task_function=task_function, metadata=metadata, *args, **kwargs,
         )
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
@@ -88,12 +61,12 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         return MessageToDict(job.to_flyte_idl())
 
     def execute(self, **kwargs) -> Any:
-        with GlobalSparkContext() as spark_ctx:
-            if "spark_session" in self.native_interface.inputs:
-                kwargs["spark_session"] = spark_ctx.get_spark_session()
-            if "spark_context" in self.native_interface.inputs:
-                kwargs["spark_context"] = spark_ctx.get_spark_context()
-            return self._task_function(**kwargs)
+        ctx = FlyteContext.current_context()
+        with new_spark_session(ctx.user_space_params.execution_id) as sess:
+            b = ctx.user_space_params.builder(ctx.user_space_params)
+            b.add_attr("SPARK_SESSION", sess)
+            with ctx.new_execution_context(mode=ctx.execution_state.mode, execution_params=b.build()):
+                return self._task_function(**kwargs)
 
 
 TaskPlugins.register_pythontask_plugin(Spark, PysparkFunctionTask)
