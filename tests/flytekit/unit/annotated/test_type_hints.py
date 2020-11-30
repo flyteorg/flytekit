@@ -312,7 +312,9 @@ def test_wf1_with_sql_with_patch():
 
 def test_wf1_with_spark():
     @task(task_config=Spark())
-    def my_spark(spark_session, a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+    def my_spark(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        session = flytekit.current_context().spark_session
+        assert session.sparkContext.appName == "FlyteSpark: ex:local:local:local"
         return a + 2, "world"
 
     @task

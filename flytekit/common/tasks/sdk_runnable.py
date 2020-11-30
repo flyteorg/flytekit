@@ -1,5 +1,12 @@
+from __future__ import annotations
+
 import enum
+import logging as _logging
+import os
 import pathlib
+import typing
+from dataclasses import dataclass
+from datetime import datetime
 from inspect import getfullargspec as _getargspec
 
 import six as _six
@@ -18,6 +25,7 @@ from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import resources as _resource_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines import loader as _engine_loader
+from flytekit.interfaces.stats import taggable
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_models
 
@@ -29,51 +37,79 @@ class ExecutionParameters(object):
     decorated function.
     """
 
-    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging):
+    @dataclass(init=False)
+    class Builder(object):
+        stats: taggable.TaggableStats
+        execution_date: datetime
+        logging: _logging
+        execution_id: str
+        attrs: typing.Dict[str, typing.Any]
+        working_dir: typing.Union[os.PathLike, _common_utils.AutoDeletingTempDir]
+
+        def __init__(self, current: ExecutionParameters = None):
+            self.stats = current.stats if current else None
+            self.execution_date = current.execution_date if current else None
+            self.working_dir = current.working_directory if current else None
+            self.execution_id = current.execution_id if current else None
+            self.logging = current.logging if current else None
+            self.attrs = current._attrs if current else None
+
+        def add_attr(self, key: str, v: typing.Any):
+            self.attrs[key] = v
+
+        def build(self) -> ExecutionParameters:
+            if not isinstance(self.working_dir, _common_utils.AutoDeletingTempDir):
+                pathlib.Path(self.working_dir).mkdir(parents=True, exist_ok=True)
+            return ExecutionParameters(
+                execution_date=self.execution_date,
+                stats=self.stats,
+                tmp_dir=self.working_dir,
+                execution_id=self.execution_id,
+                logging=self.logging,
+                **self.attrs,
+            )
+
+    @staticmethod
+    def builder(current: ExecutionParameters = None) -> Builder:
+        return ExecutionParameters.Builder(current=current)
+
+    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, **kwargs):
         self._stats = stats
         self._execution_date = execution_date
         self._working_directory = tmp_dir
         self._execution_id = execution_id
         self._logging = logging
         # AutoDeletingTempDir's should be used with a with block, which creates upon entry
-        if not isinstance(self._working_directory, _common_utils.AutoDeletingTempDir):
-            pathlib.Path(self._working_directory).mkdir(parents=True, exist_ok=True)
+        self._attrs = kwargs
 
     @property
-    def stats(self):
+    def stats(self) -> taggable.TaggableStats:
         """
         A handle to a special statsd object that provides usefully tagged stats.
-
         TODO: Usage examples and better comments
-
-        :rtype: flytekit.interfaces.stats.taggable.TaggableStats
         """
         return self._stats
 
     @property
-    def logging(self):
+    def logging(self) -> _logging:
         """
         A handle to a useful logging object.
-
         TODO: Usage examples
-
-        :rtype: logging
         """
         return self._logging
 
     @property
-    def working_directory(self):
+    def working_directory(self) -> _common_utils.AutoDeletingTempDir:
         """
         A handle to a special working directory for easily producing temporary files.
 
         TODO: Usage examples
-
-        :rtype: flytekit.common.utils.AutoDeletingTempDir
+        TODO: This does not always return a AutoDeletingTempDir
         """
         return self._working_directory
 
     @property
-    def execution_date(self):
+    def execution_date(self) -> datetime:
         """
         This is a datetime representing the time at which a workflow was started.  This is consistent across all tasks
         executed in a workflow or sub-workflow.
@@ -82,13 +118,11 @@ class ExecutionParameters(object):
 
             Do NOT use this execution_date to drive any production logic.  It might be useful as a tag for data to help
             in debugging.
-
-        :rtype: datetime.datetime
         """
         return self._execution_date
 
     @property
-    def execution_id(self):
+    def execution_id(self) -> str:
         """
         This is the identifier of the workflow execution within the underlying engine.  It will be consistent across all
         task executions in a workflow or sub-workflow execution.
@@ -97,10 +131,17 @@ class ExecutionParameters(object):
 
             Do NOT use this execution_id to drive any production logic.  This execution ID should only be used as a tag
             on output data to link back to the workflow run that created it.
-
-        :rtype: Text
         """
         return self._execution_id
+
+    def __getattr__(self, attr_name: str) -> typing.Any:
+        """
+        This houses certain task specific context. For example in Spark, it houses the SparkSession, etc
+        """
+        attr_name = attr_name.upper()
+        if self._attrs and attr_name in self._attrs:
+            return self._attrs[attr_name]
+        raise AssertionError(f"{attr_name} not available as a parameter in Flyte context")
 
 
 class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.ExtendedSdkType):
@@ -410,7 +451,7 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
                     logging=context.logging,
                     tmp_dir=context.working_directory,
                 ),
-                **inputs
+                **inputs,
             )
 
     @_exception_scopes.system_entry_point
