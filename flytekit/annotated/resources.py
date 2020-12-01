@@ -24,6 +24,7 @@ def get_resources(
     storage_limit=None,
     gpu_request=None,
     gpu_limit=None,
+    **kwargs
 ) -> ResourceSpec:
     resources = ResourceSpec()
     resources.requests = Resource()
