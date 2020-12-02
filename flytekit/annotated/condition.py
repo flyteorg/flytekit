@@ -4,6 +4,8 @@ import datetime
 import typing
 from typing import Optional, Tuple, Union
 
+import sorcery
+
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext
 from flytekit.annotated.node import Node
 from flytekit.annotated.promise import (
@@ -158,6 +160,7 @@ class ConditionalSection(object):
 
         raise AssertionError("Branches can only be invoked within a workflow context!")
 
+    @sorcery.no_spells
     def _compute_outputs(self, n: Node) -> Union[Promise, Tuple[Promise]]:
         output_var_sets: typing.List[typing.Set[str]] = []
         for c in self._cases:
@@ -174,7 +177,10 @@ class ConditionalSection(object):
         if len(output_var_sets) > 1:
             for x in output_var_sets[1:]:
                 curr = curr.intersection(x)
-        promises = [Promise(var=x, val=NodeOutput(sdk_node=n, sdk_type=None, var=x)) for x in curr]
+
+        names = sorcery.assigned_names()
+        promises = [Promise(assigned_name=name, var=x, val=NodeOutput(sdk_node=n, sdk_type=None, var=x)) for x, name in
+                    zip(curr, names)]
         return create_task_output(promises)
 
     @property

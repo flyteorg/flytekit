@@ -162,6 +162,29 @@ def test_serialization_branch_compound_conditions():
         assert wf.nodes[0].inputs[0].var == ".a"
 
 
+def test_sorcery():
+    import sorcery
+
+    class MyType(object):
+        def __init__(self, name, *args, **kwargs):
+            self.name = name
+
+        def __eq__(self, other):
+            print(f"name: {self.name}")
+            return super().__eq__(other)
+
+    @sorcery.no_spells
+    def create_MyType():
+        names = sorcery.assigned_names()
+        types = [MyType(name) for name in names]
+        return types
+
+    things = create_MyType()
+    a, b = things
+    print(a == 3)
+    print(b == 5)
+
+
 def test_serialization_branch_complex_2():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
@@ -199,6 +222,7 @@ def test_serialization_branch_complex_2():
         wf = my_wf.get_registerable_entity()
         assert wf is not None
         assert wf.nodes[1].inputs[0].var == "node-0.t1_int_output"
+        print(wf)
 
 
 def test_serialization_branch():

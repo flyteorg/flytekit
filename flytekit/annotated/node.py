@@ -3,6 +3,8 @@ from __future__ import annotations
 import datetime
 from typing import Any, List, Optional
 
+import sorcery
+
 from flytekit.annotated import interface as flyte_interface
 from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.promise import Promise, binding_from_python_std, create_task_output
@@ -116,6 +118,7 @@ class Node(object):
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
 
 
+@sorcery.no_spells
 def create_and_link_node(
     ctx: FlyteContext,
     entity,
@@ -184,10 +187,12 @@ def create_and_link_node(
 
     # Create a node output object for each output, they should all point to this node of course.
     node_outputs = []
-    for output_name, output_var_model in typed_interface.outputs.items():
+    names = sorcery.assigned_names()
+    for output_name, output_var_model, name in zip(typed_interface.outputs.items(), names):
         # TODO: If node id gets updated later, we have to make sure to update the NodeOutput model's ID, which
         #  is currently just a static str
-        node_outputs.append(Promise(output_name, _NodeOutput(sdk_node=non_sdk_node, sdk_type=None, var=output_name)))
+        node_outputs.append(Promise(assigned_name=name, var=output_name,
+                                    val=_NodeOutput(sdk_node=non_sdk_node, sdk_type=None, var=output_name)))
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
     return create_task_output(node_outputs)

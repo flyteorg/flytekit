@@ -2,6 +2,8 @@ import collections
 from abc import abstractmethod
 from typing import Any, Dict, Optional, Tuple, Type, Union
 
+import sorcery
+
 from flytekit.annotated.context_manager import (
     BranchEvalMode,
     ExecutionState,
@@ -101,6 +103,7 @@ class Task(object):
         """
         return None
 
+    @sorcery.no_spells
     def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, None]:
         """
         This code is used only in the case when we want to dispatch_execute with outputs from a previous node
@@ -128,7 +131,9 @@ class Task(object):
             # Length check, clean up exception
             raise AssertionError(f"Length difference {len(output_names)} {len(outputs_literals)}")
 
-        vals = [Promise(var, outputs_literals[var]) for var in output_names]
+        names = sorcery.assigned_names()
+        vals = [Promise(assigned_name=name, var=var, val=outputs_literals[var]) for var, name in
+                zip(output_names, names)]
         return create_task_output(vals)
 
     def __call__(self, *args, **kwargs):

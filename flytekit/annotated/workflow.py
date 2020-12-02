@@ -4,6 +4,8 @@ import inspect
 import typing
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+import sorcery
+
 import flytekit.annotated.promise
 import flytekit.annotated.type_engine
 from flytekit.annotated.condition import ConditionalSection
@@ -30,6 +32,7 @@ GLOBAL_START_NODE = Node(
 )
 
 
+@sorcery.no_spells
 def _workflow_fn_outputs_to_promise(
     ctx: FlyteContext,
     native_outputs: typing.Dict[str, type],  # Actually an orderedDict
@@ -60,22 +63,27 @@ def _workflow_fn_outputs_to_promise(
     # This recasts the Promises provided by the outputs of the workflow's tasks into the correct output names
     # of the workflow itself
     return_vals = []
-    for (k, t), v in zip(native_outputs.items(), outputs):
+    import sorcery
+    names = sorcery.assigned_names()
+    for (k, t), v, name in zip(native_outputs.items(), outputs, names):
         if isinstance(v, Promise):
             return_vals.append(v.with_var(k))
         else:
             # Found a return type that is not a promise, so we need to transform it
             var = typed_outputs[k]
-            return_vals.append(Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, var.type)))
+            return_vals.append(Promise(assigned_name=name, var=k, val=TypeEngine.to_literal(ctx, v, t, var.type)))
     return return_vals
 
 
+@sorcery.no_spells
 def construct_input_promises(workflow: Workflow, inputs: List[str]):
+    names = sorcery.assigned_names()
     return {
         input_name: Promise(
-            var=input_name, val=_NodeOutput(sdk_node=GLOBAL_START_NODE, sdk_type=None, var=input_name,),
+            assigned_name=assigned_name,
+            var=input_name, val=_NodeOutput(sdk_node=GLOBAL_START_NODE, sdk_type=None, var=input_name, ),
         )
-        for input_name in inputs
+        for input_name, assigned_name in zip(inputs, names)
     }
 
 
@@ -87,6 +95,7 @@ class Workflow(object):
       be wrapper nodes.
     """
 
+    @sorcery.no_spells
     def __init__(self, workflow_function: Callable):
         self._name = f"{workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
@@ -122,6 +131,7 @@ class Workflow(object):
     def interface(self) -> _interface_models.TypedInterface:
         return self._interface
 
+    @sorcery.no_spells
     def compile(self, **kwargs):
         """
         Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics

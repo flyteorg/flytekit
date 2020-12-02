@@ -3,6 +3,8 @@ import typing
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import sorcery
+
 from flytekit.annotated import context_manager as _flyte_context
 from flytekit.annotated import type_engine
 from flytekit.annotated.context_manager import FlyteContext
@@ -254,7 +256,8 @@ class ConjunctionExpression(object):
 class Promise(object):
     # TODO: Currently, NodeOutput we're creating is the slimmer annotated package Node class, but since only the
     #  id is used, it's okay for now. Let's clean all this up though.
-    def __init__(self, var: str, val: Union[_NodeOutput, _literal_models.Literal]):
+    def __init__(self, assigned_name: str, var: str, val: Union[_NodeOutput, _literal_models.Literal]):
+        self._assigned_name = assigned_name
         self._var = var
         self._promise_ready = True
         self._val = val
@@ -263,10 +266,11 @@ class Promise(object):
             self._promise_ready = False
             self._val = None
 
+    @sorcery.no_spells
     def with_var(self, new_var: str) -> "Promise":
         if self.is_ready:
-            return Promise(var=new_var, val=self.val)
-        return Promise(var=new_var, val=self.ref)
+            return Promise(assigned_name=self._assigned_name, var=new_var, val=self.val)
+        return Promise(assigned_name=self._assigned_name, var=new_var, val=self.ref)
 
     @property
     def is_ready(self) -> bool:
