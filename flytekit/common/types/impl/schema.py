@@ -90,7 +90,7 @@ def _format_insert_partition_query(table_name, partition_string, remote_location
         prefix = ""
 
     return prefix + _WRITE_HIVE_PARTITION_QUERY_FORMATTER.format(
-        write_table=table_name, partition_string=partition_string, url=remote_location
+        write_table                 =table_name, partition_string=partition_string, url=remote_location
     )
 
 

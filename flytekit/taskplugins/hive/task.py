@@ -16,16 +16,16 @@ class HiveTask(SQLTask):
     """
 
     def __init__(
-        self,
-        name: str,
-        cluster_label: str,
-        inputs: Dict[str, Type],
-        query_template: str,
-        metadata: Optional[_task_model.TaskMetadata] = None,
-        output_schema_type: Optional[Type[FlyteSchema]] = None,
-        tags: Optional[List[str]] = None,
-        *args,
-        **kwargs,
+            self,
+            name: str,
+            cluster_label: str,
+            inputs: Dict[str, Type],
+            query_template: str,
+            metadata: Optional[_task_model.TaskMetadata] = None,
+            output_schema_type: Optional[Type[FlyteSchema]] = None,
+            tags: Optional[List[str]] = None,
+            *args,
+            **kwargs,
     ):
         outputs = None
         if output_schema_type is not None:
@@ -61,7 +61,7 @@ class HiveTask(SQLTask):
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
         # timeout_sec and retry_count will become deprecated, please use timeout and retry settings on the Task
         query = HiveQuery(query=self.query_template, timeout_sec=0, retry_count=0)
-        job = QuboleHiveJob(query=query, cluster_label=self.cluster_label, tags=self.tags,)
+        job = QuboleHiveJob(query=query, cluster_label=self.cluster_label, tags=self.tags, )
         return MessageToDict(job.to_flyte_idl())
 
 
@@ -80,17 +80,17 @@ class HiveSelectTask(HiveTask):
         """
 
     def __init__(
-        self,
-        name: str,
-        cluster_label: str,
-        inputs: Dict[str, Type],
-        select_query: str,
-        output_schema_type: Type[FlyteSchema],
-        stage_query: Optional[str] = None,
-        metadata: Optional[_task_model.TaskMetadata] = None,
-        tags: Optional[List[str]] = None,
-        *args,
-        **kwargs,
+            self,
+            name: str,
+            cluster_label: str,
+            inputs: Dict[str, Type],
+            select_query: str,
+            output_schema_type: Type[FlyteSchema],
+            stage_query: Optional[str] = None,
+            metadata: Optional[_task_model.TaskMetadata] = None,
+            tags: Optional[List[str]] = None,
+            *args,
+            **kwargs,
     ):
         query_template = HiveSelectTask._HIVE_QUERY_FORMATTER.format(
             stage_query_str=stage_query, select_query_str=select_query.strip().strip(";")
@@ -102,5 +102,35 @@ class HiveSelectTask(HiveTask):
             query_template=query_template,
             metadata=metadata,
             output_schema_type=output_schema_type,
+            tags=tags,
+        )
+
+
+class HiveAddPartitionTask(HiveTask):
+    _HIVE_QUERY_FORMATTER = """
+        ALTER TABLE {write_table} ADD IF NOT EXISTS {partition_string} LOCATION '{url}';
+
+        ALTER TABLE {write_table} {partition_string} SET LOCATION '{url}';
+    """
+
+    def __init__(
+            self,
+            name: str,
+            cluster_label: str,
+            input_table_name: str,
+            input_partitions: Dict[str, Type],
+            metadata: Optional[_task_model.TaskMetadata] = None,
+            tags: Optional[List[str]] = None,
+            *args,
+            **kwargs,
+    ):
+        query_template = HiveAddPartitionTask._HIVE_QUERY_FORMATTER.format()
+
+        super().__init__(
+            name=name,
+            cluster_label=cluster_label,
+            inputs=inputs,
+            query_template=query_template,
+            metadata=metadata,
             tags=tags,
         )

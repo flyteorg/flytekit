@@ -6,7 +6,7 @@ from flytekit.annotated.base_task import kwtypes
 from flytekit.annotated.context_manager import Image, ImageConfig
 from flytekit.annotated.testing import task_mock
 from flytekit.annotated.workflow import workflow
-from flytekit.taskplugins.hive.task import HiveSelectTask, HiveTask
+from flytekit.taskplugins.hive.task import HiveSelectTask, HiveTask, HiveAddPartitionTask
 from flytekit.types.schema import FlyteSchema
 
 
@@ -138,3 +138,14 @@ def test_hive_select():
 
     sql = hive_select.get_query()
     assert "{{ .PerRetryUniqueKey }}_tmp" in sql
+
+
+def test_hive_write_partition():
+    s = FlyteSchema(remote_path="s3://blah/blah")
+    hive_add = HiveAddPartitionTask(name='fdsaf', cluster_label='flyte', input_schema=s,
+                         input_table_name="hive.fact_airport_rides",
+                         input_partitions=kwtypes(ds=str, region=str))
+
+
+    def wf():
+        hive_add(input_schema=s, )
