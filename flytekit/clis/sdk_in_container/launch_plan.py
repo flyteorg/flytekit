@@ -1,7 +1,6 @@
 import logging as _logging
 
 import click
-import six as _six
 
 from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map
 from flytekit.clis.sdk_in_container import constants as _constants
@@ -90,7 +89,7 @@ class LaunchPlanExecuteGroup(LaunchPlanAbstractGroup):
         """
 
         def _execute_lp(**kwargs):
-            for input_name in _six.iterkeys(kwargs):
+            for input_name in kwargs.keys():
                 if isinstance(kwargs[input_name], tuple):
                     kwargs[input_name] = list(kwargs[input_name])
 
@@ -102,7 +101,7 @@ class LaunchPlanExecuteGroup(LaunchPlanAbstractGroup):
                 notification_overrides=ctx.obj.get(_constants.CTX_NOTIFICATIONS, None),
             )
             click.echo(
-                click.style("Workflow scheduled, execution_id={}".format(_six.text_type(execution.id)), fg="blue",)
+                click.style(f"Workflow scheduled, execution_id={str(execution.id)}", fg="blue",)
             )
 
         command = click.Command(name=cmd_name, callback=_execute_lp)
@@ -112,13 +111,11 @@ class LaunchPlanExecuteGroup(LaunchPlanAbstractGroup):
             param = lp.default_inputs.parameters[var_name]
             # TODO: Figure out how to better handle the fact that we want strings to parse,
             # but we probably shouldn't have click say that that's the type on the CLI.
-            help_msg = "{} Type: {}".format(
-                _six.text_type(param.var.description), _six.text_type(param.var.type)
-            ).strip()
+            help_msg = f"{param.var.description} Type: {param.var.type}".strip()
 
             if param.required:
                 # If it's a required input, add the required flag
-                wrapper = click.option("--{}".format(var_name), required=True, type=_six.text_type, help=help_msg,)
+                wrapper = click.option("--{}".format(var_name), required=True, type=str, help=help_msg,)
             else:
                 # If it's not a required input, it should have a default
                 # Use to_python_std so that the text of the default ends up being parseable, if not, the click
@@ -126,11 +123,12 @@ class LaunchPlanExecuteGroup(LaunchPlanAbstractGroup):
                 # we'd get '11' and then we'd need annoying logic to differentiate between the default text
                 # and user text.
                 default = param.default.to_python_std()
+
                 wrapper = click.option(
                     "--{}".format(var_name),
-                    default="{}".format(_six.text_type(default)),
-                    type=_six.text_type,
-                    help="{}. Default: {}".format(help_msg, _six.text_type(default)),
+                    default=f"{str(default)}",
+                    type=str,
+                    help=f"{help_msg}. Default: {str(default)}",
                 )
 
             command = wrapper(command)
