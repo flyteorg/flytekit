@@ -6,7 +6,7 @@ from flytekit.annotated.base_task import kwtypes
 from flytekit.annotated.context_manager import Image, ImageConfig
 from flytekit.annotated.testing import task_mock
 from flytekit.annotated.workflow import workflow
-from flytekit.taskplugins.hive.task import HiveTask
+from flytekit.taskplugins.hive.task import HiveSelectTask, HiveTask
 from flytekit.types.schema import FlyteSchema
 
 
@@ -125,3 +125,16 @@ def test_query_no_inputs_or_outputs():
         assert len(sdk_task.interface.outputs) == 0
 
         my_wf.get_registerable_entity()
+
+
+def test_hive_select():
+    hive_select = HiveSelectTask(
+        name="flytekit.demo.hive_task.hivequery1",
+        inputs={},
+        cluster_label="flyte",
+        select_query="select 1, 2, 3",
+        output_schema_type=FlyteSchema,
+    )
+
+    sql = hive_select.get_query()
+    assert "{{ .PerRetryUniqueKey }}_tmp" in sql

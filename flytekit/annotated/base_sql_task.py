@@ -65,4 +65,4 @@ class SQLTask(PythonTask):
         if len(matched) < len(kwargs.keys()):
             diff = set(kwargs.keys()).difference(matched)
             raise ValueError(f"Extra Inputs have no matches in query template - missing {diff}")
-        return None
+        return modified_query

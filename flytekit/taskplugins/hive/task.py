@@ -63,3 +63,44 @@ class HiveTask(SQLTask):
         query = HiveQuery(query=self.query_template, timeout_sec=0, retry_count=0)
         job = QuboleHiveJob(query=query, cluster_label=self.cluster_label, tags=self.tags,)
         return MessageToDict(job.to_flyte_idl())
+
+
+class HiveSelectTask(HiveTask):
+    _HIVE_QUERY_FORMATTER = """
+        {stage_query_str}
+
+        CREATE TEMPORARY TABLE {{{{ .PerRetryUniqueKey }}}}_tmp AS {select_query_str};
+        CREATE EXTERNAL TABLE {{{{ .PerRetryUniqueKey }}}} LIKE {{{{ .PerRetryUniqueKey }}}}_tmp STORED AS PARQUET;
+        ALTER TABLE {{{{ .PerRetryUniqueKey }}}} SET LOCATION '{{{{ .RawOutputDataPrefix }}}}';
+
+        INSERT OVERWRITE TABLE {{{{ .PerRetryUniqueKey }}}}
+            SELECT *
+            FROM {{{{ .PerRetryUniqueKey }}}}_tmp;
+        DROP TABLE {{{{ .PerRetryUniqueKey }}}};
+        """
+
+    def __init__(
+        self,
+        name: str,
+        cluster_label: str,
+        inputs: Dict[str, Type],
+        select_query: str,
+        output_schema_type: Type[FlyteSchema],
+        stage_query: Optional[str] = None,
+        metadata: Optional[_task_model.TaskMetadata] = None,
+        tags: Optional[List[str]] = None,
+        *args,
+        **kwargs,
+    ):
+        query_template = HiveSelectTask._HIVE_QUERY_FORMATTER.format(
+            stage_query_str=stage_query, select_query_str=select_query.strip().strip(";")
+        )
+        super().__init__(
+            name=name,
+            cluster_label=cluster_label,
+            inputs=inputs,
+            query_template=query_template,
+            metadata=metadata,
+            output_schema_type=output_schema_type,
+            tags=tags,
+        )
