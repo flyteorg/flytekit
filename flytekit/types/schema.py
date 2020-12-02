@@ -4,6 +4,7 @@ import datetime as _datetime
 import os
 import typing
 from abc import abstractmethod
+from dataclasses import dataclass
 from enum import Enum
 from typing import Type
 
@@ -11,7 +12,6 @@ import numpy as _np
 
 from flytekit import FlyteContext
 from flytekit.annotated.type_engine import T, TypeEngine, TypeTransformer
-from flytekit.configuration import sdk
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.plugins import pandas
@@ -38,6 +38,133 @@ class SchemaOpenMode(Enum):
 def generate_ordered_files(directory: os.PathLike, n: int) -> typing.Generator[os.PathLike, None, None]:
     for i in range(n):
         yield os.path.join(directory, f"{i:05}")
+
+
+class SchemaReader(typing.Generic[T]):
+    """
+    Base SchemaReader to handle any readers (that can manage their own IO or otherwise)
+    Use the simplified base LocalIOSchemaReader for non distributed dataframes
+    """
+
+    def __init__(self, from_path: str, cols: typing.Dict[str, type], fmt: SchemaFormat):
+        self._from_path = from_path
+        self._fmt = fmt
+        self._columns = cols
+
+    @property
+    def from_path(self) -> str:
+        return self._from_path
+
+    @property
+    def column_names(self) -> typing.Optional[typing.List[str]]:
+        if self._columns:
+            return list(self._columns.keys())
+        return None
+
+    @abstractmethod
+    def iter(self, **kwargs) -> typing.Generator[T, None, None]:
+        ...
+
+    @abstractmethod
+    def all(self, **kwargs) -> T:
+        ...
+
+
+class SchemaWriter(typing.Generic[T]):
+    def __init__(self, to_path: str, cols: typing.Dict[str, type], fmt: SchemaFormat):
+        self._to_path = to_path
+        self._fmt = fmt
+        self._columns = cols
+        # TODO This should be change to send a stop instead of hardcoded to 1024
+        self._file_name_gen = generate_ordered_files(self._to_path, 1024)
+
+    @property
+    def to_path(self) -> str:
+        return self._to_path
+
+    @property
+    def column_names(self) -> typing.Optional[typing.List[str]]:
+        if self._columns:
+            return list(self._columns.keys())
+        return None
+
+    @abstractmethod
+    def write(self, *dfs, **kwargs):
+        ...
+
+
+class LocalIOSchemaReader(SchemaReader[T]):
+    def __init__(self, from_path: os.PathLike, cols: typing.Dict[str, type], fmt: SchemaFormat):
+        super().__init__(str(from_path), cols, fmt)
+
+    @abstractmethod
+    def _read(self, *path: os.PathLike, **kwargs) -> T:
+        pass
+
+    def iter(self, **kwargs) -> typing.Generator[T, None, None]:
+        with os.scandir(self._from_path) as it:
+            for entry in it:
+                if not entry.name.startswith(".") and entry.is_file():
+                    yield self._read(entry.path, **kwargs)
+
+    def all(self, **kwargs) -> T:
+        files = []
+        with os.scandir(self._from_path) as it:
+            for entry in it:
+                if not entry.name.startswith(".") and entry.is_file():
+                    files.append(entry.path)
+
+        return self._read(*files, **kwargs)
+
+
+class LocalIOSchemaWriter(SchemaWriter[T]):
+    def __init__(self, to_local_path: os.PathLike, cols: typing.Dict[str, type], fmt: SchemaFormat):
+        super().__init__(str(to_local_path), cols, fmt)
+
+    @abstractmethod
+    def _write(self, df: T, path: os.PathLike, **kwargs):
+        pass
+
+    def write(self, *dfs, **kwargs):
+        for df in dfs:
+            self._write(df, next(self._file_name_gen), **kwargs)
+
+
+@dataclass
+class SchemaHandler(object):
+    name: str
+    object_type: Type
+    reader: Type[SchemaReader]
+    writer: Type[SchemaWriter]
+    handles_remote_io: bool = False
+
+
+class SchemaEngine(object):
+    """
+    This is the core Engine that handles all schema sub-systems. All schema types needs to be registered with this
+    to allow direct support for that type in FlyteSchema.
+    e.g. of possible supported types are Pandas.DataFrame, Spark.DataFrame, Vaex.DataFrame, etc.
+    """
+
+    _SCHEMA_HANDLERS: typing.Dict[type, SchemaHandler] = {}
+
+    @classmethod
+    def register_handler(cls, h: SchemaHandler):
+        """
+        Register a new handler that can create a SchemaReader and SchemaWriter for the expected type.
+        """
+        if h.object_type in cls._SCHEMA_HANDLERS:
+            raise ValueError(
+                f"SchemaHandler {cls._SCHEMA_HANDLERS[h.object_type].name} already registered for "
+                f"{h.object_type}, cannot replace with {h.name}"
+            )
+        cls._SCHEMA_HANDLERS[h.object_type] = h
+
+    @classmethod
+    def get_handler(cls, t: Type) -> SchemaHandler:
+        if t not in cls._SCHEMA_HANDLERS:
+            raise ValueError(f"DataFrames of type {t} are not supported currently")
+        return cls._SCHEMA_HANDLERS[t]
 
 
 class FlyteSchema(object):
@@ -89,7 +216,7 @@ class FlyteSchema(object):
     def __init__(
         self,
         local_path: os.PathLike = None,
-        remote_path: os.PathLike = None,
+        remote_path: str = None,
         supported_mode: SchemaOpenMode = SchemaOpenMode.WRITE,
         downloader: typing.Callable[[str, os.PathLike], None] = None,
     ):
@@ -117,7 +244,7 @@ class FlyteSchema(object):
         return self._local_path
 
     @property
-    def remote_path(self) -> os.PathLike:
+    def remote_path(self) -> str:
         return self._remote_path
 
     @property
@@ -132,17 +259,31 @@ class FlyteSchema(object):
         overriden, but will depend on whether the override can be performed. For example, if the Object was
         created in a read-mode a "write mode" override is not allowed.
         if the object was created in write-mode, a read is allowed.
-        :param dataframe_fmt:
-        :param override_mode:
-        :return:
+        :param dataframe_fmt: Type of the dataframe for example pandas.DataFrame etc
+        :param override_mode: overrides the default mode (Read, Write) SchemaOpenMode.READ, SchemaOpenMode.Write
+                              So if you have written to a schema and want to re-open it for reading, you can use this
+                              mode. A ReadOnly Schema object cannot be opened in write mode.
         """
         if override_mode and self._supported_mode == SchemaOpenMode.READ and override_mode == SchemaOpenMode.WRITE:
             raise AssertionError("Readonly schema cannot be opened in write mode!")
 
-        if self._supported_mode == SchemaOpenMode.READ and not self._downloaded:
-            self._downloader(self._remote_path, self._local_path)
-            self._downloaded = True
-        return SchemaEngine.open(t=dataframe_fmt, s=self, mode=override_mode if override_mode else self._supported_mode)
+        mode = override_mode if override_mode else self._supported_mode
+        h = SchemaEngine.get_handler(dataframe_fmt)
+        if not h.handles_remote_io:
+            # The Schema Handler does not manage its own IO, and this it will expect the files are on local file-system
+            if self._supported_mode == SchemaOpenMode.READ and not self._downloaded:
+                # Only for readable objects if they are not downloaded already, we should download them
+                # WRite objects should already have everything written to
+                self._downloader(self.remote_path, self.local_path)
+                self._downloaded = True
+            if mode == SchemaOpenMode.WRITE:
+                return h.writer(self.local_path, self.columns(), self.format())
+            return h.reader(self.local_path, self.columns(), self.format())
+
+        # Remote IO is handled. So we will just pass the remote reference to the object
+        if mode == SchemaOpenMode.WRITE:
+            return h.writer(self.remote_path, self.columns(), self.format())
+        return h.reader(self.remote_path, self.columns(), self.format())
 
     def as_readonly(self) -> FlyteSchema:
         if self._supported_mode == SchemaOpenMode.READ:
@@ -155,114 +296,6 @@ class FlyteSchema(object):
         )
         s._downloaded = True
         return s
-
-
-class SchemaReader(typing.Generic[T]):
-    def __init__(self, local_dir: os.PathLike, cols: typing.Dict[str, type], fmt: SchemaFormat):
-        self._local_dir = local_dir
-        self._fmt = fmt
-        self._columns = cols
-
-    @property
-    def column_names(self) -> typing.Optional[typing.List[str]]:
-        if self._columns:
-            return list(self._columns.keys())
-        return None
-
-    @abstractmethod
-    def _read(self, *path: os.PathLike, **kwargs) -> T:
-        pass
-
-    def iter(self, **kwargs) -> typing.Generator[T, None, None]:
-        with os.scandir(self._local_dir) as it:
-            for entry in it:
-                if not entry.name.startswith(".") and entry.is_file():
-                    yield self._read(entry.path, **kwargs)
-
-    def all(self, **kwargs) -> T:
-        files = []
-        with os.scandir(self._local_dir) as it:
-            for entry in it:
-                if not entry.name.startswith(".") and entry.is_file():
-                    files.append(entry.path)
-
-        return self._read(*files, **kwargs)
-
-
-class PandasSchemaReader(SchemaReader[pandas.DataFrame]):
-    def __init__(self, local_dir: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
-        super().__init__(local_dir, cols, fmt)
-        self._parquet_engine = _PARQUETIO_ENGINES[sdk.PARQUET_ENGINE.get()]
-
-    def _read(self, *path: os.PathLike, **kwargs) -> pandas.DataFrame:
-        return self._parquet_engine.read(*path, columns=self.column_names, **kwargs)
-
-
-class SchemaWriter(typing.Generic[T]):
-    def __init__(self, local_dir: os.PathLike, cols: typing.Dict[str, type], fmt: SchemaFormat):
-        self._local_dir = local_dir
-        self._fmt = fmt
-        self._columns = cols
-        # TODO This should be change to send a stop instead of hardcoded to 1024
-        self._file_name_gen = generate_ordered_files(self._local_dir, 1024)
-
-    @abstractmethod
-    def _write(self, df: T, path: os.PathLike, **kwargs):
-        pass
-
-    def write(self, *dfs, **kwargs):
-        for df in dfs:
-            self._write(df, next(self._file_name_gen), **kwargs)
-
-
-class PandasSchemaWriter(SchemaWriter[pandas.DataFrame]):
-    def __init__(self, local_dir: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
-        super().__init__(local_dir, cols, fmt)
-        self._parquet_engine = _PARQUETIO_ENGINES[sdk.PARQUET_ENGINE.get()]
-
-    def _write(self, df: T, path: os.PathLike, **kwargs):
-        return self._parquet_engine.write(df, to_file=path, **kwargs)
-
-
-class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
-    """
-    Transforms a pd.DataFrame to Schema without column types.
-    """
-
-    def __init__(self):
-        super().__init__("PandasDataFrame<->GenericSchema", pandas.DataFrame)
-        self._parquet_engine = _PARQUETIO_ENGINES[sdk.PARQUET_ENGINE.get()]
-
-    @staticmethod
-    def _get_schema_type() -> SchemaType:
-        return SchemaType(columns=[])
-
-    def get_literal_type(self, t: Type[pandas.DataFrame]) -> LiteralType:
-        return LiteralType(schema=self._get_schema_type())
-
-    def to_literal(
-        self,
-        ctx: FlyteContext,
-        python_val: pandas.DataFrame,
-        python_type: Type[pandas.DataFrame],
-        expected: LiteralType,
-    ) -> Literal:
-        local_dir = ctx.file_access.get_random_local_directory()
-        w = PandasSchemaWriter(local_dir=local_dir, cols=None, fmt=SchemaFormat.PARQUET)
-        w.write(python_val)
-        remote_path = ctx.file_access.get_random_remote_directory()
-        ctx.file_access.put_data(local_dir, remote_path, is_multipart=True)
-        return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type())))
-
-    def to_python_value(
-        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[pandas.DataFrame]
-    ) -> pandas.DataFrame:
-        if not (lv and lv.scalar and lv.scalar.schema):
-            return pandas.DataFrame()
-        local_dir = ctx.file_access.get_random_local_directory()
-        ctx.file_access.download_directory(lv.scalar.schema.uri, local_dir)
-        r = PandasSchemaReader(local_dir=local_dir, cols=None, fmt=SchemaFormat.PARQUET)
-        return r.all()
 
 
 class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
@@ -310,18 +343,17 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
                 remote_path = ctx.file_access.get_random_remote_path()
             ctx.file_access.put_data(python_val.local_path, remote_path, is_multipart=True)
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
-        elif isinstance(python_val, pandas.DataFrame):
-            local_dir = ctx.file_access.get_random_local_directory()
-            w = PandasSchemaWriter(local_dir=local_dir, cols=python_type.columns(), fmt=python_type.format())
-            w.write(python_val)
-            remote_path = ctx.file_access.get_random_remote_directory()
-            ctx.file_access.put_data(local_dir, remote_path, is_multipart=True)
-            return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
-        else:
-            raise AssertionError(
-                f"Only FlyteSchemaWriter or Pandas Dataframe object can be returned from a task,"
-                f" returned object type {type(python_val)}"
-            )
+
+        schema = python_type(
+            local_path=ctx.file_access.get_random_local_directory(),
+            remote_path=ctx.file_access.get_random_remote_directory(),
+        )
+        writer = schema.open(type(python_val))
+        writer.write(python_val)
+        h = SchemaEngine.get_handler(type(python_val))
+        if not h.handles_remote_io:
+            ctx.file_access.put_data(schema.local_path, schema.remote_path, is_multipart=True)
+        return Literal(scalar=Scalar(schema=Schema(schema.remote_path, self._get_schema_type(python_type))))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
         if not (lv and lv.scalar and lv.scalar.schema):
@@ -338,99 +370,4 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         )
 
 
-class SchemaEngine(object):
-    _SCHEMA_HANDLERS: typing.Dict[type, typing.Tuple[Type[SchemaReader], Type[SchemaWriter]]] = {}
-
-    @classmethod
-    def register_handler(cls, t: type, r: Type[SchemaReader], w: Type[SchemaWriter]):
-        if t in cls._SCHEMA_HANDLERS:
-            raise ValueError(f"SchemaHandler for {t} already registered")
-        cls._SCHEMA_HANDLERS[t] = (r, w)
-
-    @classmethod
-    def open(cls, t: type, s: FlyteSchema, mode: SchemaOpenMode) -> typing.Union[SchemaReader[T], SchemaWriter[T]]:
-        if t not in cls._SCHEMA_HANDLERS:
-            raise ValueError(f"DataFrames of type {t} are not supported currently")
-        r, w = cls._SCHEMA_HANDLERS[t]
-        if mode == SchemaOpenMode.WRITE:
-            return w(s.local_path, s.columns(), s.format())
-        return r(s.local_path, s.columns(), s.format())
-
-
-class ParquetIO(object):
-    PARQUET_ENGINE = "pyarrow"
-
-    def _read(self, chunk: os.PathLike, columns: typing.List[str], **kwargs) -> pandas.DataFrame:
-        return pandas.read_parquet(chunk, columns=columns, engine=self.PARQUET_ENGINE, **kwargs)
-
-    def read(self, *files: os.PathLike, columns: typing.List[str] = None, **kwargs) -> pandas.DataFrame:
-        frames = [self._read(chunk=f, columns=columns, **kwargs) for f in files if os.path.getsize(f) > 0]
-        if len(frames) == 1:
-            return frames[0]
-        elif len(frames) > 1:
-            return pandas.concat(frames, copy=True)
-        return pandas.Dataframe()
-
-    def write(
-        self,
-        df: pandas.DataFrame,
-        to_file: os.PathLike,
-        coerce_timestamps: str = "us",
-        allow_truncated_timestamps: bool = False,
-        **kwargs,
-    ):
-        """
-        Writes data frame as a chunk to the local directory owned by the Schema object.  Will later be uploaded to s3.
-        :param df: data frame to write as parquet
-        :param to_file: Sink file to write the dataframe to
-        :param coerce_timestamps: format to store timestamp in parquet. 'us', 'ms', 's' are allowed values.
-            Note: if your timestamps will lose data due to the coercion, your write will fail!  Nanoseconds are
-            problematic in the Parquet format and will not work. See allow_truncated_timestamps.
-        :param allow_truncated_timestamps: default False. Allow truncation when coercing timestamps to a coarser
-            resolution.
-        """
-        # TODO @ketan validate and remove this comment, as python 3 all strings are unicode
-        # Convert all columns to unicode as pyarrow's parquet reader can not handle mixed strings and unicode.
-        # Since columns from Hive are returned as unicode, if a user wants to add a column to a dataframe returned from
-        # Hive, then output the new data, the user would have to provide a unicode column name which is unnatural.
-        df.to_parquet(
-            to_file,
-            coerce_timestamps=coerce_timestamps,
-            allow_truncated_timestamps=allow_truncated_timestamps,
-            **kwargs,
-        )
-
-
-class FastParquetIO(ParquetIO):
-    PARQUET_ENGINE = "fastparquet"
-
-    def _read(self, chunk: os.PathLike, columns: typing.List[str], **kwargs) -> pandas.DataFrame:
-        from fastparquet import ParquetFile as _ParquetFile
-        from fastparquet import thrift_structures as _ts
-
-        # TODO Follow up to figure out if this is not needed anymore
-        # https://github.com/dask/fastparquet/issues/414#issuecomment-478983811
-        df = pandas.read_parquet(chunk, columns=columns, engine=self.PARQUET_ENGINE, index=False)
-        df_column_types = df.dtypes
-        pf = _ParquetFile(chunk)
-        schema_column_dtypes = {l.name: l.type for l in list(pf.schema.schema_elements)}
-
-        for idx in df_column_types[df_column_types == "float16"].index.tolist():
-            # A hacky way to get the string representations of the column types of a parquet schema
-            # Reference:
-            # https://github.com/dask/fastparquet/blob/f4ecc67f50e7bf98b2d0099c9589c615ea4b06aa/fastparquet/schema.py
-            if _ts.parquet_thrift.Type._VALUES_TO_NAMES[schema_column_dtypes[idx]] == "BOOLEAN":
-                df[idx] = df[idx].astype("object")
-                df[idx].replace({0: False, 1: True, pandas.np.nan: None}, inplace=True)
-        return df
-
-
-_PARQUETIO_ENGINES: typing.Dict[str, ParquetIO] = {
-    ParquetIO.PARQUET_ENGINE: ParquetIO(),
-    FastParquetIO.PARQUET_ENGINE: FastParquetIO(),
-}
-
-
-SchemaEngine.register_handler(pandas.DataFrame, PandasSchemaReader, PandasSchemaWriter)
-TypeEngine.register(PandasDataFrameTransformer())
 TypeEngine.register(FlyteSchemaTransformer())

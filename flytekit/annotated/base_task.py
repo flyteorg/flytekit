@@ -14,6 +14,7 @@ from flytekit.annotated.node import create_and_link_node
 from flytekit.annotated.promise import Promise, VoidPromise, create_task_output, translate_inputs_to_literals
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.common.tasks.task import SdkTask
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -246,50 +247,67 @@ class PythonTask(Task):
             `DynamicJobSpec` is returned when a dynamic workflow is executed
         """
 
-        # TODO We could support default values here too - but not part of the plan right now
-        # Translate the input literals to Python native
-        native_inputs = TypeEngine.literal_map_to_kwargs(ctx, input_literal_map, self.python_interface.inputs)
+        # Invoked before the task is executed
+        new_user_params = self.pre_execute(ctx.user_space_params)
+        with ctx.new_execution_context(mode=ctx.execution_state.mode, execution_params=new_user_params) as exec_ctx:
+            # TODO We could support default values here too - but not part of the plan right now
+            # Translate the input literals to Python native
+            native_inputs = TypeEngine.literal_map_to_kwargs(exec_ctx, input_literal_map, self.python_interface.inputs)
 
-        # TODO: Logger should auto inject the current context information to indicate if the task is running within
-        #   a workflow or a subworkflow etc
-        logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
-        try:
-            native_outputs = self.execute(**native_inputs)
-        except Exception as e:
-            logger.exception(f"Exception when executing {e}")
-            raise e
-        logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
+            # TODO: Logger should auto inject the current context information to indicate if the task is running within
+            #   a workflow or a subworkflow etc
+            logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
+            try:
+                native_outputs = self.execute(**native_inputs)
+            except Exception as e:
+                logger.exception(f"Exception when executing {e}")
+                raise e
+            logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
 
-        # Short circuit the translation to literal map because what's returned may be a dj spec (or an
-        # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
-        if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
-            native_outputs, _dynamic_job.DynamicJobSpec
-        ):
-            return native_outputs
+            # Short circuit the translation to literal map because what's returned may be a dj spec (or an
+            # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
+            if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
+                native_outputs, _dynamic_job.DynamicJobSpec
+            ):
+                return native_outputs
 
-        expected_output_names = list(self.interface.outputs.keys())
-        if len(expected_output_names) == 1:
-            native_outputs_as_map = {expected_output_names[0]: native_outputs}
-        elif len(expected_output_names) == 0:
-            return VoidPromise(self.name)
-        else:
-            # Question: How do you know you're going to enumerate them in the correct order? Even if autonamed, will
-            # output2 come before output100 if there's a hundred outputs? We don't! We'll have to circle back to
-            # the Python task instance and inspect annotations again. Or we change the Python model representation
-            # of the interface to be an ordered dict and we fill it in correctly to begin with.
-            native_outputs_as_map = {expected_output_names[i]: native_outputs[i] for i, _ in enumerate(native_outputs)}
+            expected_output_names = list(self.interface.outputs.keys())
+            if len(expected_output_names) == 1:
+                native_outputs_as_map = {expected_output_names[0]: native_outputs}
+            elif len(expected_output_names) == 0:
+                return VoidPromise(self.name)
+            else:
+                # Question: How do you know you're going to enumerate them in the correct order? Even if autonamed, will
+                # output2 come before output100 if there's a hundred outputs? We don't! We'll have to circle back to
+                # the Python task instance and inspect annotations again. Or we change the Python model representation
+                # of the interface to be an ordered dict and we fill it in correctly to begin with.
+                native_outputs_as_map = {
+                    expected_output_names[i]: native_outputs[i] for i, _ in enumerate(native_outputs)
+                }
 
-        # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
-        # built into the IDL that all the values of a literal map are of the same type.
-        literals = {}
-        for k, v in native_outputs_as_map.items():
-            literal_type = self.interface.outputs[k].type
-            py_type = self.get_type_for_output_var(k, v)
-            if isinstance(v, tuple):
-                raise AssertionError(f"Output({k}) in task{self.name} received a tuple {v}, instead of {py_type}")
-            literals[k] = TypeEngine.to_literal(ctx, v, py_type, literal_type)
-        outputs_literal_map = _literal_models.LiteralMap(literals=literals)
-        return outputs_literal_map
+            # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
+            # built into the IDL that all the values of a literal map are of the same type.
+            literals = {}
+            for k, v in native_outputs_as_map.items():
+                literal_type = self.interface.outputs[k].type
+                py_type = self.get_type_for_output_var(k, v)
+                if isinstance(v, tuple):
+                    raise AssertionError(f"Output({k}) in task{self.name} received a tuple {v}, instead of {py_type}")
+                literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
+            outputs_literal_map = _literal_models.LiteralMap(literals=literals)
+            # After the execute has been successfully completed
+            return outputs_literal_map
+
+    def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
+        """
+        This is the method that will be invoked directly before executing the task method and before all the inputs
+        are converted. One particular case where this is useful is if the context is to be modified for the user process
+        to get some user space parameters. This also ensures that things like SparkSession are already correctly
+        setup before the type transformers are called
+
+        This should return either the same context of the mutated context
+        """
+        return user_params
 
     @abstractmethod
     def execute(self, **kwargs) -> Any:
