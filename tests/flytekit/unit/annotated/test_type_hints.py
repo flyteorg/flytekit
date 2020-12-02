@@ -267,6 +267,7 @@ def test_wf1_with_sql():
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
         inputs=kwtypes(ds=datetime.datetime),
+        outputs=kwtypes(results=FlyteSchema),
         metadata=metadata(retries=2),
     )
 
@@ -275,13 +276,13 @@ def test_wf1_with_sql():
         return datetime.datetime.now()
 
     @workflow
-    def my_wf() -> str:
+    def my_wf() -> FlyteSchema:
         dt = t1()
         return sql(ds=dt)
 
     with task_mock(sql) as mock:
-        mock.return_value = "Hello"
-        assert my_wf() == "Hello"
+        mock.return_value = pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})
+        assert (my_wf().open().all() == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
 
 
 def test_wf1_with_sql_with_patch():
@@ -289,6 +290,7 @@ def test_wf1_with_sql_with_patch():
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
         inputs=kwtypes(ds=datetime.datetime),
+        outputs=kwtypes(results=FlyteSchema),
         metadata=metadata(retries=2),
     )
 
@@ -297,14 +299,14 @@ def test_wf1_with_sql_with_patch():
         return datetime.datetime.now()
 
     @workflow
-    def my_wf() -> str:
+    def my_wf() -> FlyteSchema:
         dt = t1()
         return sql(ds=dt)
 
     @patch(sql)
     def test_user_demo_test(mock_sql):
-        mock_sql.return_value = "Hello"
-        assert my_wf() == "Hello"
+        mock_sql.return_value = pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})
+        assert (my_wf().open().all() == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
 
     # Have to call because tests inside tests don't run
     test_user_demo_test()
@@ -465,7 +467,7 @@ def test_list_output():
 
 def test_comparison_refs():
     def dummy_node(id) -> SdkNode:
-        n = SdkNode(id, [], None, None, sdk_task=SQLTask("x", "x", [], metadata()))
+        n = SdkNode(id, [], None, None, sdk_task=SQLTask(name="x", query_template="x", inputs={}, metadata=metadata()))
         n._id = id
         return n
 
@@ -857,6 +859,27 @@ def test_wf_typed_schema():
     df = x.open().all()
     result_df = df.reset_index(drop=True) == pandas.DataFrame(data={"x": [1, 2]}).reset_index(drop=True)
     assert result_df.all().all()
+
+
+def test_wf_schema_to_df():
+    schema1 = FlyteSchema[kwtypes(x=int, y=str)]
+
+    @task
+    def t1() -> schema1:
+        s = schema1()
+        s.open().write(pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}))
+        return s
+
+    @task
+    def t2(df: pandas.DataFrame) -> int:
+        return len(df.columns.values)
+
+    @workflow
+    def wf() -> int:
+        return t2(df=t1())
+
+    x = wf()
+    assert x == 2
 
 
 def test_ref():

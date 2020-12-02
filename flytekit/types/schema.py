@@ -9,7 +9,7 @@ from typing import Type
 
 import numpy as _np
 
-from flytekit import FlyteContext
+from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.type_engine import T, TypeEngine, TypeTransformer
 from flytekit.configuration import sdk
 from flytekit.models.literals import Literal, Scalar, Schema
@@ -129,7 +129,7 @@ class FlyteSchema(object):
     ) -> typing.Union[SchemaReader, SchemaWriter]:
         """
         Will return a reader or writer depending on the mode of the object when created. This mode can be
-        overriden, but will depend on whether the override can be performed. For example, if the Object was
+        overridden, but will depend on whether the override can be performed. For example, if the Object was
         created in a read-mode a "write mode" override is not allowed.
         if the object was created in write-mode, a read is allowed.
         :param dataframe_fmt:
