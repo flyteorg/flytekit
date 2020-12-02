@@ -290,6 +290,7 @@ def test_wf1_with_sql_with_patch():
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
         inputs=kwtypes(ds=datetime.datetime),
+        outputs=kwtypes(results=FlyteSchema),
         metadata=metadata(retries=2),
     )
 
@@ -298,14 +299,14 @@ def test_wf1_with_sql_with_patch():
         return datetime.datetime.now()
 
     @workflow
-    def my_wf() -> str:
+    def my_wf() -> FlyteSchema:
         dt = t1()
         return sql(ds=dt)
 
     @patch(sql)
     def test_user_demo_test(mock_sql):
-        mock_sql.return_value = "Hello"
-        assert my_wf() == "Hello"
+        mock_sql.return_value = pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})
+        assert (my_wf().open().all() == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
 
     # Have to call because tests inside tests don't run
     test_user_demo_test()
