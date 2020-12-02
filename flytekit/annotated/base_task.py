@@ -11,7 +11,7 @@ from flytekit.annotated.context_manager import (
 )
 from flytekit.annotated.interface import Interface, transform_interface_to_typed_interface
 from flytekit.annotated.node import create_and_link_node
-from flytekit.annotated.promise import Promise, create_task_output, translate_inputs_to_literals
+from flytekit.annotated.promise import Promise, VoidPromise, create_task_output, translate_inputs_to_literals
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.task import SdkTask
@@ -101,7 +101,7 @@ class Task(object):
         """
         return None
 
-    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, None]:
+    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         """
         This code is used only in the case when we want to dispatch_execute with outputs from a previous node
         For regular execution, dispatch_execute is invoked directly.
@@ -118,6 +118,8 @@ class Task(object):
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
         outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
+        if isinstance(outputs_literal_map, VoidPromise):
+            return outputs_literal_map
         outputs_literals = outputs_literal_map.literals
 
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
@@ -234,10 +236,14 @@ class PythonTask(Task):
 
     def dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
-    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
+    ) -> Union[VoidPromise, _literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
         This method is also invoked during runtime.
+            `VoidPromise` is returned in the case when the task itself declares no outputs.
+            `Literal Map` is returned when the task returns either one more outputs in the declaration. Individual outputs
+                           may be none
+            `DynamicJobSpec` is returned when a dynamic workflow is executed
         """
 
         # TODO We could support default values here too - but not part of the plan right now
@@ -264,6 +270,8 @@ class PythonTask(Task):
         expected_output_names = list(self.interface.outputs.keys())
         if len(expected_output_names) == 1:
             native_outputs_as_map = {expected_output_names[0]: native_outputs}
+        elif len(expected_output_names) == 0:
+            return VoidPromise(self.name)
         else:
             # Question: How do you know you're going to enumerate them in the correct order? Even if autonamed, will
             # output2 come before output100 if there's a hundred outputs? We don't! We'll have to circle back to
@@ -273,12 +281,14 @@ class PythonTask(Task):
 
         # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
         # built into the IDL that all the values of a literal map are of the same type.
-        outputs_literal_map = _literal_models.LiteralMap(
-            literals={
-                k: TypeEngine.to_literal(ctx, v, self.get_type_for_output_var(k, v), self.interface.outputs[k].type)
-                for k, v in native_outputs_as_map.items()
-            }
-        )
+        literals = {}
+        for k, v in native_outputs_as_map.items():
+            literal_type = self.interface.outputs[k].type
+            py_type = self.get_type_for_output_var(k, v)
+            if isinstance(v, tuple):
+                raise AssertionError(f"Output({k}) in task{self.name} received a tuple {v}, instead of {py_type}")
+            literals[k] = TypeEngine.to_literal(ctx, v, py_type, literal_type)
+        outputs_literal_map = _literal_models.LiteralMap(literals=literals)
         return outputs_literal_map
 
     @abstractmethod

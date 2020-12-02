@@ -6,7 +6,7 @@ from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.dynamic_workflow_task import dynamic
 from flytekit.annotated.launch_plan import LaunchPlan
 from flytekit.annotated.map_task import maptask
-from flytekit.annotated.reference_task import Reference
+from flytekit.annotated.reference_task import TaskReference, WorkflowReference
 from flytekit.annotated.task import metadata, task
 from flytekit.annotated.workflow import workflow
 from flytekit.loggers import logger

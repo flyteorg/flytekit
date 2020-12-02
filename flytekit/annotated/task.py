@@ -1,5 +1,4 @@
 import datetime as _datetime
-from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Type, Union
 
 from flytekit.annotated.python_function_task import PythonFunctionTask
@@ -50,14 +49,6 @@ class TaskPlugins(object):
             return cls._PYTHONFUNCTION_TASK_PLUGINS[plugin_config_type]
         # Defaults to returning Base PythonFunctionTask
         return PythonFunctionTask
-
-
-@dataclass
-class Resources(object):
-    cpu: str = None
-    mem: str = None
-    gpu: str = None
-    storage: str = None
 
 
 def metadata(

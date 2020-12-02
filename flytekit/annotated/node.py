@@ -140,9 +140,18 @@ def create_and_link_node(
         var = typed_interface.inputs[k]
         if k not in kwargs:
             raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
+        v = kwargs[k]
+        # This check ensures that tuples are not passed into a function, as tuples are not supported by Flyte
+        # Usually a Tuple will indicate that multiple outputs from a previous task were accidentally passed
+        # into the function.
+        if isinstance(v, tuple):
+            raise AssertionError(
+                f"Variable({k}) for function({entity.name}) cannot receive a multi-valued tuple {v}."
+                f" Check if the predecessor function returning more than one value?"
+            )
         bindings.append(
             binding_from_python_std(
-                ctx, var_name=k, expected_literal_type=var.type, t_value=kwargs[k], t_value_type=interface.inputs[k]
+                ctx, var_name=k, expected_literal_type=var.type, t_value=v, t_value_type=interface.inputs[k]
             )
         )
         used_inputs.add(k)

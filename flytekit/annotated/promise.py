@@ -74,6 +74,10 @@ def translate_inputs_to_literals(
         elif isinstance(input_val, Promise):
             # In the example above, this handles the "in2=a" type of argument
             return input_val.val
+        elif isinstance(input_val, VoidPromise):
+            raise AssertionError(
+                f"Outputs of a non-output producing task {input_val.task_name} cannot be passed to another task."
+            )
         else:
             # This handles native values, the 5 example
             return TypeEngine.to_literal(ctx, input_val, val_type, flyte_literal_type)
@@ -351,7 +355,7 @@ class Promise(object):
     def __repr__(self):
         if self._promise_ready:
             return f"Var({self._var}={self._val})"
-        return f"Promise({self._var},{self.ref.node_id})"
+        return f"Promise({self.ref.node_id}.{self._var})"
 
     def __str__(self):
         return str(self.__repr__())
@@ -394,6 +398,11 @@ def binding_data_from_python_std(
         if not t_value.is_ready:
             return _literals_models.BindingData(promise=t_value.ref)
 
+    elif isinstance(t_value, VoidPromise):
+        raise AssertionError(
+            f"Cannot pass output from task {t_value.task_name} that produces no outputs to a downstream task"
+        )
+
     elif isinstance(t_value, list):
         if expected_literal_type.collection_type is None:
             raise AssertionError(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
@@ -426,7 +435,6 @@ def binding_data_from_python_std(
                     for k, v in t_value.items()
                 }
             )
-
         return _literals_models.BindingData(map=m)
 
     # This is the scalar case - e.g. my_task(in1=5)
@@ -447,3 +455,59 @@ def binding_from_python_std(
 
 def to_binding(p: Promise) -> _literals_models.Binding:
     return _literals_models.Binding(var=p.var, binding=_literals_models.BindingData(promise=p.ref))
+
+
+class VoidPromise(object):
+    """
+    This object is returned for tasks that do not return any outputs (declared interface is empty)
+    VoidPromise cannot be interacted with and does not allow comparisons or any operations
+    """
+
+    def __init__(self, task_name: str):
+        self._task_name = task_name
+
+    @property
+    def task_name(self):
+        return self._task_name
+
+    def __eq__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __and__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __or__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __le__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __ge__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __gt__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __lt__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __add__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __cmp__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __bool__(self):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __mod__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __xor__(self, other):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __str__(self):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __repr__(self):
+        raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
