@@ -37,7 +37,7 @@ extras_require = {
 
 setup(
     name="flytekit",
-    version="0.16.0a0",
+    version="0.16.0a1",
     maintainer="Lyft",
     maintainer_email="flyte-eng@lyft.com",
     packages=find_packages(exclude=["tests*"]),

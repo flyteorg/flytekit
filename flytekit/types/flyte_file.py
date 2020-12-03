@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import typing
 
-from flytekit import FlyteContext
+from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.type_engine import TypeEngine, TypeTransformer
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
