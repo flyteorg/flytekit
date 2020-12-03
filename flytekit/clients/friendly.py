@@ -17,6 +17,7 @@ from flytekit.models import execution as _execution
 from flytekit.models import filters as _filters
 from flytekit.models import launch_plan as _launch_plan
 from flytekit.models import node_execution as _node_execution
+from flytekit.models import project as _project
 from flytekit.models import task as _task
 from flytekit.models.admin import task_execution as _task_execution
 from flytekit.models.admin import workflow as _workflow
@@ -795,6 +796,45 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :rtype: flyteidl.admin.project_pb2.ProjectUpdateResponse
         """
         super(SynchronousFlyteClient, self).update_project(project.to_flyte_idl())
+
+    def list_projects_paginated(self, limit=100, token=None, filters=None, sort_by=None):
+        """
+        This returns a page of projects.
+
+        .. note ::
+
+            This is a paginated API.  Use the token field in the request to specify a page offset token.
+            The user of the API is responsible for providing this token.
+
+        .. note ::
+
+            If entries are added to the database between requests for different pages, it is possible to receive
+            entries on the second page that also appeared on the first.
+
+        :param int limit: [Optional] The maximum number of entries to return.  Must be greater than 0.  The maximum
+            page size is determined by the Flyte Admin Service configuration.  If limit is greater than the maximum
+            page size, an exception will be raised.
+        :param Text token: [Optional] If specified, this specifies where in the rows of results to skip before reading.
+            If you previously retrieved a page response with token="foo" and you want the next page,
+            specify token="foo". Please see the notes for this function about the caveats of the paginated API.
+        :param list[flytekit.models.filters.Filter] filters: [Optional] If specified, the filters will be applied to
+            the query.  If the filter is not supported, an exception will be raised.
+        :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
+        :raises grpc.RpcError:
+        :rtype: (list[flytekit.models.Project], Text)
+        """
+        projects = super(SynchronousFlyteClient, self).list_projects(
+            project_list_request=_project_pb2.ProjectListRequest(
+                limit=limit,
+                token=token,
+                filters=_filters.FilterList(filters or []).to_flyte_idl(),
+                sort_by=None if sort_by is None else sort_by.to_flyte_idl(),
+            )
+        )
+        return (
+            [_project.Project.from_flyte_idl(pb) for pb in projects.projects],
+            _six.text_type(projects.token),
+        )
 
     ####################################################################################################################
     #
