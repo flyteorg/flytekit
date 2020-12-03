@@ -12,7 +12,6 @@ import numpy as _np
 
 from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.type_engine import T, TypeEngine, TypeTransformer
-from flytekit.configuration import sdk
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.plugins import pandas
