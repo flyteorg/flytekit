@@ -4,6 +4,7 @@ import typing
 from dataclasses import dataclass
 
 import pandas
+import pandera
 import pytest
 from dataclasses_json import dataclass_json
 
