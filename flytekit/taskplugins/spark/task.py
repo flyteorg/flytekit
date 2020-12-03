@@ -5,9 +5,10 @@ from typing import Any, Callable, Dict
 
 from google.protobuf.json_format import MessageToDict
 
-from flytekit.annotated.context_manager import FlyteContext, RegistrationSettings
+from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
+from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.models import task as _task_model
 from flytekit.sdk.spark_types import SparkType
 
@@ -32,7 +33,8 @@ def new_spark_session(name: str):
 
     sess = _pyspark.sql.SparkSession.builder.appName(f"FlyteSpark: {name}").getOrCreate()
     yield sess
-    sess.stop()
+    # SparkSession.Stop does not work correctly, as it stops the session before all the data is written
+    # sess.stop()
 
 
 class PysparkFunctionTask(PythonFunctionTask[Spark]):
@@ -60,13 +62,13 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         )
         return MessageToDict(job.to_flyte_idl())
 
-    def execute(self, **kwargs) -> Any:
-        ctx = FlyteContext.current_context()
-        with new_spark_session(ctx.user_space_params.execution_id) as sess:
-            b = ctx.user_space_params.builder(ctx.user_space_params)
-            b.add_attr("SPARK_SESSION", sess)
-            with ctx.new_execution_context(mode=ctx.execution_state.mode, execution_params=b.build()):
-                return self._task_function(**kwargs)
+    def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
+        import pyspark as _pyspark
+
+        sess = _pyspark.sql.SparkSession.builder.appName(f"FlyteSpark: {user_params.execution_id}").getOrCreate()
+        b = user_params.builder(user_params)
+        b.add_attr("SPARK_SESSION", sess)
+        return b.build()
 
 
 TaskPlugins.register_pythontask_plugin(Spark, PysparkFunctionTask)

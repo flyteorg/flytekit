@@ -139,7 +139,7 @@ def test_file_handling_remote_file_handling():
         # The act of running the workflow should create the engine dir, and the directory that will contain the
         # file but the file itself isn't downloaded yet.
         working_dir = os.listdir(random_dir)
-        assert len(working_dir) == 3
+        assert len(working_dir) == 4
 
         assert not os.path.exists(workflow_output.path)
         # The act of opening it should trigger the download, since we do lazy downloading.

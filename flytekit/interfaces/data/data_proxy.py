@@ -359,11 +359,9 @@ class FileAccessProvider(object):
                     self.remote.upload(local_path, remote_path)
         except Exception as ex:
             raise _user_exception.FlyteAssertion(
-                "Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"
-                "Original exception: {error_string}".format(
-                    remote_path=remote_path, local_path=local_path, is_multipart=is_multipart, error_string=str(ex),
-                )
-            )
+                f"Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"
+                f"Original exception: {str(ex)}"
+            ) from ex
 
 
 timestamped_default_sandbox_location = os.path.join(

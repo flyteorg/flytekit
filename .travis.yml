@@ -8,7 +8,7 @@ jobs:
     - name: "Python 3.7"
       python: 3.7
       before_install:
-        - make setup
+        - make setup-spark3
 install: pip freeze
 script:
   - make lint

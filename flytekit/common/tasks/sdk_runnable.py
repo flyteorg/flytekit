@@ -141,7 +141,7 @@ class ExecutionParameters(object):
         attr_name = attr_name.upper()
         if self._attrs and attr_name in self._attrs:
             return self._attrs[attr_name]
-        raise AssertionError(f"{attr_name} not available as a parameter in Flyte context")
+        raise AssertionError(f"{attr_name} not available as a parameter in Flyte context - are you in right task-type?")
 
 
 class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.ExtendedSdkType):

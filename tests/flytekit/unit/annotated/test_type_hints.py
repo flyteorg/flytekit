@@ -23,6 +23,7 @@ from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.types import LiteralType, SimpleType
+from flytekit.plugins import pyspark
 from flytekit.taskplugins.spark import Spark
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 
@@ -1127,3 +1128,51 @@ def test_dataclass_more():
         return add(x=stringify(x=x), y=stringify(x=y))
 
     wf(x=10, y=20)
+
+
+def test_spark_dataframe_return():
+    my_schema = FlyteSchema[kwtypes(name=str, age=int)]
+
+    @task(task_config=Spark())
+    def my_spark(a: int) -> my_schema:
+        session = flytekit.current_context().spark_session
+        df = session.createDataFrame([("Alice", a)], my_schema.column_names())
+        print(type(df))
+        return df
+
+    @workflow
+    def my_wf(a: int) -> my_schema:
+        return my_spark(a=a)
+
+    x = my_wf(a=5)
+    reader = x.open(pandas.DataFrame)
+    df2 = reader.all()
+    result_df = df2.reset_index(drop=True) == pandas.DataFrame(data={"name": ["Alice"], "age": [5]}).reset_index(
+        drop=True
+    )
+    assert result_df.all().all()
+
+
+def test_spark_dataframe_input():
+    my_schema = FlyteSchema[kwtypes(name=str, age=int)]
+
+    @task
+    def my_dataset() -> my_schema:
+        return pandas.DataFrame(data={"name": ["Alice"], "age": [5]})
+
+    @task(task_config=Spark())
+    def my_spark(df: pyspark.sql.DataFrame) -> my_schema:
+        session = flytekit.current_context().spark_session
+        new_df = session.createDataFrame([("Bob", 10)], my_schema.column_names())
+        return df.union(new_df)
+
+    @workflow
+    def my_wf() -> my_schema:
+        df = my_dataset()
+        return my_spark(df=df)
+
+    x = my_wf()
+    assert x
+    reader = x.open()
+    df2 = reader.all()
+    assert df2 is not None
