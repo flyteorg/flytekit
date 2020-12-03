@@ -369,7 +369,7 @@ class ParquetIO(object):
             return frames[0]
         elif len(frames) > 1:
             return pandas.concat(frames, copy=True)
-        return pandas.Dataframe()
+        return pandas.DataFrame()
 
     def write(
         self,
