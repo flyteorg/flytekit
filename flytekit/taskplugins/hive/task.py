@@ -93,7 +93,7 @@ class HiveSelectTask(HiveTask):
         **kwargs,
     ):
         query_template = HiveSelectTask._HIVE_QUERY_FORMATTER.format(
-            stage_query_str=stage_query, select_query_str=select_query.strip().strip(";")
+            stage_query_str=stage_query or "", select_query_str=select_query.strip().strip(";")
         )
         super().__init__(
             name=name,
