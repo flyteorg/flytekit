@@ -80,6 +80,23 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
                 }
             )
 
+        outputs = {}
+        if isinstance(training_job, SdkBuiltinAlgorithmTrainingJobTask):
+            outputs.update(
+                {
+                    "model": _interface_model.Variable(
+                        type=_types_models.LiteralType(
+                            blob=_core_types.BlobType(
+                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+                            )
+                        ),
+                        description="",
+                    ),
+                }
+            )
+        else:
+            outputs.update(training_job.interface.outputs)
+
         super().__init__(
             type=SdkTaskType.SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK,
             metadata=_task_models.TaskMetadata(
