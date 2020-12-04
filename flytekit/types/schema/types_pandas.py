@@ -168,7 +168,9 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
         try:
             type_args = typing.get_args(t)
         except AttributeError:
-            type_args = t.__args__
+            # for python < 3.8
+            type_args = getattr(t, "__args__", None)
+
         if type_args:
             schema_model, *_ = type_args
         else:
