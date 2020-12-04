@@ -1,5 +1,7 @@
+import contextlib as _contextlib
 import os as _os
 import subprocess as _subprocess
+import sys as _sys
 import tarfile as _tarfile
 import tempfile as _tempfile
 from pathlib import Path as _Path
@@ -52,6 +54,18 @@ def get_additional_distribution_loc(remote_location: str, identifier: str) -> st
     return _os.path.join(remote_location, "{}.{}".format(identifier, "tar.gz"))
 
 
+@_contextlib.contextmanager
+def silence_output():
+    sys_stdout = _sys.stdout
+    sys_stderr = _sys.stderr
+    with open(_os.devnull) as devnull:
+        _sys.stdout = devnull
+        _sys.stderr = devnull
+        yield
+    _sys.stdout = sys_stdout
+    _sys.stderr = sys_stderr
+
+
 def upload_package(source_dir: _os.PathLike, identifier: str, remote_location: str, dry_run=False) -> str:
     """
     Uploads the contents of the source dir as a tar package to a destination specified by the unique identifier and
@@ -70,7 +84,12 @@ def upload_package(source_dir: _os.PathLike, identifier: str, remote_location: s
         print("Local marker for identifier {} already exists, skipping upload".format(identifier))
         return full_remote_path
 
-    if _Data.data_exists(full_remote_path):
+    with silence_output():
+        # Before uploading, we check to see if the compressed archive is already uploaded. In many cases it is not,
+        # so we silence the output of the command since a 404 is perfectly acceptable in this flow,
+        # but confusing for end-users.
+        data_exists = _Data.data_exists(full_remote_path)
+    if data_exists:
         print("Remote file {} already exists, skipping upload".format(full_remote_path))
         _write_marker(marker)
         return full_remote_path
