@@ -165,9 +165,12 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
         super().__init__("Pandera Transformer", pandera.typing.DataFrame)
 
     def _pandera_schema(self, t: Type[pandera.typing.DataFrame]):
-        type_args = typing.get_args(t)
+        try:
+            type_args = typing.get_args(t)
+        except AttributeError:
+            type_args = t.__args__
         if type_args:
-            schema_model, *_ = typing.get_args(t)
+            schema_model, *_ = type_args
         else:
             schema_model = self.EmptySchema
         return schema_model.to_schema()
