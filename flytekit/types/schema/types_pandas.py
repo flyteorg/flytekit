@@ -158,7 +158,6 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
         type, SchemaType.SchemaColumn.SchemaColumnType
     ] = FlyteSchemaTransformer._SUPPORTED_TYPES
 
-
     class EmptySchema(pandera.SchemaModel):
         pass
 
