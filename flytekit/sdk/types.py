@@ -502,3 +502,41 @@ class Types(object):
                 [x * x for x in a]
             )
     """
+
+    Map = staticmethod(_containers.Map)
+    """
+    Use this to specify a map of any type--including nested maps, and the key should always be a string.
+
+    When used with an SDK-decorated method, expect this behavior from the default type engine:
+
+        As input:
+            1) If set, a Python dict populated with values matching the behavior of the map's sub-type.
+            2) If not set, a None value.
+
+        As output:
+            1) A Python dict containing values adhering to the maps's sub-type.
+            2) Set None to null the output.
+
+        From command-line:
+            Specify a valid JSON dictionary string.  The sub-values will be checked against the sub-type of the map.
+
+    .. note::
+
+        Shorthand syntax is supported of the form: `{Types.String: Types.Integer}` in addition to longhand syntax like
+        `Types.Map(Types.Integer)`.  Both forms are equivalent.
+
+    .. note::
+
+        Maps can be arbitrarily deeply nested, however, the typing must be consistent between all sibling values in a
+        nested map.  Syntax for nesting is `{Types.String: {Types.String: Types.Integer}}` to create a map of maps.
+
+    .. code-block:: python
+
+        @inputs(a={Types.String: Types.Integer})
+        @outputs(b={Types.String: Types.Integer})
+        @python_task
+        def square_each(wf_params, a, b):
+            b.set(
+                {k: v * v for k, v in a.items()}
+            )
+    """

@@ -81,7 +81,14 @@ class FlyteDefaultTypeEngine(object):
                 )
             return _container_types.List(_helpers.python_std_to_sdk_type(t[0]))
         elif isinstance(t, dict):
-            raise _user_exceptions.FlyteAssertion("Map types are not yet implemented.")
+            if len(t) != 1:
+                raise _user_exceptions.FlyteAssertion(
+                    "When specifying a map type, there must be exactly one element in "
+                    "the map describing the contained type."
+                )
+            if list(t.keys())[0] != _primitive_types.String:
+                raise _user_exceptions.FlyteAssertion("When specifying a map type, the key must be Types.String.")
+            return _container_types.Map(_helpers.python_std_to_sdk_type(list(t.values())[0]))
         elif isinstance(t, _base_sdk_types.FlyteSdkType):
             return t
         else:
@@ -101,7 +108,7 @@ class FlyteDefaultTypeEngine(object):
         if literal_type.collection_type is not None:
             return _container_types.List(_helpers.get_sdk_type_from_literal_type(literal_type.collection_type))
         elif literal_type.map_value_type is not None:
-            raise NotImplementedError("TODO: Implement map")
+            return _container_types.Map(_helpers.get_sdk_type_from_literal_type(literal_type.map_value_type))
         elif literal_type.schema is not None:
             return _schema.schema_instantiator_from_proto(literal_type.schema)
         elif literal_type.blob is not None:
@@ -140,7 +147,10 @@ class FlyteDefaultTypeEngine(object):
             else:
                 sdk_type = _container_types.List(_base_sdk_types.Void)
         elif literal.map is not None:
-            raise NotImplementedError("TODO: Implement map")
+            if len(literal.map.literals) > 0:
+                sdk_type = _container_types.Map(_helpers.infer_sdk_type_from_literal(literal.map.literals.values()[0]))
+            else:
+                sdk_type = _container_types.Map(_base_sdk_types.Void)
         elif literal.scalar.blob is not None:
             sdk_type = self._get_blob_impl_from_type(literal.scalar.blob.metadata.type)
         elif literal.scalar.none_type is not None:

@@ -207,6 +207,16 @@ def test_workflow_node():
         _identifier.ResourceType.TASK, "project", "domain", "my_list_task", "version"
     )
 
+    @inputs(a={primitives.String: primitives.Integer})
+    @outputs(b={primitives.String: primitives.Integer})
+    @python_task
+    def my_map_task(wf_params, a, b):
+        b.set({k: v + 1 for k, v in a.items()})
+
+    my_map_task._id = _identifier.Identifier(
+        _identifier.ResourceType.TASK, "project", "domain", "my_map_task", "version"
+    )
+
     input_list = [
         promise.Input("required", primitives.Integer),
         promise.Input("not_required", primitives.Integer, default=5, help="Not required."),
@@ -218,14 +228,16 @@ def test_workflow_node():
     n4 = my_task(a=n1.outputs.b).assign_id_and_return("n4")
     n5 = my_list_task(a=[input_list[0], input_list[1], n3.outputs.b, 100]).assign_id_and_return("n5")
     n6 = my_list_task(a=n5.outputs.b)
+    n7 = my_map_task(a={"v": n3.outputs.b})
 
-    nodes = [n1, n2, n3, n4, n5, n6]
+    nodes = [n1, n2, n3, n4, n5, n6, n7]
 
     wf_out = [
         _local_workflow.Output(
             "nested_out", [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]], sdk_type=[[primitives.Integer]],
         ),
         _local_workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
+        _local_workflow.Output("map_out", n7.outputs.b, sdk_type={primitives.String: primitives.Integer}),
     ]
 
     w = _local_workflow.SdkRunnableWorkflow.construct_from_class_definition(
@@ -280,6 +292,13 @@ def test_workflow_node():
     assert n.outputs["nested_out"].var == "nested_out"
     assert n.outputs["nested_out"].node_id == "node-id"
 
+    assert (
+        n.outputs["map_out"].sdk_type.to_flyte_literal_type()
+        == containers.Map(primitives.Integer).to_flyte_literal_type()
+    )
+    assert n.outputs["map_out"].var == "map_out"
+    assert n.outputs["map_out"].node_id == "node-id"
+
 
 def test_non_system_nodes():
     @inputs(a=primitives.Integer)
@@ -333,6 +352,16 @@ def test_workflow_serialization():
         _identifier.ResourceType.TASK, "project", "domain", "my_list_task", "version"
     )
 
+    @inputs(a={primitives.String: primitives.Integer})
+    @outputs(b={primitives.String: primitives.Integer})
+    @python_task
+    def my_map_task(wf_params, a, b):
+        b.set({k: v + 1 for k, v in a.items()})
+
+    my_map_task._id = _identifier.Identifier(
+        _identifier.ResourceType.TASK, "project", "domain", "my_map_task", "version"
+    )
+
     input_list = [
         promise.Input("required", primitives.Integer),
         promise.Input("not_required", primitives.Integer, default=5, help="Not required."),
@@ -344,14 +373,16 @@ def test_workflow_serialization():
     n4 = my_task(a=n1.outputs.b).assign_id_and_return("n4")
     n5 = my_list_task(a=[input_list[0], input_list[1], n3.outputs.b, 100]).assign_id_and_return("n5")
     n6 = my_list_task(a=n5.outputs.b)
+    n7 = my_map_task(a={"v": n3.outputs.b})
 
-    nodes = [n1, n2, n3, n4, n5, n6]
+    nodes = [n1, n2, n3, n4, n5, n6, n7]
 
     wf_out = [
         _local_workflow.Output(
             "nested_out", [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]], sdk_type=[[primitives.Integer]],
         ),
         _local_workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
+        _local_workflow.Output("map_out", n7.outputs.b, sdk_type={primitives.String: primitives.Integer}),
     ]
 
     w = _local_workflow.SdkRunnableWorkflow.construct_from_class_definition(
@@ -359,9 +390,9 @@ def test_workflow_serialization():
     )
     serialized = w.serialize()
     assert isinstance(serialized, _workflow_pb2.WorkflowSpec)
-    assert len(serialized.template.nodes) == 6
+    assert len(serialized.template.nodes) == 7
     assert len(serialized.template.interface.inputs.variables.keys()) == 2
-    assert len(serialized.template.interface.outputs.variables.keys()) == 2
+    assert len(serialized.template.interface.outputs.variables.keys()) == 3
 
 
 def test_workflow_disable_default_launch_plan():

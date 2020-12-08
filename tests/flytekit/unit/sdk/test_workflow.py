@@ -72,6 +72,26 @@ def test_input():
     assert i.var.description == ""
     assert i.sdk_type == containers.List(primitives.Integer)
 
+    i = Input({primitives.String: primitives.Integer}, default={"a": 1, "b": 2})
+    assert i.name == ""
+    assert i.sdk_default == {"a": 1, "b": 2}
+    assert i.default == containers.Map(primitives.Integer)({"a": primitives.Integer(1), "b": primitives.Integer(2)})
+    assert i.sdk_required is False
+    assert i.required is None
+    assert i.help is None
+    assert i.var.description == ""
+    assert i.sdk_type == containers.Map(primitives.Integer)
+
+    i = i.rename_and_return_reference("new_name")
+    assert i.name == "new_name"
+    assert i.sdk_default == {"a": 1, "b": 2}
+    assert i.default == containers.Map(primitives.Integer)({"a": primitives.Integer(1), "b": primitives.Integer(2)})
+    assert i.sdk_required is False
+    assert i.required is None
+    assert i.help is None
+    assert i.var.description == ""
+    assert i.sdk_type == containers.Map(primitives.Integer)
+
 
 def test_output():
     o = Output(1, sdk_type=primitives.Integer, help="blah")

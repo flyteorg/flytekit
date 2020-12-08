@@ -5,7 +5,6 @@ from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import containers as _containers
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.common.types import primitives as _primitives
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 
@@ -80,12 +79,15 @@ class BindingData(_literal_models.BindingData, metaclass=_sdk_bases.ExtendedSdkT
                     for v in t_value
                 ]
             )
-        elif isinstance(t_value, dict) and (
-            not issubclass(downstream_sdk_type, _primitives.Generic) or BindingData._has_sub_bindings(t_value)
-        ):
-            # TODO: This behavior should be embedded in the type engine.  Someone should be able to alter behavior of
-            # TODO: binding logic by injecting their own type engine.  The same goes for the list check above.
-            raise NotImplementedError("TODO: Cannot use map bindings at the moment")
+        elif isinstance(t_value, dict) and issubclass(downstream_sdk_type, _containers.MapImpl):
+            map = _literal_models.BindingDataMap(
+                {
+                    k: BindingData.from_python_std(
+                        downstream_sdk_type.sub_type.to_flyte_literal_type(), v, upstream_nodes=upstream_nodes
+                    )
+                    for k, v in t_value.items()
+                }
+            )
         else:
             sdk_value = downstream_sdk_type.from_python_std(t_value)
             scalar = sdk_value.scalar

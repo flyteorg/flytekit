@@ -56,6 +56,32 @@ def test_binding_data_list_static():
         )
 
 
+def test_binding_map_static():
+    upstream_nodes = set()
+    bd = interface.BindingData.from_python_std(
+        containers.Map(primitives.String).to_flyte_literal_type(),
+        {"a": "hi", "b": "hey"},
+        upstream_nodes=upstream_nodes,
+    )
+
+    assert len(upstream_nodes) == 0
+    assert bd.promise is None
+    assert bd.map.bindings["a"].scalar.primitive.string_value == "hi"
+    assert bd.map.bindings["b"].scalar.primitive.string_value == "hey"
+    assert bd.scalar is None
+    assert interface.BindingData.from_flyte_idl(bd.to_flyte_idl()) == bd
+
+    with pytest.raises(_user_exceptions.FlyteTypeException):
+        interface.BindingData.from_python_std(
+            containers.Map(primitives.String).to_flyte_literal_type(), "abc",
+        )
+
+    with pytest.raises(_user_exceptions.FlyteTypeException):
+        interface.BindingData.from_python_std(
+            containers.Map(primitives.String).to_flyte_literal_type(), {"a": 1, "b": 2}
+        )
+
+
 def test_binding_generic_map_static():
     upstream_nodes = set()
     bd = interface.BindingData.from_python_std(

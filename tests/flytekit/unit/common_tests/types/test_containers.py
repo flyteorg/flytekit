@@ -23,7 +23,7 @@ def test_list():
     assert list_value.collection.literals[2].scalar.primitive.integer == 3
     assert list_value.collection.literals[3].scalar.primitive.integer == 4
 
-    obj2 = list_type.from_string("[1, 2, 3,4]")
+    obj2 = list_type.from_string("[1, 2, 3, 4]")
     assert obj2 == list_value
 
     with pytest.raises(_user_exceptions.FlyteTypeException):
@@ -107,7 +107,7 @@ def test_nested_list():
     assert len(obj.collection.literals[0]) == 3
 
 
-def test_reprs():
+def test_list_reprs():
     list_type = containers.List(primitives.Integer)
     obj = list_type.from_python_std(list(_range(3)))
     assert obj.short_string() == "List<Integer>(len=3, [Integer(0), Integer(1), Integer(2)])"
@@ -171,3 +171,108 @@ def test_model_promotion():
     assert isinstance(list_obj.collection.literals[0], primitives.Integer)
     assert list_obj == list_type.from_python_std([0, 1, 2])
     assert list_obj == list_type([primitives.Integer(0), primitives.Integer(1), primitives.Integer(2)])
+
+
+def test_map():
+    map_type = containers.Map(primitives.Integer)
+    assert map_type.is_castable_from(containers.Map(primitives.Integer))
+    assert not map_type.is_castable_from(containers.Map(primitives.String))
+
+    assert map_type.to_flyte_literal_type().simple is None
+    assert map_type.to_flyte_literal_type().collection_type is None
+    assert map_type.to_flyte_literal_type().schema is None
+    assert map_type.to_flyte_literal_type().map_value_type.simple == literal_types.SimpleType.INTEGER
+
+    d = {"a": 1, "b": 2, "c": 3, "d": 4}
+    map_value = map_type.from_python_std(d)
+    assert map_value.to_python_std() == d
+    assert map_type.from_flyte_idl(map_value.to_flyte_idl()) == map_value
+
+    assert map_value.map.literals["a"].scalar.primitive.integer == 1
+    assert map_value.map.literals["b"].scalar.primitive.integer == 2
+    assert map_value.map.literals["c"].scalar.primitive.integer == 3
+    assert map_value.map.literals["d"].scalar.primitive.integer == 4
+
+    obj2 = map_type.from_string('{"a": 1, "b": 2, "c": 3, "d": 4}')
+    assert obj2 == map_value
+
+    with pytest.raises(_user_exceptions.FlyteTypeException):
+        map_type.from_python_std(["a", "b", "c", "d"])
+
+    with pytest.raises(_user_exceptions.FlyteTypeException):
+        map_type.from_python_std({1: 1, "b": 2, "c": 3, "d": 4})
+
+    with pytest.raises(_user_exceptions.FlyteTypeException):
+        map_type.from_string('{a: 1, "b": 2, "c": 3, "d": 4}')
+
+
+def test_nested_map():
+    map_type = containers.Map(containers.Map(primitives.Integer))
+
+    assert map_type.to_flyte_literal_type().simple is None
+    assert map_type.to_flyte_literal_type().collection_type is None
+    assert map_type.to_flyte_literal_type().schema is None
+    assert map_type.to_flyte_literal_type().map_value_type.map_value_type.simple == literal_types.SimpleType.INTEGER
+
+    d = {"a": {"a1": 1}, "b": {"b1": 1}}
+    map_value = map_type.from_python_std(d)
+    assert map_value.to_python_std() == d
+    assert map_type.from_flyte_idl(map_value.to_flyte_idl()) == map_value
+
+    assert map_value.map.literals["a"].map.literals["a1"].scalar.primitive.integer == 1
+    assert map_value.map.literals["b"].map.literals["b1"].scalar.primitive.integer == 1
+
+    obj = map_type.from_string('{"a": {"a1": 1}, "b": {"b1": 1}}')
+    assert len(obj) == 2
+    assert len(obj.map.literals["a"]) == 1
+    assert len(obj.map.literals["b"]) == 1
+
+
+def test_map_reprs():
+    map_type = containers.Map(primitives.Integer)
+    obj = map_type.from_python_std({"a": 1, "b": 2, "c": 3, "d": 4})
+    assert (
+        obj.short_string()
+        == "Map<Text, Integer>(len=4, {'a': Integer(1), 'b': Integer(2), 'c': Integer(3), 'd': Integer(4)})"
+    )
+    assert (
+        obj.verbose_string() == "Map<Text, Integer>(\n"
+        "\tlen=4,\n"
+        "\t{\n"
+        "\t\t'a': Integer(1),\n"
+        "\t\t'b': Integer(2),\n"
+        "\t\t'c': Integer(3),\n"
+        "\t\t'd': Integer(4)\n"
+        "\t}\n"
+        ")"
+    )
+
+    nested_map_type = containers.Map(containers.Map(primitives.Integer))
+    nested_obj = nested_map_type.from_python_std({"a": {"a1": 1}, "b": {"b1": 1}})
+
+    print(nested_obj.short_string())
+    print(nested_obj.verbose_string())
+
+    assert (
+        nested_obj.short_string() == "Map<Text, Map<Text, Integer>>(len=2, "
+        "{'a': Map<Text, Integer>(len=1, {'a1': Integer(1)}), 'b': Map<Text, Integer>(len=1, {'b1': Integer(1)})})"
+    )
+    assert (
+        nested_obj.verbose_string() == "Map<Text, Map<Text, Integer>>(\n"
+        "\tlen=2,\n"
+        "\t{\n"
+        "\t\t'a': Map<Text, Integer>(\n"
+        "\t\t\tlen=1,\n"
+        "\t\t\t{\n"
+        "\t\t\t\t'a1': Integer(1)\n"
+        "\t\t\t}\n"
+        "\t\t),\n"
+        "\t\t'b': Map<Text, Integer>(\n"
+        "\t\t\tlen=1,\n"
+        "\t\t\t{\n"
+        "\t\t\t\t'b1': Integer(1)\n"
+        "\t\t\t}\n"
+        "\t\t)\n"
+        "\t}\n"
+        ")"
+    )
