@@ -250,9 +250,6 @@ def test_map_reprs():
     nested_map_type = containers.Map(containers.Map(primitives.Integer))
     nested_obj = nested_map_type.from_python_std({"a": {"a1": 1}, "b": {"b1": 1}})
 
-    print(nested_obj.short_string())
-    print(nested_obj.verbose_string())
-
     assert (
         nested_obj.short_string() == "Map<Text, Map<Text, Integer>>(len=2, "
         "{'a': Map<Text, Integer>(len=1, {'a1': Integer(1)}), 'b': Map<Text, Integer>(len=1, {'b1': Integer(1)})})"
