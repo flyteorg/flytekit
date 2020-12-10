@@ -28,16 +28,7 @@ release = '0.16.0'
 import sys
 import os
 import flytekit
-# This will include the necessary source files folders in the PATH to be able to generate the documentation from.
-devdir=''
-try:
-    if os.environ['DEVDIR']:
-        devdir = os.environ['DEVDIR'] 
-except KeyError:
-    print 'Unable to obtain $DEVDIR from the environment.'
-    exit(-1)
 
-sys.path.insert(0, devdir + '/flytekit')
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('./flytekit'))
 
