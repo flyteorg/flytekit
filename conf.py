@@ -25,12 +25,29 @@ author = 'Flyte'
 release = '0.16.0'
 
 
+import sys
+import os
+import flytekit
+# This will include the necessary source files folders in the PATH to be able to generate the documentation from.
+devdir=''
+try:
+    if os.environ['DEVDIR']:
+        devdir = os.environ['DEVDIR'] 
+except KeyError:
+    print 'Unable to obtain $DEVDIR from the environment.'
+    exit(-1)
+
+sys.path.insert(0, devdir + '/flytekit')
+sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('./flytekit'))
+
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'readthedocs_ext.readthedocs',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosectionlabel',
     'sphinx.ext.doctest',
@@ -50,6 +67,8 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
+# The master toctree document.
+master_doc = 'index'
 
 # -- Options for HTML output -------------------------------------------------
 
