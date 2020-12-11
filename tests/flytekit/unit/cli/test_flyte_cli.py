@@ -6,6 +6,8 @@ from flytekit.clis.flyte_cli import main as _main
 from flytekit.common.exceptions.user import FlyteAssertion
 from flytekit.common.types import primitives
 from flytekit.configuration import TemporaryConfiguration
+from flytekit.models import filters as _filters
+from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import identifier as _core_identifier
 from flytekit.models.project import Project as _Project
 from flytekit.sdk.tasks import inputs, outputs, python_task
@@ -62,6 +64,22 @@ def _identity_dummy(a, b):
 def test__extract_files_pair_iterator():
     results = _main._extract_files([1, 2, 3, 4])
     assert [(1, 2), (3, 4)] == results
+
+
+@_mock.patch("flytekit.clis.flyte_cli.main._friendly_client.SynchronousFlyteClient")
+def test_list_projects(mock_client):
+    mock_client().list_projects_paginated.return_value = ([], "")
+    runner = _CliRunner()
+    result = runner.invoke(
+        _main._flyte_cli, ["list-projects", "-h", "a.b.com", "-i", "--filter", "ne(state,-1)", "--sort-by", "asc(name)"]
+    )
+    assert result.exit_code == 0
+    mock_client().list_projects_paginated.assert_called_with(
+        limit=100,
+        token="",
+        filters=[_filters.Filter.from_python_std("ne(state,-1)")],
+        sort_by=_admin_common.Sort.from_python_std("asc(name)"),
+    )
 
 
 @_mock.patch("flytekit.clis.flyte_cli.main._friendly_client.SynchronousFlyteClient")
