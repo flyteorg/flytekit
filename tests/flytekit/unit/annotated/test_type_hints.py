@@ -1176,3 +1176,8 @@ def test_spark_dataframe_input():
     reader = x.open()
     df2 = reader.all()
     assert df2 is not None
+
+
+def test_fdsj():
+    entity = ReferenceEntity(type=LaunchPlan, "project", "domain", "")
+
