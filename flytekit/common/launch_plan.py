@@ -51,7 +51,7 @@ class SdkLaunchPlan(
         :param flytekit.models.launch_plan.LaunchPlanSpec model:
         :rtype: SdkLaunchPlan
         """
-        return cls(
+        launch_plan = cls(
             workflow_id=_identifier.Identifier.promote_from_model(model.workflow_id),
             default_inputs=_interface_models.ParameterMap(
                 {
@@ -66,6 +66,9 @@ class SdkLaunchPlan(
             auth_role=model.auth_role,
             raw_output_data_config=model.raw_output_data_config,
         )
+        launch_plan.assign_name(model.workflow_id.name)
+        launch_plan._has_registered = True
+        return launch_plan
 
     @_exception_scopes.system_entry_point
     def register(self, project, domain, name, version):
