@@ -67,10 +67,13 @@ class _LazyLoadModule(_types.ModuleType):
     def _load(cls):
         module = _sys.modules.get(cls._module)
         if not module:
+
             try:
                 module = _importlib.import_module(cls._module)
             except ImportError as e:
                 raise ImportError(cls._ERROR_MSG_FMT.format(module=cls._module, plugins=cls._plugins, msg=e))
+            except Exception:
+                return None
         return module
 
     def __getattribute__(self, item):
