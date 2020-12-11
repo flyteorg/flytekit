@@ -191,6 +191,7 @@ class SdkTask(
 
         sdk_task = cls.promote_from_model(admin_task.closure.compiled_task.template)
         sdk_task._id = task_id
+        sdk_task.assign_name(name)
         sdk_task._has_registered = True
         return sdk_task
 

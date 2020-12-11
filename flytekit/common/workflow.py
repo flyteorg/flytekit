@@ -135,6 +135,7 @@ class SdkWorkflow(
         task_map = {t.template.id: t.template for t in cwc.tasks}
         sdk_workflow = cls.promote_from_model(primary_template, sub_workflow_map, task_map)
         sdk_workflow._id = workflow_id
+        sdk_workflow.assign_name(name)
         sdk_workflow._has_registered = True
         return sdk_workflow
 
