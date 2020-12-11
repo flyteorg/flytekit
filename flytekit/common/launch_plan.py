@@ -123,7 +123,6 @@ class SdkLaunchPlan(
         wf_id = sdk_lp.workflow_id
         lp_wf = _workflow.SdkWorkflow.fetch(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
         sdk_lp._interface = lp_wf.interface
-        sdk_lp._has_registered = True
         return sdk_lp
 
     @_exception_scopes.system_entry_point
