@@ -1,4 +1,4 @@
-from mock import patch as _patch
+from mock import patch
 
 from flytekit.common.tasks.task import SdkTask
 from flytekit.models import interface as _interface
@@ -9,7 +9,7 @@ from flytekit.models.task import CompiledTask, Task, TaskClosure
 from tests.flytekit.unit.common_tests.test_workflow_promote import get_sample_container, get_sample_task_metadata
 
 
-@_patch("flytekit.engines.flyte.engine.get_client")
+@patch("flytekit.engines.flyte.engine.get_client")
 def test_task_fetch_sets_correct_things(mock_get_client):
     int_type = _types.LiteralType(_types.SimpleType.INTEGER)
     task_interface = _interface.TypedInterface(
