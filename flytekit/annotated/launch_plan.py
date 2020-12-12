@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type
 
 from flytekit.annotated import workflow as _annotated_workflow
 from flytekit.annotated.context_manager import FlyteContext, FlyteEntities
@@ -14,6 +14,10 @@ from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
 from flytekit.models.core import identifier as _identifier_model
+from flytekit.annotated.reference_entity import ReferenceEntity
+from flytekit.common.workflow import SdkWorkflow
+from flytekit.models.core import workflow as _workflow_model
+from flytekit.models.common import RawOutputDataConfig
 
 
 class LaunchPlan(object):
@@ -40,11 +44,12 @@ class LaunchPlan(object):
 
     @classmethod
     def create(
-        cls,
-        name: str,
-        workflow: _annotated_workflow.Workflow,
-        default_inputs: Dict[str, Any] = None,
-        fixed_inputs: Dict[str, Any] = None,
+            cls,
+            name: str,
+            workflow: _annotated_workflow.Workflow,
+            default_inputs: Dict[str, Any] = None,
+            fixed_inputs: Dict[str, Any] = None,
+            # TODO: Add schedule, notifications, overridding auth role
     ) -> LaunchPlan:
         ctx = FlyteContext.current_context()
         default_inputs = default_inputs or {}
@@ -87,16 +92,16 @@ class LaunchPlan(object):
 
     # TODO: Add QoS after it's done
     def __init__(
-        self,
-        name: str,
-        workflow: _annotated_workflow.Workflow,
-        parameters: _interface_models.ParameterMap,
-        fixed_inputs: _literal_models.LiteralMap,
-        schedule: _schedule_model.Schedule = None,
-        notifications: List[_common_models.Notification] = None,
-        labels: _common_models.Labels = None,
-        annotations: _common_models.Annotations = None,
-        raw_output_data_config: _common_models.RawOutputDataConfig = None,
+            self,
+            name: str,
+            workflow: _annotated_workflow.Workflow,
+            parameters: _interface_models.ParameterMap,
+            fixed_inputs: _literal_models.LiteralMap,
+            schedule: _schedule_model.Schedule = None,
+            notifications: List[_common_models.Notification] = None,
+            labels: _common_models.Labels = None,
+            annotations: _common_models.Annotations = None,
+            raw_output_data_config: _common_models.RawOutputDataConfig = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -170,7 +175,6 @@ class LaunchPlan(object):
 
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None:
-            # This would literally be a copy paste of the workflow one with the one line change
             inputs = self.saved_inputs
             inputs.update(kwargs)
             return create_and_link_node(ctx, entity=self, interface=self.workflow._native_interface, **inputs)
@@ -219,3 +223,27 @@ class LaunchPlan(object):
             version=settings.version,
         )
         return self._registerable_entity
+
+
+class ReferenceLaunchPlan(ReferenceEntity, LaunchPlan):
+    def __init__(self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type],
+                 outputs: Dict[str, Type]):
+        super().__init__(_identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version, inputs, outputs)
+
+    def get_registerable_entity(self) -> SdkLaunchPlan:
+        wf_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW, "", "", "", "")
+        sdk_lp = SdkLaunchPlan(
+            workflow_id=wf_id,
+            entity_metadata=_launch_plan_models.LaunchPlanMetadata(schedule=None, notifications=[]),
+            default_inputs=_interface_models.ParameterMap({}),
+            fixed_inputs=_literal_models.LiteralMap({}),
+            labels=_common_models.Labels({}),
+            annotations=_common_models.Annotations({}),
+            auth_role=None,
+            raw_output_data_config=RawOutputDataConfig(""),
+        )
+        # Make sure we don't serialize this
+        sdk_lp._has_registered = True
+        sdk_lp.assign_name(self.reference.id.name)
+
+        self._registerable_entity = sdk_lp

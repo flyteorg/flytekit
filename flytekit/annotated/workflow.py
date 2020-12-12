@@ -15,7 +15,7 @@ from flytekit.annotated.interface import (
 )
 from flytekit.annotated.node import Node, create_and_link_node
 from flytekit.annotated.promise import Promise, create_task_output
-from flytekit.annotated.reference_task import WorkflowReference
+from flytekit.annotated.reference_entity import WorkflowReference
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
 from flytekit.common.promise import NodeOutput as _NodeOutput
