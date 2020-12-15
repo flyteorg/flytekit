@@ -1,3 +1,5 @@
+import pytest
+
 from flytekit import workflow, task
 from flytekit.annotated.condition import conditional
 
@@ -43,6 +45,5 @@ def test_condition_else_fail():
                 .fail("The input must be between 0 and 10")
         )
 
-    res = multiplier_2(my_input=10)
-    print(f"Output of multiplier_2(my_input=10): {res}")
-    assert res != 20
+    with pytest.raises(ValueError):
+        multiplier_2(my_input=10)
