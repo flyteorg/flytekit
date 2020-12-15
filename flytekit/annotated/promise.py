@@ -229,7 +229,7 @@ class ConjunctionExpression(object):
         if self.op == ConjunctionOps.OR and l_eval is True:
             return True
 
-        r_eval = self.lhs.eval()
+        r_eval = self.rhs.eval()
         if self.op == ConjunctionOps.AND:
             return l_eval and r_eval
 
