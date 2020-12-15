@@ -1,6 +1,6 @@
 import pytest
 
-from flytekit import workflow, task
+from flytekit import task, workflow
 from flytekit.annotated.condition import conditional
 
 
