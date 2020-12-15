@@ -37,12 +37,12 @@ def test_condition_else_fail():
     def multiplier_2(my_input: float) -> float:
         return (
             conditional("fractions")
-                .if_((my_input > 0.1) & (my_input < 1.0))
-                .then(double(n=my_input))
-                .elif_((my_input > 1.0) & (my_input < 10.0))
-                .then(square(n=my_input))
-                .else_()
-                .fail("The input must be between 0 and 10")
+            .if_((my_input > 0.1) & (my_input < 1.0))
+            .then(double(n=my_input))
+            .elif_((my_input > 1.0) & (my_input < 10.0))
+            .then(square(n=my_input))
+            .else_()
+            .fail("The input must be between 0 and 10")
         )
 
     with pytest.raises(ValueError):
