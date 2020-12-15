@@ -1,7 +1,7 @@
 FlyteKit
 ==============================================
 
-.. automodule:: flytekit
+.. automodule:: flytekit.sdk
     :members:
     :undoc-members:
 
