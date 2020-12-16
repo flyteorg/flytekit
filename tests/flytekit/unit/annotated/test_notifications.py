@@ -54,7 +54,7 @@ def test_with_launch_plan():
         return c
 
     lp = LaunchPlan.create(
-        "test1",
+        "notif_test",
         quadruple,
         notifications=[
             notification.Email(phases=[_workflow_execution_succeeded], recipients_email=["my-team@email.com"])
