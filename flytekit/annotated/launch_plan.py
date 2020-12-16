@@ -45,6 +45,7 @@ class LaunchPlan(object):
         workflow: _annotated_workflow.Workflow,
         default_inputs: Dict[str, Any] = None,
         fixed_inputs: Dict[str, Any] = None,
+        schedule: _schedule_model.Schedule = None,
         notifications: List[_common_models.Notification] = None,
     ) -> LaunchPlan:
         ctx = FlyteContext.current_context()
@@ -78,6 +79,7 @@ class LaunchPlan(object):
             workflow=workflow,
             parameters=wf_signature_parameters,
             fixed_inputs=fixed_lm,
+            schedule=schedule,
             notifications=notifications,
         )
 
