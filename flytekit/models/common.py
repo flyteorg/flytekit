@@ -242,7 +242,13 @@ class PagerDutyNotification(FlyteIdlEntity):
 
 
 class Notification(FlyteIdlEntity):
-    def __init__(self, phases, email=None, pager_duty=None, slack=None):
+    def __init__(
+        self,
+        phases,
+        email: EmailNotification = None,
+        pager_duty: PagerDutyNotification = None,
+        slack: SlackNotification = None,
+    ):
         """
         Represents a structure for notifications based on execution status.
 
