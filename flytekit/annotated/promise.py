@@ -384,6 +384,13 @@ def create_task_output(promises: Optional[Union[List[Promise], Promise]]) -> Opt
             val.with_overrides(*args, **kwargs)
             return self
 
+        @property
+        def ref(self):
+            for p in promises:
+                if p.ref:
+                    return p.ref
+            return None
+
     return Output(*promises)
 
 
