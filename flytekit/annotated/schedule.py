@@ -93,8 +93,8 @@ class CronSchedule(_schedule_models.Schedule):
             _croniter.croniter(" ".join(cron_expression.replace("?", "*").split()[:5]))
         except Exception:
             raise ValueError(
-                f"Scheduled string is invalid.  The cron expression was found to be invalid."
-                " Provided cron expr: {cron_expression}"
+                "Scheduled string is invalid.  The cron expression was found to be invalid."
+                f" Provided cron expr: {cron_expression}"
             )
 
     @staticmethod
@@ -104,8 +104,8 @@ class CronSchedule(_schedule_models.Schedule):
                 _croniter.croniter(schedule)
             except Exception:
                 raise ValueError(
-                    f"Schedule is invalid. It must be set to either a cron alias or valid cron expression."
-                    " Provided schedule: {schedule}"
+                    "Schedule is invalid. It must be set to either a cron alias or valid cron expression."
+                    f" Provided schedule: {schedule}"
                 )
 
     @staticmethod

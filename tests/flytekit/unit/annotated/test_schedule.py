@@ -24,10 +24,10 @@ def test_cron_karg():
 
 
 def test_cron_validation():
-    with _pytest.raises(AssertionError):
+    with _pytest.raises(ValueError):
         CronSchedule("* * * * * *", kickoff_time_input_arg="abc")
 
-    with _pytest.raises(AssertionError):
+    with _pytest.raises(ValueError):
         CronSchedule("* * ? * *", kickoff_time_input_arg="abc")
 
 
@@ -98,12 +98,12 @@ def test_cron_schedule_schedule_validation(schedule):
     "schedule", ["foo", "* *"],
 )
 def test_cron_schedule_schedule_validation_invalid(schedule):
-    with _pytest.raises(AssertionError):
+    with _pytest.raises(ValueError):
         CronSchedule(schedule=schedule, kickoff_time_input_arg="abc")
 
 
 def test_cron_schedule_offset_validation_invalid():
-    with _pytest.raises(AssertionError):
+    with _pytest.raises(ValueError):
         CronSchedule(schedule="days", offset="foo", kickoff_time_input_arg="abc")
 
 
