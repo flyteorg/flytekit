@@ -46,7 +46,7 @@ class LaunchPlan(object):
         workflow: _annotated_workflow.Workflow,
         default_inputs: Dict[str, Any] = None,
         fixed_inputs: Dict[str, Any] = None,
-        notifications: [Notification] = None,
+        notifications: List[_common_models.Notification] = None,
     ) -> LaunchPlan:
         ctx = FlyteContext.current_context()
         default_inputs = default_inputs or {}
