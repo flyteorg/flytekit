@@ -226,13 +226,70 @@ def test_lps():
         out = ref_lp(a="hello", b=3)
         print(out)
 
-    # with context_manager.FlyteContext.current_context().new_registration_settings(
-    #         registration_settings=context_manager.RegistrationSettings(
-    #             project="test_proj",
-    #             domain="test_domain",
-    #             version="abc",
-    #             image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-    #             env={},
-    #         )
-    # ) as ctx:
-    #     xx = wf2.get_registerable_entity()
+    @workflow
+    def wf1(a: str, b: int):
+        ref_lp(a=a, b=b)
+
+    with context_manager.FlyteContext.current_context().new_registration_settings(
+        registration_settings=context_manager.RegistrationSettings(
+            project="test_proj",
+            domain="test_domain",
+            version="abc",
+            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+            env={},
+        )
+    ):
+        sdk_wf = wf1.get_registerable_entity()
+        assert len(sdk_wf.interface.inputs) == 2
+        assert len(sdk_wf.interface.outputs) == 0
+        assert len(sdk_wf.nodes) == 1
+        assert sdk_wf.nodes[0].workflow_node.launchplan_ref.project == "proj"
+        assert sdk_wf.nodes[0].workflow_node.launchplan_ref.name == "app.other.lp"
+
+
+def test_lp_with_output():
+    ref_lp = get_reference_entity(
+        _identifier_model.ResourceType.LAUNCH_PLAN,
+        "proj",
+        "dom",
+        "app.other.lp",
+        "123",
+        inputs=kwtypes(a=str, b=int),
+        outputs=kwtypes(x=bool, y=int),
+    )
+
+    @task
+    def t1() -> (str, int):
+        return "hello", 88
+
+    @task
+    def t2(q: bool, r: int) -> str:
+        return f"q: {q} r: {r}"
+
+    @workflow
+    def wf1() -> str:
+        t1_str, t1_int = t1()
+        x_out, y_out = ref_lp(a=t1_str, b=t1_int)
+        return t2(q=x_out, r=y_out)
+
+    @patch(ref_lp)
+    def inner_test(ref_mock):
+        ref_mock.return_value = (False, 30)
+        x = wf1()
+        assert x == "q: False r: 30"
+        ref_mock.assert_called_with(a="hello", b=88)
+
+    inner_test()
+
+    with context_manager.FlyteContext.current_context().new_registration_settings(
+        registration_settings=context_manager.RegistrationSettings(
+            project="test_proj",
+            domain="test_domain",
+            version="abc",
+            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+            env={},
+        )
+    ):
+        sdk_wf = wf1.get_registerable_entity()
+        assert sdk_wf.nodes[1].workflow_node.launchplan_ref.project == "proj"
+        assert sdk_wf.nodes[1].workflow_node.launchplan_ref.name == "app.other.lp"

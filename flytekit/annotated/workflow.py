@@ -332,7 +332,8 @@ class ReferenceWorkflow(ReferenceEntity, Workflow):
         )
         # Make sure we don't serialize this
         self._registerable_entity._has_registered = True
-        self._registerable_entity.assign_name(self.reference.id.name)
+        self._registerable_entity.assign_name(self.id.name)
+        self._registerable_entity._id = self.id
         return self._registerable_entity
 
 

@@ -230,6 +230,8 @@ class ReferenceLaunchPlan(ReferenceEntity, LaunchPlan):
         super().__init__(_identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version, inputs, outputs)
 
     def get_registerable_entity(self) -> SdkLaunchPlan:
+        from flytekit.common.interface import TypedInterface
+
         wf_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW, "", "", "", "")
         sdk_lp = SdkLaunchPlan(
             workflow_id=wf_id,
@@ -238,11 +240,17 @@ class ReferenceLaunchPlan(ReferenceEntity, LaunchPlan):
             fixed_inputs=_literal_models.LiteralMap({}),
             labels=_common_models.Labels({}),
             annotations=_common_models.Annotations({}),
-            auth_role=None,
+            auth_role=_common_models.AuthRole(assumable_iam_role="fake:role"),
             raw_output_data_config=RawOutputDataConfig(""),
         )
+        # Because of how SdkNodes work, it needs one of these interfaces
+        # Hopefully this is more trickery that can be cleaned up in the future
+        sdk_lp._interface = TypedInterface.promote_from_model(self.typed_interface)
+        sdk_lp._id = self.id
+
         # Make sure we don't serialize this
         sdk_lp._has_registered = True
         sdk_lp.assign_name(self.reference.id.name)
-
         self._registerable_entity = sdk_lp
+
+        return self._registerable_entity
