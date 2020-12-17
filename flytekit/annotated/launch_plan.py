@@ -45,6 +45,8 @@ class LaunchPlan(object):
         workflow: _annotated_workflow.Workflow,
         default_inputs: Dict[str, Any] = None,
         fixed_inputs: Dict[str, Any] = None,
+        schedule: _schedule_model.Schedule = None,
+        notifications: List[_common_models.Notification] = None,
     ) -> LaunchPlan:
         ctx = FlyteContext.current_context()
         default_inputs = default_inputs or {}
@@ -72,7 +74,14 @@ class LaunchPlan(object):
         )
         fixed_lm = _literal_models.LiteralMap(literals=fixed_literals)
 
-        lp = cls(name=name, workflow=workflow, parameters=wf_signature_parameters, fixed_inputs=fixed_lm)
+        lp = cls(
+            name=name,
+            workflow=workflow,
+            parameters=wf_signature_parameters,
+            fixed_inputs=fixed_lm,
+            schedule=schedule,
+            notifications=notifications,
+        )
 
         # This is just a convenience - we'll need the fixed inputs LiteralMap for when serializing the Launch Plan out
         # to protobuf, but for local execution and such, why not save the original Python native values as well so
