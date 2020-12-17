@@ -1,7 +1,6 @@
 import inspect
 from typing import Callable, Optional
 
-from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.interface import transform_signature_to_interface
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.reference_entity import ReferenceEntity, TaskReference
@@ -18,10 +17,6 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
     signature of the function will be. The signature should also match the signature of the task you're referencing,
     as stored by Flyte Admin, if not, workflows using this will break upon compilation.
     """
-
-    # def __init__(self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type],
-    #              outputs: Dict[str, Type]):
-    #     super().__init__(_identifier_model.ResourceType.TASK, project, domain, name, version, inputs, outputs)
 
     def __init__(
         self,

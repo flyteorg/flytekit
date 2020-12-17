@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from typing import Dict, Type
+
 from flytekit.annotated.launch_plan import ReferenceLaunchPlan
-from flytekit.annotated.workflow import ReferenceWorkflow
 from flytekit.annotated.reference_task import ReferenceTask
+from flytekit.annotated.workflow import ReferenceWorkflow
 from flytekit.models.core import identifier as _identifier_model
 
 
