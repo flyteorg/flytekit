@@ -229,7 +229,7 @@ class ConjunctionExpression(object):
         if self.op == ConjunctionOps.OR and l_eval is True:
             return True
 
-        r_eval = self.lhs.eval()
+        r_eval = self.rhs.eval()
         if self.op == ConjunctionOps.AND:
             return l_eval and r_eval
 
@@ -383,6 +383,13 @@ def create_task_output(promises: Optional[Union[List[Promise], Promise]]) -> Opt
             val = self.__getattribute__(self._fields[0])
             val.with_overrides(*args, **kwargs)
             return self
+
+        @property
+        def ref(self):
+            for p in promises:
+                if p.ref:
+                    return p.ref
+            return None
 
     return Output(*promises)
 
