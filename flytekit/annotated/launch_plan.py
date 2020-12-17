@@ -7,17 +7,15 @@ from flytekit.annotated.context_manager import FlyteContext, FlyteEntities
 from flytekit.annotated.interface import Interface, transform_inputs_to_parameters
 from flytekit.annotated.node import create_and_link_node
 from flytekit.annotated.promise import translate_inputs_to_literals
+from flytekit.annotated.reference_entity import ReferenceEntity
 from flytekit.common.launch_plan import SdkLaunchPlan
 from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
-from flytekit.models.core import identifier as _identifier_model
-from flytekit.annotated.reference_entity import ReferenceEntity
-from flytekit.common.workflow import SdkWorkflow
-from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.common import RawOutputDataConfig
+from flytekit.models.core import identifier as _identifier_model
 
 
 class LaunchPlan(object):

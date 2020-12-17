@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 import typing
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Type
 
 import flytekit.annotated.promise
 import flytekit.annotated.type_engine
@@ -25,6 +25,8 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.annotated.reference_entity import ReferenceEntity
+
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID, metadata=None, bindings=[], upstream_nodes=[], flyte_entity=None,
@@ -183,7 +185,6 @@ class Workflow(object):
         Performs local execution of a workflow. kwargs are expected to be Promises for the most part (unless,
         someone has hardcoded in my_wf(input_1=5) or something).
         :param ctx: The FlyteContext
-        :param nested: boolean that indicates if this is a nested workflow execution (subworkflow)
         :param kwargs: parameters for the workflow itself
         """
         logger.info(f"Executing Workflow {self._name}, ctx{ctx.execution_state.Mode}")
@@ -195,14 +196,20 @@ class Workflow(object):
                 t = self._native_interface.inputs[k]
                 kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
 
-        # TODO: function_outputs are all assumed to be Promise objects produced by task calls, but can they be
-        #   other things as well? What if someone just returns 5? Should we disallow this?
-        function_outputs = self._workflow_function(**kwargs)
+        function_outputs = self.execute(**kwargs)
 
         promises = _workflow_fn_outputs_to_promise(
             ctx, self._native_interface.outputs, self.interface.outputs, function_outputs
         )
         return create_task_output(promises)
+
+    def execute(self, **kwargs):
+        """
+        This function is here only to try to streamline the pattern between workflows and tasks. Since tasks
+        call execute from dispatch_execute which is in _local_execute, workflows should also call an execute inside
+        _local_execute. This makes mocking cleaner.
+        """
+        return self._workflow_function(**kwargs)
 
     def __call__(self, *args, **kwargs):
         if len(args) > 0:
@@ -267,7 +274,7 @@ class Workflow(object):
             return self._registerable_entity
 
         workflow_id = _identifier_model.Identifier(
-            _identifier_model.ResourceType.WORKFLOW, settings._project, settings._domain, self._name, settings._version
+            _identifier_model.ResourceType.WORKFLOW, settings.project, settings.domain, self._name, settings.version
         )
 
         # Translate nodes
@@ -290,29 +297,20 @@ class Workflow(object):
         return self._registerable_entity
 
 
-class ReferenceWorkflow(Workflow):
+class ReferenceWorkflow(ReferenceEntity, Workflow):
     """
-    When you assign a name to a node.
-    * Any upstream node that is not assigned, recursively assign
-    * When you get the call to the constructor, keep in mind there may be duplicate nodes, because they all should
-      be wrapper nodes.
+    Fill in later.
     """
+    def __init__(self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type],
+                 outputs: Dict[str, Type]):
+        super().__init__(_identifier_model.ResourceType.WORKFLOW, project, domain, name, version, inputs, outputs)
 
-    def __init__(self, workflow_function: Callable, reference: WorkflowReference):
-        self._reference = reference
-        super().__init__(workflow_function)
-        self._saved_workflow_function = workflow_function
-        self._workflow_function = self.raise_exception
+    @classmethod
+    def create_from_function(cls, workflow_function: Callable, reference: WorkflowReference) -> ReferenceWorkflow:
+        interface = transform_signature_to_interface(inspect.signature(workflow_function))
 
-    @property
-    def reference(self) -> WorkflowReference:
-        return self._reference
-
-    def compile(self, **kwargs):
-        raise Exception("Cannot be compiled")
-
-    def raise_exception(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, None]:
-        raise Exception("Cannot run reference workflow locally, must use mock.")
+        return cls(reference.id.project, reference.id.domain, reference.id.name, reference.id.version,
+                   inputs=interface.inputs, outputs=interface.outputs)
 
     def get_registerable_entity(self) -> _SdkWorkflow:
         if self._registerable_entity is not None:
@@ -328,7 +326,7 @@ class ReferenceWorkflow(Workflow):
         )
         # Make sure we don't serialize this
         self._registerable_entity._has_registered = True
-
+        self._registerable_entity.assign_name(self.reference.id.name)
         return self._registerable_entity
 
 
@@ -338,7 +336,7 @@ def workflow(_workflow_function=None, *args, reference: Optional[WorkflowReferen
     # workflow is what expresses the workflow structure.
     def wrapper(fn):
         if reference:
-            workflow_instance = ReferenceWorkflow(fn, reference=reference)
+            workflow_instance = ReferenceWorkflow.create_from_function(fn, reference=reference)
             return workflow_instance
 
         workflow_instance = Workflow(fn)

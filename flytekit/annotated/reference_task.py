@@ -1,21 +1,29 @@
-from typing import Callable, Any
+import inspect
+from typing import Callable, Optional
 
 from flytekit.annotated.context_manager import FlyteContext
-from flytekit.annotated.task import metadata
+from flytekit.annotated.interface import (
+    transform_signature_to_interface,
+)
 from flytekit.annotated.python_function_task import PythonFunctionTask
+from flytekit.annotated.reference_entity import ReferenceEntity
 from flytekit.annotated.reference_entity import TaskReference
 from flytekit.annotated.task import TaskPlugins
+from flytekit.annotated.task import metadata as get_empty_metadata
 from flytekit.common.tasks.task import SdkTask
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
 
 
-class ReferenceTask(PythonFunctionTask):
+class ReferenceTask(ReferenceEntity, PythonFunctionTask):
     """
     This is a reference task, the body of the function passed in through the constructor will never be used, only the
     signature of the function will be. The signature should also match the signature of the task you're referencing,
     as stored by Flyte Admin, if not, workflows using this will break upon compilation.
     """
+    # def __init__(self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type],
+    #              outputs: Dict[str, Type]):
+    #     super().__init__(_identifier_model.ResourceType.TASK, project, domain, name, version, inputs, outputs)
 
     def __init__(
         self,
@@ -25,41 +33,27 @@ class ReferenceTask(PythonFunctionTask):
         *args,
         **kwargs,
     ):
-        self._reference = task_config
-        super().__init__(
-            task_config=task_config,
-            task_type="reference-task",
-            task_function=task_function,
-            metadata=metadata(),
-            *args,
-            **kwargs,
-        )
-        self._name = task_config.id.name
+        interface = transform_signature_to_interface(inspect.signature(task_function))
+        super().__init__(_identifier_model.ResourceType.TASK, task_config.id.project, task_config.id.domain,
+                         task_config.id.name, task_config.id.version, interface.inputs, interface.outputs)
 
-    def execute(self, **kwargs) -> Any:
-        raise Exception("Remote reference tasks cannot be run locally. You must mock this out.")
-
-    @property
-    def reference(self) -> TaskReference:
-        return self._reference
+        self._registerable_entity: Optional[SdkTask] = None
 
     def get_task_structure(self) -> SdkTask:
-        settings = FlyteContext.current_context().registration_settings
+        # settings = FlyteContext.current_context().registration_settings
+        # This is a dummy sdk task, hopefully when we clean up
         tk = SdkTask(
-            type=self.task_type,
-            metadata=self.metadata,
-            interface=self.interface,
-            custom=self.get_custom(settings),
+            type="ignore",
+            metadata=get_empty_metadata(),
+            interface=self.typed_interface,
+            custom={},
             container=None,
         )
         # Reset id to ensure it matches user input
         tk._id = self.id
         tk._has_registered = True
+        tk.assign_name(self.reference.id.name)
         return tk
-
-    @property
-    def id(self) -> _identifier_model.Identifier:
-        return self.reference.id
 
 
 TaskPlugins.register_pythontask_plugin(TaskReference, ReferenceTask)

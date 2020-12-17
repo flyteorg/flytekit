@@ -8,7 +8,7 @@ import pytest
 from dataclasses_json import dataclass_json
 
 import flytekit
-from flytekit import ContainerTask, SQLTask, WorkflowReference, dynamic, kwtypes, maptask
+from flytekit import ContainerTask, SQLTask, dynamic, kwtypes, maptask
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
@@ -960,40 +960,6 @@ def test_wf_with_catching_no_return():
 
     with pytest.raises(AssertionError):
         wf()
-
-
-def test_reference_workflow():
-    @task
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
-        a = a + 2
-        return a, "world-" + str(a)
-
-    @workflow(reference=WorkflowReference(project="proj", domain="developement", name="wf_name", version="abc"))
-    def ref_wf1(a: int) -> (str, str):
-        ...
-
-    @workflow
-    def my_wf(a: int, b: str) -> (int, str, str):
-        x, y = t1(a=a).with_overrides()
-        u, v = ref_wf1(a=x)
-        return x, u, v
-
-    with pytest.raises(Exception):
-        my_wf(a=3, b="foo")
-
-    @patch(ref_wf1)
-    def inner_test(ref_mock):
-        ref_mock.return_value = ("hello", "alice")
-        x, y, z = my_wf(a=3, b="foo")
-        assert x == 5
-        assert y == "hello"
-        assert z == "alice"
-
-    inner_test()
-
-    # Ensure that the patching is only for the duration of that test
-    with pytest.raises(Exception):
-        my_wf(a=3, b="foo")
 
 
 def test_wf_custom_types_missing_dataclass_json():

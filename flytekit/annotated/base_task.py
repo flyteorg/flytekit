@@ -277,10 +277,6 @@ class PythonTask(Task):
             elif len(expected_output_names) == 0:
                 return VoidPromise(self.name)
             else:
-                # Question: How do you know you're going to enumerate them in the correct order? Even if autonamed, will
-                # output2 come before output100 if there's a hundred outputs? We don't! We'll have to circle back to
-                # the Python task instance and inspect annotations again. Or we change the Python model representation
-                # of the interface to be an ordered dict and we fill it in correctly to begin with.
                 native_outputs_as_map = {
                     expected_output_names[i]: native_outputs[i] for i, _ in enumerate(native_outputs)
                 }
