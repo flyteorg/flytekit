@@ -29,7 +29,7 @@ def task_mock(t: PythonTask) -> MagicMock:
                # The mock is valid only within this context
     """
 
-    if not isinstance(t, PythonTask):
+    if not isinstance(t, PythonTask) and not isinstance(t, Workflow) and not isinstance(t, ReferenceEntity):
         raise Exception("Can only be used for tasks")
 
     m = MagicMock()
@@ -57,17 +57,10 @@ def patch(target: Union[PythonTask, Workflow, ReferenceEntity]):
         def new_test(*args, **kwargs):
             logger.warning(f"Invoking mock method for target: '{target.name}'")
             m = MagicMock()
-            if isinstance(target, PythonTask) or isinstance(target, ReferenceEntity):
-                saved = target.execute
-                target.execute = m
-            else:
-                saved = target._workflow_function
-                target._workflow_function = m
+            saved = target.execute
+            target.execute = m
             results = test_fn(m, *args, **kwargs)
-            if isinstance(target, PythonTask) or isinstance(target, ReferenceEntity):
-                target.execute = saved
-            else:
-                target._workflow_function = saved
+            target.execute = saved
             return results
 
         return new_test
