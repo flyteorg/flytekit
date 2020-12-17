@@ -1,26 +1,21 @@
 from typing import Any, Dict, Tuple, Type, Union
 
-from flytekit.annotated.context_manager import (
-    BranchEvalMode,
-    ExecutionState,
-    FlyteContext,
-)
-from flytekit.annotated.interface import Interface
+from flytekit.annotated.context_manager import BranchEvalMode, ExecutionState, FlyteContext
+from flytekit.annotated.interface import Interface, transform_interface_to_typed_interface
+from flytekit.annotated.node import create_and_link_node
 from flytekit.annotated.promise import Promise, VoidPromise, create_task_output, translate_inputs_to_literals
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
+from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import identifier as _identifier_model
-from flytekit.annotated.node import create_and_link_node
-from flytekit.annotated.interface import Interface, transform_interface_to_typed_interface
-from flytekit.models import interface as _interface_models
 
 
 class Reference(object):
     def __init__(
-            self, resource_type: int, project: str, domain: str, name: str, version: str, *args, **kwargs,
+        self, resource_type: int, project: str, domain: str, name: str, version: str, *args, **kwargs,
     ):
         self._id = _identifier_model.Identifier(resource_type, project, domain, name, version)
 
@@ -31,7 +26,7 @@ class Reference(object):
 
 class TaskReference(Reference):
     def __init__(
-            self, project: str, domain: str, name: str, version: str, *args, **kwargs,
+        self, project: str, domain: str, name: str, version: str, *args, **kwargs,
     ):
         super().__init__(_identifier_model.ResourceType.TASK, project, domain, name, version, *args, **kwargs)
 
@@ -51,8 +46,16 @@ class WorkflowReference(Reference):
 
 
 class ReferenceEntity(object):
-    def __init__(self, resource_type, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type],
-                 outputs: Dict[str, Type]):
+    def __init__(
+        self,
+        resource_type,
+        project: str,
+        domain: str,
+        name: str,
+        version: str,
+        inputs: Dict[str, Type],
+        outputs: Dict[str, Type],
+    ):
 
         self._interface = Interface(inputs=inputs, outputs=outputs)
         self._typed_interface = transform_interface_to_typed_interface(self._interface)
@@ -114,9 +117,7 @@ class ReferenceEntity(object):
         elif len(expected_output_names) == 0:
             native_outputs_as_map = {}
         else:
-            native_outputs_as_map = {
-                expected_output_names[i]: native_outputs[i] for i, _ in enumerate(native_outputs)
-            }
+            native_outputs_as_map = {expected_output_names[i]: native_outputs[i] for i, _ in enumerate(native_outputs)}
 
         # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
         # built into the IDL that all the values of a literal map are of the same type.
@@ -163,12 +164,7 @@ class ReferenceEntity(object):
         return create_task_output(vals)
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
-        return create_and_link_node(
-            ctx,
-            entity=self,
-            interface=self.interface,
-            **kwargs,
-        )
+        return create_and_link_node(ctx, entity=self, interface=self.interface, **kwargs,)
 
     def __call__(self, *args, **kwargs):
         # When a Task is () aka __called__, there are three things we may do:

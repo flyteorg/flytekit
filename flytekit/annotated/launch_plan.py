@@ -42,12 +42,12 @@ class LaunchPlan(object):
 
     @classmethod
     def create(
-            cls,
-            name: str,
-            workflow: _annotated_workflow.Workflow,
-            default_inputs: Dict[str, Any] = None,
-            fixed_inputs: Dict[str, Any] = None,
-            # TODO: Add schedule, notifications, overridding auth role
+        cls,
+        name: str,
+        workflow: _annotated_workflow.Workflow,
+        default_inputs: Dict[str, Any] = None,
+        fixed_inputs: Dict[str, Any] = None,
+        # TODO: Add schedule, notifications, overridding auth role
     ) -> LaunchPlan:
         ctx = FlyteContext.current_context()
         default_inputs = default_inputs or {}
@@ -90,16 +90,16 @@ class LaunchPlan(object):
 
     # TODO: Add QoS after it's done
     def __init__(
-            self,
-            name: str,
-            workflow: _annotated_workflow.Workflow,
-            parameters: _interface_models.ParameterMap,
-            fixed_inputs: _literal_models.LiteralMap,
-            schedule: _schedule_model.Schedule = None,
-            notifications: List[_common_models.Notification] = None,
-            labels: _common_models.Labels = None,
-            annotations: _common_models.Annotations = None,
-            raw_output_data_config: _common_models.RawOutputDataConfig = None,
+        self,
+        name: str,
+        workflow: _annotated_workflow.Workflow,
+        parameters: _interface_models.ParameterMap,
+        fixed_inputs: _literal_models.LiteralMap,
+        schedule: _schedule_model.Schedule = None,
+        notifications: List[_common_models.Notification] = None,
+        labels: _common_models.Labels = None,
+        annotations: _common_models.Annotations = None,
+        raw_output_data_config: _common_models.RawOutputDataConfig = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -224,8 +224,9 @@ class LaunchPlan(object):
 
 
 class ReferenceLaunchPlan(ReferenceEntity, LaunchPlan):
-    def __init__(self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type],
-                 outputs: Dict[str, Type]):
+    def __init__(
+        self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
+    ):
         super().__init__(_identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version, inputs, outputs)
 
     def get_registerable_entity(self) -> SdkLaunchPlan:

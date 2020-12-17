@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 import typing
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Type
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import flytekit.annotated.promise
 import flytekit.annotated.type_engine
@@ -15,7 +15,7 @@ from flytekit.annotated.interface import (
 )
 from flytekit.annotated.node import Node, create_and_link_node
 from flytekit.annotated.promise import Promise, create_task_output
-from flytekit.annotated.reference_entity import WorkflowReference
+from flytekit.annotated.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
 from flytekit.common.promise import NodeOutput as _NodeOutput
@@ -25,8 +25,6 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.annotated.reference_entity import ReferenceEntity
-
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID, metadata=None, bindings=[], upstream_nodes=[], flyte_entity=None,
@@ -301,16 +299,24 @@ class ReferenceWorkflow(ReferenceEntity, Workflow):
     """
     Fill in later.
     """
-    def __init__(self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type],
-                 outputs: Dict[str, Type]):
+
+    def __init__(
+        self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
+    ):
         super().__init__(_identifier_model.ResourceType.WORKFLOW, project, domain, name, version, inputs, outputs)
 
     @classmethod
     def create_from_function(cls, workflow_function: Callable, reference: WorkflowReference) -> ReferenceWorkflow:
         interface = transform_signature_to_interface(inspect.signature(workflow_function))
 
-        return cls(reference.id.project, reference.id.domain, reference.id.name, reference.id.version,
-                   inputs=interface.inputs, outputs=interface.outputs)
+        return cls(
+            reference.id.project,
+            reference.id.domain,
+            reference.id.name,
+            reference.id.version,
+            inputs=interface.inputs,
+            outputs=interface.outputs,
+        )
 
     def get_registerable_entity(self) -> _SdkWorkflow:
         if self._registerable_entity is not None:

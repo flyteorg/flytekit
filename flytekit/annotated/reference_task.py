@@ -2,12 +2,9 @@ import inspect
 from typing import Callable, Optional
 
 from flytekit.annotated.context_manager import FlyteContext
-from flytekit.annotated.interface import (
-    transform_signature_to_interface,
-)
+from flytekit.annotated.interface import transform_signature_to_interface
 from flytekit.annotated.python_function_task import PythonFunctionTask
-from flytekit.annotated.reference_entity import ReferenceEntity
-from flytekit.annotated.reference_entity import TaskReference
+from flytekit.annotated.reference_entity import ReferenceEntity, TaskReference
 from flytekit.annotated.task import TaskPlugins
 from flytekit.annotated.task import metadata as get_empty_metadata
 from flytekit.common.tasks.task import SdkTask
@@ -21,6 +18,7 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
     signature of the function will be. The signature should also match the signature of the task you're referencing,
     as stored by Flyte Admin, if not, workflows using this will break upon compilation.
     """
+
     # def __init__(self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type],
     #              outputs: Dict[str, Type]):
     #     super().__init__(_identifier_model.ResourceType.TASK, project, domain, name, version, inputs, outputs)
@@ -34,8 +32,15 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
         **kwargs,
     ):
         interface = transform_signature_to_interface(inspect.signature(task_function))
-        super().__init__(_identifier_model.ResourceType.TASK, task_config.id.project, task_config.id.domain,
-                         task_config.id.name, task_config.id.version, interface.inputs, interface.outputs)
+        super().__init__(
+            _identifier_model.ResourceType.TASK,
+            task_config.id.project,
+            task_config.id.domain,
+            task_config.id.name,
+            task_config.id.version,
+            interface.inputs,
+            interface.outputs,
+        )
 
         self._registerable_entity: Optional[SdkTask] = None
 
@@ -43,11 +48,7 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
         # settings = FlyteContext.current_context().registration_settings
         # This is a dummy sdk task, hopefully when we clean up
         tk = SdkTask(
-            type="ignore",
-            metadata=get_empty_metadata(),
-            interface=self.typed_interface,
-            custom={},
-            container=None,
+            type="ignore", metadata=get_empty_metadata(), interface=self.typed_interface, custom={}, container=None,
         )
         # Reset id to ensure it matches user input
         tk._id = self.id

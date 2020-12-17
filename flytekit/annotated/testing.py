@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 
 from flytekit import logger
 from flytekit.annotated.base_task import PythonTask
-from flytekit.annotated.workflow import Workflow
 from flytekit.annotated.reference_entity import ReferenceEntity
+from flytekit.annotated.workflow import Workflow
 
 
 @contextmanager
@@ -45,8 +45,11 @@ def task_mock(t: PythonTask) -> MagicMock:
 
 
 def patch(target: Union[PythonTask, Workflow, ReferenceEntity]):
-    if not isinstance(target, PythonTask) and not isinstance(target, Workflow) and not \
-            isinstance(target, ReferenceEntity):
+    if (
+        not isinstance(target, PythonTask)
+        and not isinstance(target, Workflow)
+        and not isinstance(target, ReferenceEntity)
+    ):
 
         raise Exception("Can only use mocks on tasks/workflows declared in Python.")
 

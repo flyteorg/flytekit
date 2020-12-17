@@ -6,13 +6,11 @@ from flytekit import WorkflowReference, kwtypes
 from flytekit.annotated import context_manager
 from flytekit.annotated.context_manager import Image, ImageConfig
 from flytekit.annotated.reference import get_reference_entity
-from flytekit.annotated.reference_entity import TaskReference
+from flytekit.annotated.reference_entity import ReferenceEntity, TaskReference
 from flytekit.annotated.task import task
-from flytekit.annotated.testing import patch
-from flytekit.annotated.testing import task_mock
+from flytekit.annotated.testing import patch, task_mock
 from flytekit.annotated.workflow import workflow
 from flytekit.models.core import identifier as _identifier_model
-from flytekit.annotated.reference_entity import ReferenceEntity
 
 
 def test_ref():
@@ -42,7 +40,7 @@ def test_ref():
         service_account=None,
     )
     with context_manager.FlyteContext.current_context().new_registration_settings(
-            registration_settings=registration_settings
+        registration_settings=registration_settings
     ):
         sdk_task = ref_t1.get_registerable_entity()
         assert sdk_task.has_registered
@@ -112,8 +110,15 @@ def test_reference_workflow():
 
 
 def test_ref_plain_no_outputs():
-    r1 = ReferenceEntity(_identifier_model.ResourceType.TASK, "proj", "domain", "some.name", "abc",
-                         inputs=kwtypes(a=str, b=int), outputs={})
+    r1 = ReferenceEntity(
+        _identifier_model.ResourceType.TASK,
+        "proj",
+        "domain",
+        "some.name",
+        "abc",
+        inputs=kwtypes(a=str, b=int),
+        outputs={},
+    )
 
     # Reference entities should always raise an exception when not mocked out.
     with pytest.raises(Exception) as e:
@@ -149,7 +154,7 @@ def test_ref_plain_no_outputs():
         ref_mock.return_value = None
         x = wf2(a=3)
         assert x is None
-        ref_mock.assert_called_with(a='world-5', b=5)
+        ref_mock.assert_called_with(a="world-5", b=5)
 
     inner_test2()
 
@@ -159,17 +164,24 @@ def test_ref_plain_no_outputs():
 
 
 def test_ref_plain_two_outputs():
-    r1 = ReferenceEntity(_identifier_model.ResourceType.TASK, "proj", "domain", "some.name", "abc",
-                         inputs=kwtypes(a=str, b=int), outputs=kwtypes(x=bool, y=int))
+    r1 = ReferenceEntity(
+        _identifier_model.ResourceType.TASK,
+        "proj",
+        "domain",
+        "some.name",
+        "abc",
+        inputs=kwtypes(a=str, b=int),
+        outputs=kwtypes(x=bool, y=int),
+    )
 
     ctx = context_manager.FlyteContext.current_context()
     with ctx.new_compilation_context():
         xx, yy = r1(a="five", b=6)
         # Note - misnomer, these are not SdkNodes, they are annotated.Nodes
         assert xx.ref.sdk_node is yy.ref.sdk_node
-        assert xx.var == 'x'
-        assert yy.var == 'y'
-        assert xx.ref.node_id == 'node-0'
+        assert xx.var == "x"
+        assert yy.var == "y"
+        assert xx.ref.node_id == "node-0"
         assert len(xx.ref.sdk_node.bindings) == 2
 
     @task
@@ -191,8 +203,15 @@ def test_ref_plain_two_outputs():
 
 
 def test_lps():
-    ref_lp = get_reference_entity(_identifier_model.ResourceType.LAUNCH_PLAN, "proj", "dom", "app.other.lp", "123",
-                                  inputs=kwtypes(a=str, b=int), outputs={})
+    ref_lp = get_reference_entity(
+        _identifier_model.ResourceType.LAUNCH_PLAN,
+        "proj",
+        "dom",
+        "app.other.lp",
+        "123",
+        inputs=kwtypes(a=str, b=int),
+        outputs={},
+    )
 
     ctx = context_manager.FlyteContext.current_context()
     with pytest.raises(Exception) as e:
