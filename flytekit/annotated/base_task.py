@@ -119,8 +119,6 @@ class Task(object):
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
         outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
-        if isinstance(outputs_literal_map, VoidPromise):
-            return outputs_literal_map
         outputs_literals = outputs_literal_map.literals
 
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
@@ -130,6 +128,10 @@ class Task(object):
         if len(output_names) != len(outputs_literals):
             # Length check, clean up exception
             raise AssertionError(f"Length difference {len(output_names)} {len(outputs_literals)}")
+
+        # Tasks that don't return anything still return a VoidPromise
+        if len(output_names) == 0:
+            return VoidPromise(self.name)
 
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
         return create_task_output(vals)
@@ -275,7 +277,7 @@ class PythonTask(Task):
             if len(expected_output_names) == 1:
                 native_outputs_as_map = {expected_output_names[0]: native_outputs}
             elif len(expected_output_names) == 0:
-                return VoidPromise(self.name)
+                native_outputs_as_map = {}
             else:
                 # Question: How do you know you're going to enumerate them in the correct order? Even if autonamed, will
                 # output2 come before output100 if there's a hundred outputs? We don't! We'll have to circle back to
