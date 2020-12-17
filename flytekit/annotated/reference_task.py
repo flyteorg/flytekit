@@ -1,5 +1,5 @@
 import inspect
-from typing import Callable, Optional
+from typing import Callable, Dict, Optional, Type
 
 from flytekit.annotated.interface import transform_signature_to_interface
 from flytekit.annotated.python_function_task import PythonFunctionTask
@@ -26,6 +26,10 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
         *args,
         **kwargs,
     ):
+        """
+        The signature for this function is different than the other Reference Entities because it's how the task
+        plugins will call it.
+        """
         interface = transform_signature_to_interface(inspect.signature(task_function))
         super().__init__(
             _identifier_model.ResourceType.TASK,
@@ -38,6 +42,19 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
         )
 
         self._registerable_entity: Optional[SdkTask] = None
+
+    @classmethod
+    def create_from_get_entity(
+        cls, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
+    ):
+        def dummy():
+            ...
+
+        task_reference = TaskReference(project, domain, name, version)
+        rt = cls(task_config=task_reference, task_function=dummy, ignored_metadata=None)
+        # Override the dummy function's interface.
+        rt.reset_interface(inputs, outputs)
+        return rt
 
     def get_task_structure(self) -> SdkTask:
         # settings = FlyteContext.current_context().registration_settings

@@ -303,6 +303,7 @@ class ReferenceWorkflow(ReferenceEntity, Workflow):
     def __init__(
         self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
     ):
+        self._registerable_entity: Optional[_SdkWorkflow] = None
         super().__init__(_identifier_model.ResourceType.WORKFLOW, project, domain, name, version, inputs, outputs)
 
     @classmethod
@@ -327,8 +328,8 @@ class ReferenceWorkflow(ReferenceEntity, Workflow):
             id=self.reference.id,
             metadata=_workflow_model.WorkflowMetadata(),
             metadata_defaults=_workflow_model.WorkflowMetadataDefaults(),
-            interface=self._interface,
-            output_bindings=self._output_bindings,
+            interface=self.typed_interface,
+            output_bindings=[],
         )
         # Make sure we don't serialize this
         self._registerable_entity._has_registered = True

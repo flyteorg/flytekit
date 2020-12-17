@@ -30,6 +30,20 @@ def test_ref():
     assert ref_t1.id.name == "recipes.aaa.simple.join_strings"
     assert ref_t1.id.version == "553018f39e519bdb2597b652639c30ce16b99c79"
 
+    with context_manager.FlyteContext.current_context().new_registration_settings(
+        registration_settings=context_manager.RegistrationSettings(
+            project="test_proj",
+            domain="test_domain",
+            version="abc",
+            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+            env={},
+        )
+    ):
+        ss = ref_t1.get_registerable_entity()
+        assert ss.id == ref_t1.id
+        assert ss.interface.inputs["a"] is not None
+        assert ss.interface.outputs["out_0"] is not None
+
     registration_settings = context_manager.RegistrationSettings(
         project="proj",
         domain="dom",
@@ -202,33 +216,35 @@ def test_ref_plain_two_outputs():
     inner_test()
 
 
-def test_lps():
-    ref_lp = get_reference_entity(
+@pytest.mark.parametrize(
+    "resource_type",
+    [
         _identifier_model.ResourceType.LAUNCH_PLAN,
-        "proj",
-        "dom",
-        "app.other.lp",
-        "123",
-        inputs=kwtypes(a=str, b=int),
-        outputs={},
+        _identifier_model.ResourceType.TASK,
+        _identifier_model.ResourceType.WORKFLOW,
+    ],
+)
+def test_lps(resource_type):
+    ref_entity = get_reference_entity(
+        resource_type, "proj", "dom", "app.other.flyte_entity", "123", inputs=kwtypes(a=str, b=int), outputs={},
     )
 
     ctx = context_manager.FlyteContext.current_context()
     with pytest.raises(Exception) as e:
-        ref_lp()
+        ref_entity()
     assert "You must mock this out" in f"{e}"
 
     with ctx.new_compilation_context() as ctx:
         with pytest.raises(Exception) as e:
-            ref_lp()
+            ref_entity()
         assert "Input was not specified" in f"{e}"
 
-        out = ref_lp(a="hello", b=3)
+        out = ref_entity(a="hello", b=3)
         print(out)
 
     @workflow
     def wf1(a: str, b: int):
-        ref_lp(a=a, b=b)
+        ref_entity(a=a, b=b)
 
     with context_manager.FlyteContext.current_context().new_registration_settings(
         registration_settings=context_manager.RegistrationSettings(
@@ -243,8 +259,15 @@ def test_lps():
         assert len(sdk_wf.interface.inputs) == 2
         assert len(sdk_wf.interface.outputs) == 0
         assert len(sdk_wf.nodes) == 1
-        assert sdk_wf.nodes[0].workflow_node.launchplan_ref.project == "proj"
-        assert sdk_wf.nodes[0].workflow_node.launchplan_ref.name == "app.other.lp"
+        if resource_type == _identifier_model.ResourceType.LAUNCH_PLAN:
+            assert sdk_wf.nodes[0].workflow_node.launchplan_ref.project == "proj"
+            assert sdk_wf.nodes[0].workflow_node.launchplan_ref.name == "app.other.flyte_entity"
+        elif resource_type == _identifier_model.ResourceType.WORKFLOW:
+            assert sdk_wf.nodes[0].workflow_node.sub_workflow_ref.project == "proj"
+            assert sdk_wf.nodes[0].workflow_node.sub_workflow_ref.name == "app.other.flyte_entity"
+        else:
+            assert sdk_wf.nodes[0].task_node.reference_id.project == "proj"
+            assert sdk_wf.nodes[0].task_node.reference_id.name == "app.other.flyte_entity"
 
 
 def test_lp_with_output():
@@ -252,7 +275,7 @@ def test_lp_with_output():
         _identifier_model.ResourceType.LAUNCH_PLAN,
         "proj",
         "dom",
-        "app.other.lp",
+        "app.other.flyte_entity",
         "123",
         inputs=kwtypes(a=str, b=int),
         outputs=kwtypes(x=bool, y=int),
@@ -292,4 +315,4 @@ def test_lp_with_output():
     ):
         sdk_wf = wf1.get_registerable_entity()
         assert sdk_wf.nodes[1].workflow_node.launchplan_ref.project == "proj"
-        assert sdk_wf.nodes[1].workflow_node.launchplan_ref.name == "app.other.lp"
+        assert sdk_wf.nodes[1].workflow_node.launchplan_ref.name == "app.other.flyte_entity"

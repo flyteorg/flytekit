@@ -72,6 +72,10 @@ class ReferenceEntity(object):
     def execute(self, **kwargs) -> Any:
         raise Exception("Remote reference entities cannot be run locally. You must mock this out.")
 
+    def reset_interface(self, inputs: Dict[str, Type], outputs: Dict[str, Type]):
+        self._interface = Interface(inputs=inputs, outputs=outputs)
+        self._typed_interface = transform_interface_to_typed_interface(self._interface)
+
     @property
     def interface(self) -> Interface:
         return self._interface
