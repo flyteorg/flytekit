@@ -158,6 +158,7 @@ class Schedule(_common.FlyteIdlEntity):
         :param flyteidl.admin.schedule_pb2.Schedule pb2_object:
         :rtype: Schedule
         """
+        # Explicitly instantiate a Schedule model rather than a potential sub-class.
         return Schedule(
             pb2_object.kickoff_time_input_arg,
             cron_expression=pb2_object.cron_expression if pb2_object.HasField("cron_expression") else None,

@@ -6,6 +6,7 @@ import croniter as _croniter
 from flytekit.models import schedule as _schedule_models
 
 
+# Duplicates flytekit.common.schedules.Schedule to avoid using the ExtendedSdkType metaclass.
 class CronSchedule(_schedule_models.Schedule):
     _VALID_CRON_ALIASES = [
         "hourly",

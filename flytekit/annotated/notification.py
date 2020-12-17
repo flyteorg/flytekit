@@ -4,6 +4,7 @@ from flytekit.models import common as _common_model
 from flytekit.models.core import execution as _execution_model
 
 
+# Duplicates flytekit.common.notifications.Notification to avoid using the ExtendedSdkType metaclass.
 class Notification(_common_model.Notification):
 
     VALID_PHASES = {
