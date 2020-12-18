@@ -63,7 +63,7 @@ class ContainerTask(PythonTask):
         return None
 
     def get_container(self, settings: RegistrationSettings) -> _task_model.Container:
-        env = settings.env
+        env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
             image=self._image,
             command=self._cmd,

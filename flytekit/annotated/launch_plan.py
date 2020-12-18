@@ -47,6 +47,7 @@ class LaunchPlan(object):
         fixed_inputs: Dict[str, Any] = None,
         schedule: _schedule_model.Schedule = None,
         notifications: List[_common_models.Notification] = None,
+        auth_role: _common_models.AuthRole = None,
     ) -> LaunchPlan:
         ctx = FlyteContext.current_context()
         default_inputs = default_inputs or {}
@@ -81,6 +82,7 @@ class LaunchPlan(object):
             fixed_inputs=fixed_lm,
             schedule=schedule,
             notifications=notifications,
+            auth_role=auth_role,
         )
 
         # This is just a convenience - we'll need the fixed inputs LiteralMap for when serializing the Launch Plan out
@@ -106,6 +108,7 @@ class LaunchPlan(object):
         labels: _common_models.Labels = None,
         annotations: _common_models.Annotations = None,
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
+        auth_role: _common_models.AuthRole = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -123,6 +126,7 @@ class LaunchPlan(object):
         self._labels = labels
         self._annotations = annotations
         self._raw_output_data_config = raw_output_data_config
+        self._auth_role = auth_role
 
         # This will eventually hold the registerable launch plan
         self._registerable_entity: Optional[SdkLaunchPlan] = None
@@ -195,7 +199,9 @@ class LaunchPlan(object):
         if self._registerable_entity is not None:
             return self._registerable_entity
 
-        if settings.iam_role:
+        if self._auth_role:
+            auth_role = self._auth_role
+        elif settings.iam_role:
             auth_role = _common_models.AuthRole(assumable_iam_role=settings.iam_role)
         elif settings.service_account:
             auth_role = _common_models.AuthRole(kubernetes_service_account=settings.service_account)
