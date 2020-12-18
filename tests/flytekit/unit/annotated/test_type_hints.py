@@ -1227,7 +1227,6 @@ def test_resources():
     ) as ctx:
         with ctx.new_compilation_context():
             sdk_task = t1.get_registerable_entity()
-            print("sdk_task {}".format(sdk_task))
             assert sdk_task.container.resources.requests == [
                 _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "1")
             ]
