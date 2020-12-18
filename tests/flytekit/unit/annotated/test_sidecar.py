@@ -33,7 +33,7 @@ def test_sidecar_task():
             project="project",
             domain="domain",
             version="version",
-            env={"foo": "bar"},
+            env={"FOO": "baz"},
             image_config=ImageConfig(default_image=default_img, images=[default_img]),
         )
     )
@@ -55,11 +55,10 @@ def test_sidecar_task():
         "{{.rawOutputDataPrefix}}",
     ]
     assert primary_container["volumeMounts"] == [{"mountPath": "some/where", "name": "volume mount"}]
-    assert {"name": "foo", "value": "bar"} in primary_container["env"]
     assert primary_container["resources"] == {
         "requests": {"cpu": {"string": "10"}},
         "limits": {"gpu": {"string": "2"}},
     }
-    assert primary_container["env"] == [{"name": "foo", "value": "bar"}]
+    assert primary_container["env"] == [{"name": "FOO", "value": "bar"}]
     assert custom["podSpec"]["containers"][1]["name"] == "another container"
     assert custom["primaryContainerName"] == "a container"
