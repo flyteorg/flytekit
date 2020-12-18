@@ -210,6 +210,7 @@ class PythonTask(Task):
     ):
         super().__init__(task_type, name, transform_interface_to_typed_interface(interface), metadata)
         self._python_interface = interface
+        self._environment = kwargs.get("environment", {})
 
     # TODO lets call this interface and the other as flyte_interface?
     @property
@@ -318,3 +319,7 @@ class PythonTask(Task):
             return self._registerable_entity
         self._registerable_entity = self.get_task_structure()
         return self._registerable_entity
+
+    @property
+    def environment(self) -> Dict[str, str]:
+        return self._environment

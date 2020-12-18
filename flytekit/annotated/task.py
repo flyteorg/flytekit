@@ -92,7 +92,7 @@ def task(
     deprecated: str = "",
     timeout: Union[_datetime.timedelta, int] = 0,
     container_image: Optional[str] = None,
-    environment: Dict[str, str] = None,  # TODO: Ketan - what do we do with this?  Not sure how to use kwargs
+    environment: Dict[str, str] = None,
     *args,
     **kwargs,
 ) -> Union[Callable, PythonFunctionTask]:

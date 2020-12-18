@@ -1,6 +1,7 @@
 from k8s.io.api.core.v1 import generated_pb2
 
 from flytekit.annotated.context_manager import Image, ImageConfig, RegistrationSettings
+from flytekit.annotated.resources import Resources
 from flytekit.annotated.task import task
 from flytekit.taskplugins.sidecar.task import Sidecar, SidecarFunctionTask
 
@@ -18,7 +19,7 @@ def get_pod_spec():
 def test_sidecar_task():
     sidecar = Sidecar(pod_spec=get_pod_spec(), primary_container_name="a container")
 
-    @task(task_config=sidecar, cpu_request="10", gpu_limit="2")
+    @task(task_config=sidecar, requests=Resources(cpu="10"), limits=Resources(gpu="2"), environment={"FOO": "bar"})
     def simple_sidecar_task(i: int):
         pass
 
@@ -59,5 +60,6 @@ def test_sidecar_task():
         "requests": {"cpu": {"string": "10"}},
         "limits": {"gpu": {"string": "2"}},
     }
+    assert primary_container["env"] == [{"name": "foo", "value": "bar"}]
     assert custom["podSpec"]["containers"][1]["name"] == "another container"
     assert custom["primaryContainerName"] == "a container"
