@@ -157,7 +157,7 @@ def task(
         _metadata = metadata(cache, cache_version, retries, interruptible, deprecated, _timeout)
 
         task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
-            task_config, fn, _metadata, container_image=container_image, *args, **kwargs
+            task_config, fn, _metadata, container_image=container_image, environment=environment, *args, **kwargs
         )
 
         return task_instance

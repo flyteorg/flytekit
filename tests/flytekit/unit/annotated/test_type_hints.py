@@ -13,6 +13,7 @@ from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
 from flytekit.annotated.promise import Promise
+from flytekit.annotated.resources import Resources
 from flytekit.annotated.task import metadata, task
 from flytekit.annotated.testing import patch, task_mock
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
@@ -22,6 +23,7 @@ from flytekit.common.promise import NodeOutput
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
+from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.plugins import pyspark
 from flytekit.taskplugins.spark import Spark
@@ -1176,3 +1178,60 @@ def test_spark_dataframe_input():
     reader = x.open()
     df2 = reader.all()
     assert df2 is not None
+
+
+def test_environment():
+    @task(environment={"FOO": "foofoo", "BAZ": "baz"})
+    def t1(a: int) -> str:
+        a = a + 2
+        return "now it's " + str(a)
+
+    @workflow
+    def my_wf(a: int) -> str:
+        x = t1(a=a)
+        return x
+
+    with context_manager.FlyteContext.current_context().new_registration_settings(
+        registration_settings=context_manager.RegistrationSettings(
+            project="test_proj",
+            domain="test_domain",
+            version="abc",
+            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+            env={"FOO": "foo", "BAR": "bar"},
+        )
+    ) as ctx:
+        with ctx.new_compilation_context():
+            sdk_task = t1.get_registerable_entity()
+            assert sdk_task.container.env == {"FOO": "foofoo", "BAR": "bar", "BAZ": "baz"}
+
+
+def test_resources():
+    @task(requests=Resources(cpu="1"), limits=Resources(cpu="2", mem="400M"))
+    def t1(a: int) -> str:
+        a = a + 2
+        return "now it's " + str(a)
+
+    @workflow
+    def my_wf(a: int) -> str:
+        x = t1(a=a)
+        return x
+
+    with context_manager.FlyteContext.current_context().new_registration_settings(
+        registration_settings=context_manager.RegistrationSettings(
+            project="test_proj",
+            domain="test_domain",
+            version="abc",
+            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+            env={},
+        )
+    ) as ctx:
+        with ctx.new_compilation_context():
+            sdk_task = t1.get_registerable_entity()
+            print("sdk_task {}".format(sdk_task))
+            assert sdk_task.container.resources.requests == [
+                _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "1")
+            ]
+            assert sdk_task.container.resources.limits == [
+                _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "2"),
+                _resource_models.ResourceEntry(_resource_models.ResourceName.MEMORY, "400M"),
+            ]
