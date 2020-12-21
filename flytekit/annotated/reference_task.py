@@ -11,6 +11,10 @@ from flytekit.models.core import identifier as _identifier_model
 
 
 class Reference(object):
+    @classmethod
+    def from_id(cls, id: _identifier_model.Identifier, *args: Any, **kwargs: Any):
+        return cls(id.project, id.domain, id.name, id.version, *args, **kwargs)
+
     def __init__(
         self, type: int, project: str, domain: str, name: str, version: str, *args, **kwargs,
     ):
