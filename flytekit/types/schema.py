@@ -299,7 +299,7 @@ class FlyteSchema(object):
 
 
 class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
-    _SUPPORTED_TYPES: typing.Dict[type : SchemaType.SchemaColumn.SchemaColumnType] = {
+    _SUPPORTED_TYPES: typing.Dict[SchemaType.SchemaColumn.SchemaColumnType] = {
         _np.int32: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
         _np.int64: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
         _np.uint32: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
