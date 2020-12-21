@@ -51,7 +51,7 @@ class FlyteFile(os.PathLike):
       If you specify a PathLike as an input, the task will receive a PathLike at task start, and you can open() it as
       normal. However, since we want to control when files are downloaded, Flyte provides its own PathLike object.
 
-        from flytekit import typing as flytekit_typing
+        from flytekit import types as flytekit_typing
 
         def t1(in1: flytekit_typing.FlyteFile) -> str:
             with open(in1, 'r') as fh:
