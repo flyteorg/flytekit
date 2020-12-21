@@ -304,7 +304,7 @@ class ReferenceWorkflow(ReferenceEntity, Workflow):
         self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
     ):
         self._registerable_entity: Optional[_SdkWorkflow] = None
-        super().__init__(_identifier_model.ResourceType.WORKFLOW, project, domain, name, version, inputs, outputs)
+        super().__init__(WorkflowReference(project, domain, name, version), inputs, outputs)
 
     @classmethod
     def create_from_function(cls, workflow_function: Callable, reference: WorkflowReference) -> ReferenceWorkflow:

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any, Dict, Tuple, Type, Union
 
 from flytekit.annotated.context_manager import BranchEvalMode, ExecutionState, FlyteContext
@@ -13,61 +14,68 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import identifier as _identifier_model
 
 
-class Reference(object):
-    def __init__(
-        self, resource_type: int, project: str, domain: str, name: str, version: str, *args, **kwargs,
-    ):
-        self._id = _identifier_model.Identifier(resource_type, project, domain, name, version)
+@dataclass
+class Reference:
+    project: str
+    domain: str
+    name: str
+    version: str
+    resource_type: int  # Has to be last
+
+    def __post_init__(self):
+        self._id = _identifier_model.Identifier(self.resource_type, self.project, self.domain, self.name, self.version)
 
     @property
     def id(self) -> _identifier_model.Identifier:
         return self._id
 
 
+@dataclass
 class TaskReference(Reference):
-    def __init__(
-        self, project: str, domain: str, name: str, version: str, *args, **kwargs,
-    ):
-        super().__init__(_identifier_model.ResourceType.TASK, project, domain, name, version, *args, **kwargs)
+    # Be great if we can just hide this completely and not expose it at all to the user but not sure how to freeze
+    # just one field of the class
+    resource_type: int = _identifier_model.ResourceType.TASK
+
+    def __post_init__(self):
+        # Don't know how to enforce defaults other than an explicit check.
+        assert self.resource_type == _identifier_model.ResourceType.TASK
+        super().__post_init__()
 
 
+@dataclass
 class LaunchPlanReference(Reference):
-    def __init__(
-        self, project: str, domain: str, name: str, version: str, *args, **kwargs,
-    ):
-        super().__init__(_identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version, *args, **kwargs)
+    resource_type: int = _identifier_model.ResourceType.LAUNCH_PLAN
+
+    def __post_init__(self):
+        assert self.resource_type == _identifier_model.ResourceType.LAUNCH_PLAN
+        super().__post_init__()
 
 
+@dataclass
 class WorkflowReference(Reference):
-    def __init__(
-        self, project: str, domain: str, name: str, version: str, *args, **kwargs,
-    ):
-        super().__init__(_identifier_model.ResourceType.WORKFLOW, project, domain, name, version, *args, **kwargs)
+    resource_type: int = _identifier_model.ResourceType.WORKFLOW
+
+    def __post_init__(self):
+        assert self.resource_type == _identifier_model.ResourceType.WORKFLOW
+        super().__post_init__()
 
 
 class ReferenceEntity(object):
     def __init__(
         self,
-        resource_type,
-        project: str,
-        domain: str,
-        name: str,
-        version: str,
+        reference: Union[WorkflowReference, TaskReference, LaunchPlanReference],
         inputs: Dict[str, Type],
         outputs: Dict[str, Type],
     ):
-
+        if (
+            not isinstance(reference, WorkflowReference)
+            and not isinstance(reference, TaskReference)
+            and not isinstance(reference, LaunchPlanReference)
+        ):
+            raise Exception("Must be one of task, workflow, or launch plan")
+        self._reference = reference
         self._interface = Interface(inputs=inputs, outputs=outputs)
         self._typed_interface = transform_interface_to_typed_interface(self._interface)
-
-        if resource_type == _identifier_model.ResourceType.TASK:
-            self._reference = TaskReference(project, domain, name, version)
-        elif resource_type == _identifier_model.ResourceType.WORKFLOW:
-            self._reference = WorkflowReference(project, domain, name, version)
-        elif resource_type == _identifier_model.ResourceType.LAUNCH_PLAN:
-            self._reference = LaunchPlanReference(project, domain, name, version)
-        else:
-            raise Exception("Must be one of task, workflow, or launch plan")
 
     def execute(self, **kwargs) -> Any:
         raise Exception("Remote reference entities cannot be run locally. You must mock this out.")

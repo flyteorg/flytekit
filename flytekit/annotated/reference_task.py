@@ -8,7 +8,6 @@ from flytekit.annotated.task import TaskPlugins
 from flytekit.annotated.task import metadata as get_empty_metadata
 from flytekit.common.tasks.task import SdkTask
 from flytekit.models import task as _task_model
-from flytekit.models.core import identifier as _identifier_model
 
 
 class ReferenceTask(ReferenceEntity, PythonFunctionTask):
@@ -32,11 +31,7 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
         """
         interface = transform_signature_to_interface(inspect.signature(task_function))
         super().__init__(
-            _identifier_model.ResourceType.TASK,
-            task_config.id.project,
-            task_config.id.domain,
-            task_config.id.name,
-            task_config.id.version,
+            TaskReference(task_config.id.project, task_config.id.domain, task_config.id.name, task_config.id.version),
             interface.inputs,
             interface.outputs,
         )

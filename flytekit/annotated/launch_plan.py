@@ -7,7 +7,7 @@ from flytekit.annotated.context_manager import FlyteContext, FlyteEntities
 from flytekit.annotated.interface import Interface, transform_inputs_to_parameters
 from flytekit.annotated.node import create_and_link_node
 from flytekit.annotated.promise import translate_inputs_to_literals
-from flytekit.annotated.reference_entity import ReferenceEntity
+from flytekit.annotated.reference_entity import LaunchPlanReference, ReferenceEntity
 from flytekit.common.launch_plan import SdkLaunchPlan
 from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
@@ -235,7 +235,7 @@ class ReferenceLaunchPlan(ReferenceEntity, LaunchPlan):
     def __init__(
         self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
     ):
-        super().__init__(_identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version, inputs, outputs)
+        super().__init__(LaunchPlanReference(project, domain, name, version), inputs, outputs)
 
     def get_registerable_entity(self) -> SdkLaunchPlan:
         from flytekit.common.interface import TypedInterface

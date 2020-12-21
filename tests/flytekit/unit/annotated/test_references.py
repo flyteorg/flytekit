@@ -124,15 +124,7 @@ def test_reference_workflow():
 
 
 def test_ref_plain_no_outputs():
-    r1 = ReferenceEntity(
-        _identifier_model.ResourceType.TASK,
-        "proj",
-        "domain",
-        "some.name",
-        "abc",
-        inputs=kwtypes(a=str, b=int),
-        outputs={},
-    )
+    r1 = ReferenceEntity(TaskReference("proj", "domain", "some.name", "abc"), inputs=kwtypes(a=str, b=int), outputs={},)
 
     # Reference entities should always raise an exception when not mocked out.
     with pytest.raises(Exception) as e:
@@ -179,11 +171,7 @@ def test_ref_plain_no_outputs():
 
 def test_ref_plain_two_outputs():
     r1 = ReferenceEntity(
-        _identifier_model.ResourceType.TASK,
-        "proj",
-        "domain",
-        "some.name",
-        "abc",
+        TaskReference("proj", "domain", "some.name", "abc"),
         inputs=kwtypes(a=str, b=int),
         outputs=kwtypes(x=bool, y=int),
     )
