@@ -29,7 +29,7 @@ fmt: ## Format code with black and isort
 .PHONY: lint
 lint: ## Run linters
 	flake8 .
-	mypy --strict --ignore-missing-imports --cache-dir=/dev/null flytekit/annotated tests/flytekit/unit/annotated || true
+	mypy || true
 
 .PHONY: test
 test: lint ## Run tests
