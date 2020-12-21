@@ -2,11 +2,12 @@ import typing
 
 import pytest
 
-from flytekit import WorkflowReference, kwtypes
 from flytekit.annotated import context_manager
+from flytekit.annotated.base_task import kwtypes
 from flytekit.annotated.context_manager import Image, ImageConfig
 from flytekit.annotated.reference import get_reference_entity
-from flytekit.annotated.reference_entity import ReferenceEntity, TaskReference
+from flytekit.annotated.reference_entity import ReferenceEntity, TaskReference, WorkflowReference
+from flytekit.annotated.reference_task import reference_task
 from flytekit.annotated.task import task
 from flytekit.annotated.testing import patch, task_mock
 from flytekit.annotated.workflow import workflow
@@ -14,13 +15,11 @@ from flytekit.models.core import identifier as _identifier_model
 
 
 def test_ref():
-    @task(
-        task_config=TaskReference(
-            project="flytesnacks",
-            domain="development",
-            name="recipes.aaa.simple.join_strings",
-            version="553018f39e519bdb2597b652639c30ce16b99c79",
-        )
+    @reference_task(
+        project="flytesnacks",
+        domain="development",
+        name="recipes.aaa.simple.join_strings",
+        version="553018f39e519bdb2597b652639c30ce16b99c79",
     )
     def ref_t1(a: typing.List[str]) -> str:
         ...
@@ -65,13 +64,11 @@ def test_ref():
 
 
 def test_ref_task_more():
-    @task(
-        task_config=TaskReference(
-            project="flytesnacks",
-            domain="development",
-            name="recipes.aaa.simple.join_strings",
-            version="553018f39e519bdb2597b652639c30ce16b99c79",
-        )
+    @reference_task(
+        project="flytesnacks",
+        domain="development",
+        name="recipes.aaa.simple.join_strings",
+        version="553018f39e519bdb2597b652639c30ce16b99c79",
     )
     def ref_t1(a: typing.List[str]) -> str:
         ...

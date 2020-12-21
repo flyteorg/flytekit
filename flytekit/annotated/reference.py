@@ -18,7 +18,7 @@ def get_reference_entity(
     outputs: Dict[str, Type],
 ):
     if resource_type == _identifier_model.ResourceType.TASK:
-        return ReferenceTask.create_from_get_entity(project, domain, name, version, inputs, outputs)
+        return ReferenceTask(project, domain, name, version, inputs, outputs)
     elif resource_type == _identifier_model.ResourceType.WORKFLOW:
         return ReferenceWorkflow(project, domain, name, version, inputs, outputs)
     elif resource_type == _identifier_model.ResourceType.LAUNCH_PLAN:
