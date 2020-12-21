@@ -24,6 +24,7 @@ class Spark(object):
         spark_conf: Dictionary of spark config. The variables should match what spark expects
         hadoop_conf: Dictionary of hadoop conf. The variables should match a typical hadoop configuration for spark
     """
+
     spark_conf: Dict[str, str] = None
     hadoop_conf: Dict[str, str] = None
 
@@ -44,7 +45,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
     """
 
     def __init__(
-            self, task_config: Spark, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs
+        self, task_config: Spark, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs
     ):
         super(PysparkFunctionTask, self).__init__(
             task_config=task_config, task_type="spark", task_function=task_function, metadata=metadata, *args, **kwargs,

@@ -3,15 +3,15 @@ This Plugin adds the capability of running distributed pytorch training to Flyte
 Kubernetes. It leverages `Pytorch Job <https://github.com/kubeflow/pytorch-operator>`_ Plugin from kubeflow.
 """
 from dataclasses import dataclass
-from typing import Callable, Dict, Any
+from typing import Any, Callable, Dict
 
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.annotated.context_manager import RegistrationSettings
-from flytekit.annotated.task import TaskPlugins
-from flytekit.models import task as _task_model
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.resources import Resources
+from flytekit.annotated.task import TaskPlugins
+from flytekit.models import task as _task_model
 
 
 @dataclass
@@ -30,6 +30,7 @@ class PyTorch(object):
         per_replica_limits: [optional] upper-bound resources for each replica spawned for this job. If not specified
         the scheduled resource may not have all the resources
     """
+
     num_workers: int
     per_replica_requests: Resources = None
     per_replica_limits: Resources = None
@@ -41,10 +42,18 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
         defined by the code within the _task_function to k8s cluster.
     """
 
-    def __init__(self, task_config: PyTorch, task_function: Callable, metadata: _task_model.TaskMetadata, *args,
-                 **kwargs):
-        super().__init__(task_config, task_function, metadata, requests=task_config.per_replica_requests,
-                         limits=task_config.per_replica_limits, *args, **kwargs)
+    def __init__(
+        self, task_config: PyTorch, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs
+    ):
+        super().__init__(
+            task_config,
+            task_function,
+            metadata,
+            requests=task_config.per_replica_requests,
+            limits=task_config.per_replica_limits,
+            *args,
+            **kwargs
+        )
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
         job = _task_model.PyTorchJob(workers_count=self.task_config.num_workers)

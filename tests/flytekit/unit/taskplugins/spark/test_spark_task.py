@@ -1,6 +1,6 @@
 import flytekit
 from flytekit import task
-from flytekit.annotated.context_manager import ImageConfig, RegistrationSettings, Image
+from flytekit.annotated.context_manager import Image, ImageConfig, RegistrationSettings
 from flytekit.taskplugins.spark import Spark
 
 
@@ -24,7 +24,7 @@ def test_spark_task():
     )
 
     assert my_spark.get_custom(reg) == {
-        'executorPath': '/Users/ketanumare/.virtualenvs/flytekit/bin/python',
-        'mainApplicationFile': 'local:///Users/ketanumare/src/flytekit/flytekit/bin/entrypoint.py',
-        'sparkConf': {'spark': '1'}
+        "executorPath": "/Users/ketanumare/.virtualenvs/flytekit/bin/python",
+        "mainApplicationFile": "local:///Users/ketanumare/src/flytekit/flytekit/bin/entrypoint.py",
+        "sparkConf": {"spark": "1"},
     }
