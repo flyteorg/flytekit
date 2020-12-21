@@ -6,7 +6,7 @@ import typing
 from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Type
+from typing import Type
 
 import numpy as _np
 
@@ -299,7 +299,7 @@ class FlyteSchema(object):
 
 
 class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
-    _SUPPORTED_TYPES: typing.Dict[Any, SchemaType.SchemaColumn.SchemaColumnType] = {
+    _SUPPORTED_TYPES: typing.Dict[Type, SchemaType.SchemaColumn.SchemaColumnType] = {
         _np.int32: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
         _np.int64: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
         _np.uint32: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
