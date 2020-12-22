@@ -19,14 +19,15 @@ from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import internal as _internal_config
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
+_PROJECT_PLACEHOLDER = ""
+_DOMAIN_PLACEHOLDER = ""
+_VERSION_PLACEHOLDER = ""
+
 
 @system_entry_point
-def serialize_tasks_only(project, domain, pkgs, version, folder=None):
+def serialize_tasks_only(pkgs, folder=None):
     """
-    :param Text project:
-    :param Text domain:
     :param list[Text] pkgs:
-    :param Text version:
     :param Text folder:
 
     :return:
@@ -38,7 +39,9 @@ def serialize_tasks_only(project, domain, pkgs, version, folder=None):
     for m, k, o in iterate_registerable_entities_in_order(pkgs, include_entities={_sdk_task.SdkTask}):
         name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
         _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
-        o._id = _identifier.Identifier(o.resource_type, project, domain, name, version)
+        o._id = _identifier.Identifier(
+            o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
+        )
         loaded_entities.append(o)
 
     zero_padded_length = _determine_text_chars(len(loaded_entities))
@@ -58,7 +61,7 @@ def serialize_tasks_only(project, domain, pkgs, version, folder=None):
 
 
 @system_entry_point
-def serialize_all(project, domain, pkgs, version, folder=None):
+def serialize_all(pkgs, folder=None):
     """
     In order to register, we have to comply with Admin's endpoints. Those endpoints take the following objects. These
     flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
@@ -72,10 +75,7 @@ def serialize_all(project, domain, pkgs, version, folder=None):
 
     For Workflows and Tasks therefore, there is special logic in the serialize function that translates these objects.
 
-    :param Text project:
-    :param Text domain:
     :param list[Text] pkgs:
-    :param Text version:
     :param Text folder:
 
     :return:
@@ -90,9 +90,9 @@ def serialize_all(project, domain, pkgs, version, folder=None):
     }
 
     registration_settings = flyte_context.RegistrationSettings(
-        project=project,
-        domain=domain,
-        version=version,
+        project=_PROJECT_PLACEHOLDER,
+        domain=_DOMAIN_PLACEHOLDER,
+        version=_VERSION_PLACEHOLDER,
         image_config=flyte_context.get_image_config(),
         env=env,
         iam_role=_auth_config.ASSUMABLE_IAM_ROLE.get(),
@@ -106,7 +106,9 @@ def serialize_all(project, domain, pkgs, version, folder=None):
         for m, k, o in iterate_registerable_entities_in_order(pkgs):
             name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
             _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
-            o._id = _identifier.Identifier(o.resource_type, project, domain, name, version)
+            o._id = _identifier.Identifier(
+                o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
+            )
             loaded_entities.append(o)
 
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
@@ -137,21 +139,11 @@ def serialize_all(project, domain, pkgs, version, folder=None):
                 continue
             serialized = entity.serialize()
             fname_index = str(i).zfill(zero_padded_length)
-            fname = "{}_{}.pb".format(fname_index, entity.id.name)
-            click.echo(f"  Writing type: {entity.id.resource_type}, {entity.id.name} to\n    {fname}")
+            fname = "{}_{}.{}.pb".format(fname_index, entity.id.name, entity.id.resource_type_name().lower())
+            click.echo(f"  Writing type: {entity.id.resource_type_name()}, {entity.id.name} to\n    {fname}")
             if folder:
                 fname = _os.path.join(folder, fname)
             _write_proto_to_file(serialized, fname)
-
-            # Not everything serialized will necessarily have an identifier field in it, even though some do (like the
-            # TaskTemplate). To be more rigorous, we write an explicit identifier file that reflects the choices (like
-            # project/domain, etc.) made for this serialize call. We should not allow users to specify a different project
-            # for instance come registration time, to avoid mismatches between potential internal ids like the TaskTemplate
-            # and the registered entity.
-            identifier_fname = "{}_{}.identifier.pb".format(fname_index, entity._id.name)
-            if folder:
-                identifier_fname = _os.path.join(folder, identifier_fname)
-            _write_proto_to_file(entity._id.to_flyte_idl(), identifier_fname)
 
 
 def _determine_text_chars(length):
@@ -181,85 +173,30 @@ def serialize(ctx):
 
 
 @click.command("tasks")
-@click.option(
-    "-v",
-    "--version",
-    type=str,
-    help="Version to serialize tasks with. This is normally parsed from the" "image, but you can override here.",
-)
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
-def tasks(ctx, version=None, folder=None):
-    project = ctx.obj[CTX_PROJECT]
-    domain = ctx.obj[CTX_DOMAIN]
+def tasks(ctx, folder=None):
     pkgs = ctx.obj[CTX_PACKAGES]
 
     if folder:
         click.echo(f"Writing output to {folder}")
 
-    version = (
-        version or ctx.obj[CTX_VERSION] or _internal_config.look_up_version_from_image_tag(_internal_config.IMAGE.get())
-    )
-
-    internal_settings = {
-        "project": project,
-        "domain": domain,
-        "version": version,
-    }
-    # Populate internal settings for project/domain/version from the environment so that the file names are resolved
-    # with the correct strings. The file itself doesn't need to change though.
-    with TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get(), internal_settings):
-        _logging.debug(
-            "Serializing with settings\n"
-            "\n  Project: {}"
-            "\n  Domain: {}"
-            "\n  Version: {}"
-            "\n\nover the following packages {}".format(project, domain, version, pkgs)
-        )
-        serialize_tasks_only(project, domain, pkgs, version, folder)
+    serialize_tasks_only(pkgs, folder)
 
 
 @click.command("workflows")
-@click.option(
-    "-v",
-    "--version",
-    type=str,
-    help="Version to serialize tasks with. This is normally parsed from the" "image, but you can override here.",
-)
 # For now let's just assume that the directory needs to exist. If you're docker run -v'ing, docker will create the
 # directory for you so it shouldn't be a problem.
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
-def workflows(ctx, version=None, folder=None):
+def workflows(ctx, folder=None):
     _logging.getLogger().setLevel(_logging.DEBUG)
 
     if folder:
         click.echo(f"Writing output to {folder}")
 
-    project = ctx.obj[CTX_PROJECT]
-    domain = ctx.obj[CTX_DOMAIN]
     pkgs = ctx.obj[CTX_PACKAGES]
-
-    version = (
-        version or ctx.obj[CTX_VERSION] or _internal_config.look_up_version_from_image_tag(_internal_config.IMAGE.get())
-    )
-
-    internal_settings = {
-        "project": project,
-        "domain": domain,
-        "version": version,
-    }
-    # Populate internal settings for project/domain/version from the environment so that the file names are resolved
-    # with the correct strings. The file itself doesn't need to change though.
-    with TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get(), internal_settings):
-        _logging.debug(
-            "Serializing with settings\n"
-            "\n  Project: {}"
-            "\n  Domain: {}"
-            "\n  Version: {}"
-            "\n\nover the following packages {}".format(project, domain, version, pkgs)
-        )
-        serialize_all(project, domain, pkgs, version, folder)
+    serialize_all(pkgs, folder)
 
 
 serialize.add_command(tasks)

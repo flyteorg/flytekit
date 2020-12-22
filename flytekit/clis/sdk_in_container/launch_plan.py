@@ -1,13 +1,18 @@
 import logging as _logging
+import os as _os
 
 import click
 import six as _six
 
 from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map
 from flytekit.clis.sdk_in_container import constants as _constants
+from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PROJECT, CTX_VERSION, domain_option, project_option
 from flytekit.common import utils as _utils
 from flytekit.common.launch_plan import SdkLaunchPlan as _SdkLaunchPlan
+from flytekit.configuration.internal import DOMAIN as _DOMAIN
 from flytekit.configuration.internal import IMAGE as _IMAGE
+from flytekit.configuration.internal import PROJECT as _PROJECT
+from flytekit.configuration.internal import VERSION as _VERSION
 from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag
 from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models.core import identifier as _identifier
@@ -139,12 +144,18 @@ class LaunchPlanExecuteGroup(LaunchPlanAbstractGroup):
 
 
 @click.group("lp")
+@project_option
+@domain_option
 @click.pass_context
-def launch_plans(ctx):
+def launch_plans(ctx, project, domain):
     """
     Launch plan control group, including executions
     """
-    pass
+    ctx.obj[CTX_PROJECT] = project
+    ctx.obj[CTX_DOMAIN] = domain
+    _os.environ[_PROJECT.env_var] = project
+    _os.environ[_DOMAIN.env_var] = domain
+    _os.environ[_VERSION.env_var] = ctx.obj[CTX_VERSION]
 
 
 @click.group("execute", cls=LaunchPlanExecuteGroup)
