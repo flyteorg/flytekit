@@ -28,8 +28,8 @@ fmt: ## Format code with black and isort
 
 .PHONY: lint
 lint: ## Run linters
-	flake8 .
 	mypy || true
+	flake8 .
 
 .PHONY: test
 test: lint ## Run tests
