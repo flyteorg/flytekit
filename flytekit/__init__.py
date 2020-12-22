@@ -6,13 +6,12 @@ from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.dynamic_workflow_task import dynamic
 from flytekit.annotated.launch_plan import LaunchPlan
 from flytekit.annotated.map_task import maptask
+from flytekit.annotated.reference import get_reference_entity
 from flytekit.annotated.reference_entity import TaskReference, WorkflowReference
+from flytekit.annotated.reference_task import reference_task
 from flytekit.annotated.task import metadata, task
 from flytekit.annotated.workflow import workflow
 from flytekit.loggers import logger
-from flytekit.annotated.reference import get_reference_entity
-from flytekit.annotated.reference_task import reference_task
-
 
 __version__ = "0.16.0a2"
 
