@@ -1,6 +1,7 @@
 import os
 import sys
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Any, Callable, Dict
 
 from google.protobuf.json_format import MessageToDict
@@ -13,18 +14,19 @@ from flytekit.models import task as _task_model
 from flytekit.sdk.spark_types import SparkType
 
 
+@dataclass
 class Spark(object):
-    def __init__(self, spark_conf: Dict[str, str] = None, hadoop_conf: Dict[str, str] = None):
-        self._spark_conf = spark_conf
-        self._hadoop_conf = hadoop_conf
+    """
+    Use this to configure a SparkContext for a your task. Task's marked with this will automatically execute
+    natively onto K8s as a distributed execution of spark
 
-    @property
-    def spark_conf(self) -> Dict[str, str]:
-        return self._spark_conf
+    Args:
+        spark_conf: Dictionary of spark config. The variables should match what spark expects
+        hadoop_conf: Dictionary of hadoop conf. The variables should match a typical hadoop configuration for spark
+    """
 
-    @property
-    def hadoop_config(self) -> Dict[str, str]:
-        return self._hadoop_conf
+    spark_conf: Dict[str, str] = None
+    hadoop_conf: Dict[str, str] = None
 
 
 @contextmanager
@@ -38,6 +40,10 @@ def new_spark_session(name: str):
 
 
 class PysparkFunctionTask(PythonFunctionTask[Spark]):
+    """
+    Actual Plugin that transforms the local python code for execution within a spark context
+    """
+
     def __init__(
         self, task_config: Spark, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs
     ):
@@ -54,7 +60,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
 
         job = _task_model.SparkJob(
             spark_conf=self.task_config.spark_conf,
-            hadoop_conf=self.task_config.hadoop_config,
+            hadoop_conf=self.task_config.hadoop_conf,
             application_file="local://" + spark_exec_path,
             executor_path=sys.executable,
             main_class="",
@@ -71,4 +77,5 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         return b.build()
 
 
+# Inject the Spark plugin into flytekits dynamic plugin loading system
 TaskPlugins.register_pythontask_plugin(Spark, PysparkFunctionTask)
