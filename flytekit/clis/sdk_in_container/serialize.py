@@ -8,13 +8,12 @@ from flytekit.annotated import context_manager as flyte_context
 from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.launch_plan import LaunchPlan
 from flytekit.annotated.workflow import Workflow
-from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_VERSION
+from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions.scopes import system_entry_point
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
-from flytekit.configuration import TemporaryConfiguration
 from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import internal as _internal_config
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
