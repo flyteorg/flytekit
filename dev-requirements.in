@@ -8,3 +8,4 @@ flake8-isort
 isort
 mock
 pytest
+mypy
