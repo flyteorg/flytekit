@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Tuple, Type, Union
 
@@ -15,7 +16,7 @@ from flytekit.models.core import identifier as _identifier_model
 
 
 @dataclass
-class Reference:
+class Reference(ABC):
     project: str
     domain: str
     name: str
@@ -29,6 +30,12 @@ class Reference:
     def id(self) -> _identifier_model.Identifier:
         return self._id
 
+    @abstractmethod
+    def dummy(self):
+        """
+        This is only here to prevent instantiation of this class
+        """
+
 
 @dataclass
 class TaskReference(Reference):
@@ -41,6 +48,9 @@ class TaskReference(Reference):
         assert self.resource_type == _identifier_model.ResourceType.TASK
         super().__post_init__()
 
+    def dummy(self):
+        ...
+
 
 @dataclass
 class LaunchPlanReference(Reference):
@@ -50,6 +60,9 @@ class LaunchPlanReference(Reference):
         assert self.resource_type == _identifier_model.ResourceType.LAUNCH_PLAN
         super().__post_init__()
 
+    def dummy(self):
+        ...
+
 
 @dataclass
 class WorkflowReference(Reference):
@@ -58,6 +71,9 @@ class WorkflowReference(Reference):
     def __post_init__(self):
         assert self.resource_type == _identifier_model.ResourceType.WORKFLOW
         super().__post_init__()
+
+    def dummy(self):
+        ...
 
 
 class ReferenceEntity(object):
