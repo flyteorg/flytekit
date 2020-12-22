@@ -127,7 +127,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
 
         ret = super().execute(dist_training_task_specific_engine_context, inputs)
 
-        if (
+        if self._is_distributed() is False or (
             self._is_distributed()
             and self._output_persist_predicate
             and self.output_persist_predicate(dist_training_task_specific_engine_context.distributed_training_context)
