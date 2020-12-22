@@ -43,8 +43,9 @@ def test_py_func_task_get_container():
     other_img = Image(name="other", fqn="xyz.com/other", tag="tag-other")
     cfg = ImageConfig(default_image=default_img, images=[default_img, other_img])
 
-    settings = RegistrationSettings(project="p", domain="d", version="v", image_config=cfg, env=None)
+    settings = RegistrationSettings(project="p", domain="d", version="v", image_config=cfg, env={"FOO": "bar"})
 
-    pytask = PythonFunctionTask(None, foo, None)
+    pytask = PythonFunctionTask(None, foo, None, environment={"BAZ": "baz"})
     c = pytask.get_container(settings)
     assert c.image == "xyz.com/abc:tag1"
+    assert c.env == {"FOO": "bar", "BAZ": "baz"}

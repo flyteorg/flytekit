@@ -7,17 +7,18 @@
 -e file:.#egg=flytekit    # via -r requirements.in
 ansiwrap==0.8.4           # via papermill
 appdirs==1.4.4            # via black
-appnope==0.1.2            # via ipykernel, ipython
 async-generator==1.10     # via nbclient
 attrs==20.3.0             # via black, jsonschema
 backcall==0.2.0           # via ipython
 black==19.10b0            # via flytekit, papermill
-boto3==1.16.35            # via flytekit
-botocore==1.19.35         # via boto3, s3transfer
+boto3==1.16.41            # via flytekit
+botocore==1.19.41         # via boto3, s3transfer
 certifi==2020.12.5        # via requests
-chardet==3.0.4            # via requests
+cffi==1.14.4              # via cryptography
+chardet==4.0.0            # via requests
 click==7.1.2              # via black, flytekit, hmsclient, papermill
 croniter==0.3.36          # via flytekit
+cryptography==3.3.1       # via secretstorage
 dataclasses-json==0.5.2   # via flytekit
 decorator==4.4.2          # via ipython, retry
 deprecated==1.2.10        # via flytekit
@@ -26,10 +27,11 @@ flyteidl==0.18.11         # via flytekit
 grpcio==1.34.0            # via flytekit
 hmsclient==0.1.1          # via flytekit
 idna==2.10                # via requests
-ipykernel==5.4.1          # via flytekit
+ipykernel==5.4.2          # via flytekit
 ipython-genutils==0.2.0   # via nbformat, traitlets
 ipython==7.19.0           # via ipykernel
 jedi==0.17.2              # via ipython
+jeepney==0.6.0            # via keyring, secretstorage
 jmespath==0.10.0          # via boto3, botocore
 jsonschema==3.2.0         # via nbformat
 jupyter-client==6.1.7     # via ipykernel, nbclient
@@ -37,7 +39,7 @@ jupyter-core==4.7.0       # via jupyter-client, nbformat
 k8s-proto==0.0.3          # via flytekit
 keyring==21.5.0           # via flytekit
 marshmallow-enum==1.5.1   # via dataclasses-json
-marshmallow==3.9.1        # via dataclasses-json, marshmallow-enum
+marshmallow==3.10.0       # via dataclasses-json, marshmallow-enum
 mypy-extensions==0.4.3    # via typing-inspect
 natsort==7.1.0            # via croniter
 nbclient==0.5.1           # via papermill
@@ -54,8 +56,9 @@ prompt-toolkit==3.0.8     # via ipython
 protobuf==3.14.0          # via flyteidl, flytekit, k8s-proto
 ptyprocess==0.6.0         # via pexpect
 py4j==0.10.7              # via pyspark
-py==1.9.0                 # via retry
+py==1.10.0                # via retry
 pyarrow==0.17.1           # via flytekit
+pycparser==2.20           # via cffi
 pygments==2.7.3           # via ipython
 pyrsistent==0.17.3        # via jsonschema
 pyspark==2.4.7            # via flytekit
@@ -65,15 +68,16 @@ pytz==2018.4              # via flytekit, pandas
 pyyaml==5.3.1             # via papermill
 pyzmq==20.0.0             # via jupyter-client
 regex==2020.11.13         # via black
-requests==2.25.0          # via flytekit, papermill, responses
+requests==2.25.1          # via flytekit, papermill, responses
 responses==0.12.1         # via flytekit
 retry==0.9.2              # via flytekit
 s3transfer==0.3.3         # via boto3
-six==1.15.0               # via flytekit, grpcio, jsonschema, protobuf, python-dateutil, responses, tenacity, thrift
+secretstorage==3.3.0      # via keyring
+six==1.15.0               # via cryptography, flytekit, grpcio, jsonschema, protobuf, python-dateutil, responses, tenacity, thrift
 sortedcontainers==2.3.0   # via flytekit
 statsd==3.3.0             # via flytekit
 stringcase==1.2.0         # via dataclasses-json
-tenacity==6.2.0           # via papermill
+tenacity==6.3.1           # via papermill
 textwrap3==0.9.2          # via ansiwrap
 thrift==0.13.0            # via hmsclient
 toml==0.10.2              # via black
