@@ -44,7 +44,7 @@ def test_sidecar_task():
     assert primary_container["args"] == [
         "pyflyte-execute",
         "--task-module",
-        "test_sidecar",
+        "tests.flytekit.unit.taskplugins.sidecar.test_sidecar",
         "--task-name",
         "simple_sidecar_task",
         "--inputs",
