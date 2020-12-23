@@ -1,34 +1,15 @@
-import datetime
 import os
-import shutil
 import pathlib
-
-import typing
-from datetime import timedelta
-
-import pytest
+import shutil
 
 import flytekit
-from flytekit import kwtypes
 from flytekit.annotated import context_manager
-from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.task import task
-from flytekit.annotated.type_engine import (
-    DictTransformer,
-    ListTransformer,
-    PathLikeTransformer,
-    SimpleTransformer,
-    TypeEngine,
-)
+from flytekit.annotated.type_engine import TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
-from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Primitive, Scalar
-from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.flyte_directory import FlyteDirectory, FlyteDirectoryTransformer
-from flytekit.types.flyte_file import FlyteFile
-from flytekit.types.schema import FlyteSchema, SchemaFormat
 
 
 def test_engine():
@@ -67,7 +48,7 @@ def test_transformer_to_literal_local():
         if os.path.exists(p):
             shutil.rmtree(p)
         pathlib.Path(p).mkdir(parents=True)
-        with open(os.path.join(p, "xyz"), 'w') as fh:
+        with open(os.path.join(p, "xyz"), "w") as fh:
             fh.write("Hello world\n")
         literal = tf.to_literal(ctx, FlyteDirectory(p), FlyteDirectory, lt)
 
@@ -94,3 +75,30 @@ def test_transformer_to_literal():
         literal = tf.to_literal(ctx, FlyteDirectory("s3://anything"), FlyteDirectory, lt)
         assert literal.scalar.blob.uri == "s3://anything"
 
+
+def test_wf():
+    @task
+    def t1() -> FlyteDirectory:
+        user_ctx = flytekit.current_context()
+        # Create a local directory to work with
+        p = os.path.join(user_ctx.working_directory, "test_wf")
+        if os.path.exists(p):
+            shutil.rmtree(p)
+        pathlib.Path(p).mkdir(parents=True)
+        for i in range(1, 6):
+            with open(os.path.join(p, f"{i}.txt"), "w") as fh:
+                fh.write(f"I'm file {i}\n")
+
+        return FlyteDirectory(p)
+
+    d = t1()
+    files = os.listdir(d.path)
+    assert len(files) == 5
+
+    @workflow
+    def my_wf() -> FlyteDirectory:
+        return t1()
+
+    wfd = my_wf()
+    files = os.listdir(wfd.path)
+    assert len(files) == 5
