@@ -1,12 +1,24 @@
 import logging as _logging
+import os as _os
 
 import click
 
-from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_TEST, CTX_VERSION
+from flytekit.clis.sdk_in_container.constants import (
+    CTX_DOMAIN,
+    CTX_PACKAGES,
+    CTX_PROJECT,
+    CTX_TEST,
+    CTX_VERSION,
+    domain_option,
+    project_option,
+)
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.tasks import task as _task
+from flytekit.configuration.internal import DOMAIN as _DOMAIN
 from flytekit.configuration.internal import IMAGE as _IMAGE
+from flytekit.configuration.internal import PROJECT as _PROJECT
+from flytekit.configuration.internal import VERSION as _VERSION
 from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
@@ -53,13 +65,15 @@ def register_tasks_only(project, domain, pkgs, test, version):
 
 
 @click.group("register")
+@project_option
+@domain_option
 # --pkgs on the register group is DEPRECATED, use same arg on pyflyte.main instead
 @click.option(
     "--pkgs", multiple=True, help="DEPRECATED. This arg can only be used before the 'register' keyword",
 )
 @click.option("--test", is_flag=True, help="Dry run, do not actually register with Admin")
 @click.pass_context
-def register(ctx, pkgs=None, test=None):
+def register(ctx, project, domain, pkgs=None, test=None):
     """
     Run registration steps for the workflows in this container.
 
@@ -69,7 +83,12 @@ def register(ctx, pkgs=None, test=None):
     if pkgs:
         raise click.UsageError("--pkgs must now be specified before the 'register' keyword on the command line")
 
+    ctx.obj[CTX_PROJECT] = project
+    ctx.obj[CTX_DOMAIN] = domain
     ctx.obj[CTX_TEST] = test
+    _os.environ[_PROJECT.env_var] = project
+    _os.environ[_DOMAIN.env_var] = domain
+    _os.environ[_VERSION.env_var] = ctx.obj[CTX_VERSION]
 
 
 @click.command("tasks")

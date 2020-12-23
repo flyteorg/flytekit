@@ -4,7 +4,7 @@ from pathlib import Path
 
 import click
 
-from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_VERSION
+from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES, CTX_VERSION
 from flytekit.clis.sdk_in_container.launch_plan import launch_plans
 from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.serialize import serialize
@@ -20,16 +20,6 @@ from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
 
 
 @click.group("pyflyte", invoke_without_command=True)
-@click.option(
-    "-p",
-    "--project",
-    required=True,
-    type=str,
-    help="Flyte project to use. You can have more than one project per repo",
-)
-@click.option(
-    "-d", "--domain", required=True, type=str, help="This is usually development, staging, or production",
-)
 @click.option(
     "-c", "--config", required=False, type=str, help="Path to config file for use within container",
 )
@@ -48,7 +38,7 @@ from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
     "-i", "--insecure", required=False, type=bool, help="Do not use SSL to connect to Admin",
 )
 @click.pass_context
-def main(ctx, project, domain, config=None, pkgs=None, version=None, insecure=None):
+def main(ctx, config=None, pkgs=None, version=None, insecure=None):
     """
     Entrypoint for all the user commands.
     """
@@ -60,8 +50,6 @@ def main(ctx, project, domain, config=None, pkgs=None, version=None, insecure=No
         _logging.getLogger().setLevel(log_level)
 
     ctx.obj = dict()
-    ctx.obj[CTX_PROJECT] = project
-    ctx.obj[CTX_DOMAIN] = domain
     version = version or _look_up_version_from_image_tag(_IMAGE.get())
     ctx.obj[CTX_VERSION] = version
 
@@ -77,10 +65,6 @@ def main(ctx, project, domain, config=None, pkgs=None, version=None, insecure=No
     if len(pkgs) == 0:
         pkgs = _WORKFLOW_PACKAGES.get()
     ctx.obj[CTX_PACKAGES] = pkgs
-
-    _os.environ[_internal_config.PROJECT.env_var] = project
-    _os.environ[_internal_config.DOMAIN.env_var] = domain
-    _os.environ[_internal_config.VERSION.env_var] = version
 
 
 def update_configuration_file(config_file_path):
