@@ -123,7 +123,7 @@ def _hydrate_workflow_template(
 
 
 def hydrate_registration_parameters(
-    resource_type: _identifier_pb2.ResourceType,
+    identifier: _identifier_pb2.Identifier,
     project: str,
     domain: str,
     version: str,
@@ -136,28 +136,20 @@ def hydrate_registration_parameters(
     - flyteidl.admin.workflow_pb2.WorkflowSpec for workflows\n
     - flyteidl.admin.task_pb2.TaskSpec for tasks\n
     """
-    if resource_type == _identifier_pb2.LAUNCH_PLAN:
-        entity.workflow_id.CopyFrom(_hydrate_identifier(project, domain, version, entity.workflow_id))
-        return (
-            _identifier_pb2.Identifier(
-                resource_type=resource_type,
-                project=entity.workflow_id.project,
-                domain=entity.workflow_id.domain,
-                name=entity.workflow_id.name,
-                version=entity.workflow_id.version,
-            ),
-            entity,
-        )
+    identifier = _hydrate_identifier(project, domain, version, identifier)
 
-    entity.template.id.CopyFrom(_hydrate_identifier(project, domain, version, entity.template.id))
-    if resource_type == _identifier_pb2.TASK:
-        return entity.template.id, entity
+    if identifier.resource_type == _identifier_pb2.LAUNCH_PLAN:
+        entity.workflow_id.CopyFrom(_hydrate_identifier(project, domain, version, entity.workflow_id))
+        return identifier, entity
+
+    entity.template.id.CopyFrom(identifier)
+    if identifier.resource_type == _identifier_pb2.TASK:
+        return identifier, entity
 
     # Workflows (the only possible entity type at this point) are a little more complicated.
     # Workflow nodes that are defined inline with the workflows will be missing project/domain/version so we fill those
     # in now.
     # (entity is of type flyteidl.admin.workflow_pb2.WorkflowSpec)
-    entity.template.CopyFrom(_hydrate_workflow_template(project, domain, version, entity.template))
     refreshed_sub_workflows = []
     for sub_workflow in entity.sub_workflows:
         refreshed_sub_workflow = _hydrate_workflow_template(project, domain, version, sub_workflow)
@@ -165,4 +157,4 @@ def hydrate_registration_parameters(
     # Reassign subworkflows with the newly hydrated ones.
     del entity.sub_workflows[:]
     entity.sub_workflows.extend(refreshed_sub_workflows)
-    return entity.template.id, entity
+    return identifier, entity
