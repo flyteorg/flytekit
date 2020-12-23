@@ -1511,7 +1511,7 @@ def _extract_files(project: str, domain: str, version: str, file_paths: List[str
     results = []
     filename_iterator = iter(file_paths)
     for proto_file in filename_iterator:
-        # Serialized proto files are of the form: foo.bar.<resource_type>.pb
+        # Serialized proto files are of the form: 12_foo.bar.<resource_type>.pb
         file_name_parts = proto_file.split(".")
         if file_name_parts[-1] != "pb":
             _click.echo(f"Skipping non-proto file {proto_file}")

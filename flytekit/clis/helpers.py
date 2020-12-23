@@ -131,16 +131,20 @@ def hydrate_registration_parameters(
 ) -> Tuple[_identifier_pb2.Identifier, _GeneratedProtocolMessageType]:
     """
     This is called at registration time to fill out identifier fields (e.g. project, domain, version) that are mutable.
+    Entity is one of \b
+    - flyteidl.admin.launch_plan_pb2.LaunchPlanSpec for launch plans\n
+    - flyteidl.admin.workflow_pb2.WorkflowSpec for workflows\n
+    - flyteidl.admin.task_pb2.TaskSpec for tasks\n
     """
     if resource_type == _identifier_pb2.LAUNCH_PLAN:
         entity.workflow_id.CopyFrom(_hydrate_identifier(project, domain, version, entity.workflow_id))
         return (
             _identifier_pb2.Identifier(
                 resource_type=resource_type,
-                project=project,
-                domain=domain,
+                project=entity.workflow_id.project,
+                domain=entity.workflow_id.domain,
                 name=entity.workflow_id.name,
-                version=version,
+                version=entity.workflow_id.version,
             ),
             entity,
         )
