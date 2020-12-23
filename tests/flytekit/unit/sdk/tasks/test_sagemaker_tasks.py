@@ -289,6 +289,46 @@ def dontretry(f, *args, **kwargs):
     return f()
 
 
+class SingleNodeCustomTrainingJobTaskTests(unittest.TestCase):
+    @mock.patch.dict("os.environ", {})
+    def setUp(self):
+        with _utils.AutoDeletingTempDir("input_dir") as input_dir:
+            self._task_input = _literals.LiteralMap(
+                {"input_1": _literals.Literal(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=1)))}
+            )
+
+            self._context = _common_engine.EngineContext(
+                execution_id=WorkflowExecutionIdentifier(project="unit_test", domain="unit_test", name="unit_test"),
+                execution_date=_datetime.datetime.utcnow(),
+                stats=MockStats(),
+                logging=None,
+                tmp_dir=input_dir.name,
+            )
+
+            @inputs(input_1=Types.Integer)
+            @outputs(model=Types.Blob)
+            @custom_training_job_task(
+                training_job_resource_config=TrainingJobResourceConfig(
+                    instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
+                ),
+                algorithm_specification=AlgorithmSpecification(
+                    input_mode=InputMode.FILE,
+                    input_content_type=InputContentType.TEXT_CSV,
+                    metric_definitions=[MetricDefinition(name="Validation error", regex="validation:error")],
+                ),
+            )
+            def my_single_node_task(wf_params, input_1, model):
+                pass
+
+            self._my_single_node_task = my_single_node_task
+            assert type(self._my_single_node_task) == CustomTrainingJobTask
+
+    def test_output_persistence(self):
+        # execute the distributed task with its distributed_training_context == None
+        ret = self._my_single_node_task.execute(self._context, self._task_input)
+        assert _common_constants.OUTPUT_FILE_NAME in ret.keys()
+
+
 class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
     @mock.patch.dict("os.environ", {})
     def setUp(self):
