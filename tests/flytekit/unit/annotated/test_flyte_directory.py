@@ -1,6 +1,7 @@
 import os
 import pathlib
 import shutil
+
 import pytest
 
 import flytekit
@@ -68,7 +69,7 @@ def test_transformer_to_literal_local():
                 path.unlink()
             except OSError:
                 ...
-            with open(p, 'w') as fh:
+            with open(p, "w") as fh:
                 fh.write("hello world\n")
             tf.to_literal(ctx, FlyteDirectory(p), FlyteDirectory, lt)
 
