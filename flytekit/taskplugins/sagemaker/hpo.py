@@ -22,6 +22,14 @@ from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo
 
 @dataclass
 class HPOJob(object):
+    """
+    HPOJob Configuration should be used to configure the HPO Job.
+
+    Args:
+        max_number_of_training_jobs: maximum number of jobs to run for a training round
+        max_parallel_training_jobs: limits the concurrency of the training jobs
+        tunable_params: should be a list of parameters for which we want to provide the tuning ranges
+    """
     max_number_of_training_jobs: int
     max_parallel_training_jobs: int
     # TODO. we could make the tunable params a tuple of name and type of range?
@@ -42,6 +50,7 @@ class SagemakerHPOTask(PythonTask):
                 "Training Task of type SagemakerCustomTrainingTask/SagemakerBuiltinAlgorithmsTask is required to work"
                 " with Sagemaker HPO")
 
+        self._task_config = task_config
         self._training_task = training_task
         iface = training_task.python_interface
 
@@ -56,6 +65,10 @@ class SagemakerHPOTask(PythonTask):
         super().__init__(
             task_type=self._SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK,
             name=name, interface=updated_iface, metadata=metadata, *args, **kwargs)
+
+    @property
+    def task_config(self):
+        return self._task_config
 
     def execute(self, **kwargs) -> Any:
         raise NotImplementedError("Sagemaker HPO Task cannot be executed locally, to execute locally mock it!")

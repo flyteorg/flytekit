@@ -4,10 +4,13 @@ from typing import TypeVar
 
 import pytest
 
+import flytekit
 from flytekit import task, metadata, kwtypes
 from flytekit.annotated.context_manager import RegistrationSettings, Image, ImageConfig
+from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.taskplugins.sagemaker import SagemakerTrainingJobConfig, SagemakerBuiltinAlgorithmsTask, \
-    TrainingJobResourceConfig, AlgorithmSpecification, AlgorithmName
+    TrainingJobResourceConfig, AlgorithmSpecification, AlgorithmName, DistributedProtocol
+from flytekit.taskplugins.sagemaker.distributed_training import setup_envars_for_testing
 from flytekit.types import FlyteFile
 
 
@@ -62,7 +65,6 @@ def test_builtin_training():
 def test_custom_training():
     @task(task_config=SagemakerTrainingJobConfig(
         training_job_resource_config=TrainingJobResourceConfig(
-            instance_count=1,
             instance_type="ml-xlarge",
             volume_size_in_gb=1,
         ),
@@ -80,6 +82,46 @@ def test_custom_training():
     assert my_custom_trainer.get_custom(_get_reg_settings()) == {
         'algorithmSpecification': {},
         'trainingJobResourceConfig': {'instanceCount': '1',
+                                      'instanceType': 'ml-xlarge',
+                                      'volumeSizeInGb': '1'},
+    }
+
+
+def test_distributed_custom_training():
+    setup_envars_for_testing()
+
+    @task(task_config=SagemakerTrainingJobConfig(
+        training_job_resource_config=TrainingJobResourceConfig(
+            instance_type="ml-xlarge",
+            volume_size_in_gb=1,
+            instance_count=2,  # Indicates distributed training
+            distributed_protocol=DistributedProtocol.MPI,
+        ),
+        algorithm_specification=AlgorithmSpecification(
+            algorithm_name=AlgorithmName.CUSTOM,
+        )))
+    def my_custom_trainer(x: int) -> int:
+        assert flytekit.current_context().distributed_training_context is not None
+        return x
+
+    assert my_custom_trainer.python_interface.inputs == {"x": int}
+    assert my_custom_trainer.python_interface.outputs == {"out_0": int}
+
+    assert my_custom_trainer(x=10) == 10
+
+    assert my_custom_trainer._is_distributed() is True
+
+    pb = ExecutionParameters.new_builder()
+    pb.working_dir = "/tmp"
+    p = pb.build()
+    new_p = my_custom_trainer.pre_execute(p)
+    assert new_p is not None
+    assert new_p.has_attr("distributed_training_context")
+
+    assert my_custom_trainer.get_custom(_get_reg_settings()) == {
+        'algorithmSpecification': {},
+        'trainingJobResourceConfig': {'distributedProtocol': 'MPI',
+                                      'instanceCount': '2',
                                       'instanceType': 'ml-xlarge',
                                       'volumeSizeInGb': '1'},
     }

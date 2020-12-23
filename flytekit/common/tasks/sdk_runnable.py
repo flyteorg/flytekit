@@ -52,10 +52,11 @@ class ExecutionParameters(object):
             self.working_dir = current.working_directory if current else None
             self.execution_id = current.execution_id if current else None
             self.logging = current.logging if current else None
-            self.attrs = current._attrs if current else None
+            self.attrs = current._attrs if current else {}
 
-        def add_attr(self, key: str, v: typing.Any):
+        def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:
             self.attrs[key] = v
+            return self
 
         def build(self) -> ExecutionParameters:
             if not isinstance(self.working_dir, _common_utils.AutoDeletingTempDir):
@@ -70,8 +71,11 @@ class ExecutionParameters(object):
             )
 
     @staticmethod
-    def builder(current: ExecutionParameters = None) -> Builder:
+    def new_builder(current: ExecutionParameters = None) -> Builder:
         return ExecutionParameters.Builder(current=current)
+
+    def builder(self) -> Builder:
+        return ExecutionParameters.Builder(current=self)
 
     def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, **kwargs):
         self._stats = stats
@@ -143,6 +147,12 @@ class ExecutionParameters(object):
             return self._attrs[attr_name]
         raise AssertionError(f"{attr_name} not available as a parameter in Flyte context - are you in right task-type?")
 
+    def has_attr(self, attr_name: str) -> bool:
+        attr_name = attr_name.upper()
+        if self._attrs and attr_name in self._attrs:
+            return True
+        return False
+
 
 class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.ExtendedSdkType):
     """
@@ -150,7 +160,7 @@ class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.Extended
     """
 
     def __init__(
-        self, command, args, resources, env, config,
+            self, command, args, resources, env, config,
     ):
         super(SdkRunnableContainer, self).__init__("", command, args, resources, env or {}, config)
 
@@ -189,15 +199,15 @@ class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.Extended
 
     @classmethod
     def get_resources(
-        cls,
-        storage_request=None,
-        cpu_request=None,
-        gpu_request=None,
-        memory_request=None,
-        storage_limit=None,
-        cpu_limit=None,
-        gpu_limit=None,
-        memory_limit=None,
+            cls,
+            storage_request=None,
+            cpu_request=None,
+            gpu_request=None,
+            memory_request=None,
+            storage_limit=None,
+            cpu_limit=None,
+            gpu_limit=None,
+            memory_limit=None,
     ):
         """
         :param Text storage_request:
@@ -255,25 +265,25 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
     """
 
     def __init__(
-        self,
-        task_function,
-        task_type,
-        discovery_version,
-        retries,
-        interruptible,
-        deprecated,
-        storage_request,
-        cpu_request,
-        gpu_request,
-        memory_request,
-        storage_limit,
-        cpu_limit,
-        gpu_limit,
-        memory_limit,
-        discoverable,
-        timeout,
-        environment,
-        custom,
+            self,
+            task_function,
+            task_type,
+            discovery_version,
+            retries,
+            interruptible,
+            deprecated,
+            storage_request,
+            cpu_request,
+            gpu_request,
+            memory_request,
+            storage_limit,
+            cpu_limit,
+            gpu_limit,
+            memory_limit,
+            discoverable,
+            timeout,
+            environment,
+            custom,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -392,8 +402,8 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         """
         return (
             _engine_loader.get_engine("unit")
-            .get_task(self)
-            .execute(
+                .get_task(self)
+                .execute(
                 _type_helpers.pack_python_std_map_to_literal_map(
                     input_map,
                     {
@@ -414,8 +424,8 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         """
         return (
             _engine_loader.get_engine("local")
-            .get_task(self)
-            .execute(
+                .get_task(self)
+                .execute(
                 _type_helpers.pack_python_std_map_to_literal_map(
                     input_map,
                     {
@@ -485,17 +495,17 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
             }
 
     def _get_container_definition(
-        self,
-        storage_request=None,
-        cpu_request=None,
-        gpu_request=None,
-        memory_request=None,
-        storage_limit=None,
-        cpu_limit=None,
-        gpu_limit=None,
-        memory_limit=None,
-        environment=None,
-        cls=None,
+            self,
+            storage_request=None,
+            cpu_request=None,
+            gpu_request=None,
+            memory_request=None,
+            storage_limit=None,
+            cpu_limit=None,
+            gpu_limit=None,
+            memory_limit=None,
+            environment=None,
+            cls=None,
     ):
         """
         :param Text storage_request:

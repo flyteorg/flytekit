@@ -1,15 +1,20 @@
+import logging
 from dataclasses import dataclass
 from typing import TypeVar, Dict, Any, Callable
 
+import typing
 from google.protobuf.json_format import MessageToDict
 
+import flytekit
 from flytekit.annotated.base_task import PythonTask, kwtypes
 from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.interface import Interface
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
+from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.models import task as _task_model
 from flytekit.models.sagemaker import training_job as _training_job_models
+from flytekit.taskplugins.sagemaker.distributed_training import DistributedTrainingContext
 from flytekit.types import FlyteFile
 
 
@@ -22,9 +27,17 @@ class SagemakerTrainingJobConfig(object):
     Args:
         training_job_resource_config: Configuration for Resources to use during the training
         algorithm_specification: Specification of the algorithm to use
+        should_persist_output: This method will be invoked and will decide if the generated model should be persisted
+                               as the output. ``NOTE: Useful only for distributed training``
+                               ``default: single node training - always persist output``
+                               ``default: distributed training - always persist output on node with rank-0``
     """
     training_job_resource_config: _training_job_models.TrainingJobResourceConfig
     algorithm_specification: _training_job_models.AlgorithmSpecification
+    # The default output-persisting predicate.
+    # With this predicate, only the copy running on the first host in the list of hosts would persist its output
+    should_persist_output: typing.Callable[[DistributedTrainingContext], bool] = lambda dctx: (
+            dctx.current_host == dctx.hosts[0])
 
 
 class SagemakerBuiltinAlgorithmsTask(PythonTask):
@@ -73,7 +86,8 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask):
         return MessageToDict(training_job.to_flyte_idl())
 
     def execute(self, **kwargs) -> Any:
-        raise NotImplementedError("Cannot execute Sagemaker Builtin Algorithms locally, for local testing, please mock!")
+        raise NotImplementedError(
+            "Cannot execute Sagemaker Builtin Algorithms locally, for local testing, please mock!")
 
     @classmethod
     def _content_type_to_blob_format(cls, content_type: int) -> str:
@@ -104,6 +118,40 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
             training_job_resource_config=self.task_config.training_job_resource_config,
         )
         return MessageToDict(training_job.to_flyte_idl())
+
+    def _is_distributed(self) -> bool:
+        return (
+                self.task_config.training_job_resource_config
+                and self.task_config.training_job_resource_config.instance_count > 1
+        )
+
+    def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
+        """
+        Pre-execute for Sagemaker will automatically add the distributed context to the execution params, only
+        if the number of execution instances is > 1. Otherwise this is considered to be a single node execution
+        """
+        if self._is_distributed():
+            logging.info(f"Distributed context detected!")
+            return user_params.builder().add_attr("DISTRIBUTED_TRAINING_CONTEXT",
+                                                  DistributedTrainingContext.from_env()).build()
+        return user_params
+
+    def execute(self, **kwargs) -> Any:
+        """
+        Overload the default execute behavior to allow adding additional checks for the returned values.
+        In the case of distributed execution, we check the should_persist_predicate in the configuration to determine
+        if the output should be persisted. This is because in distributed training, multiple nodes may produce partial
+        outputs and only the user process knows the output that should be generated. They can control the choice using
+        the predicate.
+        """
+        rval = super(SagemakerCustomTrainingTask, self).execute(**kwargs)
+        if self._is_distributed():
+            logging.info(f"Distributed context detected!")
+            dctx = flytekit.current_context().distributed_training_context
+            if self.task_config.should_persist_output(dctx):
+                logging.info("output persistence predicate not met, Flytekit will ignore outputs")
+                return {}
+        return rval
 
 
 # Register the Tensorflow Plugin into the flytekit core plugin system

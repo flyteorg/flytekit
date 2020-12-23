@@ -45,7 +45,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
     """
 
     def __init__(
-        self, task_config: Spark, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs
+            self, task_config: Spark, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs
     ):
         super(PysparkFunctionTask, self).__init__(
             task_config=task_config, task_type="spark", task_function=task_function, metadata=metadata, *args, **kwargs,
@@ -72,9 +72,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         import pyspark as _pyspark
 
         sess = _pyspark.sql.SparkSession.builder.appName(f"FlyteSpark: {user_params.execution_id}").getOrCreate()
-        b = user_params.builder(user_params)
-        b.add_attr("SPARK_SESSION", sess)
-        return b.build()
+        return user_params.builder().add_attr("SPARK_SESSION", sess).build()
 
 
 # Inject the Spark plugin into flytekits dynamic plugin loading system

@@ -29,18 +29,18 @@ def test_hpo_for_builtin():
         ),
     )
 
-    t = SagemakerHPOTask(
+    hpo = SagemakerHPOTask(
         name="test",
         metadata=metadata(),
         task_config=HPOJob(10, 10, ["x"]),
         training_task=trainer,
     )
 
-    assert t.python_interface.inputs.keys() == {"static_hyperparameters", "train", "validation",
-                                                'hyperparameter_tuning_job_config', 'x'}
-    assert t.python_interface.outputs.keys() == {"model"}
+    assert hpo.python_interface.inputs.keys() == {"static_hyperparameters", "train", "validation",
+                                                  'hyperparameter_tuning_job_config', 'x'}
+    assert hpo.python_interface.outputs.keys() == {"model"}
 
-    assert t.get_custom(_get_reg_settings()) == {
+    assert hpo.get_custom(_get_reg_settings()) == {
         'maxNumberOfTrainingJobs': '10',
         'maxParallelTrainingJobs': '10',
         'trainingJob': {
@@ -52,16 +52,16 @@ def test_hpo_for_builtin():
     }
 
     with pytest.raises(NotImplementedError):
-        t(static_hyperparameters={}, train="", validation="",
-          hyperparameter_tuning_job_config=HyperparameterTuningJobConfig(
-              tuning_strategy=1,
-              tuning_objective=HyperparameterTuningObjective(
-                  objective_type=HyperparameterTuningObjectiveType.MINIMIZE,
-                  metric_name="x",
-              ),
-              training_job_early_stopping_type=TrainingJobEarlyStoppingType.OFF,
-          ),
-          x=ParameterRangeOneOf(param=IntegerParameterRange(10, 1, 1)))
+        hpo(static_hyperparameters={}, train="", validation="",
+            hyperparameter_tuning_job_config=HyperparameterTuningJobConfig(
+                tuning_strategy=1,
+                tuning_objective=HyperparameterTuningObjective(
+                    objective_type=HyperparameterTuningObjectiveType.MINIMIZE,
+                    metric_name="x",
+                ),
+                training_job_early_stopping_type=TrainingJobEarlyStoppingType.OFF,
+            ),
+            x=ParameterRangeOneOf(param=IntegerParameterRange(10, 1, 1)))
 
 
 def test_hpoconfig_transformer():

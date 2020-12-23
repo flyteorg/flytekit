@@ -162,7 +162,9 @@ class Task(object):
             return self._local_execute(ctx, **kwargs)
         else:
             logger.warning("task run without context - executing raw function")
-            return self.execute(**kwargs)
+            new_user_params = self.pre_execute(ctx.user_space_params)
+            with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=new_user_params):
+                return self.execute(**kwargs)
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
@@ -196,6 +198,18 @@ class Task(object):
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
         This method is also invoked during runtime.
+        """
+        pass
+
+    @abstractmethod
+    def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
+        """
+        This is the method that will be invoked directly before executing the task method and before all the inputs
+        are converted. One particular case where this is useful is if the context is to be modified for the user process
+        to get some user space parameters. This also ensures that things like SparkSession are already correctly
+        setup before the type transformers are called
+
+        This should return either the same context of the mutated context
         """
         pass
 

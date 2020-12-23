@@ -24,9 +24,9 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
 
     def __init__(
         self,
-        instance_count: int,
         instance_type: str,
         volume_size_in_gb: int,
+        instance_count: int = 1,
         distributed_protocol: int = DistributedProtocol.UNSPECIFIED,
     ):
         self._instance_count = instance_count
