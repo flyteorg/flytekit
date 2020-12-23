@@ -133,8 +133,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         if self._is_distributed() is False or (
             self._is_distributed()
             and self._output_persist_predicate
-            and self.output_persist_predicate(engine_context.distributed_training_context)
-            is True
+            and self.output_persist_predicate(engine_context.distributed_training_context) is True
         ):
             return ret
         else:
@@ -161,13 +160,13 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
         """
 
         wf_params = _sm_distribution.DistributedTrainingExecutionParam(
-                execution_date=context.execution_date,
-                # TODO: it might be better to consider passing the full struct
-                execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
-                stats=context.stats,
-                logging=context.logging,
-                tmp_dir=context.working_directory,
-                distributed_training_context=context.distributed_training_context,
-            )
+            execution_date=context.execution_date,
+            # TODO: it might be better to consider passing the full struct
+            execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
+            stats=context.stats,
+            logging=context.logging,
+            tmp_dir=context.working_directory,
+            distributed_training_context=context.distributed_training_context,
+        )
 
         return _exception_scopes.user_entry_point(self.task_function)(wf_params, **inputs)
