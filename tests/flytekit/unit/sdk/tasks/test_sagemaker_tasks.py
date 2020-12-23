@@ -324,9 +324,18 @@ class SingleNodeCustomTrainingJobTaskTests(unittest.TestCase):
             assert type(self._my_single_node_task) == CustomTrainingJobTask
 
     def test_output_persistence(self):
-        # execute the distributed task with its distributed_training_context == None
-        ret = self._my_single_node_task.execute(self._context, self._task_input)
-        assert _common_constants.OUTPUT_FILE_NAME in ret.keys()
+        # In single-node training on SageMaker, the distributed training env vars are still filled in
+        with mock.patch.dict(
+            _os.environ,
+            {
+                _sm_distribution.SM_ENV_VAR_CURRENT_HOST: "algo-0",
+                _sm_distribution.SM_ENV_VAR_HOSTS: '["algo-0"]',
+                _sm_distribution.SM_ENV_VAR_NETWORK_INTERFACE_NAME: "eth0",
+            },
+            clear=True,
+        ):
+            ret = self._my_single_node_task.execute(self._context, self._task_input)
+            assert _common_constants.OUTPUT_FILE_NAME in ret.keys()
 
 
 class DistributedCustomTrainingJobTaskTests(unittest.TestCase):
