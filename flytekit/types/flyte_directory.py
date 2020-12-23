@@ -5,7 +5,7 @@ import typing
 from pathlib import Path
 
 from flytekit.annotated.context_manager import FlyteContext
-from flytekit.annotated.type_engine import TypeTransformer
+from flytekit.annotated.type_engine import TypeEngine, TypeTransformer
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
@@ -60,7 +60,7 @@ class FlyteDirectory(os.PathLike):
         def noop():
             ...
 
-        self._path = os.path.abspath(path)
+        self._path = path
         self._downloader = downloader or noop
         self._downloaded = False
         self._remote_directory = remote_directory
@@ -207,3 +207,6 @@ class FlyteDirectoryTransformer(TypeTransformer[FlyteDirectory]):
         fd._remote_source = uri
 
         return fd
+
+
+TypeEngine.register(FlyteDirectoryTransformer())

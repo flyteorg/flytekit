@@ -136,7 +136,7 @@ class FlyteFile(os.PathLike):
             until a user actually calls open().
         :param remote_path: If the user wants to return something and also specify where it should be uploaded to.
         """
-        self._path = os.path.abspath(path)
+        self._path = path
         self._downloader = downloader
         self._downloaded = False
         self._remote_path = remote_path

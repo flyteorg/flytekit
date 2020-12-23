@@ -250,7 +250,11 @@ class PythonTask(Task):
 
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
-        with ctx.new_execution_context(mode=ctx.execution_state.mode, execution_params=new_user_params) as exec_ctx:
+
+        # Create another execution context with the new user params, but let's keep the same working dir
+        with ctx.new_execution_context(
+            mode=ctx.execution_state.mode, execution_params=new_user_params, working_dir=ctx.execution_state.working_dir
+        ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
             native_inputs = TypeEngine.literal_map_to_kwargs(exec_ctx, input_literal_map, self.python_interface.inputs)
