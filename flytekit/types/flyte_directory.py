@@ -14,6 +14,10 @@ from flytekit.models.types import LiteralType
 
 class FlyteDirectory(os.PathLike):
     """
+    WARNING: This class should not be used on very large datasets, as merely listing the dataset will cause
+    the entire dataset to be downloaded. Listing on S3 and other backend object stores is not consistent
+    and we should not need data to be downloaded to list.
+
     Please first read through the comments on the FlyteFile class as the implementation here is similar.
 
     One thing to note is that the os.PathLike type that comes with Python was used as a stand-in for FlyteFile.
@@ -67,6 +71,9 @@ class FlyteDirectory(os.PathLike):
         self._remote_source = None
 
     def __fspath__(self):
+        """
+        This function should be called by os.listdir as well.
+        """
         self._downloader()
         self._downloaded = True
         return self._path
@@ -120,7 +127,11 @@ class FlyteDirectory(os.PathLike):
         return self._path
 
 
-class FlyteDirectoryTransformer(TypeTransformer[FlyteDirectory]):
+class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
+    """
+    This transformer handles conversion between the Python native FlyteDirectory class defined above, and the Flyte
+    IDL literal/type of Multipart Blob. Please see the FlyteDirectory comments for additional information.
+    """
     def __init__(self):
         super().__init__(name="FlyteDirectory", t=FlyteDirectory)
 
@@ -133,7 +144,7 @@ class FlyteDirectoryTransformer(TypeTransformer[FlyteDirectory]):
         return _core_types.BlobType(format=format, dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART)
 
     def get_literal_type(self, t: typing.Type[FlyteDirectory]) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(format=FlyteDirectoryTransformer.get_format(t)))
+        return _type_models.LiteralType(blob=self._blob_type(format=FlyteDirToMultipartBlobTransformer.get_format(t)))
 
     def to_literal(
         self,
@@ -209,4 +220,4 @@ class FlyteDirectoryTransformer(TypeTransformer[FlyteDirectory]):
         return fd
 
 
-TypeEngine.register(FlyteDirectoryTransformer())
+TypeEngine.register(FlyteDirToMultipartBlobTransformer())

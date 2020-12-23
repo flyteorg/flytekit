@@ -11,7 +11,7 @@ from flytekit.annotated.type_engine import TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core.types import BlobType
-from flytekit.types.flyte_directory import FlyteDirectory, FlyteDirectoryTransformer
+from flytekit.types.flyte_directory import FlyteDirectory, FlyteDirToMultipartBlobTransformer
 
 
 def test_engine():
@@ -41,7 +41,7 @@ def test_transformer_to_literal_local():
             shutil.rmtree(p)
         pathlib.Path(p).mkdir(parents=True)
 
-        tf = FlyteDirectoryTransformer()
+        tf = FlyteDirToMultipartBlobTransformer()
         lt = tf.get_literal_type(FlyteDirectory)
         literal = tf.to_literal(ctx, FlyteDirectory(p), FlyteDirectory, lt)
         assert literal.scalar.blob.uri.startswith(random_dir)
@@ -86,7 +86,7 @@ def test_transformer_to_literal_remote():
             shutil.rmtree(p)
         pathlib.Path(p).mkdir(parents=True)
 
-        tf = FlyteDirectoryTransformer()
+        tf = FlyteDirToMultipartBlobTransformer()
         lt = tf.get_literal_type(FlyteDirectory)
 
         # Remote directories should be copied as is.
