@@ -62,11 +62,11 @@ class SparkDataFrameTransformer(TypeTransformer[pyspark.sql.DataFrame]):
         return LiteralType(schema=self._get_schema_type())
 
     def to_literal(
-            self,
-            ctx: FlyteContext,
-            python_val: pyspark.sql.DataFrame,
-            python_type: Type[pyspark.sql.DataFrame],
-            expected: LiteralType,
+        self,
+        ctx: FlyteContext,
+        python_val: pyspark.sql.DataFrame,
+        python_type: Type[pyspark.sql.DataFrame],
+        expected: LiteralType,
     ) -> Literal:
         remote_path = ctx.file_access.get_random_remote_directory()
         w = SparkDataFrameSchemaWriter(to_path=remote_path, cols=None, fmt=SchemaFormat.PARQUET)

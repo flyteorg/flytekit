@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+import typing
 from dataclasses import dataclass
 
 import retry
-import typing
 
 SM_RESOURCE_CONFIG_FILE = "/opt/ml/input/config/resourceconfig.json"
 SM_ENV_VAR_CURRENT_HOST = "SM_CURRENT_HOST"

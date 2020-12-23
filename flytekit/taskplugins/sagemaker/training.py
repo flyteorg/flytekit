@@ -1,8 +1,8 @@
 import logging
-from dataclasses import dataclass
-from typing import TypeVar, Dict, Any, Callable
-
 import typing
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, TypeVar
+
 from google.protobuf.json_format import MessageToDict
 
 import flytekit
@@ -32,12 +32,14 @@ class SagemakerTrainingJobConfig(object):
                                ``default: single node training - always persist output``
                                ``default: distributed training - always persist output on node with rank-0``
     """
+
     training_job_resource_config: _training_job_models.TrainingJobResourceConfig
     algorithm_specification: _training_job_models.AlgorithmSpecification
     # The default output-persisting predicate.
     # With this predicate, only the copy running on the first host in the list of hosts would persist its output
     should_persist_output: typing.Callable[[DistributedTrainingContext], bool] = lambda dctx: (
-            dctx.current_host == dctx.hosts[0])
+        dctx.current_host == dctx.hosts[0]
+    )
 
 
 class SagemakerBuiltinAlgorithmsTask(PythonTask):
@@ -50,8 +52,9 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask):
 
     OUTPUT_TYPE = TypeVar("tar.gz")
 
-    def __init__(self, name: str, metadata: _task_model.TaskMetadata, task_config: SagemakerTrainingJobConfig, *args,
-                 **kwargs):
+    def __init__(
+        self, name: str, metadata: _task_model.TaskMetadata, task_config: SagemakerTrainingJobConfig, *args, **kwargs
+    ):
         """
         Args:
             name: name of this specific task. This should be unique within the project. A good strategy is to prefix
@@ -59,9 +62,11 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask):
             metadata: Metadata for the task
             task_config: Config to use for the SagemakerBuiltinAlgorithms
         """
-        if (task_config is None or
-                task_config.algorithm_specification is None or
-                task_config.training_job_resource_config is None):
+        if (
+            task_config is None
+            or task_config.algorithm_specification is None
+            or task_config.training_job_resource_config is None
+        ):
             raise ValueError("TaskConfig, algorithm_specification, training_job_resource_config are required")
 
         input_type = TypeVar(self._content_type_to_blob_format(task_config.algorithm_specification.input_content_type))
@@ -87,7 +92,8 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask):
 
     def execute(self, **kwargs) -> Any:
         raise NotImplementedError(
-            "Cannot execute Sagemaker Builtin Algorithms locally, for local testing, please mock!")
+            "Cannot execute Sagemaker Builtin Algorithms locally, for local testing, please mock!"
+        )
 
     @classmethod
     def _content_type_to_blob_format(cls, content_type: int) -> str:
@@ -105,12 +111,20 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
     Allows a custom training algorithm to be executed on Amazon Sagemaker. For this to work, make sure your container
     is built according to Flyte plugin documentation (TODO point the link here)
     """
+
     _SAGEMAKER_CUSTOM_TRAINING_JOB_TASK = "sagemaker_custom_training_job_task"
 
-    def __init__(self, task_config: SagemakerTrainingJobConfig, task_function: Callable,
-                 metadata: _task_model.TaskMetadata, *args, **kwargs):
-        super().__init__(task_config, task_function, metadata,
-                         task_type=self._SAGEMAKER_CUSTOM_TRAINING_JOB_TASK, *args, **kwargs)
+    def __init__(
+        self,
+        task_config: SagemakerTrainingJobConfig,
+        task_function: Callable,
+        metadata: _task_model.TaskMetadata,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(
+            task_config, task_function, metadata, task_type=self._SAGEMAKER_CUSTOM_TRAINING_JOB_TASK, *args, **kwargs
+        )
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
         training_job = _training_job_models.TrainingJob(
@@ -121,8 +135,8 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
 
     def _is_distributed(self) -> bool:
         return (
-                self.task_config.training_job_resource_config
-                and self.task_config.training_job_resource_config.instance_count > 1
+            self.task_config.training_job_resource_config
+            and self.task_config.training_job_resource_config.instance_count > 1
         )
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
@@ -131,9 +145,12 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
         if the number of execution instances is > 1. Otherwise this is considered to be a single node execution
         """
         if self._is_distributed():
-            logging.info(f"Distributed context detected!")
-            return user_params.builder().add_attr("DISTRIBUTED_TRAINING_CONTEXT",
-                                                  DistributedTrainingContext.from_env()).build()
+            logging.info("Distributed context detected!")
+            return (
+                user_params.builder()
+                .add_attr("DISTRIBUTED_TRAINING_CONTEXT", DistributedTrainingContext.from_env())
+                .build()
+            )
         return user_params
 
     def execute(self, **kwargs) -> Any:
@@ -146,7 +163,7 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
         """
         rval = super(SagemakerCustomTrainingTask, self).execute(**kwargs)
         if self._is_distributed():
-            logging.info(f"Distributed context detected!")
+            logging.info("Distributed context detected!")
             dctx = flytekit.current_context().distributed_training_context
             if self.task_config.should_persist_output(dctx):
                 logging.info("output persistence predicate not met, Flytekit will ignore outputs")

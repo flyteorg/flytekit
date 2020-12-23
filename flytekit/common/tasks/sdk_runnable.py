@@ -160,7 +160,7 @@ class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.Extended
     """
 
     def __init__(
-            self, command, args, resources, env, config,
+        self, command, args, resources, env, config,
     ):
         super(SdkRunnableContainer, self).__init__("", command, args, resources, env or {}, config)
 
@@ -199,15 +199,15 @@ class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.Extended
 
     @classmethod
     def get_resources(
-            cls,
-            storage_request=None,
-            cpu_request=None,
-            gpu_request=None,
-            memory_request=None,
-            storage_limit=None,
-            cpu_limit=None,
-            gpu_limit=None,
-            memory_limit=None,
+        cls,
+        storage_request=None,
+        cpu_request=None,
+        gpu_request=None,
+        memory_request=None,
+        storage_limit=None,
+        cpu_limit=None,
+        gpu_limit=None,
+        memory_limit=None,
     ):
         """
         :param Text storage_request:
@@ -265,25 +265,25 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
     """
 
     def __init__(
-            self,
-            task_function,
-            task_type,
-            discovery_version,
-            retries,
-            interruptible,
-            deprecated,
-            storage_request,
-            cpu_request,
-            gpu_request,
-            memory_request,
-            storage_limit,
-            cpu_limit,
-            gpu_limit,
-            memory_limit,
-            discoverable,
-            timeout,
-            environment,
-            custom,
+        self,
+        task_function,
+        task_type,
+        discovery_version,
+        retries,
+        interruptible,
+        deprecated,
+        storage_request,
+        cpu_request,
+        gpu_request,
+        memory_request,
+        storage_limit,
+        cpu_limit,
+        gpu_limit,
+        memory_limit,
+        discoverable,
+        timeout,
+        environment,
+        custom,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -402,8 +402,8 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         """
         return (
             _engine_loader.get_engine("unit")
-                .get_task(self)
-                .execute(
+            .get_task(self)
+            .execute(
                 _type_helpers.pack_python_std_map_to_literal_map(
                     input_map,
                     {
@@ -424,8 +424,8 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         """
         return (
             _engine_loader.get_engine("local")
-                .get_task(self)
-                .execute(
+            .get_task(self)
+            .execute(
                 _type_helpers.pack_python_std_map_to_literal_map(
                     input_map,
                     {
@@ -495,17 +495,17 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
             }
 
     def _get_container_definition(
-            self,
-            storage_request=None,
-            cpu_request=None,
-            gpu_request=None,
-            memory_request=None,
-            storage_limit=None,
-            cpu_limit=None,
-            gpu_limit=None,
-            memory_limit=None,
-            environment=None,
-            cls=None,
+        self,
+        storage_request=None,
+        cpu_request=None,
+        gpu_request=None,
+        memory_request=None,
+        storage_limit=None,
+        cpu_limit=None,
+        gpu_limit=None,
+        memory_limit=None,
+        environment=None,
+        cls=None,
     ):
         """
         :param Text storage_request:

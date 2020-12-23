@@ -2,13 +2,21 @@ import pytest
 
 from flytekit import FlyteContext, metadata
 from flytekit.common.types.primitives import Generic
-from flytekit.taskplugins.sagemaker import (SagemakerHPOTask, SagemakerTrainingJobConfig,
-                                            SagemakerBuiltinAlgorithmsTask, SagemakerCustomTrainingTask,
-                                            TrainingJobResourceConfig, AlgorithmSpecification, AlgorithmName,
-                                            ParameterRangeOneOf,
-                                            HyperparameterTuningJobConfig, HPOJob, HyperparameterTuningObjective,
-                                            HyperparameterTuningObjectiveType,
-                                            TrainingJobEarlyStoppingType, IntegerParameterRange)
+from flytekit.taskplugins.sagemaker import (
+    AlgorithmName,
+    AlgorithmSpecification,
+    HPOJob,
+    HyperparameterTuningJobConfig,
+    HyperparameterTuningObjective,
+    HyperparameterTuningObjectiveType,
+    IntegerParameterRange,
+    ParameterRangeOneOf,
+    SagemakerBuiltinAlgorithmsTask,
+    SagemakerHPOTask,
+    SagemakerTrainingJobConfig,
+    TrainingJobEarlyStoppingType,
+    TrainingJobResourceConfig,
+)
 from flytekit.taskplugins.sagemaker.hpo import HPOTuningJobConfigTransformer, ParameterRangesTransformer
 from tests.flytekit.unit.taskplugins.sagemaker.test_training import _get_reg_settings
 
@@ -19,49 +27,46 @@ def test_hpo_for_builtin():
         metadata=metadata(),
         task_config=SagemakerTrainingJobConfig(
             training_job_resource_config=TrainingJobResourceConfig(
-                instance_count=1,
-                instance_type="ml-xlarge",
-                volume_size_in_gb=1,
+                instance_count=1, instance_type="ml-xlarge", volume_size_in_gb=1,
             ),
-            algorithm_specification=AlgorithmSpecification(
-                algorithm_name=AlgorithmName.XGBOOST,
-            )
+            algorithm_specification=AlgorithmSpecification(algorithm_name=AlgorithmName.XGBOOST,),
         ),
     )
 
-    hpo = SagemakerHPOTask(
-        name="test",
-        metadata=metadata(),
-        task_config=HPOJob(10, 10, ["x"]),
-        training_task=trainer,
-    )
+    hpo = SagemakerHPOTask(name="test", metadata=metadata(), task_config=HPOJob(10, 10, ["x"]), training_task=trainer,)
 
-    assert hpo.python_interface.inputs.keys() == {"static_hyperparameters", "train", "validation",
-                                                  'hyperparameter_tuning_job_config', 'x'}
+    assert hpo.python_interface.inputs.keys() == {
+        "static_hyperparameters",
+        "train",
+        "validation",
+        "hyperparameter_tuning_job_config",
+        "x",
+    }
     assert hpo.python_interface.outputs.keys() == {"model"}
 
     assert hpo.get_custom(_get_reg_settings()) == {
-        'maxNumberOfTrainingJobs': '10',
-        'maxParallelTrainingJobs': '10',
-        'trainingJob': {
-            'algorithmSpecification': {'algorithmName': 'XGBOOST'},
-            'trainingJobResourceConfig': {'instanceCount': '1',
-                                          'instanceType': 'ml-xlarge',
-                                          'volumeSizeInGb': '1'},
+        "maxNumberOfTrainingJobs": "10",
+        "maxParallelTrainingJobs": "10",
+        "trainingJob": {
+            "algorithmSpecification": {"algorithmName": "XGBOOST"},
+            "trainingJobResourceConfig": {"instanceCount": "1", "instanceType": "ml-xlarge", "volumeSizeInGb": "1"},
         },
     }
 
     with pytest.raises(NotImplementedError):
-        hpo(static_hyperparameters={}, train="", validation="",
+        hpo(
+            static_hyperparameters={},
+            train="",
+            validation="",
             hyperparameter_tuning_job_config=HyperparameterTuningJobConfig(
                 tuning_strategy=1,
                 tuning_objective=HyperparameterTuningObjective(
-                    objective_type=HyperparameterTuningObjectiveType.MINIMIZE,
-                    metric_name="x",
+                    objective_type=HyperparameterTuningObjectiveType.MINIMIZE, metric_name="x",
                 ),
                 training_job_early_stopping_type=TrainingJobEarlyStoppingType.OFF,
             ),
-            x=ParameterRangeOneOf(param=IntegerParameterRange(10, 1, 1)))
+            x=ParameterRangeOneOf(param=IntegerParameterRange(10, 1, 1)),
+        )
 
 
 def test_hpoconfig_transformer():
@@ -70,8 +75,7 @@ def test_hpoconfig_transformer():
     o = HyperparameterTuningJobConfig(
         tuning_strategy=1,
         tuning_objective=HyperparameterTuningObjective(
-            objective_type=HyperparameterTuningObjectiveType.MINIMIZE,
-            metric_name="x",
+            objective_type=HyperparameterTuningObjectiveType.MINIMIZE, metric_name="x",
         ),
         training_job_early_stopping_type=TrainingJobEarlyStoppingType.OFF,
     )
