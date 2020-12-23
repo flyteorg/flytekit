@@ -73,7 +73,7 @@ class HyperparameterTuningJobConfig(_common.FlyteIdlEntity):
         self,
         tuning_strategy: int,
         tuning_objective: HyperparameterTuningObjective,
-        training_job_early_stopping_type: int,
+        training_job_early_stopping_type: TrainingJobEarlyStoppingType,
     ):
         self._tuning_strategy = tuning_strategy
         self._tuning_objective = tuning_objective

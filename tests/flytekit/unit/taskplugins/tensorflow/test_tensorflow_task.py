@@ -4,19 +4,19 @@ from flytekit.annotated.resources import Resources
 from flytekit.taskplugins.tensorflow.task import TfJob
 
 
-def test_pytorch_task():
+def test_tensorflow_task():
     @task(
         task_config=TfJob(
             num_workers=10, per_replica_requests=Resources(cpu="1"), num_ps_replicas=1, num_chief_replicas=1
         ),
         cache=True,
     )
-    def my_pytorch_task(x: int, y: str) -> int:
+    def my_tensorflow_task(x: int, y: str) -> int:
         return x
 
-    assert my_pytorch_task(x=10, y="hello") == 10
+    assert my_tensorflow_task(x=10, y="hello") == 10
 
-    assert my_pytorch_task.task_config is not None
+    assert my_tensorflow_task.task_config is not None
 
     default_img = Image(name="default", fqn="test", tag="tag")
     reg = RegistrationSettings(
@@ -27,7 +27,7 @@ def test_pytorch_task():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
 
-    assert my_pytorch_task.get_custom(reg) == {"workers": 10, "psReplicas": 1, "chiefReplicas": 1}
-    assert my_pytorch_task.resources.limits is None
-    assert my_pytorch_task.resources.requests == Resources(cpu="1")
-    assert my_pytorch_task.task_type == "tensorflow"
+    assert my_tensorflow_task.get_custom(reg) == {"workers": 10, "psReplicas": 1, "chiefReplicas": 1}
+    assert my_tensorflow_task.resources.limits is None
+    assert my_tensorflow_task.resources.requests == Resources(cpu="1")
+    assert my_tensorflow_task.task_type == "tensorflow"

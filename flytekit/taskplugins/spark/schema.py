@@ -10,6 +10,10 @@ from flytekit.types.schema import SchemaEngine, SchemaFormat, SchemaHandler, Sch
 
 
 class SparkDataFrameSchemaReader(SchemaReader[pyspark.sql.DataFrame]):
+    """
+    Implements how SparkDataFrame should be read using the ``open`` method of FlyteSchema
+    """
+
     def __init__(self, from_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         super().__init__(from_path, cols, fmt)
 
@@ -24,6 +28,10 @@ class SparkDataFrameSchemaReader(SchemaReader[pyspark.sql.DataFrame]):
 
 
 class SparkDataFrameSchemaWriter(SchemaWriter[pyspark.sql.DataFrame]):
+    """
+    Implements how SparkDataFrame should be written to using ``open`` method of FlyteSchema
+    """
+
     def __init__(self, to_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         super().__init__(to_path, cols, fmt)
 
@@ -31,7 +39,7 @@ class SparkDataFrameSchemaWriter(SchemaWriter[pyspark.sql.DataFrame]):
         if dfs is None or len(dfs) == 0:
             return
         if len(dfs) > 1:
-            raise AssertionError("Only one Spark.DataFrame can be returned per return variable currently")
+            raise AssertionError("Only a single Spark.DataFrame can be written per variable currently")
         if self._fmt == SchemaFormat.PARQUET:
             dfs[0].write.mode("overwrite").parquet(self.to_path)
             return
@@ -72,6 +80,9 @@ class SparkDataFrameTransformer(TypeTransformer[pyspark.sql.DataFrame]):
         return r.all()
 
 
+# %%
+# Registers a handle for Spark DataFrame + Flyte Schema type transition
+# This allows open(pyspark.DataFrame) to be an acceptable type
 SchemaEngine.register_handler(
     SchemaHandler(
         "pyspark.sql.DataFrame-Schema",
@@ -81,4 +92,7 @@ SchemaEngine.register_handler(
         handles_remote_io=True,
     )
 )
+
+# %%
+# This makes pyspark.DataFrame as a supported output/input type with flytekit.
 TypeEngine.register(SparkDataFrameTransformer())

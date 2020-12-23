@@ -72,9 +72,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         import pyspark as _pyspark
 
         sess = _pyspark.sql.SparkSession.builder.appName(f"FlyteSpark: {user_params.execution_id}").getOrCreate()
-        b = user_params.builder(user_params)
-        b.add_attr("SPARK_SESSION", sess)
-        return b.build()
+        return user_params.builder().add_attr("SPARK_SESSION", sess).build()
 
 
 # Inject the Spark plugin into flytekits dynamic plugin loading system

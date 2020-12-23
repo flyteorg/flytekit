@@ -319,6 +319,10 @@ class DictTransformer(TypeTransformer[dict]):
                 return t.__args__
         return None, None
 
+    @staticmethod
+    def dict_to_generic_literal(v: dict) -> Literal:
+        return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(v), _struct.Struct())))
+
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         tp = self.get_dict_types(t)
         if tp:
@@ -334,7 +338,7 @@ class DictTransformer(TypeTransformer[dict]):
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
     ) -> Literal:
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(python_val), _struct.Struct())))
+            return self.dict_to_generic_literal(python_val)
 
         lit_map = {}
         for k, v in python_val.items():

@@ -52,10 +52,11 @@ class ExecutionParameters(object):
             self.working_dir = current.working_directory if current else None
             self.execution_id = current.execution_id if current else None
             self.logging = current.logging if current else None
-            self.attrs = current._attrs if current else None
+            self.attrs = current._attrs if current else {}
 
-        def add_attr(self, key: str, v: typing.Any):
+        def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:
             self.attrs[key] = v
+            return self
 
         def build(self) -> ExecutionParameters:
             if not isinstance(self.working_dir, _common_utils.AutoDeletingTempDir):
@@ -70,8 +71,11 @@ class ExecutionParameters(object):
             )
 
     @staticmethod
-    def builder(current: ExecutionParameters = None) -> Builder:
+    def new_builder(current: ExecutionParameters = None) -> Builder:
         return ExecutionParameters.Builder(current=current)
+
+    def builder(self) -> Builder:
+        return ExecutionParameters.Builder(current=self)
 
     def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, **kwargs):
         self._stats = stats
@@ -142,6 +146,12 @@ class ExecutionParameters(object):
         if self._attrs and attr_name in self._attrs:
             return self._attrs[attr_name]
         raise AssertionError(f"{attr_name} not available as a parameter in Flyte context - are you in right task-type?")
+
+    def has_attr(self, attr_name: str) -> bool:
+        attr_name = attr_name.upper()
+        if self._attrs and attr_name in self._attrs:
+            return True
+        return False
 
 
 class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.ExtendedSdkType):
