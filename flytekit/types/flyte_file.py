@@ -17,8 +17,9 @@ def noop():
 
 class FlyteFile(os.PathLike):
     """
-    Since there is no native implementation of the int type for files and directories, we need to create one so that users
-    can express that their tasks take in or return a File.
+    Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
+    exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
+    in or return a file.
 
     There are a few possible types on the Python side that can be specified:
 
