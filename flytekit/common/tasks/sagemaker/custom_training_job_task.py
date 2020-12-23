@@ -115,25 +115,29 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
-        distributed_context = (
-            _sm_distribution.get_sagemaker_distributed_training_context_from_env() if self._is_distributed() else None
-        )
-        dist_training_task_specific_engine_context = _sm_distribution.DistributedTrainingEngineContext(
-            execution_date=context.execution_date,
-            tmp_dir=context.working_directory,
-            stats=context.stats,
-            execution_id=context.execution_id,
-            logging=context.logging,
-            raw_output_data_prefix=context.raw_output_data_prefix,
-            distributed_training_context=distributed_context,
-        )
+        if self._is_distributed():
 
-        ret = super().execute(dist_training_task_specific_engine_context, inputs)
+            distributed_context = (
+                _sm_distribution.get_sagemaker_distributed_training_context_from_env()
+            )
+            engine_context = _sm_distribution.DistributedTrainingEngineContext(
+                execution_date=context.execution_date,
+                tmp_dir=context.working_directory,
+                stats=context.stats,
+                execution_id=context.execution_id,
+                logging=context.logging,
+                raw_output_data_prefix=context.raw_output_data_prefix,
+                distributed_training_context=distributed_context,
+            )
+        else:
+            engine_context = context
+
+        ret = super().execute(engine_context, inputs)
 
         if self._is_distributed() is False or (
             self._is_distributed()
             and self._output_persist_predicate
-            and self.output_persist_predicate(dist_training_task_specific_engine_context.distributed_training_context)
+            and self.output_persist_predicate(engine_context.distributed_training_context)
             is True
         ):
             return ret
@@ -160,15 +164,24 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
 
-        return _exception_scopes.user_entry_point(self.task_function)(
-            _sm_distribution.DistributedTrainingExecutionParam(
-                execution_date=context.execution_date,
-                # TODO: it might be better to consider passing the full struct
-                execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
-                stats=context.stats,
-                logging=context.logging,
-                tmp_dir=context.working_directory,
-                distributed_training_context=context.distributed_training_context,
-            ),
-            **inputs
-        )
+        if self._is_distributed():
+            wf_params = _sm_distribution.DistributedTrainingExecutionParam(
+                    execution_date=context.execution_date,
+                    # TODO: it might be better to consider passing the full struct
+                    execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
+                    stats=context.stats,
+                    logging=context.logging,
+                    tmp_dir=context.working_directory,
+                    distributed_training_context=context.distributed_training_context,
+                )
+        else:
+            wf_params = _sdk_runnable.ExecutionParameters(
+                    execution_date=context.execution_date,
+                    # TODO: it might be better to consider passing the full struct
+                    execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
+                    stats=context.stats,
+                    logging=context.logging,
+                    tmp_dir=context.working_directory,
+                )
+
+        return _exception_scopes.user_entry_point(self.task_function)(wf_params, **inputs)
