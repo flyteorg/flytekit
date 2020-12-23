@@ -1,6 +1,7 @@
 import os
 import pathlib
 import shutil
+import pytest
 
 import flytekit
 from flytekit.annotated import context_manager
@@ -55,8 +56,24 @@ def test_transformer_to_literal_local():
         mock_remote_files = os.listdir(literal.scalar.blob.uri)
         assert mock_remote_files == ["xyz"]
 
+        # The only primitives allowed are strings
+        with pytest.raises(AssertionError):
+            tf.to_literal(ctx, 3, FlyteDirectory, lt)
 
-def test_transformer_to_literal():
+        # Can't use if it's not a directory
+        with pytest.raises(AssertionError):
+            p = "/tmp/flyte/xyz"
+            path = pathlib.Path(p)
+            try:
+                path.unlink()
+            except OSError:
+                ...
+            with open(p, 'w') as fh:
+                fh.write("hello world\n")
+            tf.to_literal(ctx, FlyteDirectory(p), FlyteDirectory, lt)
+
+
+def test_transformer_to_literal_remote():
     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
     fs = FileAccessProvider(local_sandbox_dir=random_dir)
     with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
@@ -102,3 +119,16 @@ def test_wf():
     wfd = my_wf()
     files = os.listdir(wfd.path)
     assert len(files) == 5
+
+    @task
+    def t2(in1: FlyteDirectory["csv"]) -> int:
+        return len(os.listdir(in1.path))
+
+    @workflow
+    def wf2() -> int:
+        t1_dir = t1()
+        y = t2(in1=t1_dir)
+        return y
+
+    x = wf2()
+    assert x == 5
