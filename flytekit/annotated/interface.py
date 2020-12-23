@@ -76,7 +76,7 @@ class Interface(object):
         if not extra_inputs:
             return self
         new_inputs = copy.copy(self._inputs)
-        for k, v in extra_inputs:
+        for k, v in extra_inputs.items():
             if k in new_inputs:
                 raise ValueError(f"Input {k} cannot be added as it already exists in the interface")
             new_inputs[k] = v

@@ -1,19 +1,30 @@
+import json
 from dataclasses import dataclass
-from typing import Any, Union, Dict, List
+from typing import Any, Union, Dict, List, Type
 
+from google.protobuf import json_format
 from google.protobuf.json_format import MessageToDict
 
+from flytekit import FlyteContext
 from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.context_manager import RegistrationSettings
+from flytekit.annotated.type_engine import TypeTransformer, T, TypeEngine, DictTransformer
+from flytekit.common.types import primitives
 from flytekit.models import task as _task_model
-from flytekit.models.sagemaker import hpo_job as _hpo_job_model, training_job as _training_job_model
+from flytekit.models.literals import Literal
+from flytekit.models.sagemaker import hpo_job as _hpo_job_model, training_job as _training_job_model, \
+    parameter_ranges as _params
+from flytekit.models.types import LiteralType
 from flytekit.taskplugins.sagemaker.training import SagemakerBuiltinAlgorithmsTask, SagemakerCustomTrainingTask
+from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job, \
+    parameter_ranges_pb2 as _pb2_params
 
 
 @dataclass
 class HPOJob(object):
     max_number_of_training_jobs: int
     max_parallel_training_jobs: int
+    # TODO. we could make the tunable params a tuple of name and type of range?
     tunable_params: List[str]
 
 
@@ -34,15 +45,12 @@ class SagemakerHPOTask(PythonTask):
         self._training_task = training_task
         iface = training_task.python_interface
 
-        # TODO Ideally these should not be dict, but the actual classes as DataClasses
-        # HyperparameterTuningJobConfig
-        extra_inputs = {"hyperparameter_tuning_job_config": dict}
+        extra_inputs = {"hyperparameter_tuning_job_config": _hpo_job_model.HyperparameterTuningJobConfig}
 
         self._hpo_job_config = task_config
 
         if self._hpo_job_config.tunable_params:
-            # TODO Ideally these should not be dict, but the actual classes as DataClasses ParameterRange
-            extra_inputs.update({param: dict for param in self._hpo_job_config.tunable_params})
+            extra_inputs.update({param: _params.ParameterRangeOneOf for param in self._hpo_job_config.tunable_params})
 
         updated_iface = iface.with_inputs(extra_inputs)
         super().__init__(
@@ -50,7 +58,7 @@ class SagemakerHPOTask(PythonTask):
             name=name, interface=updated_iface, metadata=metadata, *args, **kwargs)
 
     def execute(self, **kwargs) -> Any:
-        raise AssertionError("Sagemaker HPO Task cannot be executed locally, to execute locally mock it!")
+        raise NotImplementedError("Sagemaker HPO Task cannot be executed locally, to execute locally mock it!")
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
         training_job = _training_job_model.TrainingJob(
@@ -62,3 +70,69 @@ class SagemakerHPOTask(PythonTask):
             max_parallel_training_jobs=self._hpo_job_config.max_parallel_training_jobs,
             training_job=training_job,
         ).to_flyte_idl())
+
+
+# %%
+# HPO Task allows ParameterRangeOneOf and HyperparameterTuningJobConfig as inputs. In flytekit this is possible
+# to allow these two types to be registered as valid input / output types and provide a custom transformer
+# We will create custom transformers for them as follows and provide them once a user loads HPO task
+
+class HPOTuningJobConfigTransformer(TypeTransformer[_hpo_job_model.HyperparameterTuningJobConfig]):
+    """
+    Transformer to make ``HyperparameterTuningJobConfig`` an accepted value, for which a transformer is registered
+    """
+
+    def __init__(self):
+        super().__init__("sagemaker-hpojobconfig-transformer", _hpo_job_model.HyperparameterTuningJobConfig)
+
+    def get_literal_type(self, t: Type[_hpo_job_model.HyperparameterTuningJobConfig]) -> LiteralType:
+        return primitives.Generic.to_flyte_literal_type()
+
+    def to_literal(self, ctx: FlyteContext, python_val: _hpo_job_model.HyperparameterTuningJobConfig,
+                   python_type: Type[_hpo_job_model.HyperparameterTuningJobConfig], expected: LiteralType) -> Literal:
+        d = MessageToDict(python_val.to_flyte_idl())
+        return DictTransformer.dict_to_generic_literal(d)
+
+    def to_python_value(
+            self, ctx: FlyteContext, lv: Literal,
+            expected_python_type: Type[
+                _hpo_job_model.HyperparameterTuningJobConfig]) -> _hpo_job_model.HyperparameterTuningJobConfig:
+        if lv and lv.scalar and lv.scalar.generic is not None:
+            d = json.loads(json_format.MessageToJson(lv.scalar.generic))
+            o = _pb2_hpo_job.HyperparameterTuningJobConfig()
+            o = json_format.ParseDict(d, o)
+            return _hpo_job_model.HyperparameterTuningJobConfig.from_flyte_idl(o)
+        return None
+
+
+class ParameterRangesTransformer(TypeTransformer[_params.ParameterRangeOneOf]):
+    """
+    Transformer to make ``ParameterRange`` an accepted value, for which a transformer is registered
+    """
+
+    def __init__(self):
+        super().__init__("sagemaker-paramrange-transformer", _params.ParameterRangeOneOf)
+
+    def get_literal_type(self, t: Type[_params.ParameterRangeOneOf]) -> LiteralType:
+        return primitives.Generic.to_flyte_literal_type()
+
+    def to_literal(self, ctx: FlyteContext, python_val: _params.ParameterRangeOneOf,
+                   python_type: Type[_hpo_job_model.HyperparameterTuningJobConfig], expected: LiteralType) -> Literal:
+        d = MessageToDict(python_val.to_flyte_idl())
+        return DictTransformer.dict_to_generic_literal(d)
+
+    def to_python_value(
+            self, ctx: FlyteContext, lv: Literal,
+            expected_python_type: Type[_params.ParameterRangeOneOf]) -> _params.ParameterRangeOneOf:
+        if lv and lv.scalar and lv.scalar.generic is not None:
+            d = json.loads(json_format.MessageToJson(lv.scalar.generic))
+            o = _pb2_params.ParameterRangeOneOf()
+            o = json_format.ParseDict(d, o)
+            return _params.ParameterRangeOneOf.from_flyte_idl(o)
+        return None
+
+
+# %%
+# Register the types
+TypeEngine.register(HPOTuningJobConfigTransformer())
+TypeEngine.register(ParameterRangesTransformer())

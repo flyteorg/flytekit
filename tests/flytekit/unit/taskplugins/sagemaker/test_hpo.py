@@ -1,0 +1,97 @@
+import pytest
+
+from flytekit import FlyteContext, metadata
+from flytekit.common.types.primitives import Generic
+from flytekit.taskplugins.sagemaker import (SagemakerHPOTask, SagemakerTrainingJobConfig,
+                                            SagemakerBuiltinAlgorithmsTask, SagemakerCustomTrainingTask,
+                                            TrainingJobResourceConfig, AlgorithmSpecification, AlgorithmName,
+                                            ParameterRangeOneOf,
+                                            HyperparameterTuningJobConfig, HPOJob, HyperparameterTuningObjective,
+                                            HyperparameterTuningObjectiveType,
+                                            TrainingJobEarlyStoppingType, IntegerParameterRange)
+from flytekit.taskplugins.sagemaker.hpo import HPOTuningJobConfigTransformer, ParameterRangesTransformer
+from tests.flytekit.unit.taskplugins.sagemaker.test_training import _get_reg_settings
+
+
+def test_hpo_for_builtin():
+    trainer = SagemakerBuiltinAlgorithmsTask(
+        name="builtin-trainer",
+        metadata=metadata(),
+        task_config=SagemakerTrainingJobConfig(
+            training_job_resource_config=TrainingJobResourceConfig(
+                instance_count=1,
+                instance_type="ml-xlarge",
+                volume_size_in_gb=1,
+            ),
+            algorithm_specification=AlgorithmSpecification(
+                algorithm_name=AlgorithmName.XGBOOST,
+            )
+        ),
+    )
+
+    t = SagemakerHPOTask(
+        name="test",
+        metadata=metadata(),
+        task_config=HPOJob(10, 10, ["x"]),
+        training_task=trainer,
+    )
+
+    assert t.python_interface.inputs.keys() == {"static_hyperparameters", "train", "validation",
+                                                'hyperparameter_tuning_job_config', 'x'}
+    assert t.python_interface.outputs.keys() == {"model"}
+
+    assert t.get_custom(_get_reg_settings()) == {
+        'maxNumberOfTrainingJobs': '10',
+        'maxParallelTrainingJobs': '10',
+        'trainingJob': {
+            'algorithmSpecification': {'algorithmName': 'XGBOOST'},
+            'trainingJobResourceConfig': {'instanceCount': '1',
+                                          'instanceType': 'ml-xlarge',
+                                          'volumeSizeInGb': '1'},
+        },
+    }
+
+    with pytest.raises(NotImplementedError):
+        t(static_hyperparameters={}, train="", validation="",
+          hyperparameter_tuning_job_config=HyperparameterTuningJobConfig(
+              tuning_strategy=1,
+              tuning_objective=HyperparameterTuningObjective(
+                  objective_type=HyperparameterTuningObjectiveType.MINIMIZE,
+                  metric_name="x",
+              ),
+              training_job_early_stopping_type=TrainingJobEarlyStoppingType.OFF,
+          ),
+          x=ParameterRangeOneOf(param=IntegerParameterRange(10, 1, 1)))
+
+
+def test_hpoconfig_transformer():
+    t = HPOTuningJobConfigTransformer()
+    assert t.get_literal_type(HyperparameterTuningJobConfig) == Generic.to_flyte_literal_type()
+    o = HyperparameterTuningJobConfig(
+        tuning_strategy=1,
+        tuning_objective=HyperparameterTuningObjective(
+            objective_type=HyperparameterTuningObjectiveType.MINIMIZE,
+            metric_name="x",
+        ),
+        training_job_early_stopping_type=TrainingJobEarlyStoppingType.OFF,
+    )
+    ctx = FlyteContext.current_context()
+    lit = t.to_literal(ctx, python_val=o, python_type=HyperparameterTuningJobConfig, expected=None)
+    assert lit is not None
+    assert lit.scalar.generic is not None
+    ro = t.to_python_value(ctx, lit, HyperparameterTuningJobConfig)
+    assert ro is not None
+    assert ro == o
+
+
+def test_parameter_ranges_transformer():
+    t = ParameterRangesTransformer()
+    assert t.get_literal_type(ParameterRangeOneOf) == Generic.to_flyte_literal_type()
+    o = ParameterRangeOneOf(param=IntegerParameterRange(10, 0, 1))
+    ctx = FlyteContext.current_context()
+    lit = t.to_literal(ctx, python_val=o, python_type=ParameterRangeOneOf, expected=None)
+    assert lit is not None
+    assert lit.scalar.generic is not None
+    ro = t.to_python_value(ctx, lit, ParameterRangeOneOf)
+    assert ro is not None
+    assert ro == o

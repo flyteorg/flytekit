@@ -73,7 +73,7 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask):
         return MessageToDict(training_job.to_flyte_idl())
 
     def execute(self, **kwargs) -> Any:
-        raise Exception("Cannot execute Sagemaker Builtin Algorithms locally, for local testing, please mock!")
+        raise NotImplementedError("Cannot execute Sagemaker Builtin Algorithms locally, for local testing, please mock!")
 
     @classmethod
     def _content_type_to_blob_format(cls, content_type: int) -> str:
