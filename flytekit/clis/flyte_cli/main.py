@@ -12,6 +12,8 @@ from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.core import literals_pb2 as _literals_pb2
+from flyteidl.core import tasks_pb2 as _core_tasks_pb2
+from flyteidl.core import workflow_pb2 as _core_workflow_pb2
 
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
@@ -1492,7 +1494,7 @@ def _extract_pair(
     identifier_file: str, object_file: str, project: str, domain: str, version: str
 ) -> Tuple[
     _identifier_pb2.Identifier,
-    Union[_task_pb2.TaskTemplate, _workflow_pb2.WorkflowTemplate, _launch_plan_pb2.LaunchPlanSpec],
+    Union[_core_tasks_pb2.TaskTemplate, _core_workflow_pb2.WorkflowTemplate, _launch_plan_pb2.LaunchPlanSpec],
 ]:
     """
     :param Text identifier_file:
