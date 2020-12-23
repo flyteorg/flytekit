@@ -2,6 +2,7 @@ import importlib as _importlib
 import os as _os
 import stat as _stat
 import sys as _sys
+from typing import List, Tuple, Union
 
 import click as _click
 import requests as _requests
@@ -11,11 +12,14 @@ from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.core import literals_pb2 as _literals_pb2
+from flyteidl.core import tasks_pb2 as _core_tasks_pb2
+from flyteidl.core import workflow_pb2 as _core_workflow_pb2
 
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
 from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map
 from flytekit.clis.helpers import construct_literal_map_from_variable_map as _construct_literal_map_from_variable_map
+from flytekit.clis.helpers import hydrate_registration_parameters
 from flytekit.clis.helpers import parse_args_into_dict as _parse_args_into_dict
 from flytekit.common import launch_plan as _launch_plan_common
 from flytekit.common import utils as _utils
@@ -286,6 +290,7 @@ _INSECURE_FLAG = _platform_config.INSECURE.get()
 _PROJECT_FLAGS = ["-p", "--project"]
 _DOMAIN_FLAGS = ["-d", "--domain"]
 _NAME_FLAGS = ["-n", "--name"]
+_VERSION_FLAGS = ["-v", "--version"]
 _HOST_FLAGS = ["-h", "--host"]
 _PRINCIPAL_FLAGS = ["-r", "--principal"]
 _INSECURE_FLAGS = ["-i", "--insecure"]
@@ -1478,27 +1483,37 @@ def register_project(identifier, name, description, host, insecure):
     _click.echo("Registered project [id: {}, name: {}, description: {}]".format(identifier, name, description))
 
 
-def _extract_pair(identifier_file, object_file):
+_resource_map = {
+    _identifier_pb2.LAUNCH_PLAN: _launch_plan_pb2.LaunchPlanSpec,
+    _identifier_pb2.WORKFLOW: _workflow_pb2.WorkflowSpec,
+    _identifier_pb2.TASK: _task_pb2.TaskSpec,
+}
+
+
+def _extract_pair(
+    identifier_file: str, object_file: str, project: str, domain: str, version: str
+) -> Tuple[
+    _identifier_pb2.Identifier,
+    Union[_core_tasks_pb2.TaskTemplate, _core_workflow_pb2.WorkflowTemplate, _launch_plan_pb2.LaunchPlanSpec],
+]:
     """
     :param Text identifier_file:
     :param Text object_file:
     :rtype: (flyteidl.core.identifier_pb2.Identifier, T)
     """
-    resource_map = {
-        _identifier_pb2.LAUNCH_PLAN: _launch_plan_pb2.LaunchPlanSpec,
-        _identifier_pb2.WORKFLOW: _workflow_pb2.WorkflowSpec,
-        _identifier_pb2.TASK: _task_pb2.TaskSpec,
-    }
-    id = _load_proto_from_file(_identifier_pb2.Identifier, identifier_file)
-    if id.resource_type not in resource_map:
+    identifier = _load_proto_from_file(_identifier_pb2.Identifier, identifier_file)
+    if identifier.resource_type not in _resource_map:
         raise _user_exceptions.FlyteAssertion(
-            f"Resource type found in identifier {id.resource_type} invalid, must be launch plan, " f"task, or workflow"
+            f"Resource type found in identifier {identifier.resource_type} invalid, must be launch plan, task, or workflow"
         )
-    entity = _load_proto_from_file(resource_map[id.resource_type], object_file)
-    return id, entity
+    entity = _load_proto_from_file(_resource_map[identifier.resource_type], object_file)
+    registerable_identifier, registerable_entity = hydrate_registration_parameters(
+        identifier, project, domain, version, entity
+    )
+    return registerable_identifier, registerable_entity
 
 
-def _extract_files(file_paths):
+def _extract_files(project: str, domain: str, version: str, file_paths: List[str]):
     """
     :param file_paths:
     :rtype: List[(flyteidl.core.identifier_pb2.Identifier, T)]
@@ -1511,31 +1526,34 @@ def _extract_files(file_paths):
     filename_iterator = iter(file_paths)
     for identifier_file in filename_iterator:
         object_file = next(filename_iterator)
-        id, entity = _extract_pair(identifier_file, object_file)
+        # Serialized proto files are of the form: 12_foo.bar.<resource_type>.pb
+        id, entity = _extract_pair(identifier_file, object_file, project, domain, version)
         results.append((id, entity))
 
     return results
 
 
 @_flyte_cli.command("register-files", cls=_FlyteSubCommand)
+@_click.option(*_PROJECT_FLAGS, required=True, help="The project namespace to register with.")
+@_click.option(*_DOMAIN_FLAGS, required=True, help="The domain namespace to register with.")
+@_click.option(*_VERSION_FLAGS, required=True, help="The entity version to register with")
 @_host_option
 @_insecure_option
 @_click.argument(
     "files", type=_click.Path(exists=True), nargs=-1,
 )
-def register_files(host, insecure, files):
+def register_files(project, domain, version, host, insecure, files):
     """
     Given a list of files, this will (after sorting the input list), attempt to register them against Flyte Admin.
     This command expects the files to be the output of the pyflyte serialize command.  See the code there for more
-    information. Valid files need to be:
+    information. Valid files need to be:\n
         * Ordered in the order that you want registration to happen. pyflyte should have done the topological sort
-          for you and produced file that have a prefix that sets the correct order.
+          for you and produced file that have a prefix that sets the correct order.\n
         * Of the correct type. That is, they should be the serialized form of one of these Flyte IDL objects
-          (or an identifier object).
-          - flyteidl.admin.launch_plan_pb2.LaunchPlanSpec for launch plans
-          - flyteidl.admin.workflow_pb2.WorkflowSpec for workflows
-          - flyteidl.admin.task_pb2.TaskSpec for tasks
-        * Each file needs to be accompanied by an identifier file. We can relax this constraint in the future.
+          (or an identifier object).\n
+          - flyteidl.admin.launch_plan_pb2.LaunchPlanSpec for launch plans\n
+          - flyteidl.admin.workflow_pb2.WorkflowSpec for workflows\n
+          - flyteidl.admin.task_pb2.TaskSpec for tasks\n
 
     :param host:
     :param insecure:
@@ -1550,7 +1568,7 @@ def register_files(host, insecure, files):
     for f in files:
         _click.echo(f"  {f}")
 
-    flyte_entities_list = _extract_files(files)
+    flyte_entities_list = _extract_files(project, domain, version, files)
     for id, flyte_entity in flyte_entities_list:
         try:
             if id.resource_type == _identifier_pb2.LAUNCH_PLAN:

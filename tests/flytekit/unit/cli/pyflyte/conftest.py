@@ -49,10 +49,6 @@ def mock_clirunner(monkeypatch):
     def f(*args, **kwargs):
         runner = CliRunner()
         base_args = [
-            "-p",
-            "tests",
-            "-d",
-            "unit",
             "-v",
             "version",
             "--pkgs",

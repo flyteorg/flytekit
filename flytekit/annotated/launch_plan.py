@@ -1,18 +1,20 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type
 
 from flytekit.annotated import workflow as _annotated_workflow
 from flytekit.annotated.context_manager import FlyteContext, FlyteEntities
 from flytekit.annotated.interface import Interface, transform_inputs_to_parameters
 from flytekit.annotated.node import create_and_link_node
 from flytekit.annotated.promise import translate_inputs_to_literals
+from flytekit.annotated.reference_entity import LaunchPlanReference, ReferenceEntity
 from flytekit.common.launch_plan import SdkLaunchPlan
 from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
+from flytekit.models.common import RawOutputDataConfig
 from flytekit.models.core import identifier as _identifier_model
 
 
@@ -183,7 +185,6 @@ class LaunchPlan(object):
 
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None:
-            # This would literally be a copy paste of the workflow one with the one line change
             inputs = self.saved_inputs
             inputs.update(kwargs)
             return create_and_link_node(ctx, entity=self, interface=self.workflow._native_interface, **inputs)
@@ -233,4 +234,43 @@ class LaunchPlan(object):
             name=self.name,
             version=settings.version,
         )
+        return self._registerable_entity
+
+
+class ReferenceLaunchPlan(ReferenceEntity, LaunchPlan):
+    """
+    A reference launch plan serves as a pointer to a Launch Plan that already exists on your Flyte installation. This
+    object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface.
+    If at registration time the interface provided causes an issue with compilation, an error will be returned.
+    """
+
+    def __init__(
+        self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
+    ):
+        super().__init__(LaunchPlanReference(project, domain, name, version), inputs, outputs)
+
+    def get_registerable_entity(self) -> SdkLaunchPlan:
+        from flytekit.common.interface import TypedInterface
+
+        wf_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW, "", "", "", "")
+        sdk_lp = SdkLaunchPlan(
+            workflow_id=wf_id,
+            entity_metadata=_launch_plan_models.LaunchPlanMetadata(schedule=None, notifications=[]),
+            default_inputs=_interface_models.ParameterMap({}),
+            fixed_inputs=_literal_models.LiteralMap({}),
+            labels=_common_models.Labels({}),
+            annotations=_common_models.Annotations({}),
+            auth_role=_common_models.AuthRole(assumable_iam_role="fake:role"),
+            raw_output_data_config=RawOutputDataConfig(""),
+        )
+        # Because of how SdkNodes work, it needs one of these interfaces
+        # Hopefully this is more trickery that can be cleaned up in the future
+        sdk_lp._interface = TypedInterface.promote_from_model(self.typed_interface)
+        sdk_lp._id = self.id
+
+        # Make sure we don't serialize this
+        sdk_lp._has_registered = True
+        sdk_lp.assign_name(self.reference.id.name)
+        self._registerable_entity = sdk_lp
+
         return self._registerable_entity

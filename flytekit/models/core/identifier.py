@@ -33,6 +33,9 @@ class Identifier(_common_models.FlyteIdlEntity):
         """
         return self._resource_type
 
+    def resource_type_name(self) -> str:
+        return _identifier_pb2.ResourceType.Name(self.resource_type)
+
     @property
     def project(self):
         """

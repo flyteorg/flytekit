@@ -8,7 +8,7 @@ import pytest
 from dataclasses_json import dataclass_json
 
 import flytekit
-from flytekit import ContainerTask, SQLTask, TaskReference, WorkflowReference, dynamic, kwtypes, maptask
+from flytekit import ContainerTask, SQLTask, dynamic, kwtypes, maptask
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
@@ -862,68 +862,6 @@ def test_wf_schema_to_df():
     assert x == 2
 
 
-def test_ref():
-    @task(
-        task_config=TaskReference(
-            project="flytesnacks",
-            domain="development",
-            name="recipes.aaa.simple.join_strings",
-            version="553018f39e519bdb2597b652639c30ce16b99c79",
-        )
-    )
-    def ref_t1(a: typing.List[str]) -> str:
-        ...
-
-    assert ref_t1.id.project == "flytesnacks"
-    assert ref_t1.id.domain == "development"
-    assert ref_t1.id.name == "recipes.aaa.simple.join_strings"
-    assert ref_t1.id.version == "553018f39e519bdb2597b652639c30ce16b99c79"
-
-    registration_settings = context_manager.RegistrationSettings(
-        project="proj",
-        domain="dom",
-        version="123",
-        image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
-        env={},
-        iam_role="test:iam:role",
-        service_account=None,
-    )
-    with context_manager.FlyteContext.current_context().new_registration_settings(
-        registration_settings=registration_settings
-    ):
-        sdk_task = ref_t1.get_registerable_entity()
-        assert sdk_task.has_registered
-        assert sdk_task.id.project == "flytesnacks"
-        assert sdk_task.id.domain == "development"
-        assert sdk_task.id.name == "recipes.aaa.simple.join_strings"
-        assert sdk_task.id.version == "553018f39e519bdb2597b652639c30ce16b99c79"
-
-
-def test_ref_task_more():
-    @task(
-        task_config=TaskReference(
-            project="flytesnacks",
-            domain="development",
-            name="recipes.aaa.simple.join_strings",
-            version="553018f39e519bdb2597b652639c30ce16b99c79",
-        )
-    )
-    def ref_t1(a: typing.List[str]) -> str:
-        ...
-
-    @workflow
-    def wf1(in1: typing.List[str]) -> str:
-        return ref_t1(a=in1)
-
-    with pytest.raises(Exception) as e:
-        wf1(in1=["hello", "world"])
-    assert "Remote reference tasks cannot be run" in f"{e}"
-
-    with task_mock(ref_t1) as mock:
-        mock.return_value = "hello"
-        assert wf1(in1=["hello", "world"]) == "hello"
-
-
 def test_dict_wf_with_constants():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
@@ -1001,40 +939,6 @@ def test_wf_with_catching_no_return():
 
     with pytest.raises(AssertionError):
         wf()
-
-
-def test_reference_workflow():
-    @task
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
-        a = a + 2
-        return a, "world-" + str(a)
-
-    @workflow(reference=WorkflowReference(project="proj", domain="developement", name="wf_name", version="abc"))
-    def ref_wf1(a: int) -> (str, str):
-        ...
-
-    @workflow
-    def my_wf(a: int, b: str) -> (int, str, str):
-        x, y = t1(a=a).with_overrides()
-        u, v = ref_wf1(a=x)
-        return x, u, v
-
-    with pytest.raises(Exception):
-        my_wf(a=3, b="foo")
-
-    @patch(ref_wf1)
-    def inner_test(ref_mock):
-        ref_mock.return_value = ("hello", "alice")
-        x, y, z = my_wf(a=3, b="foo")
-        assert x == 5
-        assert y == "hello"
-        assert z == "alice"
-
-    inner_test()
-
-    # Ensure that the patching is only for the duration of that test
-    with pytest.raises(Exception):
-        my_wf(a=3, b="foo")
 
 
 def test_wf_custom_types_missing_dataclass_json():

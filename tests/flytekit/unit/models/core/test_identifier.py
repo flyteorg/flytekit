@@ -8,6 +8,7 @@ def test_identifier():
     assert obj.name == "name"
     assert obj.version == "version"
     assert obj.resource_type == identifier.ResourceType.TASK
+    assert obj.resource_type_name() == "TASK"
 
     obj2 = identifier.Identifier.from_flyte_idl(obj.to_flyte_idl())
     assert obj2 == obj
@@ -16,6 +17,7 @@ def test_identifier():
     assert obj2.name == "name"
     assert obj2.version == "version"
     assert obj2.resource_type == identifier.ResourceType.TASK
+    assert obj2.resource_type_name() == "TASK"
 
 
 def test_node_execution_identifier():
@@ -64,3 +66,4 @@ def test_identifier_emptiness():
     not_empty_id = identifier.Identifier(identifier.ResourceType.UNSPECIFIED, "", "", "", "version")
     assert empty_id.is_empty
     assert not not_empty_id.is_empty
+    assert not_empty_id.resource_type_name() == "UNSPECIFIED"
