@@ -135,6 +135,7 @@ class MetricDefinition(_common.FlyteIdlEntity):
         return cls(name=pb2_object.name, regex=pb2_object.regex,)
 
 
+# TODO Convert to Enum
 class InputMode(object):
     """
     When using FILE input mode, different SageMaker built-in algorithms require different file types of input data
@@ -146,6 +147,7 @@ class InputMode(object):
     FILE = _training_job_pb2.InputMode.FILE
 
 
+# TODO Convert to enum
 class AlgorithmName(object):
     """
     The algorithm name is used for deciding which pre-built image to point to.
@@ -158,6 +160,7 @@ class AlgorithmName(object):
     XGBOOST = _training_job_pb2.AlgorithmName.XGBOOST
 
 
+# TODO convert to enum
 class InputContentType(object):
     """
     Specifies the type of content for input data. Different SageMaker built-in algorithms require different content types of input data
