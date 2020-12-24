@@ -78,3 +78,10 @@ PARQUET_ENGINE = _config_common.FlyteStringConfigurationEntry("sdk", "parquet_en
 """
 This is the parquet engine to use when reading data from parquet files.
 """
+
+FAST_REGISTRATION_DIR = _config_common.FlyteStringConfigurationEntry("sdk", "fast_registration_dir")
+"""
+This is the remote directory where fast-registered code will be uploaded to.
+Users calling fast-execute need write permission to this directory.
+Furthermore, it is important that whichever role executes your workflow has read access to this directory.
+"""

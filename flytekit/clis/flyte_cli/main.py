@@ -360,9 +360,7 @@ _named_entity_description_option = _click.option(
     "--description", required=False, type=str, help="Concise description for the entity.",
 )
 _sort_by_option = _click.option(
-    "--sort-by",
-    required=False,
-    help="Provide an entity type and field to be sorted.  i.e. asc(workflow.name) or desc(workflow.name)",
+    "--sort-by", required=False, help="Provide an entity field to be sorted.  i.e. asc(name) or desc(name)",
 )
 _show_io_option = _click.option(
     "--show-io",
@@ -1481,6 +1479,73 @@ def register_project(identifier, name, description, host, insecure):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     client.register_project(_Project(identifier, name, description))
     _click.echo("Registered project [id: {}, name: {}, description: {}]".format(identifier, name, description))
+
+
+@_flyte_cli.command("list-projects", cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+@_token_option
+@_limit_option
+@_show_all_option
+@_filter_option
+@_sort_by_option
+def list_projects(host, insecure, token, limit, show_all, filter, sort_by):
+    """
+    List projects.
+
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+
+    _click.echo("Projects Found\n")
+    while True:
+        projects, next_token = client.list_projects_paginated(
+            limit=limit,
+            token=token,
+            filters=[_filters.Filter.from_python_std(f) for f in filter],
+            sort_by=_admin_common.Sort.from_python_std(sort_by) if sort_by else None,
+        )
+        for p in projects:
+            _click.echo("\t{}".format(_tt(p.id)))
+
+        if show_all is not True:
+            if next_token:
+                _click.echo("Received next token: {}\n".format(next_token))
+            break
+        if not next_token:
+            break
+        token = next_token
+    _click.echo("")
+
+
+@_flyte_cli.command("archive-project", cls=_FlyteSubCommand)
+@_project_identifier_option
+@_host_option
+@_insecure_option
+def archive_project(identifier, host, insecure):
+    """
+    Archive a project.
+
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client.update_project(_Project.archived_project(identifier))
+    _click.echo("Archived project [id: {}]".format(identifier))
+
+
+@_flyte_cli.command("activate-project", cls=_FlyteSubCommand)
+@_project_identifier_option
+@_host_option
+@_insecure_option
+def activate_project(identifier, host, insecure):
+    """
+    Activate a project.
+
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    client.update_project(_Project.active_project(identifier))
+    _click.echo("Activated project [id: {}]".format(identifier))
 
 
 _resource_map = {

@@ -6,7 +6,7 @@ def test_eq_filter():
 
 
 def test_neq_filter():
-    assert filters.NotEqual("key", "value").to_flyte_idl() == "neq(key,value)"
+    assert filters.NotEqual("key", "value").to_flyte_idl() == "ne(key,value)"
 
 
 def test_gt_filter():
@@ -36,4 +36,4 @@ def test_contains_filter():
 def test_filter_list():
     fl = filters.FilterList([filters.Equal("domain", "staging"), filters.NotEqual("project", "FakeProject")])
 
-    assert fl.to_flyte_idl() == "eq(domain,staging)+neq(project,FakeProject)"
+    assert fl.to_flyte_idl() == "eq(domain,staging)+ne(project,FakeProject)"
