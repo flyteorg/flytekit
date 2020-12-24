@@ -182,9 +182,10 @@ class FileAccessProvider(object):
         # Local access
         if local_sandbox_dir is None or local_sandbox_dir == "":
             raise Exception("Can't use empty path")
-        pathlib.Path(local_sandbox_dir).mkdir(parents=True, exist_ok=True)
-        self._local_sandbox_dir = local_sandbox_dir
-        self._local = _local_file_proxy.LocalFileProxy(local_sandbox_dir)
+        local_sandbox_dir_appended = os.path.join(local_sandbox_dir, "local_flytekit")
+        pathlib.Path(local_sandbox_dir_appended).mkdir(parents=True, exist_ok=True)
+        self._local_sandbox_dir = local_sandbox_dir_appended
+        self._local = _local_file_proxy.LocalFileProxy(local_sandbox_dir_appended)
 
         # Remote/cloud stuff
         if isinstance(remote_proxy, _s3proxy.AwsS3Proxy):

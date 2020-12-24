@@ -342,10 +342,10 @@ class FlyteContext(object):
         mode: ExecutionState.Mode,
         additional_context: Dict[Any, Any] = None,
         execution_params: Optional[ExecutionParameters] = None,
+        working_dir: Optional[str] = None,
     ) -> Generator[FlyteContext, None, None]:
-
         # Create a working directory for the execution to use
-        working_dir = self.file_access.get_random_local_directory()
+        working_dir = working_dir or self.file_access.get_random_local_directory()
         engine_dir = os.path.join(working_dir, "engine_dir")
         pathlib.Path(engine_dir).mkdir(parents=True, exist_ok=True)
         exec_state = ExecutionState(

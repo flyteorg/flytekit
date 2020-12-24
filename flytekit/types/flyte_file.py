@@ -17,8 +17,9 @@ def noop():
 
 class FlyteFile(os.PathLike):
     """
-    Since there is no native implementation of the int type for files and directories, we need to create one so that users
-    can express that their tasks take in or return a File.
+    Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
+    exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
+    in or return a file.
 
     There are a few possible types on the Python side that can be specified:
 
@@ -40,7 +41,8 @@ class FlyteFile(os.PathLike):
       that handle as the argument to your function. If you specify it as an output, Flyte will read() the data after the
       task completes, and write it to Flyte's configurable Blob store. On the backend, Flyte's type system for file and
       file-like objects include a str based "format" as part of the type. For TextIO and BinaryIO, the format will be
-      "TextIO" and "BinaryIO".
+      "TextIO" and "BinaryIO". These IO types have a higher likelihood of being subject to change before an official,
+      release. The PathLike types will not.
 
       * os.PathLike
       This is just a path on the filesystem accessible from the Python process. This is a native Python abstract class.
@@ -51,7 +53,7 @@ class FlyteFile(os.PathLike):
       If you specify a PathLike as an input, the task will receive a PathLike at task start, and you can open() it as
       normal. However, since we want to control when files are downloaded, Flyte provides its own PathLike object.
 
-        from flytekit import typing as flytekit_typing
+        from flytekit import types as flytekit_typing
 
         def t1(in1: flytekit_typing.FlyteFile) -> str:
             with open(in1, 'r') as fh:
@@ -98,8 +100,8 @@ class FlyteFile(os.PathLike):
       FlyteFilePath("/tmp/blah", remote_path="s3://other-bucket/path")
 
     * Do not copy local path, this will copy the string into the literal. For example, let's say your docker image has a
-      thousand files in it, and you want to tell the next task, which file to look at. (Dumb example, you shouldn't have that
-      many files in your image.)
+      thousand files in it, and you want to tell the next task, which file to look at. (Bad example, you shouldn't have
+      that many files in your image.)
       FlyteFilePath("/tmp/blah", remote_path=False)
 
     * However, we have a shorthand.
@@ -135,7 +137,7 @@ class FlyteFile(os.PathLike):
             until a user actually calls open().
         :param remote_path: If the user wants to return something and also specify where it should be uploaded to.
         """
-        self._path = os.path.abspath(path)
+        self._path = path
         self._downloader = downloader
         self._downloaded = False
         self._remote_path = remote_path
@@ -194,13 +196,17 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         return t.extension()
 
     def _blob_type(self, format: str) -> _core_types.BlobType:
-        return _core_types.BlobType(format=format, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
+        return _core_types.BlobType(format=format, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE)
 
     def get_literal_type(self, t: typing.Type[FlyteFile]) -> LiteralType:
         return _type_models.LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
 
     def to_literal(
-        self, ctx: FlyteContext, python_val: FlyteFile, python_type: typing.Type[FlyteFile], expected: LiteralType,
+        self,
+        ctx: FlyteContext,
+        python_val: typing.Union[FlyteFile, os.PathLike, str],
+        python_type: typing.Type[FlyteFile],
+        expected: LiteralType,
     ) -> Literal:
         remote_path = None
         should_upload = True
@@ -215,7 +221,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
                 remote_path = python_val.remote_path or None
         else:
             if not (isinstance(python_val, os.PathLike) or isinstance(python_val, str)):
-                raise AssertionError(f"Expected FlyteFilePath or os.PathLike object, received {type(python_val)}")
+                raise AssertionError(f"Expected FlyteFile or os.PathLike object, received {type(python_val)}")
             source_path = python_val
 
         # For remote values, say https://raw.github.com/demo_data.csv, we will not upload to Flyte's store (S3/GCS)
