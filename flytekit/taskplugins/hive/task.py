@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type
 
 from google.protobuf.json_format import MessageToDict
@@ -10,7 +11,17 @@ from flytekit.models.qubole import HiveQuery, QuboleHiveJob
 from flytekit.types.schema import FlyteSchema
 
 
-class HiveTask(SQLTask):
+@dataclass
+class HiveConfig(object):
+    cluster_label: str
+    tags: Optional[List[str]] = None
+
+    def __post_init__(self):
+        if self.tags is None:
+            self.tags = []
+
+
+class HiveTask(SQLTask[HiveConfig]):
     """
     Hive Task
     """
@@ -18,12 +29,11 @@ class HiveTask(SQLTask):
     def __init__(
         self,
         name: str,
-        cluster_label: str,
+        config: HiveConfig,
         inputs: Dict[str, Type],
         query_template: str,
         metadata: Optional[_task_model.TaskMetadata] = None,
         output_schema_type: Optional[Type[FlyteSchema]] = None,
-        tags: Optional[List[str]] = None,
         *args,
         **kwargs,
     ):
@@ -34,6 +44,7 @@ class HiveTask(SQLTask):
             }
         super().__init__(
             name=name,
+            task_config=config,
             metadata=metadata or task_metadata_creator(),
             query_template=query_template,
             inputs=inputs,
@@ -43,12 +54,10 @@ class HiveTask(SQLTask):
             **kwargs,
         )
         self._output_schema_type = output_schema_type
-        self._cluster_label = cluster_label
-        self._tags = tags or []
 
     @property
     def cluster_label(self) -> str:
-        return self._cluster_label
+        return self.task_config.cluster_label
 
     @property
     def output_schema_type(self) -> Type[FlyteSchema]:
@@ -56,7 +65,7 @@ class HiveTask(SQLTask):
 
     @property
     def tags(self) -> List[str]:
-        return self._tags
+        return self.task_config.tags
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
         # timeout_sec and retry_count will become deprecated, please use timeout and retry settings on the Task
@@ -82,13 +91,12 @@ class HiveSelectTask(HiveTask):
     def __init__(
         self,
         name: str,
-        cluster_label: str,
+        config: HiveConfig,
         inputs: Dict[str, Type],
         select_query: str,
         output_schema_type: Type[FlyteSchema],
         stage_query: Optional[str] = None,
         metadata: Optional[_task_model.TaskMetadata] = None,
-        tags: Optional[List[str]] = None,
         *args,
         **kwargs,
     ):
@@ -97,10 +105,9 @@ class HiveSelectTask(HiveTask):
         )
         super().__init__(
             name=name,
-            cluster_label=cluster_label,
+            config=config,
             inputs=inputs,
             query_template=query_template,
             metadata=metadata,
             output_schema_type=output_schema_type,
-            tags=tags,
         )

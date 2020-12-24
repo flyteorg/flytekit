@@ -42,7 +42,7 @@ class SagemakerTrainingJobConfig(object):
     )
 
 
-class SagemakerBuiltinAlgorithmsTask(PythonTask):
+class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
     """
     Implements an interface that allows execution of a SagemakerBuiltinAlgorithms.
     Refer to `Sagemaker Builtin Algorithms<https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html>`_ for details.
@@ -76,12 +76,9 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask):
             inputs=kwtypes(static_hyperparameters=dict, train=FlyteFile[input_type], validation=FlyteFile[input_type]),
             outputs=kwtypes(model=FlyteFile[self.OUTPUT_TYPE]),
         )
-        super().__init__(self._SAGEMAKER_TRAINING_JOB_TASK, name, interface, metadata, *args, **kwargs)
-        self._task_config = task_config
-
-    @property
-    def task_config(self) -> SagemakerTrainingJobConfig:
-        return self._task_config
+        super().__init__(
+            self._SAGEMAKER_TRAINING_JOB_TASK, name, interface, metadata, task_config=task_config, *args, **kwargs
+        )
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
         training_job = _training_job_models.TrainingJob(

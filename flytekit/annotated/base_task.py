@@ -1,6 +1,6 @@
 import collections
 from abc import abstractmethod
-from typing import Any, Dict, Optional, Tuple, Type, Union
+from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, Union
 
 from flytekit.annotated.context_manager import (
     BranchEvalMode,
@@ -220,18 +220,38 @@ class Task(object):
         pass
 
 
-class PythonTask(Task):
+T = TypeVar("T")
+
+
+class PythonTask(Task, Generic[T]):
+    """
+    Base Class for all Tasks with a python native ``Interface``. This should be directly used for task types, that do not
+    have a python function to be executed. Otherwise refer to PythonFunctionTask
+    """
+
     def __init__(
-        self, task_type: str, name: str, interface: Interface, metadata: _task_model.TaskMetadata, *args, **kwargs
+        self,
+        task_type: str,
+        name: str,
+        interface: Interface,
+        metadata: _task_model.TaskMetadata,
+        task_config: T,
+        *args,
+        **kwargs,
     ):
         super().__init__(task_type, name, transform_interface_to_typed_interface(interface), metadata)
         self._python_interface = interface
         self._environment = kwargs.get("environment", {})
+        self._task_config = task_config
 
     # TODO lets call this interface and the other as flyte_interface?
     @property
     def python_interface(self):
         return self._python_interface
+
+    @property
+    def task_config(self) -> T:
+        return self._task_config
 
     def get_type_for_input_var(self, k: str, v: Any) -> type:
         return self._python_interface.inputs[k]
