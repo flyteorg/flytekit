@@ -16,6 +16,7 @@ from flytekit.models import task as _task_model
 from flytekit.models.sagemaker import training_job as _training_job_models
 from flytekit.taskplugins.sagemaker.distributed_training import DistributedTrainingContext
 from flytekit.types import FlyteFile
+from flytekit.types.flyte_directory import FlyteDirectory
 
 
 @dataclass
@@ -73,7 +74,9 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
 
         interface = Interface(
             # TODO change train and validation to be FlyteDirectory when available
-            inputs=kwtypes(static_hyperparameters=dict, train=FlyteFile[input_type], validation=FlyteFile[input_type]),
+            inputs=kwtypes(
+                static_hyperparameters=dict, train=FlyteDirectory[input_type], validation=FlyteDirectory[input_type]
+            ),
             outputs=kwtypes(model=FlyteFile[self.OUTPUT_TYPE]),
         )
         super().__init__(
