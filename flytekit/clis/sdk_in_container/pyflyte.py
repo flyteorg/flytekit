@@ -5,6 +5,7 @@ from pathlib import Path
 import click
 
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES, CTX_VERSION
+from flytekit.clis.sdk_in_container.fast_register import fast_register
 from flytekit.clis.sdk_in_container.launch_plan import launch_plans
 from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.serialize import serialize
@@ -92,6 +93,7 @@ def update_configuration_file(config_file_path):
 
 
 main.add_command(register)
+main.add_command(fast_register)
 main.add_command(serialize)
 main.add_command(launch_plans)
 

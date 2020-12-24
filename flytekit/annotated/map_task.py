@@ -19,7 +19,13 @@ class MapPythonTask(PythonTask):
         name = "mapper_" + tk.name
         self._run_task = tk
         super().__init__(
-            name=name, interface=collection_interface, metadata=metadata, task_type="map_task", *args, **kwargs
+            name=name,
+            interface=collection_interface,
+            metadata=metadata,
+            task_type="map_task",
+            task_config=None,
+            *args,
+            **kwargs,
         )
 
     @property

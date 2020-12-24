@@ -6,7 +6,7 @@ from flytekit.annotated.base_task import kwtypes
 from flytekit.annotated.context_manager import Image, ImageConfig
 from flytekit.annotated.testing import task_mock
 from flytekit.annotated.workflow import workflow
-from flytekit.taskplugins.hive.task import HiveSelectTask, HiveTask
+from flytekit.taskplugins.hive.task import HiveConfig, HiveSelectTask, HiveTask
 from flytekit.types.schema import FlyteSchema
 
 
@@ -14,7 +14,7 @@ def test_serialization():
     hive_task = HiveTask(
         name="flytekit.demo.hive_task.hivequery1",
         inputs=kwtypes(my_schema=FlyteSchema, ds=str),
-        cluster_label="flyte",
+        config=HiveConfig(cluster_label="flyte"),
         query_template="""
             set engine=tez;
             insert overwrite directory '{{ .rawOutputDataPrefix }}' stored as parquet  -- will be unique per retry
@@ -60,7 +60,7 @@ def test_local_exec():
     hive_task = HiveTask(
         name="flytekit.demo.hive_task.hivequery1",
         inputs={},
-        cluster_label="flyte",
+        config=HiveConfig(cluster_label="flyte"),
         query_template="""
             set engine=tez;
             insert overwrite directory '{{ .raw_output_data }}' stored as parquet  -- will be unique per retry
@@ -96,7 +96,7 @@ def test_query_no_inputs_or_outputs():
     hive_task = HiveTask(
         name="flytekit.demo.hive_task.hivequery1",
         inputs={},
-        cluster_label="flyte",
+        config=HiveConfig(cluster_label="flyte"),
         query_template="""
             insert into extant_table (1, 'two')
         """,
@@ -131,7 +131,7 @@ def test_hive_select():
     hive_select = HiveSelectTask(
         name="flytekit.demo.hive_task.hivequery1",
         inputs={},
-        cluster_label="flyte",
+        config=HiveConfig(cluster_label="flyte"),
         select_query="select 1, 2, 3",
         output_schema_type=FlyteSchema,
     )
