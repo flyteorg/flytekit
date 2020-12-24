@@ -22,6 +22,7 @@ class HiveConfig(object):
         cluster_label: A string value that helps in identifying the cluster label.
         tags: Any tags that should be associated with the remote execution request.
     """
+
     cluster_label: str
     tags: Optional[List[str]] = None
 
