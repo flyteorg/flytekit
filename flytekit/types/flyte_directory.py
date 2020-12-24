@@ -132,6 +132,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
     This transformer handles conversion between the Python native FlyteDirectory class defined above, and the Flyte
     IDL literal/type of Multipart Blob. Please see the FlyteDirectory comments for additional information.
     """
+
     def __init__(self):
         super().__init__(name="FlyteDirectory", t=FlyteDirectory)
 
