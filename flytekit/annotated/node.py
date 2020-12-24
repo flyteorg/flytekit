@@ -37,6 +37,10 @@ class Node(object):
         self._sdk_node = None
         self._aliases: _workflow_model.Alias = None
 
+    def depends_on(self, other):
+        if other not in self._upstream_nodes:
+            self._upstream_nodes.append(other)
+
     def get_registerable_entity(self) -> SdkNode:
         if self._sdk_node is not None:
             return self._sdk_node

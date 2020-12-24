@@ -372,13 +372,14 @@ def create_task_output(promises: Optional[Union[List[Promise], Promise]]) -> Opt
     if len(promises) == 0:
         return None
 
+    # TODO: This unwrapping should not be done at least in the case of single NamedTuples.
     if len(promises) == 1:
         return promises[0]
 
     # More than one promises, let us wrap it into a tuple
     variables = [p.var for p in promises]
 
-    class Output(collections.namedtuple("TaskOutput", variables)):
+    class Output(collections.namedtuple("CallableOutput", variables)):
         def with_overrides(self, *args, **kwargs):
             val = self.__getattribute__(self._fields[0])
             val.with_overrides(*args, **kwargs)

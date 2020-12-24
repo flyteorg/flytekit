@@ -149,7 +149,7 @@ class Task(object):
         #     task output as an input, things probably will fail pretty obviously.
         if len(args) > 0:
             raise _user_exceptions.FlyteAssertion(
-                f"In Flyte workflows, on keyword args are supported to pass inputs to workflows and tasks."
+                f"When calling tasks, only keyword args are supported. "
                 f"Aborting execution as detected {len(args)} positional args {args}"
             )
 
