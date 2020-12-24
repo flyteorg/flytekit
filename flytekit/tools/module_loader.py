@@ -11,6 +11,11 @@ def iterate_modules(pkgs):
     for package_name in pkgs:
         package = importlib.import_module(package_name)
         yield package
+
+        # Check if package is a python file. If so, there is no reason to walk.
+        if not hasattr(package, "__path__"):
+            continue
+
         for _, name, _ in pkgutil.walk_packages(package.__path__, prefix="{}.".format(package_name)):
             yield importlib.import_module(name)
 
@@ -58,6 +63,8 @@ def _topo_sort_helper(
 
     if isinstance(obj, _registerable.HasDependencies):
         for upstream in obj.upstream_entities:
+            if upstream.has_registered:
+                continue
             if upstream not in visited:
                 for m1, k1, o1 in _topo_sort_helper(
                     upstream,
@@ -80,10 +87,8 @@ def _topo_sort_helper(
             yield entity_to_module_key[obj] + (obj,)
         elif detect_unreferenced_entities:
             raise _user_exceptions.FlyteAssertion(
-                "An entity was not found in modules accessible from the workflow packages configuration.  Please "
-                "ensure that entities in '{}' are moved to a configured packaged, or adjust the configuration.".format(
-                    obj.instantiated_in
-                )
+                f"An entity ({obj.id}) was not found in modules accessible from the workflow packages configuration.  Please "
+                f"ensure that entities in '{obj.instantiated_in}' are moved to a configured packaged, or adjust the configuration."
             )
 
 

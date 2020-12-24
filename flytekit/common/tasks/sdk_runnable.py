@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy as _copy
 import enum
 import logging as _logging
 import os
@@ -338,6 +339,7 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
             ),
         )
         self.id._name = "{}.{}".format(self.task_module, self.task_function_name)
+        self._has_fast_registered = False
 
         # TODO: Remove this in the future, I don't think we'll be using this.
         self._task_style = SdkRunnableTaskStyle.V0
@@ -493,6 +495,51 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
                     literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
                 )
             }
+
+    @_exception_scopes.system_entry_point
+    def fast_register(self, project, domain, name, digest, additional_distribution, dest_dir) -> str:
+        """
+        The fast register call essentially hijacks the task container commandline.
+        Say an existing task container definition had a commandline like so:
+            flyte_venv pyflyte-execute --task-module app.workflows.my_workflow --task-name my_task
+
+        The fast register command introduces a wrapper call to fast-execute the original commandline like so:
+            flyte_venv pyflyte-fast-execute --additional-distribution s3://my-s3-bucket/foo/bar/12345.tar.gz --
+                flyte_venv pyflyte-execute --task-module app.workflows.my_workflow --task-name my_task
+
+        At execution time pyflyte-fast-execute will ensure the additional distribution (i.e. the fast-registered code)
+        exists before calling the original task commandline.
+
+        :param Text project: The project in which to register this task.
+        :param Text domain: The domain in which to register this task.
+        :param Text name: The name to give this task.
+        :param Text digest: The version in which to register this task.
+        :param Text additional_distribution: User-specified location for remote source code distribution.
+        :param Text The optional location for where to install the additional distribution at runtime
+        :rtype: Text: Registered identifier.
+        """
+
+        original_container = self.container
+        container = _copy.deepcopy(original_container)
+        args = ["pyflyte-fast-execute", "--additional-distribution", additional_distribution]
+        if dest_dir:
+            args += ["--dest-dir", dest_dir]
+        args += ["--"] + container.args
+        container._args = args
+        self._container = container
+
+        try:
+            registered_id = self.register(project, domain, name, digest)
+        except Exception:
+            self._container = original_container
+            raise
+        self._has_fast_registered = True
+        self._container = original_container
+        return str(registered_id)
+
+    @property
+    def has_fast_registered(self) -> bool:
+        return self._has_fast_registered
 
     def _get_container_definition(
         self,
