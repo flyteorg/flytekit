@@ -301,7 +301,9 @@ def merge_promises(*args: Promise) -> typing.List[Promise]:
     return merged_promises
 
 
-def transform_to_conj_expr(expr: ConjunctionExpression) -> Tuple[_core_cond.ConjunctionExpression, typing.List[Promise]]:
+def transform_to_conj_expr(
+    expr: ConjunctionExpression,
+) -> Tuple[_core_cond.ConjunctionExpression, typing.List[Promise]]:
     left, left_promises = transform_to_boolexpr(expr.lhs)
     right, right_promises = transform_to_boolexpr(expr.rhs)
     return (

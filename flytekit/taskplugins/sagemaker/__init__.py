@@ -19,4 +19,3 @@ from flytekit.models.sagemaker.training_job import (
 
 from .hpo import HPOJob, SagemakerHPOTask
 from .training import SagemakerBuiltinAlgorithmsTask, SagemakerCustomTrainingTask, SagemakerTrainingJobConfig
-
