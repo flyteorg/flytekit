@@ -269,8 +269,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             discovery_version=self.discovery_version,
             deprecated_error_message=self.deprecated_error_message,
         )
-        if self.timeout:
-            tm.timeout.FromTimedelta(self.timeout)
+        tm.timeout.FromTimedelta(self.timeout)
         return tm
 
     @classmethod
