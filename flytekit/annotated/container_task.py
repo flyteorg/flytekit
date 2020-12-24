@@ -43,6 +43,7 @@ class ContainerTask(PythonTask):
             name=name,
             interface=Interface(inputs, outputs),
             metadata=metadata,
+            task_config=None,
             *args,
             **kwargs,
         )
