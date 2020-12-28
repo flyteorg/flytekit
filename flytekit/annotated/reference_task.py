@@ -36,10 +36,10 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
 
 def reference_task(
     _task_function: Optional[Callable] = None,
-    project: Optional[str] = None,
-    domain: Optional[str] = None,
-    name: Optional[str] = None,
-    version: Optional[str] = None,
+    project: str = None,
+    domain: str = None,
+    name: str = None,
+    version: str = None,
 ) -> Union[Callable, PythonFunctionTask]:
     """
     A reference task is a pointer to a task that already exists on your Flyte installation. This

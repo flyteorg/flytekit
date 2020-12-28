@@ -40,7 +40,7 @@ class HPOJob(object):
 
 # TODO Not done yet, but once we clean this up, the client interface should be simplified. The interface should
 # Just take a list of Union of different types of Parameter Ranges. Lets see how simplify that
-class SagemakerHPOTask(PythonTask[HPOJob]):
+class SagemakerHPOTask(PythonTask):
     _SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK = "sagemaker_hyperparameter_tuning_job_task"
 
     def __init__(
@@ -67,8 +67,10 @@ class SagemakerHPOTask(PythonTask[HPOJob]):
 
         extra_inputs = {"hyperparameter_tuning_job_config": _hpo_job_model.HyperparameterTuningJobConfig}
 
-        if task_config.tunable_params:
-            extra_inputs.update({param: _params.ParameterRangeOneOf for param in task_config.tunable_params})
+        self._hpo_job_config = task_config
+
+        if self._hpo_job_config.tunable_params:
+            extra_inputs.update({param: _params.ParameterRangeOneOf for param in self._hpo_job_config.tunable_params})
 
         updated_iface = iface.with_inputs(extra_inputs)
         super().__init__(
@@ -76,10 +78,13 @@ class SagemakerHPOTask(PythonTask[HPOJob]):
             name=name,
             interface=updated_iface,
             metadata=metadata,
-            task_config=task_config,
             *args,
             **kwargs
         )
+
+    @property
+    def task_config(self):
+        return self._task_config
 
     def execute(self, **kwargs) -> Any:
         raise NotImplementedError("Sagemaker HPO Task cannot be executed locally, to execute locally mock it!")
@@ -91,8 +96,8 @@ class SagemakerHPOTask(PythonTask[HPOJob]):
         )
         return MessageToDict(
             _hpo_job_model.HyperparameterTuningJob(
-                max_number_of_training_jobs=self.task_config.max_number_of_training_jobs,
-                max_parallel_training_jobs=self.task_config.max_parallel_training_jobs,
+                max_number_of_training_jobs=self._hpo_job_config.max_number_of_training_jobs,
+                max_parallel_training_jobs=self._hpo_job_config.max_parallel_training_jobs,
                 training_job=training_job,
             ).to_flyte_idl()
         )
