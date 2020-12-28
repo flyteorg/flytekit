@@ -5,7 +5,7 @@ from typing import Any, List, Optional
 
 from flytekit.annotated import interface as flyte_interface
 from flytekit.annotated.context_manager import FlyteContext
-from flytekit.annotated.promise import Promise, binding_from_python_std, create_task_output
+from flytekit.annotated.promise import Promise, VoidPromise, binding_from_python_std, create_task_output
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.nodes import SdkNode
@@ -194,6 +194,9 @@ def create_and_link_node(
         flyte_entity=entity,
     )
     ctx.compilation_state.add_node(non_sdk_node)
+
+    if len(typed_interface.outputs) == 0:
+        return VoidPromise(entity.name)
 
     # Create a node output object for each output, they should all point to this node of course.
     node_outputs = []

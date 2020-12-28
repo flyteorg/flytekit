@@ -12,7 +12,7 @@ from flytekit import ContainerTask, SQLTask, dynamic, kwtypes, maptask
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
-from flytekit.annotated.promise import Promise
+from flytekit.annotated.promise import Promise, VoidPromise
 from flytekit.annotated.resources import Resources
 from flytekit.annotated.task import metadata, task
 from flytekit.annotated.testing import patch, task_mock
@@ -57,7 +57,7 @@ def test_simple_input_no_output():
     ctx = context_manager.FlyteContext.current_context()
     with ctx.new_compilation_context() as ctx:
         outputs = my_task(a=3)
-        assert outputs is None
+        assert isinstance(outputs, VoidPromise)
 
 
 def test_single_output():
@@ -929,15 +929,16 @@ def test_wf_with_catching_no_return():
     def t3(s: str):
         pass
 
-    @workflow
-    def wf():
-        d = t1()
-        # The following statement is wrong, this should not be allowed to pass to another task
-        x = t2(d=d)
-        # Passing x is wrong in this case
-        t3(s=x)
-
     with pytest.raises(AssertionError):
+
+        @workflow
+        def wf():
+            d = t1()
+            # The following statement is wrong, this should not be allowed to pass to another task
+            x = t2(d=d)
+            # Passing x is wrong in this case
+            t3(s=x)
+
         wf()
 
 

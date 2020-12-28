@@ -5,6 +5,7 @@ import pytest
 from flytekit.annotated import context_manager
 from flytekit.annotated.base_task import kwtypes
 from flytekit.annotated.context_manager import Image, ImageConfig
+from flytekit.annotated.promise import VoidPromise
 from flytekit.annotated.reference import get_reference_entity
 from flytekit.annotated.reference_entity import ReferenceEntity, TaskReference, WorkflowReference
 from flytekit.annotated.reference_task import reference_task
@@ -224,8 +225,8 @@ def test_lps(resource_type):
             ref_entity()
         assert "Input was not specified" in f"{e}"
 
-        out = ref_entity(a="hello", b=3)
-        print(out)
+        output = ref_entity(a="hello", b=3)
+        assert isinstance(output, VoidPromise)
 
     @workflow
     def wf1(a: str, b: int):

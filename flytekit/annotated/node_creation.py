@@ -4,8 +4,12 @@ import datetime
 from typing import Any, List, Optional, Union
 
 from flytekit.annotated import interface as flyte_interface
+from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.context_manager import FlyteContext
+from flytekit.annotated.launch_plan import LaunchPlan
+from flytekit.annotated.node import Node
 from flytekit.annotated.promise import Promise, binding_from_python_std, create_task_output
+from flytekit.annotated.workflow import Workflow
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.nodes import SdkNode
@@ -13,10 +17,6 @@ from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.utils import _dnsify
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.annotated.node import Node
-from flytekit.annotated.base_task import PythonTask
-from flytekit.annotated.launch_plan import LaunchPlan
-from flytekit.annotated.workflow import Workflow
 
 
 def run(entity: Union[PythonTask, LaunchPlan, Workflow], *args, **kwargs) -> Node:
@@ -73,11 +73,11 @@ def run(entity: Union[PythonTask, LaunchPlan, Workflow], *args, **kwargs) -> Nod
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
         outputs = entity(**kwargs)
 
-        # What are the things that outputs can be?
+        # What are the things that outputs can be? VoidPromise, Promise, or our custom namedtuple of Promises
+        # But create_task_output
+        # Let's add a check to make sure.
         node = ctx.compilation_state.nodes[-1]
 
         return node
     else:
         raise Exception("fdsjaklfjasdk")
-
-

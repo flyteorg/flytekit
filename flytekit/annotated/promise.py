@@ -370,7 +370,8 @@ def create_task_output(promises: Optional[Union[List[Promise], Promise]]) -> Opt
         return promises
 
     if len(promises) == 0:
-        return None
+        raise Exception("jfkdlsjafklsdajlksda")
+        # return None
 
     # TODO: This unwrapping should not be done at least in the case of single NamedTuples.
     if len(promises) == 1:
