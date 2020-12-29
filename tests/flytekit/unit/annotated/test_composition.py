@@ -37,7 +37,7 @@ def test_single_named_output_subwf():
     @task
     def t1(a: int) -> nt:
         a = a + 2
-        return a,  # returns a regular tuple
+        return (a,)  # returns a regular tuple
 
     @task
     def t2(a: int, b: int) -> nt:
