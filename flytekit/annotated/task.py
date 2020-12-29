@@ -55,7 +55,7 @@ def task(
     cache: bool = False,
     cache_version: str = "",
     retries: int = 0,
-    interruptible: bool = False,
+    interruptable: bool = False,
     deprecated: str = "",
     timeout: Union[_datetime.timedelta, int] = 0,
     container_image: Optional[str] = None,
@@ -83,10 +83,11 @@ def task(
     :param cache: Boolean that indicates if caching should be enabled
     :param cache_version: Version string to be used for the cached value
     :param retries: for retries=n; n > 0, on failures of this task, the task will be retried at-least n number of times.
-    :param interruptible: Boolean that indicates that this task is of for interruptions and can be scheduled on nodes
+    :param interruptable: Boolean that indicates that this task can be interrupted and/or scheduled on nodes
                           with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
                            at the cost of performance penalties due to potential interruptions
-    :param deprecated: This should be used to indicate that the task is deprecated
+    :param deprecated: A string that can be used to provide a warning message for deprecated task. Absence / empty str
+                       indicates that the task is active and not deprecated
     :param timeout: the max amount of time for which one execution of this task should be executed for. If the execution
                     will be terminated if the runtime exceeds the given timeout (approximately)
     :param container_image: By default the configured FLYTE_INTERNAL_IMAGE is used for every task. This directive can be
@@ -118,7 +119,7 @@ def task(
             cache=cache,
             cache_version=cache_version,
             retries=retries,
-            interruptible=interruptible,
+            interruptable=interruptable,
             deprecated=deprecated,
             timeout=timeout,
         )

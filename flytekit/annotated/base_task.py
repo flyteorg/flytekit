@@ -43,10 +43,11 @@ class TaskMetadata(object):
     Args:
       cache: Boolean that indicates if caching should be enabled
       cache_version: Version string to be used for the cached value
-      interruptible: Boolean that indicates that this task is of for interruptions and can be scheduled on nodes
+      interruptable: Boolean that indicates that this task can be interrupted and/or scheduled on nodes
                            with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
                             at the cost of performance penalties due to potential interruptions
-      deprecated: This should be used to indicate that the task is deprecated
+      deprecated: A string that can be used to provide a warning message for deprecated task. Absence / empty str
+                       indicates that the task is active and not deprecated
       retries: for retries=n; n > 0, on failures of this task, the task will be retried at-least n number of times.
       timeout: the max amount of time for which one execution of this task should be executed for. If the execution
                      will be terminated if the runtime exceeds the given timeout (approximately)
@@ -54,7 +55,7 @@ class TaskMetadata(object):
 
     cache: bool = False
     cache_version: str = ""
-    interruptible: bool = False
+    interruptable: bool = False
     deprecated: str = ""
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
@@ -65,6 +66,8 @@ class TaskMetadata(object):
                 self.timeout = datetime.timedelta(seconds=self.timeout)
             elif not isinstance(self.timeout, datetime.timedelta):
                 raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
+        if self.cache and not self.cache_version:
+            raise ValueError("Caching is enabled ``cache=True`` but ``cache_version`` is not set.")
 
     @property
     def retry_strategy(self) -> _literal_models.RetryStrategy:
@@ -80,7 +83,7 @@ class TaskMetadata(object):
             runtime=_task_model.RuntimeMetadata(_task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, "0.16.0", "python"),
             timeout=self.timeout,
             retries=self.retry_strategy,
-            interruptible=self.interruptible,
+            interruptible=self.interruptable,
             discovery_version=self.cache_version,
             deprecated_error_message=self.deprecated,
         )
