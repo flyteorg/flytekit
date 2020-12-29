@@ -118,7 +118,9 @@ def transform_inputs_to_parameters(
     return _interface_models.ParameterMap(params)
 
 
-def transform_interface_to_typed_interface(interface: Interface) -> _interface_models.TypedInterface:
+def transform_interface_to_typed_interface(
+    interface: typing.Optional[Interface],
+) -> typing.Optional[_interface_models.TypedInterface]:
     """
     Transform the given simple python native interface to FlyteIDL's interface
     """

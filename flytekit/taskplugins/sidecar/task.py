@@ -1,14 +1,14 @@
-from typing import Any, Callable, Dict, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf.json_format import MessageToDict
 
+from flytekit import TaskMetadata
 from flytekit.annotated.context_manager import FlyteContext, RegistrationSettings
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.models import task as _task_model
 from flytekit.models import task as _task_models
 from flytekit.plugins import k8s as _lazy_k8s
 
@@ -34,7 +34,7 @@ class Sidecar(object):
 
 class SidecarFunctionTask(PythonFunctionTask[Sidecar]):
     def __init__(
-        self, task_config: Sidecar, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs
+        self, task_config: Sidecar, task_function: Callable, metadata: Optional[TaskMetadata] = None, *args, **kwargs
     ):
         super(SidecarFunctionTask, self).__init__(
             task_config=task_config,

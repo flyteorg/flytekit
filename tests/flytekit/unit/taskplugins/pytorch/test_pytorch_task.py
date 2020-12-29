@@ -5,7 +5,7 @@ from flytekit.taskplugins.pytorch.task import PyTorch
 
 
 def test_pytorch_task():
-    @task(task_config=PyTorch(num_workers=10, per_replica_requests=Resources(cpu="1")), cache=True)
+    @task(task_config=PyTorch(num_workers=10, per_replica_requests=Resources(cpu="1")), cache=True, cache_version="1")
     def my_pytorch_task(x: int, y: str) -> int:
         return x
 
