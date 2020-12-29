@@ -2,7 +2,7 @@ import inspect
 import re
 from typing import Any, Callable, Dict, List, Optional, TypeVar
 
-from flytekit.annotated.base_task import PythonTask
+from flytekit.annotated.base_task import PythonTask, TaskMetadata
 from flytekit.annotated.context_manager import ImageConfig, RegistrationSettings
 from flytekit.annotated.interface import Interface, transform_signature_to_interface
 from flytekit.annotated.resources import Resources, ResourceSpec
@@ -61,9 +61,9 @@ class PythonFunctionTask(PythonTask[T]):
         self,
         task_config: T,
         task_function: Callable,
-        metadata: _task_model.TaskMetadata,
-        ignore_input_vars: List[str] = None,
         task_type="python-task",
+        metadata: Optional[TaskMetadata] = None,
+        ignore_input_vars: List[str] = None,
         container_image: str = None,
         requests: Resources = None,
         limits: Resources = None,

@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List, Optional, Type
 
-from flytekit.annotated.base_task import PythonTask
+from flytekit.annotated.base_task import PythonTask, TaskMetadata
 from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.interface import Interface
 from flytekit.common.tasks.raw_container import _get_container_definition
@@ -26,9 +26,9 @@ class ContainerTask(PythonTask):
         self,
         name: str,
         image: str,
-        metadata: _task_model.TaskMetadata,
-        inputs: Dict[str, Type],
         command: List[str],
+        inputs: Optional[Dict[str, Type]] = None,
+        metadata: Optional[TaskMetadata] = None,
         arguments: List[str] = None,
         outputs: Dict[str, Type] = None,
         input_data_dir: str = None,
