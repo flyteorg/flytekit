@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from flytekit import FlyteContext, kwtypes
+from flytekit import metadata as md
 from flytekit.annotated.base_sql_task import SQLTask
 from flytekit.models import task as _task_models
 from flytekit.plugins import pandas as pd
@@ -48,7 +49,14 @@ class SQLite3Config(object):
     compressed: bool = False
 
 
-class SQLite3SelectTask(SQLTask[SQLite3Config]):
+class SQLite3Task(SQLTask[SQLite3Config]):
+    """
+    Makes it possible to run client side SQLite3 queries that optionally return a FlyteSchema object
+
+    TODO: How should we use pre-built containers for running portable tasks like this. Should this always be a
+          referenced task type?
+    """
+
     _SQLITE_INPUT_FILE = "sqlite"
 
     def __init__(
@@ -74,6 +82,8 @@ class SQLite3SelectTask(SQLTask[SQLite3Config]):
         if output_schema_type is None:
             output_schema_type = FlyteSchema
         outputs = kwtypes(results=output_schema_type)
+        if metadata is None:
+            metadata = md()
         super().__init__(
             name, metadata, query_template, inputs, outputs=outputs, task_config=task_config, *args, **kwargs
         )
