@@ -80,6 +80,10 @@ class Task(object):
     def task_type(self) -> str:
         return self._task_type
 
+    @property
+    def python_interface(self) -> Optional[Interface]:
+        return None
+
     def get_type_for_input_var(self, k: str, v: Any) -> type:
         """
         Returns the python native type for the given input variable
@@ -134,7 +138,7 @@ class Task(object):
             return VoidPromise(self.name)
 
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
-        return create_task_output(vals)
+        return create_task_output(vals, self.python_interface)
 
     def __call__(self, *args, **kwargs):
         # When a Task is () aka __called__, there are three things we may do:
@@ -160,7 +164,14 @@ class Task(object):
             ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
             if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
-                return
+                if self.python_interface.custom_interface_name:
+                    variables = [k for k in self.python_interface.outputs.keys()]
+                    output_tuple = collections.namedtuple(self.python_interface.custom_interface_name, variables)
+                    nones = [None for _ in self.python_interface.outputs.keys()]
+                    return output_tuple(*nones)
+                else:
+                    # Should we return multiple None's here?
+                    return None
             return self._local_execute(ctx, **kwargs)
         else:
             logger.warning("task run without context - executing raw function")
@@ -230,7 +241,7 @@ class PythonTask(Task):
 
     # TODO lets call this interface and the other as flyte_interface?
     @property
-    def python_interface(self):
+    def python_interface(self) -> Interface:
         return self._python_interface
 
     def get_type_for_input_var(self, k: str, v: Any) -> type:
@@ -294,7 +305,14 @@ class PythonTask(Task):
 
             expected_output_names = list(self.interface.outputs.keys())
             if len(expected_output_names) == 1:
-                native_outputs_as_map = {expected_output_names[0]: native_outputs}
+                # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
+                # length one. That convention is used for naming outputs - and single-length-NamedTuples are
+                # particularly troublesome but elegant handling of them is not a high priority
+                # Again, we're using the custom_interface_name as a proxy.
+                if self.python_interface.custom_interface_name and isinstance(native_outputs, tuple):
+                    native_outputs_as_map = {expected_output_names[0]: native_outputs[0]}
+                else:
+                    native_outputs_as_map = {expected_output_names[0]: native_outputs}
             elif len(expected_output_names) == 0:
                 native_outputs_as_map = {}
             else:

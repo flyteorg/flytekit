@@ -206,4 +206,4 @@ def create_and_link_node(
         node_outputs.append(Promise(output_name, _NodeOutput(sdk_node=non_sdk_node, sdk_type=None, var=output_name)))
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
-    return create_task_output(node_outputs)
+    return create_task_output(node_outputs, interface)

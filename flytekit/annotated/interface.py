@@ -4,12 +4,13 @@ import copy
 import inspect
 import typing
 from collections import OrderedDict
-from typing import Any, Dict, Generator, List, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Generator, List, Tuple, Type, TypeVar, Union, Optional
 
 from flytekit.annotated import context_manager
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
+from flytekit.common.exceptions.user import FlyteValidationException
 
 
 class Interface(object):
@@ -19,6 +20,7 @@ class Interface(object):
 
     def __init__(
         self, inputs: typing.Dict[str, Union[Type, Tuple[Type, Any]]] = None, outputs: typing.Dict[str, Type] = None,
+            custom_interface_name: Optional[str] = None
     ):
         """
         :param outputs: Output variables and their types as a dictionary
@@ -34,6 +36,11 @@ class Interface(object):
                 else:
                     self._inputs[k] = (v, None)
         self._outputs = outputs
+        self._custom_interface_name = custom_interface_name
+
+    @property
+    def custom_interface_name(self) -> Optional[str]:
+        return self._custom_interface_name
 
     @property
     def inputs(self) -> typing.Dict[str, Type]:
@@ -180,7 +187,14 @@ def transform_signature_to_interface(signature: inspect.Signature) -> Interface:
         # Inputs with default values are currently ignored, we may want to look into that in the future
         inputs[k] = (v.annotation, v.default if v.default is not inspect.Parameter.empty else None)
 
-    return Interface(inputs, outputs)
+    # This is just for typing.NamedTuples - in those cases, the user can select a name to call the NamedTuple. We
+    # would like to preserve that name in our custom collections.namedtuple.
+    custom_name = None
+    if hasattr(signature.return_annotation, "_field_types"):
+        if hasattr(signature.return_annotation, "__name__") and signature.return_annotation.__name__ != "":
+            custom_name = signature.return_annotation.__name__
+
+    return Interface(inputs, outputs, custom_interface_name=custom_name)
 
 
 def transform_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interface_models.Variable]:
@@ -258,10 +272,14 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
     if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:
         # Handle option 3
         logger.debug(f"Task returns unnamed typing.Tuple {return_annotation}")
+        if len(return_annotation.__args__) == 1:
+            raise FlyteValidationException("Please don't use a tuple if you're just returning one thing.")
         return OrderedDict(
             zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)
         )
     elif isinstance(return_annotation, tuple):
+        if len(return_annotation) == 1:
+            raise FlyteValidationException("Please don't use a tuple if you're just returning one thing.")
         return OrderedDict(zip(list(output_name_generator(len(return_annotation))), return_annotation))
 
     else:

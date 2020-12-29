@@ -199,7 +199,7 @@ class Workflow(object):
         promises = _workflow_fn_outputs_to_promise(
             ctx, self._native_interface.outputs, self.interface.outputs, function_outputs
         )
-        return create_task_output(promises)
+        return create_task_output(promises, self._native_interface)
 
     def execute(self, **kwargs):
         """

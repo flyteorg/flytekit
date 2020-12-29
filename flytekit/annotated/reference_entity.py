@@ -189,7 +189,7 @@ class ReferenceEntity(object):
             return VoidPromise(self.name)
 
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
-        return create_task_output(vals)
+        return create_task_output(vals, self.interface)
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         return create_and_link_node(ctx, entity=self, interface=self.interface, **kwargs,)

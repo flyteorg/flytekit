@@ -13,6 +13,7 @@ from flytekit.models import literals as _literal_models
 from flytekit.models import literals as _literals_models
 from flytekit.models import types as _type_models
 from flytekit.models.literals import Primitive
+from flytekit.annotated.interface import Interface
 
 
 def translate_inputs_to_literals(
@@ -347,7 +348,6 @@ class Promise(object):
     def with_overrides(self, *args, **kwargs):
         if not self.is_ready:
             # TODO, this should be forwarded, but right now this results in failure and we want to test this behavior
-            # self.ref.sdk_node.with_overrides(*args, **kwargs)
             print(f"Forwarding to node {self.ref.sdk_node.id}")
             self.ref.sdk_node.with_overrides(*args, **kwargs)
         return self
@@ -362,7 +362,7 @@ class Promise(object):
 
 
 # To create a class that is a named tuple, we might have to create namedtuplemeta and manipulate the tuple
-def create_task_output(promises: Optional[Union[List[Promise], Promise]]) -> Optional[Union[Tuple[Promise], Promise]]:
+def create_task_output(promises: Optional[Union[List[Promise], Promise]], entity_interface: Optional[Interface] = None) -> Optional[Union[Tuple[Promise], Promise]]:
     if promises is None:
         return None
 
@@ -371,16 +371,32 @@ def create_task_output(promises: Optional[Union[List[Promise], Promise]]) -> Opt
 
     if len(promises) == 0:
         raise Exception("jfkdlsjafklsdajlksda")
+        # Making this an exception for now
         # return None
 
-    # TODO: This unwrapping should not be done at least in the case of single NamedTuples.
     if len(promises) == 1:
-        return promises[0]
+        if not entity_interface:
+            return promises[0]
+        # See transform_signature_to_interface for more information, we're using the existence of a name as a proxy
+        # for the user having specified a one-element typing.NamedTuple, which means we should _not_ extract it. We
+        # should still return a tuple but it should be one of ours.
+        if not entity_interface.custom_interface_name:
+            return promises[0]
 
-    # More than one promises, let us wrap it into a tuple
+    # More than one promise, let us wrap it into a tuple
+    # Start with just the var names in the promises
     variables = [p.var for p in promises]
 
-    class Output(collections.namedtuple("CallableOutput", variables)):
+    # These should be OrderedDicts so it should be safe to do this.
+    if entity_interface:
+        variables = [k for k in entity_interface.outputs.keys()]
+
+    named_tuple_name = "DefaultNamedTupleOutput"
+    if entity_interface and entity_interface.custom_interface_name:
+        named_tuple_name = entity_interface.custom_interface_name
+
+    # Should this class be part of the Interface?
+    class Output(collections.namedtuple(named_tuple_name, variables)):
         def with_overrides(self, *args, **kwargs):
             val = self.__getattribute__(self._fields[0])
             val.with_overrides(*args, **kwargs)

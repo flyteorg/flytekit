@@ -103,10 +103,12 @@ def test_diabetes():
         # We will fake train test split. Just return the same dataset multiple times
         return x, x, y, y
 
+    nt = typing.NamedTuple("Outputs", model=FlyteFile[MODELSER_JOBLIB])
+
     @task(cache_version="1.0", cache=True, memory_limit="200Mi")
     def fit(
         x: FlyteSchema[FEATURE_COLUMNS], y: FlyteSchema[CLASSES_COLUMNS], hyperparams: dict
-    ) -> typing.NamedTuple("Outputs", model=FlyteFile[MODELSER_JOBLIB]):
+    ) -> nt:
         """
         This function takes the given input features and their corresponding classes to train a XGBClassifier.
         NOTE: We have simplified the number of hyper parameters we take for demo purposes
@@ -124,7 +126,7 @@ def test_diabetes():
         fname = "model.joblib.dat"
         with open(fname, "w") as f:
             f.write("Some binary data")
-        return fname
+        return nt(model=fname)
 
     @task(cache_version="1.0", cache=True, memory_limit="200Mi")
     def predict(x: FlyteSchema[FEATURE_COLUMNS], model_ser: FlyteFile[MODELSER_JOBLIB]) -> FlyteSchema[CLASSES_COLUMNS]:
@@ -167,8 +169,8 @@ def test_diabetes():
             dataset=dataset, seed=seed, test_split_ratio=test_split_ratio
         )
         model = fit(x=x_train, y=y_train, hyperparams=XGBoostModelHyperparams(max_depth=4).to_dict())
-        predictions = predict(x=x_test, model_ser=model)
-        return model, score(predictions=predictions, y=y_test)
+        predictions = predict(x=x_test, model_ser=model.model)
+        return model.model, score(predictions=predictions, y=y_test)
 
     # TODO enable this after the defaults are working
     # diabetes_xgboost_model(dataset="/Users/kumare/Downloads/pima-indians-diabetes.data.csv")
