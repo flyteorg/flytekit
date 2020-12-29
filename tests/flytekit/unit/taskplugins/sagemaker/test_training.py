@@ -4,7 +4,7 @@ import tempfile
 import pytest
 
 import flytekit
-from flytekit import metadata, task
+from flytekit import task
 from flytekit.annotated.context_manager import Image, ImageConfig, RegistrationSettings
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.taskplugins.sagemaker import (
@@ -33,7 +33,6 @@ def _get_reg_settings():
 def test_builtin_training():
     trainer = SagemakerBuiltinAlgorithmsTask(
         name="builtin-trainer",
-        metadata=metadata(),
         task_config=SagemakerTrainingJobConfig(
             training_job_resource_config=TrainingJobResourceConfig(
                 instance_count=1, instance_type="ml-xlarge", volume_size_in_gb=1,

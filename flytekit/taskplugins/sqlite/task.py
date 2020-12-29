@@ -6,10 +6,8 @@ import typing
 from dataclasses import dataclass
 from enum import Enum
 
-from flytekit import FlyteContext, kwtypes
-from flytekit import metadata as md
+from flytekit import FlyteContext, TaskMetadata, kwtypes
 from flytekit.annotated.base_sql_task import SQLTask
-from flytekit.models import task as _task_models
 from flytekit.plugins import pandas as pd
 from flytekit.types import FlyteFile, FlyteSchema
 from flytekit.types.flyte_file import unarchive_file
@@ -57,13 +55,14 @@ class SQLite3Task(SQLTask[SQLite3Config]):
           referenced task type?
     """
 
+    _SQLITE_TASK_TYPE = "sqlite"
     _SQLITE_INPUT_FILE = "sqlite"
 
     def __init__(
         self,
         name: str,
         query_template: str,
-        metadata: typing.Optional[_task_models.TaskMetadata] = None,
+        metadata: typing.Optional[TaskMetadata] = None,
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         task_config: typing.Optional[SQLite3Config] = None,
         output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
@@ -82,10 +81,16 @@ class SQLite3Task(SQLTask[SQLite3Config]):
         if output_schema_type is None:
             output_schema_type = FlyteSchema
         outputs = kwtypes(results=output_schema_type)
-        if metadata is None:
-            metadata = md()
         super().__init__(
-            name, metadata, query_template, inputs, outputs=outputs, task_config=task_config, *args, **kwargs
+            task_type=self._SQLITE_TASK_TYPE,
+            name=name,
+            query_template=query_template,
+            inputs=inputs,
+            metadata=metadata,
+            outputs=outputs,
+            task_config=task_config,
+            *args,
+            **kwargs,
         )
 
     def execute(self, **kwargs) -> typing.Any:

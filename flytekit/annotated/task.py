@@ -1,9 +1,7 @@
 import datetime as _datetime
 from typing import Any, Callable, Dict, Optional, Type, Union
 
-from flytekit.annotated.python_function_task import PythonFunctionTask
-from flytekit.models import literals as _literal_models
-from flytekit.models import task as _task_model
+from flytekit.annotated.python_function_task import PythonFunctionTask, TaskMetadata
 
 
 class TaskPlugins(object):
@@ -51,37 +49,6 @@ class TaskPlugins(object):
         return PythonFunctionTask
 
 
-def metadata(
-    cache: bool = False,
-    cache_version: str = "",
-    retries: int = 0,
-    interruptible: bool = False,
-    deprecated: str = "",
-    timeout: Union[_datetime.timedelta, int] = None,
-) -> _task_model.TaskMetadata:
-    """
-    Create Metadata to be associated with this Task
-    :param cache: Boolean that indicates if caching should be enabled
-    :param cache_version: Version string to be used for the cached value
-    :param retries: for retries=n; n > 0, on failures of this task, the task will be retried at-least n number of times.
-    :param interruptible: Boolean that indicates that this task is of for interruptions and can be scheduled on nodes
-                          with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
-                           at the cost of performance penalties due to potential interruptions
-    :param deprecated: This should be used to indicate that the task is deprecated
-    :param timeout: the max amount of time for which one execution of this task should be executed for. If the execution
-                    will be terminated if the runtime exceeds the given timeout (approximately)
-    """
-    return _task_model.TaskMetadata(
-        discoverable=cache,
-        runtime=_task_model.RuntimeMetadata(_task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.2.3", "python"),
-        timeout=timeout,
-        retries=_literal_models.RetryStrategy(retries),
-        interruptible=interruptible,
-        discovery_version=cache_version,
-        deprecated_error_message=deprecated,
-    )
-
-
 def task(
     _task_function: Optional[Callable] = None,
     task_config: Optional[Any] = None,
@@ -92,7 +59,7 @@ def task(
     deprecated: str = "",
     timeout: Union[_datetime.timedelta, int] = 0,
     container_image: Optional[str] = None,
-    environment: Dict[str, str] = None,
+    environment: Optional[Dict[str, str]] = None,
     *args,
     **kwargs,
 ) -> Union[Callable, PythonFunctionTask]:
@@ -147,17 +114,23 @@ def task(
     """
 
     def wrapper(fn) -> PythonFunctionTask:
-        if isinstance(timeout, int):
-            _timeout = _datetime.timedelta(seconds=timeout)
-        elif timeout and isinstance(timeout, _datetime.timedelta):
-            _timeout = timeout
-        else:
-            raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
-
-        _metadata = metadata(cache, cache_version, retries, interruptible, deprecated, _timeout)
+        _metadata = TaskMetadata(
+            cache=cache,
+            cache_version=cache_version,
+            retries=retries,
+            interruptible=interruptible,
+            deprecated=deprecated,
+            timeout=timeout,
+        )
 
         task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
-            task_config, fn, _metadata, container_image=container_image, environment=environment, *args, **kwargs
+            task_config,
+            fn,
+            _metadata=_metadata,
+            container_image=container_image,
+            environment=environment,
+            *args,
+            **kwargs,
         )
 
         return task_instance

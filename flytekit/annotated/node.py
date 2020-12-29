@@ -116,6 +116,7 @@ class Node(object):
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
 
 
+# TODO we should accept TaskMetadata here and then extract whatever fields we want into NodeMetadata
 def create_and_link_node(
     ctx: FlyteContext,
     entity,

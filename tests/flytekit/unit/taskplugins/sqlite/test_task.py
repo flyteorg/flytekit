@@ -3,6 +3,7 @@ import pytest
 from flytekit import kwtypes, task, workflow
 from flytekit.plugins import pandas
 from flytekit.taskplugins.sqlite.task import SQLite3Config, SQLite3Task
+
 # https://www.sqlitetutorial.net/sqlite-sample-database/
 from flytekit.types import FlyteFile
 
