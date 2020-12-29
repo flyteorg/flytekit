@@ -1,12 +1,14 @@
 import re
-from typing import Any, Dict, Type
+from typing import Any, Dict, Type, TypeVar
 
 from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.interface import Interface
 from flytekit.models import task as _task_model
 
+T = TypeVar("T")
 
-class SQLTask(PythonTask):
+
+class SQLTask(PythonTask[T]):
     """
     Base task types for all SQL tasks
     """
@@ -19,6 +21,7 @@ class SQLTask(PythonTask):
         metadata: _task_model.TaskMetadata,
         query_template: str,
         inputs: Dict[str, Type],
+        task_config: T = None,
         outputs: Dict[str, Type] = None,
         task_type="sql_task",
         *args,
@@ -29,6 +32,7 @@ class SQLTask(PythonTask):
             name=name,
             interface=Interface(inputs=inputs, outputs=outputs or {}),
             metadata=metadata,
+            task_config=task_config,
             *args,
             **kwargs,
         )

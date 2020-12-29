@@ -1,6 +1,6 @@
 import inspect
 import re
-from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Callable, Dict, List, Optional, TypeVar
 
 from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.context_manager import ImageConfig, RegistrationSettings
@@ -50,7 +50,7 @@ def get_registerable_container_image(img: Optional[str], cfg: ImageConfig) -> st
 T = TypeVar("T")
 
 
-class PythonFunctionTask(PythonTask, Generic[T]):
+class PythonFunctionTask(PythonTask[T]):
     """
     A Python Function task should be used as the base for all extensions that have a python function.
     This base has an interesting property, where it will auto configure the image and image version to be
@@ -88,6 +88,7 @@ class PythonFunctionTask(PythonTask, Generic[T]):
             name=f"{task_function.__module__}.{task_function.__name__}",
             interface=mutated_interface,
             metadata=metadata,
+            task_config=task_config,
             *args,
             **kwargs,
         )
@@ -106,10 +107,6 @@ class PythonFunctionTask(PythonTask, Generic[T]):
     @property
     def native_interface(self) -> Interface:
         return self._native_interface
-
-    @property
-    def task_config(self) -> T:
-        return self._task_config
 
     @property
     def container_image(self) -> Optional[str]:
