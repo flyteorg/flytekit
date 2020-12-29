@@ -29,7 +29,8 @@ class SQLite3Config(object):
                             sqlite3 file locations. The file will have to comply with FlyteFile[.db|.zip|.tar.gz|.bz2]
                             format
             static_file_path: default FlyteFile that will be downloaded on execute
-            compressed: Boolean that indicates if the given file is a compressed archive
+            compressed: Boolean that indicates if the given file is a compressed archive. Supported file types are
+                            [zip, tar, gztar, bztar, xztar]
     """
 
     class Mode(Enum):
