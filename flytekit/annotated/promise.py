@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from flytekit.annotated import context_manager as _flyte_context
 from flytekit.annotated import type_engine
 from flytekit.annotated.context_manager import FlyteContext
+from flytekit.annotated.interface import Interface
 from flytekit.annotated.type_engine import DictTransformer, ListTransformer, TypeEngine
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.models import interface as _interface_models
@@ -13,7 +14,6 @@ from flytekit.models import literals as _literal_models
 from flytekit.models import literals as _literals_models
 from flytekit.models import types as _type_models
 from flytekit.models.literals import Primitive
-from flytekit.annotated.interface import Interface
 
 
 def translate_inputs_to_literals(
@@ -362,7 +362,9 @@ class Promise(object):
 
 
 # To create a class that is a named tuple, we might have to create namedtuplemeta and manipulate the tuple
-def create_task_output(promises: Optional[Union[List[Promise], Promise]], entity_interface: Optional[Interface] = None) -> Optional[Union[Tuple[Promise], Promise]]:
+def create_task_output(
+    promises: Optional[Union[List[Promise], Promise]], entity_interface: Optional[Interface] = None
+) -> Optional[Union[Tuple[Promise], Promise]]:
     if promises is None:
         return None
 

@@ -122,6 +122,15 @@ def test_wf1():
     assert my_wf._output_bindings[0].var == "out_0"
     assert my_wf._output_bindings[0].binding.promise.var == "t1_int_output"
 
+    nt = typing.NamedTuple("SingleNT", t1_int_output=float)
+
+    @task
+    def t3(a: int) -> nt:
+        return (a + 2,)
+
+    assert t3.python_interface.custom_interface_name == "SingleNT"
+    assert t3.interface.outputs["t1_int_output"] is not None
+
 
 def test_wf1_run():
     @task
@@ -139,6 +148,15 @@ def test_wf1_run():
         return x, d
 
     x = my_wf(a=5, b="hello ")
+    assert x == (7, "hello world")
+
+    @workflow
+    def my_wf2(a: int, b: str) -> (int, str):
+        tup = t1(a=a)
+        d = t2(a=tup.c, b=b)
+        return tup.t1_int_output, d
+
+    x = my_wf2(a=5, b="hello ")
     assert x == (7, "hello world")
 
 

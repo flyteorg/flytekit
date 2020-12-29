@@ -106,9 +106,7 @@ def test_diabetes():
     nt = typing.NamedTuple("Outputs", model=FlyteFile[MODELSER_JOBLIB])
 
     @task(cache_version="1.0", cache=True, memory_limit="200Mi")
-    def fit(
-        x: FlyteSchema[FEATURE_COLUMNS], y: FlyteSchema[CLASSES_COLUMNS], hyperparams: dict
-    ) -> nt:
+    def fit(x: FlyteSchema[FEATURE_COLUMNS], y: FlyteSchema[CLASSES_COLUMNS], hyperparams: dict) -> nt:
         """
         This function takes the given input features and their corresponding classes to train a XGBClassifier.
         NOTE: We have simplified the number of hyper parameters we take for demo purposes
