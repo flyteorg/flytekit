@@ -372,8 +372,10 @@ def create_task_output(
         return promises
 
     if len(promises) == 0:
-        raise Exception("This function should not be called with an empty list. It should have been handled with a"
-                        "VoidPromise at this function's call-site.")
+        raise Exception(
+            "This function should not be called with an empty list. It should have been handled with a"
+            "VoidPromise at this function's call-site."
+        )
 
     if len(promises) == 1:
         if not entity_interface:

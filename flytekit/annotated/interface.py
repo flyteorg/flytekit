@@ -278,7 +278,9 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
         # Handle option 3
         logger.debug(f"Task returns unnamed typing.Tuple {return_annotation}")
         if len(return_annotation.__args__) == 1:
-            raise FlyteValidationException("Tuples should be used to indicate multiple return values, found only one return variable.")
+            raise FlyteValidationException(
+                "Tuples should be used to indicate multiple return values, found only one return variable."
+            )
         return OrderedDict(
             zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)
         )
