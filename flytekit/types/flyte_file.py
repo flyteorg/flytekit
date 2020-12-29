@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import typing
 
 from flytekit.annotated.context_manager import FlyteContext
@@ -13,6 +14,20 @@ from flytekit.models.types import LiteralType
 
 def noop():
     ...
+
+
+def unarchive_file(local_path: str, to_dir: str):
+    """
+    Unarchive given archive and returns the unarchived file name. It is expected that only one file is unarchived.
+    More than one file or 0 files will result in a ``RuntimeError``
+    """
+    archive_dir = os.path.join(to_dir, "_arch")
+    shutil.unpack_archive(local_path, archive_dir)
+    # file gets uncompressed into to_dir/_arch/*.*
+    files = os.listdir(archive_dir)
+    if not files or len(files) == 0 or len(files) > 1:
+        raise RuntimeError(f"Uncompressed archive should contain only one file - found {files}!")
+    return os.path.join(archive_dir, files[0])
 
 
 class FlyteFile(os.PathLike):
@@ -112,6 +127,18 @@ class FlyteFile(os.PathLike):
     def extension(cls) -> str:
         return ""
 
+    @classmethod
+    def from_path(cls, path):
+        ctx = FlyteContext.current_context()
+        p = ctx.file_access.get_random_local_path(path)
+
+        def _downloader():
+            return ctx.file_access.get_data(path, p, is_multipart=False)
+
+        c = cls(path=p, downloader=_downloader)
+        c._remote_source = path
+        return c
+
     def __class_getitem__(cls, item: typing.Type) -> typing.Type[FlyteFile]:
         if item is None:
             return cls
@@ -144,10 +171,14 @@ class FlyteFile(os.PathLike):
 
         self._remote_source = None
 
+    def download(self):
+        if not self._downloaded:
+            self._downloader()
+            self._downloaded = True
+
     def __fspath__(self):
         # This is where a delayed downloading of the file will happen
-        self._downloader()
-        self._downloaded = True
+        self.download()
         return self._path
 
     def __eq__(self, other):
