@@ -164,9 +164,9 @@ class Task(object):
             ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
             if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
-                if self.python_interface.custom_interface_name:
+                if self.python_interface.output_tuple_name:
                     variables = [k for k in self.python_interface.outputs.keys()]
-                    output_tuple = collections.namedtuple(self.python_interface.custom_interface_name, variables)
+                    output_tuple = collections.namedtuple(self.python_interface.output_tuple_name, variables)
                     nones = [None for _ in self.python_interface.outputs.keys()]
                     return output_tuple(*nones)
                 else:
@@ -308,8 +308,8 @@ class PythonTask(Task):
                 # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
                 # length one. That convention is used for naming outputs - and single-length-NamedTuples are
                 # particularly troublesome but elegant handling of them is not a high priority
-                # Again, we're using the custom_interface_name as a proxy.
-                if self.python_interface.custom_interface_name and isinstance(native_outputs, tuple):
+                # Again, we're using the output_tuple_name as a proxy.
+                if self.python_interface.output_tuple_name and isinstance(native_outputs, tuple):
                     native_outputs_as_map = {expected_output_names[0]: native_outputs[0]}
                 else:
                     native_outputs_as_map = {expected_output_names[0]: native_outputs}

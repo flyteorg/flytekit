@@ -128,7 +128,7 @@ def test_wf1():
     def t3(a: int) -> nt:
         return (a + 2,)
 
-    assert t3.python_interface.custom_interface_name == "SingleNT"
+    assert t3.python_interface.output_tuple_name == "SingleNT"
     assert t3.interface.outputs["t1_int_output"] is not None
 
 

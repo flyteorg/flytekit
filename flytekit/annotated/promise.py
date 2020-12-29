@@ -382,20 +382,20 @@ def create_task_output(
         # See transform_signature_to_interface for more information, we're using the existence of a name as a proxy
         # for the user having specified a one-element typing.NamedTuple, which means we should _not_ extract it. We
         # should still return a tuple but it should be one of ours.
-        if not entity_interface.custom_interface_name:
+        if not entity_interface.output_tuple_name:
             return promises[0]
 
     # More than one promise, let us wrap it into a tuple
     # Start with just the var names in the promises
     variables = [p.var for p in promises]
 
-    # These should be OrderedDicts so it should be safe to do this.
+    # These should be OrderedDicts so it should be safe to iterate over the keys.
     if entity_interface:
         variables = [k for k in entity_interface.outputs.keys()]
 
     named_tuple_name = "DefaultNamedTupleOutput"
-    if entity_interface and entity_interface.custom_interface_name:
-        named_tuple_name = entity_interface.custom_interface_name
+    if entity_interface and entity_interface.output_tuple_name:
+        named_tuple_name = entity_interface.output_tuple_name
 
     # Should this class be part of the Interface?
     class Output(collections.namedtuple(named_tuple_name, variables)):

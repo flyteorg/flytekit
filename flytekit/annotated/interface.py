@@ -22,7 +22,7 @@ class Interface(object):
         self,
         inputs: typing.Dict[str, Union[Type, Tuple[Type, Any]]] = None,
         outputs: typing.Dict[str, Type] = None,
-        custom_interface_name: Optional[str] = None,
+        output_tuple_name: Optional[str] = None,
     ):
         """
         :param outputs: Output variables and their types as a dictionary
@@ -38,11 +38,11 @@ class Interface(object):
                 else:
                     self._inputs[k] = (v, None)
         self._outputs = outputs
-        self._custom_interface_name = custom_interface_name
+        self._output_tuple_name = output_tuple_name
 
     @property
-    def custom_interface_name(self) -> Optional[str]:
-        return self._custom_interface_name
+    def output_tuple_name(self) -> Optional[str]:
+        return self._output_tuple_name
 
     @property
     def inputs(self) -> typing.Dict[str, Type]:
@@ -196,7 +196,7 @@ def transform_signature_to_interface(signature: inspect.Signature) -> Interface:
         if hasattr(signature.return_annotation, "__name__") and signature.return_annotation.__name__ != "":
             custom_name = signature.return_annotation.__name__
 
-    return Interface(inputs, outputs, custom_interface_name=custom_name)
+    return Interface(inputs, outputs, output_tuple_name=custom_name)
 
 
 def transform_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interface_models.Variable]:
