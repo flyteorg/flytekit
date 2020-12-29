@@ -29,6 +29,9 @@ class Interface(object):
         :param inputs: Map of input name to either a tuple where the first element is the python type, and the second
             value is the default, or just a single value which is the python type. The latter case is used by tasks
             for which perhaps a default value does not make sense. For consistency, we turn it into a tuple.
+        :param output_tuple_name: This is used to store the name of a typing.NamedTuple when the task or workflow
+            returns one. This is also used as a proxy for better or for worse for the presence of a tuple return type,
+            primarily used when handling one-element NamedTuples.
         """
         self._inputs = {}
         if inputs:
