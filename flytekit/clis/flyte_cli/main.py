@@ -3,12 +3,13 @@ import os
 import os as _os
 import stat as _stat
 import sys as _sys
-from typing import List, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union
 
 import click as _click
 import requests as _requests
 import six as _six
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
+from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _GeneratedProtocolMessageType
 from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 from flyteidl.core import identifier_pb2 as _identifier_pb2
@@ -1559,7 +1560,12 @@ _resource_map = {
 
 
 def _extract_pair(
-    identifier_file: str, object_file: str, project: str, domain: str, version: str,
+    identifier_file: str,
+    object_file: str,
+    project: str,
+    domain: str,
+    version: str,
+    patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]],
 ) -> Tuple[
     _identifier_pb2.Identifier,
     Union[_core_tasks_pb2.TaskTemplate, _core_workflow_pb2.WorkflowTemplate, _launch_plan_pb2.LaunchPlanSpec],
@@ -1578,11 +1584,18 @@ def _extract_pair(
     registerable_identifier, registerable_entity = hydrate_registration_parameters(
         identifier, project, domain, version, entity
     )
+    patch_fn = patches.get(identifier.resource_type)
+    if patch_fn:
+        registerable_entity = patch_fn(registerable_entity)
     return registerable_identifier, registerable_entity
 
 
 def _extract_files(
-    project: str, domain: str, version: str, file_paths: List[str],
+    project: str,
+    domain: str,
+    version: str,
+    file_paths: List[str],
+    patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]] = None,
 ):
     """
     :param file_paths:
@@ -1597,8 +1610,7 @@ def _extract_files(
     for identifier_file in filename_iterator:
         object_file = next(filename_iterator)
         # Serialized proto files are of the form: 12_foo.bar.<resource_type>.pb
-        id, entity = _extract_pair(identifier_file, object_file, project, domain, version)
-        _click.echo("extracted {}".format(entity))
+        id, entity = _extract_pair(identifier_file, object_file, project, domain, version, patches or {})
         results.append((id, entity))
 
     return results
@@ -1721,7 +1733,29 @@ def fast_register_files(project, domain, version, host, insecure, additional_dis
     Data.put_data(compressed_source, full_remote_path)
     _click.echo(f"Uploaded compressed code archive {compressed_source} to {full_remote_path}")
 
-    flyte_entities_list = _extract_files(project, domain, digest, pb_files)
+    def fast_register_task(entity: _GeneratedProtocolMessageType) -> _GeneratedProtocolMessageType:
+        """
+        Updates task definitions during fast-registration in order to use the compatible pyflyte fast execute command at
+        task execution.
+        """
+        # entity is of type flyteidl.admin.task_pb2.TaskSpec
+        if not entity.template.HasField("container"):
+            # Containerless tasks are always fast registerable without modification
+            return entity
+        complete_args = []
+        for arg in entity.template.container.args:
+            if arg == "{{ .remote_package_path }}":
+                arg = full_remote_path
+            elif arg == "{{ .dest_dir }}":
+                arg = dest_dir
+            complete_args.append(arg)
+        del entity.template.container.args[:]
+        entity.template.container.args.extend(complete_args)
+        return entity
+
+    flyte_entities_list = _extract_files(
+        project, domain, digest, pb_files, patches={_identifier_pb2.TASK: fast_register_task}
+    )
     for id, flyte_entity in flyte_entities_list:
         try:
             if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
