@@ -3,10 +3,11 @@ This Plugin adds the capability of running distributed pytorch training to Flyte
 Kubernetes. It leverages `Pytorch Job <https://github.com/kubeflow/pytorch-operator>`_ Plugin from kubeflow.
 """
 from dataclasses import dataclass
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
 from google.protobuf.json_format import MessageToDict
 
+from flytekit import TaskMetadata
 from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.resources import Resources
@@ -45,12 +46,12 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
     _PYTORCH_TASK_TYPE = "pytorch"
 
     def __init__(
-        self, task_config: PyTorch, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs
+        self, task_config: PyTorch, task_function: Callable, *args, metadata: Optional[TaskMetadata] = None, **kwargs
     ):
         super().__init__(
             task_config,
             task_function,
-            metadata,
+            metadata=metadata,
             task_type=self._PYTORCH_TASK_TYPE,
             requests=task_config.per_replica_requests,
             limits=task_config.per_replica_limits,

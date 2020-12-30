@@ -1,18 +1,17 @@
 import json
 from dataclasses import dataclass
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
 from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _pb2_params
 from google.protobuf import json_format
 from google.protobuf.json_format import MessageToDict
 
-from flytekit import FlyteContext
+from flytekit import FlyteContext, TaskMetadata
 from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.type_engine import DictTransformer, TypeEngine, TypeTransformer
 from flytekit.common.types import primitives
-from flytekit.models import task as _task_model
 from flytekit.models.literals import Literal
 from flytekit.models.sagemaker import hpo_job as _hpo_job_model
 from flytekit.models.sagemaker import parameter_ranges as _params
@@ -46,10 +45,10 @@ class SagemakerHPOTask(PythonTask[HPOJob]):
     def __init__(
         self,
         name: str,
-        metadata: _task_model.TaskMetadata,
         task_config: HPOJob,
         training_task: Union[SagemakerCustomTrainingTask, SagemakerBuiltinAlgorithmsTask],
         *args,
+        metadata: Optional[TaskMetadata] = None,
         **kwargs
     ):
         if training_task is None or not (
