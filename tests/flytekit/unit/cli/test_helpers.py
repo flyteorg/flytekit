@@ -264,6 +264,14 @@ def test_hydrate_registration_parameters__workflow_nothing_set():
     workflow = _workflow_pb2.WorkflowSpec(
         template=_core_workflow_pb2.WorkflowTemplate(
             id=_identifier_pb2.Identifier(resource_type=_identifier_pb2.WORKFLOW, name="name",),
+            nodes=[
+                _core_workflow_pb2.Node(
+                    id="foo",
+                    task_node=_core_workflow_pb2.TaskNode(
+                        reference_id=_identifier_pb2.Identifier(resource_type=_identifier_pb2.TASK, name="task1")
+                    ),
+                )
+            ],
         )
     )
     identifier, entity = hydrate_registration_parameters(workflow.template.id, "project", "domain", "12345", workflow)
@@ -273,4 +281,8 @@ def test_hydrate_registration_parameters__workflow_nothing_set():
             resource_type=_identifier_pb2.WORKFLOW, project="project", domain="domain", name="name", version="12345",
         )
         == entity.template.id
+    )
+    assert len(workflow.template.nodes) == 1
+    assert workflow.template.nodes[0].task_node.reference_id == _identifier_pb2.Identifier(
+        resource_type=_identifier_pb2.TASK, project="project", domain="domain", name="task1", version="12345",
     )
