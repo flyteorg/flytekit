@@ -414,6 +414,25 @@ class PythonTask(Task, Generic[T]):
         self._registerable_entity = self.get_task_structure()
         return self._registerable_entity
 
+    def get_fast_registerable_entity(self) -> SdkTask:
+        entity = self.get_registerable_entity()
+        if entity.container is None:
+            # Containerless tasks are always fast registerable without modification
+            return entity
+
+        args = [
+            "pyflyte-fast-execute",
+            "--additional-distribution",
+            "{{ .remote_package_path }}",
+            "--dest-dir",
+            "{{ .dest_dir }}",
+            "--",
+        ] + entity.container.args[:]
+
+        del entity._container.args[:]
+        entity._container.args.extend(args)
+        return entity
+
     @property
     def environment(self) -> Dict[str, str]:
         return self._environment

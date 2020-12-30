@@ -1,8 +1,9 @@
 import importlib as _importlib
+import os
 import os as _os
 import stat as _stat
 import sys as _sys
-from typing import List, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union
 
 import click as _click
 import requests as _requests
@@ -14,6 +15,7 @@ from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_tasks_pb2
 from flyteidl.core import workflow_pb2 as _core_workflow_pb2
+from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _GeneratedProtocolMessageType
 
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
@@ -32,6 +34,7 @@ from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import set_flyte_config_file
 from flytekit.interfaces.data import data_proxy as _data_proxy
+from flytekit.interfaces.data.data_proxy import Data
 from flytekit.models import common as _common_models
 from flytekit.models import filters as _filters
 from flytekit.models import launch_plan as _launch_plan
@@ -51,6 +54,7 @@ from flytekit.models.matchable_resource import PluginOverride as _PluginOverride
 from flytekit.models.matchable_resource import PluginOverrides as _PluginOverrides
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
+from flytekit.tools.fast_registration import get_additional_distribution_loc as _get_additional_distribution_loc
 
 try:  # Python 3
     import urllib.parse as _urlparse
@@ -1556,7 +1560,12 @@ _resource_map = {
 
 
 def _extract_pair(
-    identifier_file: str, object_file: str, project: str, domain: str, version: str
+    identifier_file: str,
+    object_file: str,
+    project: str,
+    domain: str,
+    version: str,
+    patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]],
 ) -> Tuple[
     _identifier_pb2.Identifier,
     Union[_core_tasks_pb2.TaskTemplate, _core_workflow_pb2.WorkflowTemplate, _launch_plan_pb2.LaunchPlanSpec],
@@ -1575,10 +1584,19 @@ def _extract_pair(
     registerable_identifier, registerable_entity = hydrate_registration_parameters(
         identifier, project, domain, version, entity
     )
+    patch_fn = patches.get(identifier.resource_type)
+    if patch_fn:
+        registerable_entity = patch_fn(registerable_entity)
     return registerable_identifier, registerable_entity
 
 
-def _extract_files(project: str, domain: str, version: str, file_paths: List[str]):
+def _extract_files(
+    project: str,
+    domain: str,
+    version: str,
+    file_paths: List[str],
+    patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]] = None,
+):
     """
     :param file_paths:
     :rtype: List[(flyteidl.core.identifier_pb2.Identifier, T)]
@@ -1592,7 +1610,7 @@ def _extract_files(project: str, domain: str, version: str, file_paths: List[str
     for identifier_file in filename_iterator:
         object_file = next(filename_iterator)
         # Serialized proto files are of the form: 12_foo.bar.<resource_type>.pb
-        id, entity = _extract_pair(identifier_file, object_file, project, domain, version)
+        id, entity = _extract_pair(identifier_file, object_file, project, domain, version, patches or {})
         results.append((id, entity))
 
     return results
@@ -1634,6 +1652,111 @@ def register_files(project, domain, version, host, insecure, files):
         _click.echo(f"  {f}")
 
     flyte_entities_list = _extract_files(project, domain, version, files)
+    for id, flyte_entity in flyte_entities_list:
+        try:
+            if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
+                client.raw.create_launch_plan(_launch_plan_pb2.LaunchPlanCreateRequest(id=id, spec=flyte_entity))
+            elif id.resource_type == _identifier_pb2.TASK:
+                client.raw.create_task(_task_pb2.TaskCreateRequest(id=id, spec=flyte_entity))
+            elif id.resource_type == _identifier_pb2.WORKFLOW:
+                client.raw.create_workflow(_workflow_pb2.WorkflowCreateRequest(id=id, spec=flyte_entity))
+            else:
+                raise _user_exceptions.FlyteAssertion(
+                    f"Only tasks, launch plans, and workflows can be called with this function, "
+                    f"resource type {id.resource_type} was passed"
+                )
+            _click.secho(f"Registered {id}", fg="green")
+        except _user_exceptions.FlyteEntityAlreadyExistsException:
+            _click.secho(f"Skipping because already registered {id}", fg="cyan")
+
+    _click.echo(f"Finished scanning {len(flyte_entities_list)} files")
+
+
+@_flyte_cli.command("fast-register-files", cls=_FlyteSubCommand)
+@_click.option(*_PROJECT_FLAGS, required=True, help="The project namespace to register with.")
+@_click.option(*_DOMAIN_FLAGS, required=True, help="The domain namespace to register with.")
+@_click.option(
+    *_VERSION_FLAGS,
+    required=False,
+    help="Version to register entities with. This is normally computed deterministically from your code, but you can "
+    "override that here",
+)
+@_host_option
+@_insecure_option
+@_click.option("--additional-distribution-dir", required=True, help="Location for additional distributions")
+@_click.option(
+    "--dest-dir",
+    type=str,
+    help="[Optional] The output directory for code which is downloaded during fast registration, "
+    "if the current working directory at the time of installation is not desired",
+)
+@_click.argument(
+    "files", type=_click.Path(exists=True), nargs=-1,
+)
+def fast_register_files(project, domain, version, host, insecure, additional_distribution_dir, dest_dir, files):
+    """
+    Given a list of files, this will (after sorting the input list), attempt to register them against Flyte Admin.
+    This command expects the files to be the output of the pyflyte serialize command.  See the code there for more
+    information. Valid files need to be:\n
+        * Ordered in the order that you want registration to happen. pyflyte should have done the topological sort
+          for you and produced file that have a prefix that sets the correct order.\n
+        * Of the correct type. That is, they should be the serialized form of one of these Flyte IDL objects
+          (or an identifier object).\n
+          - flyteidl.admin.launch_plan_pb2.LaunchPlanSpec for launch plans\n
+          - flyteidl.admin.workflow_pb2.WorkflowSpec for workflows\n
+          - flyteidl.admin.task_pb2.TaskSpec for tasks\n
+
+    :param host:
+    :param insecure:
+    :param files:
+    :return:
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    files = list(files)
+    files.sort()
+    _click.secho("Parsing files...", fg="green", bold=True)
+    compressed_source, digest = None, None
+    pb_files = []
+    for f in files:
+        if f.endswith("tar.gz"):
+            compressed_source = f
+            digest = os.path.basename(f).split(".")[0]
+        else:
+            _click.echo(f"  {f}")
+            pb_files.append(f)
+
+    if not compressed_source:
+        _click.UsageError("Could not discover compressed source, did you remember to run `pyflyte serialize fast ...`?")
+
+    version = version if version else digest
+    full_remote_path = _get_additional_distribution_loc(additional_distribution_dir, version)
+    Data.put_data(compressed_source, full_remote_path)
+    _click.echo(f"Uploaded compressed code archive {compressed_source} to {full_remote_path}")
+
+    def fast_register_task(entity: _GeneratedProtocolMessageType) -> _GeneratedProtocolMessageType:
+        """
+        Updates task definitions during fast-registration in order to use the compatible pyflyte fast execute command at
+        task execution.
+        """
+        # entity is of type flyteidl.admin.task_pb2.TaskSpec
+        if not entity.template.HasField("container"):
+            # Containerless tasks are always fast registerable without modification
+            return entity
+        complete_args = []
+        for arg in entity.template.container.args:
+            if arg == "{{ .remote_package_path }}":
+                arg = full_remote_path
+            elif arg == "{{ .dest_dir }}":
+                arg = dest_dir if dest_dir else "."
+            complete_args.append(arg)
+        del entity.template.container.args[:]
+        entity.template.container.args.extend(complete_args)
+        return entity
+
+    flyte_entities_list = _extract_files(
+        project, domain, version, pb_files, patches={_identifier_pb2.TASK: fast_register_task}
+    )
     for id, flyte_entity in flyte_entities_list:
         try:
             if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
