@@ -46,12 +46,11 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
     _PYTORCH_TASK_TYPE = "pytorch"
 
     def __init__(
-        self, task_config: PyTorch, task_function: Callable, metadata: Optional[TaskMetadata] = None, **kwargs
+        self, task_config: PyTorch, task_function: Callable, **kwargs
     ):
         super().__init__(
             task_config,
             task_function,
-            metadata=metadata,
             task_type=self._PYTORCH_TASK_TYPE,
             requests=task_config.per_replica_requests,
             limits=task_config.per_replica_limits,

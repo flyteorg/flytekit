@@ -9,6 +9,7 @@ import click
 
 from flytekit.annotated import context_manager as flyte_context
 from flytekit.annotated.base_task import PythonTask
+from flytekit.annotated.context_manager import InstanceVar
 from flytekit.annotated.launch_plan import LaunchPlan
 from flytekit.annotated.workflow import Workflow
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
@@ -119,6 +120,7 @@ def serialize_all(pkgs: List[str], folder: str = None, mode: SerializationMode =
                 o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
             )
             loaded_entities.append(o)
+            ctx.registration_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
 
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
 

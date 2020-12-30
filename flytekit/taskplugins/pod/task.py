@@ -33,9 +33,9 @@ class Pod(object):
 
 
 class PodFunctionTask(PythonFunctionTask[Pod]):
-    def __init__(self, task_config: Pod, task_function: Callable, metadata: Optional[TaskMetadata] = None, **kwargs):
+    def __init__(self, task_config: Pod, task_function: Callable, **kwargs):
         super(PodFunctionTask, self).__init__(
-            task_config=task_config, task_type="sidecar", task_function=task_function, metadata=metadata, **kwargs,
+            task_config=task_config, task_type="sidecar", task_function=task_function, **kwargs,
         )
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:

@@ -47,12 +47,11 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
 
     _SPARK_TASK_TYPE = "spark"
 
-    def __init__(self, task_config: Spark, task_function: Callable, metadata: Optional[TaskMetadata] = None, **kwargs):
+    def __init__(self, task_config: Spark, task_function: Callable, **kwargs):
         super(PysparkFunctionTask, self).__init__(
             task_config=task_config,
             task_type=self._SPARK_TASK_TYPE,
             task_function=task_function,
-            metadata=metadata,
             **kwargs,
         )
 

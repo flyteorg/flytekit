@@ -79,6 +79,13 @@ def get_image_config() -> ImageConfig:
     return ImageConfig(default_image=default_img, images=other_images)
 
 
+@dataclass
+class InstanceVar(object):
+    module: str
+    name: str
+    o: Any
+
+
 class RegistrationSettings(object):
     def __init__(
         self,
@@ -99,6 +106,7 @@ class RegistrationSettings(object):
         self._iam_role = iam_role
         self._service_account = service_account
         self._raw_output_data_config = raw_output_data_config
+        self._instance_lookup = {}
 
     @property
     def project(self) -> str:
@@ -131,6 +139,14 @@ class RegistrationSettings(object):
     @property
     def raw_output_data_config(self) -> RawOutputDataConfig:
         return RawOutputDataConfig(self._raw_output_data_config or "")
+
+    def add_instance_var(self, var: InstanceVar):
+        self._instance_lookup[var.o] = var
+
+    def get_instance_var(self, o: Any) -> InstanceVar:
+        if o in self._instance_lookup:
+            return self._instance_lookup[o]
+        raise KeyError(f"Instance Variable not found for object id {o}")
 
 
 class CompilationState(object):

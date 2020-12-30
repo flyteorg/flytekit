@@ -290,10 +290,10 @@ class PythonTask(Task, Generic[T]):
         name: str,
         task_config: T,
         interface: Optional[Interface] = None,
-        metadata: Optional[TaskMetadata] = None,
         **kwargs,
     ):
-        super().__init__(task_type, name, transform_interface_to_typed_interface(interface), metadata, **kwargs)
+        super().__init__(
+            task_type=task_type, name=name, interface=transform_interface_to_typed_interface(interface), **kwargs)
         self._python_interface = interface if interface else Interface()
         self._environment = kwargs.get("environment", {})
         self._task_config = task_config

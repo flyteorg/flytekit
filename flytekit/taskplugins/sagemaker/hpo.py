@@ -47,7 +47,6 @@ class SagemakerHPOTask(PythonTask[HPOJob]):
         name: str,
         task_config: HPOJob,
         training_task: Union[SagemakerCustomTrainingTask, SagemakerBuiltinAlgorithmsTask],
-        metadata: Optional[TaskMetadata] = None,
         **kwargs
     ):
         if training_task is None or not (
@@ -73,7 +72,6 @@ class SagemakerHPOTask(PythonTask[HPOJob]):
             task_type=self._SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK,
             name=name,
             interface=updated_iface,
-            metadata=metadata,
             task_config=task_config,
             **kwargs
         )
