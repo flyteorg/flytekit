@@ -12,6 +12,8 @@ from flytekit.annotated.workflow import Workflow
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.loggers import logger
 
+# This file exists instead of moving to node.py because it needs Task/Workflow/LaunchPlan and those depend on Node
+
 
 def create_node(
     entity: Union[PythonTask, LaunchPlan, Workflow], *args, **kwargs
@@ -54,6 +56,13 @@ def create_node(
     def sub_wf():
         create_node(other_sub)
         create_node(task)
+
+    If t1 produces only one output, note that in local execution, you still get a wrapper object that
+    needs to be dereferenced by the output name.
+
+        t1_node = create_node(t1)
+        t2(t1_node.out_0)
+
     """
     if len(args) > 0:
         raise _user_exceptions.FlyteAssertion(
@@ -117,6 +126,7 @@ def create_node(
             raise Exception(f"Non-VoidPromise received {results} but interface for {entity.name} doesn't have outputs")
 
         if len(output_names) == 1:
+            # See explanation above for why we still tupletize a single element.
             return entity.python_interface.output_tuple(results)
 
         return entity.python_interface.output_tuple(*results)

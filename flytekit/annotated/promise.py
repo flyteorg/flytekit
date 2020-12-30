@@ -365,6 +365,8 @@ class Promise(object):
 def create_task_output(
     promises: Optional[Union[List[Promise], Promise]], entity_interface: Optional[Interface] = None
 ) -> Optional[Union[Tuple[Promise], Promise]]:
+    # TODO: Add VoidPromise here to simplify things at call site. Consider returning for [] below as well instead of
+    #   raising an exception.
     if promises is None:
         return None
 
