@@ -11,7 +11,7 @@ from flytekit.annotated.type_engine import TypeEngine
 from flytekit.annotated.workflow import workflow
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core.types import BlobType
-from flytekit.types.flyte_directory import FlyteDirectory, FlyteDirToMultipartBlobTransformer
+from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
 
 
 def test_engine():
