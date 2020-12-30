@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections
 import copy
 import inspect
 import typing
@@ -43,6 +44,28 @@ class Interface(object):
         self._outputs = outputs
         self._output_tuple_name = output_tuple_name
 
+        if outputs:
+            variables = [k for k in outputs.keys()]
+
+            class Output(collections.namedtuple(output_tuple_name or "DefaultNamedTupleOutput", variables)):
+                def with_overrides(self, *args, **kwargs):
+                    val = self.__getattribute__(self._fields[0])
+                    val.with_overrides(*args, **kwargs)
+                    return self
+
+                @property
+                def ref(self):
+                    for var_name in variables:
+                        if self.__getattribute__(var_name).ref:
+                            return self.__getattribute__(var_name).ref
+                    return None
+
+            self._output_tuple_class = Output
+
+    @property
+    def output_tuple(self) -> Optional[Type[collections.namedtuple]]:
+        return self._output_tuple_class
+
     @property
     def output_tuple_name(self) -> Optional[str]:
         return self._output_tuple_name
@@ -53,6 +76,12 @@ class Interface(object):
         for k, v in self._inputs.items():
             r[k] = v[0]
         return r
+
+    @property
+    def output_names(self) -> Optional[List[str]]:
+        if self.outputs:
+            return [k for k in self.outputs.keys()]
+        return None
 
     @property
     def inputs_with_defaults(self) -> typing.Dict[str, Tuple[Type, Any]]:

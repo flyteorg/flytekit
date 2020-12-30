@@ -9,6 +9,7 @@ import flytekit.annotated.type_engine
 from flytekit.annotated.condition import ConditionalSection
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext, FlyteEntities
 from flytekit.annotated.interface import (
+    Interface,
     transform_inputs_to_parameters,
     transform_interface_to_typed_interface,
     transform_signature_to_interface,
@@ -118,6 +119,10 @@ class Workflow(object):
     @property
     def short_name(self) -> str:
         return self._name.split(".")[-1]
+
+    @property
+    def python_interface(self) -> Interface:
+        return self._native_interface
 
     @property
     def interface(self) -> _interface_models.TypedInterface:
