@@ -127,16 +127,10 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
         task_config: SagemakerTrainingJobConfig,
         task_function: Callable,
         metadata: typing.Optional[TaskMetadata] = None,
-        *args,
         **kwargs,
     ):
         super().__init__(
-            task_config,
-            task_function,
-            metadata=metadata,
-            task_type=self._SAGEMAKER_CUSTOM_TRAINING_JOB_TASK,
-            *args,
-            **kwargs,
+            task_config, task_function, metadata=metadata, task_type=self._SAGEMAKER_CUSTOM_TRAINING_JOB_TASK, **kwargs,
         )
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:

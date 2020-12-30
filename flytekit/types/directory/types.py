@@ -11,8 +11,10 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 
+T = typing.TypeVar("T")
 
-class FlyteDirectory(os.PathLike):
+
+class FlyteDirectory(os.PathLike, typing.Generic[T]):
     """
     WARNING: This class should not be used on very large datasets, as merely listing the dataset will cause
     the entire dataset to be downloaded. Listing on S3 and other backend object stores is not consistent

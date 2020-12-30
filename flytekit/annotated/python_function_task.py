@@ -63,12 +63,11 @@ class PythonFunctionTask(PythonTask[T]):
         task_function: Callable,
         task_type="python-task",
         metadata: Optional[TaskMetadata] = None,
-        ignore_input_vars: List[str] = None,
-        container_image: str = None,
-        requests: Resources = None,
-        limits: Resources = None,
-        environment: Dict[str, str] = None,
-        *args,
+        ignore_input_vars: Optional[List[str]] = None,
+        container_image: Optional[str] = None,
+        requests: Optional[Resources] = None,
+        limits: Optional[Resources] = None,
+        environment: Optional[Dict[str, str]] = None,
         **kwargs,
     ):
         """
@@ -81,6 +80,8 @@ class PythonFunctionTask(PythonTask[T]):
         :param Resources requests: custom resource request settings.
         :param Resources requests: custom resource limit settings.
         """
+        if task_function is None:
+            raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
         self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         super().__init__(
@@ -89,7 +90,6 @@ class PythonFunctionTask(PythonTask[T]):
             interface=mutated_interface,
             metadata=metadata,
             task_config=task_config,
-            *args,
             **kwargs,
         )
         self._task_function = task_function

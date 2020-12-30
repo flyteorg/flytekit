@@ -18,7 +18,9 @@ class Interface(object):
     """
 
     def __init__(
-        self, inputs: typing.Dict[str, Union[Type, Tuple[Type, Any]]] = None, outputs: typing.Dict[str, Type] = None,
+        self,
+        inputs: typing.Optional[typing.Dict[str, Union[Type, Tuple[Type, Any]]]] = None,
+        outputs: typing.Optional[typing.Dict[str, Type]] = None,
     ):
         """
         :param outputs: Output variables and their types as a dictionary
@@ -33,7 +35,7 @@ class Interface(object):
                     self._inputs[k] = v
                 else:
                     self._inputs[k] = (v, None)
-        self._outputs = outputs
+        self._outputs = outputs if outputs else {}
 
     @property
     def inputs(self) -> typing.Dict[str, Type]:

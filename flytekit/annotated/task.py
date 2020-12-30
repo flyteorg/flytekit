@@ -60,7 +60,6 @@ def task(
     timeout: Union[_datetime.timedelta, int] = 0,
     container_image: Optional[str] = None,
     environment: Optional[Dict[str, str]] = None,
-    *args,
     **kwargs,
 ) -> Union[Callable, PythonFunctionTask]:
     """
@@ -125,13 +124,7 @@ def task(
         )
 
         task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
-            task_config,
-            fn,
-            _metadata=_metadata,
-            container_image=container_image,
-            environment=environment,
-            *args,
-            **kwargs,
+            task_config, fn, _metadata=_metadata, container_image=container_image, environment=environment, **kwargs,
         )
 
         return task_instance
