@@ -41,6 +41,7 @@ from flytekit.models import launch_plan as _launch_plan
 from flytekit.models import literals as _literals
 from flytekit.models import named_entity as _named_entity
 from flytekit.models.admin import common as _admin_common
+from flytekit.models.common import AuthRole as _AuthRole, RawOutputDataConfig as _RawOutputDataConfig
 from flytekit.models.core import execution as _core_execution_models
 from flytekit.models.core import identifier as _core_identifier
 from flytekit.models.execution import ExecutionMetadata as _ExecutionMetadata
@@ -1622,10 +1623,12 @@ def _extract_files(
 @_click.option(*_VERSION_FLAGS, required=True, help="The entity version to register with")
 @_host_option
 @_insecure_option
+@_click.option("--auth", type=(str, str), help="Custom auth role to register launch plans with")
+@_click.option("--output_location_prefix", help="Custom output location prefix to register launch plans with")
 @_click.argument(
     "files", type=_click.Path(exists=True), nargs=-1,
 )
-def register_files(project, domain, version, host, insecure, files):
+def register_files(project, domain, version, host, insecure, auth, output_location_prefix, files):
     """
     Given a list of files, this will (after sorting the input list), attempt to register them against Flyte Admin.
     This command expects the files to be the output of the pyflyte serialize command.  See the code there for more
@@ -1651,7 +1654,32 @@ def register_files(project, domain, version, host, insecure, files):
     for f in files:
         _click.echo(f"  {f}")
 
-    flyte_entities_list = _extract_files(project, domain, version, files)
+    patches = None
+
+    def patch_launch_plan(entity: _GeneratedProtocolMessageType) -> _GeneratedProtocolMessageType:
+        """
+        Updates launch plans during registration to add a customizable auth role that overrides any values set in
+        the flyte config.
+        """
+
+        # entity is of type flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
+        if auth is not None:
+            if auth[0] == "assumable_iam_role":
+                entity.auth_role.CopyFrom(_AuthRole(assumable_iam_role=auth[1]).to_flyte_idl())
+            elif auth[1] == "kubernetes_service_account":
+                entity.auth_role.CopyFrom(_AuthRole(kubernetes_service_account=auth[1]).to_flyte_idl())
+            else:
+                _click.echo("Unrecognized auth role format {}".format(auth[0]))
+
+        if output_location_prefix is not None:
+            entity.raw_output_data_config.CopyFrom(_RawOutputDataConfig(output_location_prefix=output_location_prefix))
+
+        return entity
+
+    if auth is not None or output_location_prefix is not None:
+        patches = {_identifier_pb2.LAUNCH_PLAN: patch_launch_plan}
+
+    flyte_entities_list = _extract_files(project, domain, version, files, patches)
     for id, flyte_entity in flyte_entities_list:
         try:
             if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
