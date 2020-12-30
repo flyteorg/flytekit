@@ -358,7 +358,7 @@ class PythonTask(Task, Generic[T]):
 
     def get_fast_registerable_entity(self) -> SdkTask:
         entity = self.get_registerable_entity()
-        if not entity.template.HasField("container"):
+        if not entity.container is None:
             # Containerless tasks are always fast registerable without modification
             return entity
 
