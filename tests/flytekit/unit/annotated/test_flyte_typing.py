@@ -1,4 +1,4 @@
-from flytekit.types.flyte_file import FlyteFile
+from flytekit.types.file.file import FlyteFile
 
 
 def test_filepath_equality():
