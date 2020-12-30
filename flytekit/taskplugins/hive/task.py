@@ -4,9 +4,8 @@ from typing import Any, Dict, List, Optional, Type
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.annotated.base_sql_task import SQLTask
+from flytekit.annotated.base_task import TaskMetadata
 from flytekit.annotated.context_manager import RegistrationSettings
-from flytekit.annotated.task import metadata as task_metadata_creator
-from flytekit.models import task as _task_model
 from flytekit.models.qubole import HiveQuery, QuboleHiveJob
 from flytekit.types.schema import FlyteSchema
 
@@ -23,7 +22,7 @@ class HiveConfig(object):
         tags: Any tags that should be associated with the remote execution request.
     """
 
-    cluster_label: str
+    cluster_label: str = ""
     tags: Optional[List[str]] = None
 
     def __post_init__(self):
@@ -36,13 +35,15 @@ class HiveTask(SQLTask[HiveConfig]):
     This is the simplest form of a Hive Task, that can be used even for tasks that do not produce any output.
     """
 
+    _TASK_TYPE = "hive"
+
     def __init__(
         self,
         name: str,
-        config: HiveConfig,
-        inputs: Dict[str, Type],
         query_template: str,
-        metadata: Optional[_task_model.TaskMetadata] = None,
+        config: Optional[HiveConfig] = None,
+        inputs: Optional[Dict[str, Type]] = None,
+        metadata: Optional[TaskMetadata] = None,
         output_schema_type: Optional[Type[FlyteSchema]] = None,
         *args,
         **kwargs,
@@ -62,14 +63,16 @@ class HiveTask(SQLTask[HiveConfig]):
             outputs = {
                 "results": output_schema_type,
             }
+        if config is None:
+            config = HiveConfig()
         super().__init__(
             name=name,
             task_config=config,
-            metadata=metadata or task_metadata_creator(),
+            metadata=metadata,
             query_template=query_template,
             inputs=inputs,
             outputs=outputs,
-            task_type="hive",
+            task_type=self._TASK_TYPE,
             *args,
             **kwargs,
         )
@@ -111,12 +114,12 @@ class HiveSelectTask(HiveTask):
     def __init__(
         self,
         name: str,
-        config: HiveConfig,
-        inputs: Dict[str, Type],
         select_query: str,
-        output_schema_type: Type[FlyteSchema],
+        inputs: Optional[Dict[str, Type]],
+        output_schema_type: Optional[Type[FlyteSchema]] = None,  # Should default to a generic schema object?
+        config: Optional[HiveConfig] = None,
         stage_query: Optional[str] = None,
-        metadata: Optional[_task_model.TaskMetadata] = None,
+        metadata: Optional[TaskMetadata] = None,
         *args,
         **kwargs,
     ):
