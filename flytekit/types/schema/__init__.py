@@ -1,3 +1,4 @@
+from .pandas import PandasSchemaReader, PandasSchemaWriter
 from .types import (
     FlyteSchema,
     LocalIOSchemaReader,
@@ -9,4 +10,3 @@ from .types import (
     SchemaReader,
     SchemaWriter,
 )
-from .pandas import PandasSchemaWriter, PandasSchemaReader
