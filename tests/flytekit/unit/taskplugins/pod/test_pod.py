@@ -3,7 +3,7 @@ from k8s.io.api.core.v1 import generated_pb2
 from flytekit.annotated.context_manager import Image, ImageConfig, RegistrationSettings
 from flytekit.annotated.resources import Resources
 from flytekit.annotated.task import task
-from flytekit.taskplugins.sidecar.task import Sidecar, SidecarFunctionTask
+from flytekit.taskplugins.pod.task import Pod, PodFunctionTask
 
 
 def get_pod_spec():
@@ -16,19 +16,19 @@ def get_pod_spec():
     return pod_spec
 
 
-def test_sidecar_task():
-    sidecar = Sidecar(pod_spec=get_pod_spec(), primary_container_name="a container")
+def test_pod_task():
+    pod = Pod(pod_spec=get_pod_spec(), primary_container_name="a container")
 
-    @task(task_config=sidecar, requests=Resources(cpu="10"), limits=Resources(gpu="2"), environment={"FOO": "bar"})
-    def simple_sidecar_task(i: int):
+    @task(task_config=pod, requests=Resources(cpu="10"), limits=Resources(gpu="2"), environment={"FOO": "bar"})
+    def simple_pod_task(i: int):
         pass
 
-    assert isinstance(simple_sidecar_task, SidecarFunctionTask)
-    assert simple_sidecar_task.task_config == sidecar
+    assert isinstance(simple_pod_task, PodFunctionTask)
+    assert simple_pod_task.task_config == pod
 
     default_img = Image(name="default", fqn="test", tag="tag")
 
-    custom = simple_sidecar_task.get_custom(
+    custom = simple_pod_task.get_custom(
         RegistrationSettings(
             project="project",
             domain="domain",
@@ -44,9 +44,9 @@ def test_sidecar_task():
     assert primary_container["args"] == [
         "pyflyte-execute",
         "--task-module",
-        "tests.flytekit.unit.taskplugins.sidecar.test_sidecar",
+        "tests.flytekit.unit.taskplugins.pod.test_pod",
         "--task-name",
-        "simple_sidecar_task",
+        "simple_pod_task",
         "--inputs",
         "{{.input}}",
         "--output-prefix",
