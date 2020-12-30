@@ -9,13 +9,13 @@ import click as _click
 import requests as _requests
 import six as _six
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
-from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _GeneratedProtocolMessageType
 from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_tasks_pb2
 from flyteidl.core import workflow_pb2 as _core_workflow_pb2
+from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _GeneratedProtocolMessageType
 
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
