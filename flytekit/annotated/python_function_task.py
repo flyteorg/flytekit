@@ -1,11 +1,11 @@
 import inspect
 import re
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, TypeVar
 
-from flytekit.annotated.base_task import PythonTask, TaskMetadata
+from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.context_manager import ImageConfig, RegistrationSettings
-from flytekit.annotated.interface import Interface, transform_signature_to_interface
+from flytekit.annotated.interface import transform_signature_to_interface
 from flytekit.annotated.resources import Resources, ResourceSpec
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.models import task as _task_model
@@ -82,10 +82,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC):
         :param Resources requests: custom resource limit settings.
         """
         super().__init__(
-            task_type=task_type,
-            name=name,
-            task_config=task_config,
-            **kwargs,
+            task_type=task_type, name=name, task_config=task_config, **kwargs,
         )
         self._container_image = container_image
         # TODO(katrogan): Implement resource overrides
@@ -144,12 +141,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
     """
 
     def __init__(
-            self,
-            task_config: T,
-            task_function: Callable,
-            task_type="python-task",
-            ignore_input_vars: Optional[List[str]] = None,
-            **kwargs,
+        self,
+        task_config: T,
+        task_function: Callable,
+        task_type="python-task",
+        ignore_input_vars: Optional[List[str]] = None,
+        **kwargs,
     ):
         """
         :param task_config: Configuration object for Task. Should be a unique type for that specific Task
@@ -204,10 +201,11 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
         x(a=5) # depending on the interface of the defined task
 
     """
+
     def __init__(self, name: str, task_config: T, task_type: str = "python-task", **kwargs):
         super().__init__(name=name, task_config=task_config, task_type=task_type, **kwargs)
 
-    def get_command(self,  settings: RegistrationSettings) -> List[str]:
+    def get_command(self, settings: RegistrationSettings) -> List[str]:
         """
         NOTE: This command is different, it tries to retrieve the actual LHS of where this object was assigned, so that
         the module loader can easily retreive this for execution - at runtime.

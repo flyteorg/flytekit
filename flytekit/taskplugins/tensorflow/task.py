@@ -7,7 +7,6 @@ from typing import Any, Callable, Dict, Optional
 
 from google.protobuf.json_format import MessageToDict
 
-from flytekit import TaskMetadata
 from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.resources import Resources
