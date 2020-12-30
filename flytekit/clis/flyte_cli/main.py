@@ -1748,7 +1748,7 @@ def fast_register_files(project, domain, version, host, insecure, additional_dis
             if arg == "{{ .remote_package_path }}":
                 arg = full_remote_path
             elif arg == "{{ .dest_dir }}":
-                arg = dest_dir
+                arg = dest_dir if dest_dir else "."
             complete_args.append(arg)
         del entity.template.container.args[:]
         entity.template.container.args.extend(complete_args)
