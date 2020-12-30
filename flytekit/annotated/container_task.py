@@ -35,7 +35,6 @@ class ContainerTask(PythonTask):
         output_data_dir: str = None,
         metadata_format: MetadataFormat = MetadataFormat.JSON,
         io_strategy: IOStrategy = None,
-        *args,
         **kwargs,
     ):
         super().__init__(
@@ -44,7 +43,6 @@ class ContainerTask(PythonTask):
             interface=Interface(inputs, outputs),
             metadata=metadata,
             task_config=None,
-            *args,
             **kwargs,
         )
         self._image = image

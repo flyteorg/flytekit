@@ -21,9 +21,8 @@ class SQLTask(PythonTask[T]):
         task_type="sql_task",
         inputs: Optional[Dict[str, Type]] = None,
         metadata: Optional[TaskMetadata] = None,
-        task_config: T = None,
+        task_config: Optional[T] = None,
         outputs: Dict[str, Type] = None,
-        *args,
         **kwargs,
     ):
         super().__init__(
@@ -32,7 +31,6 @@ class SQLTask(PythonTask[T]):
             interface=Interface(inputs=inputs or {}, outputs=outputs or {}),
             metadata=metadata,
             task_config=task_config,
-            *args,
             **kwargs,
         )
         self._query_template = query_template

@@ -45,7 +45,6 @@ class HiveTask(SQLTask[HiveConfig]):
         inputs: Optional[Dict[str, Type]] = None,
         metadata: Optional[TaskMetadata] = None,
         output_schema_type: Optional[Type[FlyteSchema]] = None,
-        *args,
         **kwargs,
     ):
         """
@@ -73,7 +72,6 @@ class HiveTask(SQLTask[HiveConfig]):
             inputs=inputs,
             outputs=outputs,
             task_type=self._TASK_TYPE,
-            *args,
             **kwargs,
         )
         self._output_schema_type = output_schema_type

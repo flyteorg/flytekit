@@ -39,8 +39,8 @@ class TfJob(object):
     num_workers: int
     num_ps_replicas: int
     num_chief_replicas: int
-    per_replica_requests: Resources = None
-    per_replica_limits: Resources = None
+    per_replica_requests: Optional[Resources] = None
+    per_replica_limits: Optional[Resources] = None
 
 
 class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
@@ -51,9 +51,7 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
 
     _TF_JOB_TASK_TYPE = "tensorflow"
 
-    def __init__(
-        self, task_config: TfJob, task_function: Callable, metadata: Optional[TaskMetadata] = None, *args, **kwargs
-    ):
+    def __init__(self, task_config: TfJob, task_function: Callable, metadata: Optional[TaskMetadata] = None, **kwargs):
         super().__init__(
             task_type=self._TF_JOB_TASK_TYPE,
             task_config=task_config,
@@ -61,7 +59,6 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
             metadata=metadata,
             requests=task_config.per_replica_requests,
             limits=task_config.per_replica_limits,
-            *args,
             **kwargs
         )
 

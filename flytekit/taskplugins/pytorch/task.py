@@ -33,8 +33,8 @@ class PyTorch(object):
     """
 
     num_workers: int
-    per_replica_requests: Resources = None
-    per_replica_limits: Resources = None
+    per_replica_requests: Optional[Resources] = None
+    per_replica_limits: Optional[Resources] = None
 
 
 class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
@@ -46,7 +46,7 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
     _PYTORCH_TASK_TYPE = "pytorch"
 
     def __init__(
-        self, task_config: PyTorch, task_function: Callable, *args, metadata: Optional[TaskMetadata] = None, **kwargs
+        self, task_config: PyTorch, task_function: Callable, metadata: Optional[TaskMetadata] = None, **kwargs
     ):
         super().__init__(
             task_config,
@@ -55,7 +55,6 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             task_type=self._PYTORCH_TASK_TYPE,
             requests=task_config.per_replica_requests,
             limits=task_config.per_replica_limits,
-            *args,
             **kwargs
         )
 

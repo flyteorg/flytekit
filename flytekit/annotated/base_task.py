@@ -106,7 +106,6 @@ class Task(object):
         name: str,
         interface: Optional[_interface_models.TypedInterface] = None,
         metadata: Optional[TaskMetadata] = None,
-        *args,
         **kwargs,
     ):
         self._task_type = task_type
@@ -121,7 +120,7 @@ class Task(object):
         FlyteEntities.entities.append(self)
 
     @property
-    def interface(self) -> _interface_models.TypedInterface:
+    def interface(self) -> Optional[_interface_models.TypedInterface]:
         return self._interface
 
     @property
@@ -292,30 +291,29 @@ class PythonTask(Task, Generic[T]):
         task_config: T,
         interface: Optional[Interface] = None,
         metadata: Optional[TaskMetadata] = None,
-        *args,
         **kwargs,
     ):
-        super().__init__(task_type, name, transform_interface_to_typed_interface(interface), metadata)
-        self._python_interface = interface
+        super().__init__(task_type, name, transform_interface_to_typed_interface(interface), metadata, **kwargs)
+        self._python_interface = interface if interface else Interface()
         self._environment = kwargs.get("environment", {})
         self._task_config = task_config
 
     # TODO lets call this interface and the other as flyte_interface?
     @property
-    def python_interface(self):
+    def python_interface(self) -> Interface:
         return self._python_interface
 
     @property
     def task_config(self) -> T:
         return self._task_config
 
-    def get_type_for_input_var(self, k: str, v: Any) -> type:
+    def get_type_for_input_var(self, k: str, v: Any) -> Optional[Type[Any]]:
         return self._python_interface.inputs[k]
 
-    def get_type_for_output_var(self, k: str, v: Any) -> type:
+    def get_type_for_output_var(self, k: str, v: Any) -> Optional[Type[Any]]:
         return self._python_interface.outputs[k]
 
-    def get_input_types(self) -> Dict[str, type]:
+    def get_input_types(self) -> Optional[Dict[str, type]]:
         return self._python_interface.inputs
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
