@@ -1659,7 +1659,7 @@ def register_files(project, domain, version, host, insecure, auth, output_locati
     def patch_launch_plan(entity: _GeneratedProtocolMessageType) -> _GeneratedProtocolMessageType:
         """
         Updates launch plans during registration to add a customizable auth role that overrides any values set in
-        the flyte config.
+        the flyte config and/or a custom output_location_prefix.
         """
 
         # entity is of type flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
