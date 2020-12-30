@@ -253,7 +253,7 @@ def fast_workflows(ctx, source_dir, folder=None):
     digest = _compute_digest(source_dir)
     folder = folder if folder else ""
     archive_fname = _os.path.join(folder, f"{digest}.tar.gz")
-    click.echo(f"Writing compressed archive to f{archive_fname}")
+    click.echo(f"Writing compressed archive to {archive_fname}")
     # Write using gzip
     with _tarfile.open(archive_fname, "w:gz") as tar:
         tar.add(source_dir, arcname="", filter=_filter_tar_file_fn)

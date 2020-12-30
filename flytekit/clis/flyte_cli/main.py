@@ -1729,7 +1729,8 @@ def fast_register_files(project, domain, version, host, insecure, additional_dis
     if not compressed_source:
         _click.UsageError("Could not discover compressed source, did you remember to run `pyflyte serialize fast ...`?")
 
-    full_remote_path = _get_additional_distribution_loc(additional_distribution_dir, digest)
+    version = version if version else digest
+    full_remote_path = _get_additional_distribution_loc(additional_distribution_dir, version)
     Data.put_data(compressed_source, full_remote_path)
     _click.echo(f"Uploaded compressed code archive {compressed_source} to {full_remote_path}")
 
@@ -1754,7 +1755,7 @@ def fast_register_files(project, domain, version, host, insecure, additional_dis
         return entity
 
     flyte_entities_list = _extract_files(
-        project, domain, digest, pb_files, patches={_identifier_pb2.TASK: fast_register_task}
+        project, domain, version, pb_files, patches={_identifier_pb2.TASK: fast_register_task}
     )
     for id, flyte_entity in flyte_entities_list:
         try:
