@@ -15,7 +15,10 @@ def noop():
     ...
 
 
-class FlyteFile(os.PathLike):
+T = typing.TypeVar("T")
+
+
+class FlyteFile(os.PathLike, typing.Generic[T]):
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take

@@ -26,8 +26,8 @@ class Spark(object):
         hadoop_conf: Dictionary of hadoop conf. The variables should match a typical hadoop configuration for spark
     """
 
-    spark_conf: Dict[str, str] = None
-    hadoop_conf: Dict[str, str] = None
+    spark_conf: Optional[Dict[str, str]] = None
+    hadoop_conf: Optional[Dict[str, str]] = None
 
 
 @contextmanager
@@ -47,15 +47,12 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
 
     _SPARK_TASK_TYPE = "spark"
 
-    def __init__(
-        self, task_config: Spark, task_function: Callable, metadata: Optional[TaskMetadata] = None, *args, **kwargs
-    ):
+    def __init__(self, task_config: Spark, task_function: Callable, metadata: Optional[TaskMetadata] = None, **kwargs):
         super(PysparkFunctionTask, self).__init__(
             task_config=task_config,
             task_type=self._SPARK_TASK_TYPE,
             task_function=task_function,
             metadata=metadata,
-            *args,
             **kwargs,
         )
 

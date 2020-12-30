@@ -351,7 +351,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> (_core_wf.IfElseBlo
     all_promises: typing.List[Promise] = []
     first_case, promises = to_case_block(cs.cases[0])
     all_promises.extend(promises)
-    other_cases: typing.List[_core_wf.IfBlock] = None
+    other_cases: Optional[typing.List[_core_wf.IfBlock]] = None
     if len(cs.cases) > 2:
         other_cases = []
         for c in cs.cases[1:-1]:

@@ -13,7 +13,7 @@ class MapPythonTask(PythonTask):
     To do this we might have to give up on supporting lambda functions initially
     """
 
-    def __init__(self, tk: PythonTask, metadata: Optional[TaskMetadata] = None, *args, **kwargs):
+    def __init__(self, tk: PythonTask, metadata: Optional[TaskMetadata] = None, **kwargs):
         collection_interface = transform_interface_to_list_interface(tk.python_interface)
         name = "mapper_" + tk.name
         self._run_task = tk
@@ -23,7 +23,6 @@ class MapPythonTask(PythonTask):
             metadata=metadata,
             task_type="map_task",
             task_config=None,
-            *args,
             **kwargs,
         )
 

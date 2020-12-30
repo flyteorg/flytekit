@@ -34,15 +34,10 @@ class Sidecar(object):
 
 class SidecarFunctionTask(PythonFunctionTask[Sidecar]):
     def __init__(
-        self, task_config: Sidecar, task_function: Callable, metadata: Optional[TaskMetadata] = None, *args, **kwargs
+        self, task_config: Sidecar, task_function: Callable, metadata: Optional[TaskMetadata] = None, **kwargs
     ):
         super(SidecarFunctionTask, self).__init__(
-            task_config=task_config,
-            task_type="sidecar",
-            task_function=task_function,
-            metadata=metadata,
-            *args,
-            **kwargs,
+            task_config=task_config, task_type="sidecar", task_function=task_function, metadata=metadata, **kwargs,
         )
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:

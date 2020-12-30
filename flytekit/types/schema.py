@@ -46,7 +46,7 @@ class SchemaReader(typing.Generic[T]):
     Use the simplified base LocalIOSchemaReader for non distributed dataframes
     """
 
-    def __init__(self, from_path: str, cols: typing.Dict[str, type], fmt: SchemaFormat):
+    def __init__(self, from_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         self._from_path = from_path
         self._fmt = fmt
         self._columns = cols
@@ -94,7 +94,7 @@ class SchemaWriter(typing.Generic[T]):
 
 
 class LocalIOSchemaReader(SchemaReader[T]):
-    def __init__(self, from_path: os.PathLike, cols: typing.Dict[str, type], fmt: SchemaFormat):
+    def __init__(self, from_path: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         super().__init__(str(from_path), cols, fmt)
 
     @abstractmethod
@@ -118,7 +118,7 @@ class LocalIOSchemaReader(SchemaReader[T]):
 
 
 class LocalIOSchemaWriter(SchemaWriter[T]):
-    def __init__(self, to_local_path: os.PathLike, cols: typing.Dict[str, type], fmt: SchemaFormat):
+    def __init__(self, to_local_path: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         super().__init__(str(to_local_path), cols, fmt)
 
     @abstractmethod

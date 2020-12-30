@@ -180,7 +180,7 @@ class DataclassTransformer(TypeTransformer[object]):
         return dc
 
 
-class TypeEngine(object):
+class TypeEngine(typing.Generic[T]):
     """
     Core Extensible TypeEngine of Flytekit. This should be used to extend the capabilities of FlyteKits type system.
     Users can implement their own TypeTransformers and register them with the TypeEngine. This will allow special handling

@@ -47,7 +47,6 @@ class SagemakerHPOTask(PythonTask[HPOJob]):
         name: str,
         task_config: HPOJob,
         training_task: Union[SagemakerCustomTrainingTask, SagemakerBuiltinAlgorithmsTask],
-        *args,
         metadata: Optional[TaskMetadata] = None,
         **kwargs
     ):
@@ -62,13 +61,13 @@ class SagemakerHPOTask(PythonTask[HPOJob]):
 
         self._task_config = task_config
         self._training_task = training_task
-        iface = training_task.python_interface
 
         extra_inputs = {"hyperparameter_tuning_job_config": _hpo_job_model.HyperparameterTuningJobConfig}
 
         if task_config.tunable_params:
             extra_inputs.update({param: _params.ParameterRangeOneOf for param in task_config.tunable_params})
 
+        iface = training_task.python_interface
         updated_iface = iface.with_inputs(extra_inputs)
         super().__init__(
             task_type=self._SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK,
@@ -76,7 +75,6 @@ class SagemakerHPOTask(PythonTask[HPOJob]):
             interface=updated_iface,
             metadata=metadata,
             task_config=task_config,
-            *args,
             **kwargs
         )
 

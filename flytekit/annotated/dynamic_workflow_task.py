@@ -22,7 +22,6 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
         task_config: _Dynamic,
         dynamic_workflow_function: Callable,
         metadata: Optional[TaskMetadata] = None,
-        *args,
         **kwargs,
     ):
         super().__init__(
@@ -30,7 +29,6 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
             task_function=dynamic_workflow_function,
             metadata=metadata,
             task_type="dynamic-task",
-            *args,
             **kwargs,
         )
 
