@@ -47,6 +47,9 @@ def test_normal_task():
         t3_node = create_node(t3)
         t2_node.depends_on(t3_node)
 
+    # Test that VoidPromises can handle depends_on
+    empty_wf()
+
     with context_manager.FlyteContext.current_context().new_registration_settings(
         registration_settings=context_manager.RegistrationSettings(
             project="test_proj",
