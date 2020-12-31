@@ -15,7 +15,7 @@ from flytekit.annotated.interface import (
     transform_signature_to_interface,
 )
 from flytekit.annotated.node import Node, create_and_link_node
-from flytekit.annotated.promise import Promise, create_task_output, VoidPromise
+from flytekit.annotated.promise import Promise, VoidPromise, create_task_output
 from flytekit.annotated.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
@@ -195,7 +195,11 @@ class Workflow(object):
                 kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
 
         function_outputs = self.execute(**kwargs)
-        if isinstance(function_outputs, VoidPromise) or function_outputs is None or len(self.python_interface.outputs) == 0:
+        if (
+            isinstance(function_outputs, VoidPromise)
+            or function_outputs is None
+            or len(self.python_interface.outputs) == 0
+        ):
             # The reason this is here is because a workflow function may return a task that doesn't return anything
             #   def wf():
             #       return t1()
@@ -262,8 +266,8 @@ class Workflow(object):
                 else:
                     raise Exception(f"Workflow local execution expected 0 outputs but something received {result}")
 
-            if ((expected_outputs > 1 and len(result) == expected_outputs)
-                or (expected_outputs == 1 and result is not None)
+            if (expected_outputs > 1 and len(result) == expected_outputs) or (
+                expected_outputs == 1 and result is not None
             ):
                 if isinstance(result, Promise):
                     v = [v for k, v in self._native_interface.outputs.items()][0]

@@ -47,6 +47,7 @@ class Interface(object):
         if outputs:
             variables = [k for k in outputs.keys()]
 
+            # TODO: This class is a duplicate of the one in create_task_outputs. Over time, we should move to this one.
             class Output(collections.namedtuple(output_tuple_name or "DefaultNamedTupleOutput", variables)):
                 """
                 This class can be used in two different places. For multivariate-return entities this class is used
@@ -54,6 +55,7 @@ class Interface(object):
                 For manual node creation, it's used during local execution as something that can be dereferenced.
                 See the create_node funciton for more information.
                 """
+
                 def with_overrides(self, *args, **kwargs):
                     val = self.__getattribute__(self._fields[0])
                     val.with_overrides(*args, **kwargs)

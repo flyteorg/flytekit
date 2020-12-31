@@ -1,4 +1,5 @@
 import typing
+
 from flytekit.annotated import context_manager
 from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
 from flytekit.annotated.node_creation import create_node
@@ -66,7 +67,7 @@ def test_more_normal_task():
     @task
     def t1(a: int) -> nt:
         # This one returns a regular tuple
-        return f"{a + 2}",
+        return (f"{a + 2}",)
 
     @task
     def t1_nt(a: int) -> nt:
