@@ -20,6 +20,7 @@ from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.common.tasks.task import SdkTask
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
+from flytekit.common.constants import SdkTaskType
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
@@ -412,7 +413,7 @@ class PythonTask(Task, Generic[T]):
 
     def get_fast_registerable_entity(self) -> SdkTask:
         entity = self.get_registerable_entity()
-        if entity.container is None:
+        if entity.container is None or entity.type == SdkTaskType.RAW_CONTAINER_TASK:
             # Containerless tasks are always fast registerable without modification
             return entity
 
@@ -422,9 +423,8 @@ class PythonTask(Task, Generic[T]):
             "{{ .remote_package_path }}",
             "--dest-dir",
             "{{ .dest_dir }}",
-        ]
-        if entity.container.args:
-            args.extend(["--"] + entity.container.args[:])
+            "--",
+        ] + entity.container.args[:]
 
         del entity._container.args[:]
         entity._container.args.extend(args)
