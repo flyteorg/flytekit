@@ -1672,7 +1672,9 @@ def register_files(project, domain, version, host, insecure, auth, output_locati
                 _click.echo("Unrecognized auth role format {}".format(auth[0]))
 
         if output_location_prefix is not None:
-            entity.raw_output_data_config.CopyFrom(_RawOutputDataConfig(output_location_prefix=output_location_prefix))
+            entity.raw_output_data_config.CopyFrom(
+                _RawOutputDataConfig(output_location_prefix=output_location_prefix).to_flyte_idl()
+            )
 
         return entity
 
