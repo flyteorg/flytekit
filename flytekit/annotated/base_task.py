@@ -422,8 +422,9 @@ class PythonTask(Task, Generic[T]):
             "{{ .remote_package_path }}",
             "--dest-dir",
             "{{ .dest_dir }}",
-            "--",
-        ] + entity.container.args[:]
+        ]
+        if entity.container.args:
+            args.extend(["--"] + entity.container.args[:])
 
         del entity._container.args[:]
         entity._container.args.extend(args)
