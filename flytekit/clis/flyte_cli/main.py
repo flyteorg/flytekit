@@ -1628,7 +1628,7 @@ def _extract_files(
 @_click.option(
     "--kubernetes-service-account", help="Custom kubernetes service account auth role to register launch plans with"
 )
-@_click.option("--output-location-prefix", help="Custom output location prefix to register launch plans with")
+@_click.option("--output-location-prefix", help="Custom output location prefix for offloaded types (files/schemas)")
 @_click.argument(
     "files", type=_click.Path(exists=True), nargs=-1,
 )
