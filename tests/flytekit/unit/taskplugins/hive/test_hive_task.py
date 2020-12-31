@@ -96,7 +96,7 @@ def test_query_no_inputs_or_outputs():
     hive_task = HiveTask(
         name="flytekit.demo.hive_task.hivequery1",
         inputs={},
-        config=HiveConfig(cluster_label="flyte"),
+        task_config=HiveConfig(cluster_label="flyte"),
         query_template="""
             insert into extant_table (1, 'two')
         """,
@@ -131,7 +131,7 @@ def test_hive_select():
     hive_select = HiveSelectTask(
         name="flytekit.demo.hive_task.hivequery1",
         inputs={},
-        config=HiveConfig(cluster_label="flyte"),
+        task_config=HiveConfig(cluster_label="flyte"),
         select_query="select 1, 2, 3",
         output_schema_type=FlyteSchema,
     )

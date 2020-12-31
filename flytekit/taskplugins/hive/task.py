@@ -40,7 +40,7 @@ class HiveTask(SQLTask[HiveConfig]):
         self,
         name: str,
         query_template: str,
-        config: Optional[HiveConfig] = None,
+        task_config: Optional[HiveConfig] = None,
         inputs: Optional[Dict[str, Type]] = None,
         output_schema_type: Optional[Type[FlyteSchema]] = None,
         **kwargs,
@@ -60,11 +60,11 @@ class HiveTask(SQLTask[HiveConfig]):
             outputs = {
                 "results": output_schema_type,
             }
-        if config is None:
-            config = HiveConfig()
+        if task_config is None:
+            task_config = HiveConfig()
         super().__init__(
             name=name,
-            task_config=config,
+            task_config=task_config,
             query_template=query_template,
             inputs=inputs,
             outputs=outputs,
