@@ -12,10 +12,10 @@ from flytekit.annotated.interface import Interface
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.models import task as _task_model
 from flytekit.models.sagemaker import training_job as _training_job_models
 from flytekit.taskplugins.sagemaker.distributed_training import DistributedTrainingContext
-from flytekit.types import FlyteFile
+from flytekit.types.directory.types import FlyteDirectory
+from flytekit.types.file import FlyteFile
 
 
 @dataclass
@@ -42,7 +42,7 @@ class SagemakerTrainingJobConfig(object):
     )
 
 
-class SagemakerBuiltinAlgorithmsTask(PythonTask):
+class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
     """
     Implements an interface that allows execution of a SagemakerBuiltinAlgorithms.
     Refer to `Sagemaker Builtin Algorithms<https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html>`_ for details.
@@ -53,7 +53,7 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask):
     OUTPUT_TYPE = TypeVar("tar.gz")
 
     def __init__(
-        self, name: str, metadata: _task_model.TaskMetadata, task_config: SagemakerTrainingJobConfig, *args, **kwargs
+        self, name: str, task_config: SagemakerTrainingJobConfig, **kwargs,
     ):
         """
         Args:
@@ -73,15 +73,14 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask):
 
         interface = Interface(
             # TODO change train and validation to be FlyteDirectory when available
-            inputs=kwtypes(static_hyperparameters=dict, train=FlyteFile[input_type], validation=FlyteFile[input_type]),
+            inputs=kwtypes(
+                static_hyperparameters=dict, train=FlyteDirectory[input_type], validation=FlyteDirectory[input_type]
+            ),
             outputs=kwtypes(model=FlyteFile[self.OUTPUT_TYPE]),
         )
-        super().__init__(self._SAGEMAKER_TRAINING_JOB_TASK, name, interface, metadata, *args, **kwargs)
-        self._task_config = task_config
-
-    @property
-    def task_config(self) -> SagemakerTrainingJobConfig:
-        return self._task_config
+        super().__init__(
+            self._SAGEMAKER_TRAINING_JOB_TASK, name, interface=interface, task_config=task_config, **kwargs,
+        )
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
         training_job = _training_job_models.TrainingJob(
@@ -115,15 +114,13 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
     _SAGEMAKER_CUSTOM_TRAINING_JOB_TASK = "sagemaker_custom_training_job_task"
 
     def __init__(
-        self,
-        task_config: SagemakerTrainingJobConfig,
-        task_function: Callable,
-        metadata: _task_model.TaskMetadata,
-        *args,
-        **kwargs,
+        self, task_config: SagemakerTrainingJobConfig, task_function: Callable, **kwargs,
     ):
         super().__init__(
-            task_config, task_function, metadata, task_type=self._SAGEMAKER_CUSTOM_TRAINING_JOB_TASK, *args, **kwargs
+            task_config=task_config,
+            task_function=task_function,
+            task_type=self._SAGEMAKER_CUSTOM_TRAINING_JOB_TASK,
+            **kwargs,
         )
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:

@@ -303,7 +303,9 @@ def merge_promises(*args: Promise) -> typing.List[Promise]:
     return merged_promises
 
 
-def transform_to_conj_expr(expr: ConjunctionExpression) -> (_core_cond.ConjunctionExpression, typing.List[Promise]):
+def transform_to_conj_expr(
+    expr: ConjunctionExpression,
+) -> Tuple[_core_cond.ConjunctionExpression, typing.List[Promise]]:
     left, left_promises = transform_to_boolexpr(expr.lhs)
     right, right_promises = transform_to_boolexpr(expr.rhs)
     return (
@@ -312,7 +314,7 @@ def transform_to_conj_expr(expr: ConjunctionExpression) -> (_core_cond.Conjuncti
     )
 
 
-def transform_to_operand(v: Union[Promise, Literal]) -> (_core_cond.Operand, Optional[Promise]):
+def transform_to_operand(v: Union[Promise, Literal]) -> Tuple[_core_cond.Operand, Optional[Promise]]:
     if isinstance(v, Promise):
         return _core_cond.Operand(var=create_branch_node_promise_var(v.ref.node_id, v.var)), v
     return _core_cond.Operand(primitive=v.scalar.primitive), None
@@ -351,7 +353,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> (_core_wf.IfElseBlo
     all_promises: typing.List[Promise] = []
     first_case, promises = to_case_block(cs.cases[0])
     all_promises.extend(promises)
-    other_cases: typing.List[_core_wf.IfBlock] = None
+    other_cases: Optional[typing.List[_core_wf.IfBlock]] = None
     if len(cs.cases) > 2:
         other_cases = []
         for c in cs.cases[1:-1]:

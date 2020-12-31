@@ -115,7 +115,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
-        dist_training_task_specific_engine_context = _sm_distribution.DistributedTrainingEngineContext(
+        engine_context = _sm_distribution.DistributedTrainingEngineContext(
             execution_date=context.execution_date,
             tmp_dir=context.working_directory,
             stats=context.stats,
@@ -125,13 +125,15 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             distributed_training_context=_sm_distribution.get_sagemaker_distributed_training_context_from_env(),
         )
 
-        ret = super().execute(dist_training_task_specific_engine_context, inputs)
+        ret = super().execute(engine_context, inputs)
 
-        if (
+        # In a single-node training case, we always wants to persist the output.
+        # In a distributed-training case, whether or not flytekit wants to persist the output depends on the return
+        # value of the predicate.
+        if self._is_distributed() is False or (
             self._is_distributed()
             and self._output_persist_predicate
-            and self.output_persist_predicate(dist_training_task_specific_engine_context.distributed_training_context)
-            is True
+            and self.output_persist_predicate(engine_context.distributed_training_context) is True
         ):
             return ret
         else:

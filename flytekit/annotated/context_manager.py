@@ -79,6 +79,13 @@ def get_image_config() -> ImageConfig:
     return ImageConfig(default_image=default_img, images=other_images)
 
 
+@dataclass
+class InstanceVar(object):
+    module: str
+    name: str
+    o: Any
+
+
 class RegistrationSettings(object):
     def __init__(
         self,
@@ -99,6 +106,7 @@ class RegistrationSettings(object):
         self._iam_role = iam_role
         self._service_account = service_account
         self._raw_output_data_config = raw_output_data_config
+        self._instance_lookup = {}
 
     @property
     def project(self) -> str:
@@ -131,6 +139,14 @@ class RegistrationSettings(object):
     @property
     def raw_output_data_config(self) -> RawOutputDataConfig:
         return RawOutputDataConfig(self._raw_output_data_config or "")
+
+    def add_instance_var(self, var: InstanceVar):
+        self._instance_lookup[var.o] = var
+
+    def get_instance_var(self, o: Any) -> InstanceVar:
+        if o in self._instance_lookup:
+            return self._instance_lookup[o]
+        raise KeyError(f"Instance Variable not found for object id {o}")
 
 
 class CompilationState(object):
@@ -195,13 +211,21 @@ class BranchEvalMode(Enum):
 
 class ExecutionState(object):
     class Mode(Enum):
-        # This is the mode that will be selected when a task is supposed to just run its function, nothing more
+        # This is the mode that is used when a task execution mimics the actual runtime environment.
+        # NOTE: This is important to understand the difference between TASK_EXECUTION and LOCAL_TASK_EXECUTION
+        # LOCAL_TASK_EXECUTION, is the mode that is run purely locally and in some cases the difference between local
+        # and runtime environment may be different. For example for Dynamic tasks local_task_execution will just run it
+        # as a regular function, while task_execution will extract a runtime spec
         TASK_EXECUTION = 1
 
         # This represents when flytekit is locally running a workflow. The behavior of tasks differs in this case
         # because instead of running a task's user defined function directly, it'll need to wrap the return values in
         # NodeOutput
         LOCAL_WORKFLOW_EXECUTION = 2
+
+        # This is the mode that is used to to indicate a purely local task execution - i.e. running without a container
+        # or propeller.
+        LOCAL_TASK_EXECUTION = 3
 
     def __init__(
         self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike, additional_context: Dict[Any, Any] = None

@@ -51,7 +51,7 @@ class Filter(_FlyteIdlEntity):
         """
         if string.startswith("eq("):
             return Equal._parse_from_string(string)
-        elif string.startswith("neq("):
+        elif string.startswith("ne("):
             return NotEqual._parse_from_string(string)
         elif string.startswith("gt("):
             return GreaterThan._parse_from_string(string)
@@ -94,7 +94,7 @@ class Equal(Filter):
 
 
 class NotEqual(Filter):
-    _comparator = "neq"
+    _comparator = "ne"
 
 
 class GreaterThan(Filter):

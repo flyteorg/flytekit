@@ -17,9 +17,12 @@ def set_flyte_config_file(config_file_path):
     import flytekit.configuration.internal as _internal
 
     if config_file_path is not None:
+        original_config_file_path = config_file_path
         config_file_path = _os.path.abspath(config_file_path)
         if not _pathlib.Path(config_file_path).is_file():
-            _logging.warning("Invalid flyte config_file_path {} specified.".format(config_file_path))
+            _logging.warning(
+                f"No config file provided or invalid flyte config_file_path {original_config_file_path} specified."
+            )
         _os.environ[_internal.CONFIGURATION_PATH.env_var] = config_file_path
     elif _internal.CONFIGURATION_PATH.env_var in _os.environ:
         _logging.debug("Deleting configuration path {} from env".format(_internal.CONFIGURATION_PATH.env_var))

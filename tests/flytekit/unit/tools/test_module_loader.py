@@ -34,3 +34,6 @@ def test_module_loading():
 
         # Not a sufficient test but passes for now
         assert sum(1 for _ in module_loader.iterate_modules(["top"])) == 6
+        assert [
+            pkg.__file__ for pkg in module_loader.iterate_modules(["top.a", "top.middle.a", "top.middle.bottom.a"])
+        ] == [os.path.join(lvl, "a.py") for lvl in (top_level, middle_level, bottom_level)]

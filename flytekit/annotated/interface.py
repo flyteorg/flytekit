@@ -21,8 +21,8 @@ class Interface(object):
 
     def __init__(
         self,
-        inputs: typing.Dict[str, Union[Type, Tuple[Type, Any]]] = None,
-        outputs: typing.Dict[str, Type] = None,
+        inputs: typing.Optional[typing.Dict[str, Union[Type, Tuple[Type, Any]]]] = None,
+        outputs: typing.Optional[typing.Dict[str, Type]] = None,
         output_tuple_name: Optional[str] = None,
     ):
         """
@@ -41,7 +41,7 @@ class Interface(object):
                     self._inputs[k] = v
                 else:
                     self._inputs[k] = (v, None)
-        self._outputs = outputs
+        self._outputs = outputs if outputs else {}
         self._output_tuple_name = output_tuple_name
 
         if outputs:
@@ -176,7 +176,9 @@ def transform_inputs_to_parameters(
     return _interface_models.ParameterMap(params)
 
 
-def transform_interface_to_typed_interface(interface: Interface) -> _interface_models.TypedInterface:
+def transform_interface_to_typed_interface(
+    interface: typing.Optional[Interface],
+) -> typing.Optional[_interface_models.TypedInterface]:
     """
     Transform the given simple python native interface to FlyteIDL's interface
     """
