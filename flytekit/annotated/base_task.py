@@ -15,12 +15,12 @@ from flytekit.annotated.interface import Interface, transform_interface_to_typed
 from flytekit.annotated.node import create_and_link_node
 from flytekit.annotated.promise import Promise, VoidPromise, create_task_output, translate_inputs_to_literals
 from flytekit.annotated.type_engine import TypeEngine
+from flytekit.common.constants import SdkTaskType
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.common.tasks.task import SdkTask
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
-from flytekit.common.constants import SdkTaskType
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
