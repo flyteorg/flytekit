@@ -115,11 +115,11 @@ def test_wf1():
         return x, d
 
     assert len(my_wf._nodes) == 2
-    assert my_wf._nodes[0].id == "node-0"
+    assert my_wf._nodes[0].id == "n0"
     assert my_wf._nodes[1]._upstream_nodes[0] is my_wf._nodes[0]
 
     assert len(my_wf._output_bindings) == 2
-    assert my_wf._output_bindings[0].var == "out_0"
+    assert my_wf._output_bindings[0].var == "o0"
     assert my_wf._output_bindings[0].binding.promise.var == "t1_int_output"
 
     nt = typing.NamedTuple("SingleNT", t1_int_output=float)

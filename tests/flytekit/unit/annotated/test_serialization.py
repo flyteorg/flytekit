@@ -196,7 +196,7 @@ def test_serialization_branch_complex_2():
     with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
         wf = my_wf.get_registerable_entity()
         assert wf is not None
-        assert wf.nodes[1].inputs[0].var == "node-0.t1_int_output"
+        assert wf.nodes[1].inputs[0].var == "n0.t1_int_output"
 
 
 def test_serialization_branch():

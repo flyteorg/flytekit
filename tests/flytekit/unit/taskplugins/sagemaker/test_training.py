@@ -71,7 +71,7 @@ def test_custom_training():
         return x
 
     assert my_custom_trainer.python_interface.inputs == {"x": int}
-    assert my_custom_trainer.python_interface.outputs == {"out_0": int}
+    assert my_custom_trainer.python_interface.outputs == {"o0": int}
 
     assert my_custom_trainer(x=10) == 10
 
@@ -100,7 +100,7 @@ def test_distributed_custom_training():
         return x
 
     assert my_custom_trainer.python_interface.inputs == {"x": int}
-    assert my_custom_trainer.python_interface.outputs == {"out_0": int}
+    assert my_custom_trainer.python_interface.outputs == {"o0": int}
 
     assert my_custom_trainer(x=10) == 10
 

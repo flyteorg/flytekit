@@ -268,7 +268,7 @@ def transform_type(x: type, description: str = None) -> _interface_models.Variab
 
 
 def default_output_name(index: int = 0) -> str:
-    return f"out_{index}"
+    return f"o{index}"
 
 
 def output_name_generator(length: int) -> Generator[str, None, None]:

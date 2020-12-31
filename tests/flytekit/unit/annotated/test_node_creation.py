@@ -15,7 +15,7 @@ def test_normal_task():
     @workflow
     def my_wf(a: str) -> str:
         t1_node = create_node(t1, a=a)
-        return t1_node.out_0
+        return t1_node.o0
 
     r = my_wf(a="hello")
     assert r == "hello world"
@@ -66,12 +66,12 @@ def test_normal_task():
         )
     ):
         sdk_wf = empty_wf.get_registerable_entity()
-        assert sdk_wf.nodes[0].upstream_node_ids[0] == "node-1"
-        assert sdk_wf.nodes[0].id == "node-0"
+        assert sdk_wf.nodes[0].upstream_node_ids[0] == "n1"
+        assert sdk_wf.nodes[0].id == "n0"
 
         sdk_wf = empty_wf2.get_registerable_entity()
-        assert sdk_wf.nodes[0].upstream_node_ids[0] == "node-1"
-        assert sdk_wf.nodes[0].id == "node-0"
+        assert sdk_wf.nodes[0].upstream_node_ids[0] == "n1"
+        assert sdk_wf.nodes[0].id == "n0"
 
 
 def test_more_normal_task():
@@ -96,7 +96,7 @@ def test_more_normal_task():
         t1_node = create_node(t1, a=a)
         t1_nt_node = create_node(t1_nt, a=a)
         t2_node = create_node(t2, a=[t1_node.t1_str_output, t1_nt_node.t1_str_output, b])
-        return t1_node.t1_str_output, t2_node.out_0
+        return t1_node.t1_str_output, t2_node.o0
 
     x = my_wf(a=5, b="hello")
     assert x == ("7", "7 7 hello")
