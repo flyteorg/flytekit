@@ -12,7 +12,7 @@ from flytekit import ContainerTask, SQLTask, dynamic, kwtypes, maptask
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
-from flytekit.annotated.promise import Promise
+from flytekit.annotated.promise import Promise, VoidPromise
 from flytekit.annotated.resources import Resources
 from flytekit.annotated.task import TaskMetadata, task
 from flytekit.annotated.testing import patch, task_mock
@@ -57,7 +57,7 @@ def test_simple_input_no_output():
     ctx = context_manager.FlyteContext.current_context()
     with ctx.new_compilation_context() as ctx:
         outputs = my_task(a=3)
-        assert outputs is None
+        assert isinstance(outputs, VoidPromise)
 
 
 def test_single_output():
@@ -122,6 +122,15 @@ def test_wf1():
     assert my_wf._output_bindings[0].var == "out_0"
     assert my_wf._output_bindings[0].binding.promise.var == "t1_int_output"
 
+    nt = typing.NamedTuple("SingleNT", t1_int_output=float)
+
+    @task
+    def t3(a: int) -> nt:
+        return (a + 2,)
+
+    assert t3.python_interface.output_tuple_name == "SingleNT"
+    assert t3.interface.outputs["t1_int_output"] is not None
+
 
 def test_wf1_run():
     @task
@@ -139,6 +148,15 @@ def test_wf1_run():
         return x, d
 
     x = my_wf(a=5, b="hello ")
+    assert x == (7, "hello world")
+
+    @workflow
+    def my_wf2(a: int, b: str) -> (int, str):
+        tup = t1(a=a)
+        d = t2(a=tup.c, b=b)
+        return tup.t1_int_output, d
+
+    x = my_wf2(a=5, b="hello ")
     assert x == (7, "hello world")
 
 
@@ -172,9 +190,9 @@ def test_wf1_with_list_of_inputs():
 
     @workflow
     def my_wf(a: int, b: str) -> (int, str):
-        x, y = t1(a=a)
-        d = t2(a=[b, y])
-        return x, d
+        xx, yy = t1(a=a)
+        d = t2(a=[b, yy])
+        return xx, d
 
     x = my_wf(a=5, b="hello")
     assert x == (7, "hello world")
@@ -235,32 +253,6 @@ def test_promise_return():
     assert isinstance(b, promise.Promise)
     assert a.val.scalar.value.string_value == "world-5"
     assert b.val.scalar.value.string_value == "world-7"
-
-
-def test_wf1_with_subwf():
-    @task
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
-        a = a + 2
-        return a, "world-" + str(a)
-
-    @task
-    def t2(a: str, b: str) -> str:
-        return b + a
-
-    @workflow
-    def my_subwf(a: int) -> (str, str):
-        x, y = t1(a=a)
-        u, v = t1(a=x)
-        return y, v
-
-    @workflow
-    def my_wf(a: int, b: str) -> (int, str, str):
-        x, y = t1(a=a).with_overrides()
-        u, v = my_subwf(a=x)
-        return x, u, v
-
-    x = my_wf(a=5, b="hello ")
-    assert x == (7, "world-9", "world-11")
 
 
 def test_wf1_with_sql():
@@ -592,100 +584,6 @@ def test_wf1_df():
     assert result_df.all().all()
 
 
-def test_lp_default_handling():
-    @task
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
-        a = a + 2
-        return a, "world-" + str(a)
-
-    @workflow
-    def my_wf(a: int, b: int) -> (str, str, int, int):
-        x, y = t1(a=a)
-        u, v = t1(a=b)
-        return y, v, x, u
-
-    lp = launch_plan.LaunchPlan.create("test1", my_wf)
-    assert len(lp.parameters.parameters) == 0
-    assert len(lp.fixed_inputs.literals) == 0
-
-    lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_wf, default_inputs={"a": 3})
-    assert len(lp_with_defaults.parameters.parameters) == 1
-    assert len(lp_with_defaults.fixed_inputs.literals) == 0
-
-    lp_with_fixed = launch_plan.LaunchPlan.create("test3", my_wf, fixed_inputs={"a": 3})
-    assert len(lp_with_fixed.parameters.parameters) == 0
-    assert len(lp_with_fixed.fixed_inputs.literals) == 1
-
-    @workflow
-    def my_wf2(a: int, b: int = 42) -> (str, str, int, int):
-        x, y = t1(a=a)
-        u, v = t1(a=b)
-        return y, v, x, u
-
-    lp = launch_plan.LaunchPlan.create("test4", my_wf2)
-    assert len(lp.parameters.parameters) == 1
-    assert len(lp.fixed_inputs.literals) == 0
-
-    lp_with_defaults = launch_plan.LaunchPlan.create("test5", my_wf2, default_inputs={"a": 3})
-    assert len(lp_with_defaults.parameters.parameters) == 2
-    assert len(lp_with_defaults.fixed_inputs.literals) == 0
-    # Launch plan defaults override wf defaults
-    assert lp_with_defaults(b=3) == ("world-5", "world-5", 5, 5)
-
-    lp_with_fixed = launch_plan.LaunchPlan.create("test6", my_wf2, fixed_inputs={"a": 3})
-    assert len(lp_with_fixed.parameters.parameters) == 1
-    assert len(lp_with_fixed.fixed_inputs.literals) == 1
-    # Launch plan defaults override wf defaults
-    assert lp_with_fixed(b=3) == ("world-5", "world-5", 5, 5)
-
-    lp_with_fixed = launch_plan.LaunchPlan.create("test7", my_wf2, fixed_inputs={"b": 3})
-    assert len(lp_with_fixed.parameters.parameters) == 0
-    assert len(lp_with_fixed.fixed_inputs.literals) == 1
-
-
-def test_wf1_with_lp_node():
-    @task
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
-        a = a + 2
-        return a, "world-" + str(a)
-
-    @workflow
-    def my_subwf(a: int) -> (str, str):
-        x, y = t1(a=a)
-        u, v = t1(a=x)
-        return y, v
-
-    lp = launch_plan.LaunchPlan.create("lp_nodetest1", my_subwf)
-    lp_with_defaults = launch_plan.LaunchPlan.create("lp_nodetest2", my_subwf, default_inputs={"a": 3})
-
-    @workflow
-    def my_wf(a: int = 42) -> (int, str, str):
-        x, y = t1(a=a).with_overrides()
-        u, v = lp(a=x)
-        return x, u, v
-
-    x = my_wf(a=5)
-    assert x == (7, "world-9", "world-11")
-
-    assert my_wf() == (44, "world-46", "world-48")
-
-    @workflow
-    def my_wf2(a: int = 42) -> (int, str, str, str):
-        x, y = t1(a=a).with_overrides()
-        u, v = lp_with_defaults()
-        return x, y, u, v
-
-    assert my_wf2() == (44, "world-44", "world-5", "world-7")
-
-    @workflow
-    def my_wf3(a: int = 42) -> (int, str, str, str):
-        x, y = t1(a=a).with_overrides()
-        u, v = lp_with_defaults(a=x)
-        return x, y, u, v
-
-    assert my_wf2() == (44, "world-44", "world-5", "world-7")
-
-
 def test_lp_serialize():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
@@ -926,15 +824,16 @@ def test_wf_with_catching_no_return():
     def t3(s: str):
         pass
 
-    @workflow
-    def wf():
-        d = t1()
-        # The following statement is wrong, this should not be allowed to pass to another task
-        x = t2(d=d)
-        # Passing x is wrong in this case
-        t3(s=x)
-
     with pytest.raises(AssertionError):
+
+        @workflow
+        def wf():
+            d = t1()
+            # The following statement is wrong, this should not be allowed to pass to another task
+            x = t2(d=d)
+            # Passing x is wrong in this case
+            t3(s=x)
+
         wf()
 
 
@@ -1064,3 +963,15 @@ def test_resources():
                 _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "2"),
                 _resource_models.ResourceEntry(_resource_models.ResourceName.MEMORY, "400M"),
             ]
+
+
+def test_wf_explicitly_returning_empty_task():
+    @task
+    def t1():
+        ...
+
+    @workflow
+    def my_subwf():
+        return t1()  # This forces the wf _local_execute to handle VoidPromises
+
+    assert my_subwf() is None

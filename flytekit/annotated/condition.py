@@ -12,6 +12,7 @@ from flytekit.annotated.promise import (
     ConjunctionExpression,
     ConjunctionOps,
     Promise,
+    VoidPromise,
     create_task_output,
 )
 from flytekit.common.promise import NodeOutput
@@ -158,13 +159,13 @@ class ConditionalSection(object):
 
         raise AssertionError("Branches can only be invoked within a workflow context!")
 
-    def _compute_outputs(self, n: Node) -> Union[Promise, Tuple[Promise]]:
+    def _compute_outputs(self, n: Node) -> Union[Promise, Tuple[Promise], VoidPromise]:
         output_var_sets: typing.List[typing.Set[str]] = []
         for c in self._cases:
             if c.output_promise is None and c.err is None:
                 # One node returns a void output and no error, we will default to a
                 # Void output
-                return None
+                return VoidPromise(n.id)
             if c.output_promise is not None:
                 if isinstance(c.output_promise, tuple):
                     output_var_sets.append(set([i.var for i in c.output_promise]))
@@ -175,6 +176,7 @@ class ConditionalSection(object):
             for x in output_var_sets[1:]:
                 curr = curr.intersection(x)
         promises = [Promise(var=x, val=NodeOutput(sdk_node=n, sdk_type=None, var=x)) for x in curr]
+        # TODO: Is there a way to add the Python interface here? Currently, it's an optional arg.
         return create_task_output(promises)
 
     @property

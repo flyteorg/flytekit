@@ -9,12 +9,13 @@ import flytekit.annotated.type_engine
 from flytekit.annotated.condition import ConditionalSection
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext, FlyteEntities
 from flytekit.annotated.interface import (
+    Interface,
     transform_inputs_to_parameters,
     transform_interface_to_typed_interface,
     transform_signature_to_interface,
 )
 from flytekit.annotated.node import Node, create_and_link_node
-from flytekit.annotated.promise import Promise, create_task_output
+from flytekit.annotated.promise import Promise, VoidPromise, create_task_output
 from flytekit.annotated.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
@@ -37,11 +38,6 @@ def _workflow_fn_outputs_to_promise(
     typed_outputs: Dict[str, _interface_models.Variable],
     outputs: Union[Any, Tuple[Any]],
 ) -> List[Promise]:
-    if len(native_outputs) == 0:
-        if outputs is not None:
-            raise AssertionError("something returned from wf but shouldn't have outputs")
-        return None
-
     if len(native_outputs) == 1:
         if isinstance(outputs, tuple):
             if len(outputs) != 1:
@@ -120,6 +116,10 @@ class Workflow(object):
         return self._name.split(".")[-1]
 
     @property
+    def python_interface(self) -> Interface:
+        return self._native_interface
+
+    @property
     def interface(self) -> _interface_models.TypedInterface:
         return self._interface
 
@@ -178,7 +178,7 @@ class Workflow(object):
             return bindings[0]
         return tuple(bindings)
 
-    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, None]:
+    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         """
         Performs local execution of a workflow. kwargs are expected to be Promises for the most part (unless,
         someone has hardcoded in my_wf(input_1=5) or something).
@@ -195,11 +195,27 @@ class Workflow(object):
                 kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
 
         function_outputs = self.execute(**kwargs)
+        if (
+            isinstance(function_outputs, VoidPromise)
+            or function_outputs is None
+            or len(self.python_interface.outputs) == 0
+        ):
+            # The reason this is here is because a workflow function may return a task that doesn't return anything
+            #   def wf():
+            #       return t1()
+            # or it may not return at all
+            #   def wf():
+            #       t1()
+            # In the former case we get the task's VoidPromise, in the latter we get None
+            return VoidPromise(self.name)
 
+        # TODO: Can we refactor the task code to be similar to what's in this function?
         promises = _workflow_fn_outputs_to_promise(
             ctx, self._native_interface.outputs, self.interface.outputs, function_outputs
         )
-        return create_task_output(promises)
+        # TODO: With the native interface, create_task_output should be able to derive the typed interface, and it
+        #   should be able to do the conversion of the output of the execute() call directly.
+        return create_task_output(promises, self._native_interface)
 
     def execute(self, **kwargs):
         """
@@ -244,14 +260,16 @@ class Workflow(object):
                 result = self._local_execute(ctx, **kwargs)
 
             expected_outputs = len(self._native_interface.outputs)
-            if (
-                (expected_outputs == 0 and result is None)
-                or (expected_outputs > 1 and len(result) == expected_outputs)
-                or (expected_outputs == 1 and result is not None)
-            ):
-                if result is None:
+            if expected_outputs == 0:
+                if result is None or isinstance(result, VoidPromise):
                     return None
-                elif isinstance(result, Promise):
+                else:
+                    raise Exception(f"Workflow local execution expected 0 outputs but something received {result}")
+
+            if (expected_outputs > 1 and len(result) == expected_outputs) or (
+                expected_outputs == 1 and result is not None
+            ):
+                if isinstance(result, Promise):
                     v = [v for k, v in self._native_interface.outputs.items()][0]
                     return TypeEngine.to_python_value(ctx, result.val, v)
                 else:

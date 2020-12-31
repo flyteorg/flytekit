@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from flytekit.annotated import context_manager as _flyte_context
 from flytekit.annotated import type_engine
 from flytekit.annotated.context_manager import FlyteContext
+from flytekit.annotated.interface import Interface
 from flytekit.annotated.type_engine import DictTransformer, ListTransformer, TypeEngine
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.models import interface as _interface_models
@@ -347,7 +348,6 @@ class Promise(object):
     def with_overrides(self, *args, **kwargs):
         if not self.is_ready:
             # TODO, this should be forwarded, but right now this results in failure and we want to test this behavior
-            # self.ref.sdk_node.with_overrides(*args, **kwargs)
             print(f"Forwarding to node {self.ref.sdk_node.id}")
             self.ref.sdk_node.with_overrides(*args, **kwargs)
         return self
@@ -362,7 +362,11 @@ class Promise(object):
 
 
 # To create a class that is a named tuple, we might have to create namedtuplemeta and manipulate the tuple
-def create_task_output(promises: Optional[Union[List[Promise], Promise]]) -> Optional[Union[Tuple[Promise], Promise]]:
+def create_task_output(
+    promises: Optional[Union[List[Promise], Promise]], entity_interface: Optional[Interface] = None
+) -> Optional[Union[Tuple[Promise], Promise]]:
+    # TODO: Add VoidPromise here to simplify things at call site. Consider returning for [] below as well instead of
+    #   raising an exception.
     if promises is None:
         return None
 
@@ -370,15 +374,34 @@ def create_task_output(promises: Optional[Union[List[Promise], Promise]]) -> Opt
         return promises
 
     if len(promises) == 0:
-        return None
+        raise Exception(
+            "This function should not be called with an empty list. It should have been handled with a"
+            "VoidPromise at this function's call-site."
+        )
 
     if len(promises) == 1:
-        return promises[0]
+        if not entity_interface:
+            return promises[0]
+        # See transform_signature_to_interface for more information, we're using the existence of a name as a proxy
+        # for the user having specified a one-element typing.NamedTuple, which means we should _not_ extract it. We
+        # should still return a tuple but it should be one of ours.
+        if not entity_interface.output_tuple_name:
+            return promises[0]
 
-    # More than one promises, let us wrap it into a tuple
+    # More than one promise, let us wrap it into a tuple
+    # Start with just the var names in the promises
     variables = [p.var for p in promises]
 
-    class Output(collections.namedtuple("TaskOutput", variables)):
+    # These should be OrderedDicts so it should be safe to iterate over the keys.
+    if entity_interface:
+        variables = [k for k in entity_interface.outputs.keys()]
+
+    named_tuple_name = "DefaultNamedTupleOutput"
+    if entity_interface and entity_interface.output_tuple_name:
+        named_tuple_name = entity_interface.output_tuple_name
+
+    # Should this class be part of the Interface?
+    class Output(collections.namedtuple(named_tuple_name, variables)):
         def with_overrides(self, *args, **kwargs):
             val = self.__getattribute__(self._fields[0])
             val.with_overrides(*args, **kwargs)
@@ -472,6 +495,15 @@ class VoidPromise(object):
 
     def __init__(self, task_name: str):
         self._task_name = task_name
+
+    def runs_before(self, *args, **kwargs):
+        """
+        This is a placeholder and should do nothing. It is only here to enable local execution of workflows
+        where a task returns nothing.
+        """
+
+    def __rshift__(self, *args, **kwargs):
+        ...  # See runs_before
 
     @property
     def task_name(self):

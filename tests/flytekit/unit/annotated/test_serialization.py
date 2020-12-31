@@ -202,20 +202,20 @@ def test_serialization_branch_complex_2():
 def test_serialization_branch():
     @task
     def mimic(a: int) -> typing.NamedTuple("OutputsBC", c=int):
-        return a
+        return (a,)
 
     @task
     def t1(c: int) -> typing.NamedTuple("OutputsBC", c=str):
-        return "world"
+        return ("world",)
 
     @task
     def t2() -> typing.NamedTuple("OutputsBC", c=str):
-        return "hello"
+        return ("hello",)
 
     @workflow
     def my_wf(a: int) -> str:
         c = mimic(a=a)
-        return conditional("test1").if_(c == 4).then(t1(c=c)).else_().then(t2())
+        return conditional("test1").if_(c.c == 4).then(t1(c=c.c).c).else_().then(t2().c)
 
     assert my_wf(a=4) == "world"
     assert my_wf(a=2) == "hello"

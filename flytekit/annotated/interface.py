@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import collections
 import copy
 import inspect
 import typing
 from collections import OrderedDict
-from typing import Any, Dict, Generator, List, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
 
 from flytekit.annotated import context_manager
 from flytekit.annotated.type_engine import TypeEngine
+from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 
@@ -21,12 +23,16 @@ class Interface(object):
         self,
         inputs: typing.Optional[typing.Dict[str, Union[Type, Tuple[Type, Any]]]] = None,
         outputs: typing.Optional[typing.Dict[str, Type]] = None,
+        output_tuple_name: Optional[str] = None,
     ):
         """
         :param outputs: Output variables and their types as a dictionary
         :param inputs: Map of input name to either a tuple where the first element is the python type, and the second
             value is the default, or just a single value which is the python type. The latter case is used by tasks
             for which perhaps a default value does not make sense. For consistency, we turn it into a tuple.
+        :param output_tuple_name: This is used to store the name of a typing.NamedTuple when the task or workflow
+            returns one. This is also used as a proxy for better or for worse for the presence of a tuple return type,
+            primarily used when handling one-element NamedTuples.
         """
         self._inputs = {}
         if inputs:
@@ -36,6 +42,50 @@ class Interface(object):
                 else:
                     self._inputs[k] = (v, None)
         self._outputs = outputs if outputs else {}
+        self._output_tuple_name = output_tuple_name
+
+        if outputs:
+            variables = [k for k in outputs.keys()]
+
+            # TODO: This class is a duplicate of the one in create_task_outputs. Over time, we should move to this one.
+            class Output(collections.namedtuple(output_tuple_name or "DefaultNamedTupleOutput", variables)):
+                """
+                This class can be used in two different places. For multivariate-return entities this class is used
+                to rewrap the outputs so that our with_overrides function can work.
+                For manual node creation, it's used during local execution as something that can be dereferenced.
+                See the create_node funciton for more information.
+                """
+
+                def with_overrides(self, *args, **kwargs):
+                    val = self.__getattribute__(self._fields[0])
+                    val.with_overrides(*args, **kwargs)
+                    return self
+
+                @property
+                def ref(self):
+                    for var_name in variables:
+                        if self.__getattribute__(var_name).ref:
+                            return self.__getattribute__(var_name).ref
+                    return None
+
+                def runs_before(self, *args, **kwargs):
+                    """
+                    This is a placeholder and should do nothing. It is only here to enable local execution of workflows
+                    where runs_before is manually called.
+                    """
+
+                def __rshift__(self, *args, **kwargs):
+                    ...  # See runs_before
+
+            self._output_tuple_class = Output
+
+    @property
+    def output_tuple(self) -> Optional[Type[collections.namedtuple]]:
+        return self._output_tuple_class
+
+    @property
+    def output_tuple_name(self) -> Optional[str]:
+        return self._output_tuple_name
 
     @property
     def inputs(self) -> typing.Dict[str, Type]:
@@ -43,6 +93,12 @@ class Interface(object):
         for k, v in self._inputs.items():
             r[k] = v[0]
         return r
+
+    @property
+    def output_names(self) -> Optional[List[str]]:
+        if self.outputs:
+            return [k for k in self.outputs.keys()]
+        return None
 
     @property
     def inputs_with_defaults(self) -> typing.Dict[str, Tuple[Type, Any]]:
@@ -184,7 +240,14 @@ def transform_signature_to_interface(signature: inspect.Signature) -> Interface:
         # Inputs with default values are currently ignored, we may want to look into that in the future
         inputs[k] = (v.annotation, v.default if v.default is not inspect.Parameter.empty else None)
 
-    return Interface(inputs, outputs)
+    # This is just for typing.NamedTuples - in those cases, the user can select a name to call the NamedTuple. We
+    # would like to preserve that name in our custom collections.namedtuple.
+    custom_name = None
+    if hasattr(signature.return_annotation, "_field_types"):
+        if hasattr(signature.return_annotation, "__name__") and signature.return_annotation.__name__ != "":
+            custom_name = signature.return_annotation.__name__
+
+    return Interface(inputs, outputs, output_tuple_name=custom_name)
 
 
 def transform_variable_map(variable_map: Dict[str, type]) -> Dict[str, _interface_models.Variable]:
@@ -262,10 +325,16 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
     if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:
         # Handle option 3
         logger.debug(f"Task returns unnamed typing.Tuple {return_annotation}")
+        if len(return_annotation.__args__) == 1:
+            raise FlyteValidationException(
+                "Tuples should be used to indicate multiple return values, found only one return variable."
+            )
         return OrderedDict(
             zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)
         )
     elif isinstance(return_annotation, tuple):
+        if len(return_annotation) == 1:
+            raise FlyteValidationException("Please don't use a tuple if you're just returning one thing.")
         return OrderedDict(zip(list(output_name_generator(len(return_annotation))), return_annotation))
 
     else:

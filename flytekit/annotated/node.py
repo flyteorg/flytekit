@@ -5,7 +5,7 @@ from typing import Any, List, Optional
 
 from flytekit.annotated import interface as flyte_interface
 from flytekit.annotated.context_manager import FlyteContext
-from flytekit.annotated.promise import Promise, binding_from_python_std, create_task_output
+from flytekit.annotated.promise import Promise, VoidPromise, binding_from_python_std, create_task_output
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.nodes import SdkNode
@@ -36,6 +36,20 @@ class Node(object):
         self._flyte_entity = flyte_entity
         self._sdk_node = None
         self._aliases: _workflow_model.Alias = None
+
+    def runs_before(self, other: Node):
+        """
+        This is typically something we shouldn't do. This modifies an attribute of the other instance rather than
+        self. But it's done so only because we wanted this English function to be the same as the shift function.
+        That is, calling node_1.runs_before(node_2) and node_1 >> node_2 are the same. The shift operator going the
+        other direction is not implemented to further avoid confusion. Right shift was picked rather than left shift
+        because that's what most users are familiar with.
+        """
+        if self not in other._upstream_nodes:
+            other._upstream_nodes.append(self)
+
+    def __rshift__(self, other: Node):
+        self.runs_before(other)
 
     def get_registerable_entity(self) -> SdkNode:
         if self._sdk_node is not None:
@@ -192,6 +206,9 @@ def create_and_link_node(
     )
     ctx.compilation_state.add_node(non_sdk_node)
 
+    if len(typed_interface.outputs) == 0:
+        return VoidPromise(entity.name)
+
     # Create a node output object for each output, they should all point to this node of course.
     node_outputs = []
     for output_name, output_var_model in typed_interface.outputs.items():
@@ -200,4 +217,4 @@ def create_and_link_node(
         node_outputs.append(Promise(output_name, _NodeOutput(sdk_node=non_sdk_node, sdk_type=None, var=output_name)))
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
-    return create_task_output(node_outputs)
+    return create_task_output(node_outputs, interface)

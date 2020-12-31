@@ -135,6 +135,10 @@ class Task(object):
     def task_type(self) -> str:
         return self._task_type
 
+    @property
+    def python_interface(self) -> Optional[Interface]:
+        return None
+
     def get_type_for_input_var(self, k: str, v: Any) -> type:
         """
         Returns the python native type for the given input variable
@@ -189,7 +193,7 @@ class Task(object):
             return VoidPromise(self.name)
 
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
-        return create_task_output(vals)
+        return create_task_output(vals, self.python_interface)
 
     def __call__(self, *args, **kwargs):
         # When a Task is () aka __called__, there are three things we may do:
@@ -204,7 +208,7 @@ class Task(object):
         #     task output as an input, things probably will fail pretty obviously.
         if len(args) > 0:
             raise _user_exceptions.FlyteAssertion(
-                f"In Flyte workflows, on keyword args are supported to pass inputs to workflows and tasks."
+                f"When calling tasks, only keyword args are supported. "
                 f"Aborting execution as detected {len(args)} positional args {args}"
             )
 
@@ -215,7 +219,14 @@ class Task(object):
             ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
             if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
-                return
+                if self.python_interface and self.python_interface.output_tuple_name:
+                    variables = [k for k in self.python_interface.outputs.keys()]
+                    output_tuple = collections.namedtuple(self.python_interface.output_tuple_name, variables)
+                    nones = [None for _ in self.python_interface.outputs.keys()]
+                    return output_tuple(*nones)
+                else:
+                    # Should we return multiple None's here?
+                    return None
             return self._local_execute(ctx, **kwargs)
         else:
             logger.warning("task run without context - executing raw function")
@@ -326,7 +337,7 @@ class PythonTask(Task, Generic[T]):
 
     def dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
-    ) -> Union[VoidPromise, _literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
+    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
         This method is also invoked during runtime.
@@ -368,7 +379,14 @@ class PythonTask(Task, Generic[T]):
 
             expected_output_names = list(self.interface.outputs.keys())
             if len(expected_output_names) == 1:
-                native_outputs_as_map = {expected_output_names[0]: native_outputs}
+                # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
+                # length one. That convention is used for naming outputs - and single-length-NamedTuples are
+                # particularly troublesome but elegant handling of them is not a high priority
+                # Again, we're using the output_tuple_name as a proxy.
+                if self.python_interface.output_tuple_name and isinstance(native_outputs, tuple):
+                    native_outputs_as_map = {expected_output_names[0]: native_outputs[0]}
+                else:
+                    native_outputs_as_map = {expected_output_names[0]: native_outputs}
             elif len(expected_output_names) == 0:
                 native_outputs_as_map = {}
             else:
