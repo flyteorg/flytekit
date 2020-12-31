@@ -1624,12 +1624,25 @@ def _extract_files(
 @_click.option(*_VERSION_FLAGS, required=True, help="The entity version to register with")
 @_host_option
 @_insecure_option
-@_click.option("--auth", type=(str, str), help="Custom auth role to register launch plans with")
-@_click.option("--output_location_prefix", help="Custom output location prefix to register launch plans with")
+@_click.option("--assumable-iam-role", help="Custom assumable iam auth role to register launch plans with")
+@_click.option(
+    "--kubernetes-service-account", help="Custom kubernetes service account auth role to register launch plans with"
+)
+@_click.option("--output-location-prefix", help="Custom output location prefix to register launch plans with")
 @_click.argument(
     "files", type=_click.Path(exists=True), nargs=-1,
 )
-def register_files(project, domain, version, host, insecure, auth, output_location_prefix, files):
+def register_files(
+    project,
+    domain,
+    version,
+    host,
+    insecure,
+    assumable_iam_role,
+    kubernetes_service_account,
+    output_location_prefix,
+    files,
+):
     """
     Given a list of files, this will (after sorting the input list), attempt to register them against Flyte Admin.
     This command expects the files to be the output of the pyflyte serialize command.  See the code there for more
@@ -1664,13 +1677,12 @@ def register_files(project, domain, version, host, insecure, auth, output_locati
         """
 
         # entity is of type flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
-        if auth is not None:
-            if auth[0] == "assumable_iam_role":
-                entity.auth_role.CopyFrom(_AuthRole(assumable_iam_role=auth[1]).to_flyte_idl())
-            elif auth[1] == "kubernetes_service_account":
-                entity.auth_role.CopyFrom(_AuthRole(kubernetes_service_account=auth[1]).to_flyte_idl())
-            else:
-                _click.echo("Unrecognized auth role format {}".format(auth[0]))
+        if assumable_iam_role and kubernetes_service_account:
+            _click.UsageError("Currently you cannot specify both an assumable_iam_role and kubernetes_service_account")
+        if assumable_iam_role:
+            entity.auth_role.CopyFrom(_AuthRole(assumable_iam_role=assumable_iam_role).to_flyte_idl())
+        elif kubernetes_service_account:
+            entity.auth_role.CopyFrom(_AuthRole(kubernetes_service_account=kubernetes_service_account).to_flyte_idl())
 
         if output_location_prefix is not None:
             entity.raw_output_data_config.CopyFrom(
@@ -1679,7 +1691,7 @@ def register_files(project, domain, version, host, insecure, auth, output_locati
 
         return entity
 
-    if auth is not None or output_location_prefix is not None:
+    if assumable_iam_role or kubernetes_service_account or output_location_prefix:
         patches = {_identifier_pb2.LAUNCH_PLAN: patch_launch_plan}
 
     flyte_entities_list = _extract_files(project, domain, version, files, patches)
