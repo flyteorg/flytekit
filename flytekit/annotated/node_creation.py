@@ -94,7 +94,7 @@ def create_node(
             if isinstance(outputs, tuple):
                 for output_name in entity.python_interface.output_names:
                     attr = getattr(outputs, output_name)
-                    if not attr:
+                    if attr is None:
                         raise Exception(f"Output {output_name} in outputs when calling {entity.name} is empty {attr}.")
                     setattr(node, output_name, attr)
             else:
@@ -117,7 +117,9 @@ def create_node(
         results = entity(**kwargs)
 
         # If it's a VoidPromise, let's just return it, it shouldn't get used anywhere and if it does, we want an error
-        if isinstance(results, VoidPromise):
+        # The reason we return it if it's a tuple is to handle the case where the task returns a typing.NamedTuple.
+        # In that case, it's already a tuple and we don't need to further tupletize.
+        if isinstance(results, VoidPromise) or isinstance(results, tuple):
             return results
 
         output_names = entity.python_interface.output_names
