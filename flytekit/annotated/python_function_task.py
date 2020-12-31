@@ -53,7 +53,7 @@ T = TypeVar("T")
 
 class PythonAutoContainerTask(PythonTask[T], ABC):
     """
-    A Python Function task should be used as the base for all extensions that want the users code to be in the container
+    A Python AutoContainer task should be used as the base for all extensions that want the users code to be in the container
     and the container information to be automatically captured.
     This base will auto configure the image and image version to be used for all its derivatives.
 
