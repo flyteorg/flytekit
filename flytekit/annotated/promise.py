@@ -496,11 +496,14 @@ class VoidPromise(object):
     def __init__(self, task_name: str):
         self._task_name = task_name
 
-    def depends_on(self, *args, **kwargs):
+    def runs_before(self, *args, **kwargs):
         """
         This is a placeholder and should do nothing. It is only here to enable local execution of workflows
         where a task returns nothing.
         """
+
+    def __rshift__(self, *args, **kwargs):
+        ...  # See runs_before
 
     @property
     def task_name(self):

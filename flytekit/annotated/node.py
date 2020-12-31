@@ -37,9 +37,19 @@ class Node(object):
         self._sdk_node = None
         self._aliases: _workflow_model.Alias = None
 
-    def depends_on(self, other):
-        if other not in self._upstream_nodes:
-            self._upstream_nodes.append(other)
+    def runs_before(self, other: Node):
+        """
+        This is typically something we shouldn't do. This modifies an attribute of the other instance rather than
+        self. But it's done so only because we wanted this English function to be the same as the shift function.
+        That is, calling node_1.runs_before(node_2) and node_1 >> node_2 are the same. The shift operator going the
+        other direction is not implemented to further avoid confusion. Right shift was picked rather than left shift
+        because that's what most users are familiar with.
+        """
+        if self not in other._upstream_nodes:
+            other._upstream_nodes.append(self)
+
+    def __rshift__(self, other: Node):
+        self.runs_before(other)
 
     def get_registerable_entity(self) -> SdkNode:
         if self._sdk_node is not None:

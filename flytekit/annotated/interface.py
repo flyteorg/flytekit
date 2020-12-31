@@ -68,11 +68,14 @@ class Interface(object):
                             return self.__getattribute__(var_name).ref
                     return None
 
-                def depends_on(self, *args, **kwargs):
+                def runs_before(self, *args, **kwargs):
                     """
                     This is a placeholder and should do nothing. It is only here to enable local execution of workflows
-                    where depends_on is manually called.
+                    where runs_before is manually called.
                     """
+
+                def __rshift__(self, *args, **kwargs):
+                    ...  # See runs_before
 
             self._output_tuple_class = Output
 

@@ -26,7 +26,9 @@ def create_node(
         t2_node = create_node(t2)
         t1_node = create_node(t1)
 
-        t1_node.depends_on(t2_node)
+        t2_node.runs_before(t1_node)
+        # OR
+        t2_node >> t1_node
 
     This works for tasks that take inputs as well, say a ``t3(in1: int)``
 

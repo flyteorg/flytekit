@@ -45,10 +45,16 @@ def test_normal_task():
     def empty_wf():
         t2_node = create_node(t2)
         t3_node = create_node(t3)
-        t2_node.depends_on(t3_node)
+        t3_node.runs_before(t2_node)
 
-    # Test that VoidPromises can handle depends_on
+    # Test that VoidPromises can handle runs_before
     empty_wf()
+
+    @workflow
+    def empty_wf2():
+        t2_node = create_node(t2)
+        t3_node = create_node(t3)
+        t3_node >> t2_node
 
     with context_manager.FlyteContext.current_context().new_registration_settings(
         registration_settings=context_manager.RegistrationSettings(
@@ -60,6 +66,10 @@ def test_normal_task():
         )
     ):
         sdk_wf = empty_wf.get_registerable_entity()
+        assert sdk_wf.nodes[0].upstream_node_ids[0] == "node-1"
+        assert sdk_wf.nodes[0].id == "node-0"
+
+        sdk_wf = empty_wf2.get_registerable_entity()
         assert sdk_wf.nodes[0].upstream_node_ids[0] == "node-1"
         assert sdk_wf.nodes[0].id == "node-0"
 
