@@ -1,7 +1,7 @@
 import typing
 
 from flytekit.annotated import context_manager
-from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
+from flytekit.annotated.context_manager import Image, ImageConfig
 from flytekit.annotated.node_creation import create_node
 from flytekit.annotated.task import task
 from flytekit.annotated.workflow import workflow

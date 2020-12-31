@@ -23,8 +23,8 @@ def create_node(
     don't produce outputs. For example, if you have t1() and t2(), both of which do not take in nor produce any
     outputs, how do you specify that t2 should run before t1?
 
-        t2_node = create_node(t2)
         t1_node = create_node(t1)
+        t2_node = create_node(t2)
 
         t2_node.runs_before(t1_node)
         # OR
