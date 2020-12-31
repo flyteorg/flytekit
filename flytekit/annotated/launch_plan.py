@@ -136,6 +136,10 @@ class LaunchPlan(object):
         FlyteEntities.entities.append(self)
 
     @property
+    def python_interface(self) -> Interface:
+        return self.workflow.python_interface
+
+    @property
     def name(self) -> str:
         return self._name
 

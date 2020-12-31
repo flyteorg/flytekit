@@ -365,6 +365,8 @@ class Promise(object):
 def create_task_output(
     promises: Optional[Union[List[Promise], Promise]], entity_interface: Optional[Interface] = None
 ) -> Optional[Union[Tuple[Promise], Promise]]:
+    # TODO: Add VoidPromise here to simplify things at call site. Consider returning for [] below as well instead of
+    #   raising an exception.
     if promises is None:
         return None
 
@@ -493,6 +495,15 @@ class VoidPromise(object):
 
     def __init__(self, task_name: str):
         self._task_name = task_name
+
+    def runs_before(self, *args, **kwargs):
+        """
+        This is a placeholder and should do nothing. It is only here to enable local execution of workflows
+        where a task returns nothing.
+        """
+
+    def __rshift__(self, *args, **kwargs):
+        ...  # See runs_before
 
     @property
     def task_name(self):

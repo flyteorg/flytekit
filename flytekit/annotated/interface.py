@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections
 import copy
 import inspect
 import typing
@@ -43,6 +44,45 @@ class Interface(object):
         self._outputs = outputs
         self._output_tuple_name = output_tuple_name
 
+        if outputs:
+            variables = [k for k in outputs.keys()]
+
+            # TODO: This class is a duplicate of the one in create_task_outputs. Over time, we should move to this one.
+            class Output(collections.namedtuple(output_tuple_name or "DefaultNamedTupleOutput", variables)):
+                """
+                This class can be used in two different places. For multivariate-return entities this class is used
+                to rewrap the outputs so that our with_overrides function can work.
+                For manual node creation, it's used during local execution as something that can be dereferenced.
+                See the create_node funciton for more information.
+                """
+
+                def with_overrides(self, *args, **kwargs):
+                    val = self.__getattribute__(self._fields[0])
+                    val.with_overrides(*args, **kwargs)
+                    return self
+
+                @property
+                def ref(self):
+                    for var_name in variables:
+                        if self.__getattribute__(var_name).ref:
+                            return self.__getattribute__(var_name).ref
+                    return None
+
+                def runs_before(self, *args, **kwargs):
+                    """
+                    This is a placeholder and should do nothing. It is only here to enable local execution of workflows
+                    where runs_before is manually called.
+                    """
+
+                def __rshift__(self, *args, **kwargs):
+                    ...  # See runs_before
+
+            self._output_tuple_class = Output
+
+    @property
+    def output_tuple(self) -> Optional[Type[collections.namedtuple]]:
+        return self._output_tuple_class
+
     @property
     def output_tuple_name(self) -> Optional[str]:
         return self._output_tuple_name
@@ -53,6 +93,12 @@ class Interface(object):
         for k, v in self._inputs.items():
             r[k] = v[0]
         return r
+
+    @property
+    def output_names(self) -> Optional[List[str]]:
+        if self.outputs:
+            return [k for k in self.outputs.keys()]
+        return None
 
     @property
     def inputs_with_defaults(self) -> typing.Dict[str, Tuple[Type, Any]]:

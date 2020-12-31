@@ -966,3 +966,15 @@ def test_resources():
                 _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "2"),
                 _resource_models.ResourceEntry(_resource_models.ResourceName.MEMORY, "400M"),
             ]
+
+
+def test_wf_explicitly_returning_empty_task():
+    @task
+    def t1():
+        ...
+
+    @workflow
+    def my_subwf():
+        return t1()  # This forces the wf _local_execute to handle VoidPromises
+
+    assert my_subwf() is None
