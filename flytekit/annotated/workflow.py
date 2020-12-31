@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import inspect
 import typing
+from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import flytekit.annotated.promise
@@ -19,6 +21,7 @@ from flytekit.annotated.promise import Promise, VoidPromise, create_task_output
 from flytekit.annotated.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
+from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.common.promise import NodeOutput as _NodeOutput
 from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
 from flytekit.loggers import logger
@@ -30,6 +33,27 @@ from flytekit.models.core import workflow as _workflow_model
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID, metadata=None, bindings=[], upstream_nodes=[], flyte_entity=None,
 )
+
+
+@dataclass
+class WorkflowMetadata(object):
+    class OnFailurePolicy(Enum):
+        FAIL_IMMEDIATELY = _workflow_model.WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
+        FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = (
+            _workflow_model.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
+        )
+
+    on_failure: OnFailurePolicy
+
+    def __post_init__(self):
+        if (
+            self.on_failure != self.OnFailurePolicy.FAIL_IMMEDIATELY
+            and self.on_failure != self.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
+        ):
+            raise FlyteValidationException(f"Failure policy {self.on_failure} not acceptable")
+
+    def to_flyte_model(self):
+        return _workflow_model.WorkflowMetadata(on_failure=self.on_failure)
 
 
 def _workflow_fn_outputs_to_promise(
@@ -67,7 +91,7 @@ def _workflow_fn_outputs_to_promise(
     return return_vals
 
 
-def construct_input_promises(workflow: Workflow, inputs: List[str]):
+def construct_input_promises(inputs: List[str]):
     return {
         input_name: Promise(
             var=input_name, val=_NodeOutput(sdk_node=GLOBAL_START_NODE, sdk_type=None, var=input_name,),
@@ -84,7 +108,7 @@ class Workflow(object):
       be wrapper nodes.
     """
 
-    def __init__(self, workflow_function: Callable):
+    def __init__(self, workflow_function: Callable, metadata: Optional[WorkflowMetadata]):
         self._name = f"{workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
         self._native_interface = transform_signature_to_interface(inspect.signature(workflow_function))
@@ -92,6 +116,7 @@ class Workflow(object):
         # These will get populated on compile only
         self._nodes = None
         self._output_bindings: Optional[List[_literal_models.Binding]] = None
+        self._workflow_metadata = metadata
 
         # This will get populated only at registration time, when we retrieve the rest of the environment variables like
         # project/domain/version/image and anything else we might need from the environment in the future.
@@ -123,6 +148,10 @@ class Workflow(object):
     def interface(self) -> _interface_models.TypedInterface:
         return self._interface
 
+    @property
+    def workflow_metadata(self) -> Optional[WorkflowMetadata]:
+        return self._workflow_metadata
+
     def compile(self, **kwargs):
         """
         Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics
@@ -134,7 +163,7 @@ class Workflow(object):
         prefix = f"{ctx.compilation_state.prefix}-{self.short_name}-" if ctx.compilation_state is not None else None
         with ctx.new_compilation_context(prefix=prefix) as comp_ctx:
             # Construct the default input promise bindings, but then override with the provided inputs, if any
-            input_kwargs = construct_input_promises(self, [k for k in self.interface.inputs.keys()])
+            input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
             input_kwargs.update(kwargs)
             workflow_outputs = self._workflow_function(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
@@ -346,7 +375,7 @@ class ReferenceWorkflow(ReferenceEntity, Workflow):
         self._registerable_entity = _SdkWorkflow(
             nodes=[],  # Fake an empty list for nodes,
             id=self.reference.id,
-            metadata=_workflow_model.WorkflowMetadata(),
+            metadata=self.workflow_metadata.to_flyte_model(),
             metadata_defaults=_workflow_model.WorkflowMetadataDefaults(),
             interface=self.typed_interface,
             output_bindings=[],
@@ -358,7 +387,11 @@ class ReferenceWorkflow(ReferenceEntity, Workflow):
         return self._registerable_entity
 
 
-def workflow(_workflow_function=None, *args, reference: Optional[WorkflowReference] = None, **kwargs):
+def workflow(
+    _workflow_function=None,
+    reference: Optional[WorkflowReference] = None,
+    failure_policy: Optional[WorkflowMetadata.OnFailurePolicy] = None,
+):
     # Unlike for tasks, where we can determine the entire structure of the task by looking at the function's signature,
     # workflows need to have the body of the function itself run at module-load time. This is because the body of the
     # workflow is what expresses the workflow structure.
@@ -367,7 +400,11 @@ def workflow(_workflow_function=None, *args, reference: Optional[WorkflowReferen
             workflow_instance = ReferenceWorkflow.create_from_function(fn, reference=reference)
             return workflow_instance
 
-        workflow_instance = Workflow(fn)
+        workflow_metadata = WorkflowMetadata(
+            on_failure=failure_policy or WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
+        )
+
+        workflow_instance = Workflow(fn, metadata=workflow_metadata)
         workflow_instance.compile()
         return workflow_instance
 
