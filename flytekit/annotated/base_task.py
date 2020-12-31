@@ -220,7 +220,9 @@ class Task(object):
         else:
             logger.warning("task run without context - executing raw function")
             new_user_params = self.pre_execute(ctx.user_space_params)
-            with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=new_user_params):
+            with ctx.new_execution_context(
+                mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION, execution_params=new_user_params
+            ):
                 return self.execute(**kwargs)
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
