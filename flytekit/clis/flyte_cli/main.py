@@ -41,7 +41,8 @@ from flytekit.models import launch_plan as _launch_plan
 from flytekit.models import literals as _literals
 from flytekit.models import named_entity as _named_entity
 from flytekit.models.admin import common as _admin_common
-from flytekit.models.common import AuthRole as _AuthRole, RawOutputDataConfig as _RawOutputDataConfig
+from flytekit.models.common import AuthRole as _AuthRole
+from flytekit.models.common import RawOutputDataConfig as _RawOutputDataConfig
 from flytekit.models.core import execution as _core_execution_models
 from flytekit.models.core import identifier as _core_identifier
 from flytekit.models.execution import ExecutionMetadata as _ExecutionMetadata
