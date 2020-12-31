@@ -28,39 +28,39 @@ def test_extract_only():
 
     return_type = extract_return_annotation(inspect.signature(t).return_annotation)
     assert len(return_type) == 1
-    assert return_type["out_0"]._name == "List"
-    assert return_type["out_0"].__origin__ == list
+    assert return_type["o0"]._name == "List"
+    assert return_type["o0"].__origin__ == list
 
     def t() -> Dict[str, int]:
         ...
 
     return_type = extract_return_annotation(inspect.signature(t).return_annotation)
     assert len(return_type) == 1
-    assert return_type["out_0"]._name == "Dict"
-    assert return_type["out_0"].__origin__ == dict
+    assert return_type["o0"]._name == "Dict"
+    assert return_type["o0"].__origin__ == dict
 
     def t(a: int, b: str) -> typing.Tuple[int, str]:
         ...
 
     return_type = extract_return_annotation(inspect.signature(t).return_annotation)
     assert len(return_type) == 2
-    assert return_type["out_0"] == int
-    assert return_type["out_1"] == str
+    assert return_type["o0"] == int
+    assert return_type["o1"] == str
 
     def t(a: int, b: str) -> (int, str):
         ...
 
     return_type = extract_return_annotation(inspect.signature(t).return_annotation)
     assert len(return_type) == 2
-    assert return_type["out_0"] == int
-    assert return_type["out_1"] == str
+    assert return_type["o0"] == int
+    assert return_type["o1"] == str
 
     def t(a: int, b: str) -> str:
         ...
 
     return_type = extract_return_annotation(inspect.signature(t).return_annotation)
     assert len(return_type) == 1
-    assert return_type["out_0"] == str
+    assert return_type["o0"] == str
 
     def t(a: int, b: str) -> None:
         ...
@@ -73,14 +73,14 @@ def test_extract_only():
 
     return_type = extract_return_annotation(inspect.signature(t).return_annotation)
     assert len(return_type) == 1
-    assert return_type["out_0"] == List[int]
+    assert return_type["o0"] == List[int]
 
     def t(a: int, b: str) -> Dict[str, int]:
         ...
 
     return_type = extract_return_annotation(inspect.signature(t).return_annotation)
     assert len(return_type) == 1
-    assert return_type["out_0"] == Dict[str, int]
+    assert return_type["o0"] == Dict[str, int]
 
 
 def test_named_tuples():
@@ -106,8 +106,8 @@ def test_unnamed_typing_tuple():
         return 5, "hello world"
 
     result = transform_variable_map(extract_return_annotation(inspect.signature(z).return_annotation))
-    assert result["out_0"].type.simple == 1
-    assert result["out_1"].type.simple == 3
+    assert result["o0"].type.simple == 1
+    assert result["o1"].type.simple == 3
 
 
 def test_regular_tuple():
@@ -115,8 +115,8 @@ def test_regular_tuple():
         return 5, "hello world"
 
     result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
-    assert result["out_0"].type.simple == 1
-    assert result["out_1"].type.simple == 3
+    assert result["o0"].type.simple == 1
+    assert result["o1"].type.simple == 3
 
 
 def test_single_output_new_decorator():
@@ -124,7 +124,7 @@ def test_single_output_new_decorator():
         return a + len(b)
 
     result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
-    assert result["out_0"].type.simple == 1
+    assert result["o0"].type.simple == 1
 
 
 def test_sig_files():
@@ -132,7 +132,7 @@ def test_sig_files():
         ...
 
     result = transform_variable_map(extract_return_annotation(inspect.signature(q).return_annotation))
-    assert isinstance(result["out_0"].type.blob, _core_types.BlobType)
+    assert isinstance(result["o0"].type.blob, _core_types.BlobType)
 
 
 def test_file_types():
@@ -140,7 +140,7 @@ def test_file_types():
         ...
 
     return_type = extract_return_annotation(inspect.signature(t1).return_annotation)
-    assert return_type["out_0"].extension() == FlyteFile["svg"].extension()
+    assert return_type["o0"].extension() == FlyteFile["svg"].extension()
 
 
 def test_parameters_and_defaults():

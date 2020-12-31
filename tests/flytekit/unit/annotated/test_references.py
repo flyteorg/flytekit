@@ -42,7 +42,7 @@ def test_ref():
         ss = ref_t1.get_registerable_entity()
         assert ss.id == ref_t1.id
         assert ss.interface.inputs["a"] is not None
-        assert ss.interface.outputs["out_0"] is not None
+        assert ss.interface.outputs["o0"] is not None
 
     registration_settings = context_manager.RegistrationSettings(
         project="proj",
@@ -181,7 +181,7 @@ def test_ref_plain_two_outputs():
         assert xx.ref.sdk_node is yy.ref.sdk_node
         assert xx.var == "x"
         assert yy.var == "y"
-        assert xx.ref.node_id == "node-0"
+        assert xx.ref.node_id == "n0"
         assert len(xx.ref.sdk_node.bindings) == 2
 
     @task

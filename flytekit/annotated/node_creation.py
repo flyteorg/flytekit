@@ -62,7 +62,7 @@ def create_node(
     needs to be dereferenced by the output name.
 
         t1_node = create_node(t1)
-        t2(t1_node.out_0)
+        t2(t1_node.o0)
 
     """
     if len(args) > 0:

@@ -50,9 +50,9 @@ def test_serialization():
         assert len(sdk_task.interface.outputs) == 1
 
         sdk_wf = my_wf.get_registerable_entity()
-        assert sdk_wf.interface.outputs["out_0"].type.schema is not None
-        assert sdk_wf.outputs[0].var == "out_0"
-        assert sdk_wf.outputs[0].binding.promise.node_id == "node-0"
+        assert sdk_wf.interface.outputs["o0"].type.schema is not None
+        assert sdk_wf.outputs[0].var == "o0"
+        assert sdk_wf.outputs[0].binding.promise.node_id == "n0"
         assert sdk_wf.outputs[0].binding.promise.var == "results"
 
 
