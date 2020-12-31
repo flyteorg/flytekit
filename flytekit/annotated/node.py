@@ -198,7 +198,7 @@ def create_and_link_node(
     # TODO: Clean up NodeOutput dependency on SdkNode, then rename variable
     non_sdk_node = Node(
         # TODO: Better naming, probably a derivative of the function name.
-        id=f"{ctx.compilation_state.prefix}node-{len(ctx.compilation_state.nodes)}",
+        id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
         metadata=node_metadata,
         bindings=sorted(bindings, key=lambda b: b.var),
         upstream_nodes=upstream_nodes,  # type: ignore
