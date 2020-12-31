@@ -1,9 +1,8 @@
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Tuple, Union
 
 from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf.json_format import MessageToDict
 
-from flytekit import TaskMetadata
 from flytekit.annotated.context_manager import FlyteContext, RegistrationSettings
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.python_function_task import PythonFunctionTask
@@ -33,9 +32,9 @@ class Pod(object):
 
 
 class PodFunctionTask(PythonFunctionTask[Pod]):
-    def __init__(self, task_config: Pod, task_function: Callable, metadata: Optional[TaskMetadata] = None, **kwargs):
+    def __init__(self, task_config: Pod, task_function: Callable, **kwargs):
         super(PodFunctionTask, self).__init__(
-            task_config=task_config, task_type="sidecar", task_function=task_function, metadata=metadata, **kwargs,
+            task_config=task_config, task_type="sidecar", task_function=task_function, **kwargs,
         )
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:

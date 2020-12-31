@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, TypeVar
 from google.protobuf.json_format import MessageToDict
 
 import flytekit
-from flytekit.annotated.base_task import PythonTask, TaskMetadata, kwtypes
+from flytekit.annotated.base_task import PythonTask, kwtypes
 from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.interface import Interface
 from flytekit.annotated.python_function_task import PythonFunctionTask
@@ -53,11 +53,7 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
     OUTPUT_TYPE = TypeVar("tar.gz")
 
     def __init__(
-        self,
-        name: str,
-        task_config: SagemakerTrainingJobConfig,
-        metadata: typing.Optional[TaskMetadata] = None,
-        **kwargs,
+        self, name: str, task_config: SagemakerTrainingJobConfig, **kwargs,
     ):
         """
         Args:
@@ -83,12 +79,7 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
             outputs=kwtypes(model=FlyteFile[self.OUTPUT_TYPE]),
         )
         super().__init__(
-            self._SAGEMAKER_TRAINING_JOB_TASK,
-            name,
-            interface=interface,
-            metadata=metadata,
-            task_config=task_config,
-            **kwargs,
+            self._SAGEMAKER_TRAINING_JOB_TASK, name, interface=interface, task_config=task_config, **kwargs,
         )
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
@@ -123,14 +114,13 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
     _SAGEMAKER_CUSTOM_TRAINING_JOB_TASK = "sagemaker_custom_training_job_task"
 
     def __init__(
-        self,
-        task_config: SagemakerTrainingJobConfig,
-        task_function: Callable,
-        metadata: typing.Optional[TaskMetadata] = None,
-        **kwargs,
+        self, task_config: SagemakerTrainingJobConfig, task_function: Callable, **kwargs,
     ):
         super().__init__(
-            task_config, task_function, metadata=metadata, task_type=self._SAGEMAKER_CUSTOM_TRAINING_JOB_TASK, **kwargs,
+            task_config=task_config,
+            task_function=task_function,
+            task_type=self._SAGEMAKER_CUSTOM_TRAINING_JOB_TASK,
+            **kwargs,
         )
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:

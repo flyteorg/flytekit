@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional, Type
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.annotated.base_sql_task import SQLTask
-from flytekit.annotated.base_task import TaskMetadata
 from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.models.qubole import HiveQuery, QuboleHiveJob
 from flytekit.types.schema import FlyteSchema
@@ -43,7 +42,6 @@ class HiveTask(SQLTask[HiveConfig]):
         query_template: str,
         config: Optional[HiveConfig] = None,
         inputs: Optional[Dict[str, Type]] = None,
-        metadata: Optional[TaskMetadata] = None,
         output_schema_type: Optional[Type[FlyteSchema]] = None,
         **kwargs,
     ):
@@ -54,8 +52,8 @@ class HiveTask(SQLTask[HiveConfig]):
             inputs: Name and type of inputs specified as an ordered dictionary
             query_template: The actual query to run. We use Flyte's Golang templating format for Query templating.
                             Refer to the templating documentation
-            metadata: Any additional metadata for the task - like retries, timeouts etc
             output_schema_type: If some data is produced by this query, then you can specify the output schema type
+            **kwargs: All other args required by Parent type - SQLTask
         """
         outputs = None
         if output_schema_type is not None:
@@ -67,7 +65,6 @@ class HiveTask(SQLTask[HiveConfig]):
         super().__init__(
             name=name,
             task_config=config,
-            metadata=metadata,
             query_template=query_template,
             inputs=inputs,
             outputs=outputs,
@@ -117,8 +114,6 @@ class HiveSelectTask(HiveTask):
         output_schema_type: Optional[Type[FlyteSchema]] = None,  # Should default to a generic schema object?
         config: Optional[HiveConfig] = None,
         stage_query: Optional[str] = None,
-        metadata: Optional[TaskMetadata] = None,
-        *args,
         **kwargs,
     ):
         """
@@ -135,6 +130,5 @@ class HiveSelectTask(HiveTask):
             config=config,
             inputs=inputs,
             query_template=query_template,
-            metadata=metadata,
             output_schema_type=output_schema_type,
         )

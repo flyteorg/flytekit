@@ -6,7 +6,6 @@ from typing import Any, Callable, Dict, Optional
 
 from google.protobuf.json_format import MessageToDict
 
-from flytekit import TaskMetadata
 from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
@@ -47,13 +46,9 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
 
     _SPARK_TASK_TYPE = "spark"
 
-    def __init__(self, task_config: Spark, task_function: Callable, metadata: Optional[TaskMetadata] = None, **kwargs):
+    def __init__(self, task_config: Spark, task_function: Callable, **kwargs):
         super(PysparkFunctionTask, self).__init__(
-            task_config=task_config,
-            task_type=self._SPARK_TASK_TYPE,
-            task_function=task_function,
-            metadata=metadata,
-            **kwargs,
+            task_config=task_config, task_type=self._SPARK_TASK_TYPE, task_function=task_function, **kwargs,
         )
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:

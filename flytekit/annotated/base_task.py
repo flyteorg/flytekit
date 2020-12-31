@@ -220,7 +220,9 @@ class Task(object):
         else:
             logger.warning("task run without context - executing raw function")
             new_user_params = self.pre_execute(ctx.user_space_params)
-            with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=new_user_params):
+            with ctx.new_execution_context(
+                mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION, execution_params=new_user_params
+            ):
                 return self.execute(**kwargs)
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
@@ -285,15 +287,11 @@ class PythonTask(Task, Generic[T]):
     """
 
     def __init__(
-        self,
-        task_type: str,
-        name: str,
-        task_config: T,
-        interface: Optional[Interface] = None,
-        metadata: Optional[TaskMetadata] = None,
-        **kwargs,
+        self, task_type: str, name: str, task_config: T, interface: Optional[Interface] = None, **kwargs,
     ):
-        super().__init__(task_type, name, transform_interface_to_typed_interface(interface), metadata, **kwargs)
+        super().__init__(
+            task_type=task_type, name=name, interface=transform_interface_to_typed_interface(interface), **kwargs
+        )
         self._python_interface = interface if interface else Interface()
         self._environment = kwargs.get("environment", {})
         self._task_config = task_config
