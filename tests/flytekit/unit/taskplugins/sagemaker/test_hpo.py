@@ -1,6 +1,6 @@
 import pytest
 
-from flytekit import FlyteContext, metadata
+from flytekit import FlyteContext
 from flytekit.common.types.primitives import Generic
 from flytekit.taskplugins.sagemaker import (
     AlgorithmName,
@@ -24,7 +24,6 @@ from tests.flytekit.unit.taskplugins.sagemaker.test_training import _get_reg_set
 def test_hpo_for_builtin():
     trainer = SagemakerBuiltinAlgorithmsTask(
         name="builtin-trainer",
-        metadata=metadata(),
         task_config=SagemakerTrainingJobConfig(
             training_job_resource_config=TrainingJobResourceConfig(
                 instance_count=1, instance_type="ml-xlarge", volume_size_in_gb=1,
@@ -33,7 +32,7 @@ def test_hpo_for_builtin():
         ),
     )
 
-    hpo = SagemakerHPOTask(name="test", metadata=metadata(), task_config=HPOJob(10, 10, ["x"]), training_task=trainer,)
+    hpo = SagemakerHPOTask(name="test", task_config=HPOJob(10, 10, ["x"]), training_task=trainer,)
 
     assert hpo.python_interface.inputs.keys() == {
         "static_hyperparameters",

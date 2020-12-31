@@ -1,10 +1,10 @@
 import inspect
 from typing import Callable, Dict, Optional, Type, Union
 
+from flytekit import TaskMetadata
 from flytekit.annotated.interface import transform_signature_to_interface
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.reference_entity import ReferenceEntity, TaskReference
-from flytekit.annotated.task import metadata as get_empty_metadata
 from flytekit.common.tasks.task import SdkTask
 
 
@@ -25,7 +25,11 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
         # settings = FlyteContext.current_context().registration_settings
         # This is a dummy sdk task, hopefully when we clean up
         tk = SdkTask(
-            type="ignore", metadata=get_empty_metadata(), interface=self.typed_interface, custom={}, container=None,
+            type="ignore",
+            metadata=TaskMetadata().to_taskmetadata_model(),
+            interface=self.typed_interface,
+            custom={},
+            container=None,
         )
         # Reset id to ensure it matches user input
         tk._id = self.id
@@ -36,10 +40,10 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
 
 def reference_task(
     _task_function: Optional[Callable] = None,
-    project: str = None,
-    domain: str = None,
-    name: str = None,
-    version: str = None,
+    project: Optional[str] = None,
+    domain: Optional[str] = None,
+    name: Optional[str] = None,
+    version: Optional[str] = None,
 ) -> Union[Callable, PythonFunctionTask]:
     """
     A reference task is a pointer to a task that already exists on your Flyte installation. This

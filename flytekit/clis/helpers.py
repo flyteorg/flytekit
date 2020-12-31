@@ -150,6 +150,7 @@ def hydrate_registration_parameters(
     # Workflow nodes that are defined inline with the workflows will be missing project/domain/version so we fill those
     # in now.
     # (entity is of type flyteidl.admin.workflow_pb2.WorkflowSpec)
+    entity.template.CopyFrom(_hydrate_workflow_template(project, domain, version, entity.template))
     refreshed_sub_workflows = []
     for sub_workflow in entity.sub_workflows:
         refreshed_sub_workflow = _hydrate_workflow_template(project, domain, version, sub_workflow)

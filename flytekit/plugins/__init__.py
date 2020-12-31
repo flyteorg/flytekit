@@ -15,6 +15,8 @@ pandas = _lazy_loader.lazy_load_module("pandas")  # type: _lazy_loader._LazyLoad
 hmsclient = _lazy_loader.lazy_load_module("hmsclient")  # type: _lazy_loader._LazyLoadModule
 type(hmsclient).add_sub_module("genthrift.hive_metastore.ttypes")
 
+sagemaker_training = _lazy_loader.lazy_load_module("sagemaker_training")  # type: _lazy_loader._LazyLoadModule
+
 _lazy_loader.LazyLoadPlugin("spark", ["pyspark>=2.4.0,<3.0.0"], [pyspark])
 
 _lazy_loader.LazyLoadPlugin("spark3", ["pyspark>=3.0.0"], [pyspark])
@@ -26,3 +28,5 @@ _lazy_loader.LazyLoadPlugin(
 )
 
 _lazy_loader.LazyLoadPlugin("hive_sensor", ["hmsclient>=0.0.1,<1.0.0"], [hmsclient])
+
+_lazy_loader.LazyLoadPlugin("sagemaker", ["sagemaker-training>=3.6.2,<4.0.0"], [sagemaker_training])

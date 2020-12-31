@@ -5,7 +5,7 @@ from flytekit.annotated import context_manager
 from flytekit.annotated.task import task
 from flytekit.annotated.workflow import workflow
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
-from flytekit.types.flyte_file import FlyteFile
+from flytekit.types.file.file import FlyteFile
 
 
 def test_file_type_in_workflow_with_bad_format():

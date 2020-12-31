@@ -8,12 +8,11 @@ from flytekit.annotated.promise import Promise
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.models import task as _task_model
 from flytekit.models import task as _task_models
 from flytekit.plugins import k8s as _lazy_k8s
 
 
-class Sidecar(object):
+class Pod(object):
     def __init__(self, pod_spec: _lazy_k8s.io.api.core.v1.generated_pb2.PodSpec, primary_container_name: str):
         if not pod_spec:
             raise _user_exceptions.FlyteValidationException("A pod spec cannot be undefined")
@@ -32,17 +31,10 @@ class Sidecar(object):
         return self._primary_container_name
 
 
-class SidecarFunctionTask(PythonFunctionTask[Sidecar]):
-    def __init__(
-        self, task_config: Sidecar, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs
-    ):
-        super(SidecarFunctionTask, self).__init__(
-            task_config=task_config,
-            task_type="sidecar",
-            task_function=task_function,
-            metadata=metadata,
-            *args,
-            **kwargs,
+class PodFunctionTask(PythonFunctionTask[Pod]):
+    def __init__(self, task_config: Pod, task_function: Callable, **kwargs):
+        super(PodFunctionTask, self).__init__(
+            task_config=task_config, task_type="sidecar", task_function=task_function, **kwargs,
         )
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
@@ -99,13 +91,13 @@ class SidecarFunctionTask(PythonFunctionTask[Sidecar]):
         del self.task_config._pod_spec.containers[:]
         self.task_config._pod_spec.containers.extend(final_containers)
 
-        sidecar_job_plugin = _task_models.SidecarJob(
+        pod_job_plugin = _task_models.SidecarJob(
             pod_spec=self.task_config.pod_spec, primary_container_name=self.task_config.primary_container_name,
         ).to_flyte_idl()
-        return MessageToDict(sidecar_job_plugin)
+        return MessageToDict(pod_job_plugin)
 
     def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, None]:
-        raise _user_exceptions.FlyteUserException("Local execute is not currently supported for sidecar tasks")
+        raise _user_exceptions.FlyteUserException("Local execute is not currently supported for pod tasks")
 
 
-TaskPlugins.register_pythontask_plugin(Sidecar, SidecarFunctionTask)
+TaskPlugins.register_pythontask_plugin(Pod, PodFunctionTask)

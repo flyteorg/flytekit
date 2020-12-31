@@ -18,7 +18,7 @@ from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
-from flytekit.types.flyte_file import FlyteFile
+from flytekit.types.file.file import FlyteFile
 from flytekit.types.schema import FlyteSchema, SchemaFormat
 
 

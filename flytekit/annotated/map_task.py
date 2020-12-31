@@ -1,8 +1,7 @@
-from typing import Any
+from typing import Any, Optional
 
-from flytekit.annotated.base_task import PythonTask
+from flytekit.annotated.base_task import PythonTask, TaskMetadata
 from flytekit.annotated.interface import transform_interface_to_list_interface
-from flytekit.models import task as _task_model
 
 
 class MapPythonTask(PythonTask):
@@ -14,12 +13,17 @@ class MapPythonTask(PythonTask):
     To do this we might have to give up on supporting lambda functions initially
     """
 
-    def __init__(self, tk: PythonTask, metadata: _task_model.TaskMetadata, *args, **kwargs):
+    def __init__(self, tk: PythonTask, metadata: Optional[TaskMetadata] = None, **kwargs):
         collection_interface = transform_interface_to_list_interface(tk.python_interface)
         name = "mapper_" + tk.name
         self._run_task = tk
         super().__init__(
-            name=name, interface=collection_interface, metadata=metadata, task_type="map_task", *args, **kwargs
+            name=name,
+            interface=collection_interface,
+            metadata=metadata,
+            task_type="map_task",
+            task_config=None,
+            **kwargs,
         )
 
     @property

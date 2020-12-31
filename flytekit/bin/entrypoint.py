@@ -3,6 +3,7 @@ import importlib as _importlib
 import logging as _logging
 import os as _os
 import pathlib
+import pathlib as _pathlib
 import random as _random
 
 import click as _click
@@ -30,6 +31,7 @@ from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import identifier as _identifier
+from flytekit.tools.fast_registration import download_distribution as _download_distribution
 
 
 def _compute_array_job_index():
@@ -70,6 +72,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with _utils.AutoDeletingTempDir("input_dir") as input_dir:
             # Load user code
+
             task_module = _importlib.import_module(task_module)
             task_def = getattr(task_module, task_name)
 
@@ -216,6 +219,14 @@ def _pass_through():
     pass
 
 
+_task_module_option = _click.option("--task-module", required=True)
+_task_name_option = _click.option("--task-name", required=True)
+_inputs_option = _click.option("--inputs", required=True)
+_output_prefix_option = _click.option("--output-prefix", required=True)
+_raw_output_date_prefix_option = _click.option("--raw-output-data-prefix", required=False)
+_test = _click.option("--test", is_flag=True)
+
+
 @_pass_through.command("pyflyte-execute")
 @_click.option("--task-module", required=True)
 @_click.option("--task-name", required=True)
@@ -232,6 +243,29 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
         raw_output_data_prefix = None
 
     _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
+
+
+@_pass_through.command("pyflyte-fast-execute")
+@_click.option("--additional-distribution", required=False)
+@_click.option("--dest-dir", required=False)
+@_click.argument("task-execute-cmd", nargs=-1, type=_click.UNPROCESSED)
+def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
+    """
+    Downloads a compressed code distribution specified by additional-distribution and then calls the underlying
+    task execute command for the updated code.
+    :param Text additional_distribution:
+    :param Text dest_dir:
+    :param task_execute_cmd:
+    :return:
+    """
+    if additional_distribution is not None:
+        if not dest_dir:
+            dest_dir = _os.getcwd()
+        _download_distribution(additional_distribution, _pathlib.Path(dest_dir))
+
+    # Use the commandline to run the task execute command rather than calling it directly in python code
+    # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
+    _os.system(" ".join(task_execute_cmd))
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@ import os
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
 from google.protobuf.json_format import MessageToDict
 
@@ -25,8 +25,8 @@ class Spark(object):
         hadoop_conf: Dictionary of hadoop conf. The variables should match a typical hadoop configuration for spark
     """
 
-    spark_conf: Dict[str, str] = None
-    hadoop_conf: Dict[str, str] = None
+    spark_conf: Optional[Dict[str, str]] = None
+    hadoop_conf: Optional[Dict[str, str]] = None
 
 
 @contextmanager
@@ -44,11 +44,11 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
     Actual Plugin that transforms the local python code for execution within a spark context
     """
 
-    def __init__(
-        self, task_config: Spark, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs
-    ):
+    _SPARK_TASK_TYPE = "spark"
+
+    def __init__(self, task_config: Spark, task_function: Callable, **kwargs):
         super(PysparkFunctionTask, self).__init__(
-            task_config=task_config, task_type="spark", task_function=task_function, metadata=metadata, *args, **kwargs,
+            task_config=task_config, task_type=self._SPARK_TASK_TYPE, task_function=task_function, **kwargs,
         )
 
     def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:

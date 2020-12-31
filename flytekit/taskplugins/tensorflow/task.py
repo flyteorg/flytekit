@@ -3,7 +3,7 @@ This Plugin adds the capability of running distributed tensorflow training to Fl
 Kubernetes. It leverages `TF Job <https://github.com/kubeflow/tf-operator>`_ Plugin from kubeflow.
 """
 from dataclasses import dataclass
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
 from google.protobuf.json_format import MessageToDict
 
@@ -38,8 +38,8 @@ class TfJob(object):
     num_workers: int
     num_ps_replicas: int
     num_chief_replicas: int
-    per_replica_requests: Resources = None
-    per_replica_limits: Resources = None
+    per_replica_requests: Optional[Resources] = None
+    per_replica_limits: Optional[Resources] = None
 
 
 class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
@@ -48,17 +48,15 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
         defined by the code within the _task_function to k8s cluster.
     """
 
-    def __init__(
-        self, task_config: TfJob, task_function: Callable, metadata: _task_model.TaskMetadata, *args, **kwargs
-    ):
+    _TF_JOB_TASK_TYPE = "tensorflow"
+
+    def __init__(self, task_config: TfJob, task_function: Callable, **kwargs):
         super().__init__(
-            task_config,
-            task_function,
-            metadata,
+            task_type=self._TF_JOB_TASK_TYPE,
+            task_config=task_config,
+            task_function=task_function,
             requests=task_config.per_replica_requests,
             limits=task_config.per_replica_limits,
-            task_type="tensorflow",
-            *args,
             **kwargs
         )
 

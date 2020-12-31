@@ -14,7 +14,7 @@ from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
 from flytekit.annotated.promise import Promise, VoidPromise
 from flytekit.annotated.resources import Resources
-from flytekit.annotated.task import metadata, task
+from flytekit.annotated.task import TaskMetadata, task
 from flytekit.annotated.testing import patch, task_mock
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
@@ -261,7 +261,7 @@ def test_wf1_with_sql():
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
         inputs=kwtypes(ds=datetime.datetime),
         outputs=kwtypes(results=FlyteSchema),
-        metadata=metadata(retries=2),
+        metadata=TaskMetadata(retries=2),
     )
 
     @task
@@ -284,7 +284,7 @@ def test_wf1_with_sql_with_patch():
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
         inputs=kwtypes(ds=datetime.datetime),
         outputs=kwtypes(results=FlyteSchema),
-        metadata=metadata(retries=2),
+        metadata=TaskMetadata(retries=2),
     )
 
     @task
@@ -323,7 +323,7 @@ def test_wf1_with_map():
 
     @workflow
     def my_wf(a: typing.List[int]) -> (int, str):
-        x, y = maptask(t1, metadata=metadata(retries=1))(a=a)
+        x, y = maptask(t1, metadata=TaskMetadata(retries=1))(a=a)
         return t2(a=x, b=y)
 
     x = my_wf(a=[5, 6])
@@ -439,7 +439,7 @@ def test_list_output():
 
 def test_comparison_refs():
     def dummy_node(id) -> SdkNode:
-        n = SdkNode(id, [], None, None, sdk_task=SQLTask(name="x", query_template="x", inputs={}, metadata=metadata()))
+        n = SdkNode(id, [], None, None, sdk_task=SQLTask(name="x", query_template="x", inputs={}))
         n._id = id
         return n
 
@@ -643,7 +643,6 @@ def test_wf_container_task():
         output_data_dir="/tmp",
         command=["cat"],
         arguments=["/tmp/a"],
-        metadata=metadata(),
     )
 
     def wf(a: int):
@@ -660,7 +659,6 @@ def test_wf_container_task():
 def test_wf_container_task_multiple():
     square = ContainerTask(
         name="square",
-        metadata=metadata(),
         input_data_dir="/var/inputs",
         output_data_dir="/var/outputs",
         inputs=kwtypes(val=int),
@@ -671,7 +669,6 @@ def test_wf_container_task_multiple():
 
     sum = ContainerTask(
         name="sum",
-        metadata=metadata(),
         input_data_dir="/var/flyte/inputs",
         output_data_dir="/var/flyte/outputs",
         inputs=kwtypes(x=int, y=int),

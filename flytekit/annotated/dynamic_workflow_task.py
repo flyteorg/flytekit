@@ -1,6 +1,7 @@
 import functools
-from typing import Any, Callable, Union
+from typing import Any, Callable, Optional, Union
 
+from flytekit import TaskMetadata
 from flytekit.annotated import task
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext
 from flytekit.annotated.python_function_task import PythonFunctionTask
@@ -9,7 +10,6 @@ from flytekit.annotated.workflow import Workflow
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
-from flytekit.models import task as _task_model
 
 
 class _Dynamic(object):
@@ -21,8 +21,7 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
         self,
         task_config: _Dynamic,
         dynamic_workflow_function: Callable,
-        metadata: _task_model.TaskMetadata,
-        *args,
+        metadata: Optional[TaskMetadata] = None,
         **kwargs,
     ):
         super().__init__(
@@ -30,7 +29,6 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
             task_function=dynamic_workflow_function,
             metadata=metadata,
             task_type="dynamic-task",
-            *args,
             **kwargs,
         )
 

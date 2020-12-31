@@ -5,7 +5,7 @@ from flytekit import ContainerTask, kwtypes
 from flytekit.annotated import context_manager
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import FlyteContext, Image, ImageConfig, get_image_config
-from flytekit.annotated.task import metadata, task
+from flytekit.annotated.task import task
 from flytekit.annotated.workflow import workflow
 from flytekit.configuration import set_flyte_config_file
 
@@ -13,7 +13,6 @@ from flytekit.configuration import set_flyte_config_file
 def test_serialization():
     square = ContainerTask(
         name="square",
-        metadata=metadata(),
         input_data_dir="/var/inputs",
         output_data_dir="/var/outputs",
         inputs=kwtypes(val=int),
@@ -24,7 +23,6 @@ def test_serialization():
 
     sum = ContainerTask(
         name="sum",
-        metadata=metadata(),
         input_data_dir="/var/flyte/inputs",
         output_data_dir="/var/flyte/outputs",
         inputs=kwtypes(x=int, y=int),

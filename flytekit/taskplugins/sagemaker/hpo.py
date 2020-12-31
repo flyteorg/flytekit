@@ -12,7 +12,6 @@ from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.type_engine import DictTransformer, TypeEngine, TypeTransformer
 from flytekit.common.types import primitives
-from flytekit.models import task as _task_model
 from flytekit.models.literals import Literal
 from flytekit.models.sagemaker import hpo_job as _hpo_job_model
 from flytekit.models.sagemaker import parameter_ranges as _params
@@ -40,16 +39,14 @@ class HPOJob(object):
 
 # TODO Not done yet, but once we clean this up, the client interface should be simplified. The interface should
 # Just take a list of Union of different types of Parameter Ranges. Lets see how simplify that
-class SagemakerHPOTask(PythonTask):
+class SagemakerHPOTask(PythonTask[HPOJob]):
     _SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK = "sagemaker_hyperparameter_tuning_job_task"
 
     def __init__(
         self,
         name: str,
-        metadata: _task_model.TaskMetadata,
         task_config: HPOJob,
         training_task: Union[SagemakerCustomTrainingTask, SagemakerBuiltinAlgorithmsTask],
-        *args,
         **kwargs
     ):
         if training_task is None or not (
@@ -63,28 +60,21 @@ class SagemakerHPOTask(PythonTask):
 
         self._task_config = task_config
         self._training_task = training_task
-        iface = training_task.python_interface
 
         extra_inputs = {"hyperparameter_tuning_job_config": _hpo_job_model.HyperparameterTuningJobConfig}
 
-        self._hpo_job_config = task_config
+        if task_config.tunable_params:
+            extra_inputs.update({param: _params.ParameterRangeOneOf for param in task_config.tunable_params})
 
-        if self._hpo_job_config.tunable_params:
-            extra_inputs.update({param: _params.ParameterRangeOneOf for param in self._hpo_job_config.tunable_params})
-
+        iface = training_task.python_interface
         updated_iface = iface.with_inputs(extra_inputs)
         super().__init__(
             task_type=self._SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK,
             name=name,
             interface=updated_iface,
-            metadata=metadata,
-            *args,
+            task_config=task_config,
             **kwargs
         )
-
-    @property
-    def task_config(self):
-        return self._task_config
 
     def execute(self, **kwargs) -> Any:
         raise NotImplementedError("Sagemaker HPO Task cannot be executed locally, to execute locally mock it!")
@@ -96,8 +86,8 @@ class SagemakerHPOTask(PythonTask):
         )
         return MessageToDict(
             _hpo_job_model.HyperparameterTuningJob(
-                max_number_of_training_jobs=self._hpo_job_config.max_number_of_training_jobs,
-                max_parallel_training_jobs=self._hpo_job_config.max_parallel_training_jobs,
+                max_number_of_training_jobs=self.task_config.max_number_of_training_jobs,
+                max_parallel_training_jobs=self.task_config.max_parallel_training_jobs,
                 training_job=training_job,
             ).to_flyte_idl()
         )

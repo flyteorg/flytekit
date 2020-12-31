@@ -10,6 +10,7 @@ def test_tensorflow_task():
             num_workers=10, per_replica_requests=Resources(cpu="1"), num_ps_replicas=1, num_chief_replicas=1
         ),
         cache=True,
+        cache_version="1",
     )
     def my_tensorflow_task(x: int, y: str) -> int:
         return x
