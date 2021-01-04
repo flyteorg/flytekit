@@ -78,5 +78,5 @@ class ContainerTask(PythonTask):
         )
 
     def get_fast_registerable_entity(self) -> SdkTask:
-        # Raw container tasks are always fast registerable.
+        # Raw container tasks are always fast registerable as-is.
         return self.get_registerable_entity()
