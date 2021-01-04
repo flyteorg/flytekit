@@ -519,13 +519,17 @@ class WorkflowMetadataDefaults(_common.FlyteIdlEntity):
         """
         Metadata Defaults for the workflow.
         """
-        self.interruptible_ = interruptible
+        self._interruptible = interruptible
+
+    @property
+    def interruptible(self):
+        return self._interruptible
 
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.workflow_pb2.WorkflowMetadataDefaults
         """
-        return _core_workflow.WorkflowMetadataDefaults(interruptible=self.interruptible_)
+        return _core_workflow.WorkflowMetadataDefaults(interruptible=self._interruptible)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):

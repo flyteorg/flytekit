@@ -53,7 +53,29 @@ class WorkflowMetadata(object):
             raise FlyteValidationException(f"Failure policy {self.on_failure} not acceptable")
 
     def to_flyte_model(self):
-        return _workflow_model.WorkflowMetadata(on_failure=self.on_failure)
+        if self.on_failure == WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY:
+            on_failure = 0
+        else:
+            on_failure = 1
+        return _workflow_model.WorkflowMetadata(on_failure=on_failure)
+
+
+@dataclass
+class WorkflowMetadataDefaults(object):
+    """
+    This class is similarly named to the one above. Please see the IDL for more information but essentially, this
+    WorkflowMetadataDefaults class represents the defaults that are handed down to a workflow's tasks, whereas
+    WorkflowMetadata represents metadata about the workflow itself.
+    """
+
+    interruptible: bool
+
+    def __post_init__(self):
+        if self.interruptible is not True and self.interruptible is not False:
+            raise FlyteValidationException(f"Interruptible must be boolean, {self.interruptible} invalid")
+
+    def to_flyte_model(self):
+        return _workflow_model.WorkflowMetadataDefaults(interruptible=self.interruptible)
 
 
 def _workflow_fn_outputs_to_promise(
@@ -108,7 +130,12 @@ class Workflow(object):
       be wrapper nodes.
     """
 
-    def __init__(self, workflow_function: Callable, metadata: Optional[WorkflowMetadata]):
+    def __init__(
+        self,
+        workflow_function: Callable,
+        metadata: Optional[WorkflowMetadata],
+        default_metadata: Optional[WorkflowMetadataDefaults],
+    ):
         self._name = f"{workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
         self._native_interface = transform_signature_to_interface(inspect.signature(workflow_function))
@@ -117,6 +144,7 @@ class Workflow(object):
         self._nodes = None
         self._output_bindings: Optional[List[_literal_models.Binding]] = None
         self._workflow_metadata = metadata
+        self._workflow_metadata_defaults = default_metadata
 
         # This will get populated only at registration time, when we retrieve the rest of the environment variables like
         # project/domain/version/image and anything else we might need from the environment in the future.
@@ -151,6 +179,10 @@ class Workflow(object):
     @property
     def workflow_metadata(self) -> Optional[WorkflowMetadata]:
         return self._workflow_metadata
+
+    @property
+    def workflow_metadata_defaults(self):
+        return self._workflow_metadata_defaults
 
     def compile(self, **kwargs):
         """
@@ -328,8 +360,8 @@ class Workflow(object):
         self._registerable_entity = _SdkWorkflow(
             nodes=sdk_nodes,
             id=workflow_id,
-            metadata=_workflow_model.WorkflowMetadata(),
-            metadata_defaults=_workflow_model.WorkflowMetadataDefaults(),
+            metadata=self.workflow_metadata.to_flyte_model(),
+            metadata_defaults=self.workflow_metadata_defaults.to_flyte_model(),
             interface=self._interface,
             output_bindings=self._output_bindings,
         )
@@ -393,6 +425,7 @@ def workflow(
     _workflow_function=None,
     reference: Optional[WorkflowReference] = None,
     failure_policy: Optional[WorkflowMetadata.OnFailurePolicy] = None,
+    interruptible: Optional[bool] = False,
 ):
     # Unlike for tasks, where we can determine the entire structure of the task by looking at the function's signature,
     # workflows need to have the body of the function itself run at module-load time. This is because the body of the
@@ -406,7 +439,9 @@ def workflow(
             on_failure=failure_policy or WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
         )
 
-        workflow_instance = Workflow(fn, metadata=workflow_metadata)
+        workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
+
+        workflow_instance = Workflow(fn, metadata=workflow_metadata, default_metadata=workflow_metadata_defaults)
         workflow_instance.compile()
         return workflow_instance
 
