@@ -372,10 +372,12 @@ class ReferenceWorkflow(ReferenceEntity, Workflow):
         if self._registerable_entity is not None:
             return self._registerable_entity
 
+        workflow_metadata = WorkflowMetadata(on_failure=WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY)
+
         self._registerable_entity = _SdkWorkflow(
             nodes=[],  # Fake an empty list for nodes,
             id=self.reference.id,
-            metadata=self.workflow_metadata.to_flyte_model(),
+            metadata=workflow_metadata,
             metadata_defaults=_workflow_model.WorkflowMetadataDefaults(),
             interface=self.typed_interface,
             output_bindings=[],

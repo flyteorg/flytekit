@@ -6,7 +6,7 @@ from flytekit.annotated import task
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
-from flytekit.annotated.workflow import Workflow
+from flytekit.annotated.workflow import Workflow, WorkflowMetadata
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
@@ -36,7 +36,9 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
         self, ctx: FlyteContext, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
         with ctx.new_compilation_context(prefix="dynamic"):
-            self._wf = Workflow(self._task_function)
+            workflow_metadata = WorkflowMetadata(on_failure=WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY)
+
+            self._wf = Workflow(self._task_function, metadata=workflow_metadata)
             self._wf.compile(**kwargs)
 
             wf = self._wf
