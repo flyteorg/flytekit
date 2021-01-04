@@ -1666,7 +1666,6 @@ def _extract_and_register(
 ):
 
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
-    _extract_and_register(host, insecure, project, domain, version, file_paths, patches)
 
     flyte_entities_list = _extract_files(project, domain, version, file_paths, patches)
     for id, flyte_entity in flyte_entities_list:
