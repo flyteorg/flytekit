@@ -4,7 +4,6 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, Union
 
-from flytekit.annotated.constants import RAW_CONTAINER_TASK_TYPE
 from flytekit.annotated.context_manager import (
     BranchEvalMode,
     ExecutionState,
@@ -431,7 +430,7 @@ class PythonTask(Task, Generic[T]):
 
     def get_fast_registerable_entity(self) -> SdkTask:
         entity = self.get_registerable_entity()
-        if entity.container is None or entity.type == RAW_CONTAINER_TASK_TYPE:
+        if entity.container is None:
             # Containerless tasks are always fast registerable without modification
             return entity
 
