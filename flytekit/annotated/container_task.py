@@ -1,8 +1,7 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Type
 
-from flytekit.annotated.base_task import PythonTask, TaskMetadata
-from flytekit.annotated.constants import RAW_CONTAINER_TASK_TYPE as _RAW_CONTAINER_TASK_TYPE
+from flytekit.annotated.base_task import PythonTask, SdkTask, TaskMetadata
 from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.interface import Interface
 from flytekit.common.tasks.raw_container import _get_container_definition
@@ -39,7 +38,7 @@ class ContainerTask(PythonTask):
         **kwargs,
     ):
         super().__init__(
-            task_type=_RAW_CONTAINER_TASK_TYPE,
+            task_type="raw-container",
             name=name,
             interface=Interface(inputs, outputs),
             metadata=metadata,
@@ -77,3 +76,7 @@ class ContainerTask(PythonTask):
             ),
             environment=env,
         )
+
+    def get_fast_registerable_entity(self) -> SdkTask:
+        # Raw container tasks are always fast registerable as-is.
+        return self.get_registerable_entity()
