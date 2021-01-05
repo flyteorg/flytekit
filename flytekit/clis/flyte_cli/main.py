@@ -413,6 +413,17 @@ _watch_option = _click.option(
     help="Set the flag if you want the command to keep watching the execution until its completion",
 )
 
+_assumable_iam_role_option = _click.option(
+    "--assumable-iam-role", help="Custom assumable iam auth role to register launch plans with"
+)
+_kubernetes_service_acct_option = _click.option(
+    "--kubernetes-service-account", help="Custom kubernetes service account auth role to register launch plans with"
+)
+_output_location_prefix_option = _click.option(
+    "--output-location-prefix", help="Custom output location prefix for offloaded types (files/schemas)"
+)
+_files_argument = _click.argument("files", type=_click.Path(exists=True), nargs=-1,)
+
 
 class _FlyteSubCommand(_click.Command):
     _PASSABLE_ARGS = {
@@ -1618,20 +1629,75 @@ def _extract_files(
     return results
 
 
+def _get_patch_launch_plan_fn(
+    assumable_iam_role: str = None, kubernetes_service_account: str = None, output_location_prefix: str = None
+) -> Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]:
+    def patch_launch_plan(entity: _GeneratedProtocolMessageType) -> _GeneratedProtocolMessageType:
+        """
+        Updates launch plans during registration to add a customizable auth role that overrides any values set in
+        the flyte config and/or a custom output_location_prefix.
+        """
+        # entity is of type flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
+        if assumable_iam_role and kubernetes_service_account:
+            _click.UsageError("Currently you cannot specify both an assumable_iam_role and kubernetes_service_account")
+        if assumable_iam_role:
+            entity.auth_role.CopyFrom(_AuthRole(assumable_iam_role=assumable_iam_role).to_flyte_idl())
+        elif kubernetes_service_account:
+            entity.auth_role.CopyFrom(_AuthRole(kubernetes_service_account=kubernetes_service_account).to_flyte_idl())
+
+        if output_location_prefix is not None:
+            entity.raw_output_data_config.CopyFrom(
+                _RawOutputDataConfig(output_location_prefix=output_location_prefix).to_flyte_idl()
+            )
+
+        return entity
+
+    return patch_launch_plan
+
+
+def _extract_and_register(
+    host: str,
+    insecure: bool,
+    project: str,
+    domain: str,
+    version: str,
+    file_paths: List[str],
+    patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]] = None,
+):
+
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+
+    flyte_entities_list = _extract_files(project, domain, version, file_paths, patches)
+    for id, flyte_entity in flyte_entities_list:
+        try:
+            if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
+                client.raw.create_launch_plan(_launch_plan_pb2.LaunchPlanCreateRequest(id=id, spec=flyte_entity))
+            elif id.resource_type == _identifier_pb2.TASK:
+                client.raw.create_task(_task_pb2.TaskCreateRequest(id=id, spec=flyte_entity))
+            elif id.resource_type == _identifier_pb2.WORKFLOW:
+                client.raw.create_workflow(_workflow_pb2.WorkflowCreateRequest(id=id, spec=flyte_entity))
+            else:
+                raise _user_exceptions.FlyteAssertion(
+                    f"Only tasks, launch plans, and workflows can be called with this function, "
+                    f"resource type {id.resource_type} was passed"
+                )
+            _click.secho(f"Registered {id}", fg="green")
+        except _user_exceptions.FlyteEntityAlreadyExistsException:
+            _click.secho(f"Skipping because already registered {id}", fg="cyan")
+
+    _click.echo(f"Finished scanning {len(flyte_entities_list)} files")
+
+
 @_flyte_cli.command("register-files", cls=_FlyteSubCommand)
 @_click.option(*_PROJECT_FLAGS, required=True, help="The project namespace to register with.")
 @_click.option(*_DOMAIN_FLAGS, required=True, help="The domain namespace to register with.")
 @_click.option(*_VERSION_FLAGS, required=True, help="The entity version to register with")
 @_host_option
 @_insecure_option
-@_click.option("--assumable-iam-role", help="Custom assumable iam auth role to register launch plans with")
-@_click.option(
-    "--kubernetes-service-account", help="Custom kubernetes service account auth role to register launch plans with"
-)
-@_click.option("--output-location-prefix", help="Custom output location prefix for offloaded types (files/schemas)")
-@_click.argument(
-    "files", type=_click.Path(exists=True), nargs=-1,
-)
+@_assumable_iam_role_option
+@_kubernetes_service_acct_option
+@_output_location_prefix_option
+@_files_argument
 def register_files(
     project,
     domain,
@@ -1661,7 +1727,6 @@ def register_files(
     :return:
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     files = list(files)
     files.sort()
     _click.secho("Parsing files...", fg="green", bold=True)
@@ -1669,50 +1734,14 @@ def register_files(
         _click.echo(f"  {f}")
 
     patches = None
-
-    def patch_launch_plan(entity: _GeneratedProtocolMessageType) -> _GeneratedProtocolMessageType:
-        """
-        Updates launch plans during registration to add a customizable auth role that overrides any values set in
-        the flyte config and/or a custom output_location_prefix.
-        """
-
-        # entity is of type flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
-        if assumable_iam_role and kubernetes_service_account:
-            _click.UsageError("Currently you cannot specify both an assumable_iam_role and kubernetes_service_account")
-        if assumable_iam_role:
-            entity.auth_role.CopyFrom(_AuthRole(assumable_iam_role=assumable_iam_role).to_flyte_idl())
-        elif kubernetes_service_account:
-            entity.auth_role.CopyFrom(_AuthRole(kubernetes_service_account=kubernetes_service_account).to_flyte_idl())
-
-        if output_location_prefix is not None:
-            entity.raw_output_data_config.CopyFrom(
-                _RawOutputDataConfig(output_location_prefix=output_location_prefix).to_flyte_idl()
-            )
-
-        return entity
-
     if assumable_iam_role or kubernetes_service_account or output_location_prefix:
-        patches = {_identifier_pb2.LAUNCH_PLAN: patch_launch_plan}
+        patches = {
+            _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
+                assumable_iam_role, kubernetes_service_account, output_location_prefix
+            )
+        }
 
-    flyte_entities_list = _extract_files(project, domain, version, files, patches)
-    for id, flyte_entity in flyte_entities_list:
-        try:
-            if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
-                client.raw.create_launch_plan(_launch_plan_pb2.LaunchPlanCreateRequest(id=id, spec=flyte_entity))
-            elif id.resource_type == _identifier_pb2.TASK:
-                client.raw.create_task(_task_pb2.TaskCreateRequest(id=id, spec=flyte_entity))
-            elif id.resource_type == _identifier_pb2.WORKFLOW:
-                client.raw.create_workflow(_workflow_pb2.WorkflowCreateRequest(id=id, spec=flyte_entity))
-            else:
-                raise _user_exceptions.FlyteAssertion(
-                    f"Only tasks, launch plans, and workflows can be called with this function, "
-                    f"resource type {id.resource_type} was passed"
-                )
-            _click.secho(f"Registered {id}", fg="green")
-        except _user_exceptions.FlyteEntityAlreadyExistsException:
-            _click.secho(f"Skipping because already registered {id}", fg="cyan")
-
-    _click.echo(f"Finished scanning {len(flyte_entities_list)} files")
+    _extract_and_register(host, insecure, project, domain, version, files, patches)
 
 
 @_flyte_cli.command("fast-register-files", cls=_FlyteSubCommand)
@@ -1733,10 +1762,23 @@ def register_files(
     help="[Optional] The output directory for code which is downloaded during fast registration, "
     "if the current working directory at the time of installation is not desired",
 )
-@_click.argument(
-    "files", type=_click.Path(exists=True), nargs=-1,
-)
-def fast_register_files(project, domain, version, host, insecure, additional_distribution_dir, dest_dir, files):
+@_assumable_iam_role_option
+@_kubernetes_service_acct_option
+@_output_location_prefix_option
+@_files_argument
+def fast_register_files(
+    project,
+    domain,
+    version,
+    host,
+    insecure,
+    additional_distribution_dir,
+    dest_dir,
+    assumable_iam_role,
+    kubernetes_service_account,
+    output_location_prefix,
+    files,
+):
     """
     Given a list of files, this will (after sorting the input list), attempt to register them against Flyte Admin.
     This command expects the files to be the output of the pyflyte serialize command.  See the code there for more
@@ -1755,7 +1797,6 @@ def fast_register_files(project, domain, version, host, insecure, additional_dis
     :return:
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     files = list(files)
     files.sort()
     _click.secho("Parsing files...", fg="green", bold=True)
@@ -1783,7 +1824,7 @@ def fast_register_files(project, domain, version, host, insecure, additional_dis
         task execution.
         """
         # entity is of type flyteidl.admin.task_pb2.TaskSpec
-        if not entity.template.HasField("container"):
+        if not entity.template.HasField("container") or len(entity.template.container.args) == 0:
             # Containerless tasks are always fast registerable without modification
             return entity
         complete_args = []
@@ -1797,27 +1838,15 @@ def fast_register_files(project, domain, version, host, insecure, additional_dis
         entity.template.container.args.extend(complete_args)
         return entity
 
-    flyte_entities_list = _extract_files(
-        project, domain, version, pb_files, patches={_identifier_pb2.TASK: fast_register_task}
-    )
-    for id, flyte_entity in flyte_entities_list:
-        try:
-            if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
-                client.raw.create_launch_plan(_launch_plan_pb2.LaunchPlanCreateRequest(id=id, spec=flyte_entity))
-            elif id.resource_type == _identifier_pb2.TASK:
-                client.raw.create_task(_task_pb2.TaskCreateRequest(id=id, spec=flyte_entity))
-            elif id.resource_type == _identifier_pb2.WORKFLOW:
-                client.raw.create_workflow(_workflow_pb2.WorkflowCreateRequest(id=id, spec=flyte_entity))
-            else:
-                raise _user_exceptions.FlyteAssertion(
-                    f"Only tasks, launch plans, and workflows can be called with this function, "
-                    f"resource type {id.resource_type} was passed"
-                )
-            _click.secho(f"Registered {id}", fg="green")
-        except _user_exceptions.FlyteEntityAlreadyExistsException:
-            _click.secho(f"Skipping because already registered {id}", fg="cyan")
+    patches = {_identifier_pb2.TASK: fast_register_task}
+    if assumable_iam_role or kubernetes_service_account or output_location_prefix:
+        patches = {
+            _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
+                assumable_iam_role, kubernetes_service_account, output_location_prefix
+            )
+        }
 
-    _click.echo(f"Finished scanning {len(flyte_entities_list)} files")
+    _extract_and_register(host, insecure, project, domain, version, pb_files, patches)
 
 
 @_flyte_cli.command("update-workflow-meta", cls=_FlyteSubCommand)
