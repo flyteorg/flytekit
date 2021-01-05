@@ -144,6 +144,73 @@ def test_hydrate_workflow_template():
     assert unchanged_identifier.version == "abc"
 
 
+def test_hydrate_workflow_template__branch_node():
+
+    workflow_template = _core_workflow_pb2.WorkflowTemplate()
+    branch_node = _core_workflow_pb2.Node(
+        id="branch_node",
+        branch_node=_core_workflow_pb2.BranchNode(
+            if_else=_core_workflow_pb2.IfElseBlock(
+                case=_core_workflow_pb2.IfBlock(
+                    then_node=_core_workflow_pb2.Node(
+                        task_node=_core_workflow_pb2.TaskNode(
+                            reference_id=_identifier_pb2.Identifier(resource_type=_identifier_pb2.TASK, name="if_case"),
+                        ),
+                    )
+                ),
+                else_node=_core_workflow_pb2.Node(
+                    task_node=_core_workflow_pb2.TaskNode(
+                        reference_id=_identifier_pb2.Identifier(resource_type=_identifier_pb2.TASK, name="else_node"),
+                    ),
+                ),
+            ),
+        ),
+    )
+    branch_node.branch_node.if_else.other.extend(
+        [
+            _core_workflow_pb2.IfBlock(
+                then_node=_core_workflow_pb2.Node(
+                    task_node=_core_workflow_pb2.TaskNode(
+                        reference_id=_identifier_pb2.Identifier(resource_type=_identifier_pb2.TASK, name="other_1"),
+                    ),
+                ),
+            ),
+            _core_workflow_pb2.IfBlock(
+                then_node=_core_workflow_pb2.Node(
+                    task_node=_core_workflow_pb2.TaskNode(
+                        reference_id=_identifier_pb2.Identifier(resource_type=_identifier_pb2.TASK, name="other_2"),
+                    ),
+                ),
+            ),
+        ]
+    )
+    workflow_template.nodes.append(branch_node)
+    hydrated_workflow_template = _hydrate_workflow_template("project", "domain", "12345", workflow_template)
+    if_case_id = hydrated_workflow_template.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id
+    assert if_case_id.project == "project"
+    assert if_case_id.domain == "domain"
+    assert if_case_id.name == "if_case"
+    assert if_case_id.version == "12345"
+
+    other_1_id = hydrated_workflow_template.nodes[0].branch_node.if_else.other[0].then_node.task_node.reference_id
+    assert other_1_id.project == "project"
+    assert other_1_id.domain == "domain"
+    assert other_1_id.name == "other_1"
+    assert other_1_id.version == "12345"
+
+    other_2_id = hydrated_workflow_template.nodes[0].branch_node.if_else.other[1].then_node.task_node.reference_id
+    assert other_2_id.project == "project"
+    assert other_2_id.domain == "domain"
+    assert other_2_id.name == "other_2"
+    assert other_2_id.version == "12345"
+
+    else_id = hydrated_workflow_template.nodes[0].branch_node.if_else.else_node.task_node.reference_id
+    assert else_id.project == "project"
+    assert else_id.domain == "domain"
+    assert else_id.name == "else_node"
+    assert else_id.version == "12345"
+
+
 def test_hydrate_registration_parameters__launch_plan_already_set():
     launch_plan = _launch_plan_pb2.LaunchPlanSpec(
         workflow_id=_identifier_pb2.Identifier(
