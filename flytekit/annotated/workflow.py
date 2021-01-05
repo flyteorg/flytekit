@@ -35,25 +35,26 @@ GLOBAL_START_NODE = Node(
 )
 
 
+class WorkflowFailurePolicy(Enum):
+    FAIL_IMMEDIATELY = _workflow_model.WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
+    FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = (
+        _workflow_model.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
+    )
+
+
 @dataclass
 class WorkflowMetadata(object):
-    class OnFailurePolicy(Enum):
-        FAIL_IMMEDIATELY = _workflow_model.WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
-        FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = (
-            _workflow_model.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
-        )
-
-    on_failure: OnFailurePolicy
+    on_failure: WorkflowFailurePolicy
 
     def __post_init__(self):
         if (
-            self.on_failure != self.OnFailurePolicy.FAIL_IMMEDIATELY
-            and self.on_failure != self.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
+            self.on_failure != WorkflowFailurePolicy.FAIL_IMMEDIATELY
+            and self.on_failure != WorkflowFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
         ):
             raise FlyteValidationException(f"Failure policy {self.on_failure} not acceptable")
 
     def to_flyte_model(self):
-        if self.on_failure == WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY:
+        if self.on_failure == WorkflowFailurePolicy.FAIL_IMMEDIATELY:
             on_failure = 0
         else:
             on_failure = 1
@@ -404,7 +405,7 @@ class ReferenceWorkflow(ReferenceEntity, Workflow):
         if self._registerable_entity is not None:
             return self._registerable_entity
 
-        workflow_metadata = WorkflowMetadata(on_failure=WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY)
+        workflow_metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
 
         self._registerable_entity = _SdkWorkflow(
             nodes=[],  # Fake an empty list for nodes,
@@ -424,9 +425,15 @@ class ReferenceWorkflow(ReferenceEntity, Workflow):
 def workflow(
     _workflow_function=None,
     reference: Optional[WorkflowReference] = None,
-    failure_policy: Optional[WorkflowMetadata.OnFailurePolicy] = None,
+    failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: Optional[bool] = False,
 ):
+    """
+    :param reference: Pass a WorkflowReference object here if you want to make this a pointer to an existing workflow
+    :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
+    :param interruptible: Whether or not tasks launched from this workflow are by default interruptible
+    """
+
     # Unlike for tasks, where we can determine the entire structure of the task by looking at the function's signature,
     # workflows need to have the body of the function itself run at module-load time. This is because the body of the
     # workflow is what expresses the workflow structure.
@@ -435,9 +442,7 @@ def workflow(
             workflow_instance = ReferenceWorkflow.create_from_function(fn, reference=reference)
             return workflow_instance
 
-        workflow_metadata = WorkflowMetadata(
-            on_failure=failure_policy or WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
-        )
+        workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
 
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
 

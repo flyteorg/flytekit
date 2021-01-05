@@ -5,7 +5,7 @@ import pytest
 from flytekit.annotated import context_manager
 from flytekit.annotated.context_manager import Image, ImageConfig
 from flytekit.annotated.task import task
-from flytekit.annotated.workflow import WorkflowMetadata, WorkflowMetadataDefaults, workflow
+from flytekit.annotated.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
 from flytekit.common.exceptions.user import FlyteValidationException
 
 
@@ -13,8 +13,8 @@ def test_metadata_values():
     with pytest.raises(FlyteValidationException):
         WorkflowMetadata(on_failure=0)
 
-    wm = WorkflowMetadata(on_failure=WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY)
-    assert wm.on_failure == WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
+    wm = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
+    assert wm.on_failure == WorkflowFailurePolicy.FAIL_IMMEDIATELY
 
 
 def test_default_metadata_values():
@@ -31,7 +31,7 @@ def test_workflow_values():
         a = a + 2
         return a, "world-" + str(a)
 
-    @workflow(interruptible=True, failure_policy=WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE)
+    @workflow(interruptible=True, failure_policy=WorkflowFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE)
     def wf(a: int) -> (str, str):
         x, y = t1(a=a)
         u, v = t1(a=x)

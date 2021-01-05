@@ -10,7 +10,7 @@ from flytekit.annotated.reference import get_reference_entity
 from flytekit.annotated.reference_entity import TaskReference, WorkflowReference
 from flytekit.annotated.reference_task import reference_task
 from flytekit.annotated.task import task
-from flytekit.annotated.workflow import workflow
+from flytekit.annotated.workflow import WorkflowFailurePolicy, workflow
 from flytekit.loggers import logger
 
 __version__ = "0.16.0a2"
