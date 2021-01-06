@@ -24,9 +24,9 @@ from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
-_PROJECT_PLACEHOLDER = ""
-_DOMAIN_PLACEHOLDER = ""
-_VERSION_PLACEHOLDER = ""
+_PROJECT_PLACEHOLDER = "{{ .project }}"
+_DOMAIN_PLACEHOLDER = "{{ .domain }}"
+_VERSION_PLACEHOLDER = "{{ .version }}"
 
 
 class SerializationMode(_Enum):

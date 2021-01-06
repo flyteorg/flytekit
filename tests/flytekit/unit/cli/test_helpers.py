@@ -80,6 +80,16 @@ def test_hydrate_identifier():
     assert identifier.domain == "domain"
     assert identifier.version == "12345"
 
+    identifier = _hydrate_identifier(
+        "{{ .project }}",
+        "{{ .domain }}",
+        "{{ .version }} ",
+        _identifier_pb2.Identifier(project="project", domain="domain", version="12345"),
+    )
+    assert identifier.project == "project"
+    assert identifier.domain == "domain"
+    assert identifier.version == "12345"
+
 
 def test_hydrate_workflow_template():
     workflow_template = _core_workflow_pb2.WorkflowTemplate()
