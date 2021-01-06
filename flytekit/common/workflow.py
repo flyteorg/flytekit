@@ -223,7 +223,19 @@ class SdkWorkflow(
         :rtype: flyteidl.admin.workflow_pb2.WorkflowSpec
         """
         sub_workflows = self.get_sub_workflows()
-        return _admin_workflow_model.WorkflowSpec(self, sub_workflows,).to_flyte_idl()
+
+
+        # return _admin_workflow_model.WorkflowSpec(self, sub_workflows,).to_flyte_idl()
+
+        from flytekit.models.workflow_closure import WorkflowClosure
+
+        tasks = []
+        for n in self.nodes:
+            if n.task_node:
+                tasks.append(n.task_node.sdk_task.template)
+        print(f"======Length {len(tasks)}")
+        return WorkflowClosure(workflow=self, tasks=tasks).to_flyte_idl()
+
 
     @_exception_scopes.system_entry_point
     def validate(self):
