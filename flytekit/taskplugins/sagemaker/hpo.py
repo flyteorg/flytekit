@@ -1,6 +1,6 @@
 import json
 from dataclasses import dataclass
-from typing import Any, Dict, List, Type, Union, Optional
+from typing import Any, Dict, List, Optional, Type, Union
 
 from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
 from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _pb2_params

@@ -9,8 +9,8 @@ from flytekit.annotated.map_task import maptask
 from flytekit.annotated.reference import get_reference_entity
 from flytekit.annotated.reference_entity import TaskReference, WorkflowReference
 from flytekit.annotated.reference_task import reference_task
-from flytekit.annotated.task import task
 from flytekit.annotated.resources import Resources
+from flytekit.annotated.task import task
 from flytekit.annotated.workflow import WorkflowFailurePolicy, workflow
 from flytekit.loggers import logger
 

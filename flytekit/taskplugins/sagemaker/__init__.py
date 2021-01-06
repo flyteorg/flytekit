@@ -2,25 +2,23 @@ from flytekit.models.sagemaker.hpo_job import (
     HyperparameterTuningJobConfig,
     HyperparameterTuningObjective,
     HyperparameterTuningObjectiveType,
-    TrainingJobEarlyStoppingType,
     HyperparameterTuningStrategy,
+    TrainingJobEarlyStoppingType,
 )
-
 from flytekit.models.sagemaker.parameter_ranges import (
     CategoricalParameterRange,
     ContinuousParameterRange,
+    HyperparameterScalingType,
     IntegerParameterRange,
     ParameterRangeOneOf,
-    HyperparameterScalingType,
 )
-
 from flytekit.models.sagemaker.training_job import (
     AlgorithmName,
     AlgorithmSpecification,
     DistributedProtocol,
-    TrainingJobResourceConfig,
     InputContentType,
     InputMode,
+    TrainingJobResourceConfig,
 )
 
 from .hpo import HPOJob, SagemakerHPOTask
