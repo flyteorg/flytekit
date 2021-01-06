@@ -232,7 +232,7 @@ class SdkWorkflow(
         tasks = []
         for n in self.nodes:
             if n.task_node:
-                tasks.append(n.task_node.sdk_task.template)
+                tasks.append(n.task_node.sdk_task)
         print(f"======Length {len(tasks)}")
         return WorkflowClosure(workflow=self, tasks=tasks).to_flyte_idl()
 
