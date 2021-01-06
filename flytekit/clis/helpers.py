@@ -128,7 +128,7 @@ def _hydrate_node(project: str, domain: str, version: str, node: _workflow_pb2.N
     return node
 
 
-def _hydrate_workflow_template(
+def _hydrate_workflow_template_nodes(
     project: str, domain: str, version: str, template: _workflow_pb2.WorkflowTemplate
 ) -> _workflow_pb2.WorkflowTemplate:
     refreshed_nodes = []
@@ -169,10 +169,11 @@ def hydrate_registration_parameters(
     # Workflow nodes that are defined inline with the workflows will be missing project/domain/version so we fill those
     # in now.
     # (entity is of type flyteidl.admin.workflow_pb2.WorkflowSpec)
-    entity.template.CopyFrom(_hydrate_workflow_template(project, domain, version, entity.template))
+    entity.template.CopyFrom(_hydrate_workflow_template_nodes(project, domain, version, entity.template))
     refreshed_sub_workflows = []
     for sub_workflow in entity.sub_workflows:
-        refreshed_sub_workflow = _hydrate_workflow_template(project, domain, version, sub_workflow)
+        refreshed_sub_workflow = _hydrate_workflow_template_nodes(project, domain, version, sub_workflow)
+        refreshed_sub_workflow.id.CopyFrom(_hydrate_identifier(project, domain, version, refreshed_sub_workflow.id))
         refreshed_sub_workflows.append(refreshed_sub_workflow)
     # Reassign subworkflows with the newly hydrated ones.
     del entity.sub_workflows[:]
