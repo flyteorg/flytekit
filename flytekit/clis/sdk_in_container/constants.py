@@ -6,6 +6,7 @@ CTX_VERSION = "version"
 CTX_TEST = "test"
 CTX_PACKAGES = "pkgs"
 CTX_NOTIFICATIONS = "notifications"
+CTX_DIR = "dir"
 
 
 project_option = _click.option(
@@ -17,4 +18,7 @@ project_option = _click.option(
 )
 domain_option = _click.option(
     "-d", "--domain", required=True, type=str, help="This is usually development, staging, or production",
+)
+version_option = _click.option(
+    "-v", "--version", required=False, type=str, help="This is the version to apply globally for this context",
 )

@@ -1,6 +1,10 @@
+import contextlib
 import importlib
+import os
 import pkgutil
-from typing import List
+import sys
+from enum import Enum
+from typing import Iterator, List, Union
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.local_workflow import SdkRunnableWorkflow as _SdkRunnableWorkflow
@@ -17,6 +21,28 @@ def iterate_modules(pkgs):
             continue
 
         for _, name, _ in pkgutil.walk_packages(package.__path__, prefix="{}.".format(package_name)):
+            yield importlib.import_module(name)
+
+
+@contextlib.contextmanager
+def add_sys_path(path: List[Union[str, os.PathLike]]) -> Iterator[None]:
+    """Temporary add given path to `sys.path`."""
+    path = os.fspath(path)
+    try:
+        sys.path.insert(0, path)
+        yield
+    finally:
+        sys.path.remove(path)
+
+
+def iterate_modules_absolute(directory):
+    with add_sys_path(directory):
+        name = os.path.basename(directory)
+        loader = importlib.machinery.SourceFileLoader(name, os.path.join(directory, "__init__.py"))
+        handle = loader.load_module(name)
+        yield handle
+
+        for _, name, _ in pkgutil.walk_packages(handle.__path__):
             yield importlib.import_module(name)
 
 
@@ -92,8 +118,17 @@ def _topo_sort_helper(
             )
 
 
+class LoadingMode(Enum):
+    RELATIVE = 0
+    ABSOLUTE = 1
+
+
 def iterate_registerable_entities_in_order(
-    pkgs, ignore_entities=None, include_entities=None, detect_unreferenced_entities=True
+    pkgs,
+    ignore_entities=None,
+    include_entities=None,
+    detect_unreferenced_entities=True,
+    mode: LoadingMode = LoadingMode.RELATIVE,
 ):
     """
     This function will iterate all discovered entities in the given package list.  It will then attempt to
@@ -118,7 +153,8 @@ def iterate_registerable_entities_in_order(
         include_entities = tuple(list(include_entities or set()))
 
     entity_to_module_key = {}
-    for m in iterate_modules(pkgs):
+    module_iterate_fn = iterate_modules if mode == LoadingMode.RELATIVE else iterate_modules_absolute
+    for m in module_iterate_fn(pkgs):
         for k in dir(m):
             o = m.__dict__[k]
             if isinstance(o, _registerable.RegisterableEntity) and not o.has_registered:

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import click
 
-from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES, CTX_VERSION
+from flytekit.clis.sdk_in_container.constants import CTX_DIR, CTX_PACKAGES
 from flytekit.clis.sdk_in_container.fast_register import fast_register
 from flytekit.clis.sdk_in_container.launch_plan import launch_plans
 from flytekit.clis.sdk_in_container.register import register
@@ -14,8 +14,6 @@ from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.configuration import set_flyte_config_file
 from flytekit.configuration.internal import CONFIGURATION_PATH
-from flytekit.configuration.internal import IMAGE as _IMAGE
-from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag
 from flytekit.configuration.platform import URL as _URL
 from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
 
@@ -33,13 +31,16 @@ from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
     "option will override the option specified in the configuration file, or environment variable",
 )
 @click.option(
-    "-v", "--version", required=False, type=str, help="This is the version to apply globally for this " "context",
+    "--dir",
+    required=False,
+    help="Root dir for python code containing workflow definitions to operate on.  Multiple may be specified "
+    "Please use this option when running pyflyte outside of a container",
 )
 @click.option(
     "-i", "--insecure", required=False, type=bool, help="Do not use SSL to connect to Admin",
 )
 @click.pass_context
-def main(ctx, config=None, pkgs=None, version=None, insecure=None):
+def main(ctx, config=None, pkgs=None, dir=None, insecure=None):
     """
     Entrypoint for all the user commands.
     """
@@ -51,8 +52,6 @@ def main(ctx, config=None, pkgs=None, version=None, insecure=None):
         _logging.getLogger().setLevel(log_level)
 
     ctx.obj = dict()
-    version = version or _look_up_version_from_image_tag(_IMAGE.get())
-    ctx.obj[CTX_VERSION] = version
 
     # Determine SSL.  Note that the insecure option in this command is not a flag because we want to look
     # up configuration settings if it's missing.  If the command line option says insecure but the config object
@@ -65,7 +64,12 @@ def main(ctx, config=None, pkgs=None, version=None, insecure=None):
     pkgs = pkgs or []
     if len(pkgs) == 0:
         pkgs = _WORKFLOW_PACKAGES.get()
+    if len(pkgs) == 0 and dir is None:
+        raise click.UsageError(
+            "Could not find packages from config, please specify a value for either ``--pkgs`` or ``--dir``"
+        )
     ctx.obj[CTX_PACKAGES] = pkgs
+    ctx.obj[CTX_DIR] = dir
 
 
 def update_configuration_file(config_file_path):

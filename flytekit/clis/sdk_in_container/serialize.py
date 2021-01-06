@@ -12,7 +12,7 @@ from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.context_manager import InstanceVar
 from flytekit.annotated.launch_plan import LaunchPlan
 from flytekit.annotated.workflow import Workflow
-from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
+from flytekit.clis.sdk_in_container.constants import CTX_DIR, CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions.scopes import system_entry_point
@@ -22,11 +22,13 @@ from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import internal as _internal_config
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
-from flytekit.tools.module_loader import iterate_registerable_entities_in_order
+from flytekit.tools.module_loader import LoadingMode, iterate_registerable_entities_in_order
 
 _PROJECT_PLACEHOLDER = ""
 _DOMAIN_PLACEHOLDER = ""
 _VERSION_PLACEHOLDER = ""
+
+CTX_IMAGE = "image"
 
 
 class SerializationMode(_Enum):
@@ -71,7 +73,9 @@ def serialize_tasks_only(pkgs, folder=None):
 
 
 @system_entry_point
-def serialize_all(pkgs: List[str], folder: str = None, mode: SerializationMode = None):
+def serialize_all(
+    pkgs: List[str] = None, dir: str = None, folder: str = None, mode: SerializationMode = None, image: str = None
+):
     """
     In order to register, we have to comply with Admin's endpoints. Those endpoints take the following objects. These
     flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
@@ -96,14 +100,14 @@ def serialize_all(pkgs: List[str], folder: str = None, mode: SerializationMode =
     # o = object (e.g. SdkWorkflow)
     env = {
         _internal_config.CONFIGURATION_PATH.env_var: _internal_config.CONFIGURATION_PATH.get(),
-        _internal_config.IMAGE.env_var: _internal_config.IMAGE.get(),
+        _internal_config.IMAGE.env_var: image,
     }
 
     registration_settings = flyte_context.RegistrationSettings(
         project=_PROJECT_PLACEHOLDER,
         domain=_DOMAIN_PLACEHOLDER,
         version=_VERSION_PLACEHOLDER,
-        image_config=flyte_context.get_image_config(),
+        image_config=flyte_context.get_image_config(img_name=image),
         env=env,
         iam_role=_auth_config.ASSUMABLE_IAM_ROLE.get(),
         service_account=_auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
@@ -113,14 +117,24 @@ def serialize_all(pkgs: List[str], folder: str = None, mode: SerializationMode =
         registration_settings=registration_settings
     ) as ctx:
         loaded_entities = []
-        for m, k, o in iterate_registerable_entities_in_order(pkgs):
-            name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
-            _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
-            o._id = _identifier.Identifier(
-                o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
-            )
-            loaded_entities.append(o)
-            ctx.registration_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
+        if pkgs is not None and len(pkgs) > 0:
+            for m, k, o in iterate_registerable_entities_in_order(pkgs):
+                name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
+                _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
+                o._id = _identifier.Identifier(
+                    o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
+                )
+                loaded_entities.append(o)
+                ctx.registration_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
+        elif dir is not None:
+            for m, k, o in iterate_registerable_entities_in_order(dir, mode=LoadingMode.ABSOLUTE):
+                name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
+                _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
+                o._id = _identifier.Identifier(
+                    o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
+                )
+                loaded_entities.append(o)
+                ctx.registration_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
 
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
 
@@ -190,8 +204,9 @@ def _determine_text_chars(length):
 
 
 @click.group("serialize")
+@click.option("--image", help="Text tag: e.g. somedocker.com/myimage:someversion123", required=False)
 @click.pass_context
-def serialize(ctx):
+def serialize(ctx, image):
     """
     This command produces protobufs for tasks and templates.
     For tasks, one pb file is produced for each task, representing one TaskTemplate object.
@@ -199,7 +214,12 @@ def serialize(ctx):
         object contains the WorkflowTemplate, along with the relevant tasks for that workflow.  In lieu of Admin,
         this serialization step will set the URN of the tasks to the fully qualified name of the task function.
     """
-    click.echo("Serializing Flyte elements with image {}".format(_internal_config.IMAGE.get()))
+    if not image:
+        image = _internal_config.IMAGE.get()
+    if not image:
+        click.UsageError("Could not find image from config, please specify a value for ``--image``")
+    ctx.obj[CTX_IMAGE] = image
+    click.echo("Serializing Flyte elements with image {}".format(image))
 
 
 @click.command("tasks")
@@ -226,7 +246,8 @@ def workflows(ctx, folder=None):
         click.echo(f"Writing output to {folder}")
 
     pkgs = ctx.obj[CTX_PACKAGES]
-    serialize_all(pkgs, folder, SerializationMode.DEFAULT)
+    dir = ctx.obj[CTX_DIR]
+    serialize_all(pkgs, dir, folder, SerializationMode.DEFAULT, image=ctx.obj[CTX_IMAGE])
 
 
 @click.group("fast")
@@ -250,7 +271,8 @@ def fast_workflows(ctx, source_dir, folder=None):
         click.echo(f"Writing output to {folder}")
 
     pkgs = ctx.obj[CTX_PACKAGES]
-    serialize_all(pkgs, folder, SerializationMode.FAST)
+    dir = ctx.obj[CTX_DIR]
+    serialize_all(pkgs, dir, folder, SerializationMode.FAST, image=ctx[CTX_IMAGE])
 
     digest = _compute_digest(source_dir)
     folder = folder if folder else ""
