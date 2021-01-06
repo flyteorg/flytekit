@@ -24,6 +24,8 @@ def test_container_image_conversion():
         get_registerable_container_image("{{.image.other.fqn}}:{{.image.default.version}}", cfg) == "xyz.com/other:tag1"
     )
     assert get_registerable_container_image("{{.image.other.fqn}}", cfg) == "xyz.com/other"
+    # Works with images instead of just image
+    assert get_registerable_container_image("{{.images.other.fqn}}", cfg) == "xyz.com/other"
 
     with pytest.raises(AssertionError):
         get_registerable_container_image("{{.image.blah.fqn}}:{{.image.other.version}}", cfg)
