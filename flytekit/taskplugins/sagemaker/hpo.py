@@ -1,6 +1,6 @@
 import json
 from dataclasses import dataclass
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
 from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _pb2_params
@@ -28,13 +28,13 @@ class HPOJob(object):
     Args:
         max_number_of_training_jobs: maximum number of jobs to run for a training round
         max_parallel_training_jobs: limits the concurrency of the training jobs
-        tunable_params: should be a list of parameters for which we want to provide the tuning ranges
+        tunable_params: [optional] should be a list of parameters for which we want to provide the tuning ranges
     """
 
     max_number_of_training_jobs: int
     max_parallel_training_jobs: int
     # TODO. we could make the tunable params a tuple of name and type of range?
-    tunable_params: List[str]
+    tunable_params: Optional[List[str]] = None
 
 
 # TODO Not done yet, but once we clean this up, the client interface should be simplified. The interface should
