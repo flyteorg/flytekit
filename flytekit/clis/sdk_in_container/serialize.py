@@ -22,7 +22,7 @@ from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import internal as _internal_config
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
-from flytekit.tools.module_loader import LoadingMode, iterate_registerable_entities_in_order
+from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
 _PROJECT_PLACEHOLDER = ""
 _DOMAIN_PLACEHOLDER = ""
@@ -118,7 +118,7 @@ def serialize_all(
     ) as ctx:
         loaded_entities = []
         if pkgs is not None and len(pkgs) > 0:
-            for m, k, o in iterate_registerable_entities_in_order(pkgs):
+            for m, k, o in iterate_registerable_entities_in_order(pkgs=pkgs):
                 name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
                 _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
                 o._id = _identifier.Identifier(
@@ -127,7 +127,7 @@ def serialize_all(
                 loaded_entities.append(o)
                 ctx.registration_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
         elif dir is not None:
-            for m, k, o in iterate_registerable_entities_in_order(dir, mode=LoadingMode.ABSOLUTE):
+            for m, k, o in iterate_registerable_entities_in_order(directory=dir):
                 name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
                 _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
                 o._id = _identifier.Identifier(

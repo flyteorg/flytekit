@@ -3,7 +3,6 @@ import importlib
 import os
 import pkgutil
 import sys
-from enum import Enum
 from typing import Iterator, List, Union
 
 from flytekit.common.exceptions import user as _user_exceptions
@@ -118,17 +117,23 @@ def _topo_sort_helper(
             )
 
 
-class LoadingMode(Enum):
-    RELATIVE = 0
-    ABSOLUTE = 1
+def _get_entity_to_module(iterate_modules_fn, arg):
+    entity_to_module_key = {}
+    for m in iterate_modules_fn(arg):
+        for k in dir(m):
+            o = m.__dict__[k]
+            if isinstance(o, _registerable.RegisterableEntity) and not o.has_registered:
+                if o.instantiated_in == m.__name__:
+                    entity_to_module_key[o] = (m, k)
+                    if isinstance(o, _SdkRunnableWorkflow) and o.should_create_default_launch_plan:
+                        # SDK should create a default launch plan for a workflow.  This is a special-case to simplify
+                        # authoring of workflows.
+                        entity_to_module_key[o.create_launch_plan()] = (m, k)
+    return entity_to_module_key
 
 
 def iterate_registerable_entities_in_order(
-    pkgs,
-    ignore_entities=None,
-    include_entities=None,
-    detect_unreferenced_entities=True,
-    mode: LoadingMode = LoadingMode.RELATIVE,
+    pkgs=None, directory=None, ignore_entities=None, include_entities=None, detect_unreferenced_entities=True,
 ):
     """
     This function will iterate all discovered entities in the given package list.  It will then attempt to
@@ -153,17 +158,10 @@ def iterate_registerable_entities_in_order(
         include_entities = tuple(list(include_entities or set()))
 
     entity_to_module_key = {}
-    module_iterate_fn = iterate_modules if mode == LoadingMode.RELATIVE else iterate_modules_absolute
-    for m in module_iterate_fn(pkgs):
-        for k in dir(m):
-            o = m.__dict__[k]
-            if isinstance(o, _registerable.RegisterableEntity) and not o.has_registered:
-                if o.instantiated_in == m.__name__:
-                    entity_to_module_key[o] = (m, k)
-                    if isinstance(o, _SdkRunnableWorkflow) and o.should_create_default_launch_plan:
-                        # SDK should create a default launch plan for a workflow.  This is a special-case to simplify
-                        # authoring of workflows.
-                        entity_to_module_key[o.create_launch_plan()] = (m, k)
+    if pkgs is not None:
+        entity_to_module_key = _get_entity_to_module(iterate_modules, pkgs)
+    elif directory is not None:
+        entity_to_module_key = _get_entity_to_module(iterate_modules_absolute, directory)
 
     visited = set()
     for o in entity_to_module_key.keys():
