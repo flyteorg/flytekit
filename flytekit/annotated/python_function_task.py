@@ -10,7 +10,7 @@ from flytekit.annotated.resources import Resources, ResourceSpec
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.models import task as _task_model
 
-_IMAGE_REPLACE_REGEX = re.compile(r"({{\s*.image.(\w+).(\w+)\s*}})", re.IGNORECASE)
+_IMAGE_REPLACE_REGEX = re.compile(r"({{\s*.image[s]?.(\w+).(\w+)\s*}})", re.IGNORECASE)
 
 
 def get_registerable_container_image(img: Optional[str], cfg: ImageConfig) -> str:
