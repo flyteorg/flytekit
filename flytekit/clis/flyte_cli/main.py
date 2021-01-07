@@ -424,7 +424,7 @@ _kubernetes_service_acct_option = _click.option(
     help="Custom kubernetes service account auth role to register launch plans with",
 )
 _output_location_prefix_option = _click.option(
-    "--output-location-prefix", help="Custom output location prefix for offloaded types (files/schemas)"
+    "-o", "--output-location-prefix", help="Custom output location prefix for offloaded types (files/schemas)"
 )
 _files_argument = _click.argument("files", type=_click.Path(exists=True), nargs=-1,)
 
