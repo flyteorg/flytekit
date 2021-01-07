@@ -79,7 +79,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC):
         :param task_type: String task type to be associated with this Task
         :param container_image: String FQN for the image.
         :param Resources requests: custom resource request settings.
-        :param Resources requests: custom resource limit settings.
+        :param Resources limits: custom resource limit settings.
         """
         super().__init__(
             task_type=task_type, name=name, task_config=task_config, **kwargs,
@@ -87,7 +87,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC):
         self._container_image = container_image
         # TODO(katrogan): Implement resource overrides
         self._resources = ResourceSpec(
-            requests=requests if requests else Resources(), limits=limits if requests else Resources()
+            requests=requests if requests else Resources(), limits=limits if limits else Resources()
         )
         self._environment = environment
 
