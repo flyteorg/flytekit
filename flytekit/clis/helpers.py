@@ -89,13 +89,13 @@ def str2bool(str):
 def _hydrate_identifier(
     project: str, domain: str, version: str, identifier: _identifier_pb2.Identifier
 ) -> _identifier_pb2.Identifier:
-    if not identifier.project or identifier.project == "{{ .project }}":
+    if not identifier.project or identifier.project == "{{ registration.project }}":
         identifier.project = project
 
-    if not identifier.domain or identifier.domain == "{{ .domain }}":
+    if not identifier.domain or identifier.domain == "{{ registration.domain }}":
         identifier.domain = domain
 
-    if not identifier.version or identifier.version == "{{ .version }}":
+    if not identifier.version or identifier.version == "{{ registration.version }}":
         identifier.version = version
     return identifier
 

@@ -81,10 +81,14 @@ def test_hydrate_identifier():
     assert identifier.version == "12345"
 
     identifier = _hydrate_identifier(
-        "{{ registration.project }}",
-        "{{ registration.domain }}",
-        "{{ registration.version }} ",
-        _identifier_pb2.Identifier(project="project", domain="domain", version="12345"),
+        "project",
+        "domain",
+        "12345",
+        _identifier_pb2.Identifier(
+            project="{{ registration.project }}",
+            domain="{{ registration.domain }}",
+            version="{{ registration.version }}",
+        ),
     )
     assert identifier.project == "project"
     assert identifier.domain == "domain"
