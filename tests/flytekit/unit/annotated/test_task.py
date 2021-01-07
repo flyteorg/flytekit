@@ -1,5 +1,6 @@
 import pytest
 
+from flytekit import task
 from flytekit.annotated.context_manager import Image, ImageConfig, RegistrationSettings
 from flytekit.annotated.python_function_task import PythonFunctionTask, get_registerable_container_image
 
@@ -51,3 +52,12 @@ def test_py_func_task_get_container():
     c = pytask.get_container(settings)
     assert c.image == "xyz.com/abc:tag1"
     assert c.env == {"FOO": "bar", "BAZ": "baz"}
+
+
+def test_metadata():
+    @task(cache=True, cache_version="1.0")
+    def foo(i: str):
+        print(f"{i}")
+
+    metadata = foo.metadata
+    assert metadata.cache is True
