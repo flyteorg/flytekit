@@ -95,26 +95,45 @@ def _hydrate_identifier(
     return identifier
 
 
-def _hydrate_workflow_template(
+def _hydrate_node(project: str, domain: str, version: str, node: _workflow_pb2.Node) -> _workflow_pb2.Node:
+    if node.HasField("task_node"):
+        task_node = node.task_node
+        task_node.reference_id.CopyFrom(_hydrate_identifier(project, domain, version, task_node.reference_id))
+        node.task_node.CopyFrom(task_node)
+    elif node.HasField("workflow_node"):
+        workflow_node = node.workflow_node
+        if workflow_node.HasField("launchplan_ref"):
+            workflow_node.launchplan_ref.CopyFrom(
+                _hydrate_identifier(project, domain, version, workflow_node.launchplan_ref)
+            )
+        elif workflow_node.HasField("sub_workflow_ref"):
+            workflow_node.sub_workflow_ref.CopyFrom(
+                _hydrate_identifier(project, domain, version, workflow_node.sub_workflow_ref)
+            )
+    elif node.HasField("branch_node"):
+        node.branch_node.if_else.case.then_node.CopyFrom(
+            _hydrate_node(project, domain, version, node.branch_node.if_else.case.then_node)
+        )
+        if node.branch_node.if_else.other is not None:
+            others = []
+            for if_block in node.branch_node.if_else.other:
+                if_block.then_node.CopyFrom(_hydrate_node(project, domain, version, if_block.then_node))
+                others.append(if_block)
+            del node.branch_node.if_else.other[:]
+            node.branch_node.if_else.other.extend(others)
+        if node.branch_node.if_else.HasField("else_node"):
+            node.branch_node.if_else.else_node.CopyFrom(
+                _hydrate_node(project, domain, version, node.branch_node.if_else.else_node)
+            )
+    return node
+
+
+def _hydrate_workflow_template_nodes(
     project: str, domain: str, version: str, template: _workflow_pb2.WorkflowTemplate
 ) -> _workflow_pb2.WorkflowTemplate:
     refreshed_nodes = []
     for node in template.nodes:
-        if node.HasField("task_node"):
-            task_node = node.task_node
-            task_node.reference_id.CopyFrom(_hydrate_identifier(project, domain, version, task_node.reference_id))
-            node.task_node.CopyFrom(task_node)
-        elif node.HasField("workflow_node"):
-            workflow_node = node.workflow_node
-            if workflow_node.HasField("launchplan_ref"):
-                workflow_node.launchplan_ref.CopyFrom(
-                    _hydrate_identifier(project, domain, version, workflow_node.launchplan_ref)
-                )
-            elif workflow_node.HasField("sub_workflow_ref"):
-                workflow_node.sub_workflow_ref.CopyFrom(
-                    _hydrate_identifier(project, domain, version, workflow_node.sub_workflow_ref)
-                )
-            node.workflow_node.CopyFrom(workflow_node)
+        node = _hydrate_node(project, domain, version, node)
         refreshed_nodes.append(node)
     # Reassign nodes with the newly hydrated ones.
     del template.nodes[:]
@@ -150,10 +169,11 @@ def hydrate_registration_parameters(
     # Workflow nodes that are defined inline with the workflows will be missing project/domain/version so we fill those
     # in now.
     # (entity is of type flyteidl.admin.workflow_pb2.WorkflowSpec)
-    entity.template.CopyFrom(_hydrate_workflow_template(project, domain, version, entity.template))
+    entity.template.CopyFrom(_hydrate_workflow_template_nodes(project, domain, version, entity.template))
     refreshed_sub_workflows = []
     for sub_workflow in entity.sub_workflows:
-        refreshed_sub_workflow = _hydrate_workflow_template(project, domain, version, sub_workflow)
+        refreshed_sub_workflow = _hydrate_workflow_template_nodes(project, domain, version, sub_workflow)
+        refreshed_sub_workflow.id.CopyFrom(_hydrate_identifier(project, domain, version, refreshed_sub_workflow.id))
         refreshed_sub_workflows.append(refreshed_sub_workflow)
     # Reassign subworkflows with the newly hydrated ones.
     del entity.sub_workflows[:]

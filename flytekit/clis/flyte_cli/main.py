@@ -15,6 +15,7 @@ from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_tasks_pb2
 from flyteidl.core import workflow_pb2 as _core_workflow_pb2
+from google.protobuf.json_format import MessageToJson
 from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _GeneratedProtocolMessageType
 
 from flytekit import __version__
@@ -523,7 +524,9 @@ def parse_proto(filename, proto_class):
     idl = getattr(mod, idl_obj)
     obj = _load_proto_from_file(idl, filename)
 
-    _click.echo(obj)
+    jsonObj = MessageToJson(obj)
+
+    _click.echo(jsonObj)
     _click.echo("")
 
 
