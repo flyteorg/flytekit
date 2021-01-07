@@ -272,7 +272,7 @@ def fast_workflows(ctx, source_dir, folder=None):
 
     pkgs = ctx.obj[CTX_PACKAGES]
     dir = ctx.obj[CTX_DIR]
-    serialize_all(pkgs, dir, folder, SerializationMode.FAST, image=ctx[CTX_IMAGE])
+    serialize_all(pkgs, dir, folder, SerializationMode.FAST, image=ctx.obj[CTX_IMAGE])
 
     digest = _compute_digest(source_dir)
     folder = folder if folder else ""
