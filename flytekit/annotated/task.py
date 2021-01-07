@@ -125,7 +125,7 @@ def task(
         )
 
         task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
-            task_config, fn, _metadata=_metadata, container_image=container_image, environment=environment, **kwargs,
+            task_config, fn, metadata=_metadata, container_image=container_image, environment=environment, **kwargs,
         )
 
         return task_instance
