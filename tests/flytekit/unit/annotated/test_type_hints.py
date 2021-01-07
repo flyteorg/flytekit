@@ -973,6 +973,7 @@ def test_resources():
             assert sdk_task2.container.resources.requests == [
                 _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "3")
             ]
+            assert sdk_task2.container.resources.limits == []
 
 
 def test_wf_explicitly_returning_empty_task():
