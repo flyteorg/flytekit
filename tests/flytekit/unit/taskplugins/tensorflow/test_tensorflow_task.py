@@ -29,6 +29,6 @@ def test_tensorflow_task():
     )
 
     assert my_tensorflow_task.get_custom(reg) == {"workers": 10, "psReplicas": 1, "chiefReplicas": 1}
-    assert my_tensorflow_task.resources.limits is None
+    assert my_tensorflow_task.resources.limits == Resources()
     assert my_tensorflow_task.resources.requests == Resources(cpu="1")
     assert my_tensorflow_task.task_type == "tensorflow"
