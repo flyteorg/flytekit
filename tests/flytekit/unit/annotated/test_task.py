@@ -61,3 +61,4 @@ def test_metadata():
 
     metadata = foo.metadata
     assert metadata.cache is True
+    assert metadata.cache_version == "1.0"
