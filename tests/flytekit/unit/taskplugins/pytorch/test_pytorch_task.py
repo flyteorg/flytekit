@@ -23,6 +23,6 @@ def test_pytorch_task():
     )
 
     assert my_pytorch_task.get_custom(reg) == {"workers": 10}
-    assert my_pytorch_task.resources.limits is None
+    assert my_pytorch_task.resources.limits == Resources()
     assert my_pytorch_task.resources.requests == Resources(cpu="1")
     assert my_pytorch_task.task_type == "pytorch"

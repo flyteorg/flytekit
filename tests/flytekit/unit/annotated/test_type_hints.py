@@ -940,6 +940,11 @@ def test_resources():
         a = a + 2
         return "now it's " + str(a)
 
+    @task(requests=Resources(cpu="3"))
+    def t2(a: int) -> str:
+        a = a + 200
+        return "now it's " + str(a)
+
     @workflow
     def my_wf(a: int) -> str:
         x = t1(a=a)
@@ -963,6 +968,12 @@ def test_resources():
                 _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "2"),
                 _resource_models.ResourceEntry(_resource_models.ResourceName.MEMORY, "400M"),
             ]
+
+            sdk_task2 = t2.get_registerable_entity()
+            assert sdk_task2.container.resources.requests == [
+                _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "3")
+            ]
+            assert sdk_task2.container.resources.limits == []
 
 
 def test_wf_explicitly_returning_empty_task():
