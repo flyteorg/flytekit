@@ -4,7 +4,7 @@ from pathlib import Path
 
 import click
 
-from flytekit.clis.sdk_in_container.constants import CTX_DIR, CTX_PACKAGES
+from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.clis.sdk_in_container.fast_register import fast_register
 from flytekit.clis.sdk_in_container.launch_plan import launch_plans
 from flytekit.clis.sdk_in_container.register import register
@@ -31,16 +31,10 @@ from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
     "option will override the option specified in the configuration file, or environment variable",
 )
 @click.option(
-    "--dir",
-    required=False,
-    help="Root dir for python code containing workflow definitions to operate on.  Multiple may be specified "
-    "Please use this option when running pyflyte outside of a container",
-)
-@click.option(
     "-i", "--insecure", required=False, type=bool, help="Do not use SSL to connect to Admin",
 )
 @click.pass_context
-def main(ctx, config=None, pkgs=None, dir=None, insecure=None):
+def main(ctx, config=None, pkgs=None, insecure=None):
     """
     Entrypoint for all the user commands.
     """
@@ -64,12 +58,7 @@ def main(ctx, config=None, pkgs=None, dir=None, insecure=None):
     pkgs = pkgs or []
     if len(pkgs) == 0:
         pkgs = _WORKFLOW_PACKAGES.get()
-    if len(pkgs) == 0 and dir is None:
-        raise click.UsageError(
-            "Could not find packages from config, please specify a value for either ``--pkgs`` or ``--dir``"
-        )
     ctx.obj[CTX_PACKAGES] = pkgs
-    ctx.obj[CTX_DIR] = dir
 
 
 def update_configuration_file(config_file_path):

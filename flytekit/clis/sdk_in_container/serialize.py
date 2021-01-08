@@ -12,7 +12,7 @@ from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.context_manager import InstanceVar
 from flytekit.annotated.launch_plan import LaunchPlan
 from flytekit.annotated.workflow import Workflow
-from flytekit.clis.sdk_in_container.constants import CTX_DIR, CTX_PACKAGES
+from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions.scopes import system_entry_point
@@ -29,6 +29,7 @@ _DOMAIN_PLACEHOLDER = ""
 _VERSION_PLACEHOLDER = ""
 
 CTX_IMAGE = "image"
+CTX_DIR = "dir"
 
 
 class SerializationMode(_Enum):
@@ -74,7 +75,7 @@ def serialize_tasks_only(pkgs, folder=None):
 
 @system_entry_point
 def serialize_all(
-    pkgs: List[str] = None, dir: str = None, folder: str = None, mode: SerializationMode = None, image: str = None
+    pkgs: List[str] = None, dir: str = None, folder: str = None, mode: SerializationMode = None, image: str = None,
 ):
     """
     In order to register, we have to comply with Admin's endpoints. Those endpoints take the following objects. These
@@ -117,24 +118,14 @@ def serialize_all(
         registration_settings=registration_settings
     ) as ctx:
         loaded_entities = []
-        if pkgs is not None and len(pkgs) > 0:
-            for m, k, o in iterate_registerable_entities_in_order(pkgs=pkgs):
-                name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
-                _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
-                o._id = _identifier.Identifier(
-                    o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
-                )
-                loaded_entities.append(o)
-                ctx.registration_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
-        elif dir is not None:
-            for m, k, o in iterate_registerable_entities_in_order(directory=dir):
-                name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
-                _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
-                o._id = _identifier.Identifier(
-                    o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
-                )
-                loaded_entities.append(o)
-                ctx.registration_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
+        for m, k, o in iterate_registerable_entities_in_order(pkgs, directory=dir):
+            name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
+            _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
+            o._id = _identifier.Identifier(
+                o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
+            )
+            loaded_entities.append(o)
+            ctx.registration_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
 
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
 
@@ -205,8 +196,13 @@ def _determine_text_chars(length):
 
 @click.group("serialize")
 @click.option("--image", help="Text tag: e.g. somedocker.com/myimage:someversion123", required=False)
+@click.option(
+    "--directory",
+    required=False,
+    help="Root dir for python code containing workflow definitions to operate on when not the current working directory",
+)
 @click.pass_context
-def serialize(ctx, image):
+def serialize(ctx, image, directory):
     """
     This command produces protobufs for tasks and templates.
     For tasks, one pb file is produced for each task, representing one TaskTemplate object.
@@ -220,6 +216,7 @@ def serialize(ctx, image):
         click.UsageError("Could not find image from config, please specify a value for ``--image``")
     ctx.obj[CTX_IMAGE] = image
     click.echo("Serializing Flyte elements with image {}".format(image))
+    ctx.obj[CTX_DIR] = directory
 
 
 @click.command("tasks")

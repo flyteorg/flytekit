@@ -24,7 +24,7 @@ def iterate_modules(pkgs):
 
 
 @contextlib.contextmanager
-def add_sys_path(path: List[Union[str, os.PathLike]]) -> Iterator[None]:
+def add_sys_path(path: Union[str, os.PathLike]) -> Iterator[None]:
     """Temporary add given path to `sys.path`."""
     path = os.fspath(path)
     try:
@@ -32,17 +32,6 @@ def add_sys_path(path: List[Union[str, os.PathLike]]) -> Iterator[None]:
         yield
     finally:
         sys.path.remove(path)
-
-
-def iterate_modules_absolute(directory):
-    with add_sys_path(directory):
-        name = os.path.basename(directory)
-        loader = importlib.machinery.SourceFileLoader(name, os.path.join(directory, "__init__.py"))
-        handle = loader.load_module(name)
-        yield handle
-
-        for _, name, _ in pkgutil.walk_packages(handle.__path__):
-            yield importlib.import_module(name)
 
 
 def just_load_modules(pkgs: List[str]):
@@ -117,9 +106,9 @@ def _topo_sort_helper(
             )
 
 
-def _get_entity_to_module(iterate_modules_fn, arg):
+def _get_entity_to_module(pkgs):
     entity_to_module_key = {}
-    for m in iterate_modules_fn(arg):
+    for m in iterate_modules(pkgs):
         for k in dir(m):
             o = m.__dict__[k]
             if isinstance(o, _registerable.RegisterableEntity) and not o.has_registered:
@@ -133,7 +122,7 @@ def _get_entity_to_module(iterate_modules_fn, arg):
 
 
 def iterate_registerable_entities_in_order(
-    pkgs=None, directory=None, ignore_entities=None, include_entities=None, detect_unreferenced_entities=True,
+    pkgs, directory=None, ignore_entities=None, include_entities=None, detect_unreferenced_entities=True,
 ):
     """
     This function will iterate all discovered entities in the given package list.  It will then attempt to
@@ -158,10 +147,12 @@ def iterate_registerable_entities_in_order(
         include_entities = tuple(list(include_entities or set()))
 
     entity_to_module_key = {}
-    if pkgs is not None:
-        entity_to_module_key = _get_entity_to_module(iterate_modules, pkgs)
-    elif directory is not None:
-        entity_to_module_key = _get_entity_to_module(iterate_modules_absolute, directory)
+    print("Adding to sys path {}".format(directory))
+    if directory is not None:
+        with add_sys_path(directory):
+            entity_to_module_key = _get_entity_to_module(pkgs)
+    else:
+        entity_to_module_key = _get_entity_to_module(pkgs)
 
     visited = set()
     for o in entity_to_module_key.keys():
