@@ -12,28 +12,7 @@ from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 
 
-class _Dynamic(object):
-    pass
-
-
-class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
-    def __init__(
-        self,
-        task_config: _Dynamic,
-        dynamic_workflow_function: Callable,
-        metadata: Optional[TaskMetadata] = None,
-        **kwargs,
-    ):
-        self._wf = None
-
-        super().__init__(
-            task_config=task_config,
-            task_function=dynamic_workflow_function,
-            metadata=metadata,
-            task_type="dynamic-task",
-            **kwargs,
-        )
-
+class DynamicWorkflowTaskMixin(object):
     def compile_into_workflow(
         self, ctx: FlyteContext, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
@@ -109,6 +88,29 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             return self.compile_into_workflow(ctx, **kwargs)
+
+
+class _Dynamic(object):
+    pass
+
+
+class DynamicWorkflowTask(DynamicWorkflowTaskMixin, PythonFunctionTask[_Dynamic]):
+    def __init__(
+        self,
+        task_config: _Dynamic,
+        dynamic_workflow_function: Callable,
+        metadata: Optional[TaskMetadata] = None,
+        **kwargs,
+    ):
+        self._wf = None
+
+        super().__init__(
+            task_config=task_config,
+            task_function=dynamic_workflow_function,
+            metadata=metadata,
+            task_type="dynamic-task",
+            **kwargs,
+        )
 
 
 # Register dynamic workflow task

@@ -4,6 +4,7 @@ from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.annotated.context_manager import FlyteContext, RegistrationSettings
+from flytekit.annotated.dynamic_workflow_task import DynamicWorkflowTaskMixin
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
@@ -100,4 +101,16 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
         raise _user_exceptions.FlyteUserException("Local execute is not currently supported for pod tasks")
 
 
+class DynamicPod(Pod):
+    pass
+
+
+class DynamicPodFunctionTask(DynamicWorkflowTaskMixin, PodFunctionTask):
+    def __init__(self, task_config: DynamicPod, task_function: Callable, **kwargs):
+        super(PodFunctionTask, self).__init__(
+            task_config=task_config, task_type="dynamic-sidecar", task_function=task_function, **kwargs,
+        )
+
+
 TaskPlugins.register_pythontask_plugin(Pod, PodFunctionTask)
+TaskPlugins.register_pythontask_plugin(DynamicPod, DynamicPodFunctionTask)
