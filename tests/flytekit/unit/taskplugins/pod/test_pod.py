@@ -107,5 +107,4 @@ def test_dynamic_pod_task():
     ) as ctx:
         with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
             dynamic_job_spec = dynamic_pod_task.compile_into_workflow(ctx, a=5)
-            print("type: {}".format(type(dynamic_job_spec)))
             assert len(dynamic_job_spec._nodes) == 5
