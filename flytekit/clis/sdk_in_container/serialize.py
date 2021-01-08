@@ -254,14 +254,9 @@ def fast(ctx):
 
 
 @click.command("workflows")
-# For now let's just assume that the directory needs to exist. If you're docker run -v'ing, docker will create the
-# directory for you so it shouldn't be a problem.
-@click.option(
-    "--source-dir", required=True, help="The root dir of the code that should be uploaded for fast registration"
-)
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
-def fast_workflows(ctx, source_dir, folder=None):
+def fast_workflows(ctx, folder=None):
     _logging.getLogger().setLevel(_logging.DEBUG)
 
     if folder:
@@ -271,6 +266,7 @@ def fast_workflows(ctx, source_dir, folder=None):
     dir = ctx.obj[CTX_DIR]
     serialize_all(pkgs, dir, folder, SerializationMode.FAST, image=ctx.obj[CTX_IMAGE])
 
+    source_dir = ctx.obj[CTX_DIR]
     digest = _compute_digest(source_dir)
     folder = folder if folder else ""
     archive_fname = _os.path.join(folder, f"{digest}.tar.gz")
