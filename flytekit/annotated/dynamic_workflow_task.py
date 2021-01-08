@@ -88,8 +88,6 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
             if node.branch_node.if_else.else_node is not None:
                 DynamicWorkflowTask.aggregate(tasks, workflows, node.branch_node.if_else.else_node)
 
-
-
     def execute(self, **kwargs) -> Any:
         """
         By the time this function is invoked, the _local_execute function should have unwrapped the Promises and Flyte

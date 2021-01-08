@@ -1,12 +1,11 @@
 import typing
 from datetime import datetime
-
-from flytekit.annotated import context_manager
-from flytekit import task, workflow, dynamic
-from flytekit.annotated.condition import conditional
 from random import seed
-from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
 
+from flytekit import dynamic, task, workflow
+from flytekit.annotated import context_manager
+from flytekit.annotated.condition import conditional
+from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
 
 # seed random number generator
 seed(datetime.now().microsecond)
@@ -15,7 +14,7 @@ seed(datetime.now().microsecond)
 def test_dynamic_conditional():
     @task
     def split(in1: typing.List[int]) -> (typing.List[int], typing.List[int], int):
-        return in1[0:int(len(in1) / 2)], in1[int(len(in1) / 2) + 1:], len(in1) / 2
+        return in1[0 : int(len(in1) / 2)], in1[int(len(in1) / 2) + 1 :], len(in1) / 2
 
     # One sample implementation for merging. In a more real world example, this might merge file streams and only load
     # chunks into the memory.
@@ -70,22 +69,22 @@ def test_dynamic_conditional():
     def merge_sort(in1: typing.List[int], count: int) -> typing.List[int]:
         return (
             conditional("terminal_case")
-                .if_(count < 500)
-                .then(merge_sort_locally(in1=in1))
-                .elif_(count < 1000)
-                .then(also_merge_sort_locally(in1=in1))
-                .else_()
-                .then(merge_sort_remotely(in1=in1))
+            .if_(count < 500)
+            .then(merge_sort_locally(in1=in1))
+            .elif_(count < 1000)
+            .then(also_merge_sort_locally(in1=in1))
+            .else_()
+            .then(merge_sort_remotely(in1=in1))
         )
 
     with context_manager.FlyteContext.current_context().new_registration_settings(
-            registration_settings=context_manager.RegistrationSettings(
-                project="test_proj",
-                domain="test_domain",
-                version="abc",
-                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-                env={},
-            )
+        registration_settings=context_manager.RegistrationSettings(
+            project="test_proj",
+            domain="test_domain",
+            version="abc",
+            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+            env={},
+        )
     ) as ctx:
         with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
             dynamic_job_spec = merge_sort_remotely.compile_into_workflow(ctx, in1=[2, 3, 4, 5])
