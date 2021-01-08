@@ -78,6 +78,15 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
                 workflows.add(node.workflow_node.sdk_workflow)
                 for sub_node in node.workflow_node.sdk_workflow.nodes:
                     DynamicWorkflowTask.aggregate(tasks, workflows, sub_node)
+        if node.branch_node is not None:
+            if node.branch_node.if_else.case.then_node is not None:
+                DynamicWorkflowTask.aggregate(tasks, workflows, node.branch_node.if_else.case.then_node)
+            if node.branch_node.if_else.other:
+                for oth in node.branch_node.if_else.other:
+                    if oth.then_node:
+                        DynamicWorkflowTask.aggregate(tasks, workflows, oth.then_node)
+            if node.branch_node.if_else.else_node is not None:
+                DynamicWorkflowTask.aggregate(tasks, workflows, node.branch_node.if_else.else_node)
 
     def execute(self, **kwargs) -> Any:
         """
