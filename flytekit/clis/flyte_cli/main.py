@@ -32,6 +32,7 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import task as _tasks_common
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
+from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import set_flyte_config_file
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -418,10 +419,12 @@ _assumable_iam_role_option = _click.option(
     "--assumable-iam-role", help="Custom assumable iam auth role to register launch plans with"
 )
 _kubernetes_service_acct_option = _click.option(
-    "--kubernetes-service-account", help="Custom kubernetes service account auth role to register launch plans with"
+    "-s",
+    "--kubernetes-service-account",
+    help="Custom kubernetes service account auth role to register launch plans with",
 )
 _output_location_prefix_option = _click.option(
-    "--output-location-prefix", help="Custom output location prefix for offloaded types (files/schemas)"
+    "-o", "--output-location-prefix", help="Custom output location prefix for offloaded types (files/schemas)"
 )
 _files_argument = _click.argument("files", type=_click.Path(exists=True), nargs=-1,)
 
@@ -1647,10 +1650,22 @@ def _get_patch_launch_plan_fn(
             entity.auth_role.CopyFrom(_AuthRole(assumable_iam_role=assumable_iam_role).to_flyte_idl())
         elif kubernetes_service_account:
             entity.auth_role.CopyFrom(_AuthRole(kubernetes_service_account=kubernetes_service_account).to_flyte_idl())
+        elif _auth_config.ASSUMABLE_IAM_ROLE.get() is not None:
+            entity.auth_role.CopyFrom(
+                _AuthRole(assumable_iam_role=_auth_config.ASSUMABLE_IAM_ROLE.get()).to_flyte_idl()
+            )
+        elif _auth_config.KUBERNETES_SERVICE_ACCOUNT.get() is not None:
+            entity.auth_role.CopyFrom(
+                _AuthRole(kubernetes_service_account=_auth_config.KUBERNETES_SERVICE_ACCOUNT.get()).to_flyte_idl()
+            )
 
         if output_location_prefix is not None:
             entity.raw_output_data_config.CopyFrom(
                 _RawOutputDataConfig(output_location_prefix=output_location_prefix).to_flyte_idl()
+            )
+        elif _auth_config.RAW_OUTPUT_DATA_PREFIX.get() is not None:
+            entity.raw_output_data_config.CopyFrom(
+                _RawOutputDataConfig(output_location_prefix=_auth_config.RAW_OUTPUT_DATA_PREFIX.get()).to_flyte_idl()
             )
 
         return entity

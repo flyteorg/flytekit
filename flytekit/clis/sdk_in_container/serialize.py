@@ -18,15 +18,17 @@ from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions.scopes import system_entry_point
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
-from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import internal as _internal_config
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
-_PROJECT_PLACEHOLDER = ""
-_DOMAIN_PLACEHOLDER = ""
-_VERSION_PLACEHOLDER = ""
+# Identifier fields use placeholders for registration-time substitution.
+# Additional fields, such as auth and the raw output data prefix have more complex structures
+# and can be optional so they are not serialized with placeholders.
+_PROJECT_PLACEHOLDER = "{{ registration.project }}"
+_DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
+_VERSION_PLACEHOLDER = "{{ registration.version }}"
 
 CTX_IMAGE = "image"
 CTX_DIR = "dir"
@@ -110,9 +112,6 @@ def serialize_all(
         version=_VERSION_PLACEHOLDER,
         image_config=flyte_context.get_image_config(img_name=image),
         env=env,
-        iam_role=_auth_config.ASSUMABLE_IAM_ROLE.get(),
-        service_account=_auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
-        raw_output_data_config=_auth_config.RAW_OUTPUT_DATA_PREFIX.get(),
     )
     with flyte_context.FlyteContext.current_context().new_registration_settings(
         registration_settings=registration_settings

@@ -37,8 +37,6 @@ def test_serialization():
         version="123",
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
         env={},
-        iam_role="test:iam:role",
-        service_account=None,
     )
     with context_manager.FlyteContext.current_context().new_registration_settings(
         registration_settings=registration_settings
@@ -114,8 +112,6 @@ def test_query_no_inputs_or_outputs():
         version="123",
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
         env={},
-        iam_role="test:iam:role",
-        service_account=None,
     )
     with context_manager.FlyteContext.current_context().new_registration_settings(
         registration_settings=registration_settings

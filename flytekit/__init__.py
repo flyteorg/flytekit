@@ -18,4 +18,16 @@ __version__ = "0.16.0a2"
 
 
 def current_context():
+    """
+    Use this method to get a handle of specific parameters available in a flyte task.
+
+    Usage
+
+    .. code-block::
+
+        flytekit.current_context().logging.info(...)
+
+    Available params are documented in :py:class:`flytekit.annotated.context_manager.ExecutionParams`.
+    There are some special params, that should be available
+    """
     return FlyteContext.current_context().user_space_params
