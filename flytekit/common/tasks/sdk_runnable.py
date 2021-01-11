@@ -79,6 +79,14 @@ class ExecutionParameters(object):
         return ExecutionParameters.Builder(current=self)
 
     def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, **kwargs):
+        """
+        Args:
+            execution_date: Date when the execution is running
+            tmp_dir: temporary directory for the execution
+            stats: handle to emit stats
+            execution_id: Identifier for the xecution
+            logging: handle to logging
+        """
         self._stats = stats
         self._execution_date = execution_date
         self._working_directory = tmp_dir
