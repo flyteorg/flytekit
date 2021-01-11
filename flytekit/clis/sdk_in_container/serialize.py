@@ -23,6 +23,9 @@ from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
+# Identifier fields use placeholders for registration-time substitution.
+# Additional fields, such as auth and the raw output data prefix have more complex structures
+# and can be optional so they are not serialized with placeholders.
 _PROJECT_PLACEHOLDER = "{{ registration.project }}"
 _DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
 _VERSION_PLACEHOLDER = "{{ registration.version }}"
