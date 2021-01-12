@@ -3,7 +3,7 @@ import math as _math
 import os as _os
 import tarfile as _tarfile
 from enum import Enum as _Enum
-from typing import List
+from typing import Dict, List
 
 import click
 
@@ -31,6 +31,7 @@ _DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
 _VERSION_PLACEHOLDER = "{{ registration.version }}"
 
 CTX_IMAGE = "image"
+CTX_ADDITIONAL_IMAGES = "addl_images"
 CTX_DIR = "dir"
 
 
@@ -77,7 +78,12 @@ def serialize_tasks_only(pkgs, folder=None):
 
 @system_entry_point
 def serialize_all(
-    pkgs: List[str] = None, dir: str = None, folder: str = None, mode: SerializationMode = None, image: str = None,
+    pkgs: List[str] = None,
+    dir: str = None,
+    folder: str = None,
+    mode: SerializationMode = None,
+    image: str = None,
+    additional_images: Dict[str, str] = None,
 ):
     """
     In order to register, we have to comply with Admin's endpoints. Those endpoints take the following objects. These
@@ -110,7 +116,7 @@ def serialize_all(
         project=_PROJECT_PLACEHOLDER,
         domain=_DOMAIN_PLACEHOLDER,
         version=_VERSION_PLACEHOLDER,
-        image_config=flyte_context.get_image_config(img_name=image),
+        image_config=flyte_context.get_image_config(img_name=image, additional_images=additional_images),
         env=env,
     )
     with flyte_context.FlyteContext.current_context().new_registration_settings(
@@ -195,13 +201,14 @@ def _determine_text_chars(length):
 
 @click.group("serialize")
 @click.option("--image", help="Text tag: e.g. somedocker.com/myimage:someversion123", required=False)
+@click.option("--additional-images", type=(str, str), multiple=True)
 @click.option(
     "--directory",
     required=False,
     help="Root dir for python code containing workflow definitions to operate on when not the current working directory",
 )
 @click.pass_context
-def serialize(ctx, image, directory):
+def serialize(ctx, image, additional_images, directory):
     """
     This command produces protobufs for tasks and templates.
     For tasks, one pb file is produced for each task, representing one TaskTemplate object.
@@ -213,6 +220,8 @@ def serialize(ctx, image, directory):
         image = _internal_config.IMAGE.get()
     if not image:
         click.UsageError("Could not find image from config, please specify a value for ``--image``")
+    if additional_images:
+        ctx.obj[CTX_ADDITIONAL_IMAGES] = {addl_img[0]: addl_img[1] for addl_img in additional_images}
     ctx.obj[CTX_IMAGE] = image
     click.echo("Serializing Flyte elements with image {}".format(image))
     ctx.obj[CTX_DIR] = directory
@@ -243,7 +252,10 @@ def workflows(ctx, folder=None):
 
     pkgs = ctx.obj[CTX_PACKAGES]
     dir = ctx.obj[CTX_DIR]
-    serialize_all(pkgs, dir, folder, SerializationMode.DEFAULT, image=ctx.obj[CTX_IMAGE])
+    additional_images = ctx.obj[CTX_ADDITIONAL_IMAGES] if ctx.obj[CTX_ADDITIONAL_IMAGES] is not None else {}
+    serialize_all(
+        pkgs, dir, folder, SerializationMode.DEFAULT, image=ctx.obj[CTX_IMAGE], additional_images=additional_images
+    )
 
 
 @click.group("fast")
@@ -263,7 +275,10 @@ def fast_workflows(ctx, folder=None):
 
     pkgs = ctx.obj[CTX_PACKAGES]
     dir = ctx.obj[CTX_DIR]
-    serialize_all(pkgs, dir, folder, SerializationMode.FAST, image=ctx.obj[CTX_IMAGE])
+    additional_images = ctx.obj[CTX_ADDITIONAL_IMAGES] if ctx.obj[CTX_ADDITIONAL_IMAGES] is not None else {}
+    serialize_all(
+        pkgs, dir, folder, SerializationMode.FAST, image=ctx.obj[CTX_IMAGE], additional_images=additional_images
+    )
 
     source_dir = ctx.obj[CTX_DIR]
     digest = _compute_digest(source_dir)

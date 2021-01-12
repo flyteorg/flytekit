@@ -34,7 +34,7 @@ def get_registerable_container_image(img: Optional[str], cfg: ImageConfig) -> st
                 raise AssertionError(f"Image format is incorrect {m}")
             img_cfg = cfg.find_image(name)
             if img_cfg is None:
-                raise AssertionError(f"Image Config with name {name} not found in the configuration")
+                raise AssertionError(f"Image Config with name {name} not found in the configuration {cfg.images}")
             if attr == "version":
                 if img_cfg.tag is not None:
                     img = img.replace(replace_group, img_cfg.tag)

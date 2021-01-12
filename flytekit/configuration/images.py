@@ -3,10 +3,9 @@ import os
 import typing
 
 from flytekit.configuration import common as _config_common
-from flytekit.configuration.common import format_section
 
 
-def get_specified_images() -> typing.Dict[str, str]:
+def get_specified_images(other_images: typing.Dict[str, str]) -> typing.Dict[str, str]:
     """
     This section should contain options, where the option name is the friendly name of the image and the corresponding
     value is actual FQN of the image. Example of how the section is structured
@@ -18,14 +17,7 @@ def get_specified_images() -> typing.Dict[str, str]:
     :returns a dictionary of name: image<fqn+version> Version is optional
     """
 
-    images: typing.Dict[str, str] = {}
-
-    # Try reading images from env vars first.
-    image_section = format_section("image")
-    for env_var in os.environ.keys():
-        if env_var.startswith(image_section):
-            images[env_var.split("_")[-1]] = os.getenv(env_var)
-
+    images: typing.Dict[str, str] = other_images if other_images else {}
     if _config_common.CONFIGURATION_SINGLETON.config is None:
         print("No config file specified, will use the default image")
         return images

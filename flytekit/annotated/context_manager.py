@@ -71,10 +71,13 @@ def look_up_image_info(name: str, tag: str, optional_tag: bool = False) -> Image
     raise Exception("Could not parse given image and version from configuration.")
 
 
-def get_image_config(img_name: str = None) -> ImageConfig:
+def get_image_config(img_name: str = None, additional_images: Dict[str, str] = None) -> ImageConfig:
     image_name = img_name if img_name else internal.IMAGE.get()
     default_img = look_up_image_info("default", image_name)
-    other_images = [look_up_image_info(k, tag=v, optional_tag=True) for k, v in images.get_specified_images().items()]
+    other_images = [
+        look_up_image_info(k, tag=v, optional_tag=True)
+        for k, v in images.get_specified_images(additional_images).items()
+    ]
     other_images.append(default_img)
     return ImageConfig(default_image=default_img, images=other_images)
 
