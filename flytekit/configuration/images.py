@@ -1,7 +1,9 @@
 import configparser
+import os
 import typing
 
 from flytekit.configuration import common as _config_common
+from flytekit.configuration.common import format_section
 
 
 def get_specified_images() -> typing.Dict[str, str]:
@@ -17,6 +19,13 @@ def get_specified_images() -> typing.Dict[str, str]:
     """
 
     images: typing.Dict[str, str] = {}
+
+    # Try reading images from env vars first.
+    image_section = format_section("image")
+    for env_var in os.environ.keys():
+        if env_var.startswith(image_section):
+            images[env_var.split("_")[-1]] = os.getenv(env_var)
+
     if _config_common.CONFIGURATION_SINGLETON.config is None:
         print("No config file specified, will use the default image")
         return images
@@ -25,7 +34,11 @@ def get_specified_images() -> typing.Dict[str, str]:
     except configparser.NoSectionError:
         print("No images specified, will use the default image")
         image_names = None
-    if image_names:
-        for i in image_names:
+
+    if not image_names:
+        return images
+
+    for i in image_names:
+        if i not in images:
             images[str(i)] = _config_common.FlyteStringConfigurationEntry("images", i).get()
     return images

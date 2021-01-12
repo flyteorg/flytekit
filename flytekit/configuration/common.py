@@ -5,13 +5,21 @@ import os as _os
 from flytekit.common.exceptions import user as _user_exceptions
 
 
+def format_section(section: str) -> str:
+    """
+        :param Text section:
+        :rtype: Text
+        """
+    return "FLYTE_{section}_".format(section=section.upper())
+
+
 def format_section_key(section, key):
     """
     :param Text section:
     :param Text key:
     :rtype: Text
     """
-    return "FLYTE_{section}_{key}".format(section=section.upper(), key=key.upper())
+    return "{prefix}_{key}".format(prefix=format_section(section), key=key.upper())
 
 
 class FlyteConfigurationFile(object):
