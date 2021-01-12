@@ -7,7 +7,7 @@ from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfi
 from flytekit.annotated.dynamic_workflow_task import dynamic
 from flytekit.annotated.resources import Resources
 from flytekit.annotated.task import task
-from flytekit.taskplugins.pod.task import DynamicPod, DynamicPodFunctionTask, Pod, PodFunctionTask
+from flytekit.taskplugins.pod.task import Pod, PodFunctionTask
 
 
 def get_pod_spec():
@@ -69,7 +69,7 @@ def test_pod_task():
 
 
 def test_dynamic_pod_task():
-    dynamic_pod = DynamicPod(pod_spec=get_pod_spec(), primary_container_name="a container")
+    dynamic_pod = Pod(pod_spec=get_pod_spec(), primary_container_name="a container")
 
     @task
     def t1(a: int) -> int:
@@ -82,7 +82,7 @@ def test_dynamic_pod_task():
             s.append(t1(a=i))
         return s
 
-    assert isinstance(dynamic_pod_task, DynamicPodFunctionTask)
+    assert isinstance(dynamic_pod_task, PodFunctionTask)
     default_img = Image(name="default", fqn="test", tag="tag")
 
     custom = dynamic_pod_task.get_custom(

@@ -32,7 +32,7 @@ class Pod(object):
         return self._primary_container_name
 
 
-class PodFunctionTask(PythonFunctionTask[Pod]):
+class PodFunctionTask(DynamicWorkflowTaskMixin, PythonFunctionTask[Pod]):
     def __init__(self, task_config: Pod, task_function: Callable, **kwargs):
         super(PodFunctionTask, self).__init__(
             task_config=task_config, task_type="sidecar", task_function=task_function, **kwargs,
@@ -101,16 +101,4 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
         raise _user_exceptions.FlyteUserException("Local execute is not currently supported for pod tasks")
 
 
-class DynamicPod(Pod):
-    pass
-
-
-class DynamicPodFunctionTask(DynamicWorkflowTaskMixin, PodFunctionTask):
-    def __init__(self, task_config: DynamicPod, task_function: Callable, **kwargs):
-        super(PodFunctionTask, self).__init__(
-            task_config=task_config, task_type="dynamic-sidecar", task_function=task_function, **kwargs,
-        )
-
-
 TaskPlugins.register_pythontask_plugin(Pod, PodFunctionTask)
-TaskPlugins.register_pythontask_plugin(DynamicPod, DynamicPodFunctionTask)
