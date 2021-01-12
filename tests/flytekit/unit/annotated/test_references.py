@@ -64,10 +64,13 @@ def test_ref():
 
 def test_ref_task_more():
     @reference_task(
-        project="flytesnacks",
-        domain="development",
-        name="recipes.aaa.simple.join_strings",
-        version="553018f39e519bdb2597b652639c30ce16b99c79",
+        id=_identifier_model.Identifier(
+            _identifier_model.ResourceType.TASK,
+            "flytesnacks",
+            "development",
+            "recipes.aaa.simple.join_strings",
+            "553018f39e519bdb2597b652639c30ce16b99c79",
+        )
     )
     def ref_t1(a: typing.List[str]) -> str:
         ...

@@ -1,11 +1,12 @@
 import inspect
-from typing import Callable, Dict, Optional, Type, Union
+from typing import Any, Callable, Dict, Optional, Type, overload
 
 from flytekit import TaskMetadata
 from flytekit.annotated.interface import transform_signature_to_interface
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.reference_entity import ReferenceEntity, TaskReference
 from flytekit.common.tasks.task import SdkTask
+from flytekit.models.core import identifier as _identifier_model
 
 
 class ReferenceTask(ReferenceEntity, PythonFunctionTask):
@@ -38,13 +39,19 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
         return tk
 
 
+@overload
+def reference_task(id: _identifier_model.Identifier) -> Callable[[Callable[..., Any]], ReferenceTask]:
+    ...
+
+
+@overload
+def reference_task(project: str, domain: str, name: str, version: str) -> Callable[[Callable[..., Any]], ReferenceTask]:
+    ...
+
+
 def reference_task(
-    _task_function: Optional[Callable] = None,
-    project: Optional[str] = None,
-    domain: Optional[str] = None,
-    name: Optional[str] = None,
-    version: Optional[str] = None,
-) -> Union[Callable, PythonFunctionTask]:
+    id=None, project=None, domain=None, name=None, version=None,
+):
     """
     A reference task is a pointer to a task that already exists on your Flyte installation. This
     object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface.
@@ -53,9 +60,8 @@ def reference_task(
 
     def wrapper(fn) -> ReferenceTask:
         interface = transform_signature_to_interface(inspect.signature(fn))
+        if id is not None:
+            return ReferenceTask(id.project, id.domain, id.name, id.version, interface.inputs, interface.outputs)
         return ReferenceTask(project, domain, name, version, interface.inputs, interface.outputs)
 
-    if _task_function:
-        return wrapper(_task_function)
-    else:
-        return wrapper
+    return wrapper
