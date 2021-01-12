@@ -609,8 +609,6 @@ def test_lp_serialize():
         version="123",
         image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
-        iam_role="test:iam:role",
-        service_account=None,
     )
     with context_manager.FlyteContext.current_context().new_registration_settings(
         registration_settings=registration_settings

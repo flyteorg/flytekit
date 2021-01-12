@@ -206,10 +206,6 @@ class LaunchPlan(object):
 
         if self._auth_role:
             auth_role = self._auth_role
-        elif settings.iam_role:
-            auth_role = _common_models.AuthRole(assumable_iam_role=settings.iam_role)
-        elif settings.service_account:
-            auth_role = _common_models.AuthRole(kubernetes_service_account=settings.service_account)
         else:
             auth_role = None
 
@@ -224,7 +220,7 @@ class LaunchPlan(object):
             labels=self.labels or _common_models.Labels({}),
             annotations=self.annotations or _common_models.Annotations({}),
             auth_role=auth_role,  # TODO: Is None here okay?
-            raw_output_data_config=self.raw_output_data_config or settings.raw_output_data_config,
+            raw_output_data_config=self.raw_output_data_config,
         )
 
         # These two things are normally set to None in the SdkLaunchPlan constructor and filled in by
