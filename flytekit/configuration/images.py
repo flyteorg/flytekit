@@ -4,7 +4,7 @@ import typing
 from flytekit.configuration import common as _config_common
 
 
-def get_specified_images(other_images: typing.Dict[str, str]) -> typing.Dict[str, str]:
+def get_specified_images(other_images: typing.Dict[str, str] = None) -> typing.Dict[str, str]:
     """
     This section should contain options, where the option name is the friendly name of the image and the corresponding
     value is actual FQN of the image. Example of how the section is structured
