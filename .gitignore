@@ -20,5 +20,5 @@ dist
 .eggs
 .demo
 .bash_history
-test-notebook-out.html
-test-notebook-out.ipynb
+*-out.html
+*-out.ipynb

@@ -86,6 +86,18 @@ class NotebookTask(PythonInstanceTask[T]):
 
         Implicit extraction of SparkConfiguration from the notebook is not supported.
 
+    .. todo:
+
+        Support for remote notebook execution, we can create a custom metadata field that is read by a propeller plugin
+        or just passed down back into the container, so no need to rebuild the container.
+
+    .. note:
+
+        Some input types are not permitted by papermill. Types that cannot be passed directly into the cell are not
+        supported - Only supported types are
+        str, int, float, bool
+        Most output types are supported as long as FlyteFile etc is used.
+
     """
 
     _IMPLICIT_OP_NOTEBOOK = "out_nb"
@@ -179,15 +191,14 @@ class NotebookTask(PythonInstanceTask[T]):
         if outputs:
             m = outputs.literals
         output_list = []
-        for k, v in self.python_interface.outputs.items():
+        for k, type_v in self.python_interface.outputs.items():
             if k == self._IMPLICIT_OP_NOTEBOOK:
                 output_list.append(self.output_notebook_path)
             elif k == self._IMPLICIT_RENDERED_NOTEBOOK:
                 output_list.append(self.rendered_output_path)
             elif k in m:
-                output_list.append(
-                    TypeEngine.to_python_value(ctx=FlyteContext.current_context(), lv=m[k], expected_python_type=v)
-                )
+                v = TypeEngine.to_python_value(ctx=FlyteContext.current_context(), lv=m[k], expected_python_type=type_v)
+                output_list.append(v)
             else:
                 raise RuntimeError(f"Expected output {k} of type {v} not found in the notebook outputs")
 
