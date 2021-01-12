@@ -1,5 +1,4 @@
 import configparser
-import os
 import typing
 
 from flytekit.configuration import common as _config_common
