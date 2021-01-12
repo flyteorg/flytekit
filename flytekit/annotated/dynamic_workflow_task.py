@@ -3,7 +3,6 @@ from typing import Callable, Optional
 
 from flytekit import TaskMetadata
 from flytekit.annotated import task
-from flytekit.annotated.dynamic_mixin import DynamicWorkflowTaskMixin
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
 
@@ -12,7 +11,7 @@ class _Dynamic(object):
     pass
 
 
-class DynamicWorkflowTask(PythonFunctionTask[_Dynamic], DynamicWorkflowTaskMixin):
+class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
     def __init__(
         self,
         task_config: _Dynamic,
