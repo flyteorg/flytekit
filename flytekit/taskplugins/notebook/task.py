@@ -4,17 +4,20 @@ import os
 import typing
 from typing import Any
 
+import nbformat
+import papermill as pm
+from flyteidl.core.literals_pb2 import LiteralMap as _pb2_LiteralMap
+from google.protobuf import text_format as _text_format
+from nbconvert import HTMLExporter
+
 from flytekit import FlyteContext
 from flytekit.annotated.interface import Interface
 from flytekit.annotated.python_function_task import PythonInstanceTask
 from flytekit.annotated.task import TaskPlugins
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-import papermill as pm
-from nbconvert import HTMLExporter
-
 from flytekit.models.literals import LiteralMap
-from flyteidl.core.literals_pb2 import LiteralMap as _pb2_lm
+from flytekit.types.file import HTMLPage, PythonNotebook
 
 T = typing.TypeVar("T")
 
@@ -24,28 +27,98 @@ def _dummy_task_func():
 
 
 class NotebookTask(PythonInstanceTask[T]):
+    """
+    Simple Papermill based input output handling for a Python Jupyter notebook. This task should be used to wrap
+    a Notebook that has 2 properties
+    Property 1:
+    One of the cells (usually the first) should be marked as the parameters cell. This task will inject inputs after this
+    cell. The task will inject the outputs observed from Flyte
 
-    _IMPLICIT_OP_NOTEBOOK = "out_notebook"
+    Property 2:
+    For a notebook that produces outputs, that should be consumed by a subsequent notebook, use the method
+    :py:func:`record_outputs` in your notebook after the outputs are ready and pass all outputs.
+
+    Usage:
+
+    .. code-block:: pthon
+
+        val_x = 10
+        val_y = "hello"
+
+        ...
+        # cell begin
+        from flytekit.taskplugins.notebook import record_outputs
+
+        record_outputs(x=val_x, y=val_y)
+        #cell end
+
+    Step 2: Wrap in a task
+    Now point to the notebook and create an instance of :py:class:`NotebookTask` as follows
+
+    Usage:
+
+    .. code-block:: python
+
+        nb = NotebookTask(
+            name="modulename.my_notebook_task", # the name should be unique within all your tasks, usually it is a good
+                                               # idea to use the modulename
+            notebook_path="../path/to/my_notebook",
+            inputs=kwtypes(v=int),
+            outputs=kwtypes(x=int, y=str),
+            metadata=TaskMetadata(retries=3, cache=True, cache_version="1.0"),
+        )
+
+    Step 3: Task can be executed as usual
+
+    Outputs
+    -------
+    The Task produces 2 implicit outputs.
+
+    #. It captures the executed notebook in its entirety and is available from Flyte with the name ``out_nb``.
+    #. It also converts the captured notebook into an ``html`` page, which the FlyteConsole will render called -
+       ``out_rendered_nb``
+
+    .. note:
+
+        Users can access these notebooks after execution of the task locally or from remote servers.
+
+    .. todo:
+
+        Implicit extraction of SparkConfiguration from the notebook is not supported.
+
+    """
+
+    _IMPLICIT_OP_NOTEBOOK = "out_nb"
+    _IMPLICIT_OP_NOTEBOOK_TYPE = PythonNotebook
     _IMPLICIT_RENDERED_NOTEBOOK = "out_rendered_nb"
-    _IMPLICIT_RENDERED_NOTEBOOK_TYPE = 
+    _IMPLICIT_RENDERED_NOTEBOOK_TYPE = HTMLPage
 
-    def __init__(self,
-                 name: str,
-                 task_config: T,
-                 notebook_path: str,
-                 inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
-                 outputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
-                 **kwargs):
+    def __init__(
+        self,
+        name: str,
+        notebook_path: str,
+        task_config: T = None,
+        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        outputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        **kwargs,
+    ):
         plugin_class = TaskPlugins.find_pythontask_plugin(type(task_config))
         self._plugin = plugin_class(task_config=task_config, task_function=_dummy_task_func)
         task_type = f"nb-{self._plugin.task_type}"
-        self._notebook_path = notebook_path
+        self._notebook_path = os.path.abspath(notebook_path)
 
         if not os.path.exists(self._notebook_path):
             raise ValueError(f"Illegal notebook path passed in {self._notebook_path}")
 
-        super().__init__(name, task_config, task_type=task_type, interface=Interface(inputs=inputs, outputs=outputs),
-                         **kwargs)
+        outputs.update(
+            {
+                self._IMPLICIT_OP_NOTEBOOK: self._IMPLICIT_OP_NOTEBOOK_TYPE,
+                self._IMPLICIT_RENDERED_NOTEBOOK: self._IMPLICIT_RENDERED_NOTEBOOK_TYPE,
+            }
+        )
+        super().__init__(
+            name, task_config, task_type=task_type, interface=Interface(inputs=inputs, outputs=outputs), **kwargs
+        )
 
     @property
     def notebook_path(self) -> str:
@@ -74,7 +147,9 @@ class NotebookTask(PythonInstanceTask[T]):
                 meta = p["metadata"]
                 if "outputs" in meta["tags"]:
                     outputs = " ".join(p["outputs"][0]["data"]["text/plain"])
-                    return LiteralMap.from_flyte_idl(_pb2_lm.ParseFromString(outputs))
+                    m = _pb2_LiteralMap()
+                    _text_format.Parse(outputs, m)
+                    return LiteralMap.from_flyte_idl(m)
         return None
 
     @staticmethod
@@ -85,8 +160,9 @@ class NotebookTask(PythonInstanceTask[T]):
             later about how to customize the exporter further.
         """
         html_exporter = HTMLExporter()
-        html_exporter.template_name = 'classic'
-        (body, resources) = html_exporter.from_notebook_node(from_nb)
+        html_exporter.template_name = "classic"
+        nb = nbformat.read(from_nb, as_version=4)
+        (body, resources) = html_exporter.from_notebook_node(nb)
 
         with open(to, "w+") as f:
             f.write(body)
@@ -98,9 +174,24 @@ class NotebookTask(PythonInstanceTask[T]):
 
         outputs = self.extract_outputs(self.output_notebook_path)
         self.render_nb_html(self.output_notebook_path, self.rendered_output_path)
-        for k, v in self.interface.outputs.items():
-            if outputs
-                [k]
+
+        m = {}
+        if outputs:
+            m = outputs.literals
+        output_list = []
+        for k, v in self.python_interface.outputs.items():
+            if k == self._IMPLICIT_OP_NOTEBOOK:
+                output_list.append(self.output_notebook_path)
+            elif k == self._IMPLICIT_RENDERED_NOTEBOOK:
+                output_list.append(self.rendered_output_path)
+            elif k in m:
+                output_list.append(
+                    TypeEngine.to_python_value(ctx=FlyteContext.current_context(), lv=m[k], expected_python_type=v)
+                )
+            else:
+                raise RuntimeError(f"Expected output {k} of type {v} not found in the notebook outputs")
+
+        return tuple(output_list)
 
     def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
         return self._plugin.post_execute(user_params, rval)
@@ -121,4 +212,4 @@ def record_outputs(**kwargs) -> str:
         expected = TypeEngine.to_literal_type(type(v))
         lit = TypeEngine.to_literal(ctx, python_type=type(v), python_val=v, expected=expected)
         m[k] = lit
-    return LiteralMap(literals=m).to_flyte_idl().SerializeToString()
+    return LiteralMap(literals=m).to_flyte_idl()
