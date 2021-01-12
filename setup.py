@@ -8,6 +8,7 @@ extras_require = {
     "sidecar": ["k8s-proto>=0.0.3,<1.0.0"],
     "schema": ["numpy>=1.14.0,<2.0.0", "pandas>=0.22.0,<2.0.0", "pyarrow>=0.11.0,<1.0.0"],
     "hive_sensor": ["hmsclient>=0.0.1,<1.0.0"],
+    "sagemaker": ["sagemaker-training>=3.6.2,<4.0.0"],
     "all-spark2.4": [
         "pyspark>=2.4.0,<3.0.0",
         "k8s-proto>=0.0.3,<1.0.0",
@@ -15,6 +16,7 @@ extras_require = {
         "pandas>=0.22.0,<2.0.0",
         "pyarrow>=0.11.0,<1.0.0",
         "hmsclient>=0.0.1,<1.0.0",
+        "sagemaker-training>=3.6.2,<4.0.0",
     ],
     "all-spark3": [
         "pyspark>=3.0.0",
@@ -23,6 +25,7 @@ extras_require = {
         "pandas>=0.22.0,<2.0.0",
         "pyarrow>=0.11.0,<1.0.0",
         "hmsclient>=0.0.1,<1.0.0",
+        "sagemaker-training>=3.6.2,<4.0.0",
     ],
     "all": [
         "pyspark>=2.4.0,<3.0.0",
@@ -31,6 +34,7 @@ extras_require = {
         "pandas>=0.22.0,<2.0.0",
         "pyarrow>=0.11.0,<1.0.0",
         "hmsclient>=0.0.1,<1.0.0",
+        "sagemaker-training>=3.6.2,<4.0.0",
     ],
 }
 
