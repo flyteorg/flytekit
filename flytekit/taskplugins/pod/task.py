@@ -4,7 +4,6 @@ from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.annotated.context_manager import FlyteContext, RegistrationSettings
-from flytekit.annotated.dynamic_workflow_task import DynamicWorkflowTaskMixin
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
@@ -32,7 +31,7 @@ class Pod(object):
         return self._primary_container_name
 
 
-class PodFunctionTask(DynamicWorkflowTaskMixin, PythonFunctionTask[Pod]):
+class PodFunctionTask(PythonFunctionTask[Pod]):
     def __init__(self, task_config: Pod, task_function: Callable, **kwargs):
         super(PodFunctionTask, self).__init__(
             task_config=task_config, task_type="sidecar", task_function=task_function, **kwargs,

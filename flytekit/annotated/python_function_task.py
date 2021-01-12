@@ -1,10 +1,12 @@
 import inspect
 import re
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, TypeVar
 
 from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.context_manager import ImageConfig, RegistrationSettings
+from flytekit.annotated.dynamic_mixin import DynamicWorkflowTaskMixin
 from flytekit.annotated.interface import transform_signature_to_interface
 from flytekit.annotated.resources import Resources, ResourceSpec
 from flytekit.common.tasks.raw_container import _get_container_definition
@@ -122,7 +124,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC):
         )
 
 
-class PythonFunctionTask(PythonAutoContainerTask[T]):
+class PythonFunctionTask(DynamicWorkflowTaskMixin, PythonAutoContainerTask[T]):
     """
     A Python Function task should be used as the base for all extensions that have a python function. It will
     automatically detect interface of the python function and also, create the write execution command to execute the
@@ -140,12 +142,17 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
     auto detected.
     """
 
+    class ExecutionMode(Enum):
+        DEFAULT = 1
+        DYNAMIC = 2
+
     def __init__(
         self,
         task_config: T,
         task_function: Callable,
         task_type="python-task",
         ignore_input_vars: Optional[List[str]] = None,
+        execution_mode: Optional[ExecutionMode] = None,
         **kwargs,
     ):
         """
@@ -167,9 +174,17 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             **kwargs,
         )
         self._task_function = task_function
+        self._execution_mode = execution_mode if execution_mode is not None else self.ExecutionMode.DEFAULT
+
+    @property
+    def execution_mode(self) -> ExecutionMode:
+        return self._execution_mode
 
     def execute(self, **kwargs) -> Any:
-        return self._task_function(**kwargs)
+        if self.execution_mode == self.ExecutionMode.DEFAULT:
+            return self._task_function(**kwargs)
+        elif self.execution_mode == self.ExecutionMode.DYNAMIC:
+            return self.dynamic_execute(self._task_function, **kwargs)
 
     def get_command(self, settings: RegistrationSettings) -> List[str]:
         return [

@@ -413,7 +413,7 @@ def test_wf1_with_dynamic():
         )
     ) as ctx:
         with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
-            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, a=5)
+            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
 
 
