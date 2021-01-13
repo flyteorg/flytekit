@@ -7,8 +7,8 @@ from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import FlyteContext, Image, ImageConfig, get_image_config
 from flytekit.annotated.task import task
 from flytekit.annotated.workflow import workflow
-from flytekit.configuration import set_flyte_config_file
 from flytekit.common.translator import get_serializable
+from flytekit.configuration import set_flyte_config_file
 
 
 def test_serialization():
@@ -314,4 +314,3 @@ def test_serialsdfization_branch_compound_conditions():
     assert wf is not None
     assert len(wf.nodes[0].inputs) == 1
     assert wf.nodes[0].inputs[0].var == ".a"
-

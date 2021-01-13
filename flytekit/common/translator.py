@@ -3,21 +3,29 @@ from typing import Dict, List, Optional, Union
 from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.condition import BranchNode
 from flytekit.annotated.context_manager import RegistrationSettings
-from flytekit.annotated.launch_plan import LaunchPlan
+from flytekit.annotated.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.annotated.node import Node
-from flytekit.annotated.workflow import Workflow
+from flytekit.annotated.reference_task import ReferenceTask
+from flytekit.annotated.workflow import ReferenceWorkflow, Workflow, WorkflowFailurePolicy, WorkflowMetadata
 from flytekit.common import constants as _common_constants
+from flytekit.common.interface import TypedInterface
 from flytekit.common.launch_plan import SdkLaunchPlan
 from flytekit.common.nodes import SdkNode
 from flytekit.common.tasks.task import SdkTask
 from flytekit.common.workflow import SdkWorkflow
 from flytekit.models import common as _common_models
+from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
+from flytekit.models import literals as literal_models
+from flytekit.models.common import RawOutputDataConfig
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
+from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 
-FlyteLocalEntity = Union[PythonTask, BranchNode, Node, LaunchPlan, Workflow]
+FlyteLocalEntity = Union[
+    PythonTask, BranchNode, Node, LaunchPlan, Workflow, ReferenceWorkflow, ReferenceTask, ReferenceLaunchPlan
+]
 FlyteControlPlaneEntity = Union[SdkTask, SdkLaunchPlan, SdkWorkflow, SdkNode, BranchNodeModel]
 
 
@@ -49,10 +57,58 @@ def get_serializable(settings: RegistrationSettings, entity: FlyteLocalEntity) -
 
     cp_entity = None
 
-    # TODO: Add reference task, reference workflow, and reference launch plans
     # TODO: Set the ID correct using settings, except for reference objects
+    if isinstance(entity, ReferenceTask):
+        cp_entity = SdkTask(
+            type="ignore",
+            metadata=TaskMetadata().to_taskmetadata_model(),
+            interface=self.typed_interface,
+            custom={},
+            container=None,
+        )
+        # Reset id to ensure it matches user input
+        cp_entity._id = entity.id
+        cp_entity._has_registered = True
+        cp_entity.assign_name(entity.reference.id.name)
 
-    if isinstance(entity, PythonTask):
+    elif isinstance(entity, ReferenceWorkflow):
+        workflow_metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
+
+        cp_entity = SdkWorkflow(
+            nodes=[],  # Fake an empty list for nodes,
+            id=entity.reference.id,
+            metadata=workflow_metadata,
+            metadata_defaults=workflow_model.WorkflowMetadataDefaults(),
+            interface=entity.typed_interface,
+            output_bindings=[],
+        )
+        # Make sure we don't serialize this
+        cp_entity._has_registered = True
+        cp_entity.assign_name(entity.id.name)
+        cp_entity._id = entity.id
+
+    elif isinstance(entity, ReferenceLaunchPlan):
+        wf_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW, "", "", "", "")
+        cp_entity = SdkLaunchPlan(
+            workflow_id=wf_id,
+            entity_metadata=_launch_plan_models.LaunchPlanMetadata(schedule=None, notifications=[]),
+            default_inputs=interface_models.ParameterMap({}),
+            fixed_inputs=literal_models.LiteralMap({}),
+            labels=_common_models.Labels({}),
+            annotations=_common_models.Annotations({}),
+            auth_role=_common_models.AuthRole(assumable_iam_role="fake:role"),
+            raw_output_data_config=RawOutputDataConfig(""),
+        )
+        # Because of how SdkNodes work, it needs one of these interfaces
+        # Hopefully this is more trickery that can be cleaned up in the future
+        cp_entity._interface = TypedInterface.promote_from_model(entity.typed_interface)
+        cp_entity._id = entity.id
+
+        # Make sure we don't serialize this
+        cp_entity._has_registered = True
+        cp_entity.assign_name(entity.reference.id.name)
+
+    elif isinstance(entity, PythonTask):
         # TODO: Fast register later
         cp_entity = SdkTask(
             type=entity.task_type,
@@ -62,7 +118,10 @@ def get_serializable(settings: RegistrationSettings, entity: FlyteLocalEntity) -
             container=entity.get_container(settings),
         )
         # Reset just to make sure it's what we give it
+        cp_entity.id._project = settings.project
+        cp_entity.id._domain = settings.domain
         cp_entity.id._name = entity.name
+        cp_entity.id._version = settings.version
 
     elif isinstance(entity, Workflow):
         workflow_id = _identifier_model.Identifier(
@@ -83,7 +142,10 @@ def get_serializable(settings: RegistrationSettings, entity: FlyteLocalEntity) -
             output_bindings=entity._output_bindings,
         )
         # Reset just to make sure it's what we give it
+        cp_entity.id._project = settings.project
+        cp_entity.id._domain = settings.domain
         cp_entity.id._name = entity.name
+        cp_entity.id._version = settings.version
 
     elif isinstance(entity, Node):
         if entity._flyte_entity is None:
@@ -157,7 +219,11 @@ def get_serializable(settings: RegistrationSettings, entity: FlyteLocalEntity) -
         # fields are not part of the underlying LaunchPlanSpec
         cp_entity._interface = sdk_workflow.interface
         cp_entity._id = _identifier_model.Identifier(
-            resource_type=_identifier_model.ResourceType.LAUNCH_PLAN, name=entity.name,
+            resource_type=_identifier_model.ResourceType.LAUNCH_PLAN,
+            project=settings.project,
+            domain=settings.domain,
+            name=entity.name,
+            version=settings.version,
         )
 
     elif isinstance(entity, BranchNode):
