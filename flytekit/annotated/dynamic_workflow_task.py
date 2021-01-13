@@ -32,4 +32,6 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
 
 # Register dynamic workflow task
 TaskPlugins.register_pythontask_plugin(_Dynamic, DynamicWorkflowTask)
-dynamic = functools.partial(task.task, task_config=_Dynamic(), execution_mode=PythonFunctionTask.ExecutionMode.DYNAMIC)
+dynamic = functools.partial(
+    task.task, task_config=_Dynamic(), execution_mode=PythonFunctionTask.ExecutionBehavior.DYNAMIC
+)
