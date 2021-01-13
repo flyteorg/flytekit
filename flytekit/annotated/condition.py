@@ -13,9 +13,8 @@ from flytekit.annotated.promise import (
     ConjunctionOps,
     Promise,
     VoidPromise,
-    create_task_output,
+    create_task_output, NodeOutput,
 )
-from flytekit.common.promise import NodeOutput
 from flytekit.models.core import condition as _core_cond
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.literals import Binding, BindingData, Literal, RetryStrategy
@@ -144,7 +143,7 @@ class ConditionalSection(object):
                 for p in promises:
                     if not p.is_ready:
                         bindings.append(Binding(var=p.var, binding=BindingData(promise=p.ref)))
-                        upstream_nodes.add(p.ref.sdk_node)
+                        upstream_nodes.add(p.ref.node)
 
                 n = Node(
                     id=f"{ctx.compilation_state.prefix}node-{len(ctx.compilation_state.nodes)}",
@@ -175,7 +174,7 @@ class ConditionalSection(object):
         if len(output_var_sets) > 1:
             for x in output_var_sets[1:]:
                 curr = curr.intersection(x)
-        promises = [Promise(var=x, val=NodeOutput(sdk_node=n, sdk_type=None, var=x)) for x in curr]
+        promises = [Promise(var=x, val=NodeOutput(node=n, sdk_type=None, var=x)) for x in curr]
         # TODO: Is there a way to add the Python interface here? Currently, it's an optional arg.
         return create_task_output(promises)
 
@@ -341,7 +340,7 @@ def transform_to_boolexpr(
 
 def to_case_block(c: Case) -> (Union[_core_wf.IfBlock], typing.List[Promise]):
     expr, promises = transform_to_boolexpr(c.expr)
-    n = c.output_promise.ref.sdk_node
+    n = c.output_promise.ref.node
     return _core_wf.IfBlock(condition=expr, then_node=n), promises
 
 
@@ -364,7 +363,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> (_core_wf.IfElseBlo
     node = None
     err = None
     if last_case.output_promise is not None:
-        node = last_case.output_promise.ref.sdk_node
+        node = last_case.output_promise.ref.node
     else:
         err = Error(failed_node_id=node_id, message=last_case.err if last_case.err else "Condition failed")
     return (

@@ -176,11 +176,11 @@ def test_ref_plain_two_outputs():
     with ctx.new_compilation_context():
         xx, yy = r1(a="five", b=6)
         # Note - misnomer, these are not SdkNodes, they are annotated.Nodes
-        assert xx.ref.sdk_node is yy.ref.sdk_node
+        assert xx.ref.node is yy.ref.node
         assert xx.var == "x"
         assert yy.var == "y"
         assert xx.ref.node_id == "n0"
-        assert len(xx.ref.sdk_node.bindings) == 2
+        assert len(xx.ref.node.bindings) == 2
 
     @task
     def t2(q: bool, r: int) -> str:

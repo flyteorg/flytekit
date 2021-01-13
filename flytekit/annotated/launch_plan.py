@@ -5,8 +5,7 @@ from typing import Any, Dict, List, Optional, Type
 from flytekit.annotated import workflow as _annotated_workflow
 from flytekit.annotated.context_manager import FlyteContext, FlyteEntities
 from flytekit.annotated.interface import Interface, transform_inputs_to_parameters
-from flytekit.annotated.node import create_and_link_node
-from flytekit.annotated.promise import translate_inputs_to_literals
+from flytekit.annotated.promise import translate_inputs_to_literals, create_and_link_node
 from flytekit.annotated.reference_entity import LaunchPlanReference, ReferenceEntity
 from flytekit.common.launch_plan import SdkLaunchPlan
 from flytekit.models import common as _common_models
