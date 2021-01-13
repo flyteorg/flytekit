@@ -1,38 +1,36 @@
 from setuptools import find_packages, setup  # noqa
+import sys
 
 # from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
 # extras_require = LazyLoadPlugin.get_extras_require()
+
+MIN_PYTHON_VERSION = (3, 7, 0)
+CURRENT_PYTHON = sys.version_info[:2]
+if CURRENT_PYTHON < MIN_PYTHON_VERSION:
+    print("Minimum Python version is {}, but you are on {}".format(MIN_PYTHON_VERSION, CURRENT_PYTHON))
+    sys.exit(-1)
+
+spark = ["pyspark>=2.4.0,<3.0.0"]
+spark3 = ["pyspark>=3.0.0"]
+sidecar= ["k8s-proto>=0.0.3,<1.0.0"]
+schema= ["numpy>=1.14.0,<2.0.0", "pandas>=0.22.0,<2.0.0", "pyarrow>=0.11.0,<1.0.0"]
+hive_sensor= ["hmsclient>=0.0.1,<1.0.0"]
+notebook= ["papermill>=1.2.0", "nbconvert>=6.0.7", "ipykernel>=5.0.0"]
+sagemaker= ["sagemaker-training>=3.6.2,<4.0.0"]
+
+all_but_spark = sidecar + schema + hive_sensor + notebook + sagemaker
+
 extras_require = {
-    "spark": ["pyspark>=2.4.0,<3.0.0"],
-    "spark3": ["pyspark>=3.0.0"],
-    "sidecar": ["k8s-proto>=0.0.3,<1.0.0"],
-    "schema": ["numpy>=1.14.0,<2.0.0", "pandas>=0.22.0,<2.0.0", "pyarrow>=0.11.0,<1.0.0"],
-    "hive_sensor": ["hmsclient>=0.0.1,<1.0.0"],
-    "notebook": ["papermill>=1.2.0", "nbconvert>=6.0.7"],
-    "all-spark2.4": [
-        "pyspark>=2.4.0,<3.0.0",
-        "k8s-proto>=0.0.3,<1.0.0",
-        "numpy>=1.14.0,<2.0.0",
-        "pandas>=0.22.0,<2.0.0",
-        "pyarrow>=0.11.0,<1.0.0",
-        "hmsclient>=0.0.1,<1.0.0",
-    ],
-    "all-spark3": [
-        "pyspark>=3.0.0",
-        "k8s-proto>=0.0.3,<1.0.0",
-        "numpy>=1.14.0,<2.0.0",
-        "pandas>=0.22.0,<2.0.0",
-        "pyarrow>=0.11.0,<1.0.0",
-        "hmsclient>=0.0.1,<1.0.0",
-    ],
-    "all": [
-        "pyspark>=2.4.0,<3.0.0",
-        "k8s-proto>=0.0.3,<1.0.0",
-        "numpy>=1.14.0,<2.0.0",
-        "pandas>=0.22.0,<2.0.0",
-        "pyarrow>=0.11.0,<1.0.0",
-        "hmsclient>=0.0.1,<1.0.0",
-    ],
+    "spark": spark,
+    "spark3": spark3,
+    "sidecar": sidecar,
+    "schema": schema,
+    "hive_sensor": hive_sensor,
+    "notebook": notebook,
+    "sagemaker": sagemaker,
+    "all-spark2.4": spark + all_but_spark,
+    "all-spark3": spark3 + all_but_spark,
+    "all": spark3 + all_but_spark,
 }
 
 
@@ -72,7 +70,6 @@ setup(
         "statsd>=3.0.0,<4.0.0",
         "urllib3>=1.22,<1.26",
         "wrapt>=1.0.0,<2.0.0",
-        "ipykernel>=5.0.0",
         "retry==0.9.2",
         "dataclasses-json>=0.5.2",
         "natsort>=7.0.1",
@@ -89,11 +86,15 @@ setup(
     license="apache2",
     python_requires=">=3.7",
     classifiers=[
+        'Intended Audience :: Science/Research',
         "Intended Audience :: Developers",
-        "Intended Audience :: System Administrators",
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
-        "Topic :: Software Development :: Libraries",
+        'Topic :: Scientific/Engineering',
+        'Topic :: Scientific/Engineering :: Artificial Intelligence',
+        'Topic :: Software Development',
+        'Topic :: Software Development :: Libraries',
+        'Topic :: Software Development :: Libraries :: Python Modules',
     ],
 )
