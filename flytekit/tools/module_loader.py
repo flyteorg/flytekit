@@ -122,13 +122,14 @@ def _get_entity_to_module(pkgs):
 
 
 def iterate_registerable_entities_in_order(
-    pkgs, directory=None, ignore_entities=None, include_entities=None, detect_unreferenced_entities=True,
+    pkgs, local_source_root=None, ignore_entities=None, include_entities=None, detect_unreferenced_entities=True,
 ):
     """
     This function will iterate all discovered entities in the given package list.  It will then attempt to
     topologically sort such that any entity with a dependency on another comes later in the list.  Note that workflows
     can reference other workflows and launch plans.
     :param list[Text] pkgs:
+    :param Text local_source_root:
     :param set[type] ignore_entities: If specified, ignore these entities while doing a topological sort.  All other
         entities will be taken.  Only one of ignore_entities or include_entities can be set.
     :param set[type] include_entities: If specified, include these entities while doing a topological sort.  All
@@ -146,8 +147,8 @@ def iterate_registerable_entities_in_order(
         ignore_entities = tuple(list(ignore_entities or set([object])))
         include_entities = tuple(list(include_entities or set()))
 
-    if directory is not None:
-        with add_sys_path(directory):
+    if local_source_root is not None:
+        with add_sys_path(local_source_root):
             entity_to_module_key = _get_entity_to_module(pkgs)
     else:
         entity_to_module_key = _get_entity_to_module(pkgs)

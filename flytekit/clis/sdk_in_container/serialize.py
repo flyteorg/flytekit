@@ -31,7 +31,7 @@ _DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
 _VERSION_PLACEHOLDER = "{{ registration.version }}"
 
 CTX_IMAGE = "image"
-CTX_DIR = "dir"
+CTX_LOCAL_SRC_ROOT = "local_source_root"
 CTX_CONFIG_FILE_LOC = "config_file_loc"
 
 
@@ -79,7 +79,7 @@ def serialize_tasks_only(pkgs, folder=None):
 @system_entry_point
 def serialize_all(
     pkgs: List[str] = None,
-    dir: str = None,
+    local_source_root: str = None,
     folder: str = None,
     mode: SerializationMode = None,
     image: str = None,
@@ -125,7 +125,7 @@ def serialize_all(
         registration_settings=registration_settings
     ) as ctx:
         loaded_entities = []
-        for m, k, o in iterate_registerable_entities_in_order(pkgs, directory=dir):
+        for m, k, o in iterate_registerable_entities_in_order(pkgs, local_source_root=local_source_root):
             name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
             _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
             o._id = _identifier.Identifier(
@@ -204,7 +204,7 @@ def _determine_text_chars(length):
 @click.group("serialize")
 @click.option("--image", help="Text tag: e.g. somedocker.com/myimage:someversion123", required=False)
 @click.option(
-    "--directory",
+    "--local-source-root",
     required=False,
     help="Root dir for python code containing workflow definitions to operate on when not the current working directory"
     "Required for running `pyflyte serialize` in out of container mode",
@@ -212,11 +212,12 @@ def _determine_text_chars(length):
 @click.option(
     "--in-container-config-path",
     required=False,
-    help="Path for where your config file is mounted inside your container definition"
-    "Required for running `pyflyte serialize` in out of container mode",
+    help="This is where the configuration for your task lives inside the container. "
+    "The reason it needs to be a separate option is because this pyflyte utility cannot know where the Dockerfile "
+    "writes the config file to. Required for running `pyflyte serialize` in out of container mode",
 )
 @click.pass_context
-def serialize(ctx, image, directory, in_container_config_path):
+def serialize(ctx, image, local_source_root, in_container_config_path):
     """
     This command produces protobufs for tasks and templates.
     For tasks, one pb file is produced for each task, representing one TaskTemplate object.
@@ -229,12 +230,12 @@ def serialize(ctx, image, directory, in_container_config_path):
     if not image:
         raise click.UsageError("Could not find image from config, please specify a value for ``--image``")
     ctx.obj[CTX_IMAGE] = image
-    ctx.obj[CTX_DIR] = directory
+    ctx.obj[CTX_LOCAL_SRC_ROOT] = local_source_root
     click.echo("Serializing Flyte elements with image {}".format(image))
 
-    if bool(directory) != bool(in_container_config_path):
+    if bool(local_source_root) != bool(in_container_config_path):
         raise click.UsageError(
-            "When running out of container serialization you must specify --directory AND --in-container-config-path"
+            "When running out of container serialization you must specify --local-source-root AND --in-container-config-path"
         )
     ctx.obj[CTX_CONFIG_FILE_LOC] = in_container_config_path
 
@@ -263,7 +264,7 @@ def workflows(ctx, folder=None):
         click.echo(f"Writing output to {folder}")
 
     pkgs = ctx.obj[CTX_PACKAGES]
-    dir = ctx.obj[CTX_DIR]
+    dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
     serialize_all(
         pkgs, dir, folder, SerializationMode.DEFAULT, image=ctx.obj[CTX_IMAGE], config_path=ctx.obj[CTX_CONFIG_FILE_LOC]
     )
@@ -285,12 +286,12 @@ def fast_workflows(ctx, folder=None):
         click.echo(f"Writing output to {folder}")
 
     pkgs = ctx.obj[CTX_PACKAGES]
-    dir = ctx.obj[CTX_DIR]
+    dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
     serialize_all(
         pkgs, dir, folder, SerializationMode.FAST, image=ctx.obj[CTX_IMAGE], config_path=ctx.obj[CTX_CONFIG_FILE_LOC]
     )
 
-    source_dir = ctx.obj[CTX_DIR]
+    source_dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
     digest = _compute_digest(source_dir)
     folder = folder if folder else ""
     archive_fname = _os.path.join(folder, f"{digest}.tar.gz")
