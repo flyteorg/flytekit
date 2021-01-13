@@ -15,7 +15,7 @@ def test_task_static():
         "test",
         query_template="select * from tracks",
         task_config=SQLite3Config(
-            sqlite_db_mode=SQLite3Config.Mode.STATIC, static_file_uri=EXAMPLE_DB, compressed=True,
+            uri=EXAMPLE_DB, compressed=True,
         ),
     )
     df = tk()
@@ -23,12 +23,10 @@ def test_task_static():
 
 
 def test_task_dynamic():
-    tk = SQLite3Task("test", query_template="select * from tracks", task_config=SQLite3Config(compressed=True))
-    with pytest.raises(AssertionError):
-        tk()
-
-    df = tk(sqlite=FlyteFile.from_path(EXAMPLE_DB))
-    print(df)
+    tk = SQLite3Task("test", query_template="select * from tracks",
+                     task_config=SQLite3Config(uri=EXAMPLE_DB, compressed=True))
+    df = tk()
+    assert df is not None
 
 
 def test_workflow():
@@ -44,7 +42,7 @@ def test_workflow():
                 query_template="select * from tracks limit {{.inputs.limit}}",
                 inputs=kwtypes(limit=int),
                 task_config=SQLite3Config(
-                    sqlite_db_mode=SQLite3Config.Mode.STATIC, static_file_uri=EXAMPLE_DB, compressed=True,
+                    uri=EXAMPLE_DB, compressed=True,
                 ),
             )(limit=limit)
         )
