@@ -6,7 +6,14 @@ import six as _six
 
 from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map
 from flytekit.clis.sdk_in_container import constants as _constants
-from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PROJECT, CTX_VERSION, domain_option, project_option
+from flytekit.clis.sdk_in_container.constants import (
+    CTX_DOMAIN,
+    CTX_PROJECT,
+    CTX_VERSION,
+    domain_option,
+    project_option,
+    version_option,
+)
 from flytekit.common import utils as _utils
 from flytekit.common.launch_plan import SdkLaunchPlan as _SdkLaunchPlan
 from flytekit.configuration.internal import DOMAIN as _DOMAIN
@@ -146,16 +153,23 @@ class LaunchPlanExecuteGroup(LaunchPlanAbstractGroup):
 @click.group("lp")
 @project_option
 @domain_option
+@version_option
 @click.pass_context
-def launch_plans(ctx, project, domain):
+def launch_plans(ctx, project, domain, version):
     """
     Launch plan control group, including executions
     """
+
+    version = version or _look_up_version_from_image_tag(_IMAGE.get())
+    if not version:
+        raise click.UsageError("Could not find image from config, please specify a value for ``--version``")
+
     ctx.obj[CTX_PROJECT] = project
     ctx.obj[CTX_DOMAIN] = domain
+    ctx.obj[CTX_VERSION] = version
     _os.environ[_PROJECT.env_var] = project
     _os.environ[_DOMAIN.env_var] = domain
-    _os.environ[_VERSION.env_var] = ctx.obj[CTX_VERSION]
+    _os.environ[_VERSION.env_var] = version
 
 
 @click.group("execute", cls=LaunchPlanExecuteGroup)
