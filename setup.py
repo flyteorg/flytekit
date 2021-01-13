@@ -4,7 +4,7 @@ import sys
 # from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
 # extras_require = LazyLoadPlugin.get_extras_require()
 
-MIN_PYTHON_VERSION = (3, 7, 0)
+MIN_PYTHON_VERSION = (3, 7)
 CURRENT_PYTHON = sys.version_info[:2]
 if CURRENT_PYTHON < MIN_PYTHON_VERSION:
     print("Minimum Python version is {}, but you are on {}".format(MIN_PYTHON_VERSION, CURRENT_PYTHON))
