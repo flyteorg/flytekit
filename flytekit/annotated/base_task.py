@@ -365,6 +365,7 @@ class PythonTask(Task, Generic[T]):
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
             try:
                 native_outputs = self.execute(**native_inputs)
+                native_outputs = self.post_execute(new_user_params, native_outputs)
             except Exception as e:
                 logger.exception(f"Exception when executing {e}")
                 raise e
@@ -421,6 +422,17 @@ class PythonTask(Task, Generic[T]):
     @abstractmethod
     def execute(self, **kwargs) -> Any:
         pass
+
+    def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
+        """
+        Post execute is called after the execution has completed, with the user_params and can be used to clean-up,
+        or alter the outputs to match the intended tasks outputs. If not overriden, then this function is a No-op
+
+        Args:
+            rval is returned value from call to execute
+            user_params: are the modified user params as created during the pre_execute step
+        """
+        return rval
 
     def get_registerable_entity(self) -> SdkTask:
         if self._registerable_entity is not None:

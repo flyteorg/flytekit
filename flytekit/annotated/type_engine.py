@@ -478,6 +478,14 @@ class PathLikeTransformer(TypeTransformer[os.PathLike]):
         return local_destination_path
 
 
+def _check_and_covert_float(lv: Literal) -> float:
+    if lv.scalar.primitive.float_value:
+        return lv.scalar.primitive.float_value
+    elif lv.scalar.primitive.integer:
+        return float(lv.scalar.primitive.integer)
+    raise RuntimeError(f"Cannot convert literal {lv} to float")
+
+
 def _register_default_type_transformers():
     TypeEngine.register(
         SimpleTransformer(
@@ -495,7 +503,7 @@ def _register_default_type_transformers():
             float,
             _primitives.Float.to_flyte_literal_type(),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(float_value=x))),
-            lambda x: x.scalar.primitive.float_value,
+            _check_and_covert_float,
         )
     )
 

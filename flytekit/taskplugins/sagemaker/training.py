@@ -150,21 +150,23 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
             )
         return user_params
 
-    def execute(self, **kwargs) -> Any:
+    def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
         """
-        Overload the default execute behavior to allow adding additional checks for the returned values.
         In the case of distributed execution, we check the should_persist_predicate in the configuration to determine
         if the output should be persisted. This is because in distributed training, multiple nodes may produce partial
         outputs and only the user process knows the output that should be generated. They can control the choice using
         the predicate.
+
+        To control if output is generated across every execution, we override the post_execute method and sometimes
+        return a None
         """
-        rval = super(SagemakerCustomTrainingTask, self).execute(**kwargs)
         if self._is_distributed():
             logging.info("Distributed context detected!")
             dctx = flytekit.current_context().distributed_training_context
             if self.task_config.should_persist_output(dctx):
                 logging.info("output persistence predicate not met, Flytekit will ignore outputs")
-                return {}
+                # TODO for distributed training this will fail, as the parent expects outputs to match
+                return None
         return rval
 
 
