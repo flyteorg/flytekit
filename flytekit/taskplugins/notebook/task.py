@@ -40,7 +40,7 @@ class NotebookTask(PythonInstanceTask[T]):
 
     Usage:
 
-    .. code-block:: pthon
+    .. code-block:: python
 
         val_x = 10
         val_y = "hello"
