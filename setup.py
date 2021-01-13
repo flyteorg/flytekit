@@ -1,5 +1,6 @@
-from setuptools import find_packages, setup  # noqa
 import sys
+
+from setuptools import find_packages, setup  # noqa
 
 # from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
 # extras_require = LazyLoadPlugin.get_extras_require()
@@ -13,11 +14,11 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
 
 spark = ["pyspark>=2.4.0,<3.0.0"]
 spark3 = ["pyspark>=3.0.0"]
-sidecar= ["k8s-proto>=0.0.3,<1.0.0"]
-schema= ["numpy>=1.14.0,<2.0.0", "pandas>=0.22.0,<2.0.0", "pyarrow>=0.11.0,<1.0.0"]
-hive_sensor= ["hmsclient>=0.0.1,<1.0.0"]
-notebook= ["papermill>=1.2.0", "nbconvert>=6.0.7", "ipykernel>=5.0.0", "black==19.10b0"]
-sagemaker= ["sagemaker-training>=3.6.2,<4.0.0"]
+sidecar = ["k8s-proto>=0.0.3,<1.0.0"]
+schema = ["numpy>=1.14.0,<2.0.0", "pandas>=0.22.0,<2.0.0", "pyarrow>=0.11.0,<1.0.0"]
+hive_sensor = ["hmsclient>=0.0.1,<1.0.0"]
+notebook = ["papermill>=1.2.0", "nbconvert>=6.0.7", "ipykernel>=5.0.0", "black==19.10b0"]
+sagemaker = ["sagemaker-training>=3.6.2,<4.0.0"]
 
 all_but_spark = sidecar + schema + hive_sensor + notebook + sagemaker
 
@@ -87,15 +88,15 @@ setup(
     license="apache2",
     python_requires=">=3.7",
     classifiers=[
-        'Intended Audience :: Science/Research',
+        "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
-        'Topic :: Scientific/Engineering',
-        'Topic :: Scientific/Engineering :: Artificial Intelligence',
-        'Topic :: Software Development',
-        'Topic :: Software Development :: Libraries',
-        'Topic :: Software Development :: Libraries :: Python Modules',
+        "Topic :: Scientific/Engineering",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Software Development",
+        "Topic :: Software Development :: Libraries",
+        "Topic :: Software Development :: Libraries :: Python Modules",
     ],
 )
