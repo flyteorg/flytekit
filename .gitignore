@@ -20,3 +20,5 @@ dist
 .eggs
 .demo
 .bash_history
+*-out.html
+*-out.ipynb

@@ -47,6 +47,11 @@ PythonPickledFile = FlyteFile[typing.TypeVar("python-pickle")]
     adds metadata to the file in Flyte, but does not really carry any object information
 """
 
+PythonNotebook = FlyteFile[typing.TypeVar("ipynb")]
+"""
+    This type is used to identify a python notebook file
+"""
+
 SVGImageFile = FlyteFile[typing.TypeVar("svg")]
 """
     Can be used to receive or return an SVGImage. The underlying type is a FlyteFile, type. This is just a
