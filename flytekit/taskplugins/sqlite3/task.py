@@ -10,7 +10,6 @@ from flytekit import FlyteContext, kwtypes
 from flytekit.annotated.base_sql_task import SQLTask
 from flytekit.annotated.python_function_task import PythonInstanceTask
 from flytekit.plugins import pandas as pd
-from flytekit.types.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
 
 
@@ -58,19 +57,31 @@ class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
     _SQLITE_TASK_TYPE = "sqlite"
 
     def __init__(
-            self,
-            name: str,
-            query_template: str,
-            inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
-            task_config: typing.Optional[SQLite3Config] = None,
-            output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
-            **kwargs,
+        self,
+        name: str,
+        query_template: str,
+        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        task_config: typing.Optional[SQLite3Config] = None,
+        output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
+        **kwargs,
     ):
         if task_config is None or task_config.uri is None:
             raise ValueError("SQLite DB uri is required.")
         outputs = kwtypes(results=output_schema_type if output_schema_type else FlyteSchema)
-        super().__init__(name=name, task_config=task_config, task_type=self._SQLITE_TASK_TYPE, query_template=query_template,
-                         inputs=inputs, outputs=outputs, **kwargs)
+        super().__init__(
+            name=name,
+            task_config=task_config,
+            task_type=self._SQLITE_TASK_TYPE,
+            query_template=query_template,
+            inputs=inputs,
+            outputs=outputs,
+            **kwargs,
+        )
+
+    @property
+    def output_columns(self) -> typing.Optional[typing.List[str]]:
+        c = self.python_interface.outputs["results"].column_names()
+        return c if c else None
 
     def execute(self, **kwargs) -> typing.Any:
         with tempfile.TemporaryDirectory() as temp_dir:
