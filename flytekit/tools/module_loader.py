@@ -25,7 +25,7 @@ def iterate_modules(pkgs):
 
 @contextlib.contextmanager
 def add_sys_path(path: Union[str, os.PathLike]) -> Iterator[None]:
-    """Temporary add given path to `sys.path`."""
+    """Temporarily add given path to `sys.path`."""
     path = os.fspath(path)
     try:
         sys.path.insert(0, path)
@@ -146,8 +146,6 @@ def iterate_registerable_entities_in_order(
         ignore_entities = tuple(list(ignore_entities or set([object])))
         include_entities = tuple(list(include_entities or set()))
 
-    entity_to_module_key = {}
-    print("Adding to sys path {}".format(directory))
     if directory is not None:
         with add_sys_path(directory):
             entity_to_module_key = _get_entity_to_module(pkgs)

@@ -4,7 +4,7 @@ import typing
 from flytekit.configuration import common as _config_common
 
 
-def get_specified_images(other_images: typing.Dict[str, str] = None) -> typing.Dict[str, str]:
+def get_specified_images() -> typing.Dict[str, str]:
     """
     This section should contain options, where the option name is the friendly name of the image and the corresponding
     value is actual FQN of the image. Example of how the section is structured
@@ -15,21 +15,13 @@ def get_specified_images(other_images: typing.Dict[str, str] = None) -> typing.D
 
     :returns a dictionary of name: image<fqn+version> Version is optional
     """
-
-    images: typing.Dict[str, str] = other_images if other_images else {}
-    if _config_common.CONFIGURATION_SINGLETON.config is None:
-        print("No config file specified, will use the default image")
-        return images
     try:
         image_names = _config_common.CONFIGURATION_SINGLETON.config.options("images")
     except configparser.NoSectionError:
         print("No images specified, will use the default image")
         image_names = None
-
-    if not image_names:
-        return images
-
-    for i in image_names:
-        if i not in images:
+    images: typing.Dict[str, str] = {}
+    if image_names:
+        for i in image_names:
             images[str(i)] = _config_common.FlyteStringConfigurationEntry("images", i).get()
     return images
