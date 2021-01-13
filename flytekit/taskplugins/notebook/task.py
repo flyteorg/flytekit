@@ -180,6 +180,12 @@ class NotebookTask(PythonInstanceTask[T]):
             f.write(body)
 
     def execute(self, **kwargs) -> Any:
+        """
+        TODO: Figure out how to share FlyteContext ExecutionParameters with the notebook kernel (as notebook kernel
+             is executed in a separate python process)
+        For Spark, the notebooks today need to use the new_session or just getOrCreate session and get a handle to the
+        singleton
+        """
         logging.info(f"Hijacking the call for task-type {self.task_type}, to call notebook.")
         # Execute Notebook via Papermill.
         pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=kwargs)

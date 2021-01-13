@@ -1,12 +1,12 @@
 import os
 import sys
-from contextlib import contextmanager
+import typing
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
 from google.protobuf.json_format import MessageToDict
 
-from flytekit.annotated.context_manager import RegistrationSettings
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext, RegistrationSettings
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
@@ -29,12 +29,29 @@ class Spark(object):
     hadoop_conf: Optional[Dict[str, str]] = None
 
 
-@contextmanager
-def new_spark_session(name: str):
+def new_spark_session(name: str, conf: typing.Dict[str, str] = None):
+    """
+    Optionally creates a new spark session and returns it.
+    In cluster mode (running in hosted flyte, this will disregard the spark conf passed in)
+
+    This method is safe to be used from any other method. That is one reason why, we have duplicated this code
+    fragment with the pre-execute. For example in the notebook scenario we might want to call it from a separate kernel
+    """
     import pyspark as _pyspark
 
+    # We run in cluster-mode in Flyte.
+    # Ref https://github.com/lyft/flyteplugins/blob/master/go/tasks/v1/flytek8s/k8s_resource_adds.go#L46
+    if "FLYTE_INTERNAL_EXECUTION_ID" not in os.environ and conf is not None:
+        # If either of above cases is not true, then we are in local execution of this task
+        # Add system spark-conf for local/notebook based execution.
+        spark_conf = set()
+        for k, v in conf.items():
+            spark_conf.add((k, v))
+        spark_conf.add(("spark.master", "local"))
+        _pyspark.SparkConf().setAll(spark_conf)
+
     sess = _pyspark.sql.SparkSession.builder.appName(f"FlyteSpark: {name}").getOrCreate()
-    yield sess
+    return sess
     # SparkSession.Stop does not work correctly, as it stops the session before all the data is written
     # sess.stop()
 
@@ -70,6 +87,16 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
         import pyspark as _pyspark
+
+        ctx = FlyteContext.current_context()
+        if not (ctx.execution_state and ctx.execution_state.Mode == ExecutionState.Mode.TASK_EXECUTION):
+            # If either of above cases is not true, then we are in local execution of this task
+            # Add system spark-conf for local/notebook based execution.
+            spark_conf = set()
+            for k, v in self.task_config.spark_conf.items():
+                spark_conf.add((k, v))
+            spark_conf.add(("spark.master", "local"))
+            _pyspark.SparkConf().setAll(spark_conf)
 
         sess = _pyspark.sql.SparkSession.builder.appName(f"FlyteSpark: {user_params.execution_id}").getOrCreate()
         return user_params.builder().add_attr("SPARK_SESSION", sess).build()
