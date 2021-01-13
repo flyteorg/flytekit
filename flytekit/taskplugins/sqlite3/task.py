@@ -37,7 +37,7 @@ class SQLite3Config(object):
       - or from a publicly downloadable source
 
     Args:
-        file_path: default FlyteFile that will be downloaded on execute
+        uri: default FlyteFile that will be downloaded on execute
         compressed: Boolean that indicates if the given file is a compressed archive. Supported file types are
                         [zip, tar, gztar, bztar, xztar]
     """
