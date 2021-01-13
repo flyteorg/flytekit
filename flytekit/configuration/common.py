@@ -94,10 +94,6 @@ class FlyteConfigurationFile(object):
         self._load_config()
         return self._config
 
-    @property
-    def location(self) -> str:
-        return self._location
-
 
 class _FlyteConfigurationPatcher(object):
     def __init__(self, new_value, config):

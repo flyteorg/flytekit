@@ -31,7 +31,7 @@ SDK_PYTHON_VENV = _config_common.FlyteStringListConfigurationEntry("sdk", "pytho
 This is a list of commands/args which will be prefixed to the entrypoint command by SDK.
 """
 
-ROLE = _config_common.FlyteStringConfigurationEntry("sdk", "role")
+ROLE = _config_common.FlyteRequiredStringConfigurationEntry("sdk", "role")
 """
 This is the role the SDK will use by default to execute workflows.  For example, in AWS this should be an IAM role
 string.

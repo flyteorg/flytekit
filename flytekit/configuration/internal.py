@@ -2,7 +2,7 @@ import re
 
 from flytekit.configuration import common as _common_config
 
-IMAGE = _common_config.FlyteStringConfigurationEntry("internal", "image")
+IMAGE = _common_config.FlyteRequiredStringConfigurationEntry("internal", "image")
 # This configuration option specifies the path to the file that holds the configuration options.  Don't worry,
 # there will not be cycles because the parsing of the configuration file intentionally will not read and settings
 # in the [internal] section.
@@ -57,4 +57,4 @@ def look_up_version_from_image_tag(tag):
     if m is not None:
         return m.group(1)
 
-    raise Exception("Could not parse image version from configuration. Did you set it in the Dockerfile?")
+    raise Exception("Could not parse image version from configuration. Did you set it in the" "Dockerfile?")

@@ -1,7 +1,7 @@
 from flytekit.common import constants as _constants
 from flytekit.configuration import common as _config_common
 
-URL = _config_common.FlyteStringConfigurationEntry("platform", "url")
+URL = _config_common.FlyteRequiredStringConfigurationEntry("platform", "url")
 
 HTTP_URL = _config_common.FlyteStringConfigurationEntry("platform", "http_url", default=None)
 """
