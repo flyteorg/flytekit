@@ -337,34 +337,6 @@ class Workflow(object):
 
             raise ValueError("expected outputs and actual outputs do not match")
 
-    # def get_registerable_entity(self) -> _SdkWorkflow:
-    #     settings = FlyteContext.current_context().registration_settings
-    #     if self._registerable_entity is not None:
-    #         return self._registerable_entity
-    #
-    #     workflow_id = _identifier_model.Identifier(
-    #         _identifier_model.ResourceType.WORKFLOW, settings.project, settings.domain, self._name, settings.version
-    #     )
-    #
-    #     # Translate nodes
-    #     sdk_nodes = [n.get_registerable_entity() for n in self._nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]
-    #
-    #     self._registerable_entity = _SdkWorkflow(
-    #         nodes=sdk_nodes,
-    #         id=workflow_id,
-    #         metadata=self.workflow_metadata.to_flyte_model(),
-    #         metadata_defaults=self.workflow_metadata_defaults.to_flyte_model(),
-    #         interface=self._interface,
-    #         output_bindings=self._output_bindings,
-    #     )
-    #     # Reset just to make sure it's what we give it
-    #     self._registerable_entity.id._project = settings.project
-    #     self._registerable_entity.id._domain = settings.domain
-    #     self._registerable_entity.id._name = self._name
-    #     self._registerable_entity.id._version = settings.version
-    #
-    #     return self._registerable_entity
-
 
 class ReferenceWorkflow(ReferenceEntity, Workflow):
     """
@@ -390,26 +362,6 @@ class ReferenceWorkflow(ReferenceEntity, Workflow):
             inputs=interface.inputs,
             outputs=interface.outputs,
         )
-
-    # def get_registerable_entity(self) -> _SdkWorkflow:
-    #     if self._registerable_entity is not None:
-    #         return self._registerable_entity
-    #
-    #     workflow_metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
-    #
-    #     self._registerable_entity = _SdkWorkflow(
-    #         nodes=[],  # Fake an empty list for nodes,
-    #         id=self.reference.id,
-    #         metadata=workflow_metadata,
-    #         metadata_defaults=_workflow_model.WorkflowMetadataDefaults(),
-    #         interface=self.typed_interface,
-    #         output_bindings=[],
-    #     )
-    #     # Make sure we don't serialize this
-    #     self._registerable_entity._has_registered = True
-    #     self._registerable_entity.assign_name(self.id.name)
-    #     self._registerable_entity._id = self.id
-    #     return self._registerable_entity
 
 
 def workflow(

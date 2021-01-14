@@ -239,22 +239,6 @@ class Task(object):
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
 
-    # def get_task_structure(self) -> SdkTask:
-    #     settings = FlyteContext.current_context().registration_settings
-    #     tk = SdkTask(
-    #         type=self.task_type,
-    #         metadata=self.metadata.to_taskmetadata_model(),
-    #         interface=self.interface,
-    #         custom=self.get_custom(settings),
-    #         container=self.get_container(settings),
-    #     )
-    #     # Reset just to make sure it's what we give it
-    #     tk.id._project = settings.project
-    #     tk.id._domain = settings.domain
-    #     tk.id._name = self.name
-    #     tk.id._version = settings.version
-    #     return tk
-
     def get_container(self, settings: RegistrationSettings) -> _task_model.Container:
         return None
 
@@ -433,31 +417,6 @@ class PythonTask(Task, Generic[T]):
             user_params: are the modified user params as created during the pre_execute step
         """
         return rval
-
-    # def get_registerable_entity(self) -> SdkTask:
-    #     if self._registerable_entity is not None:
-    #         return self._registerable_entity
-    #     self._registerable_entity = self.get_task_structure()
-    #     return self._registerable_entity
-    #
-    # def get_fast_registerable_entity(self) -> SdkTask:
-    #     entity = self.get_registerable_entity()
-    #     if entity.container is None:
-    #         # Containerless tasks are always fast registerable without modification
-    #         return entity
-    #
-    #     args = [
-    #         "pyflyte-fast-execute",
-    #         "--additional-distribution",
-    #         "{{ .remote_package_path }}",
-    #         "--dest-dir",
-    #         "{{ .dest_dir }}",
-    #         "--",
-    #     ] + entity.container.args[:]
-    #
-    #     del entity._container.args[:]
-    #     entity._container.args.extend(args)
-    #     return entity
 
     @property
     def environment(self) -> Dict[str, str]:

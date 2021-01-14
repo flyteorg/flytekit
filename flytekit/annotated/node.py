@@ -43,61 +43,6 @@ class Node(object):
     def __rshift__(self, other: Node):
         self.runs_before(other)
 
-    # def get_registerable_entity(self) -> SdkNode:
-    #     if self._sdk_node is not None:
-    #         return self._sdk_node
-    #     # TODO: Figure out import cycles in the future
-    #     from flytekit.annotated.base_task import PythonTask
-    #     from flytekit.annotated.condition import BranchNode
-    #     from flytekit.annotated.launch_plan import LaunchPlan
-    #     from flytekit.annotated.workflow import Workflow
-    #
-    #     if self._flyte_entity is None:
-    #         raise Exception(f"Node {self.id} has no flyte entity")
-    #
-    #     sdk_nodes = [
-    #         n.get_registerable_entity() for n in self._upstream_nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
-    #     ]
-    #
-    #     if isinstance(self._flyte_entity, PythonTask):
-    #         self._sdk_node = SdkNode(
-    #             self._id,
-    #             upstream_nodes=sdk_nodes,
-    #             bindings=self._bindings,
-    #             metadata=self._metadata,
-    #             sdk_task=self._flyte_entity.get_registerable_entity(),
-    #         )
-    #         if self._aliases:
-    #             self._sdk_node._output_aliases = self._aliases
-    #     elif isinstance(self._flyte_entity, Workflow):
-    #         self._sdk_node = SdkNode(
-    #             self._id,
-    #             upstream_nodes=sdk_nodes,
-    #             bindings=self._bindings,
-    #             metadata=self._metadata,
-    #             sdk_workflow=self._flyte_entity.get_registerable_entity(),
-    #         )
-    #     elif isinstance(self._flyte_entity, BranchNode):
-    #         self._sdk_node = SdkNode(
-    #             self._id,
-    #             upstream_nodes=sdk_nodes,
-    #             bindings=self._bindings,
-    #             metadata=self._metadata,
-    #             sdk_branch=self._flyte_entity.get_registerable_entity(),
-    #         )
-    #     elif isinstance(self._flyte_entity, LaunchPlan):
-    #         self._sdk_node = SdkNode(
-    #             self._id,
-    #             upstream_nodes=sdk_nodes,
-    #             bindings=self._bindings,
-    #             metadata=self._metadata,
-    #             sdk_launch_plan=self._flyte_entity.get_registerable_entity(),
-    #         )
-    #     else:
-    #         raise Exception("not a task or workflow, not sure what to do")
-    #
-    #     return self._sdk_node
-
     @property
     def id(self) -> str:
         return self._id
