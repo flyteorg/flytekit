@@ -12,13 +12,13 @@ from flytekit import ContainerTask, SQLTask, dynamic, kwtypes, maptask
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
+from flytekit.annotated.node import Node
 from flytekit.annotated.promise import NodeOutput, Promise, VoidPromise
 from flytekit.annotated.resources import Resources
 from flytekit.annotated.task import TaskMetadata, task
 from flytekit.annotated.testing import patch, task_mock
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
-from flytekit.common.nodes import SdkNode
 from flytekit.common.translator import get_serializable
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
@@ -438,13 +438,20 @@ def test_list_output():
 
 
 def test_comparison_refs():
-    def dummy_node(id) -> SdkNode:
-        n = SdkNode(id, [], None, None, sdk_task=SQLTask(name="x", query_template="x", inputs={}))
-        n._id = id
+    def dummy_node(node_id) -> Node:
+        n = Node(
+            node_id,
+            metadata=None,
+            bindings=[],
+            upstream_nodes=[],
+            flyte_entity=SQLTask(name="x", query_template="x", inputs={}),
+        )
+
+        n._id = node_id
         return n
 
-    px = Promise("x", NodeOutput(var="x", sdk_type=LiteralType(simple=SimpleType.INTEGER), node=dummy_node("n1")))
-    py = Promise("y", NodeOutput(var="y", sdk_type=LiteralType(simple=SimpleType.INTEGER), node=dummy_node("n2")))
+    px = Promise("x", NodeOutput(var="x", node=dummy_node("n1")))
+    py = Promise("y", NodeOutput(var="y", node=dummy_node("n2")))
 
     def print_expr(expr):
         print(f"{expr} is type {type(expr)}")

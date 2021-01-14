@@ -141,7 +141,7 @@ class ConditionalSection(object):
         if len(output_var_sets) > 1:
             for x in output_var_sets[1:]:
                 curr = curr.intersection(x)
-        promises = [Promise(var=x, val=NodeOutput(node=n, sdk_type=None, var=x)) for x in curr]
+        promises = [Promise(var=x, val=NodeOutput(node=n, var=x)) for x in curr]
         # TODO: Is there a way to add the Python interface here? Currently, it's an optional arg.
         return create_task_output(promises)
 

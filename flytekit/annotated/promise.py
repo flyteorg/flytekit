@@ -561,14 +561,12 @@ class VoidPromise(object):
 
 
 class NodeOutput(type_models.OutputReference):
-    def __init__(self, node: Node, sdk_type, var: str):
+    def __init__(self, node: Node, var: str):
         """
         :param node:
-        :param sdk_type: deprecated in mypy flytekit.
         :param var: The name of the variable this NodeOutput references
         """
         self._node = node
-        self._type = sdk_type
         super(NodeOutput, self).__init__(self._node.id, var)
 
     @property
@@ -584,12 +582,6 @@ class NodeOutput(type_models.OutputReference):
         """
         """
         return self._node
-
-    @property
-    def sdk_type(self):
-        """
-        """
-        return self._type
 
     def __repr__(self) -> str:
         s = f"Node({self.node if self.node.id is not None else None}:{self.var})"
@@ -660,7 +652,6 @@ def create_and_link_node(
         retry_strategy or _literal_models.RetryStrategy(0),
     )
 
-    # TODO: Clean up NodeOutput dependency on SdkNode, then rename variable
     non_sdk_node = Node(
         # TODO: Better naming, probably a derivative of the function name.
         id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
@@ -679,7 +670,7 @@ def create_and_link_node(
     for output_name, output_var_model in typed_interface.outputs.items():
         # TODO: If node id gets updated later, we have to make sure to update the NodeOutput model's ID, which
         #  is currently just a static str
-        node_outputs.append(Promise(output_name, NodeOutput(node=non_sdk_node, sdk_type=None, var=output_name)))
+        node_outputs.append(Promise(output_name, NodeOutput(node=non_sdk_node, var=output_name)))
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
     return create_task_output(node_outputs, interface)

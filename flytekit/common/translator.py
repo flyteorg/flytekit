@@ -212,11 +212,6 @@ def get_serializable(
             raise Exception(f"Node contained non-serializable entity {entity._flyte_entity}")
 
     elif isinstance(entity, LaunchPlan):
-        if entity._auth_role:
-            auth_role = entity._auth_role
-        else:
-            auth_role = None
-
         sdk_workflow = get_serializable(settings, entity.workflow)
         cp_entity = SdkLaunchPlan(
             workflow_id=sdk_workflow.id,
@@ -227,7 +222,7 @@ def get_serializable(
             fixed_inputs=entity.fixed_inputs,
             labels=entity.labels or _common_models.Labels({}),
             annotations=entity.annotations or _common_models.Annotations({}),
-            auth_role=auth_role,
+            auth_role=entity._auth_role,
             raw_output_data_config=entity.raw_output_data_config,
         )
 

@@ -113,7 +113,7 @@ def _workflow_fn_outputs_to_promise(
 
 def construct_input_promises(inputs: List[str]):
     return {
-        input_name: Promise(var=input_name, val=NodeOutput(node=GLOBAL_START_NODE, sdk_type=None, var=input_name),)
+        input_name: Promise(var=input_name, val=NodeOutput(node=GLOBAL_START_NODE, var=input_name))
         for input_name in inputs
     }
 
