@@ -7,7 +7,7 @@ from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.annotated.node import Node
 from flytekit.annotated.reference_entity import ReferenceEntity
-from flytekit.annotated.reference_task import ReferenceTask
+from flytekit.annotated.task import ReferenceTask
 from flytekit.annotated.workflow import ReferenceWorkflow, Workflow, WorkflowFailurePolicy, WorkflowMetadata
 from flytekit.common import constants as _common_constants
 from flytekit.common.interface import TypedInterface

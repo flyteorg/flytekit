@@ -338,40 +338,12 @@ class Workflow(object):
             raise ValueError("expected outputs and actual outputs do not match")
 
 
-class ReferenceWorkflow(ReferenceEntity, Workflow):
-    """
-    A reference workflow is a pointer to a workflow that already exists on your Flyte installation. This
-    object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface.
-    If at registration time the interface provided causes an issue with compilation, an error will be returned.
-    """
-
-    def __init__(
-        self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
-    ):
-        super().__init__(WorkflowReference(project, domain, name, version), inputs, outputs)
-
-    @classmethod
-    def create_from_function(cls, workflow_function: Callable, reference: WorkflowReference) -> ReferenceWorkflow:
-        interface = transform_signature_to_interface(inspect.signature(workflow_function))
-
-        return cls(
-            reference.id.project,
-            reference.id.domain,
-            reference.id.name,
-            reference.id.version,
-            inputs=interface.inputs,
-            outputs=interface.outputs,
-        )
-
-
 def workflow(
     _workflow_function=None,
-    reference: Optional[WorkflowReference] = None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: Optional[bool] = False,
 ):
     """
-    :param reference: Pass a WorkflowReference object here if you want to make this a pointer to an existing workflow
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
     :param interruptible: Whether or not tasks launched from this workflow are by default interruptible
     """
@@ -380,10 +352,6 @@ def workflow(
     # workflows need to have the body of the function itself run at module-load time. This is because the body of the
     # workflow is what expresses the workflow structure.
     def wrapper(fn):
-        if reference:
-            workflow_instance = ReferenceWorkflow.create_from_function(fn, reference=reference)
-            return workflow_instance
-
         workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
 
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
@@ -396,3 +364,32 @@ def workflow(
         return wrapper(_workflow_function)
     else:
         return wrapper
+
+
+class ReferenceWorkflow(ReferenceEntity, Workflow):
+    """
+    A reference workflow is a pointer to a workflow that already exists on your Flyte installation. This
+    object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface.
+    If at registration time the interface provided causes an issue with compilation, an error will be returned.
+    """
+
+    def __init__(
+        self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
+    ):
+        super().__init__(WorkflowReference(project, domain, name, version), inputs, outputs)
+
+
+def reference_workflow(
+    project: str, domain: str, name: str, version: str,
+) -> Callable[[Callable[..., Any]], ReferenceWorkflow]:
+    """
+    A reference workflow is a pointer to a workflow that already exists on your Flyte installation. This
+    object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface.
+    If at registration time the interface provided causes an issue with compilation, an error will be returned.
+    """
+
+    def wrapper(fn) -> ReferenceWorkflow:
+        interface = transform_signature_to_interface(inspect.signature(fn))
+        return ReferenceWorkflow(project, domain, name, version, interface.inputs, interface.outputs)
+
+    return wrapper

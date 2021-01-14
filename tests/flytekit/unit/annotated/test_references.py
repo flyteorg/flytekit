@@ -7,12 +7,12 @@ from flytekit.annotated.base_task import kwtypes
 from flytekit.annotated.context_manager import Image, ImageConfig
 from flytekit.annotated.promise import VoidPromise
 from flytekit.annotated.reference import get_reference_entity
-from flytekit.annotated.reference_entity import ReferenceEntity, TaskReference, WorkflowReference
-from flytekit.annotated.reference_task import reference_task
-from flytekit.annotated.task import task
+from flytekit.annotated.reference_entity import ReferenceEntity, TaskReference
+from flytekit.annotated.task import reference_task, task
 from flytekit.annotated.testing import patch, task_mock
 from flytekit.annotated.workflow import workflow
 from flytekit.common.translator import get_serializable
+from flytekit.annotated.workflow import reference_workflow, workflow
 from flytekit.models.core import identifier as _identifier_model
 
 
@@ -87,7 +87,7 @@ def test_reference_workflow():
         a = a + 2
         return a, "world-" + str(a)
 
-    @workflow(reference=WorkflowReference(project="proj", domain="developement", name="wf_name", version="abc"))
+    @reference_workflow(project="proj", domain="developement", name="wf_name", version="abc")
     def ref_wf1(a: int) -> (str, str):
         ...
 
