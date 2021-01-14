@@ -22,7 +22,7 @@ from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
-
+from flytekit.annotated.container_task import ContainerTask
 FlyteLocalEntity = Union[
     PythonTask, BranchNode, Node, LaunchPlan, Workflow, ReferenceWorkflow, ReferenceTask, ReferenceLaunchPlan
 ]
@@ -125,8 +125,8 @@ def get_serializable(
 
         if fast:
             # Containerless tasks are always fast registerable without modification so only operate on tasks that
-            # have a container
-            if cp_entity.container is not None:
+            # have a container. Also, raw ContainerTask's should never be touched.
+            if cp_entity.container is not None and not isinstance(entity, ContainerTask):
                 args = [
                     "pyflyte-fast-execute",
                     "--additional-distribution",
