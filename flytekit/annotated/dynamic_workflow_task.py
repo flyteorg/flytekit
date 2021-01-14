@@ -10,6 +10,7 @@ from flytekit.annotated.workflow import Workflow, WorkflowFailurePolicy, Workflo
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
+from flytekit.common.translator import get_serializable
 
 
 class _Dynamic(object):
@@ -45,7 +46,7 @@ class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
             self._wf.compile(**kwargs)
 
             wf = self._wf
-            sdk_workflow = wf.get_registerable_entity()
+            sdk_workflow = get_serializable(ctx.registration_settings, wf)
 
             # If no nodes were produced, let's just return the strict outputs
             if len(sdk_workflow.nodes) == 0:

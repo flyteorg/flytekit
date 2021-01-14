@@ -148,11 +148,10 @@ def test_serialization_branch_compound_conditions():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
-        wf = my_wf.get_registerable_entity()
-        assert wf is not None
-        assert len(wf.nodes[0].inputs) == 1
-        assert wf.nodes[0].inputs[0].var == ".a"
+    wf = get_serializable(registration_settings, my_wf)
+    assert wf is not None
+    assert len(wf.nodes[0].inputs) == 1
+    assert wf.nodes[0].inputs[0].var == ".a"
 
 
 def test_serialization_branch_complex_2():

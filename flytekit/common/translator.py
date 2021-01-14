@@ -58,8 +58,7 @@ def get_serializable(
         return GLOBAL_CACHE[entity]
 
     cp_entity = None
-
-    # TODO: Set the ID correct using settings, except for reference objects
+    # TODO: flytekit.annotated.container_task.ContainerTask needs to be excepted
     if isinstance(entity, ReferenceTask):
         cp_entity = SdkTask(
             type="ignore",

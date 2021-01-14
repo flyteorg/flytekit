@@ -22,19 +22,19 @@ from flytekit.models.literals import Binding, BindingData, Literal, RetryStrateg
 from flytekit.models.types import Error
 
 
-def to_registrable_case(c: _core_wf.IfBlock) -> _core_wf.IfBlock:
-    if c is None:
-        raise ValueError("Cannot convert none cases to registrable")
-    return _core_wf.IfBlock(condition=c.condition, then_node=c.then_node.get_registerable_entity())
-
-
-def to_registrable_cases(cases: typing.List[_core_wf.IfBlock]) -> Optional[typing.List[_core_wf.IfBlock]]:
-    if cases is None:
-        return None
-    ret_cases = []
-    for c in cases:
-        ret_cases.append(to_registrable_case(c))
-    return ret_cases
+# def to_registrable_case(c: _core_wf.IfBlock) -> _core_wf.IfBlock:
+#     if c is None:
+#         raise ValueError("Cannot convert none cases to registrable")
+#     return _core_wf.IfBlock(condition=c.condition, then_node=c.then_node.get_registerable_entity())
+#
+#
+# def to_registrable_cases(cases: typing.List[_core_wf.IfBlock]) -> Optional[typing.List[_core_wf.IfBlock]]:
+#     if cases is None:
+#         return None
+#     ret_cases = []
+#     for c in cases:
+#         ret_cases.append(to_registrable_case(c))
+#     return ret_cases
 
 
 class BranchNode(object):
@@ -47,24 +47,24 @@ class BranchNode(object):
     def name(self):
         return self._name
 
-    def get_branch_node(self) -> _core_wf.BranchNode:
-        # We have to iterate through the blocks to convert the nodes from their current type to SDKNode
-        # TODO this should be cleaned up instead of mutation, we probaby should just create a new object
-        first = to_registrable_case(self._ifelse_block.case)
-        other = to_registrable_cases(self._ifelse_block.other)
-        else_node = None
-        if self._ifelse_block.else_node:
-            else_node = self._ifelse_block.else_node.get_registerable_entity()
-
-        return _core_wf.BranchNode(
-            if_else=_core_wf.IfElseBlock(case=first, other=other, else_node=else_node, error=self._ifelse_block.error)
-        )
-
-    def get_registerable_entity(self) -> _core_wf.BranchNode:
-        if self._registerable_entity is not None:
-            return self._registerable_entity
-        self._registerable_entity = self.get_branch_node()
-        return self._registerable_entity
+    # def get_branch_node(self) -> _core_wf.BranchNode:
+    #     # We have to iterate through the blocks to convert the nodes from their current type to SDKNode
+    #     # TODO this should be cleaned up instead of mutation, we probaby should just create a new object
+    #     first = to_registrable_case(self._ifelse_block.case)
+    #     other = to_registrable_cases(self._ifelse_block.other)
+    #     else_node = None
+    #     if self._ifelse_block.else_node:
+    #         else_node = self._ifelse_block.else_node.get_registerable_entity()
+    #
+    #     return _core_wf.BranchNode(
+    #         if_else=_core_wf.IfElseBlock(case=first, other=other, else_node=else_node, error=self._ifelse_block.error)
+    #     )
+    #
+    # def get_registerable_entity(self) -> _core_wf.BranchNode:
+    #     if self._registerable_entity is not None:
+    #         return self._registerable_entity
+    #     self._registerable_entity = self.get_branch_node()
+    #     return self._registerable_entity
 
 
 class ConditionalSection(object):
