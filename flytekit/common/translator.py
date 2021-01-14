@@ -51,7 +51,9 @@ def to_registrable_cases(
 GLOBAL_CACHE: Dict[FlyteLocalEntity, FlyteControlPlaneEntity] = {}
 
 
-def get_serializable(settings: RegistrationSettings, entity: FlyteLocalEntity) -> FlyteControlPlaneEntity:
+def get_serializable(
+    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: Optional[bool] = False
+) -> FlyteControlPlaneEntity:
     if entity in GLOBAL_CACHE:
         return GLOBAL_CACHE[entity]
 
@@ -109,7 +111,6 @@ def get_serializable(settings: RegistrationSettings, entity: FlyteLocalEntity) -
         cp_entity.assign_name(entity.reference.id.name)
 
     elif isinstance(entity, PythonTask):
-        # TODO: Fast register later
         cp_entity = SdkTask(
             type=entity.task_type,
             metadata=entity.metadata.to_taskmetadata_model(),
@@ -122,6 +123,22 @@ def get_serializable(settings: RegistrationSettings, entity: FlyteLocalEntity) -
         cp_entity.id._domain = settings.domain
         cp_entity.id._name = entity.name
         cp_entity.id._version = settings.version
+
+        if fast:
+            # Containerless tasks are always fast registerable without modification so only operate on tasks that
+            # have a container
+            if cp_entity.container is not None:
+                args = [
+                    "pyflyte-fast-execute",
+                    "--additional-distribution",
+                    "{{ .remote_package_path }}",
+                    "--dest-dir",
+                    "{{ .dest_dir }}",
+                    "--",
+                ] + cp_entity.container.args[:]
+
+                del cp_entity._container.args[:]
+                cp_entity._container.args.extend(args)
 
     elif isinstance(entity, Workflow):
         workflow_id = _identifier_model.Identifier(

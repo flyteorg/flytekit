@@ -140,8 +140,7 @@ def serialize_all(pkgs: List[str], folder: str = None, mode: SerializationMode =
                     if mode == SerializationMode.DEFAULT:
                         serializable = get_serializable(ctx.registration_settings, entity)
                     elif mode == SerializationMode.FAST:
-                        # serializable = entity.get_fast_registerable_entity()
-                        serializable = get_serializable(ctx.registration_settings, entity)
+                        serializable = get_serializable(ctx.registration_settings, entity, fast=True)
                     else:
                         raise AssertionError(f"Unrecognized serialization mode: {mode}")
                 else:
