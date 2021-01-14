@@ -36,7 +36,6 @@ def test_serialization():
     def raw_container_wf(val1: int, val2: int) -> int:
         return sum(x=square(val=val1), y=square(val=val2))
 
-    ctx = FlyteContext.current_context()
     default_img = Image(name="default", fqn="test", tag="tag")
     registration_settings = context_manager.RegistrationSettings(
         project="project",
@@ -45,14 +44,13 @@ def test_serialization():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
-        wf = raw_container_wf.get_registerable_entity()
-        assert wf is not None
-        assert len(wf.nodes) == 3
-        sqn = square.get_registerable_entity()
-        assert sqn.container.image == "alpine"
-        sumn = sum.get_registerable_entity()
-        assert sumn.container.image == "alpine"
+    wf = get_serializable(registration_settings, raw_container_wf)
+    assert wf is not None
+    assert len(wf.nodes) == 3
+    sqn = get_serializable(registration_settings, square)
+    assert sqn.container.image == "alpine"
+    sumn = get_serializable(registration_settings, sum)
+    assert sumn.container.image == "alpine"
 
 
 def test_serialization_branch_complex():
@@ -79,7 +77,6 @@ def test_serialization_branch_complex():
         f = conditional("test2").if_(d == "hello ").then(t2(a="It is hello")).else_().then(t2(a="Not Hello!"))
         return x, f
 
-    ctx = FlyteContext.current_context()
     default_img = Image(name="default", fqn="test", tag="tag")
     registration_settings = context_manager.RegistrationSettings(
         project="project",
@@ -88,12 +85,11 @@ def test_serialization_branch_complex():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
-        wf = my_wf.get_registerable_entity()
-        assert wf is not None
-        assert len(wf.nodes) == 3
-        assert wf.nodes[1].branch_node is not None
-        assert wf.nodes[2].branch_node is not None
+    wf = get_serializable(registration_settings, my_wf)
+    assert wf is not None
+    assert len(wf.nodes) == 3
+    assert wf.nodes[1].branch_node is not None
+    assert wf.nodes[2].branch_node is not None
 
 
 def test_serialization_branch_sub_wf():
@@ -110,7 +106,6 @@ def test_serialization_branch_sub_wf():
         d = conditional("test1").if_(a > 3).then(t1(a=a)).else_().then(my_sub_wf(a=a))
         return d
 
-    ctx = FlyteContext.current_context()
     default_img = Image(name="default", fqn="test", tag="tag")
     registration_settings = context_manager.RegistrationSettings(
         project="project",
@@ -119,12 +114,11 @@ def test_serialization_branch_sub_wf():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
-        wf = my_wf.get_registerable_entity()
-        assert wf is not None
-        assert len(wf.nodes[0].inputs) == 1
-        assert wf.nodes[0].inputs[0].var == ".a"
-        assert wf.nodes[0] is not None
+    wf = get_serializable(registration_settings, my_wf)
+    assert wf is not None
+    assert len(wf.nodes[0].inputs) == 1
+    assert wf.nodes[0].inputs[0].var == ".a"
+    assert wf.nodes[0] is not None
 
 
 def test_serialization_branch_compound_conditions():
@@ -185,7 +179,6 @@ def test_serialization_branch_complex_2():
         f = conditional("test2").if_(d == "hello ").then(t2(a="It is hello")).else_().then(t2(a="Not Hello!"))
         return x, f
 
-    ctx = FlyteContext.current_context()
     default_img = Image(name="default", fqn="test", tag="tag")
     registration_settings = context_manager.RegistrationSettings(
         project="project",
@@ -194,10 +187,9 @@ def test_serialization_branch_complex_2():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
-        wf = my_wf.get_registerable_entity()
-        assert wf is not None
-        assert wf.nodes[1].inputs[0].var == "n0.t1_int_output"
+    wf = get_serializable(registration_settings, my_wf)
+    assert wf is not None
+    assert wf.nodes[1].inputs[0].var == "n0.t1_int_output"
 
 
 def test_serialization_branch():
@@ -221,7 +213,6 @@ def test_serialization_branch():
     assert my_wf(a=4) == "world"
     assert my_wf(a=2) == "hello"
 
-    ctx = FlyteContext.current_context()
     default_img = Image(name="default", fqn="test", tag="tag")
     registration_settings = context_manager.RegistrationSettings(
         project="project",
@@ -230,11 +221,10 @@ def test_serialization_branch():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    with ctx.current_context().new_registration_settings(registration_settings=registration_settings):
-        wf = my_wf.get_registerable_entity()
-        assert wf is not None
-        assert len(wf.nodes) == 2
-        assert wf.nodes[1].branch_node is not None
+    wf = get_serializable(registration_settings, my_wf)
+    assert wf is not None
+    assert len(wf.nodes) == 2
+    assert wf.nodes[1].branch_node is not None
 
 
 def test_serialization_images():
@@ -263,54 +253,18 @@ def test_serialization_images():
     rs = context_manager.RegistrationSettings(
         project="project", domain="domain", version="version", env=None, image_config=get_image_config(),
     )
-    ctx = FlyteContext.current_context()
-    with ctx.current_context().new_registration_settings(registration_settings=rs):
-        t1_ser = t1.get_registerable_entity()
-        assert t1_ser.container.image == "docker.io/xyz:version"
-        t1_ser.to_flyte_idl()
+    t1_ser = get_serializable(rs, t1)
+    assert t1_ser.container.image == "docker.io/xyz:version"
+    t1_ser.to_flyte_idl()
 
-        t2_ser = t2.get_registerable_entity()
-        assert t2_ser.container.image == "docker.io/default:version"
+    t2_ser = get_serializable(rs, t2)
+    assert t2_ser.container.image == "docker.io/default:version"
 
-        t3_ser = t3.get_registerable_entity()
-        assert t3_ser.container.image == "docker.io/default:version"
+    t3_ser = get_serializable(rs, t3)
+    assert t3_ser.container.image == "docker.io/default:version"
 
-        t4_ser = t4.get_registerable_entity()
-        assert t4_ser.container.image == "docker.io/org/myimage:latest"
+    t4_ser = get_serializable(rs, t4)
+    assert t4_ser.container.image == "docker.io/org/myimage:latest"
 
-        t5_ser = t5.get_registerable_entity()
-        assert t5_ser.container.image == "docker.io/org/myimage:version"
-
-
-def test_serialsdfization_branch_compound_conditions():
-    @task
-    def t1(a: int) -> int:
-        return a + 2
-
-    @workflow
-    def my_wf(a: int) -> int:
-        d = (
-            conditional("test1")
-            .if_((a == 4) | (a == 3))
-            .then(t1(a=a))
-            .elif_(a < 6)
-            .then(t1(a=a))
-            .else_()
-            .fail("Unable to choose branch")
-        )
-        return d
-
-    ctx = FlyteContext.current_context()
-    default_img = Image(name="default", fqn="test", tag="tag")
-    registration_settings = context_manager.RegistrationSettings(
-        project="project",
-        domain="domain",
-        version="version",
-        env=None,
-        image_config=ImageConfig(default_image=default_img, images=[default_img]),
-    )
-
-    wf = get_serializable(registration_settings, my_wf)
-    assert wf is not None
-    assert len(wf.nodes[0].inputs) == 1
-    assert wf.nodes[0].inputs[0].var == ".a"
+    t5_ser = get_serializable(rs, t5)
+    assert t5_ser.container.image == "docker.io/org/myimage:version"

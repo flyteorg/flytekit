@@ -11,9 +11,10 @@ from flytekit.annotated.promise import (
     ComparisonOps,
     ConjunctionExpression,
     ConjunctionOps,
+    NodeOutput,
     Promise,
     VoidPromise,
-    create_task_output, NodeOutput,
+    create_task_output,
 )
 from flytekit.models.core import condition as _core_cond
 from flytekit.models.core import workflow as _core_wf

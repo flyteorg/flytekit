@@ -4,8 +4,13 @@ from typing import Any, Dict, Tuple, Type, Union
 
 from flytekit.annotated.context_manager import BranchEvalMode, ExecutionState, FlyteContext
 from flytekit.annotated.interface import Interface, transform_interface_to_typed_interface
-from flytekit.annotated.promise import Promise, VoidPromise, create_task_output, translate_inputs_to_literals, \
-    create_and_link_node
+from flytekit.annotated.promise import (
+    Promise,
+    VoidPromise,
+    create_and_link_node,
+    create_task_output,
+    translate_inputs_to_literals,
+)
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.loggers import logger

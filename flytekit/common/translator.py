@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional, Union
 
-from flytekit.annotated.base_task import PythonTask
+from flytekit.annotated.base_task import PythonTask, TaskMetadata
 from flytekit.annotated.condition import BranchNode
 from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.launch_plan import LaunchPlan, ReferenceLaunchPlan
@@ -29,7 +29,7 @@ FlyteLocalEntity = Union[
 FlyteControlPlaneEntity = Union[SdkTask, SdkLaunchPlan, SdkWorkflow, SdkNode, BranchNodeModel]
 
 
-def to_registrable_case(settings: RegistrationSettings, c: _core_wf.IfBlock) -> _core_wf.IfBlock:
+def to_registerable_case(settings: RegistrationSettings, c: _core_wf.IfBlock) -> _core_wf.IfBlock:
     if c is None:
         raise ValueError("Cannot convert none cases to registrable")
     then_node = get_serializable(settings, c.then_node)
@@ -43,7 +43,7 @@ def to_registrable_cases(
         return None
     ret_cases = []
     for c in cases:
-        ret_cases.append(to_registrable_case(settings, c))
+        ret_cases.append(to_registerable_case(settings, c))
     return ret_cases
 
 
@@ -62,7 +62,7 @@ def get_serializable(settings: RegistrationSettings, entity: FlyteLocalEntity) -
         cp_entity = SdkTask(
             type="ignore",
             metadata=TaskMetadata().to_taskmetadata_model(),
-            interface=self.typed_interface,
+            interface=entity.typed_interface,
             custom={},
             container=None,
         )
@@ -229,7 +229,7 @@ def get_serializable(settings: RegistrationSettings, entity: FlyteLocalEntity) -
     elif isinstance(entity, BranchNode):
         # We have to iterate through the blocks to convert the nodes from their current type to SDKNode
         # TODO this should be cleaned up instead of mutation, we probaby should just create a new object
-        first = to_registrable_case(settings, entity._ifelse_block.case)
+        first = to_registerable_case(settings, entity._ifelse_block.case)
         other = to_registrable_cases(settings, entity._ifelse_block.other)
         else_node = None
         if entity._ifelse_block.else_node:
