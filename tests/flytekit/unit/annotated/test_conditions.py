@@ -4,9 +4,11 @@ import pytest
 
 from flytekit import task, workflow
 from flytekit.annotated.condition import conditional
+from flytekit.annotated.context_manager import Image, ImageConfig, RegistrationSettings
+from flytekit.common.translator import get_serializable
 
 
-@task()
+@task
 def square(n: float) -> float:
     """
     Parameters:
@@ -20,7 +22,7 @@ def square(n: float) -> float:
     return n * n
 
 
-@task()
+@task
 def double(n: float) -> float:
     """
     Parameters:
@@ -52,11 +54,11 @@ def test_condition_else_fail():
 
 
 def test_condition_sub_workflows():
-    @task()
+    @task
     def sum_div_sub(a: int, b: int) -> typing.NamedTuple("Outputs", sum=int, div=int, sub=int):
         return a + b, a / b, a - b
 
-    @task()
+    @task
     def sum_sub(a: int, b: int) -> typing.NamedTuple("Outputs", sum=int, sub=int):
         return a + b, a - b
 
@@ -83,7 +85,7 @@ def test_condition_sub_workflows():
 
 
 def test_condition_tuple_branches():
-    @task()
+    @task
     def sum_sub(a: int, b: int) -> typing.NamedTuple("Outputs", sum=int, sub=int):
         return a + b, a - b
 
@@ -103,3 +105,15 @@ def test_condition_tuple_branches():
     x, y = math_ops(a=3, b=2)
     assert x == 5
     assert y == 1
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    registration_settings = RegistrationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
+    sdk_wf = get_serializable(registration_settings, math_ops)
+    assert sdk_wf.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name == "test_conditions.sum_sub"
