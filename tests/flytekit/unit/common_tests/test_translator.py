@@ -4,7 +4,7 @@ from flytekit.annotated import context_manager
 from flytekit.annotated.base_task import kwtypes
 from flytekit.annotated.context_manager import Image, ImageConfig
 from flytekit.annotated.launch_plan import LaunchPlan, ReferenceLaunchPlan
-from flytekit.annotated.task import task, ReferenceTask
+from flytekit.annotated.task import ReferenceTask, task
 from flytekit.annotated.workflow import ReferenceWorkflow, workflow
 from flytekit.common.translator import get_serializable
 
