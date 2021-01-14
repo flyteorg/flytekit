@@ -11,6 +11,7 @@ from flytekit.clis.sdk_in_container.constants import (
     CTX_VERSION,
     domain_option,
     project_option,
+    version_option,
 )
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
@@ -67,13 +68,14 @@ def register_tasks_only(project, domain, pkgs, test, version):
 @click.group("register")
 @project_option
 @domain_option
+@version_option
 # --pkgs on the register group is DEPRECATED, use same arg on pyflyte.main instead
 @click.option(
     "--pkgs", multiple=True, help="DEPRECATED. This arg can only be used before the 'register' keyword",
 )
 @click.option("--test", is_flag=True, help="Dry run, do not actually register with Admin")
 @click.pass_context
-def register(ctx, project, domain, pkgs=None, test=None):
+def register(ctx, project, domain, version, pkgs=None, test=None):
     """
     Run registration steps for the workflows in this container.
 
@@ -83,8 +85,13 @@ def register(ctx, project, domain, pkgs=None, test=None):
     if pkgs:
         raise click.UsageError("--pkgs must now be specified before the 'register' keyword on the command line")
 
+    version = version or _look_up_version_from_image_tag(_IMAGE.get())
+    if not version:
+        raise click.UsageError("Could not find image from config, please specify a value for ``--version``")
+
     ctx.obj[CTX_PROJECT] = project
     ctx.obj[CTX_DOMAIN] = domain
+    ctx.obj[CTX_VERSION] = version
     ctx.obj[CTX_TEST] = test
     _os.environ[_PROJECT.env_var] = project
     _os.environ[_DOMAIN.env_var] = domain
