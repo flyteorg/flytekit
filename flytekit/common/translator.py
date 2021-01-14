@@ -2,6 +2,7 @@ from typing import Dict, List, Optional, Union
 
 from flytekit.annotated.base_task import PythonTask, TaskMetadata
 from flytekit.annotated.condition import BranchNode
+from flytekit.annotated.container_task import ContainerTask
 from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.annotated.node import Node
@@ -22,7 +23,7 @@ from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
-from flytekit.annotated.container_task import ContainerTask
+
 FlyteLocalEntity = Union[
     PythonTask, BranchNode, Node, LaunchPlan, Workflow, ReferenceWorkflow, ReferenceTask, ReferenceLaunchPlan
 ]
