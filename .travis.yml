@@ -21,4 +21,5 @@ after_success:
 branches:
   only:
     - master
+    # TODO: remove this after killing the branch
     - annotations
