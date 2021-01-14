@@ -3,7 +3,7 @@ import typing
 from flytekit.annotated import context_manager
 from flytekit.annotated.base_task import kwtypes
 from flytekit.annotated.context_manager import Image, ImageConfig
-from flytekit.annotated.launch_plan import ReferenceLaunchPlan, LaunchPlan
+from flytekit.annotated.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.annotated.reference_task import ReferenceTask
 from flytekit.annotated.task import task
 from flytekit.annotated.workflow import ReferenceWorkflow, workflow
@@ -57,7 +57,7 @@ def test_basics():
     sdk_task = get_serializable(registration_settings, t1, True)
     assert "pyflyte-execute" in sdk_task.container.args
 
-    lp = LaunchPlan.create("testlp", my_wf, )
+    lp = LaunchPlan.create("testlp", my_wf,)
     sdk_lp = get_serializable(registration_settings, lp)
     assert sdk_lp.id.name == "testlp"
 

@@ -10,9 +10,8 @@ from flytekit.annotated.reference import get_reference_entity
 from flytekit.annotated.reference_entity import ReferenceEntity, TaskReference
 from flytekit.annotated.task import reference_task, task
 from flytekit.annotated.testing import patch, task_mock
-from flytekit.annotated.workflow import workflow
-from flytekit.common.translator import get_serializable
 from flytekit.annotated.workflow import reference_workflow, workflow
+from flytekit.common.translator import get_serializable
 from flytekit.models.core import identifier as _identifier_model
 
 
