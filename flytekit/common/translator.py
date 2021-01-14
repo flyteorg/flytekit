@@ -46,7 +46,7 @@ def to_registerable_case(settings: RegistrationSettings, c: _core_wf.IfBlock) ->
     return _core_wf.IfBlock(condition=c.condition, then_node=then_node)
 
 
-def to_registrable_cases(
+def to_registerable_cases(
     settings: RegistrationSettings, cases: List[_core_wf.IfBlock]
 ) -> Optional[List[_core_wf.IfBlock]]:
     if cases is None:
@@ -261,7 +261,7 @@ def get_serializable_branch_node(
     # We have to iterate through the blocks to convert the nodes from their current type to SDKNode
     # TODO this should be cleaned up instead of mutation, we probaby should just create a new object
     first = to_registerable_case(settings, entity._ifelse_block.case)
-    other = to_registrable_cases(settings, entity._ifelse_block.other)
+    other = to_registerable_cases(settings, entity._ifelse_block.other)
     else_node = None
     if entity._ifelse_block.else_node:
         else_node = get_serializable(settings, entity._ifelse_block.else_node)
