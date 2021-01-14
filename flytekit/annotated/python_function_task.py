@@ -184,6 +184,10 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         return self._execution_mode
 
     def execute(self, **kwargs) -> Any:
+        """
+        This method will be invoked to execute the task. If you do decide to override this method you must also
+        handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
+        """
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
             return self._task_function(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
