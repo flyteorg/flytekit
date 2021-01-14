@@ -1,7 +1,9 @@
 #!/bin/bash
 
+# DEPRECATED
+# Please note that Spark 2.4 support is deprecated and will be fully removed in a Future Release.
+#
 # Fetches and install Spark and its dependencies. To be invoked by the Dockerfile
-
 # echo commands to the terminal output
 set -ex
 

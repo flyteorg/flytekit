@@ -43,6 +43,8 @@ pip install "flytekit[spark]" for Spark 2.4.x
 pip install "flytekit[spark3]" for Spark 3.x
 ```
 
+Please note that Spark 2.4 support is deprecated and will be removed in a future release.
+
 #### Schema 
 
 If `Types.Schema()` is to be used for computations involving large dataframes, one should install the `schema` extension.
@@ -80,11 +82,11 @@ pip install flytekit[tensorflow]
 To install all or multiple available plugins, one can specify them individually:
 
 ```bash
-pip install "flytekit[sidecar,spark,schema]"
+pip install "flytekit[sidecar,spark3,schema]"
 ```
 
 Or install them with the `all` or `all-spark2.4` or `all-spark3` directives which will install all the plugins and a specific Spark version.
- Please note that `all` currently defaults to Spark 2.4.x. In a future release (starting 0.15.x), `all` will be switched to use Spark 3.x.
+ Please note that `all` defaults to Spark 3.0 and Spark 2.4 support will be fully removed in a future release.
 
 
 ```bash
