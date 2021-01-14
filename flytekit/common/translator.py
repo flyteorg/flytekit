@@ -72,11 +72,6 @@ def get_serializable_references(
             custom={},
             container=None,
         )
-        # Reset id to ensure it matches user input
-        cp_entity._id = entity.id
-        cp_entity._has_registered = True
-        cp_entity.assign_name(entity.reference.id.name)
-        return cp_entity
 
     elif isinstance(entity, ReferenceWorkflow):
         workflow_metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
@@ -89,11 +84,6 @@ def get_serializable_references(
             interface=entity.typed_interface,
             output_bindings=[],
         )
-        # Make sure we don't serialize this
-        cp_entity._has_registered = True
-        cp_entity.assign_name(entity.id.name)
-        cp_entity._id = entity.id
-        return cp_entity
 
     elif isinstance(entity, ReferenceLaunchPlan):
         wf_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW, "", "", "", "")
@@ -110,14 +100,15 @@ def get_serializable_references(
         # Because of how SdkNodes work, it needs one of these interfaces
         # Hopefully this is more trickery that can be cleaned up in the future
         cp_entity._interface = TypedInterface.promote_from_model(entity.typed_interface)
-        cp_entity._id = entity.id
 
-        # Make sure we don't serialize this
-        cp_entity._has_registered = True
-        cp_entity.assign_name(entity.reference.id.name)
-        return cp_entity
+    else:
+        raise Exception("Invalid reference type when serializing")
 
-    raise Exception("Invalid reference type when serializing")
+    # Make sure we don't serialize this
+    cp_entity._has_registered = True
+    cp_entity.assign_name(entity.id.name)
+    cp_entity._id = entity.id
+    return cp_entity
 
 
 def get_serializable_task(
