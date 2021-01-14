@@ -139,7 +139,6 @@ def test_serialization_branch_compound_conditions():
         )
         return d
 
-    ctx = FlyteContext.current_context()
     default_img = Image(name="default", fqn="test", tag="tag")
     registration_settings = context_manager.RegistrationSettings(
         project="project",

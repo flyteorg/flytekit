@@ -7,10 +7,10 @@ from flytekit.annotated.context_manager import ExecutionState, FlyteContext
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
 from flytekit.annotated.workflow import Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults
+from flytekit.common.translator import get_serializable
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
-from flytekit.common.translator import get_serializable
 
 
 class _Dynamic(object):
