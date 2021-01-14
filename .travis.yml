@@ -27,3 +27,7 @@ script:
   - shellcheck **/*.sh
 after_success:
   - codecov
+
+branches:
+  only:
+    - master
