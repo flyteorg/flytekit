@@ -22,8 +22,8 @@ mkdir -p /opt/spark/work-dir
 touch /opt/spark/RELEASE
 
 # Fetch Spark Distribution
-wget https://archive.apache.org/dist/spark/spark-3.0.0/spark-3.0.0-bin-hadoop2.7.tgz -O spark-dist.tgz
-echo '98f6b92e5c476d7abb93cc179c2616aa5dc897da25753bd197e20ef54a28d945  spark-dist.tgz' | sha256sum --check
+wget https://archive.apache.org/dist/spark/spark-3.0.1/spark-3.0.1-bin-hadoop3.2.tgz -O spark-dist.tgz
+echo 'e2d05efa1c657dd5180628a83ea36c97c00f972b4aee935b7affa2e1058b0279  spark-dist.tgz' | sha256sum --check
 mkdir -p spark-dist
 tar -xvf spark-dist.tgz -C spark-dist --strip-components 1
 
@@ -41,14 +41,17 @@ chmod +x /opt/entrypoint.sh
 rm -rf spark-dist.tgz
 rm -rf spark-dist
 
-# Fetch Hadoop Distribution with AWS Support
-wget http://apache.mirrors.tds.net/hadoop/common/hadoop-2.7.7/hadoop-2.7.7.tar.gz -O hadoop-dist.tgz
-echo 'd129d08a2c9dafec32855a376cbd2ab90c6a42790898cabbac6be4d29f9c2026  hadoop-dist.tgz' | sha256sum --check
+# Fetch Hadoop Distribution with AWS Support. Probably can download these from maven/be faster.
+wget https://archive.apache.org/dist/hadoop/core/hadoop-3.3.0/hadoop-3.3.0.tar.gz -O hadoop-dist.tgz
+echo 'ea1a0f0afcdfb9b6b9d261cdce5a99023d7e8f72d26409e87f69bda65c663688  hadoop-dist.tgz' | sha256sum --check
 mkdir -p hadoop-dist
 tar -xvf hadoop-dist.tgz -C hadoop-dist --strip-components 1
 
-cp -rf hadoop-dist/share/hadoop/tools/lib/hadoop-aws-2.7.7.jar /opt/spark/jars
-cp -rf hadoop-dist/share/hadoop/tools/lib/aws-java-sdk-1.7.4.jar /opt/spark/jars
+cp -rf hadoop-dist/share/hadoop/tools/lib/hadoop-aws-3.3.0.jar /opt/spark/jars
+
+# Hadoop dist has older AWS SDK version. Fetch minimum AWS SDK version to support IAM role
+# https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts-minimum-sdk.html
+wget https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.11.740/aws-java-sdk-bundle-1.11.740.jar /opt/spark/jars
 
 rm -rf hadoop-dist.tgz
 rm -rf hadoop-dist

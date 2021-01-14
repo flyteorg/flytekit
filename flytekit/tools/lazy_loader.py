@@ -34,8 +34,8 @@ class LazyLoadPlugin(object):
 
         d["all-spark2.4"] = all_plugins_spark2
         d["all-spark3"] = all_plugins_spark3
-        # all points to Spark 2.4
-        d["all"] = all_plugins_spark2
+        # all points to Spark 3.
+        d["all"] = all_plugins_spark3
         return d
 
 
