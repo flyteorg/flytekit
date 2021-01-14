@@ -122,6 +122,38 @@ class PythonAutoContainerTask(PythonTask[T], ABC):
         )
 
 
+def isnested(func) -> bool:
+    """
+    Returns true if a function is local to another function and is not accessible through a module
+
+    This would essentially be any function with a `.<local>.` (defined within a function) e.g.
+
+    .. code:: python
+
+        def foo():
+            def foo_inner():
+                pass
+            pass
+
+    In the above example `foo_inner` is the local function or a nested function.
+    """
+    return func.__code__.co_flags & inspect.CO_NESTED != 0
+
+
+def istestfunction(func) -> bool:
+    """
+    Returns true if the function is defined in a test module. A test module has to have `test_` as the prefix.
+    False in all other cases
+    """
+    mod = inspect.getmodule(func)
+    if mod:
+        mod_name = mod.__name__
+        if "." in mod_name:
+            mod_name = mod_name.split(".")[-1]
+        return mod_name.startswith("test_")
+    return False
+
+
 class PythonFunctionTask(PythonAutoContainerTask[T]):
     """
     A Python Function task should be used as the base for all extensions that have a python function. It will
@@ -157,6 +189,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         """
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
+        if not istestfunction(func=task_function) and isnested(func=task_function):
+            raise ValueError(
+                "TaskFunction cannot be a nested/inner or local function. "
+                "It should be accessible at a module level for Flyte to execute it. Test modules with "
+                "names begining with `test_` are allowed to have nested tasks"
+            )
         self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         super().__init__(
@@ -167,6 +205,10 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             **kwargs,
         )
         self._task_function = task_function
+
+    @property
+    def task_function(self):
+        return self._task_function
 
     def execute(self, **kwargs) -> Any:
         return self._task_function(**kwargs)
