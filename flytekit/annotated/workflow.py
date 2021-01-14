@@ -381,7 +381,6 @@ def workflow(
     interruptible: Optional[bool] = False,
 ):
     """
-    :param reference: Pass a WorkflowReference object here if you want to make this a pointer to an existing workflow
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
     :param interruptible: Whether or not tasks launched from this workflow are by default interruptible
     """
