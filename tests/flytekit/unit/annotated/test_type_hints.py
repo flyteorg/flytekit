@@ -24,7 +24,7 @@ from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.task import Resources as _resource_models
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.types import LiteralType
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 
 
