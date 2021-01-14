@@ -6,6 +6,7 @@ from flytekit.annotated.container_task import ContainerTask
 from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.annotated.node import Node
+from flytekit.annotated.reference_entity import ReferenceEntity
 from flytekit.annotated.reference_task import ReferenceTask
 from flytekit.annotated.workflow import ReferenceWorkflow, Workflow, WorkflowFailurePolicy, WorkflowMetadata
 from flytekit.common import constants as _common_constants
@@ -25,7 +26,15 @@ from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 
 FlyteLocalEntity = Union[
-    PythonTask, BranchNode, Node, LaunchPlan, Workflow, ReferenceWorkflow, ReferenceTask, ReferenceLaunchPlan
+    PythonTask,
+    BranchNode,
+    Node,
+    LaunchPlan,
+    Workflow,
+    ReferenceWorkflow,
+    ReferenceTask,
+    ReferenceLaunchPlan,
+    ReferenceEntity,
 ]
 FlyteControlPlaneEntity = Union[SdkTask, SdkLaunchPlan, SdkWorkflow, SdkNode, BranchNodeModel]
 
@@ -52,14 +61,9 @@ def to_registrable_cases(
 GLOBAL_CACHE: Dict[FlyteLocalEntity, FlyteControlPlaneEntity] = {}
 
 
-def get_serializable(
-    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: Optional[bool] = False
+def get_serializable_references(
+    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: bool
 ) -> FlyteControlPlaneEntity:
-    if entity in GLOBAL_CACHE:
-        return GLOBAL_CACHE[entity]
-
-    cp_entity = None
-    # TODO: flytekit.annotated.container_task.ContainerTask needs to be excepted
     if isinstance(entity, ReferenceTask):
         cp_entity = SdkTask(
             type="ignore",
@@ -72,6 +76,7 @@ def get_serializable(
         cp_entity._id = entity.id
         cp_entity._has_registered = True
         cp_entity.assign_name(entity.reference.id.name)
+        return cp_entity
 
     elif isinstance(entity, ReferenceWorkflow):
         workflow_metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
@@ -88,6 +93,7 @@ def get_serializable(
         cp_entity._has_registered = True
         cp_entity.assign_name(entity.id.name)
         cp_entity._id = entity.id
+        return cp_entity
 
     elif isinstance(entity, ReferenceLaunchPlan):
         wf_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW, "", "", "", "")
@@ -109,147 +115,196 @@ def get_serializable(
         # Make sure we don't serialize this
         cp_entity._has_registered = True
         cp_entity.assign_name(entity.reference.id.name)
+        return cp_entity
+
+    raise Exception("Invalid reference type when serializing")
+
+
+def get_serializable_task(
+    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: bool
+) -> FlyteControlPlaneEntity:
+    cp_entity = SdkTask(
+        type=entity.task_type,
+        metadata=entity.metadata.to_taskmetadata_model(),
+        interface=entity.interface,
+        custom=entity.get_custom(settings),
+        container=entity.get_container(settings),
+    )
+    # Reset just to make sure it's what we give it
+    cp_entity.id._project = settings.project
+    cp_entity.id._domain = settings.domain
+    cp_entity.id._name = entity.name
+    cp_entity.id._version = settings.version
+
+    if fast:
+        # Containerless tasks are always fast registerable without modification so only operate on tasks that
+        # have a container. Also, raw ContainerTask's should never be touched.
+        if cp_entity.container is not None and not isinstance(entity, ContainerTask):
+            args = [
+                "pyflyte-fast-execute",
+                "--additional-distribution",
+                "{{ .remote_package_path }}",
+                "--dest-dir",
+                "{{ .dest_dir }}",
+                "--",
+            ] + cp_entity.container.args[:]
+
+            del cp_entity._container.args[:]
+            cp_entity._container.args.extend(args)
+
+    return cp_entity
+
+
+def get_serializable_workflow(
+    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: bool
+) -> FlyteControlPlaneEntity:
+    workflow_id = _identifier_model.Identifier(
+        _identifier_model.ResourceType.WORKFLOW, settings.project, settings.domain, entity.name, settings.version
+    )
+
+    # Translate nodes
+    upstream_sdk_nodes = [
+        get_serializable(settings, n) for n in entity._nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
+    ]
+
+    cp_entity = SdkWorkflow(
+        nodes=upstream_sdk_nodes,
+        id=workflow_id,
+        metadata=entity.workflow_metadata.to_flyte_model(),
+        metadata_defaults=entity.workflow_metadata_defaults.to_flyte_model(),
+        interface=entity._interface,
+        output_bindings=entity._output_bindings,
+    )
+    # Reset just to make sure it's what we give it
+    cp_entity.id._project = settings.project
+    cp_entity.id._domain = settings.domain
+    cp_entity.id._name = entity.name
+    cp_entity.id._version = settings.version
+    return cp_entity
+
+
+def get_serializable_launch_plan(
+    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: bool
+) -> FlyteControlPlaneEntity:
+    sdk_workflow = get_serializable(settings, entity.workflow)
+    cp_entity = SdkLaunchPlan(
+        workflow_id=sdk_workflow.id,
+        entity_metadata=_launch_plan_models.LaunchPlanMetadata(
+            schedule=entity.schedule, notifications=entity.notifications,
+        ),
+        default_inputs=entity.parameters,
+        fixed_inputs=entity.fixed_inputs,
+        labels=entity.labels or _common_models.Labels({}),
+        annotations=entity.annotations or _common_models.Annotations({}),
+        auth_role=entity._auth_role,
+        raw_output_data_config=entity.raw_output_data_config,
+    )
+
+    # These two things are normally set to None in the SdkLaunchPlan constructor and filled in by
+    # SdkRunnableLaunchPlan/the registration process, so we need to set them manually. The reason is because these
+    # fields are not part of the underlying LaunchPlanSpec
+    cp_entity._interface = sdk_workflow.interface
+    cp_entity._id = _identifier_model.Identifier(
+        resource_type=_identifier_model.ResourceType.LAUNCH_PLAN,
+        project=settings.project,
+        domain=settings.domain,
+        name=entity.name,
+        version=settings.version,
+    )
+    return cp_entity
+
+
+def get_serializable_node(
+    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: bool
+) -> FlyteControlPlaneEntity:
+    if entity._flyte_entity is None:
+        raise Exception(f"Node {entity.id} has no flyte entity")
+
+    upstream_sdk_nodes = [
+        get_serializable(settings, n) for n in entity._upstream_nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
+    ]
+
+    if isinstance(entity._flyte_entity, PythonTask):
+        cp_entity = SdkNode(
+            entity._id,
+            upstream_nodes=upstream_sdk_nodes,
+            bindings=entity._bindings,
+            metadata=entity._metadata,
+            sdk_task=get_serializable(settings, entity._flyte_entity, fast),
+        )
+        if entity._aliases:
+            cp_entity._output_aliases = entity._aliases
+    elif isinstance(entity._flyte_entity, Workflow):
+        cp_entity = SdkNode(
+            entity._id,
+            upstream_nodes=upstream_sdk_nodes,
+            bindings=entity._bindings,
+            metadata=entity._metadata,
+            sdk_workflow=get_serializable(settings, entity._flyte_entity),
+        )
+    elif isinstance(entity._flyte_entity, BranchNode):
+        cp_entity = SdkNode(
+            entity._id,
+            upstream_nodes=upstream_sdk_nodes,
+            bindings=entity._bindings,
+            metadata=entity._metadata,
+            sdk_branch=get_serializable(settings, entity._flyte_entity),
+        )
+    elif isinstance(entity._flyte_entity, LaunchPlan):
+        cp_entity = SdkNode(
+            entity._id,
+            upstream_nodes=upstream_sdk_nodes,
+            bindings=entity._bindings,
+            metadata=entity._metadata,
+            sdk_launch_plan=get_serializable(settings, entity._flyte_entity),
+        )
+    else:
+        raise Exception(f"Node contained non-serializable entity {entity._flyte_entity}")
+
+    return cp_entity
+
+
+def get_serializable_branch_node(
+    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: bool
+) -> FlyteControlPlaneEntity:
+    # We have to iterate through the blocks to convert the nodes from their current type to SDKNode
+    # TODO this should be cleaned up instead of mutation, we probaby should just create a new object
+    first = to_registerable_case(settings, entity._ifelse_block.case)
+    other = to_registrable_cases(settings, entity._ifelse_block.other)
+    else_node = None
+    if entity._ifelse_block.else_node:
+        else_node = get_serializable(settings, entity._ifelse_block.else_node)
+
+    return BranchNodeModel(
+        if_else=_core_wf.IfElseBlock(case=first, other=other, else_node=else_node, error=entity._ifelse_block.error)
+    )
+
+
+def get_serializable(
+    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: Optional[bool] = False
+) -> FlyteControlPlaneEntity:
+    if entity in GLOBAL_CACHE:
+        return GLOBAL_CACHE[entity]
+
+    if isinstance(entity, ReferenceEntity):
+        cp_entity = get_serializable_references(settings, entity, fast)
 
     elif isinstance(entity, PythonTask):
-        cp_entity = SdkTask(
-            type=entity.task_type,
-            metadata=entity.metadata.to_taskmetadata_model(),
-            interface=entity.interface,
-            custom=entity.get_custom(settings),
-            container=entity.get_container(settings),
-        )
-        # Reset just to make sure it's what we give it
-        cp_entity.id._project = settings.project
-        cp_entity.id._domain = settings.domain
-        cp_entity.id._name = entity.name
-        cp_entity.id._version = settings.version
-
-        if fast:
-            # Containerless tasks are always fast registerable without modification so only operate on tasks that
-            # have a container. Also, raw ContainerTask's should never be touched.
-            if cp_entity.container is not None and not isinstance(entity, ContainerTask):
-                args = [
-                    "pyflyte-fast-execute",
-                    "--additional-distribution",
-                    "{{ .remote_package_path }}",
-                    "--dest-dir",
-                    "{{ .dest_dir }}",
-                    "--",
-                ] + cp_entity.container.args[:]
-
-                del cp_entity._container.args[:]
-                cp_entity._container.args.extend(args)
+        cp_entity = get_serializable_task(settings, entity, fast)
 
     elif isinstance(entity, Workflow):
-        workflow_id = _identifier_model.Identifier(
-            _identifier_model.ResourceType.WORKFLOW, settings.project, settings.domain, entity.name, settings.version
-        )
-
-        # Translate nodes
-        upstream_sdk_nodes = [
-            get_serializable(settings, n) for n in entity._nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
-        ]
-
-        cp_entity = SdkWorkflow(
-            nodes=upstream_sdk_nodes,
-            id=workflow_id,
-            metadata=entity.workflow_metadata.to_flyte_model(),
-            metadata_defaults=entity.workflow_metadata_defaults.to_flyte_model(),
-            interface=entity._interface,
-            output_bindings=entity._output_bindings,
-        )
-        # Reset just to make sure it's what we give it
-        cp_entity.id._project = settings.project
-        cp_entity.id._domain = settings.domain
-        cp_entity.id._name = entity.name
-        cp_entity.id._version = settings.version
+        cp_entity = get_serializable_workflow(settings, entity, fast)
 
     elif isinstance(entity, Node):
-        if entity._flyte_entity is None:
-            raise Exception(f"Node {entity.id} has no flyte entity")
-
-        upstream_sdk_nodes = [
-            get_serializable(settings, n)
-            for n in entity._upstream_nodes
-            if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
-        ]
-
-        if isinstance(entity._flyte_entity, PythonTask):
-            cp_entity = SdkNode(
-                entity._id,
-                upstream_nodes=upstream_sdk_nodes,
-                bindings=entity._bindings,
-                metadata=entity._metadata,
-                sdk_task=get_serializable(settings, entity._flyte_entity),
-            )
-            if entity._aliases:
-                cp_entity._output_aliases = entity._aliases
-        elif isinstance(entity._flyte_entity, Workflow):
-            cp_entity = SdkNode(
-                entity._id,
-                upstream_nodes=upstream_sdk_nodes,
-                bindings=entity._bindings,
-                metadata=entity._metadata,
-                sdk_workflow=get_serializable(settings, entity._flyte_entity),
-            )
-        elif isinstance(entity._flyte_entity, BranchNode):
-            cp_entity = SdkNode(
-                entity._id,
-                upstream_nodes=upstream_sdk_nodes,
-                bindings=entity._bindings,
-                metadata=entity._metadata,
-                sdk_branch=get_serializable(settings, entity._flyte_entity),
-            )
-        elif isinstance(entity._flyte_entity, LaunchPlan):
-            cp_entity = SdkNode(
-                entity._id,
-                upstream_nodes=upstream_sdk_nodes,
-                bindings=entity._bindings,
-                metadata=entity._metadata,
-                sdk_launch_plan=get_serializable(settings, entity._flyte_entity),
-            )
-        else:
-            raise Exception(f"Node contained non-serializable entity {entity._flyte_entity}")
+        cp_entity = get_serializable_node(settings, entity, fast)
 
     elif isinstance(entity, LaunchPlan):
-        sdk_workflow = get_serializable(settings, entity.workflow)
-        cp_entity = SdkLaunchPlan(
-            workflow_id=sdk_workflow.id,
-            entity_metadata=_launch_plan_models.LaunchPlanMetadata(
-                schedule=entity.schedule, notifications=entity.notifications,
-            ),
-            default_inputs=entity.parameters,
-            fixed_inputs=entity.fixed_inputs,
-            labels=entity.labels or _common_models.Labels({}),
-            annotations=entity.annotations or _common_models.Annotations({}),
-            auth_role=entity._auth_role,
-            raw_output_data_config=entity.raw_output_data_config,
-        )
-
-        # These two things are normally set to None in the SdkLaunchPlan constructor and filled in by
-        # SdkRunnableLaunchPlan/the registration process, so we need to set them manually. The reason is because these
-        # fields are not part of the underlying LaunchPlanSpec
-        cp_entity._interface = sdk_workflow.interface
-        cp_entity._id = _identifier_model.Identifier(
-            resource_type=_identifier_model.ResourceType.LAUNCH_PLAN,
-            project=settings.project,
-            domain=settings.domain,
-            name=entity.name,
-            version=settings.version,
-        )
+        cp_entity = get_serializable_launch_plan(settings, entity, fast)
 
     elif isinstance(entity, BranchNode):
-        # We have to iterate through the blocks to convert the nodes from their current type to SDKNode
-        # TODO this should be cleaned up instead of mutation, we probaby should just create a new object
-        first = to_registerable_case(settings, entity._ifelse_block.case)
-        other = to_registrable_cases(settings, entity._ifelse_block.other)
-        else_node = None
-        if entity._ifelse_block.else_node:
-            else_node = get_serializable(settings, entity._ifelse_block.else_node)
-
-        cp_entity = BranchNodeModel(
-            if_else=_core_wf.IfElseBlock(case=first, other=other, else_node=else_node, error=entity._ifelse_block.error)
-        )
+        cp_entity = get_serializable_branch_node(settings, entity, fast)
+    else:
+        raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")
 
     GLOBAL_CACHE[entity] = cp_entity
     return cp_entity
