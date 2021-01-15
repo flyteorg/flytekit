@@ -12,19 +12,19 @@ from flytekit import ContainerTask, SQLTask, dynamic, kwtypes, maptask
 from flytekit.annotated import context_manager, launch_plan, promise
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
-from flytekit.annotated.promise import Promise, VoidPromise
+from flytekit.annotated.node import Node
+from flytekit.annotated.promise import NodeOutput, Promise, VoidPromise
 from flytekit.annotated.resources import Resources
 from flytekit.annotated.task import TaskMetadata, task
 from flytekit.annotated.testing import patch, task_mock
 from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.annotated.workflow import workflow
-from flytekit.common.nodes import SdkNode
-from flytekit.common.promise import NodeOutput
+from flytekit.common.translator import get_serializable
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.task import Resources as _resource_models
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.types import LiteralType
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 
 
@@ -74,7 +74,7 @@ def test_single_output():
         nodes = ctx.compilation_state.nodes
         assert len(nodes) == 1
         assert outputs.is_ready is False
-        assert outputs.ref.sdk_node is nodes[0]
+        assert outputs.ref.node is nodes[0]
 
 
 def test_engine_file_output():
@@ -403,8 +403,8 @@ def test_wf1_with_dynamic():
     x = my_wf(a=v, b="hello ")
     assert x == ("hello hello ", ["world-" + str(i) for i in range(2, v + 2)])
 
-    with context_manager.FlyteContext.current_context().new_registration_settings(
-        registration_settings=context_manager.RegistrationSettings(
+    with context_manager.FlyteContext.current_context().new_serialization_settings(
+        serialization_settings=context_manager.SerializationSettings(
             project="test_proj",
             domain="test_domain",
             version="abc",
@@ -413,7 +413,7 @@ def test_wf1_with_dynamic():
         )
     ) as ctx:
         with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
-            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, a=5)
+            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
 
 
@@ -438,13 +438,20 @@ def test_list_output():
 
 
 def test_comparison_refs():
-    def dummy_node(id) -> SdkNode:
-        n = SdkNode(id, [], None, None, sdk_task=SQLTask(name="x", query_template="x", inputs={}))
-        n._id = id
+    def dummy_node(node_id) -> Node:
+        n = Node(
+            node_id,
+            metadata=None,
+            bindings=[],
+            upstream_nodes=[],
+            flyte_entity=SQLTask(name="x", query_template="x", inputs={}),
+        )
+
+        n._id = node_id
         return n
 
-    px = Promise("x", NodeOutput(var="x", sdk_type=LiteralType(simple=SimpleType.INTEGER), sdk_node=dummy_node("n1")))
-    py = Promise("y", NodeOutput(var="y", sdk_type=LiteralType(simple=SimpleType.INTEGER), sdk_node=dummy_node("n2")))
+    px = Promise("x", NodeOutput(var="x", node=dummy_node("n1")))
+    py = Promise("y", NodeOutput(var="y", node=dummy_node("n2")))
 
     def print_expr(expr):
         print(f"{expr} is type {type(expr)}")
@@ -603,29 +610,26 @@ def test_lp_serialize():
     lp = launch_plan.LaunchPlan.create("serialize_test1", my_subwf)
     lp_with_defaults = launch_plan.LaunchPlan.create("serialize_test2", my_subwf, default_inputs={"a": 3})
 
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="proj",
         domain="dom",
         version="123",
         image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
     )
-    with context_manager.FlyteContext.current_context().new_registration_settings(
-        registration_settings=registration_settings
-    ):
-        sdk_lp = lp.get_registerable_entity()
-        assert len(sdk_lp.default_inputs.parameters) == 0
-        assert len(sdk_lp.fixed_inputs.literals) == 0
+    sdk_lp = get_serializable(serialization_settings, lp)
+    assert len(sdk_lp.default_inputs.parameters) == 0
+    assert len(sdk_lp.fixed_inputs.literals) == 0
 
-        sdk_lp = lp_with_defaults.get_registerable_entity()
-        assert len(sdk_lp.default_inputs.parameters) == 1
-        assert len(sdk_lp.fixed_inputs.literals) == 0
+    sdk_lp = get_serializable(serialization_settings, lp_with_defaults)
+    assert len(sdk_lp.default_inputs.parameters) == 1
+    assert len(sdk_lp.fixed_inputs.literals) == 0
 
-        # Adding a check to make sure oneof is respected. Tricky with booleans... if a default is specified, the
-        # required field needs to be None, not False.
-        parameter_a = sdk_lp.default_inputs.parameters["a"]
-        parameter_a = Parameter.from_flyte_idl(parameter_a.to_flyte_idl())
-        assert parameter_a.default is not None
+    # Adding a check to make sure oneof is respected. Tricky with booleans... if a default is specified, the
+    # required field needs to be None, not False.
+    parameter_a = sdk_lp.default_inputs.parameters["a"]
+    parameter_a = Parameter.from_flyte_idl(parameter_a.to_flyte_idl())
+    assert parameter_a.default is not None
 
 
 def test_wf_container_task():
@@ -918,18 +922,16 @@ def test_environment():
         x = t1(a=a)
         return x
 
-    with context_manager.FlyteContext.current_context().new_registration_settings(
-        registration_settings=context_manager.RegistrationSettings(
-            project="test_proj",
-            domain="test_domain",
-            version="abc",
-            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-            env={"FOO": "foo", "BAR": "bar"},
-        )
-    ) as ctx:
-        with ctx.new_compilation_context():
-            sdk_task = t1.get_registerable_entity()
-            assert sdk_task.container.env == {"FOO": "foofoo", "BAR": "bar", "BAZ": "baz"}
+    serialization_settings = context_manager.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={"FOO": "foo", "BAR": "bar"},
+    )
+    with context_manager.FlyteContext.current_context().new_compilation_context():
+        sdk_task = get_serializable(serialization_settings, t1)
+        assert sdk_task.container.env == {"FOO": "foofoo", "BAR": "bar", "BAZ": "baz"}
 
 
 def test_resources():
@@ -948,30 +950,28 @@ def test_resources():
         x = t1(a=a)
         return x
 
-    with context_manager.FlyteContext.current_context().new_registration_settings(
-        registration_settings=context_manager.RegistrationSettings(
-            project="test_proj",
-            domain="test_domain",
-            version="abc",
-            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-            env={},
-        )
-    ) as ctx:
-        with ctx.new_compilation_context():
-            sdk_task = t1.get_registerable_entity()
-            assert sdk_task.container.resources.requests == [
-                _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "1")
-            ]
-            assert sdk_task.container.resources.limits == [
-                _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "2"),
-                _resource_models.ResourceEntry(_resource_models.ResourceName.MEMORY, "400M"),
-            ]
+    serialization_settings = context_manager.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    with context_manager.FlyteContext.current_context().new_compilation_context():
+        sdk_task = get_serializable(serialization_settings, t1)
+        assert sdk_task.container.resources.requests == [
+            _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "1")
+        ]
+        assert sdk_task.container.resources.limits == [
+            _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "2"),
+            _resource_models.ResourceEntry(_resource_models.ResourceName.MEMORY, "400M"),
+        ]
 
-            sdk_task2 = t2.get_registerable_entity()
-            assert sdk_task2.container.resources.requests == [
-                _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "3")
-            ]
-            assert sdk_task2.container.resources.limits == []
+        sdk_task2 = get_serializable(serialization_settings, t2)
+        assert sdk_task2.container.resources.requests == [
+            _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "3")
+        ]
+        assert sdk_task2.container.resources.limits == []
 
 
 def test_wf_explicitly_returning_empty_task():

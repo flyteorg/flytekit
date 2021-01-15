@@ -17,6 +17,7 @@ from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions.scopes import system_entry_point
 from flytekit.common.tasks import task as _sdk_task
+from flytekit.common.translator import get_serializable
 from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
 from flytekit.configuration import internal as _internal_config
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
@@ -29,6 +30,10 @@ from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 _PROJECT_PLACEHOLDER = "{{ registration.project }}"
 _DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
 _VERSION_PLACEHOLDER = "{{ registration.version }}"
+
+CTX_IMAGE = "image"
+CTX_LOCAL_SRC_ROOT = "local_source_root"
+CTX_CONFIG_FILE_LOC = "config_file_loc"
 
 
 class SerializationMode(_Enum):
@@ -73,7 +78,14 @@ def serialize_tasks_only(pkgs, folder=None):
 
 
 @system_entry_point
-def serialize_all(pkgs: List[str], folder: str = None, mode: SerializationMode = None):
+def serialize_all(
+    pkgs: List[str] = None,
+    local_source_root: str = None,
+    folder: str = None,
+    mode: SerializationMode = None,
+    image: str = None,
+    config_path: str = None,
+):
     """
     In order to register, we have to comply with Admin's endpoints. Those endpoints take the following objects. These
     flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
@@ -97,29 +109,31 @@ def serialize_all(pkgs: List[str], folder: str = None, mode: SerializationMode =
     # k = value of dir(m), type str
     # o = object (e.g. SdkWorkflow)
     env = {
-        _internal_config.CONFIGURATION_PATH.env_var: _internal_config.CONFIGURATION_PATH.get(),
-        _internal_config.IMAGE.env_var: _internal_config.IMAGE.get(),
+        _internal_config.CONFIGURATION_PATH.env_var: config_path
+        if config_path
+        else _internal_config.CONFIGURATION_PATH.get(),
+        _internal_config.IMAGE.env_var: image,
     }
 
-    registration_settings = flyte_context.RegistrationSettings(
+    serialization_settings = flyte_context.SerializationSettings(
         project=_PROJECT_PLACEHOLDER,
         domain=_DOMAIN_PLACEHOLDER,
         version=_VERSION_PLACEHOLDER,
-        image_config=flyte_context.get_image_config(),
+        image_config=flyte_context.get_image_config(img_name=image),
         env=env,
     )
-    with flyte_context.FlyteContext.current_context().new_registration_settings(
-        registration_settings=registration_settings
+    with flyte_context.FlyteContext.current_context().new_serialization_settings(
+        serialization_settings=serialization_settings
     ) as ctx:
         loaded_entities = []
-        for m, k, o in iterate_registerable_entities_in_order(pkgs):
+        for m, k, o in iterate_registerable_entities_in_order(pkgs, local_source_root=local_source_root):
             name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
             _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
             o._id = _identifier.Identifier(
                 o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
             )
             loaded_entities.append(o)
-            ctx.registration_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
+            ctx.serialization_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
 
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
 
@@ -137,18 +151,18 @@ def serialize_all(pkgs: List[str], folder: str = None, mode: SerializationMode =
             if isinstance(entity, PythonTask) or isinstance(entity, Workflow) or isinstance(entity, LaunchPlan):
                 if isinstance(entity, PythonTask):
                     if mode == SerializationMode.DEFAULT:
-                        serializable = entity.get_registerable_entity()
+                        serializable = get_serializable(ctx.serialization_settings, entity)
                     elif mode == SerializationMode.FAST:
-                        serializable = entity.get_fast_registerable_entity()
+                        serializable = get_serializable(ctx.serialization_settings, entity, fast=True)
                     else:
                         raise AssertionError(f"Unrecognized serialization mode: {mode}")
                 else:
-                    serializable = entity.get_registerable_entity()
+                    serializable = get_serializable(ctx.serialization_settings, entity)
                 loaded_entities.append(serializable)
 
                 if isinstance(entity, Workflow):
                     lp = LaunchPlan.get_default_launch_plan(ctx, entity)
-                    launch_plan = lp.get_registerable_entity()
+                    launch_plan = get_serializable(ctx.serialization_settings, lp)
                     loaded_entities.append(launch_plan)
 
         zero_padded_length = _determine_text_chars(len(loaded_entities))
@@ -189,8 +203,22 @@ def _determine_text_chars(length):
 
 
 @click.group("serialize")
+@click.option("--image", help="Text tag: e.g. somedocker.com/myimage:someversion123", required=False)
+@click.option(
+    "--local-source-root",
+    required=False,
+    help="Root dir for python code containing workflow definitions to operate on when not the current working directory"
+    "Required for running `pyflyte serialize` in out of container mode",
+)
+@click.option(
+    "--in-container-config-path",
+    required=False,
+    help="This is where the configuration for your task lives inside the container. "
+    "The reason it needs to be a separate option is because this pyflyte utility cannot know where the Dockerfile "
+    "writes the config file to. Required for running `pyflyte serialize` in out of container mode",
+)
 @click.pass_context
-def serialize(ctx):
+def serialize(ctx, image, local_source_root, in_container_config_path):
     """
     This command produces protobufs for tasks and templates.
     For tasks, one pb file is produced for each task, representing one TaskTemplate object.
@@ -198,7 +226,19 @@ def serialize(ctx):
         object contains the WorkflowTemplate, along with the relevant tasks for that workflow.  In lieu of Admin,
         this serialization step will set the URN of the tasks to the fully qualified name of the task function.
     """
-    click.echo("Serializing Flyte elements with image {}".format(_internal_config.IMAGE.get()))
+    if not image:
+        image = _internal_config.IMAGE.get()
+    if not image:
+        raise click.UsageError("Could not find image from config, please specify a value for ``--image``")
+    ctx.obj[CTX_IMAGE] = image
+    ctx.obj[CTX_LOCAL_SRC_ROOT] = local_source_root
+    click.echo("Serializing Flyte elements with image {}".format(image))
+
+    if bool(local_source_root) != bool(in_container_config_path):
+        raise click.UsageError(
+            "When running out of container serialization you must specify --local-source-root AND --in-container-config-path"
+        )
+    ctx.obj[CTX_CONFIG_FILE_LOC] = in_container_config_path
 
 
 @click.command("tasks")
@@ -225,7 +265,10 @@ def workflows(ctx, folder=None):
         click.echo(f"Writing output to {folder}")
 
     pkgs = ctx.obj[CTX_PACKAGES]
-    serialize_all(pkgs, folder, SerializationMode.DEFAULT)
+    dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
+    serialize_all(
+        pkgs, dir, folder, SerializationMode.DEFAULT, image=ctx.obj[CTX_IMAGE], config_path=ctx.obj[CTX_CONFIG_FILE_LOC]
+    )
 
 
 @click.group("fast")
@@ -235,22 +278,21 @@ def fast(ctx):
 
 
 @click.command("workflows")
-# For now let's just assume that the directory needs to exist. If you're docker run -v'ing, docker will create the
-# directory for you so it shouldn't be a problem.
-@click.option(
-    "--source-dir", required=True, help="The root dir of the code that should be uploaded for fast registration"
-)
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
-def fast_workflows(ctx, source_dir, folder=None):
+def fast_workflows(ctx, folder=None):
     _logging.getLogger().setLevel(_logging.DEBUG)
 
     if folder:
         click.echo(f"Writing output to {folder}")
 
     pkgs = ctx.obj[CTX_PACKAGES]
-    serialize_all(pkgs, folder, SerializationMode.FAST)
+    dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
+    serialize_all(
+        pkgs, dir, folder, SerializationMode.FAST, image=ctx.obj[CTX_IMAGE], config_path=ctx.obj[CTX_CONFIG_FILE_LOC]
+    )
 
+    source_dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
     digest = _compute_digest(source_dir)
     folder = folder if folder else ""
     archive_fname = _os.path.join(folder, f"{digest}.tar.gz")

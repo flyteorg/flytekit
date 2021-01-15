@@ -7,7 +7,7 @@ from google.protobuf.json_format import MessageToDict
 
 import flytekit
 from flytekit.annotated.base_task import PythonTask, kwtypes
-from flytekit.annotated.context_manager import RegistrationSettings
+from flytekit.annotated.context_manager import SerializationSettings
 from flytekit.annotated.interface import Interface
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
@@ -82,7 +82,7 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
             self._SAGEMAKER_TRAINING_JOB_TASK, name, interface=interface, task_config=task_config, **kwargs,
         )
 
-    def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         training_job = _training_job_models.TrainingJob(
             algorithm_specification=self._task_config.algorithm_specification,
             training_job_resource_config=self._task_config.training_job_resource_config,
@@ -123,7 +123,7 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
             **kwargs,
         )
 
-    def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         training_job = _training_job_models.TrainingJob(
             algorithm_specification=self.task_config.algorithm_specification,
             training_job_resource_config=self.task_config.training_job_resource_config,

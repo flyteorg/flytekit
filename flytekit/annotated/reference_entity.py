@@ -4,8 +4,13 @@ from typing import Any, Dict, Tuple, Type, Union
 
 from flytekit.annotated.context_manager import BranchEvalMode, ExecutionState, FlyteContext
 from flytekit.annotated.interface import Interface, transform_interface_to_typed_interface
-from flytekit.annotated.node import create_and_link_node
-from flytekit.annotated.promise import Promise, VoidPromise, create_task_output, translate_inputs_to_literals
+from flytekit.annotated.promise import (
+    Promise,
+    VoidPromise,
+    create_and_link_node,
+    create_task_output,
+    translate_inputs_to_literals,
+)
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.loggers import logger
@@ -21,7 +26,6 @@ class Reference(ABC):
     domain: str
     name: str
     version: str
-    resource_type: int  # Has to be last
 
     def __post_init__(self):
         self._id = _identifier_model.Identifier(self.resource_type, self.project, self.domain, self.name, self.version)
@@ -30,50 +34,31 @@ class Reference(ABC):
     def id(self) -> _identifier_model.Identifier:
         return self._id
 
+    @property
     @abstractmethod
-    def dummy(self):
-        """
-        This is only here to prevent instantiation of this class
-        """
+    def resource_type(self) -> int:
+        ...
 
 
 @dataclass
 class TaskReference(Reference):
-    # Be great if we can just hide this completely and not expose it at all to the user but not sure how to freeze
-    # just one field of the class
-    resource_type: int = _identifier_model.ResourceType.TASK
-
-    def __post_init__(self):
-        # Don't know how to enforce defaults other than an explicit check.
-        assert self.resource_type == _identifier_model.ResourceType.TASK
-        super().__post_init__()
-
-    def dummy(self):
-        ...
+    @property
+    def resource_type(self) -> int:
+        return _identifier_model.ResourceType.TASK
 
 
 @dataclass
 class LaunchPlanReference(Reference):
-    resource_type: int = _identifier_model.ResourceType.LAUNCH_PLAN
-
-    def __post_init__(self):
-        assert self.resource_type == _identifier_model.ResourceType.LAUNCH_PLAN
-        super().__post_init__()
-
-    def dummy(self):
-        ...
+    @property
+    def resource_type(self) -> int:
+        return _identifier_model.ResourceType.LAUNCH_PLAN
 
 
 @dataclass
 class WorkflowReference(Reference):
-    resource_type: int = _identifier_model.ResourceType.WORKFLOW
-
-    def __post_init__(self):
-        assert self.resource_type == _identifier_model.ResourceType.WORKFLOW
-        super().__post_init__()
-
-    def dummy(self):
-        ...
+    @property
+    def resource_type(self) -> int:
+        return _identifier_model.ResourceType.WORKFLOW
 
 
 class ReferenceEntity(object):

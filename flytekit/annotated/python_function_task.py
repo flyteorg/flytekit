@@ -1,13 +1,18 @@
 import inspect
 import re
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, TypeVar
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 
 from flytekit.annotated.base_task import PythonTask
-from flytekit.annotated.context_manager import ImageConfig, RegistrationSettings
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext, ImageConfig, SerializationSettings
 from flytekit.annotated.interface import transform_signature_to_interface
 from flytekit.annotated.resources import Resources, ResourceSpec
+from flytekit.annotated.workflow import Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults
 from flytekit.common.tasks.raw_container import _get_container_definition
+from flytekit.loggers import logger
+from flytekit.models import dynamic_job as _dynamic_job
+from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 
 _IMAGE_REPLACE_REGEX = re.compile(r"({{\s*.image[s]?.(\w+).(\w+)\s*}})", re.IGNORECASE)
@@ -100,10 +105,10 @@ class PythonAutoContainerTask(PythonTask[T], ABC):
         return self._resources
 
     @abstractmethod
-    def get_command(self, settings: RegistrationSettings) -> List[str]:
+    def get_command(self, settings: SerializationSettings) -> List[str]:
         pass
 
-    def get_container(self, settings: RegistrationSettings) -> _task_model.Container:
+    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
             image=get_registerable_container_image(self.container_image, settings.image_config),
@@ -172,12 +177,17 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
     auto detected.
     """
 
+    class ExecutionBehavior(Enum):
+        DEFAULT = 1
+        DYNAMIC = 2
+
     def __init__(
         self,
         task_config: T,
         task_function: Callable,
         task_type="python-task",
         ignore_input_vars: Optional[List[str]] = None,
+        execution_mode: Optional[ExecutionBehavior] = ExecutionBehavior.DEFAULT,
         **kwargs,
     ):
         """
@@ -205,15 +215,27 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             **kwargs,
         )
         self._task_function = task_function
+        self._execution_mode = execution_mode
+
+    @property
+    def execution_mode(self) -> ExecutionBehavior:
+        return self._execution_mode
 
     @property
     def task_function(self):
         return self._task_function
 
     def execute(self, **kwargs) -> Any:
-        return self._task_function(**kwargs)
+        """
+        This method will be invoked to execute the task. If you do decide to override this method you must also
+        handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
+        """
+        if self.execution_mode == self.ExecutionBehavior.DEFAULT:
+            return self._task_function(**kwargs)
+        elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
+            return self.dynamic_execute(self._task_function, **kwargs)
 
-    def get_command(self, settings: RegistrationSettings) -> List[str]:
+    def get_command(self, settings: SerializationSettings) -> List[str]:
         return [
             "pyflyte-execute",
             "--task-module",
@@ -227,6 +249,85 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             "--raw-output-data-prefix",
             "{{.rawOutputDataPrefix}}",
         ]
+
+    def compile_into_workflow(
+        self, ctx: FlyteContext, task_function: Callable, **kwargs
+    ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
+        with ctx.new_compilation_context(prefix="dynamic"):
+            # TODO: Resolve circular import
+            from flytekit.common.translator import get_serializable
+
+            workflow_metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
+            defaults = WorkflowMetadataDefaults(interruptible=False)
+
+            self._wf = Workflow(task_function, metadata=workflow_metadata, default_metadata=defaults)
+            self._wf.compile(**kwargs)
+
+            wf = self._wf
+            sdk_workflow = get_serializable(ctx.serialization_settings, wf)
+
+            # If no nodes were produced, let's just return the strict outputs
+            if len(sdk_workflow.nodes) == 0:
+                return _literal_models.LiteralMap(
+                    literals={binding.var: binding.binding.to_literal_model() for binding in sdk_workflow._outputs}
+                )
+
+            # Gather underlying tasks/workflows that get referenced. Launch plans are handled by propeller.
+            tasks = set()
+            sub_workflows = set()
+            for n in sdk_workflow.nodes:
+                self.aggregate(tasks, sub_workflows, n)
+
+            dj_spec = _dynamic_job.DynamicJobSpec(
+                min_successes=len(sdk_workflow.nodes),
+                tasks=list(tasks),
+                nodes=sdk_workflow.nodes,
+                outputs=sdk_workflow._outputs,
+                subworkflows=list(sub_workflows),
+            )
+
+            return dj_spec
+
+    @staticmethod
+    def aggregate(tasks, workflows, node) -> None:
+        if node.task_node is not None:
+            tasks.add(node.task_node.sdk_task)
+        if node.workflow_node is not None:
+            if node.workflow_node.sdk_workflow is not None:
+                workflows.add(node.workflow_node.sdk_workflow)
+                for sub_node in node.workflow_node.sdk_workflow.nodes:
+                    PythonFunctionTask.aggregate(tasks, workflows, sub_node)
+        if node.branch_node is not None:
+            if node.branch_node.if_else.case.then_node is not None:
+                PythonFunctionTask.aggregate(tasks, workflows, node.branch_node.if_else.case.then_node)
+            if node.branch_node.if_else.other:
+                for oth in node.branch_node.if_else.other:
+                    if oth.then_node:
+                        PythonFunctionTask.aggregate(tasks, workflows, oth.then_node)
+            if node.branch_node.if_else.else_node is not None:
+                PythonFunctionTask.aggregate(tasks, workflows, node.branch_node.if_else.else_node)
+
+    def dynamic_execute(self, task_function: Callable, **kwargs) -> Any:
+        """
+        By the time this function is invoked, the _local_execute function should have unwrapped the Promises and Flyte
+        literal wrappers so that the kwargs we are working with here are now Python native literal values. This
+        function is also expected to return Python native literal values.
+
+        Since the user code within a dynamic task constitute a workflow, we have to first compile the workflow, and
+        then execute that workflow.
+
+        When running for real in production, the task would stop after the compilation step, and then create a file
+        representing that newly generated workflow, instead of executing it.
+        """
+        ctx = FlyteContext.current_context()
+
+        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            with ctx.new_execution_context(ExecutionState.Mode.TASK_EXECUTION):
+                logger.info("Executing Dynamic workflow, using raw inputs")
+                return task_function(**kwargs)
+
+        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+            return self.compile_into_workflow(ctx, task_function, **kwargs)
 
 
 class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
@@ -247,7 +348,7 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
     def __init__(self, name: str, task_config: T, task_type: str = "python-task", **kwargs):
         super().__init__(name=name, task_config=task_config, task_type=task_type, **kwargs)
 
-    def get_command(self, settings: RegistrationSettings) -> List[str]:
+    def get_command(self, settings: SerializationSettings) -> List[str]:
         """
         NOTE: This command is different, it tries to retrieve the actual LHS of where this object was assigned, so that
         the module loader can easily retreive this for execution - at runtime.

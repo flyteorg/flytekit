@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, Optional
 
 from google.protobuf.json_format import MessageToDict
 
-from flytekit.annotated.context_manager import RegistrationSettings
+from flytekit.annotated.context_manager import SerializationSettings
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.resources import Resources
 from flytekit.annotated.task import TaskPlugins
@@ -60,7 +60,7 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
             **kwargs
         )
 
-    def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         job = _task_model.TensorFlowJob(
             workers_count=self.task_config.num_workers,
             ps_replicas_count=self.task_config.num_ps_replicas,

@@ -22,3 +22,4 @@ dist
 .bash_history
 *-out.html
 *-out.ipynb
+.python-version

@@ -1,18 +1,26 @@
+from __future__ import annotations
+
 import collections
+import datetime
 import typing
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from flytekit.annotated import context_manager as _flyte_context
+from flytekit.annotated import interface as flyte_interface
 from flytekit.annotated import type_engine
 from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.interface import Interface
+from flytekit.annotated.node import Node
 from flytekit.annotated.type_engine import DictTransformer, ListTransformer, TypeEngine
-from flytekit.common.promise import NodeOutput as _NodeOutput
+from flytekit.common import constants as _common_constants
+from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import literals as _literals_models
 from flytekit.models import types as _type_models
+from flytekit.models import types as type_models
+from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
 
 
@@ -259,16 +267,16 @@ class ConjunctionExpression(object):
 class Promise(object):
     # TODO: Currently, NodeOutput we're creating is the slimmer annotated package Node class, but since only the
     #  id is used, it's okay for now. Let's clean all this up though.
-    def __init__(self, var: str, val: Union[_NodeOutput, _literal_models.Literal]):
+    def __init__(self, var: str, val: Union[NodeOutput, _literal_models.Literal]):
         self._var = var
         self._promise_ready = True
         self._val = val
-        if val and isinstance(val, _NodeOutput):
+        if val and isinstance(val, NodeOutput):
             self._ref = val
             self._promise_ready = False
             self._val = None
 
-    def with_var(self, new_var: str) -> "Promise":
+    def with_var(self, new_var: str) -> Promise:
         if self.is_ready:
             return Promise(var=new_var, val=self.val)
         return Promise(var=new_var, val=self.ref)
@@ -295,7 +303,7 @@ class Promise(object):
         return self._val
 
     @property
-    def ref(self) -> _NodeOutput:
+    def ref(self) -> NodeOutput:
         """
         If the promise is NOT READY / Incomplete, then it maps to the origin node that owns the promise
         """
@@ -348,8 +356,8 @@ class Promise(object):
     def with_overrides(self, *args, **kwargs):
         if not self.is_ready:
             # TODO, this should be forwarded, but right now this results in failure and we want to test this behavior
-            print(f"Forwarding to node {self.ref.sdk_node.id}")
-            self.ref.sdk_node.with_overrides(*args, **kwargs)
+            print(f"Forwarding to node {self.ref.node.id}")
+            self.ref.node.with_overrides(*args, **kwargs)
         return self
 
     def __repr__(self):
@@ -550,3 +558,119 @@ class VoidPromise(object):
 
     def __repr__(self):
         raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+
+class NodeOutput(type_models.OutputReference):
+    def __init__(self, node: Node, var: str):
+        """
+        :param node:
+        :param var: The name of the variable this NodeOutput references
+        """
+        self._node = node
+        super(NodeOutput, self).__init__(self._node.id, var)
+
+    @property
+    def node_id(self):
+        """
+        Override the underlying node_id property to refer to SdkNode.
+        :rtype: Text
+        """
+        return self.node.id
+
+    @property
+    def node(self) -> Node:
+        """
+        """
+        return self._node
+
+    def __repr__(self) -> str:
+        s = f"Node({self.node if self.node.id is not None else None}:{self.var})"
+        return s
+
+
+# TODO we should accept TaskMetadata here and then extract whatever fields we want into NodeMetadata
+def create_and_link_node(
+    ctx: FlyteContext,
+    entity,
+    interface: flyte_interface.Interface,
+    timeout: Optional[datetime.timedelta] = None,
+    retry_strategy: Optional[_literal_models.RetryStrategy] = None,
+    **kwargs,
+):
+    """
+    This method is used to generate a node with bindings. This is not used in the execution path.
+    """
+    if ctx.compilation_state is None:
+        raise _user_exceptions.FlyteAssertion("Cannot create node when not compiling...")
+
+    used_inputs = set()
+    bindings = []
+
+    typed_interface = flyte_interface.transform_interface_to_typed_interface(interface)
+
+    for k in sorted(interface.inputs):
+        var = typed_interface.inputs[k]
+        if k not in kwargs:
+            raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
+        v = kwargs[k]
+        # This check ensures that tuples are not passed into a function, as tuples are not supported by Flyte
+        # Usually a Tuple will indicate that multiple outputs from a previous task were accidentally passed
+        # into the function.
+        if isinstance(v, tuple):
+            raise AssertionError(
+                f"Variable({k}) for function({entity.name}) cannot receive a multi-valued tuple {v}."
+                f" Check if the predecessor function returning more than one value?"
+            )
+        bindings.append(
+            binding_from_python_std(
+                ctx, var_name=k, expected_literal_type=var.type, t_value=v, t_value_type=interface.inputs[k]
+            )
+        )
+        used_inputs.add(k)
+
+    extra_inputs = used_inputs ^ set(kwargs.keys())
+    if len(extra_inputs) > 0:
+        raise _user_exceptions.FlyteAssertion(
+            "Too many inputs were specified for the interface.  Extra inputs were: {}".format(extra_inputs)
+        )
+
+    # Detect upstream nodes
+    # These will be our annotated Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
+    upstream_nodes = list(
+        set(
+            [
+                input_val.ref.node
+                for input_val in kwargs.values()
+                if isinstance(input_val, Promise) and input_val.ref.node_id != _common_constants.GLOBAL_INPUT_NODE_ID
+            ]
+        )
+    )
+
+    node_metadata = _workflow_model.NodeMetadata(
+        f"{entity.__module__}.{entity.name}",
+        timeout or datetime.timedelta(),
+        retry_strategy or _literal_models.RetryStrategy(0),
+    )
+
+    non_sdk_node = Node(
+        # TODO: Better naming, probably a derivative of the function name.
+        id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
+        metadata=node_metadata,
+        bindings=sorted(bindings, key=lambda b: b.var),
+        upstream_nodes=upstream_nodes,
+        flyte_entity=entity,
+    )
+    ctx.compilation_state.add_node(non_sdk_node)
+
+    if len(typed_interface.outputs) == 0:
+        return VoidPromise(entity.name)
+
+    # Create a node output object for each output, they should all point to this node of course.
+    node_outputs = []
+    for output_name, output_var_model in typed_interface.outputs.items():
+        # TODO: If node id gets updated later, we have to make sure to update the NodeOutput model's ID, which
+        #  is currently just a static str
+        node_outputs.append(Promise(output_name, NodeOutput(node=non_sdk_node, var=output_name)))
+        # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
+
+    return create_task_output(node_outputs, interface)

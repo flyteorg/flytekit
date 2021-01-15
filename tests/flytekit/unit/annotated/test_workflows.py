@@ -7,6 +7,7 @@ from flytekit.annotated.context_manager import Image, ImageConfig
 from flytekit.annotated.task import task
 from flytekit.annotated.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
 from flytekit.common.exceptions.user import FlyteValidationException
+from flytekit.common.translator import get_serializable
 
 
 def test_metadata_values():
@@ -37,16 +38,13 @@ def test_workflow_values():
         u, v = t1(a=x)
         return y, v
 
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="proj",
         domain="dom",
         version="123",
         image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
     )
-    with context_manager.FlyteContext.current_context().new_registration_settings(
-        registration_settings=registration_settings
-    ):
-        sdk_wf = wf.get_registerable_entity()
-        assert sdk_wf.metadata_defaults.interruptible
-        assert sdk_wf.metadata.on_failure == 1
+    sdk_wf = get_serializable(serialization_settings, wf)
+    assert sdk_wf.metadata_defaults.interruptible
+    assert sdk_wf.metadata.on_failure == 1

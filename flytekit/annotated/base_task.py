@@ -9,15 +9,19 @@ from flytekit.annotated.context_manager import (
     ExecutionState,
     FlyteContext,
     FlyteEntities,
-    RegistrationSettings,
+    SerializationSettings,
 )
 from flytekit.annotated.interface import Interface, transform_interface_to_typed_interface
-from flytekit.annotated.node import create_and_link_node
-from flytekit.annotated.promise import Promise, VoidPromise, create_task_output, translate_inputs_to_literals
+from flytekit.annotated.promise import (
+    Promise,
+    VoidPromise,
+    create_and_link_node,
+    create_task_output,
+    translate_inputs_to_literals,
+)
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.common.tasks.task import SdkTask
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -112,10 +116,6 @@ class Task(object):
         self._name = name
         self._interface = interface
         self._metadata = metadata if metadata else TaskMetadata()
-
-        # This will get populated only at registration time, when we retrieve the rest of the environment variables like
-        # project/domain/version/image and anything else we might need from the environment in the future.
-        self._registerable_entity: Optional[SdkTask] = None
 
         FlyteEntities.entities.append(self)
 
@@ -239,26 +239,10 @@ class Task(object):
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
 
-    def get_task_structure(self) -> SdkTask:
-        settings = FlyteContext.current_context().registration_settings
-        tk = SdkTask(
-            type=self.task_type,
-            metadata=self.metadata.to_taskmetadata_model(),
-            interface=self.interface,
-            custom=self.get_custom(settings),
-            container=self.get_container(settings),
-        )
-        # Reset just to make sure it's what we give it
-        tk.id._project = settings.project
-        tk.id._domain = settings.domain
-        tk.id._name = self.name
-        tk.id._version = settings.version
-        return tk
-
-    def get_container(self, settings: RegistrationSettings) -> _task_model.Container:
+    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         return None
 
-    def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return None
 
     @abstractmethod
@@ -433,31 +417,6 @@ class PythonTask(Task, Generic[T]):
             user_params: are the modified user params as created during the pre_execute step
         """
         return rval
-
-    def get_registerable_entity(self) -> SdkTask:
-        if self._registerable_entity is not None:
-            return self._registerable_entity
-        self._registerable_entity = self.get_task_structure()
-        return self._registerable_entity
-
-    def get_fast_registerable_entity(self) -> SdkTask:
-        entity = self.get_registerable_entity()
-        if entity.container is None:
-            # Containerless tasks are always fast registerable without modification
-            return entity
-
-        args = [
-            "pyflyte-fast-execute",
-            "--additional-distribution",
-            "{{ .remote_package_path }}",
-            "--dest-dir",
-            "{{ .dest_dir }}",
-            "--",
-        ] + entity.container.args[:]
-
-        del entity._container.args[:]
-        entity._container.args.extend(args)
-        return entity
 
     @property
     def environment(self) -> Dict[str, str]:
