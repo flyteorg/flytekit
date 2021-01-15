@@ -212,6 +212,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         self, ctx: FlyteContext, task_function: Callable, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
         with ctx.new_compilation_context(prefix="dynamic"):
+            # TODO: Resolve circular import
+            from flytekit.common.translator import get_serializable
+
             workflow_metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
             defaults = WorkflowMetadataDefaults(interruptible=False)
 
@@ -219,7 +222,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             self._wf.compile(**kwargs)
 
             wf = self._wf
-            sdk_workflow = wf.get_registerable_entity()
+            sdk_workflow = get_serializable(ctx.registration_settings, wf)
 
             # If no nodes were produced, let's just return the strict outputs
             if len(sdk_workflow.nodes) == 0:
