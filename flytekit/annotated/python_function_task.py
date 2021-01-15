@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 
 from flytekit.annotated.base_task import PythonTask
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext, ImageConfig, RegistrationSettings
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext, ImageConfig, SerializationSettings
 from flytekit.annotated.interface import transform_signature_to_interface
 from flytekit.annotated.resources import Resources, ResourceSpec
 from flytekit.annotated.workflow import Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults
@@ -105,10 +105,10 @@ class PythonAutoContainerTask(PythonTask[T], ABC):
         return self._resources
 
     @abstractmethod
-    def get_command(self, settings: RegistrationSettings) -> List[str]:
+    def get_command(self, settings: SerializationSettings) -> List[str]:
         pass
 
-    def get_container(self, settings: RegistrationSettings) -> _task_model.Container:
+    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
             image=get_registerable_container_image(self.container_image, settings.image_config),
@@ -193,7 +193,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             return self.dynamic_execute(self._task_function, **kwargs)
 
-    def get_command(self, settings: RegistrationSettings) -> List[str]:
+    def get_command(self, settings: SerializationSettings) -> List[str]:
         return [
             "pyflyte-execute",
             "--task-module",
@@ -212,6 +212,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         self, ctx: FlyteContext, task_function: Callable, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
         with ctx.new_compilation_context(prefix="dynamic"):
+            # TODO: Resolve circular import
+            from flytekit.common.translator import get_serializable
+
             workflow_metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
             defaults = WorkflowMetadataDefaults(interruptible=False)
 
@@ -219,7 +222,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             self._wf.compile(**kwargs)
 
             wf = self._wf
-            sdk_workflow = wf.get_registerable_entity()
+            sdk_workflow = get_serializable(ctx.serialization_settings, wf)
 
             # If no nodes were produced, let's just return the strict outputs
             if len(sdk_workflow.nodes) == 0:
@@ -303,7 +306,7 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
     def __init__(self, name: str, task_config: T, task_type: str = "python-task", **kwargs):
         super().__init__(name=name, task_config=task_config, task_type=task_type, **kwargs)
 
-    def get_command(self, settings: RegistrationSettings) -> List[str]:
+    def get_command(self, settings: SerializationSettings) -> List[str]:
         """
         NOTE: This command is different, it tries to retrieve the actual LHS of where this object was assigned, so that
         the module loader can easily retreive this for execution - at runtime.

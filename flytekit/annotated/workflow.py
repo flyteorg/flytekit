@@ -16,18 +16,15 @@ from flytekit.annotated.interface import (
     transform_interface_to_typed_interface,
     transform_signature_to_interface,
 )
-from flytekit.annotated.node import Node, create_and_link_node
-from flytekit.annotated.promise import Promise, VoidPromise, create_task_output
+from flytekit.annotated.node import Node
+from flytekit.annotated.promise import NodeOutput, Promise, VoidPromise, create_and_link_node, create_task_output
 from flytekit.annotated.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.annotated.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions.user import FlyteValidationException
-from flytekit.common.promise import NodeOutput as _NodeOutput
-from flytekit.common.workflow import SdkWorkflow as _SdkWorkflow
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
-from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
 
 GLOBAL_START_NODE = Node(
@@ -116,9 +113,7 @@ def _workflow_fn_outputs_to_promise(
 
 def construct_input_promises(inputs: List[str]):
     return {
-        input_name: Promise(
-            var=input_name, val=_NodeOutput(sdk_node=GLOBAL_START_NODE, sdk_type=None, var=input_name,),
-        )
+        input_name: Promise(var=input_name, val=NodeOutput(node=GLOBAL_START_NODE, var=input_name))
         for input_name in inputs
     }
 
@@ -146,10 +141,6 @@ class Workflow(object):
         self._output_bindings: Optional[List[_literal_models.Binding]] = None
         self._workflow_metadata = metadata
         self._workflow_metadata_defaults = default_metadata
-
-        # This will get populated only at registration time, when we retrieve the rest of the environment variables like
-        # project/domain/version/image and anything else we might need from the environment in the future.
-        self._registerable_entity: Optional[_SdkWorkflow] = None
 
         # TODO do we need this - can this not be in launchplan only?
         #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or
@@ -346,34 +337,6 @@ class Workflow(object):
 
             raise ValueError("expected outputs and actual outputs do not match")
 
-    def get_registerable_entity(self) -> _SdkWorkflow:
-        settings = FlyteContext.current_context().registration_settings
-        if self._registerable_entity is not None:
-            return self._registerable_entity
-
-        workflow_id = _identifier_model.Identifier(
-            _identifier_model.ResourceType.WORKFLOW, settings.project, settings.domain, self._name, settings.version
-        )
-
-        # Translate nodes
-        sdk_nodes = [n.get_registerable_entity() for n in self._nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]
-
-        self._registerable_entity = _SdkWorkflow(
-            nodes=sdk_nodes,
-            id=workflow_id,
-            metadata=self.workflow_metadata.to_flyte_model(),
-            metadata_defaults=self.workflow_metadata_defaults.to_flyte_model(),
-            interface=self._interface,
-            output_bindings=self._output_bindings,
-        )
-        # Reset just to make sure it's what we give it
-        self._registerable_entity.id._project = settings.project
-        self._registerable_entity.id._domain = settings.domain
-        self._registerable_entity.id._name = self._name
-        self._registerable_entity.id._version = settings.version
-
-        return self._registerable_entity
-
 
 def workflow(
     _workflow_function=None,
@@ -413,28 +376,7 @@ class ReferenceWorkflow(ReferenceEntity, Workflow):
     def __init__(
         self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
     ):
-        self._registerable_entity: Optional[_SdkWorkflow] = None
         super().__init__(WorkflowReference(project, domain, name, version), inputs, outputs)
-
-    def get_registerable_entity(self) -> _SdkWorkflow:
-        if self._registerable_entity is not None:
-            return self._registerable_entity
-
-        workflow_metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
-
-        self._registerable_entity = _SdkWorkflow(
-            nodes=[],  # Fake an empty list for nodes,
-            id=self.reference.id,
-            metadata=workflow_metadata,
-            metadata_defaults=_workflow_model.WorkflowMetadataDefaults(),
-            interface=self.typed_interface,
-            output_bindings=[],
-        )
-        # Make sure we don't serialize this
-        self._registerable_entity._has_registered = True
-        self._registerable_entity.assign_name(self.id.name)
-        self._registerable_entity._id = self.id
-        return self._registerable_entity
 
 
 def reference_workflow(

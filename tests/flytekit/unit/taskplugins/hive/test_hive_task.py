@@ -6,6 +6,7 @@ from flytekit.annotated.base_task import kwtypes
 from flytekit.annotated.context_manager import Image, ImageConfig
 from flytekit.annotated.testing import task_mock
 from flytekit.annotated.workflow import workflow
+from flytekit.common.translator import get_serializable
 from flytekit.taskplugins.hive.task import HiveConfig, HiveSelectTask, HiveTask
 from flytekit.types.schema import FlyteSchema
 
@@ -31,27 +32,24 @@ def test_serialization():
         return hive_task(my_schema=in_schema, ds=ds)
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="proj",
         domain="dom",
         version="123",
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
         env={},
     )
-    with context_manager.FlyteContext.current_context().new_registration_settings(
-        registration_settings=registration_settings
-    ):
-        sdk_task = hive_task.get_registerable_entity()
-        assert "{{ .rawOutputDataPrefix" in sdk_task.custom["query"]["query"]
-        assert "insert overwrite directory" in sdk_task.custom["query"]["query"]
-        assert len(sdk_task.interface.inputs) == 2
-        assert len(sdk_task.interface.outputs) == 1
+    sdk_task = get_serializable(serialization_settings, hive_task)
+    assert "{{ .rawOutputDataPrefix" in sdk_task.custom["query"]["query"]
+    assert "insert overwrite directory" in sdk_task.custom["query"]["query"]
+    assert len(sdk_task.interface.inputs) == 2
+    assert len(sdk_task.interface.outputs) == 1
 
-        sdk_wf = my_wf.get_registerable_entity()
-        assert sdk_wf.interface.outputs["o0"].type.schema is not None
-        assert sdk_wf.outputs[0].var == "o0"
-        assert sdk_wf.outputs[0].binding.promise.node_id == "n0"
-        assert sdk_wf.outputs[0].binding.promise.var == "results"
+    sdk_wf = get_serializable(serialization_settings, my_wf)
+    assert sdk_wf.interface.outputs["o0"].type.schema is not None
+    assert sdk_wf.outputs[0].var == "o0"
+    assert sdk_wf.outputs[0].binding.promise.node_id == "n0"
+    assert sdk_wf.outputs[0].binding.promise.var == "results"
 
 
 def test_local_exec():
@@ -106,21 +104,18 @@ def test_query_no_inputs_or_outputs():
         hive_task()
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="proj",
         domain="dom",
         version="123",
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
         env={},
     )
-    with context_manager.FlyteContext.current_context().new_registration_settings(
-        registration_settings=registration_settings
-    ):
-        sdk_task = hive_task.get_registerable_entity()
-        assert len(sdk_task.interface.inputs) == 0
-        assert len(sdk_task.interface.outputs) == 0
+    sdk_task = get_serializable(serialization_settings, hive_task)
+    assert len(sdk_task.interface.inputs) == 0
+    assert len(sdk_task.interface.outputs) == 0
 
-        my_wf.get_registerable_entity()
+    get_serializable(serialization_settings, my_wf)
 
 
 def test_hive_select():

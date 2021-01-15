@@ -77,8 +77,8 @@ def test_dynamic_conditional():
             .then(merge_sort_remotely(in1=in1))
         )
 
-    with context_manager.FlyteContext.current_context().new_registration_settings(
-        registration_settings=context_manager.RegistrationSettings(
+    with context_manager.FlyteContext.current_context().new_serialization_settings(
+        serialization_settings=context_manager.SerializationSettings(
             project="test_proj",
             domain="test_domain",
             version="abc",

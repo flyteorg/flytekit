@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Type
 
-from flytekit.annotated.base_task import PythonTask, SdkTask, TaskMetadata
-from flytekit.annotated.context_manager import RegistrationSettings
+from flytekit.annotated.base_task import PythonTask, TaskMetadata
+from flytekit.annotated.context_manager import SerializationSettings
 from flytekit.annotated.interface import Interface
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.models import task as _task_model
@@ -61,7 +61,7 @@ class ContainerTask(PythonTask):
         )
         return None
 
-    def get_container(self, settings: RegistrationSettings) -> _task_model.Container:
+    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
             image=self._image,
@@ -76,7 +76,3 @@ class ContainerTask(PythonTask):
             ),
             environment=env,
         )
-
-    def get_fast_registerable_entity(self) -> SdkTask:
-        # Raw container tasks are always fast registerable as-is.
-        return self.get_registerable_entity()

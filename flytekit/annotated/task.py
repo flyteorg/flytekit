@@ -2,11 +2,10 @@ import datetime as _datetime
 import inspect
 from typing import Any, Callable, Dict, Optional, Type, Union
 
-from flytekit import TaskMetadata
+from flytekit.annotated.base_task import TaskMetadata
 from flytekit.annotated.interface import transform_signature_to_interface
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.reference_entity import ReferenceEntity, TaskReference
-from flytekit.common.tasks.task import SdkTask
 
 
 class TaskPlugins(object):
@@ -151,23 +150,6 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
         self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
     ):
         super().__init__(TaskReference(project, domain, name, version), inputs, outputs)
-        self._registerable_entity: Optional[SdkTask] = None
-
-    def get_task_structure(self) -> SdkTask:
-        # settings = FlyteContext.current_context().registration_settings
-        # This is a dummy sdk task, hopefully when we clean up
-        tk = SdkTask(
-            type="ignore",
-            metadata=TaskMetadata().to_taskmetadata_model(),
-            interface=self.typed_interface,
-            custom={},
-            container=None,
-        )
-        # Reset id to ensure it matches user input
-        tk._id = self.id
-        tk._has_registered = True
-        tk.assign_name(self.reference.id.name)
-        return tk
 
 
 def reference_task(

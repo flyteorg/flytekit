@@ -5,6 +5,7 @@ from flytekit.annotated.context_manager import Image, ImageConfig
 from flytekit.annotated.node_creation import create_node
 from flytekit.annotated.task import task
 from flytekit.annotated.workflow import workflow
+from flytekit.common.translator import get_serializable
 
 
 def test_normal_task():
@@ -20,18 +21,16 @@ def test_normal_task():
     r = my_wf(a="hello")
     assert r == "hello world"
 
-    with context_manager.FlyteContext.current_context().new_registration_settings(
-        registration_settings=context_manager.RegistrationSettings(
-            project="test_proj",
-            domain="test_domain",
-            version="abc",
-            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-            env={},
-        )
-    ):
-        sdk_wf = my_wf.get_registerable_entity()
-        assert len(sdk_wf.nodes) == 1
-        assert len(sdk_wf.outputs) == 1
+    serialization_settings = context_manager.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    sdk_wf = get_serializable(serialization_settings, my_wf)
+    assert len(sdk_wf.nodes) == 1
+    assert len(sdk_wf.outputs) == 1
 
     @task
     def t2():
@@ -56,22 +55,20 @@ def test_normal_task():
         t3_node = create_node(t3)
         t3_node >> t2_node
 
-    with context_manager.FlyteContext.current_context().new_registration_settings(
-        registration_settings=context_manager.RegistrationSettings(
-            project="test_proj",
-            domain="test_domain",
-            version="abc",
-            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-            env={},
-        )
-    ):
-        sdk_wf = empty_wf.get_registerable_entity()
-        assert sdk_wf.nodes[0].upstream_node_ids[0] == "n1"
-        assert sdk_wf.nodes[0].id == "n0"
+    serialization_settings = context_manager.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    sdk_wf = get_serializable(serialization_settings, empty_wf)
+    assert sdk_wf.nodes[0].upstream_node_ids[0] == "n1"
+    assert sdk_wf.nodes[0].id == "n0"
 
-        sdk_wf = empty_wf2.get_registerable_entity()
-        assert sdk_wf.nodes[0].upstream_node_ids[0] == "n1"
-        assert sdk_wf.nodes[0].id == "n0"
+    sdk_wf = get_serializable(serialization_settings, empty_wf2)
+    assert sdk_wf.nodes[0].upstream_node_ids[0] == "n1"
+    assert sdk_wf.nodes[0].id == "n0"
 
 
 def test_more_normal_task():

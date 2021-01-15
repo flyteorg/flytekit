@@ -5,17 +5,12 @@ from typing import Any, Dict, List, Optional, Type
 from flytekit.annotated import workflow as _annotated_workflow
 from flytekit.annotated.context_manager import FlyteContext, FlyteEntities
 from flytekit.annotated.interface import Interface, transform_inputs_to_parameters
-from flytekit.annotated.node import create_and_link_node
-from flytekit.annotated.promise import translate_inputs_to_literals
+from flytekit.annotated.promise import create_and_link_node, translate_inputs_to_literals
 from flytekit.annotated.reference_entity import LaunchPlanReference, ReferenceEntity
-from flytekit.common.launch_plan import SdkLaunchPlan
 from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
-from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
-from flytekit.models.common import RawOutputDataConfig
-from flytekit.models.core import identifier as _identifier_model
 
 
 class LaunchPlan(object):
@@ -130,9 +125,6 @@ class LaunchPlan(object):
         self._raw_output_data_config = raw_output_data_config
         self._auth_role = auth_role
 
-        # This will eventually hold the registerable launch plan
-        self._registerable_entity: Optional[SdkLaunchPlan] = None
-
         FlyteEntities.entities.append(self)
 
     @property
@@ -199,43 +191,6 @@ class LaunchPlan(object):
             inputs.update(kwargs)
             return self.workflow(*args, **inputs)
 
-    def get_registerable_entity(self) -> SdkLaunchPlan:
-        settings = FlyteContext.current_context().registration_settings
-        if self._registerable_entity is not None:
-            return self._registerable_entity
-
-        if self._auth_role:
-            auth_role = self._auth_role
-        else:
-            auth_role = None
-
-        sdk_workflow = self.workflow.get_registerable_entity()
-        self._registerable_entity = SdkLaunchPlan(
-            workflow_id=sdk_workflow.id,
-            entity_metadata=_launch_plan_models.LaunchPlanMetadata(
-                schedule=self.schedule, notifications=self.notifications,
-            ),
-            default_inputs=self.parameters,
-            fixed_inputs=self.fixed_inputs,
-            labels=self.labels or _common_models.Labels({}),
-            annotations=self.annotations or _common_models.Annotations({}),
-            auth_role=auth_role,  # TODO: Is None here okay?
-            raw_output_data_config=self.raw_output_data_config,
-        )
-
-        # These two things are normally set to None in the SdkLaunchPlan constructor and filled in by
-        # SdkRunnableLaunchPlan/the registration process, so we need to set them manually. The reason is because these
-        # fields are not part of the underlying LaunchPlanSpec
-        self._registerable_entity._interface = sdk_workflow.interface
-        self._registerable_entity._id = _identifier_model.Identifier(
-            resource_type=_identifier_model.ResourceType.LAUNCH_PLAN,
-            project=settings.project,
-            domain=settings.domain,
-            name=self.name,
-            version=settings.version,
-        )
-        return self._registerable_entity
-
 
 class ReferenceLaunchPlan(ReferenceEntity, LaunchPlan):
     """
@@ -248,29 +203,3 @@ class ReferenceLaunchPlan(ReferenceEntity, LaunchPlan):
         self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
     ):
         super().__init__(LaunchPlanReference(project, domain, name, version), inputs, outputs)
-
-    def get_registerable_entity(self) -> SdkLaunchPlan:
-        from flytekit.common.interface import TypedInterface
-
-        wf_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW, "", "", "", "")
-        sdk_lp = SdkLaunchPlan(
-            workflow_id=wf_id,
-            entity_metadata=_launch_plan_models.LaunchPlanMetadata(schedule=None, notifications=[]),
-            default_inputs=_interface_models.ParameterMap({}),
-            fixed_inputs=_literal_models.LiteralMap({}),
-            labels=_common_models.Labels({}),
-            annotations=_common_models.Annotations({}),
-            auth_role=_common_models.AuthRole(assumable_iam_role="fake:role"),
-            raw_output_data_config=RawOutputDataConfig(""),
-        )
-        # Because of how SdkNodes work, it needs one of these interfaces
-        # Hopefully this is more trickery that can be cleaned up in the future
-        sdk_lp._interface = TypedInterface.promote_from_model(self.typed_interface)
-        sdk_lp._id = self.id
-
-        # Make sure we don't serialize this
-        sdk_lp._has_registered = True
-        sdk_lp.assign_name(self.reference.id.name)
-        self._registerable_entity = sdk_lp
-
-        return self._registerable_entity

@@ -11,30 +11,15 @@ from flytekit.annotated.promise import (
     ComparisonOps,
     ConjunctionExpression,
     ConjunctionOps,
+    NodeOutput,
     Promise,
     VoidPromise,
     create_task_output,
 )
-from flytekit.common.promise import NodeOutput
 from flytekit.models.core import condition as _core_cond
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.literals import Binding, BindingData, Literal, RetryStrategy
 from flytekit.models.types import Error
-
-
-def to_registrable_case(c: _core_wf.IfBlock) -> _core_wf.IfBlock:
-    if c is None:
-        raise ValueError("Cannot convert none cases to registrable")
-    return _core_wf.IfBlock(condition=c.condition, then_node=c.then_node.get_registerable_entity())
-
-
-def to_registrable_cases(cases: typing.List[_core_wf.IfBlock]) -> Optional[typing.List[_core_wf.IfBlock]]:
-    if cases is None:
-        return None
-    ret_cases = []
-    for c in cases:
-        ret_cases.append(to_registrable_case(c))
-    return ret_cases
 
 
 class BranchNode(object):
@@ -46,25 +31,6 @@ class BranchNode(object):
     @property
     def name(self):
         return self._name
-
-    def get_branch_node(self) -> _core_wf.BranchNode:
-        # We have to iterate through the blocks to convert the nodes from their current type to SDKNode
-        # TODO this should be cleaned up instead of mutation, we probaby should just create a new object
-        first = to_registrable_case(self._ifelse_block.case)
-        other = to_registrable_cases(self._ifelse_block.other)
-        else_node = None
-        if self._ifelse_block.else_node:
-            else_node = self._ifelse_block.else_node.get_registerable_entity()
-
-        return _core_wf.BranchNode(
-            if_else=_core_wf.IfElseBlock(case=first, other=other, else_node=else_node, error=self._ifelse_block.error)
-        )
-
-    def get_registerable_entity(self) -> _core_wf.BranchNode:
-        if self._registerable_entity is not None:
-            return self._registerable_entity
-        self._registerable_entity = self.get_branch_node()
-        return self._registerable_entity
 
 
 class ConditionalSection(object):
@@ -144,7 +110,7 @@ class ConditionalSection(object):
                 for p in promises:
                     if not p.is_ready:
                         bindings.append(Binding(var=p.var, binding=BindingData(promise=p.ref)))
-                        upstream_nodes.add(p.ref.sdk_node)
+                        upstream_nodes.add(p.ref.node)
 
                 n = Node(
                     id=f"{ctx.compilation_state.prefix}node-{len(ctx.compilation_state.nodes)}",
@@ -175,7 +141,7 @@ class ConditionalSection(object):
         if len(output_var_sets) > 1:
             for x in output_var_sets[1:]:
                 curr = curr.intersection(x)
-        promises = [Promise(var=x, val=NodeOutput(sdk_node=n, sdk_type=None, var=x)) for x in curr]
+        promises = [Promise(var=x, val=NodeOutput(node=n, var=x)) for x in curr]
         # TODO: Is there a way to add the Python interface here? Currently, it's an optional arg.
         return create_task_output(promises)
 
@@ -341,7 +307,7 @@ def transform_to_boolexpr(
 
 def to_case_block(c: Case) -> (Union[_core_wf.IfBlock], typing.List[Promise]):
     expr, promises = transform_to_boolexpr(c.expr)
-    n = c.output_promise.ref.sdk_node
+    n = c.output_promise.ref.node
     return _core_wf.IfBlock(condition=expr, then_node=n), promises
 
 
@@ -364,7 +330,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> (_core_wf.IfElseBlo
     node = None
     err = None
     if last_case.output_promise is not None:
-        node = last_case.output_promise.ref.sdk_node
+        node = last_case.output_promise.ref.node
     else:
         err = Error(failed_node_id=node_id, message=last_case.err if last_case.err else "Condition failed")
     return (
