@@ -9,11 +9,22 @@ from flytekit.plugins import pyspark
 from flytekit.types.schema import SchemaEngine, SchemaFormat, SchemaHandler, SchemaReader, SchemaWriter
 
 
+_s3_driver = "s3a"
+
+
+def _patch_path(path: str) -> str:
+    """
+    Currently only handles for s3 as it has multiple drivers
+    """
+    if "s3" in path:
+        return path.replace("s3", _s3_driver)
+    return path
+
+
 class SparkDataFrameSchemaReader(SchemaReader[pyspark.sql.DataFrame]):
     """
     Implements how SparkDataFrame should be read using the ``open`` method of FlyteSchema
     """
-
     def __init__(self, from_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         super().__init__(from_path, cols, fmt)
 
@@ -23,7 +34,7 @@ class SparkDataFrameSchemaReader(SchemaReader[pyspark.sql.DataFrame]):
     def all(self, **kwargs) -> pyspark.sql.DataFrame:
         if self._fmt == SchemaFormat.PARQUET:
             ctx = FlyteContext.current_context().user_space_params
-            return ctx.spark_session.read.parquet(self.from_path)
+            return ctx.spark_session.read.parquet(_patch_path(self.from_path))
         raise AssertionError("Only Parquet type files are supported for spark dataframe currently")
 
 
@@ -41,7 +52,7 @@ class SparkDataFrameSchemaWriter(SchemaWriter[pyspark.sql.DataFrame]):
         if len(dfs) > 1:
             raise AssertionError("Only a single Spark.DataFrame can be written per variable currently")
         if self._fmt == SchemaFormat.PARQUET:
-            dfs[0].write.mode("overwrite").parquet(self.to_path)
+            dfs[0].write.mode("overwrite").parquet(_patch_path(self.to_path))
             return
         raise AssertionError("Only Parquet type files are supported for spark dataframe currently")
 
