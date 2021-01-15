@@ -1,10 +1,10 @@
 from six import moves as _six_moves
 
-from flytekit.common.tasks import sdk_dynamic as _sdk_dynamic
-from flytekit.common.tasks import sdk_runnable as _sdk_runnable
-from flytekit.sdk.tasks import dynamic_task, inputs, outputs, python_task
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import Input, Output, workflow
+import flytekit.legacy.runnables
+from flytekit.legacy.tasks import sdk_dynamic as _sdk_dynamic
+from flytekit.legacy.sdk.tasks import dynamic_task, inputs, outputs, python_task
+from flytekit.legacy.sdk import Types
+from flytekit.legacy.sdk.workflow import Input, Output, workflow
 
 
 @inputs(in1=Types.Integer)
@@ -135,7 +135,7 @@ def dynamic_wf_task(wf_params, task_input_num, out):
 
 
 def test_batch_task():
-    assert isinstance(sample_batch_task, _sdk_runnable.SdkRunnableTask)
+    assert isinstance(sample_batch_task, flytekit.legacy.runnables.SdkRunnableTask)
     assert isinstance(sample_batch_task, _sdk_dynamic.SdkDynamicTask)
     assert isinstance(sample_batch_task, _sdk_dynamic.SdkDynamicTaskMixin)
 

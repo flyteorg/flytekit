@@ -6,8 +6,8 @@ from pathlib import Path as _Path
 
 import dirhash as _dirhash
 
-from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.interfaces.data.data_proxy import Data as _Data
+from flytekit.common.interfaces.data import data_proxy as _data_proxy
+from flytekit.common.interfaces.data import Data as _Data
 
 _tmp_versions_dir = "tmp/versions"
 

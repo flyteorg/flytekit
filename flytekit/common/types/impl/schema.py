@@ -13,11 +13,11 @@ from flytekit.common.types import helpers as _helpers
 from flytekit.common.types import primitives as _primitives
 from flytekit.common.types.impl import blobs as _blob_impl
 from flytekit.configuration import sdk as _sdk_config
-from flytekit.interfaces.data import data_proxy as _data_proxy
+from flytekit.common.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import literals as _literal_models
 from flytekit.models import types as _type_models
-from flytekit.plugins import numpy as _np
-from flytekit.plugins import pandas as _pd
+from flytekit.old_plugins import numpy as _np
+from flytekit.old_plugins import pandas as _pd
 
 # Note: For now, this is only for basic type-checking.  We need not differentiate between TINYINT, BIGINT,
 # and INT or DOUBLE and FLOAT, VARCHAR and STRING, etc. as we will unpack into appropriate Python

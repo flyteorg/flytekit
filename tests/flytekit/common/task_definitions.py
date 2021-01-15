@@ -1,5 +1,5 @@
-from flytekit.sdk.tasks import inputs, outputs, python_task
-from flytekit.sdk.types import Types
+from flytekit.legacy.sdk.tasks import inputs, outputs, python_task
+from flytekit.legacy.sdk import Types
 
 
 @inputs(a=Types.Integer)

@@ -1,12 +1,11 @@
 import mock
 from k8s.io.api.core.v1 import generated_pb2
 
-from flytekit.common.tasks import sdk_dynamic as _sdk_dynamic
-from flytekit.common.tasks import sdk_runnable as _sdk_runnable
-from flytekit.common.tasks import sidecar_task as _sidecar_task
+import flytekit.legacy.runnables
+from flytekit.legacy.tasks import sdk_dynamic as _sdk_dynamic, sidecar_task as _sidecar_task
 from flytekit.configuration.internal import IMAGE as _IMAGE
-from flytekit.sdk.tasks import dynamic_sidecar_task, inputs, outputs, python_task
-from flytekit.sdk.types import Types
+from flytekit.legacy.sdk.tasks import dynamic_sidecar_task, inputs, outputs, python_task
+from flytekit.legacy.sdk import Types
 
 
 def get_pod_spec():
@@ -40,7 +39,7 @@ with mock.patch.object(_IMAGE, "get", return_value="docker.io/blah:abc123"):
 
 
 def test_dynamic_sidecar_task():
-    assert isinstance(simple_dynamic_sidecar_task, _sdk_runnable.SdkRunnableTask)
+    assert isinstance(simple_dynamic_sidecar_task, flytekit.legacy.runnables.SdkRunnableTask)
     assert isinstance(simple_dynamic_sidecar_task, _sidecar_task.SdkDynamicSidecarTask)
     assert isinstance(simple_dynamic_sidecar_task, _sidecar_task.SdkSidecarTask)
     assert isinstance(simple_dynamic_sidecar_task, _sdk_dynamic.SdkDynamicTaskMixin)

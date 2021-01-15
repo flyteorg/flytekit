@@ -1,7 +1,7 @@
 from wrapt import decorator as _decorator
 
 from flytekit.common import utils as _utils
-from flytekit.interfaces.data import data_proxy as _data_proxy
+from flytekit.common.interfaces.data import data_proxy as _data_proxy
 
 
 class LocalTestFileSystem(object):

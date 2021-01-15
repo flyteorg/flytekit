@@ -1,7 +1,7 @@
 from six.moves import range
 
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import Input, workflow_class
+from flytekit.legacy.sdk import Types
+from flytekit.legacy.sdk.workflow import Input, workflow_class
 from tests.flytekit.loadtests.dynamic_job import FlyteDJOLoadTestWorkflow
 from tests.flytekit.loadtests.hive import FlyteHiveLoadTestWorkflow
 from tests.flytekit.loadtests.python import FlytePythonLoadTestWorkflow

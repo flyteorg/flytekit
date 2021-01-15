@@ -2,7 +2,7 @@ import pytest
 
 from flytekit import FlyteContext
 from flytekit.common.types.primitives import Generic
-from flytekit.taskplugins.sagemaker import (
+from flytekit.plugins.sagemaker import (
     AlgorithmName,
     AlgorithmSpecification,
     HPOJob,
@@ -17,7 +17,7 @@ from flytekit.taskplugins.sagemaker import (
     TrainingJobEarlyStoppingType,
     TrainingJobResourceConfig,
 )
-from flytekit.taskplugins.sagemaker.hpo import HPOTuningJobConfigTransformer, ParameterRangesTransformer
+from flytekit.plugins.sagemaker.hpo import HPOTuningJobConfigTransformer, ParameterRangesTransformer
 from tests.flytekit.unit.taskplugins.sagemaker.test_training import _get_reg_settings
 
 

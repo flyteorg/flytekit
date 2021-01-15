@@ -1,13 +1,14 @@
 import datetime as _datetime
 
-from flytekit.common import sdk_bases as _sdk_bases, constants as _constants, nodes as _nodes, interface as _interface
+import flytekit.platform.sdk_node
+from flytekit.common import sdk_bases as _sdk_bases, constants as _constants, interface as _interface
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import user as _user_exceptions, system as _system_exceptions, \
     scopes as _exception_scopes
 from flytekit.platform.sdk_launch_plan import SdkLaunchPlan
 from flytekit.common.mixins import hash as _hash_mixin, registerable as _registerable
 from flytekit.configuration import internal as _internal_config, auth as _auth_config
-from flytekit.engines.flyte import engine as _flyte_engine
+from flytekit.legacy.engines.flyte import engine as _flyte_engine
 from flytekit.models import common as _common_models, launch_plan as _launch_plan_models, schedule as _schedule_models, \
     interface as _interface_models, literals as _literal_models
 from flytekit.models.admin import workflow as _admin_workflow_model
@@ -31,7 +32,7 @@ class SdkWorkflow(
         self, nodes, interface, output_bindings, id, metadata, metadata_defaults,
     ):
         """
-        :param list[flytekit.common.nodes.SdkNode] nodes:
+        :param list[flytekit.platform.sdk_node.SdkNode] nodes:
         :param flytekit.models.interface.TypedInterface interface: Defines a strongly typed interface for the
             Workflow (inputs, outputs).  This can include some optional parameters.
         :param list[flytekit.models.literals.Binding] output_bindings: A list of output bindings that specify how to construct
@@ -159,7 +160,7 @@ class SdkWorkflow(
         sub_workflows = sub_workflows or {}
         tasks = tasks or {}
         node_map = {
-            n.id: _nodes.SdkNode.promote_from_model(n, sub_workflows, tasks) for n in base_model_non_system_nodes
+            n.id: flytekit.platform.sdk_node.SdkNode.promote_from_model(n, sub_workflows, tasks) for n in base_model_non_system_nodes
         }
 
         # Set upstream nodes for each node
@@ -254,7 +255,7 @@ class SdkWorkflow(
 
         bindings, upstream_nodes = self.interface.create_bindings_for_inputs(input_map)
 
-        node = _nodes.SdkNode(
+        node = flytekit.platform.sdk_node.SdkNode(
             id=None,
             metadata=_workflow_models.NodeMetadata(
                 "placeholder", _datetime.timedelta(), _literal_models.RetryStrategy(0)

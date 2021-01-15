@@ -3,7 +3,7 @@ import os as _os
 import mock as _mock
 import pytest as _pytest
 
-from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
+from flytekit.common.interfaces.data.gcs import gcs_proxy as _gcs_proxy
 
 
 @_pytest.fixture

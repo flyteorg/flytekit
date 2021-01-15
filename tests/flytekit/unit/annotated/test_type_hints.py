@@ -20,12 +20,12 @@ from flytekit.core.testing import patch, task_mock
 from flytekit.core.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.common.translator import get_serializable
-from flytekit.interfaces.data.data_proxy import FileAccessProvider
+from flytekit.common.interfaces.data import FileAccessProvider
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType
-from flytekit.types.schema import FlyteSchema, SchemaOpenMode
+from flytekit.legacy.types.schema import FlyteSchema, SchemaOpenMode
 
 
 def test_default_wf_params_works():

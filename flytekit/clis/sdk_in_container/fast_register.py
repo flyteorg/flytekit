@@ -3,6 +3,7 @@ from typing import List as _List
 
 import click
 
+import flytekit.legacy.runnables
 import flytekit.platform.sdk_task
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_TEST
 from flytekit.common import utils as _utils
@@ -51,7 +52,7 @@ def fast_register_all(
         else:
             click.echo("Fast registering {:20} {}".format("{}:".format(o.entity_type_text), o.id.name))
             _get_additional_distribution_loc(_sdk_config.FAST_REGISTRATION_DIR.get(), digest)
-            if isinstance(o, _sdk_runnable_task.SdkRunnableTask):
+            if isinstance(o, flytekit.legacy.runnables.SdkRunnableTask):
                 o.fast_register(project, domain, o.id.name, digest, remote_package_path, dest_dir)
             else:
                 o.register(project, domain, o.id.name, digest)
@@ -90,7 +91,7 @@ def fast_register_tasks_only(
             click.echo("Would fast register task {:20} {}".format("{}:".format(t.entity_type_text), name))
         else:
             click.echo("Fast registering task {:20} {}".format("{}:".format(t.entity_type_text), name))
-            if isinstance(t, _sdk_runnable_task.SdkRunnableTask):
+            if isinstance(t, flytekit.legacy.runnables.SdkRunnableTask):
                 t.fast_register(project, domain, name, digest, remote_package_path, dest_dir)
             else:
                 t.register(project, domain, name, digest)

@@ -7,8 +7,8 @@ from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.testing import task_mock
 from flytekit.core.workflow import workflow
 from flytekit.common.translator import get_serializable
-from flytekit.taskplugins.hive.task import HiveConfig, HiveSelectTask, HiveTask
-from flytekit.types.schema import FlyteSchema
+from flytekit.plugins.hive.task import HiveConfig, HiveSelectTask, HiveTask
+from flytekit.legacy.types.schema import FlyteSchema
 
 
 def test_serialization():

@@ -2,16 +2,14 @@ import datetime as _datetime
 
 import pytest as _pytest
 
+import flytekit.platform.sdk_node
 from flytekit.common import component_nodes as _component_nodes
 from flytekit.common import interface as _interface
-from flytekit.common import nodes as _nodes
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.models import literals as _literals
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _core_workflow_models
-from flytekit.sdk import tasks as _tasks
-from flytekit.sdk import types as _types
-from flytekit.sdk import workflow as _workflow
+from flytekit.legacy.sdk import tasks as _tasks, workflow as _workflow, types as _types
 
 
 def test_sdk_node_from_task():
@@ -21,7 +19,7 @@ def test_sdk_node_from_task():
     def testy_test(wf_params, a, b):
         pass
 
-    n = _nodes.SdkNode(
+    n = flytekit.platform.sdk_node.SdkNode(
         "n",
         [],
         [
@@ -53,7 +51,7 @@ def test_sdk_node_from_task():
     assert len(n.upstream_node_ids) == 0
     assert len(n.output_aliases) == 0
 
-    n2 = _nodes.SdkNode(
+    n2 = flytekit.platform.sdk_node.SdkNode(
         "n2",
         [n],
         [
@@ -88,7 +86,7 @@ def test_sdk_node_from_task():
     assert len(n2.output_aliases) == 0
 
     # Test right shift operator and late binding
-    n3 = _nodes.SdkNode(
+    n3 = flytekit.platform.sdk_node.SdkNode(
         "n3",
         [],
         [
@@ -126,7 +124,7 @@ def test_sdk_node_from_task():
     assert len(n3.output_aliases) == 0
 
     # Test left shift operator and late binding
-    n4 = _nodes.SdkNode(
+    n4 = flytekit.platform.sdk_node.SdkNode(
         "n4",
         [],
         [
@@ -214,7 +212,7 @@ def test_sdk_node_from_lp():
 
     lp = test_workflow.create_launch_plan()
 
-    n1 = _nodes.SdkNode(
+    n1 = flytekit.platform.sdk_node.SdkNode(
         "n1",
         [],
         [

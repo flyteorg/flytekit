@@ -58,7 +58,7 @@ def lazy_load_module(module: str) -> _types.ModuleType:
 class _LazyLoadModule(_types.ModuleType):
     _ERROR_MSG_FMT = (
         "Attempting to use a plugin functionality that requires module "
-        "`{module}`, but it couldn't be loaded. Please pip install at least one of {plugins} or "
+        "`{module}`, but it couldn't be loaded. Please pip install at least one of {old_plugins} or "
         "`flytekit[all]` to get these dependencies.\n"
         "\n"
         "Original message: {msg}"

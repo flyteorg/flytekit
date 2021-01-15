@@ -1,7 +1,7 @@
 from flytekit import task
 from flytekit.core.context_manager import Image, ImageConfig, RegistrationSettings
 from flytekit.core.resources import Resources
-from flytekit.taskplugins.tensorflow.task import TfJob
+from flytekit.plugins.tensorflow.task import TfJob
 
 
 def test_tensorflow_task():

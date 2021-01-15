@@ -7,7 +7,6 @@ from mock import patch as _patch
 
 import flytekit.platform.sdk_task
 import flytekit.platform.sdk_workflow
-from flytekit.common import workflow as _workflow_common
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import task as _task_model
@@ -15,12 +14,11 @@ from flytekit.models import types as _types
 from flytekit.models.core import compiler as _compiler_model
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.sdk import tasks as _sdk_tasks
-from flytekit.sdk import workflow as _sdk_workflow
-from flytekit.sdk.tasks import inputs, outputs, python_task
-from flytekit.sdk.types import Types
-from flytekit.sdk.types import Types as _Types
-from flytekit.sdk.workflow import Input, Output, workflow_class
+from flytekit.legacy.sdk import tasks as _sdk_tasks, workflow as _sdk_workflow
+from flytekit.legacy.sdk.tasks import inputs, outputs, python_task
+from flytekit.legacy.sdk import Types
+from flytekit.legacy.sdk import Types as _Types
+from flytekit.legacy.sdk.workflow import Input, Output, workflow_class
 
 
 def get_sample_node_metadata(node_id):

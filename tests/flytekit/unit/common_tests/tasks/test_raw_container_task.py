@@ -1,5 +1,5 @@
-from flytekit.common.tasks.raw_container import SdkRawContainerTask
-from flytekit.sdk.types import Types
+from flytekit.legacy.tasks.raw_container import SdkRawContainerTask
+from flytekit.legacy.sdk import Types
 
 
 def test_raw_container_task_definition():

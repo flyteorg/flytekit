@@ -10,13 +10,13 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Generator, List, Optional
 
-from flytekit.clients import friendly as friendly_client  # noqa
+from platform.clients import friendly as friendly_client  # noqa
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import images, internal
 from flytekit.configuration import sdk as _sdk_config
-from flytekit.engines.unit import mock_stats as _mock_stats
-from flytekit.interfaces.data import data_proxy as _data_proxy
+from flytekit.legacy.engines.unit import mock_stats as _mock_stats
+from flytekit.common.interfaces.data import data_proxy as _data_proxy
 from flytekit.models.core import identifier as _identifier
 
 

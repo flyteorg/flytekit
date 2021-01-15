@@ -1,6 +1,6 @@
 import mock as _mock
 
-from flytekit.interfaces.data.s3.s3proxy import AwsS3Proxy as _AwsS3Proxy
+from flytekit.common.interfaces.data.s3.s3proxy import AwsS3Proxy as _AwsS3Proxy
 
 
 def test_property():

@@ -2,9 +2,9 @@ import typing
 
 import flytekit
 from flytekit import kwtypes, task, workflow
-from flytekit.plugins import pandas, pyspark
-from flytekit.taskplugins.spark import Spark
-from flytekit.types import FlyteSchema
+from flytekit.old_plugins import pandas, pyspark
+from flytekit.plugins.spark import Spark
+from flytekit.legacy.types import FlyteSchema
 
 
 def test_wf1_with_spark():

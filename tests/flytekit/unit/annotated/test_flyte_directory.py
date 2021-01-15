@@ -9,9 +9,9 @@ from flytekit.core import context_manager
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
-from flytekit.interfaces.data.data_proxy import FileAccessProvider
+from flytekit.common.interfaces.data import FileAccessProvider
 from flytekit.models.core.types import BlobType
-from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
+from flytekit.legacy.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
 
 
 def test_engine():

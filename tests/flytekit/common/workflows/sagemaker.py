@@ -1,9 +1,9 @@
 import os as _os
 
 from flytekit import configuration as _configuration
-from flytekit.common.tasks.sagemaker import hpo_job_task
-from flytekit.common.tasks.sagemaker.built_in_training_job_task import SdkBuiltinAlgorithmTrainingJobTask
-from flytekit.common.tasks.sagemaker.types import HyperparameterTuningJobConfig
+from flytekit.legacy.tasks.sagemaker import hpo_job_task
+from flytekit.legacy.tasks.sagemaker import SdkBuiltinAlgorithmTrainingJobTask
+from flytekit.legacy.tasks.sagemaker import HyperparameterTuningJobConfig
 from flytekit.models.sagemaker.hpo_job import HyperparameterTuningJobConfig as _HyperparameterTuningJobConfig
 from flytekit.models.sagemaker.hpo_job import (
     HyperparameterTuningObjective,
@@ -23,8 +23,8 @@ from flytekit.models.sagemaker.training_job import (
     InputMode,
     TrainingJobResourceConfig,
 )
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import Input, workflow_class
+from flytekit.legacy.sdk import Types
+from flytekit.legacy.sdk.workflow import Input, workflow_class
 
 example_hyperparams = {
     "base_score": "0.5",

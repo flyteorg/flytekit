@@ -1,7 +1,7 @@
-from flytekit.common.tasks.presto_task import SdkPrestoTask
-from flytekit.sdk.tasks import inputs
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import Input, Output, workflow_class
+from flytekit.legacy.tasks.presto_task import SdkPrestoTask
+from flytekit.legacy.sdk.tasks import inputs
+from flytekit.legacy.sdk import Types
+from flytekit.legacy.sdk.workflow import Input, Output, workflow_class
 
 schema = Types.Schema([("a", Types.String), ("b", Types.Integer)])
 

@@ -1,8 +1,8 @@
 import pandas as _pd
 
-from flytekit.sdk.tasks import inputs, outputs, python_task
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import Input, workflow_class
+from flytekit.legacy.sdk.tasks import inputs, outputs, python_task
+from flytekit.legacy.sdk import Types
+from flytekit.legacy.sdk.workflow import Input, workflow_class
 
 
 @inputs(a=Types.Integer)

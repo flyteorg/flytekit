@@ -17,8 +17,8 @@ from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models.core import identifier as _identifier
-from flytekit.plugins import flyteidl as _lazy_flyteidl
-from flytekit.sdk.spark_types import SparkType as _spark_type
+from flytekit.old_plugins import flyteidl as _lazy_flyteidl
+from flytekit.legacy.sdk import SparkType as _spark_type
 
 
 class Resources(_common.FlyteIdlEntity):
@@ -303,7 +303,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         :param TaskMetadata metadata: This contains information needed at runtime to determine behavior such as
             whether or not outputs are discoverable, timeouts, and retries.
         :param flytekit.models.interface.TypedInterface interface: The interface definition for this task.
-        :param dict[Text, T] custom: Dictionary that must be serializable to a protobuf Struct for custom task plugins.
+        :param dict[Text, T] custom: Dictionary that must be serializable to a protobuf Struct for custom task old_plugins.
         :param Container container: Provides the necessary entrypoint information for execution.  For instance,
             a Container might be specified with the necessary command line arguments.
         """
@@ -350,7 +350,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
     @property
     def custom(self):
         """
-        Arbitrary dictionary containing metadata for custom plugins.
+        Arbitrary dictionary containing metadata for custom old_plugins.
         :rtype: dict[Text, T]
         """
         return self._custom
@@ -608,7 +608,7 @@ class SparkJob(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self):
         """
-        :rtype: flyteidl.plugins.spark_pb2.SparkJob
+        :rtype: flyteidl.old_plugins.spark_pb2.SparkJob
         """
 
         if self.spark_type == _spark_type.PYTHON:
@@ -634,7 +634,7 @@ class SparkJob(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         """
-        :param flyteidl.plugins.spark_pb2.SparkJob pb2_object:
+        :param flyteidl.old_plugins.spark_pb2.SparkJob pb2_object:
         :rtype: SparkJob
         """
 

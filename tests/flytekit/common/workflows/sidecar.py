@@ -3,9 +3,9 @@ import time
 
 from k8s.io.api.core.v1 import generated_pb2
 
-from flytekit.sdk.tasks import sidecar_task
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import Input, workflow_class
+from flytekit.legacy.sdk.tasks import sidecar_task
+from flytekit.legacy.sdk import Types
+from flytekit.legacy.sdk.workflow import Input, workflow_class
 
 
 def generate_pod_spec_for_task():

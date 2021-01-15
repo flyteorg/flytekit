@@ -6,14 +6,15 @@ import uuid as _uuid
 import six as _six
 from google.protobuf import json_format as _json_format, struct_pb2 as _struct
 
-from flytekit.common import sdk_bases as _sdk_bases, interface as _interfaces, nodes as _nodes, \
-    workflow_execution as _workflow_execution
+import flytekit.platform.sdk_node
+import flytekit.platform.sdk_workflow_execution
+from flytekit.common import sdk_bases as _sdk_bases, interface as _interfaces
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin, registerable as _registerable, launchable as _launchable_mixin
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import internal as _internal_config, auth as _auth_config, sdk as _sdk_config
-from flytekit.engines.flyte import engine as _flyte_engine
+from flytekit.legacy.engines.flyte import engine as _flyte_engine
 from flytekit.models import task as _task_model, common as _common_model, execution as _admin_execution_models
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import identifier as _identifier_model, workflow as _workflow_model
@@ -32,7 +33,7 @@ class SdkTask(
         :param TaskMetadata metadata: This contains information needed at runtime to determine behavior such as
             whether or not outputs are discoverable, timeouts, and retries.
         :param flytekit.common.interface.TypedInterface interface: The interface definition for this task.
-        :param dict[Text, T] custom: Arbitrary type for use by plugins.
+        :param dict[Text, T] custom: Arbitrary type for use by old_plugins.
         :param Container container: Provides the necessary entrypoint information for execution.  For instance,
             a Container might be specified with the necessary command line arguments.
         """
@@ -120,7 +121,7 @@ class SdkTask(
         # One thing to note - this function is not overloaded at the SdkRunnableTask layer, which means 'self' here
         # will sometimes refer to an object that can be executed locally, and other times will refer to something
         # that cannot (ie a pure SdkTask object, fetched from Admin for instance).
-        return _nodes.SdkNode(
+        return flytekit.platform.sdk_node.SdkNode(
             id=None,
             metadata=_workflow_model.NodeMetadata(
                 "DEADBEEF", self.metadata.timeout, self.metadata.retries, self.metadata.interruptible,
@@ -312,7 +313,7 @@ class SdkTask(
         :param dict[Text, Any] inputs: A dictionary of Python standard inputs that will be type-checked, then compiled
             to a LiteralMap.
 
-        :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
+        :rtype: flytekit.platform.sdk_workflow_execution.SdkWorkflowExecution
         """
         self.validate()
         version = self._produce_deterministic_version(version)
@@ -342,7 +343,7 @@ class SdkTask(
             notifications.
         :param flytekit.models.common.Labels label_overrides:
         :param flytekit.models.common.Annotations annotation_overrides:
-        :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
+        :rtype: flytekit.platform.sdk_workflow_execution.SdkWorkflowExecution
         """
         disable_all = notification_overrides == []
         if disable_all:
@@ -388,4 +389,4 @@ class SdkTask(
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             exec_id = _identifier.WorkflowExecutionIdentifier(project, domain, name)
         execution = client.get_execution(exec_id)
-        return _workflow_execution.SdkWorkflowExecution.promote_from_model(execution)
+        return flytekit.platform.sdk_workflow_execution.SdkWorkflowExecution.promote_from_model(execution)

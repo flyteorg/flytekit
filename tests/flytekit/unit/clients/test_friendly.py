@@ -1,7 +1,7 @@
 import mock as _mock
 from flyteidl.admin import project_pb2 as _project_pb2
 
-from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
+from platform.clients import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.models.project import Project as _Project
 
 

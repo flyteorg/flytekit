@@ -1,4 +1,4 @@
-import flytekit.plugins  # noqa: F401
+import flytekit.old_plugins  # noqa: F401
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import TaskMetadata, kwtypes
 from flytekit.core.container_task import ContainerTask

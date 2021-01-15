@@ -2,8 +2,8 @@ import datetime
 import os
 
 from flytekit import kwtypes
-from flytekit.taskplugins.notebook import NotebookTask
-from flytekit.types.file import PythonNotebook
+from flytekit.plugins.notebook import NotebookTask
+from flytekit.legacy.types.file import PythonNotebook
 from tests.flytekit.unit.taskplugins.notebook.testdata.datatype import X
 
 

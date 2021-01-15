@@ -1,22 +1,24 @@
 import pytest as _pytest
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 
+import flytekit.legacy.runnables
+import flytekit.platform.sdk_node
 import flytekit.platform.sdk_workflow
 from flytekit.common import constants, interface
 from flytekit.common import local_workflow as _local_workflow
-from flytekit.common import nodes, promise, workflow
+from flytekit.common import nodes, promise
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.local_workflow import build_sdk_workflow_from_metaclass
+from flytekit.legacy.runnables import build_sdk_workflow_from_metaclass
 from flytekit.common.types import containers, primitives
 from flytekit.models import literals as _literals
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow_models
-from flytekit.sdk import types as _types
-from flytekit.sdk.tasks import inputs, outputs, python_task
+from flytekit.legacy.sdk import types as _types
+from flytekit.legacy.sdk.tasks import inputs, outputs, python_task
 
 
 def test_output():
-    o = _local_workflow.Output("name", 1, sdk_type=primitives.Integer, help="blah")
+    o = flytekit.legacy.runnables.Output("name", 1, sdk_type=primitives.Integer, help="blah")
     assert o.name == "name"
     assert o.var.description == "blah"
     assert o.var.type == primitives.Integer.to_flyte_literal_type()
@@ -43,8 +45,8 @@ def test_workflow():
     )
 
     input_list = [
-        promise.Input("input_1", primitives.Integer),
-        promise.Input("input_2", primitives.Integer, default=5, help="Not required."),
+        flytekit.legacy.runnables.Input("input_1", primitives.Integer),
+        flytekit.legacy.runnables.Input("input_2", primitives.Integer, default=5, help="Not required."),
     ]
 
     n1 = my_task(a=input_list[0]).assign_id_and_return("n1")
@@ -57,9 +59,9 @@ def test_workflow():
 
     nodes = [n1, n2, n3, n4, n5, n6]
 
-    w = _local_workflow.SdkRunnableWorkflow.construct_from_class_definition(
+    w = flytekit.legacy.runnables.SdkRunnableWorkflow.construct_from_class_definition(
         inputs=input_list,
-        outputs=[_local_workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)],
+        outputs=[flytekit.legacy.runnables.Output("a", n1.outputs.b, sdk_type=primitives.Integer)],
         nodes=nodes,
     )
 
@@ -126,8 +128,8 @@ def test_workflow_decorator():
     )
 
     class my_workflow(object):
-        input_1 = promise.Input("input_1", primitives.Integer)
-        input_2 = promise.Input("input_2", primitives.Integer, default=5, help="Not required.")
+        input_1 = flytekit.legacy.runnables.Input("input_1", primitives.Integer)
+        input_2 = flytekit.legacy.runnables.Input("input_2", primitives.Integer, default=5, help="Not required.")
         n1 = my_task(a=input_1)
         n2 = my_task(a=input_2)
         n3 = my_task(a=100)
@@ -135,9 +137,9 @@ def test_workflow_decorator():
         n5 = my_list_task(a=[input_1, input_2, n3.outputs.b, 100])
         n6 = my_list_task(a=n5.outputs.b)
         n1 >> n6
-        a = _local_workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)
+        a = flytekit.legacy.runnables.Output("a", n1.outputs.b, sdk_type=primitives.Integer)
 
-    w = _local_workflow.build_sdk_workflow_from_metaclass(
+    w = flytekit.legacy.runnables.build_sdk_workflow_from_metaclass(
         my_workflow, on_failure=_workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE,
     )
 
@@ -209,8 +211,8 @@ def test_workflow_node():
     )
 
     input_list = [
-        promise.Input("required", primitives.Integer),
-        promise.Input("not_required", primitives.Integer, default=5, help="Not required."),
+        flytekit.legacy.runnables.Input("required", primitives.Integer),
+        flytekit.legacy.runnables.Input("not_required", primitives.Integer, default=5, help="Not required."),
     ]
 
     n1 = my_task(a=input_list[0]).assign_id_and_return("n1")
@@ -223,13 +225,13 @@ def test_workflow_node():
     nodes = [n1, n2, n3, n4, n5, n6]
 
     wf_out = [
-        _local_workflow.Output(
+        flytekit.legacy.runnables.Output(
             "nested_out", [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]], sdk_type=[[primitives.Integer]],
         ),
-        _local_workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
+        flytekit.legacy.runnables.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
     ]
 
-    w = _local_workflow.SdkRunnableWorkflow.construct_from_class_definition(
+    w = flytekit.legacy.runnables.SdkRunnableWorkflow.construct_from_class_definition(
         inputs=input_list, outputs=wf_out, nodes=nodes
     )
 
@@ -291,11 +293,11 @@ def test_non_system_nodes():
 
     my_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, "project", "domain", "my_task", "version")
 
-    required_input = promise.Input("required", primitives.Integer)
+    required_input = flytekit.legacy.runnables.Input("required", primitives.Integer)
 
     n1 = my_task(a=required_input).assign_id_and_return("n1")
 
-    n_start = nodes.SdkNode(
+    n_start = flytekit.platform.sdk_node.SdkNode(
         "start-node",
         [],
         [
@@ -335,8 +337,8 @@ def test_workflow_serialization():
     )
 
     input_list = [
-        promise.Input("required", primitives.Integer),
-        promise.Input("not_required", primitives.Integer, default=5, help="Not required."),
+        flytekit.legacy.runnables.Input("required", primitives.Integer),
+        flytekit.legacy.runnables.Input("not_required", primitives.Integer, default=5, help="Not required."),
     ]
 
     n1 = my_task(a=input_list[0]).assign_id_and_return("n1")
@@ -349,13 +351,13 @@ def test_workflow_serialization():
     nodes = [n1, n2, n3, n4, n5, n6]
 
     wf_out = [
-        _local_workflow.Output(
+        flytekit.legacy.runnables.Output(
             "nested_out", [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]], sdk_type=[[primitives.Integer]],
         ),
-        _local_workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
+        flytekit.legacy.runnables.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
     ]
 
-    w = _local_workflow.SdkRunnableWorkflow.construct_from_class_definition(
+    w = flytekit.legacy.runnables.SdkRunnableWorkflow.construct_from_class_definition(
         inputs=input_list, outputs=wf_out, nodes=nodes
     )
     serialized = w.serialize()
@@ -367,8 +369,8 @@ def test_workflow_serialization():
 
 def test_workflow_disable_default_launch_plan():
     class MyWorkflow(object):
-        input_1 = promise.Input("input_1", primitives.Integer)
-        input_2 = promise.Input("input_2", primitives.Integer, default=5, help="Not required.")
+        input_1 = flytekit.legacy.runnables.Input("input_1", primitives.Integer)
+        input_2 = flytekit.legacy.runnables.Input("input_2", primitives.Integer, default=5, help="Not required.")
 
     w = build_sdk_workflow_from_metaclass(MyWorkflow, disable_default_launch_plan=True,)
 

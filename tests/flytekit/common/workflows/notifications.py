@@ -1,8 +1,8 @@
 from flytekit.common import notifications as _notifications
 from flytekit.models.core import execution as _execution
-from flytekit.sdk.tasks import inputs, outputs, python_task
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import Input, workflow_class
+from flytekit.legacy.sdk.tasks import inputs, outputs, python_task
+from flytekit.legacy.sdk import Types
+from flytekit.legacy.sdk.workflow import Input, workflow_class
 
 
 @inputs(a=Types.Integer, b=Types.Integer)

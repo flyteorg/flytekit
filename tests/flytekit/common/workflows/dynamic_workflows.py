@@ -1,7 +1,6 @@
-from flytekit.sdk import tasks as _tasks
-from flytekit.sdk import workflow as _workflow
-from flytekit.sdk.types import Types as _Types
-from flytekit.sdk.workflow import Input, Output, workflow_class
+from flytekit.legacy.sdk import tasks as _tasks, workflow as _workflow
+from flytekit.legacy.sdk import Types as _Types
+from flytekit.legacy.sdk.workflow import Input, Output, workflow_class
 
 
 @_tasks.inputs(num=_Types.Integer)

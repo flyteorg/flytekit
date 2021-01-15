@@ -1,6 +1,6 @@
 from flytekit.models.core.workflow import WorkflowMetadata
-from flytekit.sdk.tasks import python_task
-from flytekit.sdk.workflow import workflow_class
+from flytekit.legacy.sdk.tasks import python_task
+from flytekit.legacy.sdk.workflow import workflow_class
 
 
 @python_task

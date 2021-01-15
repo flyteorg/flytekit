@@ -1,6 +1,6 @@
 from six.moves import range
 
-from flytekit.sdk.workflow import workflow_class
+from flytekit.legacy.sdk.workflow import workflow_class
 from tests.flytekit.loadtests.cp_python import FlyteCPPythonLoadTestWorkflow
 from tests.flytekit.loadtests.cp_spark import FlyteCPSparkLoadTestWorkflow
 

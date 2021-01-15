@@ -2,21 +2,17 @@ import datetime as _datetime
 
 import six as _six
 
+import flytekit.legacy.runnables
 import flytekit.platform.sdk_task
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.tasks import generic_spark_task as _sdk_generic_spark_task
-from flytekit.common.tasks import hive_task as _sdk_hive_tasks
-from flytekit.common.tasks import pytorch_task as _sdk_pytorch_tasks
-from flytekit.common.tasks import sdk_dynamic as _sdk_dynamic
-from flytekit.common.tasks import sdk_runnable as _sdk_runnable_tasks
-from flytekit.common.tasks import sidecar_task as _sdk_sidecar_tasks
-from flytekit.common.tasks import spark_task as _sdk_spark_tasks
-from flytekit.common.tasks import tensorflow_task as _sdk_tensorflow_tasks
+from flytekit.legacy.tasks import hive_task as _sdk_hive_tasks, pytorch_task as _sdk_pytorch_tasks, \
+    sdk_dynamic as _sdk_dynamic, sidecar_task as _sdk_sidecar_tasks, spark_task as _sdk_spark_tasks, \
+    tensorflow_task as _sdk_tensorflow_tasks, generic_spark_task as _sdk_generic_spark_task
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.contrib.notebook import tasks as _nb_tasks
+from flytekit.legacy.contrib.notebook import tasks as _nb_tasks
 from flytekit.models import interface as _interface_model
-from flytekit.sdk.spark_types import SparkType as _spark_type
+from flytekit.legacy.sdk import SparkType as _spark_type
 
 
 def inputs(_task_template=None, **kwargs):
@@ -48,7 +44,7 @@ def inputs(_task_template=None, **kwargs):
                 task.__module__, task.__name__ if hasattr(task, "__name__") else "<unknown>",
             )
             raise _user_exceptions.FlyteTypeException(
-                expected_type=_sdk_runnable_tasks.SdkRunnableTask,
+                expected_type=flytekit.legacy.runnables.SdkRunnableTask,
                 received_type=type(task),
                 received_value=task,
                 additional_msg=additional_msg,
@@ -91,14 +87,14 @@ def outputs(_task_template=None, **kwargs):
     """
 
     def apply_outputs_wrapper(task):
-        if not isinstance(task, _sdk_runnable_tasks.SdkRunnableTask) and not isinstance(
+        if not isinstance(task, flytekit.legacy.runnables.SdkRunnableTask) and not isinstance(
             task, _nb_tasks.SdkNotebookTask
         ):
             additional_msg = "Outputs can only be applied to a task. Did you forget the task decorator on method '{}.{}'?".format(
                 task.__module__, task.__name__ if hasattr(task, "__name__") else "<unknown>",
             )
             raise _user_exceptions.FlyteTypeException(
-                expected_type=_sdk_runnable_tasks.SdkRunnableTask,
+                expected_type=flytekit.legacy.runnables.SdkRunnableTask,
                 received_type=type(task),
                 received_value=task,
                 additional_msg=additional_msg,
@@ -229,7 +225,7 @@ def python_task(
     """
 
     def wrapper(fn):
-        return (cls or _sdk_runnable_tasks.SdkRunnableTask)(
+        return (cls or flytekit.legacy.runnables.SdkRunnableTask)(
             task_function=fn,
             task_type=_common_constants.SdkTaskType.PYTHON_TASK,
             discovery_version=cache_version,

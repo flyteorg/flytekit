@@ -1,6 +1,6 @@
-from flytekit.common.tasks.raw_container import SdkRawContainerTask
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import Input, Output, workflow_class
+from flytekit.legacy.tasks.raw_container import SdkRawContainerTask
+from flytekit.legacy.sdk import Types
+from flytekit.legacy.sdk.workflow import Input, Output, workflow_class
 
 square = SdkRawContainerTask(
     input_data_dir="/var/inputs",

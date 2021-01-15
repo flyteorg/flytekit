@@ -1,7 +1,7 @@
 import pytest
 
-from flytekit.engines import loader
-from flytekit.engines.unit import engine as _unit_engine
+from flytekit.legacy.engines import loader
+from flytekit.legacy.engines.unit import engine as _unit_engine
 
 
 def test_unit_load():

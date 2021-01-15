@@ -82,7 +82,7 @@ def task(
 
     :param _task_function: This argument is implicitly passed and represents the decorated function
     :param task_config: This argument provides configuration for a specific task types.
-                        Please refer to the plugins documentation for the right Object to use
+                        Please refer to the old_plugins documentation for the right Object to use
     :param cache: Boolean that indicates if caching should be enabled
     :param cache_version: Version string to be used for the cached value
     :param retries: for retries=n; n > 0, on failures of this task, the task will be retried at-least n number of times.

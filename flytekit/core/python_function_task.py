@@ -9,7 +9,7 @@ from flytekit.core.context_manager import ExecutionState, FlyteContext, ImageCon
 from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.workflow import Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults
-from flytekit.common.tasks.raw_container import _get_container_definition
+from flytekit.legacy.tasks.raw_container import _get_container_definition
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models

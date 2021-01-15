@@ -1,6 +1,6 @@
 import pytest
 
-from flytekit.sdk.tasks import hive_task
+from flytekit.legacy.sdk.tasks import hive_task
 
 
 def test_no_queries():

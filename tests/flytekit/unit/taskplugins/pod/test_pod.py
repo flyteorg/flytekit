@@ -7,7 +7,7 @@ from flytekit.core.context_manager import ExecutionState, Image, ImageConfig, Re
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.resources import Resources
 from flytekit.core.task import task
-from flytekit.taskplugins.pod.task import Pod, PodFunctionTask
+from flytekit.plugins.pod.task import Pod, PodFunctionTask
 
 
 def get_pod_spec():
@@ -48,7 +48,7 @@ def test_pod_task():
     assert primary_container["args"] == [
         "pyflyte-execute",
         "--task-module",
-        "tests.flytekit.unit.taskplugins.pod.test_pod",
+        "tests.flytekit.unit.plugins.pod.test_pod",
         "--task-name",
         "simple_pod_task",
         "--inputs",

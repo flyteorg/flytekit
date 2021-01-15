@@ -5,15 +5,17 @@ import uuid as _uuid
 import six as _six
 from deprecated.classic import deprecated as _deprecated
 
+import flytekit.legacy.runnables
 import flytekit.platform
-from flytekit.common import sdk_bases as _sdk_bases, promise as _promises, workflow_execution as _workflow_execution, \
-    nodes as _nodes
+import flytekit.platform.sdk_node
+import flytekit.platform.sdk_workflow_execution
+from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.common.mixins import launchable as _launchable_mixin, registerable as _registerable
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import auth as _auth_config, sdk as _sdk_config
-from flytekit.engines.flyte import engine as _flyte_engine
+from flytekit.legacy.engines.flyte import engine as _flyte_engine
 from flytekit.models import launch_plan as _launch_plan_models, interface as _interface_models, \
     common as _common_models, execution as _execution_models, literals as _literal_models
 from flytekit.models.core import identifier as _identifier_model, workflow as _workflow_models
@@ -44,7 +46,7 @@ class SdkLaunchPlan(
             workflow_id=_identifier.Identifier.promote_from_model(model.workflow_id),
             default_inputs=_interface_models.ParameterMap(
                 {
-                    k: _promises.Input.promote_from_model(v).rename_and_return_reference(k)
+                    k: flytekit.legacy.runnables.Input.promote_from_model(v).rename_and_return_reference(k)
                     for k, v in _six.iteritems(model.default_inputs.parameters)
                 }
             ),
@@ -315,7 +317,7 @@ class SdkLaunchPlan(
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             exec_id = _identifier.WorkflowExecutionIdentifier(project, domain, name)
         execution = client.get_execution(exec_id)
-        return _workflow_execution.SdkWorkflowExecution.promote_from_model(execution)
+        return flytekit.platform.sdk_workflow_execution.SdkWorkflowExecution.promote_from_model(execution)
 
     @_exception_scopes.system_entry_point
     def __call__(self, *args, **input_map):
@@ -336,7 +338,7 @@ class SdkLaunchPlan(
 
         bindings, upstream_nodes = self.interface.create_bindings_for_inputs(default_inputs)
 
-        return _nodes.SdkNode(
+        return flytekit.platform.sdk_node.SdkNode(
             id=None,
             metadata=_workflow_models.NodeMetadata("", _datetime.timedelta(), _literal_models.RetryStrategy(0)),
             bindings=sorted(bindings, key=lambda b: b.var),

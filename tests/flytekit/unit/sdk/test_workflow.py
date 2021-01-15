@@ -3,9 +3,9 @@ import pytest
 from flytekit.common import constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types, containers, primitives
-from flytekit.sdk.tasks import inputs, outputs, python_task
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import Input, Output, workflow, workflow_class
+from flytekit.legacy.sdk.tasks import inputs, outputs, python_task
+from flytekit.legacy.sdk import Types
+from flytekit.legacy.sdk.workflow import Input, Output, workflow, workflow_class
 
 
 def test_input():

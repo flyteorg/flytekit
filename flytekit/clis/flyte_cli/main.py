@@ -20,15 +20,14 @@ from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _G
 
 import flytekit.platform.sdk_launch_plan
 import flytekit.platform.sdk_task
+import flytekit.platform.sdk_workflow_execution
 from flytekit import __version__
-from flytekit.clients import friendly as _friendly_client
+from platform.clients import friendly as _friendly_client
 from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map
 from flytekit.clis.helpers import construct_literal_map_from_variable_map as _construct_literal_map_from_variable_map
 from flytekit.clis.helpers import hydrate_registration_parameters
 from flytekit.clis.helpers import parse_args_into_dict as _parse_args_into_dict
-from flytekit.common import launch_plan as _launch_plan_common
 from flytekit.common import utils as _utils
-from flytekit.common import workflow_execution as _workflow_execution_common
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import helpers as _type_helpers
@@ -36,8 +35,8 @@ from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
 from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import set_flyte_config_file
-from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.interfaces.data.data_proxy import Data
+from flytekit.common.interfaces.data import data_proxy as _data_proxy
+from flytekit.common.interfaces.data import Data
 from flytekit.models import common as _common_models
 from flytekit.models import filters as _filters
 from flytekit.models import launch_plan as _launch_plan
@@ -1075,7 +1074,7 @@ def watch_execution(host, insecure, urn):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     ex_id = _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
 
-    execution = _workflow_execution_common.SdkWorkflowExecution.promote_from_model(client.get_execution(ex_id))
+    execution = flytekit.platform.sdk_workflow_execution.SdkWorkflowExecution.promote_from_model(client.get_execution(ex_id))
 
     _click.echo("Waiting for the execution {} to complete ...".format(_tt(execution.id)))
 

@@ -2,11 +2,11 @@ import mock
 from k8s.io.api.core.v1 import generated_pb2
 
 import flytekit.platform.sdk_task
-from flytekit.common.tasks import sidecar_task as _sidecar_task
+from flytekit.legacy.tasks import sidecar_task as _sidecar_task
 from flytekit.configuration.internal import IMAGE as _IMAGE
 from flytekit.models.core import identifier as _identifier
-from flytekit.sdk.tasks import inputs, outputs, sidecar_task
-from flytekit.sdk.types import Types
+from flytekit.legacy.sdk.tasks import inputs, outputs, sidecar_task
+from flytekit.legacy.sdk import Types
 
 
 def get_pod_spec():

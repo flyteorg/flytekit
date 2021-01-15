@@ -3,20 +3,20 @@ from datetime import datetime as _datetime
 
 import six as _six
 
+import flytekit.legacy.runnables
 from flytekit.common import utils as _common_utils
-from flytekit.common.tasks import hive_task as _hive_task
+from flytekit.legacy.tasks import hive_task as _hive_task
 from flytekit.common.tasks import output as _task_output
-from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 from flytekit.common.types import containers as _containers
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.types import schema as _schema
 from flytekit.common.types.impl.schema import Schema
-from flytekit.engines import common as _common_engine
+from flytekit.legacy.engines import common as _common_engine
 from flytekit.models import literals as _literals
 from flytekit.models.core.identifier import WorkflowExecutionIdentifier
-from flytekit.sdk.tasks import hive_task, inputs, outputs, qubole_hive_task
-from flytekit.sdk.types import Types
+from flytekit.legacy.sdk.tasks import hive_task, inputs, outputs, qubole_hive_task
+from flytekit.legacy.sdk import Types
 
 
 @hive_task(cache_version="1")
@@ -51,7 +51,7 @@ def sample_qubole_hive_task(wf_params, in1):
 
 
 def test_hive_task():
-    assert isinstance(sample_hive_task, _sdk_runnable.SdkRunnableTask)
+    assert isinstance(sample_hive_task, flytekit.legacy.runnables.SdkRunnableTask)
     assert isinstance(sample_hive_task, _hive_task.SdkHiveTask)
 
     sample_hive_task.unit_test(in1=5)

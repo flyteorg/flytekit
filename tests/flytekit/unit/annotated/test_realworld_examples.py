@@ -5,8 +5,8 @@ import pandas as pd
 
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.types.file.file import FlyteFile
-from flytekit.types.schema import FlyteSchema
+from flytekit.legacy.types.file import FlyteFile
+from flytekit.legacy.types.schema import FlyteSchema
 
 
 def test_diabetes():

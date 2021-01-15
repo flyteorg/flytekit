@@ -2,9 +2,9 @@ import time
 
 from six.moves import range
 
-from flytekit.sdk.tasks import inputs, outputs, python_task
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class
+from flytekit.legacy.sdk.tasks import inputs, outputs, python_task
+from flytekit.legacy.sdk import Types
+from flytekit.legacy.sdk.workflow import workflow_class
 
 
 @inputs(value1_to_add=Types.Integer, value2_to_add=Types.Integer)

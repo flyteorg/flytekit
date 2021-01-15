@@ -2,14 +2,14 @@ import datetime as _datetime
 import os as _os
 import sys as _sys
 
+import flytekit.legacy.runnables
 from flytekit.bin import entrypoint as _entrypoint
 from flytekit.common import constants as _common_constants
-from flytekit.common.tasks import sdk_runnable as _sdk_runnable
-from flytekit.common.tasks import spark_task as _spark_task
+from flytekit.legacy.tasks import spark_task as _spark_task
 from flytekit.models import types as _type_models
 from flytekit.models.core import identifier as _identifier
-from flytekit.sdk.tasks import inputs, outputs, spark_task
-from flytekit.sdk.types import Types
+from flytekit.legacy.sdk.tasks import inputs, outputs, spark_task
+from flytekit.legacy.sdk import Types
 
 
 @inputs(in1=Types.Integer)
@@ -24,7 +24,7 @@ default_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, "projec
 
 def test_default_python_task():
     assert isinstance(default_task, _spark_task.SdkSparkTask)
-    assert isinstance(default_task, _sdk_runnable.SdkRunnableTask)
+    assert isinstance(default_task, flytekit.legacy.runnables.SdkRunnableTask)
     assert default_task.interface.inputs["in1"].description == ""
     assert default_task.interface.inputs["in1"].type == _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER)
     assert default_task.interface.outputs["out1"].description == ""

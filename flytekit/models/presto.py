@@ -1,5 +1,5 @@
 ## Todo - change this to qubole_presto once Luis's PR get's merged
-# from flyteidl.plugins import qubole_presto as _qubole
+# from flyteidl.old_plugins import qubole_presto as _qubole
 from flyteidl.plugins import presto_pb2 as _presto
 
 from flytekit.models import common as _common

@@ -32,7 +32,7 @@ class _TypeEngineLoader(object):
 
                 engine_impl = getattr(module, attr)()
                 cls._LOADED_ENGINES.append(engine_impl)
-            from flytekit.type_engines.default.flyte import FlyteDefaultTypeEngine as _DefaultEngine
+            from flytekit.legacy.type_engines import FlyteDefaultTypeEngine as _DefaultEngine
 
             cls._LOADED_ENGINES.append(_DefaultEngine())
 

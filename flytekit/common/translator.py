@@ -12,7 +12,7 @@ from flytekit.core.workflow import ReferenceWorkflow, Workflow, WorkflowFailureP
 from flytekit.common import constants as _common_constants
 from flytekit.common.interface import TypedInterface
 from flytekit.platform.sdk_launch_plan import SdkLaunchPlan
-from flytekit.common.nodes import SdkNode
+from flytekit.platform.sdk_node import SdkNode
 from flytekit.platform.sdk_task import SdkTask
 from flytekit.platform.sdk_workflow import SdkWorkflow
 from flytekit.models import common as _common_models

@@ -4,8 +4,8 @@ import os
 import mock
 from flyteidl.admin import project_pb2 as _project_pb2
 
-from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
-from flytekit.clients.raw import _refresh_credentials_basic
+from platform.clients import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
+from platform.clients import _refresh_credentials_basic
 from flytekit.clis.auth.discovery import AuthorizationEndpoints as _AuthorizationEndpoints
 from flytekit.configuration.creds import CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET
 

@@ -1,8 +1,8 @@
 import six as _six
 
-from flytekit.sdk.tasks import inputs, outputs, python_task, qubole_hive_task
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import workflow_class
+from flytekit.legacy.sdk.tasks import inputs, outputs, python_task, qubole_hive_task
+from flytekit.legacy.sdk import Types
+from flytekit.legacy.sdk.workflow import workflow_class
 
 
 @outputs(hive_results=[Types.Schema()])

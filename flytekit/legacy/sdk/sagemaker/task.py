@@ -1,8 +1,8 @@
 import datetime as _datetime
 import typing
 
-from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
-from flytekit.common.tasks.sagemaker.distributed_training import DefaultOutputPersistPredicate
+from flytekit.legacy.tasks.sagemaker import CustomTrainingJobTask
+from flytekit.legacy.tasks.sagemaker import DefaultOutputPersistPredicate
 from flytekit.models.sagemaker import training_job as _training_job_models
 
 

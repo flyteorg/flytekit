@@ -7,7 +7,7 @@ import flytekit
 from flytekit import task
 from flytekit.core.context_manager import Image, ImageConfig, RegistrationSettings
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.taskplugins.sagemaker import (
+from flytekit.plugins.sagemaker import (
     AlgorithmName,
     AlgorithmSpecification,
     DistributedProtocol,
@@ -15,7 +15,7 @@ from flytekit.taskplugins.sagemaker import (
     SagemakerTrainingJobConfig,
     TrainingJobResourceConfig,
 )
-from flytekit.taskplugins.sagemaker.distributed_training import setup_envars_for_testing
+from flytekit.plugins.sagemaker.distributed_training import setup_envars_for_testing
 
 
 def _get_reg_settings():

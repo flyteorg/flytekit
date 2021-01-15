@@ -1,7 +1,7 @@
 import pytest
 
 from flytekit.common.types.impl import blobs as _blob_impl
-from flytekit.sdk import types as _sdk_types
+from flytekit.legacy.sdk import types as _sdk_types
 
 
 @pytest.mark.parametrize(

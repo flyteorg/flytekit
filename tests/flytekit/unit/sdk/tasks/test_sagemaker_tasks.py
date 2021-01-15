@@ -11,17 +11,16 @@ import flytekit.platform.sdk_task
 from flytekit.common import constants as _common_constants
 from flytekit.common import utils as _utils
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
-from flytekit.common.tasks.sagemaker import distributed_training as _sm_distribution
-from flytekit.common.tasks.sagemaker import hpo_job_task
-from flytekit.common.tasks.sagemaker.built_in_training_job_task import SdkBuiltinAlgorithmTrainingJobTask
-from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
-from flytekit.common.tasks.sagemaker.hpo_job_task import (
+from flytekit.legacy.tasks.sagemaker import distributed_training as _sm_distribution, hpo_job_task
+from flytekit.legacy.tasks.sagemaker import SdkBuiltinAlgorithmTrainingJobTask
+from flytekit.legacy.tasks.sagemaker import CustomTrainingJobTask
+from flytekit.legacy.tasks.sagemaker import (
     HyperparameterTuningJobConfig,
     SdkSimpleHyperparameterTuningJobTask,
 )
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.engines import common as _common_engine
-from flytekit.engines.unit.mock_stats import MockStats
+from flytekit.legacy.engines import common as _common_engine
+from flytekit.legacy.engines.unit import MockStats
 from flytekit.models import literals as _literals
 from flytekit.models import types as _idl_types
 from flytekit.models.core import identifier as _identifier
@@ -47,11 +46,11 @@ from flytekit.models.sagemaker.training_job import (
     MetricDefinition,
     TrainingJobResourceConfig,
 )
-from flytekit.sdk import types as _sdk_types
-from flytekit.sdk.sagemaker.task import custom_training_job_task
-from flytekit.sdk.tasks import inputs, outputs
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import Input, workflow_class
+from flytekit.legacy.sdk import types as _sdk_types
+from flytekit.legacy.sdk.sagemaker.task import custom_training_job_task
+from flytekit.legacy.sdk.tasks import inputs, outputs
+from flytekit.legacy.sdk import Types
+from flytekit.legacy.sdk.workflow import Input, workflow_class
 
 example_hyperparams = {
     "base_score": "0.5",

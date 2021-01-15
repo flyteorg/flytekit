@@ -3,13 +3,15 @@ from typing import Dict
 import six as _six
 
 import flytekit.common.local_workflow
+import flytekit.legacy.runnables
+import flytekit.platform.sdk_node
 from flytekit.common import nodes as _nodes
 from flytekit.common import promise as _promise
 from flytekit.common import workflow as _common_workflow
 from flytekit.common.types import helpers as _type_helpers
 
 
-class Input(_promise.Input):
+class Input(flytekit.legacy.runnables.Input):
     """
     This object should be used to specify inputs. It can be used in conjunction with
     :py:meth:`flytekit.common.workflow.workflow` and :py:meth:`flytekit.common.workflow.workflow_class`
@@ -26,7 +28,7 @@ class Input(_promise.Input):
         super(Input, self).__init__("", _type_helpers.python_std_to_sdk_type(sdk_type), help=help, **kwargs)
 
 
-class Output(flytekit.common.local_workflow.Output):
+class Output(flytekit.legacy.runnables.Output):
     """
     This object should be used to specify outputs. It can be used in conjunction with
     :py:meth:`flytekit.common.workflow.workflow` and :py:meth:`flytekit.common.workflow.workflow_class`
@@ -72,7 +74,7 @@ def workflow_class(_workflow_metaclass=None, on_failure=None, disable_default_la
     """
 
     def wrapper(metaclass):
-        wf = flytekit.common.local_workflow.build_sdk_workflow_from_metaclass(
+        wf = flytekit.legacy.runnables.build_sdk_workflow_from_metaclass(
             metaclass, on_failure=on_failure, disable_default_launch_plan=disable_default_launch_plan, cls=cls
         )
         return wf
@@ -82,7 +84,7 @@ def workflow_class(_workflow_metaclass=None, on_failure=None, disable_default_la
     return wrapper
 
 
-def workflow(nodes: Dict[str, _nodes.SdkNode], inputs=None, outputs=None, cls=None, on_failure=None):
+def workflow(nodes: Dict[str, flytekit.platform.sdk_node.SdkNode], inputs=None, outputs=None, cls=None, on_failure=None):
     """
     This function provides a user-friendly interface for authoring workflows.
 
@@ -117,10 +119,10 @@ def workflow(nodes: Dict[str, _nodes.SdkNode], inputs=None, outputs=None, cls=No
         :py:class:`flytekit.common.local_workflow.PythonWorkflow`.
     :param flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy on_failure: [Optional] The execution policy when the workflow detects a failure.
 
-    :rtype: flytekit.common.local_workflow.SdkRunnableWorkflow
+    :rtype: flytekit.legacy.runnables.SdkRunnableWorkflow
     """
     # TODO: Why does Pycharm complain about nodes?
-    wf = (cls or flytekit.common.local_workflow.SdkRunnableWorkflow).construct_from_class_definition(
+    wf = (cls or flytekit.legacy.runnables.SdkRunnableWorkflow).construct_from_class_definition(
         inputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(inputs or {}))],
         outputs=[v.rename_and_return_reference(k) for k, v in sorted(_six.iteritems(outputs or {}))],
         nodes=[v.assign_id_and_return(k) for k, v in sorted(_six.iteritems(nodes))],

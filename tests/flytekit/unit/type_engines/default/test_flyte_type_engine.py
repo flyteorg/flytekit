@@ -5,7 +5,7 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import proto as _proto
 from flytekit.models import literals as _literal_models
 from flytekit.models import types as _type_models
-from flytekit.type_engines.default import flyte as _flyte_engine
+from flytekit.legacy.type_engines.default import flyte as _flyte_engine
 
 
 def test_proto_from_literal_type():

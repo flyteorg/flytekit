@@ -1,7 +1,7 @@
-from flytekit.sdk.spark_types import SparkType
-from flytekit.sdk.tasks import generic_spark_task, inputs, python_task
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import Input, workflow_class
+from flytekit.legacy.sdk import SparkType
+from flytekit.legacy.sdk.tasks import generic_spark_task, inputs, python_task
+from flytekit.legacy.sdk import Types
+from flytekit.legacy.sdk.workflow import Input, workflow_class
 
 scala_spark = generic_spark_task(
     spark_type=SparkType.SCALA,

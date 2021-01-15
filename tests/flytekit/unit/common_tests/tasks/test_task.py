@@ -7,13 +7,13 @@ from mock import patch as _patch
 
 import flytekit.platform.sdk_task
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.tasks.presto_task import SdkPrestoTask
+from flytekit.legacy.tasks.presto_task import SdkPrestoTask
 from flytekit.common.types import primitives
 from flytekit.configuration import TemporaryConfiguration
 from flytekit.models import task as _task_models
 from flytekit.models.core import identifier as _identifier
-from flytekit.sdk.tasks import inputs, outputs, python_task
-from flytekit.sdk.types import Types
+from flytekit.legacy.sdk.tasks import inputs, outputs, python_task
+from flytekit.legacy.sdk import Types
 
 
 @_patch("flytekit.engines.flyte.engine._FlyteClientManager")

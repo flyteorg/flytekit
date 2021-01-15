@@ -1,4 +1,4 @@
-from flytekit.interfaces.data.s3.s3proxy import AwsS3Proxy
+from flytekit.common.interfaces.data.s3.s3proxy import AwsS3Proxy
 
 
 def test_aws_s3_splitting():

@@ -1,5 +1,6 @@
 import pytest as _pytest
 
+import flytekit.legacy.runnables
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_runnable
@@ -11,7 +12,7 @@ def test_basic_unit_test():
     def add_one(wf_params, value_in, value_out):
         value_out.set(value_in + 1)
 
-    t = sdk_runnable.SdkRunnableTask(
+    t = flytekit.legacy.runnables.SdkRunnableTask(
         add_one,
         _common_constants.SdkTaskType.PYTHON_TASK,
         "1",

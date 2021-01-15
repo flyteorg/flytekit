@@ -1,7 +1,7 @@
 from six.moves import range
 
-from flytekit.sdk.tasks import outputs, spark_task
-from flytekit.sdk.types import Types
+from flytekit.legacy.sdk.tasks import outputs, spark_task
+from flytekit.legacy.sdk import Types
 
 # This file is in a subdirectory to make it easier to exclude when not running in a container
 # and pyspark is not available

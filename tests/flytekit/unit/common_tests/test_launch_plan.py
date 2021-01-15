@@ -5,7 +5,6 @@ import pytest as _pytest
 import flytekit.legacy.runnables
 import flytekit.platform.sdk_launch_plan
 from flytekit import configuration as _configuration
-from flytekit.common import launch_plan as _launch_plan
 from flytekit.common import notifications as _notifications
 from flytekit.common import schedules as _schedules
 from flytekit.common.exceptions import user as _user_exceptions
@@ -14,8 +13,8 @@ from flytekit.models import schedule as _schedule
 from flytekit.models import types as _type_models
 from flytekit.models.core import execution as _execution
 from flytekit.models.core import identifier as _identifier
-from flytekit.sdk import types as _types
-from flytekit.sdk import workflow as _workflow
+from flytekit.legacy.sdk import types as _types
+from flytekit.legacy.sdk import workflow as _workflow
 
 
 def test_default_assumable_iam_role():

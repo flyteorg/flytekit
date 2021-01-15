@@ -1,7 +1,7 @@
-from flytekit.contrib.notebook.tasks import python_notebook, spark_notebook
-from flytekit.sdk.tasks import inputs, outputs
-from flytekit.sdk.types import Types
-from flytekit.sdk.workflow import Input, workflow_class
+from flytekit.legacy.contrib import python_notebook, spark_notebook
+from flytekit.legacy.sdk.tasks import inputs, outputs
+from flytekit.legacy.sdk import Types
+from flytekit.legacy.sdk.workflow import Input, workflow_class
 
 interactive_python = python_notebook(
     notebook_path="../../../../notebook-task-examples/python-notebook.ipynb",

@@ -1,7 +1,7 @@
 from flytekit import task
 from flytekit.core.context_manager import Image, ImageConfig, RegistrationSettings
 from flytekit.core.resources import Resources
-from flytekit.taskplugins.pytorch.task import PyTorch
+from flytekit.plugins.pytorch.task import PyTorch
 
 
 def test_pytorch_task():

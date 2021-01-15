@@ -1,6 +1,6 @@
 from flytekit.common.types import primitives, schema
 from flytekit.common.types.impl import schema as schema_impl
-from flytekit.sdk import test_utils
+from flytekit.legacy.sdk import test_utils
 
 _ALL_COLUMN_TYPES = [
     ("a", primitives.Integer),

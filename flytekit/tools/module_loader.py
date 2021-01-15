@@ -6,7 +6,7 @@ import sys
 from typing import Iterator, List, Union
 
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.local_workflow import SdkRunnableWorkflow as _SdkRunnableWorkflow
+from flytekit.legacy.runnables import SdkRunnableWorkflow as _SdkRunnableWorkflow
 from flytekit.common.mixins import registerable as _registerable
 
 

@@ -1,6 +1,7 @@
 import six as _six
 
-from flytekit.common import promise as _promise
+import flytekit.legacy.runnables
+import flytekit.platform.sdk_node
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import containers as _containers
@@ -20,7 +21,7 @@ class BindingData(_literal_models.BindingData, metaclass=_sdk_bases.ExtendedSdkT
         for v in _six.itervalues(m) if isinstance(m, dict) else m:
             if isinstance(v, (list, dict)) and BindingData._has_sub_bindings(v):
                 return True
-            elif isinstance(v, (_promise.Input, _promise.NodeOutput)):
+            elif isinstance(v, (flytekit.legacy.runnables.Input, flytekit.platform.sdk_node.NodeOutput)):
                 return True
         return False
 
@@ -37,7 +38,7 @@ class BindingData(_literal_models.BindingData, metaclass=_sdk_bases.ExtendedSdkT
         """
         :param flytekit.models.types.LiteralType literal_type:
         :param T t_value:
-        :param list[flytekit.common.nodes.SdkNode] upstream_nodes: [Optional] Keeps track of the nodes upstream,
+        :param list[flytekit.platform.sdk_node.SdkNode] upstream_nodes: [Optional] Keeps track of the nodes upstream,
             if applicable.
         :rtype: BindingData
         """
@@ -46,7 +47,7 @@ class BindingData(_literal_models.BindingData, metaclass=_sdk_bases.ExtendedSdkT
         promise = None
         map = None
         downstream_sdk_type = _type_helpers.get_sdk_type_from_literal_type(literal_type)
-        if isinstance(t_value, _promise.Input):
+        if isinstance(t_value, flytekit.legacy.runnables.Input):
             if not downstream_sdk_type.is_castable_from(t_value.sdk_type):
                 _user_exceptions.FlyteTypeException(
                     t_value.sdk_type,
@@ -54,7 +55,7 @@ class BindingData(_literal_models.BindingData, metaclass=_sdk_bases.ExtendedSdkT
                     additional_msg="When binding workflow input: {}".format(t_value),
                 )
             promise = t_value.promise
-        elif isinstance(t_value, _promise.NodeOutput):
+        elif isinstance(t_value, flytekit.platform.sdk_node.NodeOutput):
             if not downstream_sdk_type.is_castable_from(t_value.sdk_type):
                 _user_exceptions.FlyteTypeException(
                     t_value.sdk_type,
@@ -107,7 +108,7 @@ class TypedInterface(_interface_models.TypedInterface, metaclass=_sdk_bases.Exte
         """
         :param dict[Text, T] map_of_bindings:  This can be scalar primitives, it can be node output references,
             lists, etc..
-        :rtype: (list[flytekit.models.literals.Binding], list[flytekit.common.nodes.SdkNode])
+        :rtype: (list[flytekit.models.literals.Binding], list[flytekit.platform.sdk_node.SdkNode])
         :raises: flytekit.common.exceptions.user.FlyteAssertion
         """
         binding_data = dict()
