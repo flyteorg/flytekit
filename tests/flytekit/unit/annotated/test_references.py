@@ -30,26 +30,26 @@ def test_ref():
     assert ref_t1.id.name == "recipes.aaa.simple.join_strings"
     assert ref_t1.id.version == "553018f39e519bdb2597b652639c30ce16b99c79"
 
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    ss = get_serializable(registration_settings, ref_t1)
+    ss = get_serializable(serialization_settings, ref_t1)
     assert ss.id == ref_t1.id
     assert ss.interface.inputs["a"] is not None
     assert ss.interface.outputs["o0"] is not None
 
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="proj",
         domain="dom",
         version="123",
         image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
     )
-    sdk_task = get_serializable(registration_settings, ref_t1)
+    sdk_task = get_serializable(serialization_settings, ref_t1)
     assert sdk_task.has_registered
     assert sdk_task.id.project == "flytesnacks"
     assert sdk_task.id.domain == "development"
@@ -225,14 +225,14 @@ def test_lps(resource_type):
     def wf1(a: str, b: int):
         ref_entity(a=a, b=b)
 
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    sdk_wf = get_serializable(registration_settings, wf1)
+    sdk_wf = get_serializable(serialization_settings, wf1)
     assert len(sdk_wf.interface.inputs) == 2
     assert len(sdk_wf.interface.outputs) == 0
     assert len(sdk_wf.nodes) == 1
@@ -281,13 +281,13 @@ def test_lp_with_output():
 
     inner_test()
 
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    sdk_wf = get_serializable(registration_settings, wf1)
+    sdk_wf = get_serializable(serialization_settings, wf1)
     assert sdk_wf.nodes[1].workflow_node.launchplan_ref.project == "proj"
     assert sdk_wf.nodes[1].workflow_node.launchplan_ref.name == "app.other.flyte_entity"

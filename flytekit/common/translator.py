@@ -2,7 +2,7 @@ from typing import Dict, List, Optional, Union
 
 from flytekit.annotated.base_task import PythonTask, TaskMetadata
 from flytekit.annotated.condition import BranchNode
-from flytekit.annotated.context_manager import RegistrationSettings
+from flytekit.annotated.context_manager import SerializationSettings
 from flytekit.annotated.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.annotated.node import Node
 from flytekit.annotated.python_function_task import PythonAutoContainerTask
@@ -39,21 +39,21 @@ FlyteLocalEntity = Union[
 FlyteControlPlaneEntity = Union[SdkTask, SdkLaunchPlan, SdkWorkflow, SdkNode, BranchNodeModel]
 
 
-def to_registerable_case(settings: RegistrationSettings, c: _core_wf.IfBlock) -> _core_wf.IfBlock:
+def to_serializable_case(settings: SerializationSettings, c: _core_wf.IfBlock) -> _core_wf.IfBlock:
     if c is None:
         raise ValueError("Cannot convert none cases to registrable")
     then_node = get_serializable(settings, c.then_node)
     return _core_wf.IfBlock(condition=c.condition, then_node=then_node)
 
 
-def to_registerable_cases(
-    settings: RegistrationSettings, cases: List[_core_wf.IfBlock]
+def to_serializable_cases(
+    settings: SerializationSettings, cases: List[_core_wf.IfBlock]
 ) -> Optional[List[_core_wf.IfBlock]]:
     if cases is None:
         return None
     ret_cases = []
     for c in cases:
-        ret_cases.append(to_registerable_case(settings, c))
+        ret_cases.append(to_serializable_case(settings, c))
     return ret_cases
 
 
@@ -62,7 +62,7 @@ GLOBAL_CACHE: Dict[FlyteLocalEntity, FlyteControlPlaneEntity] = {}
 
 
 def get_serializable_references(
-    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: bool
+    settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool
 ) -> FlyteControlPlaneEntity:
     # TODO: This entire function isn't necessary. We should just return None or raise an Exception or something.
     #   Reference entities should already exist on the Admin control plane - they should not be serialized/registered
@@ -115,7 +115,7 @@ def get_serializable_references(
 
 
 def get_serializable_task(
-    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: bool
+    settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool
 ) -> FlyteControlPlaneEntity:
     cp_entity = SdkTask(
         type=entity.task_type,
@@ -150,7 +150,7 @@ def get_serializable_task(
 
 
 def get_serializable_workflow(
-    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: bool
+    settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool
 ) -> FlyteControlPlaneEntity:
     workflow_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.WORKFLOW, settings.project, settings.domain, entity.name, settings.version
@@ -178,7 +178,7 @@ def get_serializable_workflow(
 
 
 def get_serializable_launch_plan(
-    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: bool
+    settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool
 ) -> FlyteControlPlaneEntity:
     sdk_workflow = get_serializable(settings, entity.workflow)
     cp_entity = SdkLaunchPlan(
@@ -209,7 +209,7 @@ def get_serializable_launch_plan(
 
 
 def get_serializable_node(
-    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: bool
+    settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool
 ) -> FlyteControlPlaneEntity:
     if entity._flyte_entity is None:
         raise Exception(f"Node {entity.id} has no flyte entity")
@@ -259,12 +259,12 @@ def get_serializable_node(
 
 
 def get_serializable_branch_node(
-    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: bool
+    settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool
 ) -> FlyteControlPlaneEntity:
     # We have to iterate through the blocks to convert the nodes from their current type to SDKNode
     # TODO this should be cleaned up instead of mutation, we probaby should just create a new object
-    first = to_registerable_case(settings, entity._ifelse_block.case)
-    other = to_registerable_cases(settings, entity._ifelse_block.other)
+    first = to_serializable_case(settings, entity._ifelse_block.case)
+    other = to_serializable_cases(settings, entity._ifelse_block.other)
     else_node = None
     if entity._ifelse_block.else_node:
         else_node = get_serializable(settings, entity._ifelse_block.else_node)
@@ -275,7 +275,7 @@ def get_serializable_branch_node(
 
 
 def get_serializable(
-    settings: RegistrationSettings, entity: FlyteLocalEntity, fast: Optional[bool] = False
+    settings: SerializationSettings, entity: FlyteLocalEntity, fast: Optional[bool] = False
 ) -> FlyteControlPlaneEntity:
     if entity in GLOBAL_CACHE:
         return GLOBAL_CACHE[entity]
