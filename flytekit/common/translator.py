@@ -2,10 +2,10 @@ from typing import Dict, List, Optional, Union
 
 from flytekit.annotated.base_task import PythonTask, TaskMetadata
 from flytekit.annotated.condition import BranchNode
-from flytekit.annotated.container_task import ContainerTask
 from flytekit.annotated.context_manager import RegistrationSettings
 from flytekit.annotated.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.annotated.node import Node
+from flytekit.annotated.python_function_task import PythonAutoContainerTask
 from flytekit.annotated.reference_entity import ReferenceEntity
 from flytekit.annotated.task import ReferenceTask
 from flytekit.annotated.workflow import ReferenceWorkflow, Workflow, WorkflowFailurePolicy, WorkflowMetadata
@@ -64,6 +64,10 @@ GLOBAL_CACHE: Dict[FlyteLocalEntity, FlyteControlPlaneEntity] = {}
 def get_serializable_references(
     settings: RegistrationSettings, entity: FlyteLocalEntity, fast: bool
 ) -> FlyteControlPlaneEntity:
+    # TODO: This entire function isn't necessary. We should just return None or raise an Exception or something.
+    #   Reference entities should already exist on the Admin control plane - they should not be serialized/registered
+    #   again. Indeed we don't actually have enough information to serialize it properly.
+
     if isinstance(entity, ReferenceTask):
         cp_entity = SdkTask(
             type="ignore",
@@ -86,9 +90,8 @@ def get_serializable_references(
         )
 
     elif isinstance(entity, ReferenceLaunchPlan):
-        wf_id = _identifier_model.Identifier(_identifier_model.ResourceType.WORKFLOW, "", "", "", "")
         cp_entity = SdkLaunchPlan(
-            workflow_id=wf_id,
+            workflow_id=None,
             entity_metadata=_launch_plan_models.LaunchPlanMetadata(schedule=None, notifications=[]),
             default_inputs=interface_models.ParameterMap({}),
             fixed_inputs=literal_models.LiteralMap({}),
@@ -127,21 +130,21 @@ def get_serializable_task(
     cp_entity.id._name = entity.name
     cp_entity.id._version = settings.version
 
-    if fast:
-        # Containerless tasks are always fast registerable without modification so only operate on tasks that
-        # have a container. Also, raw ContainerTask's should never be touched.
-        if cp_entity.container is not None and not isinstance(entity, ContainerTask):
-            args = [
-                "pyflyte-fast-execute",
-                "--additional-distribution",
-                "{{ .remote_package_path }}",
-                "--dest-dir",
-                "{{ .dest_dir }}",
-                "--",
-            ] + cp_entity.container.args[:]
+    # For fast registration, we'll need to muck with the command, but only for certain kinds of tasks. Specifically,
+    # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
+    # parent class
+    if fast and isinstance(entity, PythonAutoContainerTask):
+        args = [
+            "pyflyte-fast-execute",
+            "--additional-distribution",
+            "{{ .remote_package_path }}",
+            "--dest-dir",
+            "{{ .dest_dir }}",
+            "--",
+        ] + cp_entity.container.args[:]
 
-            del cp_entity._container.args[:]
-            cp_entity._container.args.extend(args)
+        del cp_entity._container.args[:]
+        cp_entity._container.args.extend(args)
 
     return cp_entity
 
