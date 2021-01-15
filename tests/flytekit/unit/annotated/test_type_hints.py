@@ -984,19 +984,3 @@ def test_wf_explicitly_returning_empty_task():
         return t1()  # This forces the wf _local_execute to handle VoidPromises
 
     assert my_subwf() is None
-
-
-def test_blah():
-    @task
-    def foo():
-        pass
-
-    import inspect
-
-    def is_nested(func) -> bool:
-        return func.__code__.co_flags & inspect.CO_NESTED != 0
-
-    print("\n")
-    print(foo.task_function)
-    print(is_nested(foo.task_function))
-    print(inspect.getmodule(foo.task_function))
