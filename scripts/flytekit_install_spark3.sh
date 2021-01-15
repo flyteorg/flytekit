@@ -43,5 +43,5 @@ rm -rf spark-dist
 
 # Hadoop dist (via Apache) has older AWS SDK version. Fetch requried AWS jars from maven directly (not-ideal) to support IAM role
 # https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts-minimum-sdk.html
-wget https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.0/hadoop-aws-3.3.0.jar -P /opt/spark/jars
+wget https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.2.0/hadoop-aws-3.2.0.jar -P /opt/spark/jars
 wget https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.11.740/aws-java-sdk-bundle-1.11.740.jar -P /opt/spark/jars
