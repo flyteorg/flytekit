@@ -1,5 +1,6 @@
 import typing
 
+from flytekit import ContainerTask
 from flytekit.annotated import context_manager
 from flytekit.annotated.base_task import kwtypes
 from flytekit.annotated.context_manager import Image, ImageConfig
@@ -72,3 +73,22 @@ def test_fast():
 
     sdk_task = get_serializable(registration_settings, t1, True)
     assert "pyflyte-fast-execute" in sdk_task.container.args
+
+
+def test_container():
+    @task
+    def t1(a: int) -> (int, str):
+        return a + 2, str(a) + "-HELLO"
+
+    t2 = ContainerTask(
+        "raw",
+        image="alpine",
+        inputs=kwtypes(a=int, b=str),
+        input_data_dir="/tmp",
+        output_data_dir="/tmp",
+        command=["cat"],
+        arguments=["/tmp/a"],
+    )
+
+    sdk_task = get_serializable(registration_settings, t2, fast=True)
+    assert "pyflyte" not in sdk_task.container.args
