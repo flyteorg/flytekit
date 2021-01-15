@@ -62,7 +62,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC):
     and the container information to be automatically captured.
     This base will auto configure the image and image version to be used for all its derivatives.
 
-    If you are looking to extend, you might prefer to use ``PythonFunctionTask`` or ``PythonInstanceTask``
+    If you are looking to extend, you might prefer to use ``PythonFunctionTask`` or ``  PythonInstanceTask``
     """
 
     def __init__(
