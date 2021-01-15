@@ -9,7 +9,7 @@ from flytekit.annotated.context_manager import (
     ExecutionState,
     FlyteContext,
     FlyteEntities,
-    RegistrationSettings,
+    SerializationSettings,
 )
 from flytekit.annotated.interface import Interface, transform_interface_to_typed_interface
 from flytekit.annotated.promise import (
@@ -239,10 +239,10 @@ class Task(object):
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
 
-    def get_container(self, settings: RegistrationSettings) -> _task_model.Container:
+    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         return None
 
-    def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return None
 
     @abstractmethod

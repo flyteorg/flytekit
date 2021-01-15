@@ -9,7 +9,7 @@ from google.protobuf.json_format import MessageToDict
 
 from flytekit import FlyteContext
 from flytekit.annotated.base_task import PythonTask
-from flytekit.annotated.context_manager import RegistrationSettings
+from flytekit.annotated.context_manager import SerializationSettings
 from flytekit.annotated.type_engine import DictTransformer, TypeEngine, TypeTransformer
 from flytekit.common.types import primitives
 from flytekit.models.literals import Literal
@@ -79,7 +79,7 @@ class SagemakerHPOTask(PythonTask[HPOJob]):
     def execute(self, **kwargs) -> Any:
         raise NotImplementedError("Sagemaker HPO Task cannot be executed locally, to execute locally mock it!")
 
-    def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         training_job = _training_job_model.TrainingJob(
             algorithm_specification=self._training_task.task_config.algorithm_specification,
             training_job_resource_config=self._training_task.task_config.training_job_resource_config,

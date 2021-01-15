@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Type
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.annotated.base_sql_task import SQLTask
-from flytekit.annotated.context_manager import RegistrationSettings
+from flytekit.annotated.context_manager import SerializationSettings
 from flytekit.models.qubole import HiveQuery, QuboleHiveJob
 from flytekit.types.schema import FlyteSchema
 
@@ -85,7 +85,7 @@ class HiveTask(SQLTask[HiveConfig]):
     def tags(self) -> List[str]:
         return self.task_config.tags
 
-    def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         # timeout_sec and retry_count will become deprecated, please use timeout and retry settings on the Task
         query = HiveQuery(query=self.query_template, timeout_sec=0, retry_count=0)
         job = QuboleHiveJob(query=query, cluster_label=self.cluster_label, tags=self.tags,)

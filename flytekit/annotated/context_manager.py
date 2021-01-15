@@ -86,7 +86,7 @@ class InstanceVar(object):
     o: Any
 
 
-class RegistrationSettings(object):
+class SerializationSettings(object):
     def __init__(
         self, project: str, domain: str, version: str, image_config: ImageConfig, env: Optional[Dict[str, str]],
     ):
@@ -274,7 +274,7 @@ class FlyteContext(object):
         execution_state: ExecutionState = None,
         flyte_client: friendly_client.SynchronousFlyteClient = None,
         user_space_params: ExecutionParameters = None,
-        registration_settings: RegistrationSettings = None,
+        serialization_settings: SerializationSettings = None,
     ):
         # TODO: Should we have this auto-parenting feature?
         if parent is None and len(FlyteContext.OBJS) > 0:
@@ -289,7 +289,7 @@ class FlyteContext(object):
         self._execution_state = execution_state
         self._flyte_client = flyte_client
         self._user_space_params = user_space_params
-        self._registration_settings = registration_settings
+        self._serialization_settings = serialization_settings
 
     def __enter__(self):
         # Should we auto-assign the parent here?
@@ -385,19 +385,19 @@ class FlyteContext(object):
             FlyteContext.OBJS.pop()
 
     @property
-    def registration_settings(self) -> RegistrationSettings:
-        if self._registration_settings is not None:
-            return self._registration_settings
+    def serialization_settings(self) -> SerializationSettings:
+        if self._serialization_settings is not None:
+            return self._serialization_settings
         elif self._parent is not None:
-            return self._parent.registration_settings
+            return self._parent.serialization_settings
         else:
-            raise Exception("No registration_settings initialized")
+            raise Exception("No serialization_settings initialized")
 
     @contextmanager
-    def new_registration_settings(
-        self, registration_settings: RegistrationSettings
+    def new_serialization_settings(
+        self, serialization_settings: SerializationSettings
     ) -> Generator[FlyteContext, None, None]:
-        new_ctx = FlyteContext(parent=self, registration_settings=registration_settings)
+        new_ctx = FlyteContext(parent=self, serialization_settings=serialization_settings)
         FlyteContext.OBJS.append(new_ctx)
         try:
             yield new_ctx

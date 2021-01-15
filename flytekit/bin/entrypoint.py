@@ -10,7 +10,7 @@ import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.annotated.base_task import PythonTask
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext, RegistrationSettings, get_image_config
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
 from flytekit.annotated.promise import VoidPromise
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
@@ -171,7 +171,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                         _internal_config.IMAGE.env_var: _internal_config.IMAGE.get(),
                     }
 
-                    registration_settings = RegistrationSettings(
+                    serialization_settings = SerializationSettings(
                         project=_internal_config.TASK_PROJECT.get(),
                         domain=_internal_config.TASK_DOMAIN.get(),
                         version=_internal_config.TASK_VERSION.get(),
@@ -181,7 +181,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                     # The reason we need this is because of dynamic tasks. Even if we move compilation all to Admin,
                     # if a dynamic task calls some task, t1, we have to write to the DJ Spec the correct task
                     # identifier for t1.
-                    with ctx.new_registration_settings(registration_settings=registration_settings) as ctx:
+                    with ctx.new_serialization_settings(serialization_settings=serialization_settings) as ctx:
                         # Because execution states do not look up the context chain, it has to be made last
                         with ctx.new_execution_context(
                             mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters

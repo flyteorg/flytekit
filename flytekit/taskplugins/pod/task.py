@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, Tuple, Union
 from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf.json_format import MessageToDict
 
-from flytekit.annotated.context_manager import FlyteContext, RegistrationSettings
+from flytekit.annotated.context_manager import FlyteContext, SerializationSettings
 from flytekit.annotated.promise import Promise
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
@@ -37,7 +37,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
             task_config=task_config, task_type="sidecar", task_function=task_function, **kwargs,
         )
 
-    def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         containers = self.task_config.pod_spec.containers
         primary_exists = False
         for container in containers:

@@ -38,13 +38,13 @@ def test_workflow_values():
         u, v = t1(a=x)
         return y, v
 
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="proj",
         domain="dom",
         version="123",
         image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
     )
-    sdk_wf = get_serializable(registration_settings, wf)
+    sdk_wf = get_serializable(serialization_settings, wf)
     assert sdk_wf.metadata_defaults.interruptible
     assert sdk_wf.metadata.on_failure == 1
