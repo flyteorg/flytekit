@@ -2,11 +2,11 @@ import datetime as _datetime
 
 from google.protobuf.json_format import MessageToDict
 
+import flytekit.platform.sdk_task
 from flytekit import __version__
 from flytekit.common import interface as _interface
 from flytekit.common.constants import SdkTaskType
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.tasks import task as _sdk_task
 from flytekit.models import interface as _interface_model
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_models
@@ -22,7 +22,7 @@ def _content_type_to_blob_format(content_type: _training_job_models) -> str:
         raise _user_exceptions.FlyteValueException("Unsupported InputContentType: {}".format(content_type))
 
 
-class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
+class SdkBuiltinAlgorithmTrainingJobTask(flytekit.platform.sdk_task.SdkTask):
     def __init__(
         self,
         training_job_resource_config: _training_job_models.TrainingJobResourceConfig,

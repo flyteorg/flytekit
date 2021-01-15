@@ -25,7 +25,7 @@ from flytekit.models.core.identifier import WorkflowExecutionIdentifier
 class UnitTestEngineFactory(_common_engine.BaseExecutionEngineFactory):
     def get_task(self, sdk_task):
         """
-        :param flytekit.common.tasks.task.SdkTask sdk_task:
+        :param flytekit.common.platform.sdk_task.SdkTask sdk_task:
         :rtype: UnitTestEngineTask
         """
         if sdk_task.type in {

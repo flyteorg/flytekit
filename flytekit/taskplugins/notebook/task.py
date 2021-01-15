@@ -11,10 +11,10 @@ from google.protobuf import text_format as _text_format
 from nbconvert import HTMLExporter
 
 from flytekit import FlyteContext
-from flytekit.annotated.interface import Interface
-from flytekit.annotated.python_function_task import PythonInstanceTask
-from flytekit.annotated.task import TaskPlugins
-from flytekit.annotated.type_engine import TypeEngine
+from flytekit.core.interface import Interface
+from flytekit.core.python_function_task import PythonInstanceTask
+from flytekit.core.task import TaskPlugins
+from flytekit.core.type_engine import TypeEngine
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.models.literals import LiteralMap
 from flytekit.types.file import HTMLPage, PythonNotebook

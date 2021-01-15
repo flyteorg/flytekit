@@ -6,11 +6,11 @@ from typing import Any, Callable, Dict, TypeVar
 from google.protobuf.json_format import MessageToDict
 
 import flytekit
-from flytekit.annotated.base_task import PythonTask, kwtypes
-from flytekit.annotated.context_manager import RegistrationSettings
-from flytekit.annotated.interface import Interface
-from flytekit.annotated.python_function_task import PythonFunctionTask
-from flytekit.annotated.task import TaskPlugins
+from flytekit.core.base_task import PythonTask, kwtypes
+from flytekit.core.context_manager import RegistrationSettings
+from flytekit.core.interface import Interface
+from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.task import TaskPlugins
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.models.sagemaker import training_job as _training_job_models
 from flytekit.taskplugins.sagemaker.distributed_training import DistributedTrainingContext

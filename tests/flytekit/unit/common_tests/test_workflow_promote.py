@@ -5,8 +5,9 @@ from flyteidl.core import compiler_pb2 as _compiler_pb2
 from flyteidl.core import workflow_pb2 as _workflow_pb2
 from mock import patch as _patch
 
+import flytekit.platform.sdk_task
+import flytekit.platform.sdk_workflow
 from flytekit.common import workflow as _workflow_common
-from flytekit.common.tasks import task as _task
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import task as _task_model
@@ -142,10 +143,10 @@ def test_basic_workflow_promote(mock_task_fetch):
         custom={},
         container=get_sample_container(),
     )
-    sdk_promoted_task = _task.SdkTask.promote_from_model(task_template)
+    sdk_promoted_task = flytekit.platform.sdk_task.SdkTask.promote_from_model(task_template)
     mock_task_fetch.return_value = sdk_promoted_task
     workflow_template = get_workflow_template()
-    promoted_wf = _workflow_common.SdkWorkflow.promote_from_model(workflow_template)
+    promoted_wf = flytekit.platform.sdk_workflow.SdkWorkflow.promote_from_model(workflow_template)
 
     assert promoted_wf.interface.inputs["wf_input"] == TestPromoteExampleWf.interface.inputs["wf_input"]
     assert promoted_wf.interface.outputs["wf_output_b"] == TestPromoteExampleWf.interface.outputs["wf_output_b"]
@@ -175,7 +176,7 @@ def test_subworkflow_promote():
     primary = cwc.primary
     sub_workflow_map = {sw.template.id: sw.template for sw in cwc.sub_workflows}
     task_map = {t.template.id: t.template for t in cwc.tasks}
-    promoted_wf = _workflow_common.SdkWorkflow.promote_from_model(primary.template, sub_workflow_map, task_map)
+    promoted_wf = flytekit.platform.sdk_workflow.SdkWorkflow.promote_from_model(primary.template, sub_workflow_map, task_map)
 
     # This file that the promoted_wf reads contains the compiled workflow closure protobuf retrieved from Admin
     # after registering a workflow that basically looks like the one below.

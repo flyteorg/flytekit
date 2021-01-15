@@ -1,12 +1,12 @@
 import typing
 
 from flytekit import ContainerTask
-from flytekit.annotated import context_manager
-from flytekit.annotated.base_task import kwtypes
-from flytekit.annotated.context_manager import Image, ImageConfig
-from flytekit.annotated.launch_plan import LaunchPlan, ReferenceLaunchPlan
-from flytekit.annotated.task import ReferenceTask, task
-from flytekit.annotated.workflow import ReferenceWorkflow, workflow
+from flytekit.core import context_manager
+from flytekit.core.base_task import kwtypes
+from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
+from flytekit.core.task import ReferenceTask, task
+from flytekit.core.workflow import ReferenceWorkflow, workflow
 from flytekit.common.translator import get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")

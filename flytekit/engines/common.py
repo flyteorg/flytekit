@@ -11,14 +11,14 @@ class BaseWorkflowExecutor(object, metaclass=_common_models.FlyteABCMeta):
 
     def __init__(self, sdk_workflow):
         """
-        :param flytekit.common.workflow.SdkWorkflow sdk_workflow:
+        :param flytekit.platform.sdk_workflow.SdkWorkflow sdk_workflow:
         """
         self._sdk_workflow = sdk_workflow
 
     @property
     def sdk_workflow(self):
         """
-        :rtype: flytekit.common.workflow.SdkWorkflow
+        :rtype: flytekit.platform.sdk_workflow.SdkWorkflow
         """
         return self._sdk_workflow
 
@@ -183,14 +183,14 @@ class BaseTaskExecution(object, metaclass=_common_models.FlyteABCMeta):
 class BaseLaunchPlanLauncher(object, metaclass=_common_models.FlyteABCMeta):
     def __init__(self, sdk_launch_plan):
         """
-        :param flytekit.common.launch_plan.SdkLaunchPlan sdk_launch_plan:
+        :param flytekit.platform.sdk_launch_plan.SdkLaunchPlan sdk_launch_plan:
         """
         self._sdk_launch_plan = sdk_launch_plan
 
     @property
     def sdk_launch_plan(self):
         """
-        :rtype: flytekit.common.launch_plan.SdkLaunchPlan
+        :rtype: flytekit.platform.sdk_launch_plan.SdkLaunchPlan
         """
         return self._sdk_launch_plan
 
@@ -239,7 +239,7 @@ class BaseLaunchPlanLauncher(object, metaclass=_common_models.FlyteABCMeta):
 class BaseTaskExecutor(object, metaclass=_common_models.FlyteABCMeta):
     def __init__(self, sdk_task):
         """
-        :param flytekit.common.tasks.task.SdkTask sdk_task:
+        :param flytekit.common.platform.sdk_task.SdkTask sdk_task:
         """
         self._sdk_task = sdk_task
 
@@ -301,7 +301,7 @@ class BaseExecutionEngineFactory(object, metaclass=_common_models.FlyteABCMeta):
     @_abc.abstractmethod
     def get_task(self, sdk_task):
         """
-        :param flytekit.common.tasks.task.SdkTask sdk_task:
+        :param flytekit.common.platform.sdk_task.SdkTask sdk_task:
         :rtype: BaseTaskExecutor
         """
         pass
@@ -309,7 +309,7 @@ class BaseExecutionEngineFactory(object, metaclass=_common_models.FlyteABCMeta):
     @_abc.abstractmethod
     def get_launch_plan(self, sdk_launch_plan):
         """
-        :param flytekit.common.launch_plan.SdkLaunchPlan sdk_launch_plan:
+        :param flytekit.platform.sdk_launch_plan.SdkLaunchPlan sdk_launch_plan:
         :rtype: BaseLaunchPlanLauncher
         """
         pass

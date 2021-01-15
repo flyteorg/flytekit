@@ -4,11 +4,11 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 
-from flytekit.annotated.base_task import PythonTask
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext, ImageConfig, RegistrationSettings
-from flytekit.annotated.interface import transform_signature_to_interface
-from flytekit.annotated.resources import Resources, ResourceSpec
-from flytekit.annotated.workflow import Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults
+from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import ExecutionState, FlyteContext, ImageConfig, RegistrationSettings
+from flytekit.core.interface import transform_signature_to_interface
+from flytekit.core.resources import Resources, ResourceSpec
+from flytekit.core.workflow import Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job

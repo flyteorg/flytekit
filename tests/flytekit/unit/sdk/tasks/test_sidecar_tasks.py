@@ -1,8 +1,8 @@
 import mock
 from k8s.io.api.core.v1 import generated_pb2
 
+import flytekit.platform.sdk_task
 from flytekit.common.tasks import sidecar_task as _sidecar_task
-from flytekit.common.tasks import task as _sdk_task
 from flytekit.configuration.internal import IMAGE as _IMAGE
 from flytekit.models.core import identifier as _identifier
 from flytekit.sdk.tasks import inputs, outputs, sidecar_task
@@ -38,7 +38,7 @@ simple_sidecar_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, 
 
 
 def test_sidecar_task():
-    assert isinstance(simple_sidecar_task, _sdk_task.SdkTask)
+    assert isinstance(simple_sidecar_task, flytekit.platform.sdk_task.SdkTask)
     assert isinstance(simple_sidecar_task, _sidecar_task.SdkSidecarTask)
 
     pod_spec = simple_sidecar_task.custom["podSpec"]

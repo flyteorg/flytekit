@@ -15,7 +15,7 @@ from flytekit.clis.sdk_in_container.constants import (
     version_option,
 )
 from flytekit.common import utils as _utils
-from flytekit.common.launch_plan import SdkLaunchPlan as _SdkLaunchPlan
+from flytekit.platform.sdk_launch_plan import SdkLaunchPlan as _SdkLaunchPlan
 from flytekit.configuration.internal import DOMAIN as _DOMAIN
 from flytekit.configuration.internal import IMAGE as _IMAGE
 from flytekit.configuration.internal import PROJECT as _PROJECT
@@ -84,7 +84,7 @@ class LaunchPlanAbstractGroup(click.Group):
     def _get_command(self, ctx, lp, cmd_name):
         """
         :param ctx:
-        :param flytekit.common.launch_plan.SdkLaunchPlan lp:
+        :param flytekit.platform.sdk_launch_plan.SdkLaunchPlan lp:
         :rtype: click.Command
         """
         pass
@@ -97,7 +97,7 @@ class LaunchPlanExecuteGroup(LaunchPlanAbstractGroup):
         stores the launch plan python object and the command name in the closure.
 
         :param ctx:
-        :param flytekit.common.launch_plan.SdkLaunchPlan lp:
+        :param flytekit.platform.sdk_launch_plan.SdkLaunchPlan lp:
         :param Text cmd_name: The name of the launch plan, as passed in from the abstract class
         """
 

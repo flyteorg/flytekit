@@ -2,6 +2,8 @@ import os as _os
 
 import pytest as _pytest
 
+import flytekit.legacy.runnables
+import flytekit.platform.sdk_launch_plan
 from flytekit import configuration as _configuration
 from flytekit.common import launch_plan as _launch_plan
 from flytekit.common import notifications as _notifications
@@ -340,11 +342,11 @@ def test_promote_from_model():
     )
 
     with _pytest.raises(_user_exceptions.FlyteAssertion):
-        _launch_plan.SdkRunnableLaunchPlan.from_flyte_idl(lp.to_flyte_idl())
+        flytekit.legacy.runnables.SdkRunnableLaunchPlan.from_flyte_idl(lp.to_flyte_idl())
 
-    lp_from_spec = _launch_plan.SdkLaunchPlan.from_flyte_idl(lp.to_flyte_idl())
-    assert not isinstance(lp_from_spec, _launch_plan.SdkRunnableLaunchPlan)
-    assert isinstance(lp_from_spec, _launch_plan.SdkLaunchPlan)
+    lp_from_spec = flytekit.platform.sdk_launch_plan.SdkLaunchPlan.from_flyte_idl(lp.to_flyte_idl())
+    assert not isinstance(lp_from_spec, flytekit.legacy.runnables.SdkRunnableLaunchPlan)
+    assert isinstance(lp_from_spec, flytekit.platform.sdk_launch_plan.SdkLaunchPlan)
     assert lp_from_spec == lp
 
 

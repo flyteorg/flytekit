@@ -10,6 +10,7 @@ import six as _six
 from google.protobuf import json_format as _json_format
 from google.protobuf import text_format as _text_format
 
+import flytekit.platform.sdk_task
 from flytekit import __version__
 from flytekit.bin import entrypoint as _entrypoint
 from flytekit.common import constants as _constants
@@ -19,7 +20,6 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.tasks import spark_task as _spark_task
-from flytekit.common.tasks import task as _base_tasks
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.contrib.notebook.supported_types import notebook_types_map as _notebook_types_map
 from flytekit.engines import loader as _engine_loader
@@ -80,7 +80,7 @@ def python_notebook(
     )
 
 
-class SdkNotebookTask(_base_tasks.SdkTask):
+class SdkNotebookTask(flytekit.platform.sdk_task.SdkTask):
 
     """
     This class includes the additional logic for building a task that executes Notebooks.

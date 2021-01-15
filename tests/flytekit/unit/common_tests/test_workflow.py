@@ -1,6 +1,7 @@
 import pytest as _pytest
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 
+import flytekit.platform.sdk_workflow
 from flytekit.common import constants, interface
 from flytekit.common import local_workflow as _local_workflow
 from flytekit.common import nodes, promise, workflow
@@ -309,7 +310,7 @@ def test_non_system_nodes():
         sdk_branch=None,
     )
 
-    non_system_nodes = workflow.SdkWorkflow.get_non_system_nodes([n1, n_start])
+    non_system_nodes = flytekit.platform.sdk_workflow.SdkWorkflow.get_non_system_nodes([n1, n_start])
     assert len(non_system_nodes) == 1
     assert non_system_nodes[0].id == "n1"
 

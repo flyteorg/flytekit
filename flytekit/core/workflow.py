@@ -6,20 +6,20 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
-import flytekit.annotated.promise
-import flytekit.annotated.type_engine
-from flytekit.annotated.condition import ConditionalSection
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext, FlyteEntities
-from flytekit.annotated.interface import (
+import flytekit.core.promise
+import flytekit.core.type_engine
+from flytekit.core.condition import ConditionalSection
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteEntities
+from flytekit.core.interface import (
     Interface,
     transform_inputs_to_parameters,
     transform_interface_to_typed_interface,
     transform_signature_to_interface,
 )
-from flytekit.annotated.node import Node
-from flytekit.annotated.promise import NodeOutput, Promise, VoidPromise, create_and_link_node, create_task_output
-from flytekit.annotated.reference_entity import ReferenceEntity, WorkflowReference
-from flytekit.annotated.type_engine import TypeEngine
+from flytekit.core.node import Node
+from flytekit.core.promise import NodeOutput, Promise, VoidPromise, create_and_link_node, create_task_output
+from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
+from flytekit.core.type_engine import TypeEngine
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger

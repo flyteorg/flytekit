@@ -3,10 +3,10 @@ import typing
 
 from google.protobuf.json_format import MessageToDict
 
+import flytekit.platform.sdk_task
 from flytekit import __version__
 from flytekit.common import interface as _interface
 from flytekit.common.constants import SdkTaskType
-from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.tasks.sagemaker.built_in_training_job_task import SdkBuiltinAlgorithmTrainingJobTask
 from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
 from flytekit.common.tasks.sagemaker.types import HyperparameterTuningJobConfig, ParameterRange
@@ -18,7 +18,7 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.sagemaker import hpo_job as _hpo_job_model
 
 
-class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
+class SdkSimpleHyperparameterTuningJobTask(flytekit.platform.sdk_task.SdkTask):
     def __init__(
         self,
         max_number_of_training_jobs: int,

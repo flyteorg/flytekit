@@ -3,11 +3,11 @@ import datetime as _datetime
 import six as _six
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
+import flytekit.platform.sdk_task
 from flytekit import __version__
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.tasks import task as _base_task
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.models import interface as _interface_model
 from flytekit.models import literals as _literals
@@ -16,7 +16,7 @@ from flytekit.models import task as _task_model
 from flytekit.models import types as _types
 
 
-class SdkPrestoTask(_base_task.SdkTask):
+class SdkPrestoTask(flytekit.platform.sdk_task.SdkTask):
     """
     This class includes the logic for building a task that executes as a Presto task.
     """

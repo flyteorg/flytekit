@@ -1,7 +1,7 @@
 from typing import Any, Optional
 
-from flytekit.annotated.base_task import PythonTask, TaskMetadata
-from flytekit.annotated.interface import transform_interface_to_list_interface
+from flytekit.core.base_task import PythonTask, TaskMetadata
+from flytekit.core.interface import transform_interface_to_list_interface
 
 
 class MapPythonTask(PythonTask):

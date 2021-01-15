@@ -4,6 +4,9 @@ import os as _os
 
 import six as _six
 
+import flytekit.platform.sdk_launch_plan
+import flytekit.platform.sdk_task
+import flytekit.platform.sdk_workflow
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common import launch_plan as _launch_plan
@@ -14,7 +17,6 @@ from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
-from flytekit.common.tasks import task as _task
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import _dnsify
 from flytekit.configuration import internal as _internal_config
@@ -96,7 +98,7 @@ class SdkDynamicTaskMixin(object):
     @staticmethod
     def _add_upstream_entities(executable_sdk_object, sub_workflows, tasks):
         upstream_entities = []
-        if isinstance(executable_sdk_object, _workflow.SdkWorkflow):
+        if isinstance(executable_sdk_object, flytekit.platform.sdk_workflow.SdkWorkflow):
             upstream_entities = [n.executable_sdk_object for n in executable_sdk_object.nodes]
 
         for upstream_entity in upstream_entities:
@@ -104,11 +106,11 @@ class SdkDynamicTaskMixin(object):
             # dynamic job spec. Otherwise (e.g. a LaunchPlan), we will assume it already
             # is registered (can't be dynamically created). This will cause a runtime error
             # if it's not already registered with the control plane.
-            if isinstance(upstream_entity, _workflow.SdkWorkflow):
+            if isinstance(upstream_entity, flytekit.platform.sdk_workflow.SdkWorkflow):
                 sub_workflows.add(upstream_entity)
                 # Recursively discover all statically defined dependencies
                 SdkDynamicTask._add_upstream_entities(upstream_entity, sub_workflows, tasks)
-            elif isinstance(upstream_entity, _task.SdkTask):
+            elif isinstance(upstream_entity, flytekit.platform.sdk_task.SdkTask):
                 tasks.add(upstream_entity)
 
     def _produce_dynamic_job_spec(self, context, inputs):
@@ -188,11 +190,11 @@ class SdkDynamicTaskMixin(object):
             unique_node_id = _dnsify("{}-{}".format(safe_task_id, new_count))
 
             # Handling case where the yielded node is launch plan
-            if isinstance(sub_task_node.executable_sdk_object, _launch_plan.SdkLaunchPlan):
+            if isinstance(sub_task_node.executable_sdk_object, flytekit.platform.sdk_launch_plan.SdkLaunchPlan):
                 node = sub_task_node.assign_id_and_return(unique_node_id)
                 _append_node(generated_files, node, nodes, sub_task_node)
             # Handling case where the yielded node is launching a sub-workflow
-            elif isinstance(sub_task_node.executable_sdk_object, _workflow.SdkWorkflow):
+            elif isinstance(sub_task_node.executable_sdk_object, flytekit.platform.sdk_workflow.SdkWorkflow):
                 node = sub_task_node.assign_id_and_return(unique_node_id)
                 _append_node(generated_files, node, nodes, sub_task_node)
                 # Add the workflow itself to the yielded sub-workflows

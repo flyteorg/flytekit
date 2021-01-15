@@ -3,6 +3,7 @@ import uuid as _uuid
 import six as _six
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
+import flytekit.platform.sdk_task
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common import nodes as _nodes
@@ -11,7 +12,6 @@ from flytekit.common.exceptions.user import FlyteTypeException as _FlyteTypeExce
 from flytekit.common.exceptions.user import FlyteValueException as _FlyteValueException
 from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
-from flytekit.common.tasks import task as _base_task
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_model
@@ -256,7 +256,7 @@ def _create_hive_job_node(name, hive_job, metadata):
     )
 
 
-class SdkHiveJob(_base_task.SdkTask):
+class SdkHiveJob(flytekit.platform.sdk_task.SdkTask):
     """
     This class encapsulates the hive-job that is submitted to the Qubole Operator.
 

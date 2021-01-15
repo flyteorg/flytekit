@@ -2,10 +2,10 @@ import datetime as _datetime
 
 import pytest as _pytest
 
-from flytekit.annotated.launch_plan import LaunchPlan
-from flytekit.annotated.schedule import CronSchedule, FixedRate
-from flytekit.annotated.task import task
-from flytekit.annotated.workflow import workflow
+from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.schedule import CronSchedule, FixedRate
+from flytekit.core.task import task
+from flytekit.core.workflow import workflow
 from flytekit.models import schedule as _schedule_models
 
 

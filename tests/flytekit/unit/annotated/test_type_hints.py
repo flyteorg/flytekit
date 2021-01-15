@@ -9,16 +9,16 @@ from dataclasses_json import dataclass_json
 
 import flytekit
 from flytekit import ContainerTask, SQLTask, dynamic, kwtypes, maptask
-from flytekit.annotated import context_manager, launch_plan, promise
-from flytekit.annotated.condition import conditional
-from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
-from flytekit.annotated.node import Node
-from flytekit.annotated.promise import NodeOutput, Promise, VoidPromise
-from flytekit.annotated.resources import Resources
-from flytekit.annotated.task import TaskMetadata, task
-from flytekit.annotated.testing import patch, task_mock
-from flytekit.annotated.type_engine import RestrictedTypeError, TypeEngine
-from flytekit.annotated.workflow import workflow
+from flytekit.core import context_manager, launch_plan, promise
+from flytekit.core.condition import conditional
+from flytekit.core.context_manager import ExecutionState, Image, ImageConfig
+from flytekit.core.node import Node
+from flytekit.core.promise import NodeOutput, Promise, VoidPromise
+from flytekit.core.resources import Resources
+from flytekit.core.task import TaskMetadata, task
+from flytekit.core.testing import patch, task_mock
+from flytekit.core.type_engine import RestrictedTypeError, TypeEngine
+from flytekit.core.workflow import workflow
 from flytekit.common.translator import get_serializable
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types

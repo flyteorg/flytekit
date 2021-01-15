@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 import six as _six
 from six.moves import queue as _queue
 
+import flytekit.legacy.runnables
 from flytekit.common import interface as _interface
 from flytekit.common import launch_plan as _launch_plan
 from flytekit.common import nodes as _nodes
@@ -11,7 +12,7 @@ from flytekit.common import promise as _promise
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.common.workflow import SdkWorkflow
+from flytekit.platform.sdk_workflow import SdkWorkflow
 from flytekit.configuration import internal as _internal_config
 from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
@@ -268,7 +269,7 @@ class SdkRunnableWorkflow(SdkWorkflow):
         :param Text assumable_iam_role: The IAM role to execute the workflow with.
         :param Text kubernetes_service_account: The kubernetes service account to execute the workflow with.
         :param Text raw_output_data_prefix: Bucket for offloaded data
-        :rtype: flytekit.common.launch_plan.SdkRunnableLaunchPlan
+        :rtype: flytekit.legacy.runnables.SdkRunnableLaunchPlan
         """
         # TODO: Actually ensure the parameters conform.
         if role and (assumable_iam_role or kubernetes_service_account):
@@ -285,7 +286,7 @@ class SdkRunnableWorkflow(SdkWorkflow):
 
         raw_output_config = _common_models.RawOutputDataConfig(raw_output_data_prefix or "")
 
-        return _launch_plan.SdkRunnableLaunchPlan(
+        return flytekit.legacy.runnables.SdkRunnableLaunchPlan(
             sdk_workflow=self,
             default_inputs={
                 k: user_input.rename_and_return_reference(k) for k, user_input in _six.iteritems(merged_default_inputs)

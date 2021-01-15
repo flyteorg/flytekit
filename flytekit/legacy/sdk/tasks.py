@@ -2,6 +2,7 @@ import datetime as _datetime
 
 import six as _six
 
+import flytekit.platform.sdk_task
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import generic_spark_task as _sdk_generic_spark_task
@@ -11,7 +12,6 @@ from flytekit.common.tasks import sdk_dynamic as _sdk_dynamic
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable_tasks
 from flytekit.common.tasks import sidecar_task as _sdk_sidecar_tasks
 from flytekit.common.tasks import spark_task as _sdk_spark_tasks
-from flytekit.common.tasks import task as _task
 from flytekit.common.tasks import tensorflow_task as _sdk_tensorflow_tasks
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.contrib.notebook import tasks as _nb_tasks
@@ -43,7 +43,7 @@ def inputs(_task_template=None, **kwargs):
     """
 
     def apply_inputs_wrapper(task):
-        if not isinstance(task, _task.SdkTask):
+        if not isinstance(task, flytekit.platform.sdk_task.SdkTask):
             additional_msg = "Inputs can only be applied to a task. Did you forget the task decorator on method '{}.{}'?".format(
                 task.__module__, task.__name__ if hasattr(task, "__name__") else "<unknown>",
             )

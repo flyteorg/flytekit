@@ -131,10 +131,10 @@ class SdkNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node, metaclass=
         :param list[SdkNode] upstream_nodes: Specifies execution dependencies for this node ensuring it will
             only get scheduled to run after all its upstream nodes have completed. This node will have
             an implicit dependency on any node that appears in inputs field.
-        :param flytekit.common.tasks.task.SdkTask sdk_task: The task to execute in this
+        :param flytekit.common.platform.sdk_task.SdkTask sdk_task: The task to execute in this
             node.
-        :param flytekit.common.workflow.SdkWorkflow sdk_workflow: The workflow to execute in this node.
-        :param flytekit.common.launch_plan.SdkLaunchPlan sdk_launch_plan: The launch plan to execute in this
+        :param flytekit.platform.sdk_workflow.SdkWorkflow sdk_workflow: The workflow to execute in this node.
+        :param flytekit.platform.sdk_launch_plan.SdkLaunchPlan sdk_launch_plan: The launch plan to execute in this
         node.
         :param TODO sdk_branch: TODO
         """

@@ -9,9 +9,9 @@ import random as _random
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit.annotated.base_task import PythonTask
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext, RegistrationSettings, get_image_config
-from flytekit.annotated.promise import VoidPromise
+from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import ExecutionState, FlyteContext, RegistrationSettings, get_image_config
+from flytekit.core.promise import VoidPromise
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common import utils as _utils
@@ -105,7 +105,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                     context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
                 )
 
-            # New annotated style task
+            # New core style task
             elif not test and isinstance(task_def, PythonTask):
                 _click.echo("Running native-typed task")
                 cloud_provider = _platform_config.CLOUD_PROVIDER.get()

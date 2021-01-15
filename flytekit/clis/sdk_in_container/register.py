@@ -3,6 +3,7 @@ import os as _os
 
 import click
 
+import flytekit.platform.sdk_task
 from flytekit.clis.sdk_in_container.constants import (
     CTX_DOMAIN,
     CTX_PACKAGES,
@@ -15,7 +16,6 @@ from flytekit.clis.sdk_in_container.constants import (
 )
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
-from flytekit.common.tasks import task as _task
 from flytekit.configuration.internal import DOMAIN as _DOMAIN
 from flytekit.configuration.internal import IMAGE as _IMAGE
 from flytekit.configuration.internal import PROJECT as _PROJECT
@@ -55,7 +55,8 @@ def register_tasks_only(project, domain, pkgs, test, version):
     click.echo("Running task only registration for {}, {}, {} with version {}".format(project, domain, pkgs, version))
 
     # Discover all tasks by loading the module
-    for m, k, t in iterate_registerable_entities_in_order(pkgs, include_entities={_task.SdkTask}):
+    for m, k, t in iterate_registerable_entities_in_order(pkgs, include_entities={
+        flytekit.platform.sdk_task.SdkTask}):
         name = _utils.fqdn(m.__name__, k, entity_type=t.resource_type)
 
         if test:

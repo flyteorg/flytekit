@@ -7,10 +7,10 @@ import retry.api
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
 from google.protobuf.json_format import ParseDict
 
+import flytekit.platform.sdk_task
 from flytekit.common import constants as _common_constants
 from flytekit.common import utils as _utils
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
-from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.tasks.sagemaker import distributed_training as _sm_distribution
 from flytekit.common.tasks.sagemaker import hpo_job_task
 from flytekit.common.tasks.sagemaker.built_in_training_job_task import SdkBuiltinAlgorithmTrainingJobTask
@@ -97,7 +97,7 @@ def test_builtin_algorithm_training_job_task():
         _identifier.ResourceType.TASK, "my_project", "my_domain", "my_name", "my_version"
     )
     assert isinstance(builtin_algorithm_training_job_task, SdkBuiltinAlgorithmTrainingJobTask)
-    assert isinstance(builtin_algorithm_training_job_task, _sdk_task.SdkTask)
+    assert isinstance(builtin_algorithm_training_job_task, flytekit.platform.sdk_task.SdkTask)
     assert builtin_algorithm_training_job_task.interface.inputs["train"].description == ""
     assert builtin_algorithm_training_job_task.interface.inputs["train"].type == _idl_types.LiteralType(
         blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,)
@@ -167,7 +167,7 @@ simple_xgboost_hpo_job_task._id = _identifier.Identifier(
 
 def test_simple_hpo_job_task():
     assert isinstance(simple_xgboost_hpo_job_task, SdkSimpleHyperparameterTuningJobTask)
-    assert isinstance(simple_xgboost_hpo_job_task, _sdk_task.SdkTask)
+    assert isinstance(simple_xgboost_hpo_job_task, flytekit.platform.sdk_task.SdkTask)
     # Checking if the input of the underlying SdkTrainingJobTask has been embedded
     assert simple_xgboost_hpo_job_task.interface.inputs["train"].description == ""
     assert (

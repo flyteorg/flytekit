@@ -2,10 +2,10 @@ import datetime as _datetime
 from typing import Dict, List
 
 import flytekit
+import flytekit.platform.sdk_task
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.tasks import task as _base_task
 from flytekit.common.types.base_sdk_types import FlyteSdkType
 from flytekit.configuration import resources as _resource_config
 from flytekit.models import literals as _literals
@@ -83,7 +83,7 @@ def _get_container_definition(
     )
 
 
-class SdkRawContainerTask(_base_task.SdkTask):
+class SdkRawContainerTask(flytekit.platform.sdk_task.SdkTask):
     """
     Use this task when you want to run an arbitrary container as a task (e.g. external tools, binaries compiled
     separately as a container completely separate from the container where your Flyte workflow is defined.

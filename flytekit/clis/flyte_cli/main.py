@@ -18,6 +18,8 @@ from flyteidl.core import workflow_pb2 as _core_workflow_pb2
 from google.protobuf.json_format import MessageToJson
 from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _GeneratedProtocolMessageType
 
+import flytekit.platform.sdk_launch_plan
+import flytekit.platform.sdk_task
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
 from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map
@@ -29,7 +31,6 @@ from flytekit.common import utils as _utils
 from flytekit.common import workflow_execution as _workflow_execution_common
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.tasks import task as _tasks_common
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
 from flytekit.configuration import auth as _auth_config
@@ -664,7 +665,7 @@ def launch_task(project, domain, name, host, insecure, urn, task_args):
 
     with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
         task_id = _identifier.Identifier.from_python_std(urn)
-        task = _tasks_common.SdkTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
+        task = flytekit.platform.sdk_task.SdkTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
 
         text_args = _parse_args_into_dict(task_args)
         inputs = {}
@@ -1037,7 +1038,7 @@ def execute_launch_plan(project, domain, name, host, insecure, urn, principal, v
 
     with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
         lp_id = _identifier.Identifier.from_python_std(urn)
-        lp = _launch_plan_common.SdkLaunchPlan.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+        lp = flytekit.platform.sdk_launch_plan.SdkLaunchPlan.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
 
         inputs = _construct_literal_map_from_parameter_map(lp.default_inputs, _parse_args_into_dict(lp_args))
         # TODO: Implement notification overrides

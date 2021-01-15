@@ -3,8 +3,8 @@ import typing
 import pytest
 
 from flytekit import task, workflow
-from flytekit.annotated.condition import conditional
-from flytekit.annotated.context_manager import Image, ImageConfig, RegistrationSettings
+from flytekit.core.condition import conditional
+from flytekit.core.context_manager import Image, ImageConfig, RegistrationSettings
 from flytekit.common.translator import get_serializable
 
 

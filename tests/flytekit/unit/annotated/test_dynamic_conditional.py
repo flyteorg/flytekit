@@ -3,9 +3,9 @@ from datetime import datetime
 from random import seed
 
 from flytekit import dynamic, task, workflow
-from flytekit.annotated import context_manager
-from flytekit.annotated.condition import conditional
-from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig
+from flytekit.core import context_manager
+from flytekit.core.condition import conditional
+from flytekit.core.context_manager import ExecutionState, Image, ImageConfig
 
 # seed random number generator
 seed(datetime.now().microsecond)

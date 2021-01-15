@@ -1,5 +1,8 @@
 import logging as _logging
 
+import flytekit.platform.sdk_launch_plan
+import flytekit.platform.sdk_task
+import flytekit.platform.sdk_workflow
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.models.core import workflow as _workflow_model
@@ -8,7 +11,7 @@ from flytekit.models.core import workflow as _workflow_model
 class SdkTaskNode(_workflow_model.TaskNode, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(self, sdk_task):
         """
-        :param flytekit.common.tasks.task.SdkTask sdk_task:
+        :param flytekit.common.platform.sdk_task.SdkTask sdk_task:
         """
         self._sdk_task = sdk_task
         super(SdkTaskNode, self).__init__(None)
@@ -24,7 +27,7 @@ class SdkTaskNode(_workflow_model.TaskNode, metaclass=_sdk_bases.ExtendedSdkType
     @property
     def sdk_task(self):
         """
-        :rtype: flytekit.common.tasks.task.SdkTask
+        :rtype: flytekit.common.platform.sdk_task.SdkTask
         """
         return self._sdk_task
 
@@ -38,12 +41,11 @@ class SdkTaskNode(_workflow_model.TaskNode, metaclass=_sdk_bases.ExtendedSdkType
         :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.task.TaskTemplate] tasks:
         :rtype: SdkTaskNode
         """
-        from flytekit.common.tasks import task as _task
 
         if base_model.reference_id in tasks:
             t = tasks[base_model.reference_id]
             _logging.info(f"Found existing task template for {t.id}, will not retrieve from Admin")
-            sdk_task = _task.SdkTask.promote_from_model(t)
+            sdk_task = flytekit.platform.sdk_task.SdkTask.promote_from_model(t)
             sdk_task._has_registered = True
             return cls(sdk_task)
 
@@ -53,7 +55,7 @@ class SdkTaskNode(_workflow_model.TaskNode, metaclass=_sdk_bases.ExtendedSdkType
         domain = base_model.reference_id.domain
         name = base_model.reference_id.name
         version = base_model.reference_id.version
-        sdk_task = _task.SdkTask.fetch(project, domain, name, version)
+        sdk_task = flytekit.platform.sdk_task.SdkTask.fetch(project, domain, name, version)
         return cls(sdk_task)
 
 
@@ -133,13 +135,13 @@ class SdkWorkflowNode(_workflow_model.WorkflowNode, metaclass=_sdk_bases.Extende
         name = base_model.reference.name
         version = base_model.reference.version
         if base_model.launchplan_ref is not None:
-            sdk_launch_plan = _launch_plan.SdkLaunchPlan.fetch(project, domain, name, version)
+            sdk_launch_plan = flytekit.platform.sdk_launch_plan.SdkLaunchPlan.fetch(project, domain, name, version)
             return cls(sdk_launch_plan=sdk_launch_plan)
         elif base_model.sub_workflow_ref is not None:
             # The workflow templates for sub-workflows should have been included in the original response
             if base_model.reference in sub_workflows:
                 sw = sub_workflows[base_model.reference]
-                promoted = _workflow.SdkWorkflow.promote_from_model(sw, sub_workflows=sub_workflows, tasks=tasks)
+                promoted = flytekit.platform.sdk_workflow.SdkWorkflow.promote_from_model(sw, sub_workflows=sub_workflows, tasks=tasks)
                 return cls(sdk_workflow=promoted)
 
             # If not found for some reason, fetch it from Admin again.
@@ -149,7 +151,7 @@ class SdkWorkflowNode(_workflow_model.WorkflowNode, metaclass=_sdk_bases.Extende
             _logging.warning(
                 "Your subworkflow with id {} is not included in the promote call.".format(base_model.reference)
             )
-            sdk_workflow = _workflow.SdkWorkflow.fetch(project, domain, name, version)
+            sdk_workflow = flytekit.platform.sdk_workflow.SdkWorkflow.fetch(project, domain, name, version)
             return cls(sdk_workflow=sdk_workflow)
         else:
             raise _system_exceptions.FlyteSystemException(

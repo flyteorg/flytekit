@@ -18,7 +18,7 @@ mm.return_value = 100
 
 def get_sample_task():
     """
-    :rtype: flytekit.common.tasks.task.SdkTask
+    :rtype: flytekit.common.platform.sdk_task.SdkTask
     """
 
     @inputs(a=primitives.Integer)

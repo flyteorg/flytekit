@@ -3,11 +3,11 @@ from typing import List as _List
 
 import click
 
+import flytekit.platform.sdk_task
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PACKAGES, CTX_PROJECT, CTX_TEST
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable_task
-from flytekit.common.tasks import task as _task
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import get_additional_distribution_loc as _get_additional_distribution_loc
@@ -82,7 +82,8 @@ def fast_register_tasks_only(
     )
 
     # Discover all tasks by loading the module
-    for m, k, t in iterate_registerable_entities_in_order(pkgs, include_entities={_task.SdkTask}):
+    for m, k, t in iterate_registerable_entities_in_order(pkgs, include_entities={
+        flytekit.platform.sdk_task.SdkTask}):
         name = _utils.fqdn(m.__name__, k, entity_type=t.resource_type)
 
         if test:

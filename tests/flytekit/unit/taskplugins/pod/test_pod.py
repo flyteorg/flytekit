@@ -2,11 +2,11 @@ from typing import List
 
 from k8s.io.api.core.v1 import generated_pb2
 
-from flytekit.annotated import context_manager
-from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig, RegistrationSettings
-from flytekit.annotated.dynamic_workflow_task import dynamic
-from flytekit.annotated.resources import Resources
-from flytekit.annotated.task import task
+from flytekit.core import context_manager
+from flytekit.core.context_manager import ExecutionState, Image, ImageConfig, RegistrationSettings
+from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.resources import Resources
+from flytekit.core.task import task
 from flytekit.taskplugins.pod.task import Pod, PodFunctionTask
 
 

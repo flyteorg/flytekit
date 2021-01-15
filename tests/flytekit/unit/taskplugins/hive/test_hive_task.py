@@ -1,11 +1,11 @@
 import pandas
 import pytest
 
-from flytekit.annotated import context_manager
-from flytekit.annotated.base_task import kwtypes
-from flytekit.annotated.context_manager import Image, ImageConfig
-from flytekit.annotated.testing import task_mock
-from flytekit.annotated.workflow import workflow
+from flytekit.core import context_manager
+from flytekit.core.base_task import kwtypes
+from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.testing import task_mock
+from flytekit.core.workflow import workflow
 from flytekit.common.translator import get_serializable
 from flytekit.taskplugins.hive.task import HiveConfig, HiveSelectTask, HiveTask
 from flytekit.types.schema import FlyteSchema

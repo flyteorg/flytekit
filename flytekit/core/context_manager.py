@@ -134,7 +134,7 @@ class CompilationState(object):
           us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
           # TODO: Ketan to revisit this whole concept when we re-organize the new structure
         """
-        from flytekit.annotated.node import Node
+        from flytekit.core.node import Node
 
         self._nodes: List[Node] = []
         self._old_prefix = ""

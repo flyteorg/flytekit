@@ -5,8 +5,8 @@ from flyteidl.admin import task_pb2 as _admin_task_pb2
 from mock import MagicMock as _MagicMock
 from mock import patch as _patch
 
+import flytekit.platform.sdk_task
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.tasks import task as _task
 from flytekit.common.tasks.presto_task import SdkPrestoTask
 from flytekit.common.types import primitives
 from flytekit.configuration import TemporaryConfiguration
@@ -26,7 +26,7 @@ def test_fetch_latest(mock_url, mock_client_manager):
     mock_client = _MagicMock()
     mock_client.list_tasks_paginated = _MagicMock(return_value=([admin_task], ""))
     mock_client_manager.return_value.client = mock_client
-    task = _task.SdkTask.fetch_latest("p1", "d1", "n1")
+    task = flytekit.platform.sdk_task.SdkTask.fetch_latest("p1", "d1", "n1")
     assert task.id == admin_task.id
 
 
@@ -38,7 +38,7 @@ def test_fetch_latest_not_exist(mock_url, mock_client_manager):
     mock_client_manager.return_value.client = mock_client
     mock_url.get.return_value = "localhost"
     with _pytest.raises(_user_exceptions.FlyteEntityNotExistException):
-        _task.SdkTask.fetch_latest("p1", "d1", "n1")
+        flytekit.platform.sdk_task.SdkTask.fetch_latest("p1", "d1", "n1")
 
 
 def get_sample_task():

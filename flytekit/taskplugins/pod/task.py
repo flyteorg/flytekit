@@ -3,10 +3,10 @@ from typing import Any, Callable, Dict, Tuple, Union
 from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf.json_format import MessageToDict
 
-from flytekit.annotated.context_manager import FlyteContext, RegistrationSettings
-from flytekit.annotated.promise import Promise
-from flytekit.annotated.python_function_task import PythonFunctionTask
-from flytekit.annotated.task import TaskPlugins
+from flytekit.core.context_manager import FlyteContext, RegistrationSettings
+from flytekit.core.promise import Promise
+from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.task import TaskPlugins
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import task as _task_models
 from flytekit.plugins import k8s as _lazy_k8s

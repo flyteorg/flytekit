@@ -1,10 +1,10 @@
 import typing
 
-from flytekit.annotated import context_manager
-from flytekit.annotated.context_manager import Image, ImageConfig
-from flytekit.annotated.node_creation import create_node
-from flytekit.annotated.task import task
-from flytekit.annotated.workflow import workflow
+from flytekit.core import context_manager
+from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.node_creation import create_node
+from flytekit.core.task import task
+from flytekit.core.workflow import workflow
 from flytekit.common.translator import get_serializable
 
 

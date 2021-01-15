@@ -4,9 +4,9 @@ import datetime
 import typing
 from typing import Optional, Tuple, Union
 
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext
-from flytekit.annotated.node import Node
-from flytekit.annotated.promise import (
+from flytekit.core.context_manager import ExecutionState, FlyteContext
+from flytekit.core.node import Node
+from flytekit.core.promise import (
     ComparisonExpression,
     ComparisonOps,
     ConjunctionExpression,

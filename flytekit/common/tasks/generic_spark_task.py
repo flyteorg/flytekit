@@ -3,11 +3,11 @@ import sys as _sys
 import six as _six
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
+import flytekit.platform.sdk_task
 from flytekit import __version__
 from flytekit.common import interface as _interface
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.tasks import task as _base_tasks
 from flytekit.common.types import helpers as _helpers
 from flytekit.common.types import primitives as _primitives
 from flytekit.configuration import internal as _internal_config
@@ -24,7 +24,7 @@ input_types_supported = {
 }
 
 
-class SdkGenericSparkTask(_base_tasks.SdkTask):
+class SdkGenericSparkTask(flytekit.platform.sdk_task.SdkTask):
     """
     This class includes the additional logic for building a task that executes as a Spark Job.
 

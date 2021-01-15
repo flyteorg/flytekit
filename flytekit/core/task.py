@@ -2,10 +2,10 @@ import datetime as _datetime
 import inspect
 from typing import Any, Callable, Dict, Optional, Type, Union
 
-from flytekit.annotated.base_task import TaskMetadata
-from flytekit.annotated.interface import transform_signature_to_interface
-from flytekit.annotated.python_function_task import PythonFunctionTask
-from flytekit.annotated.reference_entity import ReferenceEntity, TaskReference
+from flytekit.core.base_task import TaskMetadata
+from flytekit.core.interface import transform_signature_to_interface
+from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 
 
 class TaskPlugins(object):

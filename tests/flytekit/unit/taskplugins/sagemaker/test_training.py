@@ -5,7 +5,7 @@ import pytest
 
 import flytekit
 from flytekit import task
-from flytekit.annotated.context_manager import Image, ImageConfig, RegistrationSettings
+from flytekit.core.context_manager import Image, ImageConfig, RegistrationSettings
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.taskplugins.sagemaker import (
     AlgorithmName,

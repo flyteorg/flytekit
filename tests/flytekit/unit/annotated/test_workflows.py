@@ -2,10 +2,10 @@ import typing
 
 import pytest
 
-from flytekit.annotated import context_manager
-from flytekit.annotated.context_manager import Image, ImageConfig
-from flytekit.annotated.task import task
-from flytekit.annotated.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
+from flytekit.core import context_manager
+from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.task import task
+from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
 from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.common.translator import get_serializable
 

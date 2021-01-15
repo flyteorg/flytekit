@@ -20,7 +20,6 @@ from flytekit.common.core.identifier import WorkflowExecutionIdentifier
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import output as _task_output
-from flytekit.common.tasks import task as _base_task
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import resources as _resource_config
@@ -264,7 +263,7 @@ class SdkRunnableTaskStyle(enum.Enum):
     V1 = 1
 
 
-class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
+class SdkRunnableTask(flytekit.platform.sdk_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
     """
     This class includes the additional logic for building a task that executes in Python code.  It has even more
     validation checks to ensure proper behavior than it's superclasses.

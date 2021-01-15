@@ -7,16 +7,16 @@ from typing import List
 
 import click
 
-from flytekit.annotated import context_manager as flyte_context
-from flytekit.annotated.base_task import PythonTask
-from flytekit.annotated.context_manager import InstanceVar
-from flytekit.annotated.launch_plan import LaunchPlan
-from flytekit.annotated.workflow import Workflow
+import flytekit.platform.sdk_task
+from flytekit.core import context_manager as flyte_context
+from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import InstanceVar
+from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.workflow import Workflow
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions.scopes import system_entry_point
-from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.translator import get_serializable
 from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
 from flytekit.configuration import internal as _internal_config
@@ -53,7 +53,8 @@ def serialize_tasks_only(pkgs, folder=None):
     # k = value of dir(m), type str
     # o = object (e.g. SdkWorkflow)
     loaded_entities = []
-    for m, k, o in iterate_registerable_entities_in_order(pkgs, include_entities={_sdk_task.SdkTask}):
+    for m, k, o in iterate_registerable_entities_in_order(pkgs, include_entities={
+        flytekit.platform.sdk_task.SdkTask}):
         name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
         _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
         o._id = _identifier.Identifier(
