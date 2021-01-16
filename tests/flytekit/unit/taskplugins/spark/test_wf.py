@@ -3,7 +3,7 @@ import typing
 import flytekit
 from flytekit import kwtypes, task, workflow
 from flytekit.plugins import pandas, pyspark
-from flytekit.taskplugins.spark import Spark
+from taskplugins.spark import Spark
 from flytekit.types import FlyteSchema
 
 

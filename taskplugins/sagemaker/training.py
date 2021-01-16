@@ -13,7 +13,7 @@ from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.models.sagemaker import training_job as _training_job_models
-from flytekit.taskplugins.sagemaker.distributed_training import DistributedTrainingContext
+from taskplugins import DistributedTrainingContext
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import FlyteFile
 

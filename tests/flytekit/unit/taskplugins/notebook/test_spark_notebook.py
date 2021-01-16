@@ -1,8 +1,8 @@
 import os
 
 from flytekit import kwtypes
-from flytekit.taskplugins.notebook import NotebookTask
-from flytekit.taskplugins.spark import Spark
+from taskplugins import NotebookTask
+from taskplugins.spark import Spark
 from flytekit.types.schema import FlyteSchema
 
 

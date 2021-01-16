@@ -7,7 +7,7 @@ from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfi
 from flytekit.annotated.dynamic_workflow_task import dynamic
 from flytekit.annotated.resources import Resources
 from flytekit.annotated.task import task
-from flytekit.taskplugins.pod.task import Pod, PodFunctionTask
+from taskplugins.pod import Pod, PodFunctionTask
 
 
 def get_pod_spec():

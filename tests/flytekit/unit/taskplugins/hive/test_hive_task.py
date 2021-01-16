@@ -7,7 +7,7 @@ from flytekit.annotated.context_manager import Image, ImageConfig
 from flytekit.annotated.testing import task_mock
 from flytekit.annotated.workflow import workflow
 from flytekit.common.translator import get_serializable
-from flytekit.taskplugins.hive.task import HiveConfig, HiveSelectTask, HiveTask
+from taskplugins import HiveConfig, HiveSelectTask, HiveTask
 from flytekit.types.schema import FlyteSchema
 
 

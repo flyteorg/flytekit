@@ -1,7 +1,7 @@
 import flytekit
 from flytekit import task
 from flytekit.annotated.context_manager import Image, ImageConfig, RegistrationSettings
-from flytekit.taskplugins.spark import Spark
+from taskplugins.spark import Spark
 
 
 def test_spark_task():

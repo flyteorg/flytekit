@@ -2,7 +2,7 @@ import datetime
 import os
 
 from flytekit import kwtypes
-from flytekit.taskplugins.notebook import NotebookTask
+from taskplugins import NotebookTask
 from flytekit.types.file import PythonNotebook
 from tests.flytekit.unit.taskplugins.notebook.testdata.datatype import X
 
