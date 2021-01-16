@@ -133,7 +133,7 @@ make test
 
 ### Updating requirements
 
-Update requirements in [`setup.py`](setup.py), or update requirements for development in [`dev-requirements.in`](dev-requirements.in). Then, validate, pin and freeze all requirements by running:
+Update requirements in [`requirements.in`](requirements.in) (or [`requirements-spark3.in`](requirements-spark3.in)), or update requirements for development in [`dev-requirements.in`](dev-requirements.in). Then, validate, pin and freeze all requirements by running:
 
 ```bash
 source ~/.virtualenvs/flytekit/bin/activate
