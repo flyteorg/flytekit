@@ -140,4 +140,4 @@ source ~/.virtualenvs/flytekit/bin/activate
 make requirements
 ```
 
-This will re-create the [`requirements.txt`](requirements.txt) and [`dev-requirements.txt`](dev-requirements.txt) files which will be used for testing. You will have also have to re-run `make setup` to update your local environment with the updated requirements.
+This will re-create the [`requirements.txt`](requirements.txt) (or [`requirements-spark3.in`](requirements-spark3.in)) and [`dev-requirements.txt`](dev-requirements.txt) files which will be used for testing. You will have also have to re-run `make setup` to update your local environment with the updated requirements.
