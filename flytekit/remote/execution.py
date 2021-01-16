@@ -43,7 +43,7 @@ def execute(
     # If serialization settings are supplied, first serialize and register the entity before attempting to launch
     # an execution with it.
     # If the entity already exists as is, that's fine. We will proceed to execute it regardless.
-    if isinstance(entity, ContainerTask):
+    if isinstance(entity, ContainerTask) and serialization_settings is not None:
         with flyte_context.FlyteContext.current_context().new_serialization_settings(
             serialization_settings=serialization_settings
         ) as ctx:
