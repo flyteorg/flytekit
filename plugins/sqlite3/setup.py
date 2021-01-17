@@ -4,7 +4,8 @@ PLUGIN_NAME = "sqlite3"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit==0.16.0a2"]
+# Maybe remove pandas
+plugin_requires = ["flytekit==0.16.0a2", "pandas"]
 
 setup(
     name=microlib_name,

@@ -1,4 +1,4 @@
-from taskplugins.sqlite3 import SQLite3Config, SQLite3Task
+from flytekitplugins.sqlite3.task import SQLite3Config, SQLite3Task
 
 from flytekit import kwtypes, task, workflow
 from flytekit.plugins import pandas

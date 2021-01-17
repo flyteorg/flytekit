@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from flytekit import FlyteContext, kwtypes
 from flytekit.annotated.base_sql_task import SQLTask
 from flytekit.annotated.python_function_task import PythonInstanceTask
-from flytekit.plugins import pandas as pd
+import pandas as pd
 from flytekit.types.schema import FlyteSchema
 
 
