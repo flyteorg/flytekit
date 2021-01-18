@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "notebook"
+PLUGIN_NAME = "pod"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
