@@ -1,6 +1,6 @@
 import pandas
 import pytest
-from plugins.hive.flytekitplugins.hive.task import HiveConfig, HiveSelectTask, HiveTask
+from flytekitplugins.hive.task import HiveConfig, HiveSelectTask, HiveTask
 
 from flytekit.annotated import context_manager
 from flytekit.annotated.base_task import kwtypes
