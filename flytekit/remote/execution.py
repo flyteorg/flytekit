@@ -5,12 +5,11 @@ from flytekit import ContainerTask
 from flytekit.annotated import context_manager as flyte_context
 from flytekit.annotated.context_manager import SerializationSettings
 from flytekit.annotated.promise import translate_inputs_to_literals
-from flytekit.annotated.reference_entity import ReferenceEntity, TaskReference
 from flytekit.clients.friendly import SynchronousFlyteClient
-from flytekit.common.core.identifier import WorkflowExecutionIdentifier, Identifier
+from flytekit.common.core.identifier import Identifier, WorkflowExecutionIdentifier
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.translator import get_serializable
-from flytekit.common.types.helpers import pack_python_std_map_to_literal_map, get_sdk_type_from_literal_type
+from flytekit.common.types.helpers import get_sdk_type_from_literal_type, pack_python_std_map_to_literal_map
 from flytekit.common.workflow_execution import SdkWorkflowExecution
 from flytekit.configuration import auth as auth_config
 from flytekit.configuration import platform as platform_config
@@ -77,7 +76,14 @@ def execute(
             )
         elif entity.resource_type == ResourceType.LAUNCH_PLAN:
             lp_model = client.get_launch_plan(entity)
-            # TODO: fetch reference workflow and use that interface.
+            workflow_model = client.get_workflow(lp_model.spec.workflow_id)
+            input_literal_map = pack_python_std_map_to_literal_map(
+                inputs,
+                {
+                    k: get_sdk_type_from_literal_type(v.type)
+                    for k, v in workflow_model.closure.compiled_workflow.primary.template.interface.inputs.items()
+                },
+            )
 
     exec_parameters = exec_parameters if exec_parameters is not None else ExecutionParameters()
     disable_all = exec_parameters.notifications == []
