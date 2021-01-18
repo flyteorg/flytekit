@@ -32,20 +32,20 @@ def test_serialization():
         return hive_task(my_schema=in_schema, ds=ds)
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="proj",
         domain="dom",
         version="123",
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
         env={},
     )
-    sdk_task = get_serializable(registration_settings, hive_task)
+    sdk_task = get_serializable(serialization_settings, hive_task)
     assert "{{ .rawOutputDataPrefix" in sdk_task.custom["query"]["query"]
     assert "insert overwrite directory" in sdk_task.custom["query"]["query"]
     assert len(sdk_task.interface.inputs) == 2
     assert len(sdk_task.interface.outputs) == 1
 
-    sdk_wf = get_serializable(registration_settings, my_wf)
+    sdk_wf = get_serializable(serialization_settings, my_wf)
     assert sdk_wf.interface.outputs["o0"].type.schema is not None
     assert sdk_wf.outputs[0].var == "o0"
     assert sdk_wf.outputs[0].binding.promise.node_id == "n0"
@@ -104,18 +104,18 @@ def test_query_no_inputs_or_outputs():
         hive_task()
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="proj",
         domain="dom",
         version="123",
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
         env={},
     )
-    sdk_task = get_serializable(registration_settings, hive_task)
+    sdk_task = get_serializable(serialization_settings, hive_task)
     assert len(sdk_task.interface.inputs) == 0
     assert len(sdk_task.interface.outputs) == 0
 
-    get_serializable(registration_settings, my_wf)
+    get_serializable(serialization_settings, my_wf)
 
 
 def test_hive_select():

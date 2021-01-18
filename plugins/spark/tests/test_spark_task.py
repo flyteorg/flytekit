@@ -2,7 +2,8 @@ from flytekitplugins.spark import Spark
 
 import flytekit
 from flytekit import task
-from flytekit.annotated.context_manager import Image, ImageConfig, RegistrationSettings
+from flytekit.annotated.context_manager import Image, ImageConfig, SerializationSettings
+from flytekit.taskplugins.spark import Spark
 
 
 def test_spark_task():
@@ -16,7 +17,7 @@ def test_spark_task():
     assert my_spark.task_config.spark_conf == {"spark": "1"}
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    reg = RegistrationSettings(
+    settings = SerializationSettings(
         project="project",
         domain="domain",
         version="version",
@@ -24,7 +25,7 @@ def test_spark_task():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
 
-    assert my_spark.get_custom(reg) == {
+    assert my_spark.get_custom(settings) == {
         "executorPath": "/Users/ketanumare/.virtualenvs/flytekit/bin/python",
         "mainApplicationFile": "local:///Users/ketanumare/src/flytekit/flytekit/bin/entrypoint.py",
         "sparkConf": {"spark": "1"},

@@ -58,3 +58,25 @@ class DistributedTrainingContext(object):
                 raise KeyError
 
             return DistributedTrainingContext(curr_host, hosts, nw_iface)
+
+    @classmethod
+    def local_execute(cls) -> DistributedTrainingContext:
+        """
+        Creates a dummy local execution context for distributed execution.
+        TODO revisit if this is a good idea
+        """
+        return DistributedTrainingContext(hosts=["localhost"], current_host="localhost", network_interface_name="dummy")
+
+
+DISTRIBUTED_TRAINING_CONTEXT_KEY = "DISTRIBUTED_TRAINING_CONTEXT"
+"""
+Use this key to retrieve the distributed training context of type :py:class:`DistributedTrainingContext`.
+Usage:
+
+.. code-block:: python
+
+    ctx = flytekit.current_context().distributed_training_context
+    # OR
+    ctx = flytekit.current_context().get(sagemaker.DISTRIBUTED_TRAINING_CONTEXT_KEY)
+
+"""

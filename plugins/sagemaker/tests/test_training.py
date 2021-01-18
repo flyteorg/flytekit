@@ -7,7 +7,7 @@ from flytekitplugins.sagemaker.training import SagemakerBuiltinAlgorithmsTask, S
 
 import flytekit
 from flytekit import task
-from flytekit.annotated.context_manager import Image, ImageConfig, RegistrationSettings
+from flytekit.annotated.context_manager import Image, ImageConfig, SerializationSettings
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.models.sagemaker.training_job import (
     AlgorithmName,
@@ -19,14 +19,14 @@ from flytekit.models.sagemaker.training_job import (
 
 def _get_reg_settings():
     default_img = Image(name="default", fqn="test", tag="tag")
-    reg = RegistrationSettings(
+    settings = SerializationSettings(
         project="project",
         domain="domain",
         version="version",
         env={"FOO": "baz"},
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    return reg
+    return settings
 
 
 def test_builtin_training():

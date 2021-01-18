@@ -403,8 +403,8 @@ def test_wf1_with_dynamic():
     x = my_wf(a=v, b="hello ")
     assert x == ("hello hello ", ["world-" + str(i) for i in range(2, v + 2)])
 
-    with context_manager.FlyteContext.current_context().new_registration_settings(
-        registration_settings=context_manager.RegistrationSettings(
+    with context_manager.FlyteContext.current_context().new_serialization_settings(
+        serialization_settings=context_manager.SerializationSettings(
             project="test_proj",
             domain="test_domain",
             version="abc",
@@ -610,18 +610,18 @@ def test_lp_serialize():
     lp = launch_plan.LaunchPlan.create("serialize_test1", my_subwf)
     lp_with_defaults = launch_plan.LaunchPlan.create("serialize_test2", my_subwf, default_inputs={"a": 3})
 
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="proj",
         domain="dom",
         version="123",
         image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
     )
-    sdk_lp = get_serializable(registration_settings, lp)
+    sdk_lp = get_serializable(serialization_settings, lp)
     assert len(sdk_lp.default_inputs.parameters) == 0
     assert len(sdk_lp.fixed_inputs.literals) == 0
 
-    sdk_lp = get_serializable(registration_settings, lp_with_defaults)
+    sdk_lp = get_serializable(serialization_settings, lp_with_defaults)
     assert len(sdk_lp.default_inputs.parameters) == 1
     assert len(sdk_lp.fixed_inputs.literals) == 0
 
@@ -922,7 +922,7 @@ def test_environment():
         x = t1(a=a)
         return x
 
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -930,7 +930,7 @@ def test_environment():
         env={"FOO": "foo", "BAR": "bar"},
     )
     with context_manager.FlyteContext.current_context().new_compilation_context():
-        sdk_task = get_serializable(registration_settings, t1)
+        sdk_task = get_serializable(serialization_settings, t1)
         assert sdk_task.container.env == {"FOO": "foofoo", "BAR": "bar", "BAZ": "baz"}
 
 
@@ -950,7 +950,7 @@ def test_resources():
         x = t1(a=a)
         return x
 
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -958,7 +958,7 @@ def test_resources():
         env={},
     )
     with context_manager.FlyteContext.current_context().new_compilation_context():
-        sdk_task = get_serializable(registration_settings, t1)
+        sdk_task = get_serializable(serialization_settings, t1)
         assert sdk_task.container.resources.requests == [
             _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "1")
         ]
@@ -967,7 +967,7 @@ def test_resources():
             _resource_models.ResourceEntry(_resource_models.ResourceName.MEMORY, "400M"),
         ]
 
-        sdk_task2 = get_serializable(registration_settings, t2)
+        sdk_task2 = get_serializable(serialization_settings, t2)
         assert sdk_task2.container.resources.requests == [
             _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "3")
         ]

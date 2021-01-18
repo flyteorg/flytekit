@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, Optional
 
 from google.protobuf.json_format import MessageToDict
 
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext, RegistrationSettings
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext, SerializationSettings
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
@@ -68,7 +68,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
             task_config=task_config, task_type=self._SPARK_TASK_TYPE, task_function=task_function, **kwargs,
         )
 
-    def get_custom(self, settings: RegistrationSettings) -> Dict[str, Any]:
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         from flytekit.bin import entrypoint as _entrypoint
 
         spark_exec_path = os.path.abspath(_entrypoint.__file__)

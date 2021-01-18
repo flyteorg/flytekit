@@ -4,7 +4,7 @@ import pytest
 
 from flytekit import task, workflow
 from flytekit.annotated.condition import conditional
-from flytekit.annotated.context_manager import Image, ImageConfig, RegistrationSettings
+from flytekit.annotated.context_manager import Image, ImageConfig, SerializationSettings
 from flytekit.common.translator import get_serializable
 
 
@@ -107,7 +107,7 @@ def test_condition_tuple_branches():
     assert y == 1
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    registration_settings = RegistrationSettings(
+    serialization_settings = SerializationSettings(
         project="project",
         domain="domain",
         version="version",
@@ -115,5 +115,5 @@ def test_condition_tuple_branches():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
 
-    sdk_wf = get_serializable(registration_settings, math_ops)
+    sdk_wf = get_serializable(serialization_settings, math_ops)
     assert sdk_wf.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name == "test_conditions.sum_sub"

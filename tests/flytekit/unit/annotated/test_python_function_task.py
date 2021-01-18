@@ -1,8 +1,36 @@
 import pytest
 
 from flytekit import task
-from flytekit.annotated.context_manager import Image, ImageConfig, RegistrationSettings
-from flytekit.annotated.python_function_task import PythonFunctionTask, get_registerable_container_image
+from flytekit.annotated.context_manager import Image, ImageConfig, SerializationSettings
+from flytekit.annotated.python_function_task import (
+    PythonFunctionTask,
+    get_registerable_container_image,
+    isnested,
+    istestfunction,
+)
+from tests.flytekit.unit.annotated import tasks
+
+
+def foo():
+    pass
+
+
+def test_isnested():
+    def inner_foo():
+        pass
+
+    assert isnested(foo) is False
+    assert isnested(inner_foo) is True
+
+    # Uses tasks.tasks method
+    with pytest.raises(ValueError):
+        tasks.tasks()
+
+
+def test_istestfunction():
+    assert istestfunction(foo) is True
+    assert istestfunction(isnested) is False
+    assert istestfunction(tasks.tasks) is False
 
 
 def test_container_image_conversion():
@@ -46,7 +74,7 @@ def test_py_func_task_get_container():
     other_img = Image(name="other", fqn="xyz.com/other", tag="tag-other")
     cfg = ImageConfig(default_image=default_img, images=[default_img, other_img])
 
-    settings = RegistrationSettings(project="p", domain="d", version="v", image_config=cfg, env={"FOO": "bar"})
+    settings = SerializationSettings(project="p", domain="d", version="v", image_config=cfg, env={"FOO": "bar"})
 
     pytask = PythonFunctionTask(None, foo, None, environment={"BAZ": "baz"})
     c = pytask.get_container(settings)

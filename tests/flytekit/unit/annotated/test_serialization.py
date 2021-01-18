@@ -37,19 +37,19 @@ def test_serialization():
         return sum(x=square(val=val1), y=square(val=val2))
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf = get_serializable(registration_settings, raw_container_wf)
+    wf = get_serializable(serialization_settings, raw_container_wf)
     assert wf is not None
     assert len(wf.nodes) == 3
-    sqn = get_serializable(registration_settings, square)
+    sqn = get_serializable(serialization_settings, square)
     assert sqn.container.image == "alpine"
-    sumn = get_serializable(registration_settings, sum)
+    sumn = get_serializable(serialization_settings, sum)
     assert sumn.container.image == "alpine"
 
 
@@ -78,14 +78,14 @@ def test_serialization_branch_complex():
         return x, f
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf = get_serializable(registration_settings, my_wf)
+    wf = get_serializable(serialization_settings, my_wf)
     assert wf is not None
     assert len(wf.nodes) == 3
     assert wf.nodes[1].branch_node is not None
@@ -107,14 +107,14 @@ def test_serialization_branch_sub_wf():
         return d
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf = get_serializable(registration_settings, my_wf)
+    wf = get_serializable(serialization_settings, my_wf)
     assert wf is not None
     assert len(wf.nodes[0].inputs) == 1
     assert wf.nodes[0].inputs[0].var == ".a"
@@ -140,14 +140,14 @@ def test_serialization_branch_compound_conditions():
         return d
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf = get_serializable(registration_settings, my_wf)
+    wf = get_serializable(serialization_settings, my_wf)
     assert wf is not None
     assert len(wf.nodes[0].inputs) == 1
     assert wf.nodes[0].inputs[0].var == ".a"
@@ -178,14 +178,14 @@ def test_serialization_branch_complex_2():
         return x, f
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf = get_serializable(registration_settings, my_wf)
+    wf = get_serializable(serialization_settings, my_wf)
     assert wf is not None
     assert wf.nodes[1].inputs[0].var == "n0.t1_int_output"
 
@@ -212,14 +212,14 @@ def test_serialization_branch():
     assert my_wf(a=2) == "hello"
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    registration_settings = context_manager.RegistrationSettings(
+    serialization_settings = context_manager.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf = get_serializable(registration_settings, my_wf)
+    wf = get_serializable(serialization_settings, my_wf)
     assert wf is not None
     assert len(wf.nodes) == 2
     assert wf.nodes[1].branch_node is not None
@@ -248,7 +248,7 @@ def test_serialization_images():
 
     os.environ["FLYTE_INTERNAL_IMAGE"] = "docker.io/default:version"
     set_flyte_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config"))
-    rs = context_manager.RegistrationSettings(
+    rs = context_manager.SerializationSettings(
         project="project", domain="domain", version="version", env=None, image_config=get_image_config(),
     )
     t1_ser = get_serializable(rs, t1)

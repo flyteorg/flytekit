@@ -115,15 +115,15 @@ def serialize_all(
         _internal_config.IMAGE.env_var: image,
     }
 
-    registration_settings = flyte_context.RegistrationSettings(
+    serialization_settings = flyte_context.SerializationSettings(
         project=_PROJECT_PLACEHOLDER,
         domain=_DOMAIN_PLACEHOLDER,
         version=_VERSION_PLACEHOLDER,
         image_config=flyte_context.get_image_config(img_name=image),
         env=env,
     )
-    with flyte_context.FlyteContext.current_context().new_registration_settings(
-        registration_settings=registration_settings
+    with flyte_context.FlyteContext.current_context().new_serialization_settings(
+        serialization_settings=serialization_settings
     ) as ctx:
         loaded_entities = []
         for m, k, o in iterate_registerable_entities_in_order(pkgs, local_source_root=local_source_root):
@@ -133,7 +133,7 @@ def serialize_all(
                 o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
             )
             loaded_entities.append(o)
-            ctx.registration_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
+            ctx.serialization_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
 
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
 
@@ -151,18 +151,18 @@ def serialize_all(
             if isinstance(entity, PythonTask) or isinstance(entity, Workflow) or isinstance(entity, LaunchPlan):
                 if isinstance(entity, PythonTask):
                     if mode == SerializationMode.DEFAULT:
-                        serializable = get_serializable(ctx.registration_settings, entity)
+                        serializable = get_serializable(ctx.serialization_settings, entity)
                     elif mode == SerializationMode.FAST:
-                        serializable = get_serializable(ctx.registration_settings, entity, fast=True)
+                        serializable = get_serializable(ctx.serialization_settings, entity, fast=True)
                     else:
                         raise AssertionError(f"Unrecognized serialization mode: {mode}")
                 else:
-                    serializable = get_serializable(ctx.registration_settings, entity)
+                    serializable = get_serializable(ctx.serialization_settings, entity)
                 loaded_entities.append(serializable)
 
                 if isinstance(entity, Workflow):
                     lp = LaunchPlan.get_default_launch_plan(ctx, entity)
-                    launch_plan = get_serializable(ctx.registration_settings, lp)
+                    launch_plan = get_serializable(ctx.serialization_settings, lp)
                     loaded_entities.append(launch_plan)
 
         zero_padded_length = _determine_text_chars(len(loaded_entities))
