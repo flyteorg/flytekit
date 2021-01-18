@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, TypeVar
 from google.protobuf.json_format import MessageToDict
 
 import flytekit
-from flytekit.annotated.base_task import PythonTask, kwtypes
+from flytekit.annotated.base_task import IgnoreOutputs, PythonTask, kwtypes
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext, SerializationSettings
 from flytekit.annotated.interface import Interface
 from flytekit.annotated.python_function_task import PythonFunctionTask
@@ -173,8 +173,7 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
             dctx = flytekit.current_context().distributed_training_context
             if not self.task_config.should_persist_output(dctx):
                 logging.info("output persistence predicate not met, Flytekit will ignore outputs")
-                # TODO for distributed training this will fail, as the parent expects outputs to match
-                return None
+                raise IgnoreOutputs(f"Distributed context - Persistence predicate not met. Ignoring outputs - {dctx}")
         return rval
 
 
