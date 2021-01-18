@@ -2,7 +2,35 @@ import pytest
 
 from flytekit import task
 from flytekit.annotated.context_manager import Image, ImageConfig, SerializationSettings
-from flytekit.annotated.python_function_task import PythonFunctionTask, get_registerable_container_image
+from flytekit.annotated.python_function_task import (
+    PythonFunctionTask,
+    get_registerable_container_image,
+    isnested,
+    istestfunction,
+)
+from tests.flytekit.unit.annotated import tasks
+
+
+def foo():
+    pass
+
+
+def test_isnested():
+    def inner_foo():
+        pass
+
+    assert isnested(foo) is False
+    assert isnested(inner_foo) is True
+
+    # Uses tasks.tasks method
+    with pytest.raises(ValueError):
+        tasks.tasks()
+
+
+def test_istestfunction():
+    assert istestfunction(foo) is True
+    assert istestfunction(isnested) is False
+    assert istestfunction(tasks.tasks) is False
 
 
 def test_container_image_conversion():
