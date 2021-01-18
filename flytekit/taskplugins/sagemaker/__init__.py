@@ -21,5 +21,6 @@ from flytekit.models.sagemaker.training_job import (
     TrainingJobResourceConfig,
 )
 
+from .distributed_training import DISTRIBUTED_TRAINING_CONTEXT_KEY, DistributedTrainingContext
 from .hpo import HPOJob, SagemakerHPOTask
 from .training import SagemakerBuiltinAlgorithmsTask, SagemakerCustomTrainingTask, SagemakerTrainingJobConfig

@@ -162,6 +162,12 @@ class ExecutionParameters(object):
             return True
         return False
 
+    def get(self, key: str) -> typing.Any:
+        """
+        Returns task specific context if present else raise an error. The returned context will match the key
+        """
+        return self.__getattr__(attr_name=key)
+
 
 class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.ExtendedSdkType):
     """

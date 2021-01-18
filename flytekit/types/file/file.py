@@ -214,6 +214,8 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         remote_path = None
         should_upload = True
 
+        if python_val is None:
+            raise AssertionError("None value cannot be converted to a file.")
         if isinstance(python_val, FlyteFile):
             source_path = python_val.path
             if python_val.remote_path is False:

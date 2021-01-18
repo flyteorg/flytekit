@@ -6,8 +6,8 @@ from typing import Any, Callable, Dict, TypeVar
 from google.protobuf.json_format import MessageToDict
 
 import flytekit
-from flytekit.annotated.base_task import PythonTask, kwtypes
-from flytekit.annotated.context_manager import SerializationSettings
+from flytekit.annotated.base_task import IgnoreOutputs, PythonTask, kwtypes
+from flytekit.annotated.context_manager import ExecutionState, FlyteContext, SerializationSettings
 from flytekit.annotated.interface import Interface
 from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
@@ -131,6 +131,9 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
         return MessageToDict(training_job.to_flyte_idl())
 
     def _is_distributed(self) -> bool:
+        """
+        Only if more than one instance is specified, we assume it is a distributed training setup
+        """
         return (
             self.task_config.training_job_resource_config
             and self.task_config.training_job_resource_config.instance_count > 1
@@ -143,11 +146,16 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
         """
         if self._is_distributed():
             logging.info("Distributed context detected!")
-            return (
-                user_params.builder()
-                .add_attr("DISTRIBUTED_TRAINING_CONTEXT", DistributedTrainingContext.from_env())
-                .build()
-            )
+            exec_state = FlyteContext.current_context().execution_state
+            if exec_state and exec_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+                """
+                    This mode indicates we are actually in a remote execute environment (within sagemaker in this case)
+                """
+                dist_ctx = DistributedTrainingContext.from_env()
+            else:
+                dist_ctx = DistributedTrainingContext.local_execute()
+            return user_params.builder().add_attr("DISTRIBUTED_TRAINING_CONTEXT", dist_ctx).build()
+
         return user_params
 
     def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
@@ -163,10 +171,9 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
         if self._is_distributed():
             logging.info("Distributed context detected!")
             dctx = flytekit.current_context().distributed_training_context
-            if self.task_config.should_persist_output(dctx):
+            if not self.task_config.should_persist_output(dctx):
                 logging.info("output persistence predicate not met, Flytekit will ignore outputs")
-                # TODO for distributed training this will fail, as the parent expects outputs to match
-                return None
+                raise IgnoreOutputs(f"Distributed context - Persistence predicate not met. Ignoring outputs - {dctx}")
         return rval
 
 
