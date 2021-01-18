@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import pandas
 import pytest
 from dataclasses_json import dataclass_json
+from joblib import Memory
 
 import flytekit
 from flytekit import ContainerTask, SQLTask, dynamic, kwtypes, maptask
@@ -990,6 +991,10 @@ my_task_calls_count = 0
 
 
 def test_simple_cache():
+    # First bust the cache so we have reproducible tests
+    memory = Memory("/tmp/flyte/user_space", verbose=5)
+    memory.clear()
+
     @task(cache=True, cache_version="1.0")
     def my_task(a: int) -> int:
         global my_task_calls_count
