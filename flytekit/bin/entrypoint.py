@@ -103,10 +103,11 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
         # Step3a
         ctx.file_access.upload_directory(ctx.execution_state.engine_dir, output_prefix)
         _logging.info(f"Outputs written successful the the output prefix {output_prefix}")
-    except IgnoreOutputs as e:
-        # Step3b
-        _logging.warning(f"IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}")
     except Exception as e:
+        if isinstance(e, IgnoreOutputs):
+            # Step 3b
+            _logging.warning(f"IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}")
+            return
         # Step 3c
         _logging.error(f"Exception when executing task {task_def.name}, reason {str(e)}")
         raise e
