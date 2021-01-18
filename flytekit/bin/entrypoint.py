@@ -9,7 +9,7 @@ import random as _random
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit.annotated.base_task import PythonTask
+from flytekit.annotated.base_task import IgnoreOutputs, PythonTask
 from flytekit.annotated.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
 from flytekit.annotated.promise import VoidPromise
 from flytekit.common import constants as _constants
@@ -178,40 +178,47 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                         image_config=get_image_config(),
                         env=env,
                     )
-                    # The reason we need this is because of dynamic tasks. Even if we move compilation all to Admin,
-                    # if a dynamic task calls some task, t1, we have to write to the DJ Spec the correct task
-                    # identifier for t1.
-                    with ctx.new_serialization_settings(serialization_settings=serialization_settings) as ctx:
-                        # Because execution states do not look up the context chain, it has to be made last
-                        with ctx.new_execution_context(
-                            mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
-                        ) as ctx:
-                            # First download the contents of the input file
-                            local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
-                            ctx.file_access.get_data(inputs, local_inputs_file)
-                            input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-                            idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
-                            outputs = task_def.dispatch_execute(ctx, idl_input_literals)
-                            if isinstance(outputs, VoidPromise):
-                                _logging.getLogger().warning("Task produces no outputs")
-                                output_file_dict = {
-                                    _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})
-                                }
-                            elif isinstance(outputs, _literal_models.LiteralMap):
-                                output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
-                            elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
-                                output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
-                            else:
-                                _logging.getLogger().error(f"SystemError: received unknown outputs from task {outputs}")
-                                # TODO This should probably cause an error file
-                                return
 
-                            for k, v in output_file_dict.items():
-                                _common_utils.write_proto_to_file(
-                                    v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k)
-                                )
+                    try:
+                        # The reason we need this is because of dynamic tasks. Even if we move compilation all to Admin,
+                        # if a dynamic task calls some task, t1, we have to write to the DJ Spec the correct task
+                        # identifier for t1.
+                        with ctx.new_serialization_settings(serialization_settings=serialization_settings) as ctx:
+                            # Because execution states do not look up the context chain, it has to be made last
+                            with ctx.new_execution_context(
+                                mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
+                            ) as ctx:
+                                # First download the contents of the input file
+                                local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
+                                ctx.file_access.get_data(inputs, local_inputs_file)
+                                input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+                                idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
+                                outputs = task_def.dispatch_execute(ctx, idl_input_literals)
+                                if isinstance(outputs, VoidPromise):
+                                    _logging.getLogger().warning("Task produces no outputs")
+                                    output_file_dict = {
+                                        _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})
+                                    }
+                                elif isinstance(outputs, _literal_models.LiteralMap):
+                                    output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
+                                elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
+                                    output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
+                                else:
+                                    _logging.getLogger().error(
+                                        f"SystemError: received unknown outputs from task {outputs}"
+                                    )
+                                    # TODO This should probably cause an error file
+                                    return
 
-                            ctx.file_access.upload_directory(ctx.execution_state.engine_dir, output_prefix)
+                                for k, v in output_file_dict.items():
+                                    _common_utils.write_proto_to_file(
+                                        v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k)
+                                    )
+
+                                ctx.file_access.upload_directory(ctx.execution_state.engine_dir, output_prefix)
+                                _logging.info(f"Outputs written successfull the the output prefix {output_prefix}")
+                    except IgnoreOutputs as e:
+                        _logging.warning(f"IgnoreOutputs received! Ouputs.pb will not be uploaded. reason {e}")
 
 
 @_click.group()
