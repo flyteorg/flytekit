@@ -198,7 +198,7 @@ class TypeEngine(typing.Generic[T]):
         if transformer.python_type in cls._REGISTRY:
             existing = cls._REGISTRY[transformer.python_type]
             raise ValueError(
-                f"Transformer {existing.name} for type{transformer.python_type} is already registered."
+                f"Transformer {existing.name} for type {transformer.python_type} is already registered."
                 f" Cannot override with {transformer.name}"
             )
         cls._REGISTRY[transformer.python_type] = transformer
