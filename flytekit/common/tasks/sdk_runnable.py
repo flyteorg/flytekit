@@ -112,7 +112,7 @@ class ExecutionParameters(object):
         return self._logging
 
     @property
-    def working_directory(self) -> _common_utils.AutoDeletingTempDir:
+    def working_directory(self) -> typing.Union[str, _common_utils.AutoDeletingTempDir]:
         """
         A handle to a special working directory for easily producing temporary files.
 

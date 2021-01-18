@@ -4,6 +4,8 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, Union
 
+from joblib import Memory
+
 from flytekit.annotated.context_manager import (
     BranchEvalMode,
     ExecutionState,
@@ -234,7 +236,11 @@ class Task(object):
             with ctx.new_execution_context(
                 mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION, execution_params=new_user_params
             ):
-                return self.execute(**kwargs)
+                execute = self.execute
+                if self.metadata.cache:
+                    memory = Memory(ctx.user_space_params.working_directory, verbose=5)
+                    execute = memory.cache(execute, ignore=["self"])
+                return execute(**kwargs)
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")

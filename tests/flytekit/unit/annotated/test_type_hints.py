@@ -984,3 +984,24 @@ def test_wf_explicitly_returning_empty_task():
         return t1()  # This forces the wf _local_execute to handle VoidPromises
 
     assert my_subwf() is None
+
+
+my_task_calls_count = 0
+
+
+def test_simple_cache():
+    @task(cache=True, cache_version="1.0")
+    def my_task(a: int) -> int:
+        global my_task_calls_count
+        my_task_calls_count += 1
+        return a + 2
+
+    assert my_task(a=3) == 5
+    global my_task_calls_count
+    assert my_task_calls_count == 1
+
+    my_task(a=3)
+    assert my_task_calls_count == 1
+
+    my_task(a=4)
+    assert my_task_calls_count == 2
