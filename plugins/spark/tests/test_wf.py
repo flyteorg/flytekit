@@ -1,10 +1,11 @@
 import typing
 
+import pandas
+import pyspark
 from flytekitplugins.spark.task import Spark
 
 import flytekit
 from flytekit import kwtypes, task, workflow
-import pandas, pyspark
 from flytekit.types.schema import FlyteSchema
 
 

@@ -6,10 +6,11 @@ import tempfile
 import typing
 from dataclasses import dataclass
 
+import pandas as pd
+
 from flytekit import FlyteContext, kwtypes
 from flytekit.annotated.base_sql_task import SQLTask
 from flytekit.annotated.python_function_task import PythonInstanceTask
-import pandas as pd
 from flytekit.types.schema import FlyteSchema
 
 

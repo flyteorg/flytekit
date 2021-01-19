@@ -1,7 +1,7 @@
-from flytekitplugins.sqlite3.task import SQLite3Config, SQLite3Task
+import pandas
 
 from flytekit import kwtypes, task, workflow
-from flytekit.plugins import pandas
+from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 
 # https://www.sqlitetutorial.net/sqlite-sample-database/
 from flytekit.types.schema import FlyteSchema

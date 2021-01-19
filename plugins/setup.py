@@ -1,19 +1,20 @@
 import os
+
 import pip
 from setuptools import setup
 from setuptools.command.develop import develop
 from setuptools.command.install import install
 
-PACKAGE_NAME = 'flytekitplugins-parent'
+PACKAGE_NAME = "flytekitplugins-parent"
 SOURCES = {
-    'flytekitplugins-hive': 'hive',
-    'flytekitplugins-notebook': 'notebook',
-    'flytekitplugins-spark': 'spark',
-    'flytekitplugins-pod': 'pod',
-    'flytekitplugins-pytorch': 'pytorch',
-    'flytekitplugins-sagemaker': 'sagemaker',
-    'flytekitplugins-sqlite3': 'sqlite3',
-    'flytekitplugins-tensorflow': 'tensorflow',
+    "flytekitplugins-hive": "hive",
+    "flytekitplugins-notebook": "notebook",
+    "flytekitplugins-spark": "spark",
+    "flytekitplugins-pod": "pod",
+    "flytekitplugins-pytorch": "pytorch",
+    "flytekitplugins-sagemaker": "sagemaker",
+    "flytekitplugins-sqlite3": "sqlite3",
+    "flytekitplugins-tensorflow": "tensorflow",
 }
 
 
@@ -21,16 +22,15 @@ def install_all_plugins(sources, develop=False):
     """
     Use pip to install all plugins
     """
-    print("Installing all Flyte plugins in {} mode".format(
-        "development" if develop else "normal"))
+    print("Installing all Flyte plugins in {} mode".format("development" if develop else "normal"))
     wd = os.getcwd()
     for k, v in sources.items():
         try:
             os.chdir(os.path.join(wd, v))
             if develop:
-                pip.main(['install', '-e', '.'])
+                pip.main(["install", "-e", "."])
             else:
-                pip.main(['install', '.'])
+                pip.main(["install", "."])
         except Exception as e:
             print("Oops, something went wrong installing", k)
             print(e)
@@ -61,12 +61,7 @@ setup(
     author_email="admin@flyte.org",
     description="Macrolib's description",
     license="TBD",
-    classifiers=[
-        'Private :: Do Not Upload to pypi server',
-    ],
+    classifiers=["Private :: Do Not Upload to pypi server"],
     install_requires=[],
-    cmdclass={
-        'install': InstallCmd,
-        'develop': DevelopCmd,
-    },
+    cmdclass={"install": InstallCmd, "develop": DevelopCmd},
 )

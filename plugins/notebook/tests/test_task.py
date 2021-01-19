@@ -1,10 +1,10 @@
 import datetime
 import os
 
-from plugins.notebook.flytekitplugins.notebook import NotebookTask
-
 from flytekit import kwtypes
 from flytekit.types.file import PythonNotebook
+from plugins.notebook.flytekitplugins.notebook import NotebookTask
+
 from .testdata.datatype import X
 
 

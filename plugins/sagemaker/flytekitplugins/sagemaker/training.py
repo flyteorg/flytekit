@@ -3,8 +3,8 @@ import typing
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, TypeVar
 
-from google.protobuf.json_format import MessageToDict
 from flytekitplugins.sagemaker.distributed_training import DistributedTrainingContext
+from google.protobuf.json_format import MessageToDict
 
 import flytekit
 from flytekit.annotated.base_task import IgnoreOutputs, PythonTask, kwtypes

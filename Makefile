@@ -34,6 +34,7 @@ lint: ## Run linters
 .PHONY: test
 test: lint ## Run tests
 	pytest tests/flytekit/unit -k "not test_task"
+	pytest plugins/*//unit
 	pytest tests/scripts
 	shellcheck **/*.sh
 
@@ -56,4 +57,4 @@ requirements: requirements.txt dev-requirements.txt requirements-spark3.txt ## C
 .PHONY: coverage
 coverage:
 	coverage run -m pytest tests/flytekit/unit/annotated
-	coverage report -m --include="flytekit/annotated/*,flytekit/types/*,flytekit/taskplugins*"
+	coverage report -m --include="flytekit/annotated/*,flytekit/types/*,plugins/*"

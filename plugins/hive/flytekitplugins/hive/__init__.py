@@ -1,1 +1,1 @@
-from .task import HiveSelectTask, HiveTask, HiveConfig
+from .task import HiveConfig, HiveSelectTask, HiveTask

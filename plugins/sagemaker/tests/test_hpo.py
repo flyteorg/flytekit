@@ -1,8 +1,11 @@
 import pytest
-from flytekitplugins.sagemaker.hpo import HPOJob, SagemakerHPOTask
-from flytekitplugins.sagemaker.hpo import HPOTuningJobConfigTransformer, ParameterRangesTransformer
+from flytekitplugins.sagemaker.hpo import (
+    HPOJob,
+    HPOTuningJobConfigTransformer,
+    ParameterRangesTransformer,
+    SagemakerHPOTask,
+)
 from flytekitplugins.sagemaker.training import SagemakerBuiltinAlgorithmsTask, SagemakerTrainingJobConfig
-from plugins.sagemaker.tests.test_training import _get_reg_settings
 
 from flytekit import FlyteContext
 from flytekit.common.types.primitives import Generic
@@ -12,15 +15,9 @@ from flytekit.models.sagemaker.hpo_job import (
     HyperparameterTuningObjectiveType,
     TrainingJobEarlyStoppingType,
 )
-from flytekit.models.sagemaker.parameter_ranges import (
-    IntegerParameterRange,
-    ParameterRangeOneOf,
-)
-from flytekit.models.sagemaker.training_job import (
-    AlgorithmName,
-    AlgorithmSpecification,
-    TrainingJobResourceConfig,
-)
+from flytekit.models.sagemaker.parameter_ranges import IntegerParameterRange, ParameterRangeOneOf
+from flytekit.models.sagemaker.training_job import AlgorithmName, AlgorithmSpecification, TrainingJobResourceConfig
+from plugins.sagemaker.tests.test_training import _get_reg_settings
 
 
 def test_hpo_for_builtin():
