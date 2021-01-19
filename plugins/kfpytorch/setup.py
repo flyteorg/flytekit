@@ -1,18 +1,17 @@
 from setuptools import setup
 
-PLUGIN_NAME = "tensorflow"
+PLUGIN_NAME = "kfpytorch"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-# TODO: Requirements are missing, add them back in later.
-plugin_requires = ["flytekit==0.16.0a2"]
+plugin_requires = ["flytekit>=0.16.0a2"]
 
 setup(
     name=microlib_name,
     version="0.1.0",
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="Your microlib descriton",
+    description="K8s based Pytorch plugin for Flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,

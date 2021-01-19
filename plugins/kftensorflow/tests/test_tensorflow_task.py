@@ -1,4 +1,4 @@
-from flytekitplugins.tensorflow import TfJob
+from flytekitplugins.kftensorflow import TfJob
 
 from flytekit import task
 from flytekit.annotated.context_manager import Image, ImageConfig, SerializationSettings

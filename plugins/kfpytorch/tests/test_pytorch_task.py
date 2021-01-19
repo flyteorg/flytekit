@@ -1,7 +1,8 @@
+from flytekitplugins.kfpytorch.task import PyTorch
+
 from flytekit import task
 from flytekit.annotated.context_manager import Image, ImageConfig, SerializationSettings
 from flytekit.annotated.resources import Resources
-from plugins.pytorch.flytekitplugins.pytorch.task import PyTorch
 
 
 def test_pytorch_task():

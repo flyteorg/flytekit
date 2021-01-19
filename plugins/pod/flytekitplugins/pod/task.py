@@ -9,7 +9,7 @@ from flytekit.annotated.python_function_task import PythonFunctionTask
 from flytekit.annotated.task import TaskPlugins
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import task as _task_models
-from flytekit.plugins import k8s as _lazy_k8s
+import k8s as _lazy_k8s
 
 
 class Pod(object):

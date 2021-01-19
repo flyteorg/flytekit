@@ -4,14 +4,14 @@ PLUGIN_NAME = "pod"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit==0.16.0a2"]
+plugin_requires = ["flytekit>=0.16.0a2", "k8s-proto>=0.0.3,<1.0.0"]
 
 setup(
     name=microlib_name,
     version="0.1.0",
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="Your microlib descriton",
+    description="Flytekit plugin to support K8s Pod tasks",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,

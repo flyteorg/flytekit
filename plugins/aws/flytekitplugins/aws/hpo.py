@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 
 from flyteidl.plugins.sagemaker import hyperparameter_tuning_job_pb2 as _pb2_hpo_job
 from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _pb2_params
-from flytekitplugins.sagemaker.training import SagemakerBuiltinAlgorithmsTask, SagemakerCustomTrainingTask
+from flytekitplugins.aws.training import SagemakerBuiltinAlgorithmsTask, SagemakerCustomTrainingTask
 from google.protobuf import json_format
 from google.protobuf.json_format import MessageToDict
 

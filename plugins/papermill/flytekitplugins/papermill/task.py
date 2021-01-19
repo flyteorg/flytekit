@@ -47,7 +47,7 @@ class NotebookTask(PythonInstanceTask[T]):
 
         ...
         # cell begin
-        from flytekit.plugins.notebook import record_outputs
+        from flytekitplugins.papermill import record_outputs
 
         record_outputs(x=val_x, y=val_y)
         #cell end

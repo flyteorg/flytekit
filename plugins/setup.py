@@ -59,7 +59,7 @@ setup(
     version="0.1.0",
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="Macrolib's description",
+    description="This is a fake package to help install all the plugins",
     license="apache2",
     classifiers=["Private :: Do Not Upload to pypi server"],
     install_requires=[],

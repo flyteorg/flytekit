@@ -1,17 +1,17 @@
 from setuptools import setup
 
-PLUGIN_NAME = "pytorch"
+PLUGIN_NAME = "aws"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit==0.16.0a2"]
+plugin_requires = ["flytekit>=0.16.0a2", "sagemaker-training>=3.6.2,<4.0.0"]
 
 setup(
     name=microlib_name,
     version="0.1.0",
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="Your microlib descriton",
+    description="AWS Plugins for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,

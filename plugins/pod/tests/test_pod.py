@@ -1,5 +1,6 @@
 from typing import List
 
+from flytekitplugins.pod.task import Pod, PodFunctionTask
 from k8s.io.api.core.v1 import generated_pb2
 
 from flytekit.annotated import context_manager
@@ -7,7 +8,6 @@ from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfi
 from flytekit.annotated.dynamic_workflow_task import dynamic
 from flytekit.annotated.resources import Resources
 from flytekit.annotated.task import task
-from plugins.pod.flytekitplugins.pod.task import Pod, PodFunctionTask
 
 
 def get_pod_spec():
