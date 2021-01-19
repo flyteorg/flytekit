@@ -35,6 +35,7 @@ lint: ## Run linters
 test: lint ## Run tests
 	pytest tests/flytekit/unit -k "not test_task"
 	pytest tests/scripts
+	pytest plugins/tests
 	shellcheck **/*.sh
 
 requirements-spark3.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark3.txt
