@@ -1,6 +1,6 @@
 import pytest
-from flytekitplugins.aws.hpo import HPOJob, HPOTuningJobConfigTransformer, ParameterRangesTransformer, SagemakerHPOTask
-from flytekitplugins.aws.training import SagemakerBuiltinAlgorithmsTask, SagemakerTrainingJobConfig
+from flytekitplugins.awssagemaker.hpo import HPOJob, HPOTuningJobConfigTransformer, ParameterRangesTransformer, SagemakerHPOTask
+from flytekitplugins.awssagemaker.training import SagemakerBuiltinAlgorithmsTask, SagemakerTrainingJobConfig
 
 from flytekit import FlyteContext
 from flytekit.common.types.primitives import Generic
@@ -12,7 +12,7 @@ from flytekit.models.sagemaker.hpo_job import (
 )
 from flytekit.models.sagemaker.parameter_ranges import IntegerParameterRange, ParameterRangeOneOf
 from flytekit.models.sagemaker.training_job import AlgorithmName, AlgorithmSpecification, TrainingJobResourceConfig
-from plugins.tests.aws.test_training import _get_reg_settings
+from plugins.tests.awssagemaker.test_training import _get_reg_settings
 
 
 def test_hpo_for_builtin():

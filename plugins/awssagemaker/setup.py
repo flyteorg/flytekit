@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "aws"
+PLUGIN_NAME = "awssagemaker"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 

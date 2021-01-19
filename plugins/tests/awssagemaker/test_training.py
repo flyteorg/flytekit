@@ -2,8 +2,8 @@ import os
 import tempfile
 
 import pytest
-from flytekitplugins.aws.distributed_training import setup_envars_for_testing
-from flytekitplugins.aws.training import SagemakerBuiltinAlgorithmsTask, SagemakerTrainingJobConfig
+from flytekitplugins.awssagemaker.distributed_training import setup_envars_for_testing
+from flytekitplugins.awssagemaker.training import SagemakerBuiltinAlgorithmsTask, SagemakerTrainingJobConfig
 
 import flytekit
 from flytekit import task
