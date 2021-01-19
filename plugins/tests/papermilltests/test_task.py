@@ -5,8 +5,7 @@ from flytekitplugins.papermill import NotebookTask
 
 from flytekit import kwtypes
 from flytekit.types.file import PythonNotebook
-
-from .testdata.datatype import X
+from plugins.tests.papermilltests.testdata.datatype import X
 
 
 def _get_nb_path(name: str, suffix: str = "", abs: bool = True, ext: str = ".ipynb") -> str:

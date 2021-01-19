@@ -24,8 +24,5 @@ def test_spark_task():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
 
-    assert my_spark.get_custom(settings) == {
-        "executorPath": "/Users/ketanumare/.virtualenvs/flytekit/bin/python",
-        "mainApplicationFile": "local:///Users/ketanumare/src/flytekit/flytekit/bin/entrypoint.py",
-        "sparkConf": {"spark": "1"},
-    }
+    retrieved_settings = my_spark.get_custom(settings)
+    assert retrieved_settings["sparkConf"] == {"spark": "1"}

@@ -48,7 +48,7 @@ def test_pod_task():
     assert primary_container["args"] == [
         "pyflyte-execute",
         "--task-module",
-        "tests.test_pod",
+        "pod.test_pod",
         "--task-name",
         "simple_pod_task",
         "--inputs",

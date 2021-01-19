@@ -28,6 +28,13 @@ class Spark(object):
     spark_conf: Optional[Dict[str, str]] = None
     hadoop_conf: Optional[Dict[str, str]] = None
 
+    def __post_init__(self):
+        if self.spark_conf is None:
+            self.spark_conf = {}
+
+        if self.hadoop_conf is None:
+            self.hadoop_conf = {}
+
 
 def new_spark_session(name: str, conf: typing.Dict[str, str] = None):
     """
