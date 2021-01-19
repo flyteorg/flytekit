@@ -56,5 +56,5 @@ requirements: requirements.txt dev-requirements.txt requirements-spark3.txt ## C
 # TODO: Change this in the future to be all of flytekit
 .PHONY: coverage
 coverage:
-	coverage run -m pytest tests/flytekit/unit/annotated
-	coverage report -m --include="flytekit/annotated/*,flytekit/types/*"
+	coverage run -m pytest tests/flytekit/unit/annotated flytekit/types plugins/tests
+	coverage report -m --include="flytekit/annotated/*,flytekit/types/*,plugins/*"
