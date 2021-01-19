@@ -8,13 +8,12 @@ from setuptools.command.install import install
 PACKAGE_NAME = "flytekitplugins-parent"
 SOURCES = {
     "flytekitplugins-hive": "hive",
-    "flytekitplugins-notebook": "notebook",
+    "flytekitplugins-papermill": "papermill",
     "flytekitplugins-spark": "spark",
     "flytekitplugins-pod": "pod",
-    "flytekitplugins-pytorch": "pytorch",
-    "flytekitplugins-sagemaker": "sagemaker",
-    "flytekitplugins-sqlite3": "sqlite3",
-    "flytekitplugins-tensorflow": "tensorflow",
+    "flytekitplugins-kfpytorch": "kfpytorch",
+    "flytekitplugins-aws": "aws",
+    "flytekitplugins-kftensorflow": "kftensorflow",
 }
 
 

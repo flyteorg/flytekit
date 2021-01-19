@@ -1,10 +1,10 @@
 .PHONY: test
 test:
-	pytest plugins/pod/tests
-	pytest plugins/spark/tests
-	pytest plugins/papermill/tests
-	pytest plugins/kfpytorch/tests
-	pytest plugins/sagemaker/tests
+	pytest pod/tests
+	pytest papermill/tests
+	pytest kfpytorch/tests
+	pytest aws/tests
+	pytest kftensorflow/tests
 
 .PHONY: install-all-dev
 install-all-dev:
