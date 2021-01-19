@@ -1,6 +1,6 @@
 import os
 
-from flytekitplugins.notebook import NotebookTask
+from flytekitplugins.papermill import NotebookTask
 from flytekitplugins.spark import Spark
 
 from flytekit import kwtypes
