@@ -1,6 +1,6 @@
 import pytest
 from flytekitplugins.aws.hpo import HPOJob, HPOTuningJobConfigTransformer, ParameterRangesTransformer, SagemakerHPOTask
-from flytekitplugins.aws.tests.test_training import _get_reg_settings
+from plugins.aws.tests.test_training import _get_reg_settings
 from flytekitplugins.aws.training import SagemakerBuiltinAlgorithmsTask, SagemakerTrainingJobConfig
 
 from flytekit import FlyteContext
