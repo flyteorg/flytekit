@@ -1,7 +1,7 @@
 import datetime
 import os
 
-from flytekitplugins.notebook import NotebookTask
+from flytekitplugins.papermill import NotebookTask
 
 from flytekit import kwtypes
 from flytekit.types.file import PythonNotebook
