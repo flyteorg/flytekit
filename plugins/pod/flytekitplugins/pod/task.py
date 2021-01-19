@@ -1,6 +1,5 @@
 from typing import Any, Callable, Dict, Tuple, Union
 
-import k8s
 from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf.json_format import MessageToDict
 from k8s.io.api.core.v1.generated_pb2 import Container, EnvVar, PodSpec, ResourceRequirements
