@@ -2,8 +2,8 @@ import os
 
 from flytekit import kwtypes
 from flytekit.types.schema import FlyteSchema
-from plugins.notebook.flytekitplugins.notebook import NotebookTask
-from plugins.spark.flytekitplugins.spark import Spark
+from flytekitplugins.notebook import NotebookTask
+from flytekitplugins.spark import Spark
 
 
 def _get_nb_path(name: str, suffix: str = "", abs: bool = True, ext: str = ".ipynb") -> str:

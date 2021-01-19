@@ -4,14 +4,14 @@ PLUGIN_NAME = "hive"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit==0.16.0a2", "hmsclient>=0.0.1,<1.0.0"]
+plugin_requires = ["flytekit>=0.16.0a2", "hmsclient>=0.0.1,<1.0.0"]
 
 setup(
     name=microlib_name,
     version="0.1.0",
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="Your microlib descriton",
+    description="This package holds Hive plugins for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,

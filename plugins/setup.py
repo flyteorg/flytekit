@@ -60,7 +60,7 @@ setup(
     author="flyteorg",
     author_email="admin@flyte.org",
     description="Macrolib's description",
-    license="TBD",
+    license="apache2",
     classifiers=["Private :: Do Not Upload to pypi server"],
     install_requires=[],
     cmdclass={"install": InstallCmd, "develop": DevelopCmd},
