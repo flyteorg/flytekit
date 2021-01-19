@@ -56,4 +56,4 @@ requirements: requirements.txt dev-requirements.txt requirements-spark3.txt ## C
 .PHONY: coverage
 coverage:
 	coverage run -m pytest tests/flytekit/unit/annotated
-	coverage report -m --include="flytekit/annotated/*,flytekit/types/*,plugins/*"
+	coverage report -m --include="flytekit/annotated/*,flytekit/types/*"
