@@ -1,5 +1,10 @@
 import pytest
-from flytekitplugins.awssagemaker.hpo import HPOJob, HPOTuningJobConfigTransformer, ParameterRangesTransformer, SagemakerHPOTask
+from flytekitplugins.awssagemaker.hpo import (
+    HPOJob,
+    HPOTuningJobConfigTransformer,
+    ParameterRangesTransformer,
+    SagemakerHPOTask,
+)
 from flytekitplugins.awssagemaker.training import SagemakerBuiltinAlgorithmsTask, SagemakerTrainingJobConfig
 
 from flytekit import FlyteContext
