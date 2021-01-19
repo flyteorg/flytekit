@@ -1,10 +1,10 @@
 from typing import Any, Callable, Dict, Tuple, Union
 
 import k8s
-from k8s.io.api.core.v1.generated_pb2 import PodSpec, ResourceRequirements, EnvVar, Container
-from k8s.io.apimachinery.pkg.api.resource.generated_pb2 import Quantity
 from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf.json_format import MessageToDict
+from k8s.io.api.core.v1.generated_pb2 import Container, EnvVar, PodSpec, ResourceRequirements
+from k8s.io.apimachinery.pkg.api.resource.generated_pb2 import Quantity
 
 from flytekit.annotated.context_manager import FlyteContext, SerializationSettings
 from flytekit.annotated.promise import Promise
@@ -48,9 +48,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
                 break
         if not primary_exists:
             # insert a placeholder primary container if it is not defined in the pod spec.
-            containers.extend(
-                [Container(name=self.task_config.primary_container_name)]
-            )
+            containers.extend([Container(name=self.task_config.primary_container_name)])
 
         final_containers = []
         for container in containers:
@@ -81,12 +79,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
                     container.resources.CopyFrom(resource_requirements)
 
                 del container.env[:]
-                container.env.extend(
-                    [
-                        EnvVar(name=key, value=val)
-                        for key, val in sdk_default_container.env.items()
-                    ]
-                )
+                container.env.extend([EnvVar(name=key, value=val) for key, val in sdk_default_container.env.items()])
 
             final_containers.append(container)
 
