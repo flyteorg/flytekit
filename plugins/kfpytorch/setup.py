@@ -4,7 +4,7 @@ PLUGIN_NAME = "kfpytorch"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.16.0a2"]
+plugin_requires = ["flytekit>=0.16.0b0,<1.0.0"]
 
 setup(
     name=microlib_name,
