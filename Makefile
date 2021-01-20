@@ -35,6 +35,7 @@ lint: ## Run linters
 test: lint ## Run tests
 	pytest tests/flytekit/unit -k "not test_task"
 	pytest tests/scripts
+	pytest plugins/tests
 	shellcheck **/*.sh
 
 requirements-spark3.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark3.txt
@@ -55,5 +56,5 @@ requirements: requirements.txt dev-requirements.txt requirements-spark3.txt ## C
 # TODO: Change this in the future to be all of flytekit
 .PHONY: coverage
 coverage:
-	coverage run -m pytest tests/flytekit/unit/annotated
-	coverage report -m --include="flytekit/annotated/*,flytekit/types/*,flytekit/taskplugins*"
+	coverage run -m pytest tests/flytekit/unit/annotated flytekit/types plugins/tests
+	coverage report -m --include="flytekit/annotated/*,flytekit/types/*,plugins/*"
