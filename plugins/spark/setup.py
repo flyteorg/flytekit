@@ -29,4 +29,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
+    scripts=["scripts/flytekit_install_spark.sh", "scripts/flytekit_install_spark3.sh"],
 )
