@@ -38,7 +38,7 @@ extras_require = {
 
 setup(
     name="flytekit",
-    version="0.16.0a3",
+    version="0.16.0b0",
     maintainer="Lyft",
     maintainer_email="flyte-eng@lyft.com",
     packages=find_packages(exclude=["tests*"]),
@@ -56,6 +56,7 @@ setup(
     },
     install_requires=[
         "flyteidl>=0.18.11,<1.0.0",
+        "pandas>=1.0.0,<2.0.0",
         "click>=6.6,<8.0",
         "croniter>=0.3.20,<4.0.0",
         "deprecated>=1.0,<2.0",
@@ -78,13 +79,7 @@ setup(
         "dirhash>=0.2.1",
     ],
     extras_require=extras_require,
-    scripts=[
-        "scripts/flytekit_install_spark.sh",
-        "scripts/flytekit_install_spark3.sh",
-        "scripts/flytekit_build_image.sh",
-        "scripts/flytekit_venv",
-        "scripts/flytekit_sagemaker_runner.py",
-    ],
+    scripts=["scripts/flytekit_build_image.sh", "scripts/flytekit_venv", "scripts/flytekit_sagemaker_runner.py"],
     license="apache2",
     python_requires=">=3.7",
     classifiers=[

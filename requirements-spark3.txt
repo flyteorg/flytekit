@@ -25,15 +25,15 @@ backcall==0.2.0
     # via ipython
 bcrypt==3.2.0
     # via paramiko
-black==19.10b0; extra == "all-spark3"
+black==19.10b0
     # via
     #   flytekit
     #   papermill
 bleach==3.2.1
     # via nbconvert
-boto3==1.16.53
+boto3==1.16.57
     # via sagemaker-training
-botocore==1.19.53
+botocore==1.19.57
     # via
     #   boto3
     #   s3transfer
@@ -52,7 +52,7 @@ click==7.1.2
     #   flytekit
     #   hmsclient
     #   papermill
-croniter==1.0.1
+croniter==1.0.2
     # via flytekit
 cryptography==3.3.1
     # via paramiko
@@ -64,7 +64,7 @@ decorator==4.4.2
     #   retry
 defusedxml==0.6.0
     # via nbconvert
-deprecated==1.2.10
+deprecated==1.2.11
     # via flytekit
 dirhash==0.2.1
     # via flytekit
@@ -74,11 +74,11 @@ entrypoints==0.3
     #   papermill
 flyteidl==0.18.11
     # via flytekit
-gevent==20.12.1
+gevent==21.1.1
     # via sagemaker-training
-greenlet==0.4.17
+greenlet==1.0.0
     # via gevent
-grpcio==1.34.0
+grpcio==1.34.1
     # via flytekit
 hmsclient==0.1.1
     # via flytekit
@@ -141,7 +141,7 @@ nbclient==0.5.1
     #   papermill
 nbconvert==6.0.7
     # via flytekit
-nbformat==5.0.8
+nbformat==5.1.2
     # via
     #   nbclient
     #   nbconvert
@@ -157,7 +157,7 @@ numpy==1.19.5
     #   scipy
 packaging==20.8
     # via bleach
-pandas==1.2.0
+pandas==1.2.1
     # via flytekit
 pandocfilters==1.4.3
     # via nbconvert
@@ -175,7 +175,7 @@ pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
     # via ipython
-prompt-toolkit==3.0.10
+prompt-toolkit==3.0.11
     # via ipython
 protobuf==3.14.0
     # via
@@ -221,9 +221,9 @@ pytz==2018.4
     # via
     #   flytekit
     #   pandas
-pyyaml==5.3.1
+pyyaml==5.4
     # via papermill
-pyzmq==20.0.0
+pyzmq==21.0.1
     # via jupyter-client
 regex==2020.11.13
     # via black
