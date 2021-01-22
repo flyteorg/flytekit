@@ -86,6 +86,27 @@ class InstanceVar(object):
     o: Any
 
 
+class EntrypointSettings(object):
+    def __init__(self, path: str = None, command: str = None, version: str = None):
+        if path is None:
+            path = os.getenv("FLYTEKIT_ENTRYPOINT")
+        self._path = path
+        self._command = command
+        self._version = version
+
+    @property
+    def path(self) -> str:
+        return self._path
+
+    @property
+    def command(self) -> str:
+        return self._command
+
+    @property
+    def version(self) -> str:
+        return self._version
+
+
 class SerializationSettings(object):
     def __init__(
         self,
@@ -94,7 +115,7 @@ class SerializationSettings(object):
         version: str,
         image_config: ImageConfig,
         env: Optional[Dict[str, str]],
-        entrypoint_path: str = None,
+        entrypoint_settings: EntrypointSettings = None,
     ):
         self._project = project
         self._domain = domain
@@ -102,7 +123,7 @@ class SerializationSettings(object):
         self._image_config = image_config
         self._env = env or {}
         self._instance_lookup = {}
-        self._entrypoint_path = entrypoint_path
+        self._entrypoint_settings = entrypoint_settings
 
     @property
     def project(self) -> str:
@@ -126,7 +147,7 @@ class SerializationSettings(object):
 
     @property
     def entrypoint_path(self) -> str:
-        return self._entrypoint_path
+        return self._entrypoint_settings
 
     def add_instance_var(self, var: InstanceVar):
         self._instance_lookup[var.o] = var

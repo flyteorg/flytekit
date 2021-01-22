@@ -123,7 +123,7 @@ def serialize_all(
         version=_VERSION_PLACEHOLDER,
         image_config=flyte_context.get_image_config(img_name=image),
         env=env,
-        entrypoint_path=entrypoint_path,
+        entrypoint_settings=flyte_context.EntrypointSettings(path=entrypoint_path),
     )
     with flyte_context.FlyteContext.current_context().new_serialization_settings(
         serialization_settings=serialization_settings
