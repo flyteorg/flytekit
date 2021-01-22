@@ -31,15 +31,17 @@ _PROJECT_PLACEHOLDER = "{{ registration.project }}"
 _DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
 _VERSION_PLACEHOLDER = "{{ registration.version }}"
 
-# During out of container serialize the absolute path of the entrypoint at serialization time won't match the
-# in-container value at execution time. The following default value is used to provide the in-container entrypoint path
+
+# During out of container serialize the absolute path of the flytekit virtualenv at serialization time won't match the
+# in-container value at execution time. The following default value is used to provide the in-container virtualenv path
 # but can be optionally overridden at serialization time based on the installation of your flytekit virtualenv.
-_DEFAULT_IN_CONTAINER_ENTRYPOINT = "/opt/venv/bin/entrypoint.py"
+_DEFAULT_FLYTEKIT_VIRTUALENV_ROOT = "opt/venv/"
+_DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC = "bin/entrypoint.py"
 
 CTX_IMAGE = "image"
 CTX_LOCAL_SRC_ROOT = "local_source_root"
 CTX_CONFIG_FILE_LOC = "config_file_loc"
-CTX_ENTRYPOINT_FILE_LOC = "entrypoint_file_loc"
+CTX_FLYTEKIT_VIRTUALENV_ROOT = "flytekit_virtualenv_root"
 
 
 class SerializationMode(_Enum):
@@ -91,7 +93,7 @@ def serialize_all(
     mode: SerializationMode = None,
     image: str = None,
     config_path: str = None,
-    entrypoint_path: str = None,
+    flytekit_virtualenv_root: str = None,
 ):
     """
     In order to register, we have to comply with Admin's endpoints. Those endpoints take the following objects. These
@@ -128,7 +130,10 @@ def serialize_all(
         version=_VERSION_PLACEHOLDER,
         image_config=flyte_context.get_image_config(img_name=image),
         env=env,
-        entrypoint_settings=flyte_context.EntrypointSettings(path=entrypoint_path),
+        flytekit_virtualenv_root=flytekit_virtualenv_root,
+        entrypoint_settings=flyte_context.EntrypointSettings(
+            path=_os.path.join(flytekit_virtualenv_root, _DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC)
+        ),
     )
     with flyte_context.FlyteContext.current_context().new_serialization_settings(
         serialization_settings=serialization_settings
@@ -226,15 +231,15 @@ def _determine_text_chars(length):
     "writes the config file to. Required for running `pyflyte serialize` in out of container mode",
 )
 @click.option(
-    "--in-container-entrypoint-path",
+    "--in-container-virtualenv-root",
     required=False,
-    help="This is where the flytekit entrypoint for your task lives inside the container. "
+    help="This is the root of the flytekit virtual env in your container. "
     "The reason it needs to be a separate option is because this pyflyte utility cannot know where flytekit is "
     "installed inside your container. Required for running `pyflyte serialize` in out of container mode when "
     "your container installs the flytekit virtualenv outside of the default `/opt/venv`",
 )
 @click.pass_context
-def serialize(ctx, image, local_source_root, in_container_config_path, in_container_entrypoint_path):
+def serialize(ctx, image, local_source_root, in_container_config_path, in_container_virtualenv_root):
     """
     This command produces protobufs for tasks and templates.
     For tasks, one pb file is produced for each task, representing one TaskTemplate object.
@@ -258,14 +263,21 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
     if local_source_root is not None and in_container_config_path is not None:
         # We're in the process of an out of container serialize call.
         # Set the entrypoint path to the in container default unless a user-specified option exists.
-        ctx.obj[CTX_ENTRYPOINT_FILE_LOC] = (
-            in_container_entrypoint_path
-            if in_container_entrypoint_path is not None
-            else _DEFAULT_IN_CONTAINER_ENTRYPOINT
+        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = (
+            in_container_virtualenv_root
+            if in_container_virtualenv_root is not None
+            else _DEFAULT_FLYTEKIT_VIRTUALENV_ROOT
         )
     else:
-        # For in container serialize we make sure to never override the entrypoint path.
-        ctx.obj[CTX_ENTRYPOINT_FILE_LOC] = None
+        # For in container serialize we make sure to never accept an override the entrypoint path and determine it here
+        # instead.
+        import flytekit as _flytekit
+
+        entrypoint_path = _os.path.abspath(_flytekit.__file__)
+        if entrypoint_path.endswith(".pyc"):
+            entrypoint_path = entrypoint_path[:-1]
+
+        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = entrypoint_path
 
 
 @click.command("tasks")
@@ -300,7 +312,7 @@ def workflows(ctx, folder=None):
         SerializationMode.DEFAULT,
         image=ctx.obj[CTX_IMAGE],
         config_path=ctx.obj[CTX_CONFIG_FILE_LOC],
-        entrypoint_path=ctx.obj[CTX_ENTRYPOINT_FILE_LOC],
+        flytekit_virtualenv_root=ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT],
     )
 
 
@@ -328,7 +340,7 @@ def fast_workflows(ctx, folder=None):
         SerializationMode.FAST,
         image=ctx.obj[CTX_IMAGE],
         config_path=ctx.obj[CTX_CONFIG_FILE_LOC],
-        entrypoint_path=ctx.obj[CTX_ENTRYPOINT_FILE_LOC],
+        flytekit_virtualenv_root=ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT],
     )
 
     source_dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
