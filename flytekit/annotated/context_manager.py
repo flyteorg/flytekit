@@ -88,7 +88,7 @@ class InstanceVar(object):
 
 @dataclass
 class EntrypointSettings(object):
-    path: str = "/opt/venv/bin/entrypoint.py"
+    path: str = None
     command: str = None
     version: int = 0
 

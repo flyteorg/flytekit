@@ -31,6 +31,11 @@ _PROJECT_PLACEHOLDER = "{{ registration.project }}"
 _DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
 _VERSION_PLACEHOLDER = "{{ registration.version }}"
 
+# During out of container serialize the absolute path of the entrypoint at serialization time won't match the
+# in-container value at execution time. The following default value is used to provide the in-container entrypoint path
+# but can be optionally overridden at serialization time based on the installation of your flytekit virtualenv.
+_DEFAULT_IN_CONTAINER_ENTRYPOINT = "/opt/venv/bin/entrypoint.py"
+
 CTX_IMAGE = "image"
 CTX_LOCAL_SRC_ROOT = "local_source_root"
 CTX_CONFIG_FILE_LOC = "config_file_loc"
@@ -225,7 +230,8 @@ def _determine_text_chars(length):
     required=False,
     help="This is where the flytekit entrypoint for your task lives inside the container. "
     "The reason it needs to be a separate option is because this pyflyte utility cannot know where flytekit is "
-    "installed inside your container. Required for running `pyflyte serialize` in out of container mode",
+    "installed inside your container. Required for running `pyflyte serialize` in out of container mode when "
+    "your container installs the flytekit virtualenv outside of the default `/opt/venv`",
 )
 @click.pass_context
 def serialize(ctx, image, local_source_root, in_container_config_path, in_container_entrypoint_path):
@@ -249,7 +255,17 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
             "When running out of container serialization you must specify --local-source-root AND --in-container-config-path"
         )
     ctx.obj[CTX_CONFIG_FILE_LOC] = in_container_config_path
-    ctx.obj[CTX_ENTRYPOINT_FILE_LOC] = in_container_entrypoint_path
+    if local_source_root is not None and in_container_config_path is not None:
+        # We're in the process of an out of container serialize call.
+        # Set the entrypoint path to the in container default unless a user-specified option exists.
+        ctx.obj[CTX_ENTRYPOINT_FILE_LOC] = (
+            in_container_entrypoint_path
+            if in_container_entrypoint_path is not None
+            else _DEFAULT_IN_CONTAINER_ENTRYPOINT
+        )
+    else:
+        # For in container serialize we make sure to never override the entrypoint path.
+        ctx.obj[CTX_ENTRYPOINT_FILE_LOC] = None
 
 
 @click.command("tasks")
