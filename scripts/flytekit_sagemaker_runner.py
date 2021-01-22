@@ -4,6 +4,8 @@ import os
 import subprocess
 import sys
 
+from natsort import natsorted
+
 FLYTE_ARG_PREFIX = "--__FLYTE"
 FLYTE_ENV_VAR_PREFIX = f"{FLYTE_ARG_PREFIX}_ENV_VAR_"
 FLYTE_CMD_PREFIX = f"{FLYTE_ARG_PREFIX}_CMD_"
@@ -65,7 +67,7 @@ def parse_args(cli_args):
 
 def sort_flyte_cmd(flyte_cmd):
     # Order the cmd using the index (the first element in each tuple)
-    flyte_cmd.sort(key=lambda x: x[0])
+    flyte_cmd = natsorted(flyte_cmd, key=lambda x: x[0])
     flyte_cmd = [x[1] for x in flyte_cmd]
     return flyte_cmd
 
