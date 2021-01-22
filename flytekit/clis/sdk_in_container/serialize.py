@@ -34,6 +34,7 @@ _VERSION_PLACEHOLDER = "{{ registration.version }}"
 CTX_IMAGE = "image"
 CTX_LOCAL_SRC_ROOT = "local_source_root"
 CTX_CONFIG_FILE_LOC = "config_file_loc"
+CTX_ENTRYPOINT_FILE_LOC = "entrypoint_file_loc"
 
 
 class SerializationMode(_Enum):
@@ -85,6 +86,7 @@ def serialize_all(
     mode: SerializationMode = None,
     image: str = None,
     config_path: str = None,
+    entrypoint_path: str = None,
 ):
     """
     In order to register, we have to comply with Admin's endpoints. Those endpoints take the following objects. These
@@ -121,6 +123,7 @@ def serialize_all(
         version=_VERSION_PLACEHOLDER,
         image_config=flyte_context.get_image_config(img_name=image),
         env=env,
+        entrypoint_path=entrypoint_path,
     )
     with flyte_context.FlyteContext.current_context().new_serialization_settings(
         serialization_settings=serialization_settings
@@ -217,8 +220,15 @@ def _determine_text_chars(length):
     "The reason it needs to be a separate option is because this pyflyte utility cannot know where the Dockerfile "
     "writes the config file to. Required for running `pyflyte serialize` in out of container mode",
 )
+@click.option(
+    "--in-container-entrypoint-path",
+    required=False,
+    help="This is where the flytekit entrypoint for your task lives inside the container. "
+    "The reason it needs to be a separate option is because this pyflyte utility cannot know where flytekit is "
+    "installed inside your container. Required for running `pyflyte serialize` in out of container mode",
+)
 @click.pass_context
-def serialize(ctx, image, local_source_root, in_container_config_path):
+def serialize(ctx, image, local_source_root, in_container_config_path, in_container_entrypoint_path):
     """
     This command produces protobufs for tasks and templates.
     For tasks, one pb file is produced for each task, representing one TaskTemplate object.
@@ -239,6 +249,7 @@ def serialize(ctx, image, local_source_root, in_container_config_path):
             "When running out of container serialization you must specify --local-source-root AND --in-container-config-path"
         )
     ctx.obj[CTX_CONFIG_FILE_LOC] = in_container_config_path
+    ctx.obj[CTX_ENTRYPOINT_FILE_LOC] = in_container_entrypoint_path
 
 
 @click.command("tasks")
@@ -267,7 +278,13 @@ def workflows(ctx, folder=None):
     pkgs = ctx.obj[CTX_PACKAGES]
     dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
     serialize_all(
-        pkgs, dir, folder, SerializationMode.DEFAULT, image=ctx.obj[CTX_IMAGE], config_path=ctx.obj[CTX_CONFIG_FILE_LOC]
+        pkgs,
+        dir,
+        folder,
+        SerializationMode.DEFAULT,
+        image=ctx.obj[CTX_IMAGE],
+        config_path=ctx.obj[CTX_CONFIG_FILE_LOC],
+        entrypoint_path=ctx.obj[CTX_ENTRYPOINT_FILE_LOC],
     )
 
 
@@ -289,7 +306,13 @@ def fast_workflows(ctx, folder=None):
     pkgs = ctx.obj[CTX_PACKAGES]
     dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
     serialize_all(
-        pkgs, dir, folder, SerializationMode.FAST, image=ctx.obj[CTX_IMAGE], config_path=ctx.obj[CTX_CONFIG_FILE_LOC]
+        pkgs,
+        dir,
+        folder,
+        SerializationMode.FAST,
+        image=ctx.obj[CTX_IMAGE],
+        config_path=ctx.obj[CTX_CONFIG_FILE_LOC],
+        entrypoint_path=ctx.obj[CTX_ENTRYPOINT_FILE_LOC],
     )
 
     source_dir = ctx.obj[CTX_LOCAL_SRC_ROOT]

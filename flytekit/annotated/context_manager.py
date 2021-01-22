@@ -88,7 +88,13 @@ class InstanceVar(object):
 
 class SerializationSettings(object):
     def __init__(
-        self, project: str, domain: str, version: str, image_config: ImageConfig, env: Optional[Dict[str, str]],
+        self,
+        project: str,
+        domain: str,
+        version: str,
+        image_config: ImageConfig,
+        env: Optional[Dict[str, str]],
+        entrypoint_path: str = None,
     ):
         self._project = project
         self._domain = domain
@@ -96,6 +102,7 @@ class SerializationSettings(object):
         self._image_config = image_config
         self._env = env or {}
         self._instance_lookup = {}
+        self._entrypoint_path = entrypoint_path
 
     @property
     def project(self) -> str:
@@ -116,6 +123,10 @@ class SerializationSettings(object):
     @property
     def env(self) -> Dict[str, str]:
         return self._env
+
+    @property
+    def entrypoint_path(self) -> str:
+        return self._entrypoint_path
 
     def add_instance_var(self, var: InstanceVar):
         self._instance_lookup[var.o] = var
