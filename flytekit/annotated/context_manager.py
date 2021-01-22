@@ -146,7 +146,7 @@ class SerializationSettings(object):
         return self._env
 
     @property
-    def entrypoint_path(self) -> str:
+    def entrypoint_settings(self) -> EntrypointSettings:
         return self._entrypoint_settings
 
     def add_instance_var(self, var: InstanceVar):
