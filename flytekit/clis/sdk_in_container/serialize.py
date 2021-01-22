@@ -35,7 +35,7 @@ _VERSION_PLACEHOLDER = "{{ registration.version }}"
 # During out of container serialize the absolute path of the flytekit virtualenv at serialization time won't match the
 # in-container value at execution time. The following default value is used to provide the in-container virtualenv path
 # but can be optionally overridden at serialization time based on the installation of your flytekit virtualenv.
-_DEFAULT_FLYTEKIT_VIRTUALENV_ROOT = "opt/venv/"
+_DEFAULT_FLYTEKIT_VIRTUALENV_ROOT = "/opt/venv/"
 _DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC = "bin/entrypoint.py"
 
 CTX_IMAGE = "image"
