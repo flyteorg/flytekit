@@ -76,11 +76,15 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+
         from flytekit.bin import entrypoint as _entrypoint
 
         spark_exec_path = os.path.abspath(_entrypoint.__file__)
         if spark_exec_path.endswith(".pyc"):
             spark_exec_path = spark_exec_path[:-1]
+
+        if settings.entrypoint_settings.path is not None:
+            spark_exec_path = settings.entrypoint_settings.path
 
         job = _task_model.SparkJob(
             spark_conf=self.task_config.spark_conf,
