@@ -89,7 +89,6 @@ class InstanceVar(object):
 class EntrypointSettings(object):
     def __init__(self, path: str = None, command: str = None, version: int = None):
         self._path = path if path is not None else "/opt/venv/bin/entrypoint.py"
-        self._path = path
         self._command = command
         self._version = version if version is not None else 0
 
