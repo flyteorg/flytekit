@@ -79,7 +79,7 @@ setup(
         "dirhash>=0.2.1",
     ],
     extras_require=extras_require,
-    scripts=["scripts/flytekit_build_image.sh", "scripts/flytekit_venv", "scripts/flytekit_sagemaker_runner.py"],
+    scripts=["scripts/flytekit_build_image.sh", "scripts/flytekit_venv", "scripts/flytekit_sagemaker_runner.py", "flytekit/bin/entrypoint.py"],
     license="apache2",
     python_requires=">=3.7",
     classifiers=[
