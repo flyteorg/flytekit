@@ -88,11 +88,10 @@ class InstanceVar(object):
 
 class EntrypointSettings(object):
     def __init__(self, path: str = None, command: str = None, version: str = None):
-        if path is None:
-            path = os.getenv("FLYTEKIT_ENTRYPOINT")
+        self._path = path if path is not None else "/opt/venv/bin/entrypoint.py"
         self._path = path
         self._command = command
-        self._version = version
+        self._version = version if version is not None else 0
 
     @property
     def path(self) -> str:
