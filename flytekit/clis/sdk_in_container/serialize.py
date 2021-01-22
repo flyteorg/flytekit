@@ -7,6 +7,7 @@ from typing import List
 
 import click
 
+import flytekit as _flytekit
 from flytekit.annotated import context_manager as flyte_context
 from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.context_manager import InstanceVar
@@ -271,8 +272,6 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
     else:
         # For in container serialize we make sure to never accept an override the entrypoint path and determine it here
         # instead.
-        import flytekit as _flytekit
-
         entrypoint_path = _os.path.abspath(_flytekit.__file__)
         if entrypoint_path.endswith(".pyc"):
             entrypoint_path = entrypoint_path[:-1]
