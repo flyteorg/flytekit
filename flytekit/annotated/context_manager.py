@@ -87,7 +87,7 @@ class InstanceVar(object):
 
 
 class EntrypointSettings(object):
-    def __init__(self, path: str = None, command: str = None, version: str = None):
+    def __init__(self, path: str = None, command: str = None, version: int = None):
         self._path = path if path is not None else "/opt/venv/bin/entrypoint.py"
         self._path = path
         self._command = command
@@ -102,7 +102,7 @@ class EntrypointSettings(object):
         return self._command
 
     @property
-    def version(self) -> str:
+    def version(self) -> int:
         return self._version
 
 
