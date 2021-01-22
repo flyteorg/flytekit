@@ -86,23 +86,11 @@ class InstanceVar(object):
     o: Any
 
 
+@dataclass
 class EntrypointSettings(object):
-    def __init__(self, path: str = None, command: str = None, version: int = None):
-        self._path = path if path is not None else "/opt/venv/bin/entrypoint.py"
-        self._command = command
-        self._version = version if version is not None else 0
-
-    @property
-    def path(self) -> str:
-        return self._path
-
-    @property
-    def command(self) -> str:
-        return self._command
-
-    @property
-    def version(self) -> int:
-        return self._version
+    path: str = "/opt/venv/bin/entrypoint.py"
+    command: str = None
+    version: int = 0
 
 
 class SerializationSettings(object):
