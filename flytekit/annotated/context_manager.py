@@ -19,6 +19,8 @@ from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models.core import identifier as _identifier
 
+_DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC = "bin/entrypoint.py"
+
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class Image(object):
@@ -86,9 +88,23 @@ class InstanceVar(object):
     o: Any
 
 
+@dataclass
+class EntrypointSettings(object):
+    path: str = None
+    command: str = None
+    version: int = 0
+
+
 class SerializationSettings(object):
     def __init__(
-        self, project: str, domain: str, version: str, image_config: ImageConfig, env: Optional[Dict[str, str]],
+        self,
+        project: str,
+        domain: str,
+        version: str,
+        image_config: ImageConfig,
+        env: Optional[Dict[str, str]],
+        flytekit_virtualenv_root: str = None,
+        entrypoint_settings: EntrypointSettings = None,
     ):
         self._project = project
         self._domain = domain
@@ -96,6 +112,8 @@ class SerializationSettings(object):
         self._image_config = image_config
         self._env = env or {}
         self._instance_lookup = {}
+        self._flytekit_virtualenv_root = flytekit_virtualenv_root
+        self._entrypoint_settings = entrypoint_settings
 
     @property
     def project(self) -> str:
@@ -116,6 +134,14 @@ class SerializationSettings(object):
     @property
     def env(self) -> Dict[str, str]:
         return self._env
+
+    @property
+    def flytekit_virtualenv_root(self) -> str:
+        return self._flytekit_virtualenv_root
+
+    @property
+    def entrypoint_settings(self) -> EntrypointSettings:
+        return self._entrypoint_settings
 
     def add_instance_var(self, var: InstanceVar):
         self._instance_lookup[var.o] = var

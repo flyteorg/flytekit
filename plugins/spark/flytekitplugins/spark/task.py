@@ -1,5 +1,4 @@
 import os
-import sys
 import typing
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
@@ -76,17 +75,11 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        from flytekit.bin import entrypoint as _entrypoint
-
-        spark_exec_path = os.path.abspath(_entrypoint.__file__)
-        if spark_exec_path.endswith(".pyc"):
-            spark_exec_path = spark_exec_path[:-1]
-
         job = _task_model.SparkJob(
             spark_conf=self.task_config.spark_conf,
             hadoop_conf=self.task_config.hadoop_conf,
-            application_file="local://" + spark_exec_path,
-            executor_path=sys.executable,
+            application_file="local://" + settings.entrypoint_settings.path,
+            executor_path=settings.flytekit_virtualenv_root + "bin/python",
             main_class="",
             spark_type=SparkType.PYTHON,
         )
