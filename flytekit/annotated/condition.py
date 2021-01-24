@@ -41,6 +41,10 @@ class ConditionalSection(object):
         self._last_case = False
         self._condition = Condition(self)
 
+    @property
+    def name(self):
+        return self._name
+
     # def __del__(self):
     #     self.validate()
     #
@@ -174,14 +178,31 @@ class ConditionalSection(object):
 
 
 class Case(object):
-    def __init__(self, cs: ConditionalSection, expr: Optional[Union[ComparisonExpression, ConjunctionExpression]]):
+    def __init__(
+        self,
+        cs: ConditionalSection,
+        expr: Optional[Union[ComparisonExpression, ConjunctionExpression]],
+        stmt: str = "elif",
+    ):
         self._cs = cs
-        if (
-            expr is not None
-            and not isinstance(expr, ConjunctionExpression)
-            and not isinstance(expr, ComparisonExpression)
-        ):
-            raise AssertionError("Whack, can only use comparison expression to in conditions")
+        if expr is not None:
+            if isinstance(expr, bool):
+                raise AssertionError(
+                    "Logical (and/or/is/not) operations are not supported. "
+                    "Expressions Comparison (<,<=,>,>=,==,!=) or Conjunction (&/|) are supported."
+                    f"Received an evaluated expression with val {expr} in {cs.name}.{stmt}"
+                )
+            if isinstance(expr, Promise):
+                raise AssertionError(
+                    "Flytekit does not support unary expressions of the form `if_(x) - where x is an"
+                    " input value or output of a previous node."
+                    f" Received var {expr} in condition {cs.name}.{stmt}"
+                )
+            if not (isinstance(expr, ConjunctionExpression) or isinstance(expr, ComparisonExpression)):
+                raise AssertionError(
+                    "Flytekit only supports Comparison (<,<=,>,>=,==,!=) or Conjunction (&/|) "
+                    f"expressions, Received var {expr} in condition {cs.name}.{stmt}"
+                )
         self._expr = expr
         self._output_promise: Optional[Union[Tuple[Promise], Promise]] = None
         self._err = None
@@ -214,13 +235,17 @@ class Condition(object):
         self._cs = cs
 
     def _if(self, expr: Union[ComparisonExpression, ConjunctionExpression]) -> Case:
-        return self._cs.start_branch(Case(cs=self._cs, expr=expr))
+        if expr is None:
+            raise AssertionError(f"Required an expression received None for condition:{self._cs.name}.if_(...)")
+        return self._cs.start_branch(Case(cs=self._cs, expr=expr, stmt="if_"))
 
     def elif_(self, expr: Union[ComparisonExpression, ConjunctionExpression]) -> Case:
-        return self._cs.start_branch(Case(cs=self._cs, expr=expr))
+        if expr is None:
+            raise AssertionError(f"Required an expression received None for condition:{self._cs.name}.elif(...)")
+        return self._cs.start_branch(Case(cs=self._cs, expr=expr, stmt="elif_"))
 
     def else_(self) -> Case:
-        return self._cs.start_branch(Case(cs=self._cs, expr=None), last_case=True)
+        return self._cs.start_branch(Case(cs=self._cs, expr=None, stmt="else"), last_case=True)
 
 
 _logical_ops = {
