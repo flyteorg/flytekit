@@ -1,6 +1,7 @@
 import flytekit.plugins  # noqa: F401
 from flytekit.annotated.base_sql_task import SQLTask
 from flytekit.annotated.base_task import TaskMetadata, kwtypes
+from flytekit.annotated.condition import conditional
 from flytekit.annotated.container_task import ContainerTask
 from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.dynamic_workflow_task import dynamic
