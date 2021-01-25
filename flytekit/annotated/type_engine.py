@@ -278,7 +278,7 @@ class ListTransformer(TypeTransformer[T]):
         if hasattr(t, "__origin__") and t.__origin__ is list:
             if hasattr(t, "__args__"):
                 return t.__args__[0]
-        raise ValueError("Only generic typing.List[T] type is supported.")
+        raise ValueError("Only generic univariate typing.List[T] type is supported.")
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         """

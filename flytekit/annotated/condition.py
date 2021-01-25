@@ -245,7 +245,7 @@ class Condition(object):
         return self._cs.start_branch(Case(cs=self._cs, expr=expr, stmt="elif_"))
 
     def else_(self) -> Case:
-        return self._cs.start_branch(Case(cs=self._cs, expr=None, stmt="else"), last_case=True)
+        return self._cs.start_branch(Case(cs=self._cs, expr=None, stmt="else_"), last_case=True)
 
 
 _logical_ops = {
