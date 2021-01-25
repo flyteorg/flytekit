@@ -125,9 +125,9 @@ def _handle_rpc_error_with_retries(fn):
                             raise
                         else:
                             # Start with 200ms wait-time and exponentially back-off upto 1 second.
-                            wait_time = min(200 * 2 ^ retries, max_wait_time)
+                            wait_time = min(200 * (2 ** retries), max_wait_time)
                             _logging.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
-                            time.sleep(wait_time/1000)
+                            time.sleep(wait_time / 1000)
         except _RpcError as e:
             if e.code() == _GrpcStatusCode.ALREADY_EXISTS:
                 raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
