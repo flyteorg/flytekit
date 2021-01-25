@@ -16,9 +16,7 @@ black==19.10b0
     #   -r dev-requirements.in
     #   flake8-black
 click==7.1.2
-    # via
-    #   -c requirements.txt
-    #   black
+    # via black
 coverage==5.3.1
     # via -r dev-requirements.in
 flake8-black==0.2.1
@@ -44,7 +42,7 @@ mypy-extensions==0.4.3
     # via
     #   -c requirements.txt
     #   mypy
-mypy==0.790
+mypy==0.800
     # via -r dev-requirements.in
 packaging==20.8
     # via pytest
@@ -64,7 +62,7 @@ pyflakes==2.2.0
     # via flake8
 pyparsing==2.4.7
     # via packaging
-pytest==6.2.1
+pytest==6.2.2
     # via -r dev-requirements.in
 regex==2020.11.13
     # via black

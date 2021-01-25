@@ -12,8 +12,6 @@ certifi==2020.12.5
     # via requests
 chardet==4.0.0
     # via requests
-click==7.1.2
-    # via flytekit
 croniter==1.0.2
     # via flytekit
 dataclasses-json==0.5.2
@@ -26,11 +24,11 @@ dirhash==0.2.1
     # via flytekit
 flyteidl==0.18.11
     # via flytekit
-grpcio==1.34.1
+grpcio==1.35.0
     # via flytekit
 idna==2.10
     # via requests
-keyring==21.8.0
+keyring==22.0.0
     # via flytekit
 marshmallow-enum==1.5.1
     # via dataclasses-json
@@ -40,12 +38,14 @@ marshmallow==3.10.0
     #   marshmallow-enum
 mypy-extensions==0.4.3
     # via typing-inspect
-natsort==7.1.0
+natsort==7.1.1
     # via
     #   croniter
     #   flytekit
 numpy==1.19.5
-    # via pandas
+    # via
+    #   pandas
+    #   pyarrow
 pandas==1.2.1
     # via flytekit
 pathspec==0.8.1
@@ -56,6 +56,8 @@ protobuf==3.14.0
     #   flytekit
 py==1.10.0
     # via retry
+pyarrow==2.0.0
+    # via flytekit
 python-dateutil==2.8.1
     # via
     #   croniter
