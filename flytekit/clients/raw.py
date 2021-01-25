@@ -87,7 +87,7 @@ def _handle_rpc_error(fn):
                         refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
                         refresh_handler_fn(args[0])
                     else:
-                            raise
+                        raise
         except _RpcError as e:
             if e.code() == _GrpcStatusCode.ALREADY_EXISTS:
                 raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
@@ -95,7 +95,6 @@ def _handle_rpc_error(fn):
                 raise
 
     return handler
-
 
 
 def _handle_rpc_error_with_retries(fn):
@@ -126,7 +125,7 @@ def _handle_rpc_error_with_retries(fn):
                             raise
                         else:
                             # Start with 200ms wait-time and exponentially back-off upto 1 second.
-                            wait_time = min(200 * 2^retries, max_wait_time)
+                            wait_time = min(200 * 2 ^ retries, max_wait_time)
                             _logging.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
                             time.sleep(wait_time/1000)
         except _RpcError as e:
@@ -136,6 +135,7 @@ def _handle_rpc_error_with_retries(fn):
                 raise
 
     return handler
+
 
 def _handle_invalid_create_request(fn):
     def handler(self, create_request):
