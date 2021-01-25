@@ -245,17 +245,15 @@ class ConjunctionExpression(object):
         return l_eval or r_eval
 
     def __and__(self, other: Union[ComparisonExpression, "ConjunctionExpression"]):
-        print("Conj AND called")
         return ConjunctionExpression(lhs=self, op=ConjunctionOps.AND, rhs=other)
 
     def __or__(self, other: Union[ComparisonExpression, "ConjunctionExpression"]):
-        print("Conj OR called")
         return ConjunctionExpression(lhs=self, op=ConjunctionOps.OR, rhs=other)
 
     def __bool__(self):
         raise ValueError(
             "Cannot perform truth value testing,"
-            " This is a limitation in python. For Logical `and\\or` use `&\\|` (bitwise) instead"
+            " This is a limitation in python. For Logical `and\\or` use `&\\|` (bitwise) instead. Refer to: PEP-335"
         )
 
     def __repr__(self):
@@ -323,6 +321,15 @@ class Promise(object):
             raise ValueError("Eval can be invoked for primitive types only")
         return get_primitive_val(self.val.scalar.primitive)
 
+    def is_(self, v: bool) -> ComparisonExpression:
+        return ComparisonExpression(self, ComparisonOps.EQ, v)
+
+    def is_false(self) -> ComparisonExpression:
+        return self.is_(False)
+
+    def is_true(self):
+        return self.is_(True)
+
     def __eq__(self, other) -> ComparisonExpression:
         return ComparisonExpression(self, ComparisonOps.EQ, other)
 
@@ -343,7 +350,7 @@ class Promise(object):
 
     def __bool__(self):
         raise ValueError(
-            "Cannot perform truth value testing,"
+            "Flytekit does not support Unary expressions or performing truth value testing,"
             " This is a limitation in python. For Logical `and\\or` use `&\\|` (bitwise) instead"
         )
 
@@ -363,7 +370,7 @@ class Promise(object):
     def __repr__(self):
         if self._promise_ready:
             return f"Var({self._var}={self._val})"
-        return f"Promise({self.ref.node_id}.{self._var})"
+        return f"Promise(node:{self.ref.node_id}.{self._var})"
 
     def __str__(self):
         return str(self.__repr__())

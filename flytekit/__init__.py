@@ -1,6 +1,7 @@
 import flytekit.plugins  # noqa: F401
 from flytekit.annotated.base_sql_task import SQLTask
 from flytekit.annotated.base_task import TaskMetadata, kwtypes
+from flytekit.annotated.condition import conditional
 from flytekit.annotated.container_task import ContainerTask
 from flytekit.annotated.context_manager import FlyteContext
 from flytekit.annotated.dynamic_workflow_task import dynamic
@@ -13,7 +14,7 @@ from flytekit.annotated.task import reference_task, task
 from flytekit.annotated.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.loggers import logger
 
-__version__ = "0.16.0a3"
+__version__ = "0.16.0b0"
 
 
 def current_context():

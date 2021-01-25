@@ -117,3 +117,44 @@ def test_condition_tuple_branches():
 
     sdk_wf = get_serializable(serialization_settings, math_ops)
     assert sdk_wf.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name == "test_conditions.sum_sub"
+
+
+def test_condition_unary_bool():
+    @task
+    def return_true() -> bool:
+        return True
+
+    @workflow
+    def failed() -> int:
+        return 10
+
+    @workflow
+    def success() -> int:
+        return 20
+
+    with pytest.raises(AssertionError):
+
+        @workflow
+        def decompose_unary() -> int:
+            result = return_true()
+            return conditional("test").if_(result).then(success()).else_().then(failed())
+
+    with pytest.raises(AssertionError):
+
+        @workflow
+        def decompose_none() -> int:
+            return conditional("test").if_(None).then(success()).else_().then(failed())
+
+    with pytest.raises(AssertionError):
+
+        @workflow
+        def decompose_is() -> int:
+            result = return_true()
+            return conditional("test").if_(result is True).then(success()).else_().then(failed())
+
+    @workflow
+    def decompose() -> int:
+        result = return_true()
+        return conditional("test").if_(result.is_true()).then(success()).else_().then(failed())
+
+    assert decompose() == 20

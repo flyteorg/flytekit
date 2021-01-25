@@ -4,7 +4,7 @@ PLUGIN_NAME = "spark"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.16.0a2", "pyspark>=3.0.0"]
+plugin_requires = ["flytekit>=0.16.0b0,<1.0.0", "pyspark>=3.0.0"]
 
 setup(
     name=microlib_name,
@@ -29,4 +29,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
+    scripts=["scripts/flytekit_install_spark3.sh"],
 )
