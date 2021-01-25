@@ -57,7 +57,7 @@ setup(
     install_requires=[
         "flyteidl>=0.18.11,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
-        "pyarrow>=2.0.0,<3.0.0"
+        "pyarrow>=2.0.0,<3.0.0",
         "click>=6.6,<8.0",
         "croniter>=0.3.20,<4.0.0",
         "deprecated>=1.0,<2.0",
