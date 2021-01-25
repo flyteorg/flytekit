@@ -1,0 +1,50 @@
+name: Build
+
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+        - python-version: 3.8
+          spark-version-suffix: "-spark3"
+        - python-version: 3.7
+          spark-version-suffix: ""
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Cache pip
+      uses: actions/cache@v2
+      with:
+        # This path is specific to Ubuntu
+        path: ~/.cache/pip
+        # Look to see if there is a cache hit for the corresponding requirements files
+        key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('requirements{0}.txt', matrix.spark-version-suffix))) }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        make setup${{ matrix.spark-version-suffix }}
+        pip freeze
+    - name: Lint
+      run: |
+        make lint
+    - name: ShellCheck
+      uses: ludeeus/action-shellcheck@master
+    - name: Test with coverage
+      run: |
+        coverage run -m pytest tests/flytekit/unit
+        coverage run -m pytest tests/scripts
+    - name: Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        fail_ci_if_error: true # optional (default = false)
