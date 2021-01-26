@@ -7,7 +7,7 @@ import six as _six
 from deprecated import deprecated as _deprecated
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit import __version__ as _api_version
+import flytekit
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions
 from flytekit.clients.helpers import iterate_task_executions as _iterate_task_executions
@@ -340,7 +340,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                                             "exec_domain": _internal_config.EXECUTION_DOMAIN.get(),
                                             "exec_workflow": _internal_config.EXECUTION_WORKFLOW.get(),
                                             "exec_launchplan": _internal_config.EXECUTION_LAUNCHPLAN.get(),
-                                            "api_version": _api_version,
+                                            "api_version": flytekit.__version__,
                                         },
                                     ),
                                     logging=_logging,

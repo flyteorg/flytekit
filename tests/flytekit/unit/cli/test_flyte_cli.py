@@ -40,7 +40,7 @@ def test__extract_files(load_mock):
         task_spec = t.serialize()
 
     load_mock.side_effect = [id.to_flyte_idl(), task_spec]
-    new_id, entity = _main._extract_pair("a", "b")
+    new_id, entity = _main._extract_pair("a", "b", "myflyteproject", "development", "v", {})
     assert new_id == id.to_flyte_idl()
     assert task_spec == entity
 
@@ -53,16 +53,16 @@ def test__extract_files_with_unspecified_resource_type(load_mock):
 
     load_mock.return_value = id.to_flyte_idl()
     with pytest.raises(FlyteAssertion):
-        _main._extract_pair("a", "b")
+        _main._extract_pair("a", "b", "myflyteproject", "development", "v", {})
 
 
-def _identity_dummy(a, b):
+def _identity_dummy(a, b, project, domain, version, patches):
     return (a, b)
 
 
 @_mock.patch("flytekit.clis.flyte_cli.main._extract_pair", new=_identity_dummy)
 def test__extract_files_pair_iterator():
-    results = _main._extract_files([1, 2, 3, 4])
+    results = _main._extract_files("myflyteproject", "development", "v", [1, 2, 3, 4], None)
     assert [(1, 2), (3, 4)] == results
 
 

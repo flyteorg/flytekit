@@ -1,4 +1,9 @@
+from typing import Tuple
+
 import six as _six
+from flyteidl.core import identifier_pb2 as _identifier_pb2
+from flyteidl.core import workflow_pb2 as _workflow_pb2
+from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _GeneratedProtocolMessageType
 
 from flytekit.common.types.helpers import get_sdk_type_from_literal_type as _get_sdk_type_from_literal_type
 from flytekit.models import literals as _literals
@@ -79,3 +84,103 @@ def str2bool(str):
     :rtype: bool
     """
     return not str.lower() in ["false", "0", "off", "no"]
+
+
+def _hydrate_identifier(
+    project: str, domain: str, version: str, identifier: _identifier_pb2.Identifier
+) -> _identifier_pb2.Identifier:
+    if not identifier.project or identifier.project == "{{ registration.project }}":
+        identifier.project = project
+
+    if not identifier.domain or identifier.domain == "{{ registration.domain }}":
+        identifier.domain = domain
+
+    if not identifier.version or identifier.version == "{{ registration.version }}":
+        identifier.version = version
+    return identifier
+
+
+def _hydrate_node(project: str, domain: str, version: str, node: _workflow_pb2.Node) -> _workflow_pb2.Node:
+    if node.HasField("task_node"):
+        task_node = node.task_node
+        task_node.reference_id.CopyFrom(_hydrate_identifier(project, domain, version, task_node.reference_id))
+        node.task_node.CopyFrom(task_node)
+    elif node.HasField("workflow_node"):
+        workflow_node = node.workflow_node
+        if workflow_node.HasField("launchplan_ref"):
+            workflow_node.launchplan_ref.CopyFrom(
+                _hydrate_identifier(project, domain, version, workflow_node.launchplan_ref)
+            )
+        elif workflow_node.HasField("sub_workflow_ref"):
+            workflow_node.sub_workflow_ref.CopyFrom(
+                _hydrate_identifier(project, domain, version, workflow_node.sub_workflow_ref)
+            )
+    elif node.HasField("branch_node"):
+        node.branch_node.if_else.case.then_node.CopyFrom(
+            _hydrate_node(project, domain, version, node.branch_node.if_else.case.then_node)
+        )
+        if node.branch_node.if_else.other is not None:
+            others = []
+            for if_block in node.branch_node.if_else.other:
+                if_block.then_node.CopyFrom(_hydrate_node(project, domain, version, if_block.then_node))
+                others.append(if_block)
+            del node.branch_node.if_else.other[:]
+            node.branch_node.if_else.other.extend(others)
+        if node.branch_node.if_else.HasField("else_node"):
+            node.branch_node.if_else.else_node.CopyFrom(
+                _hydrate_node(project, domain, version, node.branch_node.if_else.else_node)
+            )
+    return node
+
+
+def _hydrate_workflow_template_nodes(
+    project: str, domain: str, version: str, template: _workflow_pb2.WorkflowTemplate
+) -> _workflow_pb2.WorkflowTemplate:
+    refreshed_nodes = []
+    for node in template.nodes:
+        node = _hydrate_node(project, domain, version, node)
+        refreshed_nodes.append(node)
+    # Reassign nodes with the newly hydrated ones.
+    del template.nodes[:]
+    template.nodes.extend(refreshed_nodes)
+    return template
+
+
+def hydrate_registration_parameters(
+    identifier: _identifier_pb2.Identifier,
+    project: str,
+    domain: str,
+    version: str,
+    entity: _GeneratedProtocolMessageType,
+) -> Tuple[_identifier_pb2.Identifier, _GeneratedProtocolMessageType]:
+    """
+    This is called at registration time to fill out identifier fields (e.g. project, domain, version) that are mutable.
+    Entity is one of \b
+    - flyteidl.admin.launch_plan_pb2.LaunchPlanSpec for launch plans\n
+    - flyteidl.admin.workflow_pb2.WorkflowSpec for workflows\n
+    - flyteidl.admin.task_pb2.TaskSpec for tasks\n
+    """
+    identifier = _hydrate_identifier(project, domain, version, identifier)
+
+    if identifier.resource_type == _identifier_pb2.LAUNCH_PLAN:
+        entity.workflow_id.CopyFrom(_hydrate_identifier(project, domain, version, entity.workflow_id))
+        return identifier, entity
+
+    entity.template.id.CopyFrom(identifier)
+    if identifier.resource_type == _identifier_pb2.TASK:
+        return identifier, entity
+
+    # Workflows (the only possible entity type at this point) are a little more complicated.
+    # Workflow nodes that are defined inline with the workflows will be missing project/domain/version so we fill those
+    # in now.
+    # (entity is of type flyteidl.admin.workflow_pb2.WorkflowSpec)
+    entity.template.CopyFrom(_hydrate_workflow_template_nodes(project, domain, version, entity.template))
+    refreshed_sub_workflows = []
+    for sub_workflow in entity.sub_workflows:
+        refreshed_sub_workflow = _hydrate_workflow_template_nodes(project, domain, version, sub_workflow)
+        refreshed_sub_workflow.id.CopyFrom(_hydrate_identifier(project, domain, version, refreshed_sub_workflow.id))
+        refreshed_sub_workflows.append(refreshed_sub_workflow)
+    # Reassign subworkflows with the newly hydrated ones.
+    del entity.sub_workflows[:]
+    entity.sub_workflows.extend(refreshed_sub_workflows)
+    return identifier, entity

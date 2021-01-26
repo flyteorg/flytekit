@@ -1,3 +1,7 @@
+"""
+This file is for old style plugins - for new plugins that work with the Python native-typed Flytekit, please
+refer to the plugin specific directory underneath the plugins folder at the top level of this repository.
+"""
 from flytekit.tools import lazy_loader as _lazy_loader
 
 pyspark = _lazy_loader.lazy_load_module("pyspark")  # type: _lazy_loader._LazyLoadModule

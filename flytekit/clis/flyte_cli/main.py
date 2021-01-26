@@ -1,7 +1,9 @@
 import importlib as _importlib
+import os
 import os as _os
 import stat as _stat
 import sys as _sys
+from typing import Callable, Dict, List, Tuple, Union
 
 import click as _click
 import requests as _requests
@@ -11,11 +13,16 @@ from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.core import literals_pb2 as _literals_pb2
+from flyteidl.core import tasks_pb2 as _core_tasks_pb2
+from flyteidl.core import workflow_pb2 as _core_workflow_pb2
+from google.protobuf.json_format import MessageToJson
+from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _GeneratedProtocolMessageType
 
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
 from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map
 from flytekit.clis.helpers import construct_literal_map_from_variable_map as _construct_literal_map_from_variable_map
+from flytekit.clis.helpers import hydrate_registration_parameters
 from flytekit.clis.helpers import parse_args_into_dict as _parse_args_into_dict
 from flytekit.common import launch_plan as _launch_plan_common
 from flytekit.common import utils as _utils
@@ -25,15 +32,19 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import task as _tasks_common
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
+from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import set_flyte_config_file
 from flytekit.interfaces.data import data_proxy as _data_proxy
+from flytekit.interfaces.data.data_proxy import Data
 from flytekit.models import common as _common_models
 from flytekit.models import filters as _filters
 from flytekit.models import launch_plan as _launch_plan
 from flytekit.models import literals as _literals
 from flytekit.models import named_entity as _named_entity
 from flytekit.models.admin import common as _admin_common
+from flytekit.models.common import AuthRole as _AuthRole
+from flytekit.models.common import RawOutputDataConfig as _RawOutputDataConfig
 from flytekit.models.core import execution as _core_execution_models
 from flytekit.models.core import identifier as _core_identifier
 from flytekit.models.execution import ExecutionMetadata as _ExecutionMetadata
@@ -47,6 +58,7 @@ from flytekit.models.matchable_resource import PluginOverride as _PluginOverride
 from flytekit.models.matchable_resource import PluginOverrides as _PluginOverrides
 from flytekit.models.project import Project as _Project
 from flytekit.models.schedule import Schedule as _Schedule
+from flytekit.tools.fast_registration import get_additional_distribution_loc as _get_additional_distribution_loc
 
 try:  # Python 3
     import urllib.parse as _urlparse
@@ -286,6 +298,7 @@ _INSECURE_FLAG = _platform_config.INSECURE.get()
 _PROJECT_FLAGS = ["-p", "--project"]
 _DOMAIN_FLAGS = ["-d", "--domain"]
 _NAME_FLAGS = ["-n", "--name"]
+_VERSION_FLAGS = ["-v", "--version"]
 _HOST_FLAGS = ["-h", "--host"]
 _PRINCIPAL_FLAGS = ["-r", "--principal"]
 _INSECURE_FLAGS = ["-i", "--insecure"]
@@ -402,6 +415,19 @@ _watch_option = _click.option(
     help="Set the flag if you want the command to keep watching the execution until its completion",
 )
 
+_assumable_iam_role_option = _click.option(
+    "--assumable-iam-role", help="Custom assumable iam auth role to register launch plans with"
+)
+_kubernetes_service_acct_option = _click.option(
+    "-s",
+    "--kubernetes-service-account",
+    help="Custom kubernetes service account auth role to register launch plans with",
+)
+_output_location_prefix_option = _click.option(
+    "-o", "--output-location-prefix", help="Custom output location prefix for offloaded types (files/schemas)"
+)
+_files_argument = _click.argument("files", type=_click.Path(exists=True), nargs=-1,)
+
 
 class _FlyteSubCommand(_click.Command):
     _PASSABLE_ARGS = {
@@ -501,7 +527,9 @@ def parse_proto(filename, proto_class):
     idl = getattr(mod, idl_obj)
     obj = _load_proto_from_file(idl, filename)
 
-    _click.echo(obj)
+    jsonObj = MessageToJson(obj)
+
+    _click.echo(jsonObj)
     _click.echo("")
 
 
@@ -1543,27 +1571,51 @@ def activate_project(identifier, host, insecure):
     _click.echo("Activated project [id: {}]".format(identifier))
 
 
-def _extract_pair(identifier_file, object_file):
+_resource_map = {
+    _identifier_pb2.LAUNCH_PLAN: _launch_plan_pb2.LaunchPlanSpec,
+    _identifier_pb2.WORKFLOW: _workflow_pb2.WorkflowSpec,
+    _identifier_pb2.TASK: _task_pb2.TaskSpec,
+}
+
+
+def _extract_pair(
+    identifier_file: str,
+    object_file: str,
+    project: str,
+    domain: str,
+    version: str,
+    patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]],
+) -> Tuple[
+    _identifier_pb2.Identifier,
+    Union[_core_tasks_pb2.TaskTemplate, _core_workflow_pb2.WorkflowTemplate, _launch_plan_pb2.LaunchPlanSpec],
+]:
     """
     :param Text identifier_file:
     :param Text object_file:
     :rtype: (flyteidl.core.identifier_pb2.Identifier, T)
     """
-    resource_map = {
-        _identifier_pb2.LAUNCH_PLAN: _launch_plan_pb2.LaunchPlanSpec,
-        _identifier_pb2.WORKFLOW: _workflow_pb2.WorkflowSpec,
-        _identifier_pb2.TASK: _task_pb2.TaskSpec,
-    }
-    id = _load_proto_from_file(_identifier_pb2.Identifier, identifier_file)
-    if id.resource_type not in resource_map:
+    identifier = _load_proto_from_file(_identifier_pb2.Identifier, identifier_file)
+    if identifier.resource_type not in _resource_map:
         raise _user_exceptions.FlyteAssertion(
-            f"Resource type found in identifier {id.resource_type} invalid, must be launch plan, " f"task, or workflow"
+            f"Resource type found in identifier {identifier.resource_type} invalid, must be launch plan, task, or workflow"
         )
-    entity = _load_proto_from_file(resource_map[id.resource_type], object_file)
-    return id, entity
+    entity = _load_proto_from_file(_resource_map[identifier.resource_type], object_file)
+    registerable_identifier, registerable_entity = hydrate_registration_parameters(
+        identifier, project, domain, version, entity
+    )
+    patch_fn = patches.get(identifier.resource_type)
+    if patch_fn:
+        registerable_entity = patch_fn(registerable_entity)
+    return registerable_identifier, registerable_entity
 
 
-def _extract_files(file_paths):
+def _extract_files(
+    project: str,
+    domain: str,
+    version: str,
+    file_paths: List[str],
+    patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]] = None,
+):
     """
     :param file_paths:
     :rtype: List[(flyteidl.core.identifier_pb2.Identifier, T)]
@@ -1576,46 +1628,64 @@ def _extract_files(file_paths):
     filename_iterator = iter(file_paths)
     for identifier_file in filename_iterator:
         object_file = next(filename_iterator)
-        id, entity = _extract_pair(identifier_file, object_file)
+        # Serialized proto files are of the form: 12_foo.bar.<resource_type>.pb
+        id, entity = _extract_pair(identifier_file, object_file, project, domain, version, patches or {})
         results.append((id, entity))
 
     return results
 
 
-@_flyte_cli.command("register-files", cls=_FlyteSubCommand)
-@_host_option
-@_insecure_option
-@_click.argument(
-    "files", type=_click.Path(exists=True), nargs=-1,
-)
-def register_files(host, insecure, files):
-    """
-    Given a list of files, this will (after sorting the input list), attempt to register them against Flyte Admin.
-    This command expects the files to be the output of the pyflyte serialize command.  See the code there for more
-    information. Valid files need to be:
-        * Ordered in the order that you want registration to happen. pyflyte should have done the topological sort
-          for you and produced file that have a prefix that sets the correct order.
-        * Of the correct type. That is, they should be the serialized form of one of these Flyte IDL objects
-          (or an identifier object).
-          - flyteidl.admin.launch_plan_pb2.LaunchPlanSpec for launch plans
-          - flyteidl.admin.workflow_pb2.WorkflowSpec for workflows
-          - flyteidl.admin.task_pb2.TaskSpec for tasks
-        * Each file needs to be accompanied by an identifier file. We can relax this constraint in the future.
+def _get_patch_launch_plan_fn(
+    assumable_iam_role: str = None, kubernetes_service_account: str = None, output_location_prefix: str = None
+) -> Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]:
+    def patch_launch_plan(entity: _GeneratedProtocolMessageType) -> _GeneratedProtocolMessageType:
+        """
+        Updates launch plans during registration to add a customizable auth role that overrides any values set in
+        the flyte config and/or a custom output_location_prefix.
+        """
+        # entity is of type flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
+        if assumable_iam_role and kubernetes_service_account:
+            _click.UsageError("Currently you cannot specify both an assumable_iam_role and kubernetes_service_account")
+        if assumable_iam_role:
+            entity.auth_role.CopyFrom(_AuthRole(assumable_iam_role=assumable_iam_role).to_flyte_idl())
+        elif kubernetes_service_account:
+            entity.auth_role.CopyFrom(_AuthRole(kubernetes_service_account=kubernetes_service_account).to_flyte_idl())
+        elif _auth_config.ASSUMABLE_IAM_ROLE.get() is not None:
+            entity.auth_role.CopyFrom(
+                _AuthRole(assumable_iam_role=_auth_config.ASSUMABLE_IAM_ROLE.get()).to_flyte_idl()
+            )
+        elif _auth_config.KUBERNETES_SERVICE_ACCOUNT.get() is not None:
+            entity.auth_role.CopyFrom(
+                _AuthRole(kubernetes_service_account=_auth_config.KUBERNETES_SERVICE_ACCOUNT.get()).to_flyte_idl()
+            )
 
-    :param host:
-    :param insecure:
-    :param files:
-    :return:
-    """
-    _welcome_message()
+        if output_location_prefix is not None:
+            entity.raw_output_data_config.CopyFrom(
+                _RawOutputDataConfig(output_location_prefix=output_location_prefix).to_flyte_idl()
+            )
+        elif _auth_config.RAW_OUTPUT_DATA_PREFIX.get() is not None:
+            entity.raw_output_data_config.CopyFrom(
+                _RawOutputDataConfig(output_location_prefix=_auth_config.RAW_OUTPUT_DATA_PREFIX.get()).to_flyte_idl()
+            )
+
+        return entity
+
+    return patch_launch_plan
+
+
+def _extract_and_register(
+    host: str,
+    insecure: bool,
+    project: str,
+    domain: str,
+    version: str,
+    file_paths: List[str],
+    patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]] = None,
+):
+
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
-    files = list(files)
-    files.sort()
-    _click.secho("Parsing files...", fg="green", bold=True)
-    for f in files:
-        _click.echo(f"  {f}")
 
-    flyte_entities_list = _extract_files(files)
+    flyte_entities_list = _extract_files(project, domain, version, file_paths, patches)
     for id, flyte_entity in flyte_entities_list:
         try:
             if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
@@ -1634,6 +1704,167 @@ def register_files(host, insecure, files):
             _click.secho(f"Skipping because already registered {id}", fg="cyan")
 
     _click.echo(f"Finished scanning {len(flyte_entities_list)} files")
+
+
+@_flyte_cli.command("register-files", cls=_FlyteSubCommand)
+@_click.option(*_PROJECT_FLAGS, required=True, help="The project namespace to register with.")
+@_click.option(*_DOMAIN_FLAGS, required=True, help="The domain namespace to register with.")
+@_click.option(*_VERSION_FLAGS, required=True, help="The entity version to register with")
+@_host_option
+@_insecure_option
+@_assumable_iam_role_option
+@_kubernetes_service_acct_option
+@_output_location_prefix_option
+@_files_argument
+def register_files(
+    project,
+    domain,
+    version,
+    host,
+    insecure,
+    assumable_iam_role,
+    kubernetes_service_account,
+    output_location_prefix,
+    files,
+):
+    """
+    Given a list of files, this will (after sorting the input list), attempt to register them against Flyte Admin.
+    This command expects the files to be the output of the pyflyte serialize command.  See the code there for more
+    information. Valid files need to be:\n
+        * Ordered in the order that you want registration to happen. pyflyte should have done the topological sort
+          for you and produced file that have a prefix that sets the correct order.\n
+        * Of the correct type. That is, they should be the serialized form of one of these Flyte IDL objects
+          (or an identifier object).\n
+          - flyteidl.admin.launch_plan_pb2.LaunchPlanSpec for launch plans\n
+          - flyteidl.admin.workflow_pb2.WorkflowSpec for workflows\n
+          - flyteidl.admin.task_pb2.TaskSpec for tasks\n
+
+    :param host:
+    :param insecure:
+    :param files:
+    :return:
+    """
+    _welcome_message()
+    files = list(files)
+    files.sort()
+    _click.secho("Parsing files...", fg="green", bold=True)
+    for f in files:
+        _click.echo(f"  {f}")
+
+    patches = None
+    if assumable_iam_role or kubernetes_service_account or output_location_prefix:
+        patches = {
+            _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
+                assumable_iam_role, kubernetes_service_account, output_location_prefix
+            )
+        }
+
+    _extract_and_register(host, insecure, project, domain, version, files, patches)
+
+
+@_flyte_cli.command("fast-register-files", cls=_FlyteSubCommand)
+@_click.option(*_PROJECT_FLAGS, required=True, help="The project namespace to register with.")
+@_click.option(*_DOMAIN_FLAGS, required=True, help="The domain namespace to register with.")
+@_click.option(
+    *_VERSION_FLAGS,
+    required=False,
+    help="Version to register entities with. This is normally computed deterministically from your code, but you can "
+    "override that here",
+)
+@_host_option
+@_insecure_option
+@_click.option("--additional-distribution-dir", required=True, help="Location for additional distributions")
+@_click.option(
+    "--dest-dir",
+    type=str,
+    help="[Optional] The output directory for code which is downloaded during fast registration, "
+    "if the current working directory at the time of installation is not desired",
+)
+@_assumable_iam_role_option
+@_kubernetes_service_acct_option
+@_output_location_prefix_option
+@_files_argument
+def fast_register_files(
+    project,
+    domain,
+    version,
+    host,
+    insecure,
+    additional_distribution_dir,
+    dest_dir,
+    assumable_iam_role,
+    kubernetes_service_account,
+    output_location_prefix,
+    files,
+):
+    """
+    Given a list of files, this will (after sorting the input list), attempt to register them against Flyte Admin.
+    This command expects the files to be the output of the pyflyte serialize command.  See the code there for more
+    information. Valid files need to be:\n
+        * Ordered in the order that you want registration to happen. pyflyte should have done the topological sort
+          for you and produced file that have a prefix that sets the correct order.\n
+        * Of the correct type. That is, they should be the serialized form of one of these Flyte IDL objects
+          (or an identifier object).\n
+          - flyteidl.admin.launch_plan_pb2.LaunchPlanSpec for launch plans\n
+          - flyteidl.admin.workflow_pb2.WorkflowSpec for workflows\n
+          - flyteidl.admin.task_pb2.TaskSpec for tasks\n
+
+    :param host:
+    :param insecure:
+    :param files:
+    :return:
+    """
+    _welcome_message()
+    files = list(files)
+    files.sort()
+    _click.secho("Parsing files...", fg="green", bold=True)
+    compressed_source, digest = None, None
+    pb_files = []
+    for f in files:
+        if f.endswith("tar.gz"):
+            compressed_source = f
+            digest = os.path.basename(f).split(".")[0]
+        else:
+            _click.echo(f"  {f}")
+            pb_files.append(f)
+
+    if not compressed_source:
+        _click.UsageError("Could not discover compressed source, did you remember to run `pyflyte serialize fast ...`?")
+
+    version = version if version else digest
+    full_remote_path = _get_additional_distribution_loc(additional_distribution_dir, version)
+    Data.put_data(compressed_source, full_remote_path)
+    _click.echo(f"Uploaded compressed code archive {compressed_source} to {full_remote_path}")
+
+    def fast_register_task(entity: _GeneratedProtocolMessageType) -> _GeneratedProtocolMessageType:
+        """
+        Updates task definitions during fast-registration in order to use the compatible pyflyte fast execute command at
+        task execution.
+        """
+        # entity is of type flyteidl.admin.task_pb2.TaskSpec
+        if not entity.template.HasField("container") or len(entity.template.container.args) == 0:
+            # Containerless tasks are always fast registerable without modification
+            return entity
+        complete_args = []
+        for arg in entity.template.container.args:
+            if arg == "{{ .remote_package_path }}":
+                arg = full_remote_path
+            elif arg == "{{ .dest_dir }}":
+                arg = dest_dir if dest_dir else "."
+            complete_args.append(arg)
+        del entity.template.container.args[:]
+        entity.template.container.args.extend(complete_args)
+        return entity
+
+    patches = {_identifier_pb2.TASK: fast_register_task}
+    if assumable_iam_role or kubernetes_service_account or output_location_prefix:
+        patches = {
+            _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
+                assumable_iam_role, kubernetes_service_account, output_location_prefix
+            )
+        }
+
+    _extract_and_register(host, insecure, project, domain, version, pb_files, patches)
 
 
 @_flyte_cli.command("update-workflow-meta", cls=_FlyteSubCommand)

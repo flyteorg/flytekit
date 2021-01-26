@@ -86,6 +86,7 @@ class SdkLaunchPlan(
             pass
 
         self._id = id_to_register
+        self._has_registered = True
         return str(self.id)
 
     @classmethod

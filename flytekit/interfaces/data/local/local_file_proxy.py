@@ -16,6 +16,12 @@ def _make_local_path(path):
                 raise
 
 
+def strip_file_header(path: str) -> str:
+    if path.startswith("file://"):
+        return path.replace("file://", "", 1)
+    return path
+
+
 class LocalFileProxy(_common_data.DataProxy):
     def __init__(self, sandbox):
         """
@@ -23,12 +29,16 @@ class LocalFileProxy(_common_data.DataProxy):
         """
         self._sandbox = sandbox
 
+    @property
+    def sandbox(self) -> str:
+        return self._sandbox
+
     def exists(self, path):
         """
         :param Text path: the path of the file
         :rtype bool: whether the file exists or not
         """
-        return _os.path.exists(path)
+        return _os.path.exists(strip_file_header(path))
 
     def download_directory(self, from_path, to_path):
         """
@@ -36,14 +46,14 @@ class LocalFileProxy(_common_data.DataProxy):
         :param Text to_path:
         """
         if from_path != to_path:
-            _dir_util.copy_tree(from_path, to_path)
+            _dir_util.copy_tree(strip_file_header(from_path), strip_file_header(to_path))
 
     def download(self, from_path, to_path):
         """
         :param Text from_path:
         :param Text to_path:
         """
-        _copyfile(from_path, to_path)
+        _copyfile(strip_file_header(from_path), strip_file_header(to_path))
 
     def upload(self, from_path, to_path):
         """
@@ -51,9 +61,9 @@ class LocalFileProxy(_common_data.DataProxy):
         :param Text to_path:
         """
         # Emulate s3's flat storage by automatically creating directory path
-        _make_local_path(_os.path.dirname(to_path))
+        _make_local_path(_os.path.dirname(strip_file_header(to_path)))
         # Write the object to a local file in the sandbox
-        _copyfile(from_path, to_path)
+        _copyfile(strip_file_header(from_path), strip_file_header(to_path))
 
     def upload_directory(self, from_path, to_path):
         """
@@ -76,4 +86,6 @@ class LocalFileProxy(_common_data.DataProxy):
         """
         :rtype: Text
         """
-        return self.get_random_path() + "/"
+        random_dir = self.get_random_path() + "/"
+        _make_local_path(random_dir)
+        return random_dir

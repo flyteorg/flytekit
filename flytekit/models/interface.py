@@ -159,7 +159,7 @@ class Parameter(_common.FlyteIdlEntity):
         return self._default
 
     @property
-    def required(self):
+    def required(self) -> bool:
         """
         If True, this parameter must be specified.  There cannot be a default value.
         :rtype: bool
@@ -180,7 +180,7 @@ class Parameter(_common.FlyteIdlEntity):
         return _interface_pb2.Parameter(
             var=self.var.to_flyte_idl(),
             default=self.default.to_flyte_idl() if self.default is not None else None,
-            required=self.required,
+            required=self.required if self.default is None else None,
         )
 
     @classmethod

@@ -8,11 +8,17 @@ from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.launch_plan import SdkLaunchPlan
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.mixins import registerable as _registerable
+from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines.flyte import engine as _flyte_engine
+from flytekit.models import common as _common_models
+from flytekit.models import interface as _interface_models
+from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals as _literal_models
+from flytekit.models import schedule as _schedule_models
 from flytekit.models.admin import workflow as _admin_workflow_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
@@ -67,6 +73,7 @@ class SdkWorkflow(
             outputs=output_bindings,
         )
         self._sdk_nodes = nodes
+        self._has_registered = False
 
     @property
     def upstream_entities(self):
@@ -224,7 +231,28 @@ class SdkWorkflow(
 
     @_exception_scopes.system_entry_point
     def create_launch_plan(self, *args, **kwargs):
-        raise Exception("This can't be done right now.")
+        # TODO: Correct after implementing new launch plan
+        assumable_iam_role = _auth_config.ASSUMABLE_IAM_ROLE.get()
+        kubernetes_service_account = _auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
+
+        if not (assumable_iam_role or kubernetes_service_account):
+            raise _user_exceptions.FlyteValidationException("No assumable role or service account found")
+        auth_role = _common_models.AuthRole(
+            assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
+        )
+
+        return SdkLaunchPlan(
+            workflow_id=self.id,
+            entity_metadata=_launch_plan_models.LaunchPlanMetadata(
+                schedule=_schedule_models.Schedule(""), notifications=[],
+            ),
+            default_inputs=_interface_models.ParameterMap({}),
+            fixed_inputs=_literal_models.LiteralMap(literals={}),
+            labels=_common_models.Labels({}),
+            annotations=_common_models.Annotations({}),
+            auth_role=auth_role,
+            raw_output_data_config=_common_models.RawOutputDataConfig(""),
+        )
 
     @_exception_scopes.system_entry_point
     def __call__(self, *args, **input_map):

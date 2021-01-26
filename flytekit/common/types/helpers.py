@@ -102,10 +102,7 @@ def unpack_literal_map_to_sdk_object(literal_map, type_map=None):
     :rtype: dict[Text, T]
     """
     type_map = type_map or {}
-    return {
-        k: get_sdk_value_from_literal(v, sdk_type=type_map.get(k, None))
-        for k, v in _six.iteritems(literal_map.literals)
-    }
+    return {k: get_sdk_value_from_literal(v, sdk_type=type_map.get(k, None)) for k, v in literal_map.literals.items()}
 
 
 def unpack_literal_map_to_sdk_python_std(literal_map, type_map=None):
@@ -114,10 +111,7 @@ def unpack_literal_map_to_sdk_python_std(literal_map, type_map=None):
     :param dict[Text, flytekit.common.types.base_sdk_types.FlyteSdkType] type_map: Type map directing unpacking.
     :rtype: dict[Text, T]
     """
-    return {
-        k: v.to_python_std()
-        for k, v in _six.iteritems(unpack_literal_map_to_sdk_object(literal_map, type_map=type_map))
-    }
+    return {k: v.to_python_std() for k, v in unpack_literal_map_to_sdk_object(literal_map, type_map=type_map).items()}
 
 
 def pack_python_std_map_to_literal_map(std_map, type_map):
