@@ -3,8 +3,8 @@
 #Usage
 #  run_all_plugins.sh $@
 #
-# This script is intended to be run from the base cookbook_se directory. It will go through all sub-folders in the
-# recipes folder and run the 'target' supplied if a Makefile exists in that directory.
+# This script is intended to be run from the plugins/ top-level directory. It will go through all sub-folders in the
+# recipes folder and run command supplied if a setup.py exists in that directory.
 
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
