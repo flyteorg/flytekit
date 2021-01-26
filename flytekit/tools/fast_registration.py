@@ -91,7 +91,7 @@ def upload_package(source_dir: _os.PathLike, identifier: str, remote_location: s
     return full_remote_path
 
 
-def download_distribution(additional_distribution: str, destination: _os.PathLike):
+def download_distribution(additional_distribution: str, destination: str):
     """
     Downloads a remote code distribution and overwrites any local files.
     :param Text additional_distribution:

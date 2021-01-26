@@ -3,7 +3,6 @@ import importlib as _importlib
 import logging as _logging
 import os as _os
 import pathlib
-import pathlib as _pathlib
 import random as _random
 
 import click as _click
@@ -288,7 +287,7 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
     if additional_distribution is not None:
         if not dest_dir:
             dest_dir = _os.getcwd()
-        _download_distribution(additional_distribution, _pathlib.Path(dest_dir))
+        _download_distribution(additional_distribution, dest_dir)
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
