@@ -14,84 +14,27 @@ Python Library for easily authoring, testing, deploying, and interacting with Fl
 
 ## Installation
 
-Flytekit is designed for minimal footprint, and thus some features must be installed as extras.
+Flytekit is the core extensible library to author Flyte workflows and tasks and interact with Flyte Backend services. Flyte plugins can be installed separately. 
 
 ### Base Installation
 
-This is the lightest-weight SDK install. This installation includes everything you need to interact with Flyte.
-
-Modules include:
-1. The full Flyte IDL and an additional model layer for easier extension of the data model.
-2. gRPC client for communicating with the platform.
-3. Implementations for authoring and extending all Flyte entities (including tasks, workflows, and launch plans).
-
-Tools include:
-1. flyte-cli (Command-Line Interface for Interacting with the Flyte Platform)
-2. pyflyte (Command-Line tool for easing the registration of Flyte entities)
-
 ```bash
-pip install flytekit
+pip install flytekit==0.16.0b1
 ```
 
-### Plugin Installation
-#### Spark
+### Simple getting started
 
-If `@spark_task` is to be used, one should install the `spark` plugin.
+```python
 
-```bash
-pip install "flytekit[spark]" for Spark 2.4.x
-pip install "flytekit[spark3]" for Spark 3.x
 ```
 
-Please note that Spark 2.4 support is deprecated and will be removed in a future release.
+### Learn Flytekit by example using
+TODO Add link here
 
-#### Schema 
-
-If `Types.Schema()` is to be used for computations involving large dataframes, one should install the `schema` extension.
-
-```bash
-pip install "flytekit[schema]"
-```
-
-#### Sidecar
-
-If `@sidecar_task` is to be used, one should install the `sidecar` plugin.
-
-```bash
-pip install "flytekit[sidecar]"
-```
-
-### Pytorch
-
-If `@pytorch_task` is to be used, one should install the `pytorch` plugin.
-
-```bash
-pip install "flytekit[pytorch]"
-```
-
-### TensorFlow
-
-If `@tensorflow_task` is to be used, one should install the `tensorflow` plugin.
-
-```bash
-pip install flytekit[tensorflow]
-```
-
-### Full Installation
-
-To install all or multiple available plugins, one can specify them individually:
-
-```bash
-pip install "flytekit[sidecar,spark3,schema]"
-```
-
-Or install them with the `all` or `all-spark2.4` or `all-spark3` directives which will install all the plugins and a specific Spark version.
- Please note that `all` defaults to Spark 3.0 and Spark 2.4 support will be fully removed in a future release.
-
-
-```bash
-pip install "flytekit[all]"
-```
+### Plugins:
+Refer to (plugins/README.md)[plugins/README.md] for a list of available
+plugins. There may be plugins outside of this list, but this list is maintained
+by the core maintainers.
 
 ## Development
 
