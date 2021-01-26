@@ -33,7 +33,7 @@ def _refresh_credentials_standard(flyte_client):
 
 def _refresh_credentials_basic(flyte_client):
     """
-    This function is used by the _handle_rpc_error decorator, depending on the AUTH_MODE config object. This handler
+    This function is used by the _handle_rpc_error() decorator, depending on the AUTH_MODE config object. This handler
     is meant for SDK use-cases of auth (like pyflyte, or when users call SDK functions that require access to Admin,
     like when waiting for another workflow to complete from within a task). This function uses basic auth, which means
     the credentials for basic auth must be present from wherever this code is running.
@@ -66,44 +66,45 @@ def _get_refresh_handler(auth_mode):
         )
 
 
-def _handle_rpc_error(fn, retry=False):
-    def handler(*args, **kwargs):
-        """
-        Wraps rpc errors as Flyte exceptions and handles authentication the client.
-        :param args:
-        :param kwargs:
-        :return:
-        """
-        max_retries = 3
-        max_wait_time = 1000
-        try:
-            for i in range(max_retries):
-                try:
-                    return fn(*args, **kwargs)
-                except _RpcError as e:
-                    if e.code() == _GrpcStatusCode.UNAUTHENTICATED:
-                        # Always retry auth errors.
-                        if i == (max_retries - 1):
-                            # Exit the loop and wrap the authentication error.
-                            raise _user_exceptions.FlyteAuthenticationException(_six.text_type(e))
-                        refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
-                        refresh_handler_fn(args[0])
-                    else:
-                        # No more retries if retry=False or max_retries reached.
-                        if (retry is False) or i == (max_retries - 1):
-                            raise
+def _handle_rpc_error(retry=False):
+    def decorator(fn):
+        def handler(*args, **kwargs):
+            """
+            Wraps rpc errors as Flyte exceptions and handles authentication the client.
+            :param args:
+            :param kwargs:
+            :return:
+            """
+            max_retries = 3
+            max_wait_time = 1000
+            try:
+                for i in range(max_retries):
+                    try:
+                        return fn(*args, **kwargs)
+                    except _RpcError as e:
+                        if e.code() == _GrpcStatusCode.UNAUTHENTICATED:
+                            # Always retry auth errors.
+                            if i == (max_retries - 1):
+                                # Exit the loop and wrap the authentication error.
+                                raise _user_exceptions.FlyteAuthenticationException(_six.text_type(e))
+                            refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
+                            refresh_handler_fn(args[0])
                         else:
-                            # Retry: Start with 200ms wait-time and exponentially back-off upto 1 second.
-                            wait_time = min(200 * (2 ** retry), max_wait_time)
-                            _logging.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
-                            time.sleep(wait_time / 1000)
-        except _RpcError as e:
-            if e.code() == _GrpcStatusCode.ALREADY_EXISTS:
-                raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
-            else:
-                raise
-
-    return handler
+                            # No more retries if retry=False or max_retries reached.
+                            if (retry is False) or i == (max_retries - 1):
+                                raise
+                            else:
+                                # Retry: Start with 200ms wait-time and exponentially back-off upto 1 second.
+                                wait_time = min(200 * (2 ** i), max_wait_time)
+                                _logging.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
+                                time.sleep(wait_time / 1000)
+            except _RpcError as e:
+                if e.code() == _GrpcStatusCode.ALREADY_EXISTS:
+                    raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
+                else:
+                    raise
+        return handler
+    return decorator
 
 
 def _handle_invalid_create_request(fn):
@@ -261,7 +262,7 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    @_handle_rpc_error
+    @_handle_rpc_error()
     @_handle_invalid_create_request
     def create_workflow(self, workflow_create_request):
         """
@@ -348,7 +349,7 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    @_handle_rpc_error
+    @_handle_rpc_error()
     @_handle_invalid_create_request
     def create_launch_plan(self, launch_plan_create_request):
         """
@@ -393,7 +394,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetActiveLaunchPlan(active_launch_plan_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error()
     def update_launch_plan(self, update_request):
         """
         Allows updates to a launch plan at a given identifier.  Currently, a launch plan may only have it's state
@@ -440,7 +441,7 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    @_handle_rpc_error
+    @_handle_rpc_error()
     def update_named_entity(self, update_named_entity_request):
         """
         :param flyteidl.admin.common_pb2.NamedEntityUpdateRequest update_named_entity_request:
@@ -493,7 +494,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.ListExecutions(resource_list_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error()
     def terminate_execution(self, terminate_execution_request):
         """
         :param flyteidl.admin.execution_pb2.TerminateExecutionRequest terminate_execution_request:
@@ -501,7 +502,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.TerminateExecution(terminate_execution_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error()
     def relaunch_execution(self, relaunch_execution_request):
         """
         :param flyteidl.admin.execution_pb2.ExecutionRelaunchRequest relaunch_execution_request:
@@ -596,7 +597,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.ListProjects(project_list_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error()
     def register_project(self, project_register_request):
         """
         Registers a project along with a set of domains.
@@ -605,7 +606,7 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.RegisterProject(project_register_request, metadata=self._metadata)
 
-    @_handle_rpc_error
+    @_handle_rpc_error()
     def update_project(self, project):
         """
         Update an existing project specified by id.
@@ -619,7 +620,7 @@ class RawSynchronousFlyteClient(object):
     #  Matching Attributes Endpoints
     #
     ####################################################################################################################
-    @_handle_rpc_error
+    @_handle_rpc_error()
     def update_project_domain_attributes(self, project_domain_attributes_update_request):
         """
         This updates the attributes for a project and domain registered with the Flyte Admin Service
@@ -630,7 +631,7 @@ class RawSynchronousFlyteClient(object):
             project_domain_attributes_update_request, metadata=self._metadata
         )
 
-    @_handle_rpc_error
+    @_handle_rpc_error()
     def update_workflow_attributes(self, workflow_attributes_update_request):
         """
         This updates the attributes for a project, domain, and workflow registered with the Flyte Admin Service
