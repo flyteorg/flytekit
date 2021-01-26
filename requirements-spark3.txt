@@ -49,6 +49,7 @@ chardet==4.0.0
 click==7.1.2
     # via
     #   black
+    #   flytekit
     #   hmsclient
     #   papermill
 croniter==1.0.2

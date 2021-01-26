@@ -9,4 +9,3 @@ isort
 mock
 pytest
 mypy
-twine
