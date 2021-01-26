@@ -17,7 +17,7 @@ necessary to add plugins here, but this is a good starting place.
 
 
 ## Have a Plugin Idea?
-Please file and issue and or create a PR. 
+Please file an issue and or create a PR. 
 
 ## Development
 Flyte plugins are structured as micro-libs and can be authored in an
