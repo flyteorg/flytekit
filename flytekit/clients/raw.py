@@ -103,7 +103,9 @@ def _handle_rpc_error(retry=False):
                     raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
                 else:
                     raise
+
         return handler
+
     return decorator
 
 
