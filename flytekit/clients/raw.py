@@ -148,9 +148,7 @@ class RawSynchronousFlyteClient(object):
             self._channel = _insecure_channel(url, options=list((options or {}).items()))
         else:
             self._channel = _secure_channel(
-                url,
-                credentials or _ssl_channel_credentials(),
-                options=list((options or {}).items()),
+                url, credentials or _ssl_channel_credentials(), options=list((options or {}).items()),
             )
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._metadata = None
@@ -164,12 +162,7 @@ class RawSynchronousFlyteClient(object):
     def set_access_token(self, access_token):
         # Always set the header to lower-case regardless of what the config is. The grpc libraries that Admin uses
         # to parse the metadata don't change the metadata, but they do automatically lower the key you're looking for.
-        self._metadata = [
-            (
-                _creds_config.AUTHORIZATION_METADATA_KEY.get().lower(),
-                "Bearer {}".format(access_token),
-            )
-        ]
+        self._metadata = [(_creds_config.AUTHORIZATION_METADATA_KEY.get().lower(), "Bearer {}".format(access_token),)]
 
     def force_auth_flow(self):
         refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
