@@ -2,7 +2,7 @@ import logging as _logging
 
 import flytekit.plugins  # noqa: F401
 
-__version__ = "0.15.4"
+__version__ = "0.15.5"
 logger = _logging.getLogger("flytekit")
 
 # create console handler and set level to debug
