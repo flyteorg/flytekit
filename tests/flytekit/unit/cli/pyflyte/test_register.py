@@ -14,7 +14,7 @@ def test_register_workflows(mock_clirunner, monkeypatch):
     mock_register_launch_plan = MagicMock(return_value=MagicMock())
     monkeypatch.setattr(SdkLaunchPlan, "register", mock_register_launch_plan)
 
-    result = mock_clirunner("register", "workflows")
+    result = mock_clirunner("register", "-p", "project", "-d", "development", "-v", "--version", "workflows")
 
     assert result.exit_code == 0
 
@@ -31,7 +31,7 @@ def test_register_workflows_with_test_switch(mock_clirunner, monkeypatch):
     mock_register_launch_plan = MagicMock(return_value=MagicMock())
     monkeypatch.setattr(SdkLaunchPlan, "register", mock_register_launch_plan)
 
-    result = mock_clirunner("register", "--test", "workflows")
+    result = mock_clirunner("register", "-p", "project", "-d", "development", "-v", "--version", "--test", "workflows")
 
     assert result.exit_code == 0
 

@@ -117,9 +117,9 @@ class Input(_interface_models.Parameter, metaclass=_sdk_bases.ExtendedSdkType):
 class NodeOutput(_type_models.OutputReference, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(self, sdk_node, sdk_type, var):
         """
-        :param flytekit.common.nodes.SdkNode sdk_node:
-        :param flytekit.common.types.FlyteSdkType sdk_type:
-        :param Text var:
+        :param sdk_node:
+        :param sdk_type: deprecated in mypy flytekit.
+        :param var:
         """
         self._node = sdk_node
         self._type = sdk_type
@@ -159,5 +159,5 @@ class NodeOutput(_type_models.OutputReference, metaclass=_sdk_bases.ExtendedSdkT
         return self._type
 
     def __repr__(self):
-        # TODO: fix this so that if upstream node ids have any None's in it, this still prints instead of erroring.
-        return "NodeOutput({}:{})".format(self.sdk_node, self.var)
+        s = f"NodeOutput({self.sdk_node if self.sdk_node.id is not None else None}:{self.var})"
+        return s

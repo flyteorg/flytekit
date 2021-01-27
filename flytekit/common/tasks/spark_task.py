@@ -27,13 +27,21 @@ from flytekit.plugins import pyspark as _pyspark
 
 class GlobalSparkContext(object):
     _SPARK_CONTEXT = None
+    _SPARK_SESSION = None
 
     @classmethod
     def get_spark_context(cls):
         return cls._SPARK_CONTEXT
 
+    @classmethod
+    def get_spark_session(cls):
+        return cls._SPARK_SESSION
+
     def __enter__(self):
         GlobalSparkContext._SPARK_CONTEXT = _pyspark.SparkContext()
+        GlobalSparkContext._SPARK_SESSION = _pyspark.sql.SparkSession.builder.appName(
+            "Flyte Spark SQL Context"
+        ).getOrCreate()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

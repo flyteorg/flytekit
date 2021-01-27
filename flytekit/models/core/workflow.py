@@ -2,8 +2,8 @@ from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
+from flytekit.models import types as _types
 from flytekit.models.core import condition as _condition
-from flytekit.models.core import errors as _errors
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.literals import Binding as _Binding
 from flytekit.models.literals import RetryStrategy as _RetryStrategy
@@ -57,7 +57,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
         :param IfBlock case:
         :param list[IfBlock] other:
         :param Node else_node:
-        :param flytekit.models.core.errors.ContainerError error:
+        :param _types.Error error:
         """
 
         self._case = case
@@ -118,7 +118,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
             case=IfBlock.from_flyte_idl(pb2_object.case),
             other=[IfBlock.from_flyte_idl(a) for a in pb2_object.other],
             else_node=Node.from_flyte_idl(pb2_object.else_node) if pb2_object.HasField("else_node") else None,
-            error=_errors.ContainerError.from_flyte_idl(pb2_object.error) if pb2_object.HasField("error") else None,
+            error=_types.Error.from_flyte_idl(pb2_object.error) if pb2_object.HasField("error") else None,
         )
 
 
@@ -200,7 +200,8 @@ class NodeMetadata(_common.FlyteIdlEntity):
         node_metadata = _core_workflow.NodeMetadata(
             name=self.name, retries=self.retries.to_flyte_idl(), interruptible=self.interruptible,
         )
-        node_metadata.timeout.FromTimedelta(self.timeout)
+        if self.timeout:
+            node_metadata.timeout.FromTimedelta(self.timeout)
         return node_metadata
 
     @classmethod
@@ -518,13 +519,17 @@ class WorkflowMetadataDefaults(_common.FlyteIdlEntity):
         """
         Metadata Defaults for the workflow.
         """
-        self.interruptible_ = interruptible
+        self._interruptible = interruptible
+
+    @property
+    def interruptible(self):
+        return self._interruptible
 
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.workflow_pb2.WorkflowMetadataDefaults
         """
-        return _core_workflow.WorkflowMetadataDefaults(interruptible=self.interruptible_)
+        return _core_workflow.WorkflowMetadataDefaults(interruptible=self._interruptible)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):

@@ -1,12 +1,21 @@
+from __future__ import annotations
+
 import copy as _copy
+import enum
+import logging as _logging
+import os
+import pathlib
+import typing
+from dataclasses import dataclass
+from datetime import datetime
 from inspect import getfullargspec as _getargspec
 
 import six as _six
 
-from flytekit import __version__
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common import sdk_bases as _sdk_bases
+from flytekit.common import utils as _common_utils
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import user as _user_exceptions
@@ -17,58 +26,103 @@ from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import resources as _resource_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines import loader as _engine_loader
+from flytekit.interfaces.stats import taggable
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_models
 
 
+# TODO: Clean up working dir name
 class ExecutionParameters(object):
     """
     This is the parameter object that will be provided as the first parameter for every execution of any @*_task
     decorated function.
     """
 
-    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging):
+    @dataclass(init=False)
+    class Builder(object):
+        stats: taggable.TaggableStats
+        execution_date: datetime
+        logging: _logging
+        execution_id: str
+        attrs: typing.Dict[str, typing.Any]
+        working_dir: typing.Union[os.PathLike, _common_utils.AutoDeletingTempDir]
+
+        def __init__(self, current: ExecutionParameters = None):
+            self.stats = current.stats if current else None
+            self.execution_date = current.execution_date if current else None
+            self.working_dir = current.working_directory if current else None
+            self.execution_id = current.execution_id if current else None
+            self.logging = current.logging if current else None
+            self.attrs = current._attrs if current else {}
+
+        def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:
+            self.attrs[key] = v
+            return self
+
+        def build(self) -> ExecutionParameters:
+            if not isinstance(self.working_dir, _common_utils.AutoDeletingTempDir):
+                pathlib.Path(self.working_dir).mkdir(parents=True, exist_ok=True)
+            return ExecutionParameters(
+                execution_date=self.execution_date,
+                stats=self.stats,
+                tmp_dir=self.working_dir,
+                execution_id=self.execution_id,
+                logging=self.logging,
+                **self.attrs,
+            )
+
+    @staticmethod
+    def new_builder(current: ExecutionParameters = None) -> Builder:
+        return ExecutionParameters.Builder(current=current)
+
+    def builder(self) -> Builder:
+        return ExecutionParameters.Builder(current=self)
+
+    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, **kwargs):
+        """
+        Args:
+            execution_date: Date when the execution is running
+            tmp_dir: temporary directory for the execution
+            stats: handle to emit stats
+            execution_id: Identifier for the xecution
+            logging: handle to logging
+        """
         self._stats = stats
         self._execution_date = execution_date
         self._working_directory = tmp_dir
         self._execution_id = execution_id
         self._logging = logging
+        # AutoDeletingTempDir's should be used with a with block, which creates upon entry
+        self._attrs = kwargs
 
     @property
-    def stats(self):
+    def stats(self) -> taggable.TaggableStats:
         """
         A handle to a special statsd object that provides usefully tagged stats.
-
         TODO: Usage examples and better comments
-
-        :rtype: flytekit.interfaces.stats.taggable.TaggableStats
         """
         return self._stats
 
     @property
-    def logging(self):
+    def logging(self) -> _logging:
         """
         A handle to a useful logging object.
-
         TODO: Usage examples
-
-        :rtype: logging
         """
         return self._logging
 
     @property
-    def working_directory(self):
+    def working_directory(self) -> _common_utils.AutoDeletingTempDir:
         """
         A handle to a special working directory for easily producing temporary files.
 
         TODO: Usage examples
-
-        :rtype: flytekit.common.utils.AutoDeletingTempDir
+        TODO: This does not always return a AutoDeletingTempDir
         """
         return self._working_directory
 
     @property
-    def execution_date(self):
+    def execution_date(self) -> datetime:
         """
         This is a datetime representing the time at which a workflow was started.  This is consistent across all tasks
         executed in a workflow or sub-workflow.
@@ -77,13 +131,11 @@ class ExecutionParameters(object):
 
             Do NOT use this execution_date to drive any production logic.  It might be useful as a tag for data to help
             in debugging.
-
-        :rtype: datetime.datetime
         """
         return self._execution_date
 
     @property
-    def execution_id(self):
+    def execution_id(self) -> str:
         """
         This is the identifier of the workflow execution within the underlying engine.  It will be consistent across all
         task executions in a workflow or sub-workflow execution.
@@ -92,10 +144,29 @@ class ExecutionParameters(object):
 
             Do NOT use this execution_id to drive any production logic.  This execution ID should only be used as a tag
             on output data to link back to the workflow run that created it.
-
-        :rtype: Text
         """
         return self._execution_id
+
+    def __getattr__(self, attr_name: str) -> typing.Any:
+        """
+        This houses certain task specific context. For example in Spark, it houses the SparkSession, etc
+        """
+        attr_name = attr_name.upper()
+        if self._attrs and attr_name in self._attrs:
+            return self._attrs[attr_name]
+        raise AssertionError(f"{attr_name} not available as a parameter in Flyte context - are you in right task-type?")
+
+    def has_attr(self, attr_name: str) -> bool:
+        attr_name = attr_name.upper()
+        if self._attrs and attr_name in self._attrs:
+            return True
+        return False
+
+    def get(self, key: str) -> typing.Any:
+        """
+        Returns task specific context if present else raise an error. The returned context will match the key
+        """
+        return self.__getattr__(attr_name=key)
 
 
 class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.ExtendedSdkType):
@@ -194,6 +265,11 @@ class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.Extended
         return _task_models.Resources(limits=limits, requests=requests)
 
 
+class SdkRunnableTaskStyle(enum.Enum):
+    V0 = 0
+    V1 = 1
+
+
 class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
     """
     This class includes the additional logic for building a task that executes in Python code.  It has even more
@@ -244,6 +320,9 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         :param dict[Text, Text] environment:
         :param dict[Text, T] custom:
         """
+        # Circular dependency
+        from flytekit import __version__
+
         self._task_function = task_function
         super(SdkRunnableTask, self).__init__(
             task_type,
@@ -258,6 +337,7 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
                 discovery_version,
                 deprecated,
             ),
+            # TODO: If we end up using SdkRunnableTask for the new code, make sure this is set correctly.
             _interface.TypedInterface({}, {}),
             custom,
             container=self._get_container_definition(
@@ -274,6 +354,9 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         )
         self.id._name = "{}.{}".format(self.task_module, self.task_function_name)
         self._has_fast_registered = False
+
+        # TODO: Remove this in the future, I don't think we'll be using this.
+        self._task_style = SdkRunnableTaskStyle.V0
 
     _banned_inputs = {}
     _banned_outputs = {}
@@ -293,6 +376,10 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
     def promote_from_model(cls, base_model):
         # TODO: If the task exists in this container, we should be able to retrieve it.
         raise _user_exceptions.FlyteAssertion("Cannot promote a base object to a runnable task.")
+
+    @property
+    def task_style(self):
+        return self._task_style
 
     @property
     def task_function(self):
@@ -380,17 +467,18 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
             working directory (with the names provided), which will in turn allow Flyte Propeller to push along the
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
-
-        return _exception_scopes.user_entry_point(self.task_function)(
-            ExecutionParameters(
-                execution_date=context.execution_date,
-                tmp_dir=context.working_directory,
-                stats=context.stats,
-                execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
-                logging=context.logging,
-            ),
-            **inputs
-        )
+        if self.task_style == SdkRunnableTaskStyle.V0:
+            return _exception_scopes.user_entry_point(self.task_function)(
+                ExecutionParameters(
+                    execution_date=context.execution_date,
+                    # TODO: it might be better to consider passing the full struct
+                    execution_id=_six.text_type(WorkflowExecutionIdentifier.promote_from_model(context.execution_id)),
+                    stats=context.stats,
+                    logging=context.logging,
+                    tmp_dir=context.working_directory,
+                ),
+                **inputs,
+            )
 
     @_exception_scopes.system_entry_point
     def execute(self, context, inputs):
@@ -405,22 +493,22 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
             workflow.  Where as local engine will merely feed the outputs directly into the next node.
         """
         inputs_dict = _type_helpers.unpack_literal_map_to_sdk_python_std(
-            inputs,
-            {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in _six.iteritems(self.interface.inputs)},
+            inputs, {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in self.interface.inputs.items()}
         )
         outputs_dict = {
             name: _task_output.OutputReference(_type_helpers.get_sdk_type_from_literal_type(variable.type))
             for name, variable in _six.iteritems(self.interface.outputs)
         }
-        inputs_dict.update(outputs_dict)
 
-        self._execute_user_code(context, inputs_dict)
-
-        return {
-            _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
-                literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
-            )
-        }
+        # Old style - V0: If annotations are used to define outputs, do not append outputs to the inputs dict
+        if not self.task_function.__annotations__ or "return" not in self.task_function.__annotations__:
+            inputs_dict.update(outputs_dict)
+            self._execute_user_code(context, inputs_dict)
+            return {
+                _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(
+                    literals={k: v.sdk_value for k, v in _six.iteritems(outputs_dict)}
+                )
+            }
 
     @_exception_scopes.system_entry_point
     def fast_register(self, project, domain, name, digest, additional_distribution, dest_dir) -> str:

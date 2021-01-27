@@ -43,6 +43,8 @@ pip install "flytekit[spark]" for Spark 2.4.x
 pip install "flytekit[spark3]" for Spark 3.x
 ```
 
+Please note that Spark 2.4 support is deprecated and will be removed in a future release.
+
 #### Schema 
 
 If `Types.Schema()` is to be used for computations involving large dataframes, one should install the `schema` extension.
@@ -80,11 +82,11 @@ pip install flytekit[tensorflow]
 To install all or multiple available plugins, one can specify them individually:
 
 ```bash
-pip install "flytekit[sidecar,spark,schema]"
+pip install "flytekit[sidecar,spark3,schema]"
 ```
 
 Or install them with the `all` or `all-spark2.4` or `all-spark3` directives which will install all the plugins and a specific Spark version.
- Please note that `all` currently defaults to Spark 2.4.x. In a future release (starting 0.15.x), `all` will be switched to use Spark 3.x.
+ Please note that `all` defaults to Spark 3.0 and Spark 2.4 support will be fully removed in a future release.
 
 
 ```bash
@@ -133,11 +135,11 @@ make test
 
 ### Updating requirements
 
-Update requirements in [`setup.py`](setup.py), or update requirements for development in [`dev-requirements.in`](dev-requirements.in). Then, validate, pin and freeze all requirements by running:
+Update requirements in [`requirements.in`](requirements.in) (or [`requirements-spark3.in`](requirements-spark3.in)), or update requirements for development in [`dev-requirements.in`](dev-requirements.in). Then, validate, pin and freeze all requirements by running:
 
 ```bash
 source ~/.virtualenvs/flytekit/bin/activate
 make requirements
 ```
 
-This will re-create the [`requirements.txt`](requirements.txt) and [`dev-requirements.txt`](dev-requirements.txt) files which will be used for testing. You will have also have to re-run `make setup` to update your local environment with the updated requirements.
+This will re-create the [`requirements.txt`](requirements.txt) (or [`requirements-spark3.in`](requirements-spark3.in)) and [`dev-requirements.txt`](dev-requirements.txt) files which will be used for testing. You will have also have to re-run `make setup` to update your local environment with the updated requirements.

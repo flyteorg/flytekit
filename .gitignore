@@ -19,3 +19,7 @@ dist
 *.iml
 .eggs
 .demo
+.bash_history
+*-out.html
+*-out.ipynb
+.python-version

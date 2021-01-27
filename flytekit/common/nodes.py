@@ -163,11 +163,14 @@ class SdkNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node, metaclass=
             output_aliases=[],  # TODO: Are aliases a thing in SDK nodes
             task_node=_component_nodes.SdkTaskNode(sdk_task) if sdk_task else None,
             workflow_node=workflow_node,
-            branch_node=sdk_branch.target if sdk_branch else None,
+            branch_node=sdk_branch,
         )
         self._upstream = upstream_nodes
-        self._executable_sdk_object = sdk_task or sdk_workflow or sdk_branch or sdk_launch_plan
-        self._outputs = OutputParameterMapper(self._executable_sdk_object.interface.outputs, self)
+        self._executable_sdk_object = sdk_task or sdk_workflow or sdk_launch_plan
+        if not sdk_branch:
+            self._outputs = OutputParameterMapper(self._executable_sdk_object.interface.outputs, self)
+        else:
+            self._outputs = None
 
     @property
     def executable_sdk_object(self):

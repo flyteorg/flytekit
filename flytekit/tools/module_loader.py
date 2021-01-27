@@ -1,7 +1,9 @@
+import contextlib
 import importlib
+import os
 import pkgutil
-
-import six
+import sys
+from typing import Iterator, List, Union
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.local_workflow import SdkRunnableWorkflow as _SdkRunnableWorkflow
@@ -19,6 +21,27 @@ def iterate_modules(pkgs):
 
         for _, name, _ in pkgutil.walk_packages(package.__path__, prefix="{}.".format(package_name)):
             yield importlib.import_module(name)
+
+
+@contextlib.contextmanager
+def add_sys_path(path: Union[str, os.PathLike]) -> Iterator[None]:
+    """Temporarily add given path to `sys.path`."""
+    path = os.fspath(path)
+    try:
+        sys.path.insert(0, path)
+        yield
+    finally:
+        sys.path.remove(path)
+
+
+def just_load_modules(pkgs: List[str]):
+    """
+    This one differs from the above in that we don't yield anything, just load all the modules.
+    """
+    for package_name in pkgs:
+        package = importlib.import_module(package_name)
+        for _, name, _ in pkgutil.walk_packages(package.__path__, prefix="{}.".format(package_name)):
+            importlib.import_module(name)
 
 
 def load_workflow_modules(pkgs):
@@ -83,14 +106,30 @@ def _topo_sort_helper(
             )
 
 
+def _get_entity_to_module(pkgs):
+    entity_to_module_key = {}
+    for m in iterate_modules(pkgs):
+        for k in dir(m):
+            o = m.__dict__[k]
+            if isinstance(o, _registerable.RegisterableEntity) and not o.has_registered:
+                if o.instantiated_in == m.__name__:
+                    entity_to_module_key[o] = (m, k)
+                    if isinstance(o, _SdkRunnableWorkflow) and o.should_create_default_launch_plan:
+                        # SDK should create a default launch plan for a workflow.  This is a special-case to simplify
+                        # authoring of workflows.
+                        entity_to_module_key[o.create_launch_plan()] = (m, k)
+    return entity_to_module_key
+
+
 def iterate_registerable_entities_in_order(
-    pkgs, ignore_entities=None, include_entities=None, detect_unreferenced_entities=True
+    pkgs, local_source_root=None, ignore_entities=None, include_entities=None, detect_unreferenced_entities=True,
 ):
     """
     This function will iterate all discovered entities in the given package list.  It will then attempt to
     topologically sort such that any entity with a dependency on another comes later in the list.  Note that workflows
     can reference other workflows and launch plans.
     :param list[Text] pkgs:
+    :param Text local_source_root:
     :param set[type] ignore_entities: If specified, ignore these entities while doing a topological sort.  All other
         entities will be taken.  Only one of ignore_entities or include_entities can be set.
     :param set[type] include_entities: If specified, include these entities while doing a topological sort.  All
@@ -108,22 +147,14 @@ def iterate_registerable_entities_in_order(
         ignore_entities = tuple(list(ignore_entities or set([object])))
         include_entities = tuple(list(include_entities or set()))
 
-    entity_to_module_key = {}
-    for m in iterate_modules(pkgs):
-        for k in dir(m):
-            o = m.__dict__[k]
-            if isinstance(o, _registerable.RegisterableEntity):
-                if o.has_registered:
-                    continue
-                if o.instantiated_in == m.__name__:
-                    entity_to_module_key[o] = (m, k)
-                    if isinstance(o, _SdkRunnableWorkflow) and o.should_create_default_launch_plan:
-                        # SDK should create a default launch plan for a workflow.  This is a special-case to simplify
-                        # authoring of workflows.
-                        entity_to_module_key[o.create_launch_plan()] = (m, k)
+    if local_source_root is not None:
+        with add_sys_path(local_source_root):
+            entity_to_module_key = _get_entity_to_module(pkgs)
+    else:
+        entity_to_module_key = _get_entity_to_module(pkgs)
 
     visited = set()
-    for o in six.iterkeys(entity_to_module_key):
+    for o in entity_to_module_key.keys():
         if o not in visited:
             recursion_set = dict()
             recursion_stack = []

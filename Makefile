@@ -28,12 +28,14 @@ fmt: ## Format code with black and isort
 
 .PHONY: lint
 lint: ## Run linters
+	mypy || true
 	flake8 .
 
 .PHONY: test
 test: lint ## Run tests
 	pytest tests/flytekit/unit
 	pytest tests/scripts
+	pytest plugins/tests
 	shellcheck **/*.sh
 
 requirements-spark3.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark3.txt
@@ -50,3 +52,9 @@ dev-requirements.txt: dev-requirements.in requirements.txt install-piptools
 
 .PHONY: requirements
 requirements: requirements.txt dev-requirements.txt requirements-spark3.txt ## Compile requirements
+
+# TODO: Change this in the future to be all of flytekit
+.PHONY: coverage
+coverage:
+	coverage run -m pytest tests/flytekit/unit/annotated flytekit/types plugins/tests
+	coverage report -m --include="flytekit/annotated/*,flytekit/types/*,plugins/*"

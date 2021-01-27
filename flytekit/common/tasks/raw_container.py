@@ -1,7 +1,7 @@
 import datetime as _datetime
 from typing import Dict, List
 
-from flytekit import __version__
+import flytekit
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common.exceptions import scopes as _exception_scopes
@@ -157,7 +157,9 @@ class SdkRawContainerTask(_base_task.SdkTask):
         metadata = _task_models.TaskMetadata(
             discoverable,
             # This needs to have the proper version reflected in it
-            _task_models.RuntimeMetadata(_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python",),
+            _task_models.RuntimeMetadata(
+                _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, flytekit.__version__, "python",
+            ),
             timeout or _datetime.timedelta(seconds=0),
             _literals.RetryStrategy(retries),
             interruptible,

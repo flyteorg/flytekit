@@ -28,7 +28,7 @@ def _write_marker(marker: _os.PathLike):
         pass
 
 
-def _filter_tar_file_fn(tarinfo: _tarfile.TarInfo) -> _tarfile.TarInfo:
+def filter_tar_file_fn(tarinfo: _tarfile.TarInfo) -> _tarfile.TarInfo:
     """
     Excludes designated file types from tar archive
     :param _tarfile.TarInfo tarinfo:
@@ -78,7 +78,7 @@ def upload_package(source_dir: _os.PathLike, identifier: str, remote_location: s
     with _tempfile.NamedTemporaryFile() as fp:
         # Write using gzip
         with _tarfile.open(fp.name, "w:gz") as tar:
-            tar.add(source_dir, arcname="", filter=_filter_tar_file_fn)
+            tar.add(source_dir, arcname="", filter=filter_tar_file_fn)
         if dry_run:
             print("Would upload {} to {}".format(fp.name, full_remote_path))
         else:
@@ -91,7 +91,7 @@ def upload_package(source_dir: _os.PathLike, identifier: str, remote_location: s
     return full_remote_path
 
 
-def download_distribution(additional_distribution: str, destination: _os.PathLike):
+def download_distribution(additional_distribution: str, destination: str):
     """
     Downloads a remote code distribution and overwrites any local files.
     :param Text additional_distribution:
