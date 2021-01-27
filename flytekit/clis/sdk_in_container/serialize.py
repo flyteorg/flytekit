@@ -186,21 +186,11 @@ def serialize_all(
                 continue
             serialized = entity.serialize()
             fname_index = str(i).zfill(zero_padded_length)
-            fname = "{}_{}.pb".format(fname_index, entity.id.name)
+            fname = "{}_{}_{}.pb".format(fname_index, entity.id.name, entity.id.resource_type)
             click.echo(f"  Writing type: {entity.id.resource_type_name()}, {entity.id.name} to\n    {fname}")
             if folder:
                 fname = _os.path.join(folder, fname)
             _write_proto_to_file(serialized, fname)
-
-            # Not everything serialized will necessarily have an identifier field in it, even though some do (like the
-            # TaskTemplate). To be more rigorous, we write an explicit identifier file that reflects the choices (like
-            # project/domain, etc.) made for this serialize call. We should not allow users to specify a different project
-            # for instance come registration time, to avoid mismatches between potential internal ids like the TaskTemplate
-            # and the registered entity.
-            identifier_fname = "{}_{}.identifier.pb".format(fname_index, entity._id.name)
-            if folder:
-                identifier_fname = _os.path.join(folder, identifier_fname)
-            _write_proto_to_file(entity._id.to_flyte_idl(), identifier_fname)
 
 
 def _determine_text_chars(length):

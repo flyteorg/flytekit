@@ -1,9 +1,11 @@
-from typing import Tuple
+from typing import Tuple, Union
 
 import six as _six
+from flyteidl.admin.launch_plan_pb2 import LaunchPlan
+from flyteidl.admin.task_pb2 import TaskSpec
+from flyteidl.admin.workflow_pb2 import WorkflowSpec
 from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.core import workflow_pb2 as _workflow_pb2
-from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _GeneratedProtocolMessageType
 
 from flytekit.common.types.helpers import get_sdk_type_from_literal_type as _get_sdk_type_from_literal_type
 from flytekit.models import literals as _literals
@@ -147,25 +149,18 @@ def _hydrate_workflow_template_nodes(
 
 
 def hydrate_registration_parameters(
-    identifier: _identifier_pb2.Identifier,
-    project: str,
-    domain: str,
-    version: str,
-    entity: _GeneratedProtocolMessageType,
-) -> Tuple[_identifier_pb2.Identifier, _GeneratedProtocolMessageType]:
+    resource_type: int, project: str, domain: str, version: str, entity: Union[LaunchPlan, WorkflowSpec, TaskSpec],
+) -> Tuple[_identifier_pb2.Identifier, Union[LaunchPlan, WorkflowSpec, TaskSpec]]:
     """
     This is called at registration time to fill out identifier fields (e.g. project, domain, version) that are mutable.
-    Entity is one of \b
-    - flyteidl.admin.launch_plan_pb2.LaunchPlanSpec for launch plans\n
-    - flyteidl.admin.workflow_pb2.WorkflowSpec for workflows\n
-    - flyteidl.admin.task_pb2.TaskSpec for tasks\n
     """
-    identifier = _hydrate_identifier(project, domain, version, identifier)
 
-    if identifier.resource_type == _identifier_pb2.LAUNCH_PLAN:
-        entity.workflow_id.CopyFrom(_hydrate_identifier(project, domain, version, entity.workflow_id))
+    if resource_type == _identifier_pb2.LAUNCH_PLAN:
+        identifier = _hydrate_identifier(project, domain, version, entity.id)
+        entity.spec.workflow_id.CopyFrom(_hydrate_identifier(project, domain, version, entity.spec.workflow_id))
         return identifier, entity
 
+    identifier = _hydrate_identifier(project, domain, version, entity.template.id)
     entity.template.id.CopyFrom(identifier)
     if identifier.resource_type == _identifier_pb2.TASK:
         return identifier, entity

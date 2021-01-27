@@ -364,8 +364,13 @@ class LaunchPlan(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlan
         """
+        identifier = (
+            self.id
+            if self.id is not None
+            else _identifier.Identifier(_identifier.ResourceType.LAUNCH_PLAN, None, None, None, None)
+        )
         return _launch_plan.LaunchPlan(
-            id=self.id.to_flyte_idl(), spec=self.spec.to_flyte_idl(), closure=self.closure.to_flyte_idl(),
+            id=identifier.to_flyte_idl(), spec=self.spec.to_flyte_idl(), closure=self.closure.to_flyte_idl(),
         )
 
     @classmethod

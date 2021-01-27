@@ -1572,15 +1572,15 @@ def activate_project(identifier, host, insecure):
 
 
 _resource_map = {
-    _identifier_pb2.LAUNCH_PLAN: _launch_plan_pb2.LaunchPlanSpec,
+    _identifier_pb2.LAUNCH_PLAN: _launch_plan_pb2.LaunchPlan,
     _identifier_pb2.WORKFLOW: _workflow_pb2.WorkflowSpec,
     _identifier_pb2.TASK: _task_pb2.TaskSpec,
 }
 
 
 def _extract_pair(
-    identifier_file: str,
     object_file: str,
+    resource_type: int,
     project: str,
     domain: str,
     version: str,
@@ -1594,16 +1594,16 @@ def _extract_pair(
     :param Text object_file:
     :rtype: (flyteidl.core.identifier_pb2.Identifier, T)
     """
-    identifier = _load_proto_from_file(_identifier_pb2.Identifier, identifier_file)
-    if identifier.resource_type not in _resource_map:
+    if resource_type not in _resource_map:
         raise _user_exceptions.FlyteAssertion(
-            f"Resource type found in identifier {identifier.resource_type} invalid, must be launch plan, task, or workflow"
+            f"Resource type found in proto file name [{resource_type}] invalid, "
+            "must be 1 (task), 2 (workflow) or 3 (launch plan)"
         )
-    entity = _load_proto_from_file(_resource_map[identifier.resource_type], object_file)
+    entity = _load_proto_from_file(_resource_map[resource_type], object_file)
     registerable_identifier, registerable_entity = hydrate_registration_parameters(
-        identifier, project, domain, version, entity
+        resource_type, project, domain, version, entity
     )
-    patch_fn = patches.get(identifier.resource_type)
+    patch_fn = patches.get(resource_type)
     if patch_fn:
         registerable_entity = patch_fn(registerable_entity)
     return registerable_identifier, registerable_entity
@@ -1625,11 +1625,11 @@ def _extract_files(
     # .pb
 
     results = []
-    filename_iterator = iter(file_paths)
-    for identifier_file in filename_iterator:
-        object_file = next(filename_iterator)
-        # Serialized proto files are of the form: 12_foo.bar.<resource_type>.pb
-        id, entity = _extract_pair(identifier_file, object_file, project, domain, version, patches or {})
+    for proto_file in file_paths:
+        # Serialized proto files are of the form: 12_foo.bar_1.pb
+        # Where 12 indicates it is the 12 file to process in order and 1 that is of resource type 1, or TASK.
+        resource_type = int(proto_file[-4])
+        id, entity = _extract_pair(proto_file, resource_type, project, domain, version, patches or {})
         results.append((id, entity))
 
     return results
@@ -1647,24 +1647,26 @@ def _get_patch_launch_plan_fn(
         if assumable_iam_role and kubernetes_service_account:
             _click.UsageError("Currently you cannot specify both an assumable_iam_role and kubernetes_service_account")
         if assumable_iam_role:
-            entity.auth_role.CopyFrom(_AuthRole(assumable_iam_role=assumable_iam_role).to_flyte_idl())
+            entity.spec.auth_role.CopyFrom(_AuthRole(assumable_iam_role=assumable_iam_role).to_flyte_idl())
         elif kubernetes_service_account:
-            entity.auth_role.CopyFrom(_AuthRole(kubernetes_service_account=kubernetes_service_account).to_flyte_idl())
+            entity.spec.auth_role.CopyFrom(
+                _AuthRole(kubernetes_service_account=kubernetes_service_account).to_flyte_idl()
+            )
         elif _auth_config.ASSUMABLE_IAM_ROLE.get() is not None:
-            entity.auth_role.CopyFrom(
+            entity.spec.auth_role.CopyFrom(
                 _AuthRole(assumable_iam_role=_auth_config.ASSUMABLE_IAM_ROLE.get()).to_flyte_idl()
             )
         elif _auth_config.KUBERNETES_SERVICE_ACCOUNT.get() is not None:
-            entity.auth_role.CopyFrom(
+            entity.spec.auth_role.CopyFrom(
                 _AuthRole(kubernetes_service_account=_auth_config.KUBERNETES_SERVICE_ACCOUNT.get()).to_flyte_idl()
             )
 
         if output_location_prefix is not None:
-            entity.raw_output_data_config.CopyFrom(
+            entity.spec.raw_output_data_config.CopyFrom(
                 _RawOutputDataConfig(output_location_prefix=output_location_prefix).to_flyte_idl()
             )
         elif _auth_config.RAW_OUTPUT_DATA_PREFIX.get() is not None:
-            entity.raw_output_data_config.CopyFrom(
+            entity.spec.raw_output_data_config.CopyFrom(
                 _RawOutputDataConfig(output_location_prefix=_auth_config.RAW_OUTPUT_DATA_PREFIX.get()).to_flyte_idl()
             )
 
@@ -1689,7 +1691,7 @@ def _extract_and_register(
     for id, flyte_entity in flyte_entities_list:
         try:
             if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
-                client.raw.create_launch_plan(_launch_plan_pb2.LaunchPlanCreateRequest(id=id, spec=flyte_entity))
+                client.raw.create_launch_plan(_launch_plan_pb2.LaunchPlanCreateRequest(id=id, spec=flyte_entity.spec))
             elif id.resource_type == _identifier_pb2.TASK:
                 client.raw.create_task(_task_pb2.TaskCreateRequest(id=id, spec=flyte_entity))
             elif id.resource_type == _identifier_pb2.WORKFLOW:
@@ -1735,7 +1737,7 @@ def register_files(
           for you and produced file that have a prefix that sets the correct order.\n
         * Of the correct type. That is, they should be the serialized form of one of these Flyte IDL objects
           (or an identifier object).\n
-          - flyteidl.admin.launch_plan_pb2.LaunchPlanSpec for launch plans\n
+          - flyteidl.admin.launch_plan_pb2.LaunchPlan for launch plans\n
           - flyteidl.admin.workflow_pb2.WorkflowSpec for workflows\n
           - flyteidl.admin.task_pb2.TaskSpec for tasks\n
 

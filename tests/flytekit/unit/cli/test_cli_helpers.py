@@ -5,6 +5,7 @@ import flyteidl.core.tasks_pb2 as _core_task_pb2
 import pytest
 from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.core import workflow_pb2 as _core_workflow_pb2
+from flyteidl.core.identifier_pb2 import LAUNCH_PLAN
 
 from flytekit.clis import helpers
 from flytekit.clis.helpers import _hydrate_identifier, _hydrate_workflow_template_nodes, hydrate_registration_parameters
@@ -226,28 +227,25 @@ def test_hydrate_workflow_template__branch_node():
 
 
 def test_hydrate_registration_parameters__launch_plan_already_set():
-    launch_plan = _launch_plan_pb2.LaunchPlanSpec(
-        workflow_id=_identifier_pb2.Identifier(
-            resource_type=_identifier_pb2.WORKFLOW,
-            project="project2",
-            domain="domain2",
-            name="workflow_name",
-            version="abc",
-        )
-    )
-    identifier, entity = hydrate_registration_parameters(
-        _identifier_pb2.Identifier(
+    launch_plan = _launch_plan_pb2.LaunchPlan(
+        id=_identifier_pb2.Identifier(
             resource_type=_identifier_pb2.LAUNCH_PLAN,
             project="project2",
             domain="domain2",
             name="workflow_name",
             version="abc",
         ),
-        "project",
-        "domain",
-        "12345",
-        launch_plan,
+        spec=_launch_plan_pb2.LaunchPlanSpec(
+            workflow_id=_identifier_pb2.Identifier(
+                resource_type=_identifier_pb2.WORKFLOW,
+                project="project2",
+                domain="domain2",
+                name="workflow_name",
+                version="abc",
+            )
+        ),
     )
+    identifier, entity = hydrate_registration_parameters(LAUNCH_PLAN, "project", "domain", "12345", launch_plan,)
     assert identifier == _identifier_pb2.Identifier(
         resource_type=_identifier_pb2.LAUNCH_PLAN,
         project="project2",
@@ -255,28 +253,23 @@ def test_hydrate_registration_parameters__launch_plan_already_set():
         name="workflow_name",
         version="abc",
     )
-    assert entity.workflow_id == launch_plan.workflow_id
+    assert entity.spec.workflow_id == launch_plan.spec.workflow_id
 
 
 def test_hydrate_registration_parameters__launch_plan_nothing_set():
-    launch_plan = _launch_plan_pb2.LaunchPlanSpec(
-        workflow_id=_identifier_pb2.Identifier(resource_type=_identifier_pb2.WORKFLOW, name="workflow_name",)
+    launch_plan = _launch_plan_pb2.LaunchPlan(
+        id=_identifier_pb2.Identifier(resource_type=_identifier_pb2.LAUNCH_PLAN, name="lp_name",),
+        spec=_launch_plan_pb2.LaunchPlanSpec(
+            workflow_id=_identifier_pb2.Identifier(resource_type=_identifier_pb2.WORKFLOW, name="workflow_name",)
+        ),
     )
     identifier, entity = hydrate_registration_parameters(
-        _identifier_pb2.Identifier(resource_type=_identifier_pb2.LAUNCH_PLAN, name="workflow_name"),
-        "project",
-        "domain",
-        "12345",
-        launch_plan,
+        _identifier_pb2.LAUNCH_PLAN, "project", "domain", "12345", launch_plan,
     )
     assert identifier == _identifier_pb2.Identifier(
-        resource_type=_identifier_pb2.LAUNCH_PLAN,
-        project="project",
-        domain="domain",
-        name="workflow_name",
-        version="12345",
+        resource_type=_identifier_pb2.LAUNCH_PLAN, project="project", domain="domain", name="lp_name", version="12345",
     )
-    assert entity.workflow_id == _identifier_pb2.Identifier(
+    assert entity.spec.workflow_id == _identifier_pb2.Identifier(
         resource_type=_identifier_pb2.WORKFLOW,
         project="project",
         domain="domain",
@@ -293,7 +286,7 @@ def test_hydrate_registration_parameters__task_already_set():
             ),
         )
     )
-    identifier, entity = hydrate_registration_parameters(task.template.id, "project", "domain", "12345", task)
+    identifier, entity = hydrate_registration_parameters(_identifier_pb2.TASK, "project", "domain", "12345", task)
     assert (
         identifier
         == _identifier_pb2.Identifier(
@@ -309,7 +302,7 @@ def test_hydrate_registration_parameters__task_nothing_set():
             id=_identifier_pb2.Identifier(resource_type=_identifier_pb2.TASK, name="name",),
         )
     )
-    identifier, entity = hydrate_registration_parameters(task.template.id, "project", "domain", "12345", task)
+    identifier, entity = hydrate_registration_parameters(_identifier_pb2.TASK, "project", "domain", "12345", task)
     assert (
         identifier
         == _identifier_pb2.Identifier(
@@ -331,7 +324,9 @@ def test_hydrate_registration_parameters__workflow_already_set():
             ),
         )
     )
-    identifier, entity = hydrate_registration_parameters(workflow.template.id, "project", "domain", "12345", workflow)
+    identifier, entity = hydrate_registration_parameters(
+        _identifier_pb2.WORKFLOW, "project", "domain", "12345", workflow
+    )
     assert (
         identifier
         == _identifier_pb2.Identifier(
@@ -355,7 +350,9 @@ def test_hydrate_registration_parameters__workflow_nothing_set():
             ],
         )
     )
-    identifier, entity = hydrate_registration_parameters(workflow.template.id, "project", "domain", "12345", workflow)
+    identifier, entity = hydrate_registration_parameters(
+        _identifier_pb2.WORKFLOW, "project", "domain", "12345", workflow
+    )
     assert (
         identifier
         == _identifier_pb2.Identifier(
@@ -389,7 +386,7 @@ def test_hydrate_registration_parameters__subworkflows():
     workflow_spec.sub_workflows.append(sub_workflow_template)
 
     identifier, entity = hydrate_registration_parameters(
-        workflow_template.id, "project", "domain", "12345", workflow_spec
+        _identifier_pb2.WORKFLOW, "project", "domain", "12345", workflow_spec
     )
     assert (
         identifier
