@@ -1,4 +1,5 @@
 -c requirements.txt
+-r doc-requirements.in
 
 black==19.10b0
 coverage
@@ -9,10 +10,3 @@ isort
 mock
 pytest
 mypy
-sphinx
-sphinx-gallery
-sphinx-prompt
-sphinx-material
-sphinx-code-include
-sphinx-autoapi
-sphinx-copybutton
