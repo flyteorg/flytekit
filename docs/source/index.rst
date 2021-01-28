@@ -7,6 +7,13 @@ Welcome to ``Flytekit``'s documentation!
 =========================================
 
 .. toctree::
+   :maxdepth: 1
+   :caption: Flytekit Learn by Example
+
+   Flytekit Learn by Example <http://flytecookbook.readthedocs.io/>
+   Flyte Documentation <https://lyft.github.io/flyte/>
+
+.. toctree::
    :maxdepth: 2
    :caption: Python API
    

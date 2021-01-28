@@ -25,18 +25,33 @@ pip install flytekit==0.16.0b1
 ### Simple getting started
 
 ```python
+from flytekit import task, workflow
 
+@task(cache=True, cache_version="1", retries=3)
+def sum(x: int, y: int) -> int:
+    return x + y
+
+@task(cache=True, cache_version="1", retries=3)
+def square(x: int) -> int:
+    return x*x
+
+@workflow
+def my_workflow(x: int, y: int) -> int:
+    return sum(x=square(x=x),y=square(y=y))
 ```
 
 ### Learn Flytekit by example using
-TODO Add link here
+- [Learn flytekit by examples](https://flytecookbook.readthedocs.io/)
+- [Flytekit API documentation](http://flytekit.readthedocs.io/)
+- [Flyte documentation Hub](http://flytekit.readthedocs.io/)
 
 ### Plugins:
-Refer to (plugins/README.md)[plugins/README.md] for a list of available
+Refer to [plugins/README.md](plugins/README.md) for a list of available
 plugins. There may be plugins outside of this list, but this list is maintained
 by the core maintainers.
 
 ## Development
+Guide to contribute and develop flytekit
 
 ### Recipes
 
