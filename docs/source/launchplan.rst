@@ -1,5 +1,5 @@
 #############
-LaunchPlans
+Launch Plans
 #############
 
 .. automodule:: flytekit
