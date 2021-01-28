@@ -318,9 +318,12 @@ def test_serialize():
     ):
         s = lp.serialize()
 
-    assert s.workflow_id == _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "p", "d", "n", "v").to_flyte_idl()
-    assert s.auth_role.assumable_iam_role == "iam_role"
-    assert s.default_inputs.parameters["default_input"].default.scalar.primitive.integer == 5
+    assert (
+        s.spec.workflow_id
+        == _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "p", "d", "n", "v").to_flyte_idl()
+    )
+    assert s.spec.auth_role.assumable_iam_role == "iam_role"
+    assert s.spec.default_inputs.parameters["default_input"].default.scalar.primitive.integer == 5
 
 
 def test_promote_from_model():
