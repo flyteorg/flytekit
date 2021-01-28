@@ -180,7 +180,7 @@ def hydrate_registration_parameters(
         refreshed_sub_workflow = _hydrate_workflow_template_nodes(project, domain, version, sub_workflow)
         refreshed_sub_workflow.id.CopyFrom(_hydrate_identifier(project, domain, version, refreshed_sub_workflow.id))
         refreshed_sub_workflows.append(refreshed_sub_workflow)
-    # Reassign subworkflows with the newly hydrated ones.
+    # Reassign subworkflows.rst with the newly hydrated ones.
     del entity.sub_workflows[:]
     entity.sub_workflows.extend(refreshed_sub_workflows)
     return identifier, entity

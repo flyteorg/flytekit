@@ -34,8 +34,12 @@ from flytekit.models import task as _task_models
 # TODO: Clean up working dir name
 class ExecutionParameters(object):
     """
-    This is the parameter object that will be provided as the first parameter for every execution of any @*_task
-    decorated function.
+    This is the context object that is accessible to every @task method. It can be accessed using
+
+    .. code-block:: python
+
+        flytekit.current_context()
+
     """
 
     @dataclass(init=False)

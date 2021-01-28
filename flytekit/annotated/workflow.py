@@ -284,7 +284,7 @@ class Workflow(object):
 
         ctx = FlyteContext.current_context()
 
-        # Handle subworkflows in compilation
+        # Handle subworkflows.rst in compilation
         if ctx.compilation_state is not None:
             input_kwargs = self._native_interface.default_inputs_as_kwargs
             input_kwargs.update(kwargs)

@@ -3,15 +3,37 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to ``simpleble``'s documentation!
+Welcome to ``Flytekit``'s documentation!
 =========================================
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents
+   :caption: Python API
    
-   flytekit
-   flytekit.types
+   tasks
+   workflow
+   launchplan
+   types
+   context
+   conditions
+   subworkflows
+   dynamic
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Plugins
+
+   plugins
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Extend
+
+   tasks.extend
+   types.extend
+
 
 Indices and tables
 ==================

@@ -183,7 +183,7 @@ class DynamicTask(ReturnOutputsTask):
                     _logging.warning(
                         "A workflow node has been detected in the output of the dynamic task. The "
                         "Flytekit unit test engine is incomplete for dynamic tasks that return launch "
-                        "plans or subworkflows. The generated dynamic job spec will be returned but "
+                        "plans or subworkflows.rst. The generated dynamic job spec will be returned but "
                         "they will not be run."
                     )
                     # For now, just return the output of the parent task
