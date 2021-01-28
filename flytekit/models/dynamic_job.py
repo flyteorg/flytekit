@@ -65,7 +65,7 @@ class DynamicJobSpec(_common.FlyteIdlEntity):
     @property
     def subworkflows(self):
         """
-        A collection of subworkflows to execute.
+        A collection of subworkflows.rst to execute.
         :rtype: list[flytekit.models.core.workflow.WorkflowTemplate]
         """
         return self._subworkflows

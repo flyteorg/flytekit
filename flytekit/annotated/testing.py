@@ -18,7 +18,9 @@ def task_mock(t: PythonTask) -> MagicMock:
     on the PythonTask
 
     Usage:
+
         .. code-block:: python
+
             @task
             def t1(i: int) -> int:
                pass
