@@ -144,7 +144,7 @@ class SdkWorkflowNode(_workflow_model.WorkflowNode, metaclass=_sdk_bases.Extende
 
             # If not found for some reason, fetch it from Admin again.
             # The reason there is a warning here but not for tasks is because sub-workflows should always be passed
-            # along. Ideally subworkflows are never even registered with Admin, so fetching from Admin ideally doesn't
+            # along. Ideally subworkflows.rst are never even registered with Admin, so fetching from Admin ideally doesn't
             # return anything.
             _logging.warning(
                 "Your subworkflow with id {} is not included in the promote call.".format(base_model.reference)

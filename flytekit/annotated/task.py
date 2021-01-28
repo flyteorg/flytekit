@@ -13,10 +13,12 @@ class TaskPlugins(object):
     This is the TaskPlugins factory for task types that are derivative of PythonFunctionTask.
     Every task that the user wishes to use should be available in this factory.
      Usage
-        .. code-block:: python
-            TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
-            # config_object_type is any class that will be passed to the plugin_object as task_config
-            # Plugin_object_type is a derivative of ``PythonFunctionTask``
+
+    .. code-block:: python
+
+        TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
+        # config_object_type is any class that will be passed to the plugin_object as task_config
+        # Plugin_object_type is a derivative of ``PythonFunctionTask``
     """
 
     _PYTHONFUNCTION_TASK_PLUGINS: Dict[type, Type[PythonFunctionTask]] = {}
@@ -69,13 +71,17 @@ def task(
     """
     This is the core decorator to use for any task type in FlyteKit.
     Usage: for a simple python task
+
         .. code-block:: python
+
             @task(retries=3)
             def my_task(x: int, y: typing.Dict[str, str]) -> str:
                 pass
 
     Usage: for specific task types
+
         .. code-block:: python
+
             @task(task_config=Spark(), retries=3)
             def my_task(x: int, y: typing.Dict[str, str]) -> str:
                 pass
@@ -113,8 +119,8 @@ def task(
                         pass
 
     :param environment: Environment variables that should be added for this tasks execution
-    :param args: Additional Args Kwargs. Refer to specific task implementations to find supported keywords
-    :param kwargs:
+    :param kwargs: Additional Kwargs. Refer to specific task implementations to find supported keywords. Ideally
+                    all additional configuration values should be part of the ``task_config``
     """
 
     def wrapper(fn) -> PythonFunctionTask:
