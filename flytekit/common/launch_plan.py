@@ -128,10 +128,20 @@ class SdkLaunchPlan(
     @_exception_scopes.system_entry_point
     def serialize(self):
         """
-        Unlike the SdkWorkflow serialize call, nothing special needs to be done here.
-        :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
+        Serializing a launch plan should produce an object similar to what the registration step produces,
+        in preparation for actual registration to Admin.
+
+        :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlan
         """
-        return self.to_flyte_idl()
+        return _launch_plan_models.LaunchPlan(
+            id=self.id,
+            spec=self,
+            closure=_launch_plan_models.LaunchPlanClosure(
+                state=None,
+                expected_inputs=_interface_models.ParameterMap({}),
+                expected_outputs=_interface_models.VariableMap({}),
+            ),
+        ).to_flyte_idl()
 
     @property
     def id(self):

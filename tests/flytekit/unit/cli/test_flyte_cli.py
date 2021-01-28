@@ -32,16 +32,20 @@ def get_sample_task():
 
 @_mock.patch("flytekit.clis.flyte_cli.main._load_proto_from_file")
 def test__extract_files(load_mock):
-    id = _core_identifier.Identifier(_core_identifier.ResourceType.TASK, "myproject", "development", "name", "v")
     t = get_sample_task()
     with TemporaryConfiguration(
         "", internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
     ):
         task_spec = t.serialize()
 
-    load_mock.side_effect = [id.to_flyte_idl(), task_spec]
-    new_id, entity = _main._extract_pair("a", "b", "myflyteproject", "development", "v", {})
-    assert new_id == id.to_flyte_idl()
+    load_mock.side_effect = [task_spec]
+    new_id, entity = _main._extract_pair("a", 1, "myproject", "development", "v", {})
+    assert (
+        new_id
+        == _core_identifier.Identifier(
+            _core_identifier.ResourceType.TASK, "myproject", "development", "test_flyte_cli.my_task", "v"
+        ).to_flyte_idl()
+    )
     assert task_spec == entity
 
 
@@ -62,8 +66,8 @@ def _identity_dummy(a, b, project, domain, version, patches):
 
 @_mock.patch("flytekit.clis.flyte_cli.main._extract_pair", new=_identity_dummy)
 def test__extract_files_pair_iterator():
-    results = _main._extract_files("myflyteproject", "development", "v", [1, 2, 3, 4], None)
-    assert [(1, 2), (3, 4)] == results
+    results = _main._extract_files("myflyteproject", "development", "v", ["1.pb", "2.pb"], None)
+    assert [("1.pb", 1), ("2.pb", 2)] == results
 
 
 @_mock.patch("flytekit.clis.flyte_cli.main._friendly_client.SynchronousFlyteClient")
