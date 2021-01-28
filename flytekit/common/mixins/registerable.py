@@ -179,7 +179,7 @@ class HasDependencies(object):
     """
     This interface is meant to describe Flyte entities that can have upstream dependencies. For instance, currently a
     launch plan depends on the underlying workflow, and a workflow is dependent on its tasks, and other launch plans,
-    and subworkflows.
+    and subworkflows.rst.
     """
 
     def __init__(self, *args, **kwargs):
