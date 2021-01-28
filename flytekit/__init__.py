@@ -14,7 +14,7 @@ from flytekit.annotated.task import reference_task, task
 from flytekit.annotated.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.loggers import logger
 
-__version__ = "0.16.0b1"
+__version__ = "0.16.0b2"
 
 
 def current_context() -> ExecutionParameters:
