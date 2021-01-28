@@ -9,3 +9,10 @@ isort
 mock
 pytest
 mypy
+sphinx
+sphinx-gallery
+sphinx-prompt
+sphinx-material
+sphinx-code-include
+sphinx-autoapi
+sphinx-copybutton
