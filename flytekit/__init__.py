@@ -3,12 +3,12 @@ from flytekit.annotated.base_sql_task import SQLTask
 from flytekit.annotated.base_task import TaskMetadata, kwtypes
 from flytekit.annotated.condition import conditional
 from flytekit.annotated.container_task import ContainerTask
-from flytekit.annotated.context_manager import FlyteContext, ExecutionParameters
+from flytekit.annotated.context_manager import ExecutionParameters, FlyteContext
 from flytekit.annotated.dynamic_workflow_task import dynamic
 from flytekit.annotated.launch_plan import LaunchPlan
 from flytekit.annotated.map_task import maptask
 from flytekit.annotated.reference import get_reference_entity
-from flytekit.annotated.reference_entity import TaskReference, WorkflowReference, LaunchPlanReference
+from flytekit.annotated.reference_entity import LaunchPlanReference, TaskReference, WorkflowReference
 from flytekit.annotated.resources import Resources
 from flytekit.annotated.task import reference_task, task
 from flytekit.annotated.workflow import WorkflowFailurePolicy, reference_workflow, workflow
