@@ -1,3 +1,15 @@
+"""
+Flytekit Schema Type (:mod:`flytekit.types.schema`)
+==========================================================
+.. currentmodule:: flytekit.types.schema
+
+.. autosummary::
+   :toctree: generated/
+
+   SchemaFormat
+   FlyteSchema
+"""
+
 from .types import (
     FlyteSchema,
     LocalIOSchemaReader,
