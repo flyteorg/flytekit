@@ -12,6 +12,10 @@ class _Dynamic(object):
 
 
 class DynamicWorkflowTask(PythonFunctionTask[_Dynamic]):
+    """
+    Please use the dynamic decorator to create a dynamic task.
+    TODO: Add usage for dynamic tasks
+    """
     def __init__(
         self,
         task_config: _Dynamic,

@@ -8,6 +8,7 @@ Flytekit Schema Type (:mod:`flytekit.types.schema`)
 
    SchemaFormat
    FlyteSchema
+   FlyteSchema.open
 """
 
 from .types import (
