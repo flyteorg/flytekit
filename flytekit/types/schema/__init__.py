@@ -13,6 +13,7 @@ Flytekit Schema Type (:mod:`flytekit.types.schema`)
 
 from .types import (
     FlyteSchema,
+    FlyteSchemaTransformer,
     LocalIOSchemaReader,
     LocalIOSchemaWriter,
     SchemaEngine,

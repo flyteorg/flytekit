@@ -15,7 +15,6 @@ type(flyteidl).add_sub_module("plugins.sidecar_pb2")
 
 numpy = _lazy_loader.lazy_load_module("numpy")  # type: _lazy_loader._LazyLoadModule
 pandas = _lazy_loader.lazy_load_module("pandas")  # type: _lazy_loader._LazyLoadModule
-pandera = _lazy_loader.lazy_load_module("pandera")  # type: _lazy_loader._LazyLoadModule
 
 hmsclient = _lazy_loader.lazy_load_module("hmsclient")  # type: _lazy_loader._LazyLoadModule
 type(hmsclient).add_sub_module("genthrift.hive_metastore.ttypes")
