@@ -16,11 +16,14 @@ T = typing.TypeVar("T")
 
 class FlyteDirectory(os.PathLike, typing.Generic[T]):
     """
-    WARNING: This class should not be used on very large datasets, as merely listing the dataset will cause
-    the entire dataset to be downloaded. Listing on S3 and other backend object stores is not consistent
-    and we should not need data to be downloaded to list.
+    .. warning::
 
-    Please first read through the comments on the FlyteFile class as the implementation here is similar.
+        This class should not be used on very large datasets, as merely listing the dataset will cause
+        the entire dataset to be downloaded. Listing on S3 and other backend object stores is not consistent
+        and we should not need data to be downloaded to list.
+
+    Please first read through the comments on the :py:class:`flytekit.types.file.FlyteFile` class as the
+    implementation here is similar.
 
     One thing to note is that the os.PathLike type that comes with Python was used as a stand-in for FlyteFile.
     That is, if a task returns an os.PathLike, Flyte takes that to mean FlyteFile. There is no easy way to
@@ -28,7 +31,8 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     want to use a directory, you must declare all types as FlyteDirectory. You'll still be able to return a string
     literal though instead of a full-fledged FlyteDirectory object assuming the str is a directory.
 
-    Use cases as inputs:
+    Use cases as inputs ::
+
         def t1(in1: FlyteDirectory):
             ...
 
@@ -37,13 +41,14 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
 
     As outputs:
 
-    The contents of this local directory will be uploaded to the Flyte store.
+    The contents of this local directory will be uploaded to the Flyte store. ::
+
         return FlyteDirectory("/path/to/dir/")
 
         return FlyteDirectory["svg"]("/path/to/dir/", remote_path="s3://special/output/location")
 
     Similar to the FlyteFile example, if you give an already remote location, it will not be copied to Flyte's
-    durable store, the uri will just be stored as is.
+    durable store, the uri will just be stored as is. ::
 
         return FlyteDirectory("s3://some/other/folder")
 

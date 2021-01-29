@@ -185,3 +185,7 @@ texinfo_documents = [
 
 
 # -- Extension configuration -------------------------------------------------
+# intersphinx configuration
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/{.major}".format(sys.version_info), None),
+}

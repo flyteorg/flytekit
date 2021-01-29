@@ -26,9 +26,9 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
 
     There are a few possible types on the Python side that can be specified:
 
-      * typing.IO
+    * :class:`python:typing.IO`
       Usually this takes the form of TextIO or BinaryIO. For now we only support these derived classes. This is what
-      open() will generally return. For example,
+      open() will generally return. For example, ::
 
         def get_read_file_handle() -> TextIO:
             fh = open(__file__, 'r')
@@ -47,14 +47,16 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
       "TextIO" and "BinaryIO". These IO types have a higher likelihood of being subject to change before an official,
       release. The PathLike types will not.
 
-      * os.PathLike
+    * :class:`python:os.PathLike`
       This is just a path on the filesystem accessible from the Python process. This is a native Python abstract class.
 
-        def path_task() -> os.PathLike:
-            return '/tmp/xyz.txt'
+      .. code-block:: python
+
+          def path_task() -> os.PathLike:
+              return '/tmp/xyz.txt'
 
       If you specify a PathLike as an input, the task will receive a PathLike at task start, and you can open() it as
-      normal. However, since we want to control when files are downloaded, Flyte provides its own PathLike object.
+      normal. However, since we want to control when files are downloaded, Flyte provides its own PathLike object::
 
         from flytekit import types as flytekit_typing
 
@@ -64,7 +66,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
                 return "".join(lines)
 
       As mentioned above, since Flyte file types have a string embedded in it as part of the type, you can add a
-      format by specifying a string after the class like so.
+      format by specifying a string after the class like so. ::
 
         def t2() -> flytekit_typing.FlyteFile["csv"]:
             from random import sample
@@ -76,7 +78,6 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
             return "/tmp/blah.csv"
 
     How are these files handled?
-    ============================
 
     S3, http, https are all treated as remote - the behavior should be the same, they are never copied unless
     explicitly told to do so.
@@ -84,28 +85,28 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     Local paths always get uploaded, unless explicitly told not to do so.
 
     If you specify a path as a string, you get the default behavior, not possible to override. To override, you must use
-    the FlyteFilePath class.
+    the FlyteFile class.
 
     More succinctly, regardless of whether it is input or output, these rules apply:
-      - "s3://bucket/path" -> will never get uploaded
-      - "https://a.b.com/path" -> will never get uploaded
-      - "/tmp/blah" -> will always get uploaded
+      - ``"s3://bucket/path"`` -> will never get uploaded
+      - ``"https://a.b.com/path"`` -> will never get uploaded
+      - ``"/tmp/blah"`` -> will always get uploaded
 
     To specify non-default behavior:
 
     * Copy the s3 path to a new location.
-      FlyteFilePath("s3://bucket/path", remote_path=True)
+      ``FlyteFilePath("s3://bucket/path", remote_path=True)``
 
     * Copy the s3 path to a specific location.
-      FlyteFilePath("s3://bucket/path", remote_path="s3://other-bucket/path")
+      ``FlyteFilePath("s3://bucket/path", remote_path="s3://other-bucket/path")``
 
     * Copy local path to a specific location.
-      FlyteFilePath("/tmp/blah", remote_path="s3://other-bucket/path")
+      ``FlyteFilePath("/tmp/blah", remote_path="s3://other-bucket/path")``
 
     * Do not copy local path, this will copy the string into the literal. For example, let's say your docker image has a
       thousand files in it, and you want to tell the next task, which file to look at. (Bad example, you shouldn't have
       that many files in your image.)
-      FlyteFilePath("/tmp/blah", remote_path=False)
+      ``FlyteFilePath("/tmp/blah", remote_path=False)``
 
     * However, we have a shorthand.
       "file:///tmp/blah" is treated as "remote" and is by default not copied.
