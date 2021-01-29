@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from typing import Union
 from unittest.mock import MagicMock
 
-from flytekit import logger
+from flytekit.loggers import logger
 from flytekit.annotated.base_task import PythonTask
 from flytekit.annotated.reference_entity import ReferenceEntity
 from flytekit.annotated.workflow import Workflow
