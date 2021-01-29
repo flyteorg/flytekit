@@ -1,10 +1,9 @@
 import typing
 
+import flytekitplugins.pandera
 import pandas
 import pandera
 import pytest
-
-import flytekitplugins.pandera
 
 import flytekit
 from flytekit import kwtypes, task, workflow
@@ -54,14 +53,14 @@ def test_pandera_dataframe_type_hints():
 
 
 @pytest.mark.parametrize(
-    "data", [
+    "data",
+    [
         pandas.DataFrame({"col1": [1, 2, 3]}),
         pandas.DataFrame({"col1": [1, 2, 3], "col2": list("abc")}),
         pandas.DataFrame(),
-    ]
+    ],
 )
 def test_pandera_dataframe_no_schema_model(data):
-
     @task
     def transform(df: pandera.typing.DataFrame) -> pandera.typing.DataFrame:
         return df
