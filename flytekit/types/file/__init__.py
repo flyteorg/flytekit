@@ -1,3 +1,25 @@
+"""
+Flytekit File Type (:mod:`flytekit.types.file`)
+==========================================================
+.. currentmodule:: flytekit.types.file
+
+This list also contains a bunch of pre-formatted :py:class:`flytekit.types.file.FlyteFile` types.
+
+.. autosummary::
+   :toctree: generated/
+
+   FlyteFile
+   HDF5EncodedFile
+   HTMLPage
+   JoblibSerializedFile
+   JPEGImageFile
+   PDFFile
+   PNGImageFile
+   PythonPickledFile
+   PythonNotebook
+   SVGImageFile
+"""
+
 import typing
 
 from .file import FlyteFile

@@ -2,14 +2,11 @@
 Dynamic Workflows
 ###################
 
-.. automodule:: flytekit
-
-
 
 Declaring a dynamic workflow
 -----------------------------
 
-.. autofunction:: dynamic
+.. autoclass:: flytekit.annotated.dynamic_workflow_task.DynamicWorkflowTask
 
 
 Caveats when using a dynamic workflow

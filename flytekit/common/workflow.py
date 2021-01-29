@@ -103,7 +103,7 @@ class SdkWorkflow(
 
     def get_sub_workflows(self):
         """
-        Recursive call that returns all subworkflows.rst in the current workflow
+        Recursive call that returns all subworkflows in the current workflow
 
         :rtype: list[SdkWorkflow]
         """

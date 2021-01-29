@@ -168,6 +168,10 @@ class SchemaEngine(object):
 
 
 class FlyteSchema(object):
+    """
+    This is the main schema class that users should use.
+    """
+
     @classmethod
     def columns(cls) -> typing.Dict[str, typing.Type]:
         return {}

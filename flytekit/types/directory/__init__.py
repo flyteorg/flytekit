@@ -1,3 +1,17 @@
+"""
+Flytekit Directory Type (:mod:`flytekit.types.directory`)
+==========================================================
+.. currentmodule:: flytekit.types.directory
+
+Similar to :py:class:`flytekit.types.file.FlyteFile` there are some 'preformatted' directory types.
+
+.. autosummary::
+   :toctree: generated/
+
+   FlyteDirectory
+   TensorboardLogs
+"""
+
 import typing
 
 from .types import FlyteDirectory
