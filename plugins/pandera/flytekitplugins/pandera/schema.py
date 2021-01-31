@@ -5,21 +5,11 @@ import pandas
 import pandera
 
 from flytekit import FlyteContext
-from flytekit.annotated.type_engine import T, TypeEngine, TypeTransformer
+from flytekit.annotated.type_engine import TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
-from flytekit.types.schema import (
-    FlyteSchema,
-    FlyteSchemaTransformer,
-    PandasSchemaReader,
-    PandasSchemaWriter,
-    SchemaEngine,
-    SchemaFormat,
-    SchemaHandler,
-    SchemaOpenMode,
-    SchemaReader,
-    SchemaWriter,
-)
+from flytekit.types.schema import FlyteSchema, PandasSchemaWriter, SchemaFormat, SchemaOpenMode
+from flytekit.types.schema.types import FlyteSchemaTransformer
 
 
 class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):

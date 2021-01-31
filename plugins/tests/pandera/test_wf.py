@@ -1,13 +1,8 @@
-import typing
-
-import flytekitplugins.pandera
 import pandas
 import pandera
 import pytest
 
-import flytekit
-from flytekit import kwtypes, task, workflow
-from flytekit.types.schema import FlyteSchema
+from flytekit import task, workflow
 
 
 def test_pandera_dataframe_type_hints():

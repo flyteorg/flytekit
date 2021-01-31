@@ -18,8 +18,12 @@ from flytekit.annotated.testing import patch, task_mock
 from flytekit.annotated.type_engine import TypeEngine, TypeTransformer
 from flytekit.annotated.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.loggers import logger
+from flytekit.types import schema
 
 __version__ = "0.16.0b3"
+
+
+flytekit.plugins.import_plugins()
 
 
 def current_context() -> ExecutionParameters:
