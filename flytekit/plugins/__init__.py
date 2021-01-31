@@ -40,4 +40,7 @@ def import_plugins():
     import importlib
 
     for plugin in ["awssagemaker", "hive", "kfpytorch", "kftensorflow", "pandera", "papermill", "pod", "spark"]:
-        importlib.import_module(f"flytekitplugins.{plugin}")
+        try:
+            importlib.import_module(f"flytekitplugins.{plugin}")
+        except ImportError:
+            pass
