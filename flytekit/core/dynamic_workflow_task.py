@@ -2,9 +2,9 @@ import functools
 from typing import Callable, Optional
 
 from flytekit import TaskMetadata
-from flytekit.annotated import task
-from flytekit.annotated.python_function_task import PythonFunctionTask
-from flytekit.annotated.task import TaskPlugins
+from flytekit.core import task
+from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.task import TaskPlugins
 
 
 class _Dynamic(object):

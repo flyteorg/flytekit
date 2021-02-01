@@ -6,22 +6,27 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
-import flytekit.annotated.promise
-import flytekit.annotated.type_engine
-from flytekit.annotated.condition import ConditionalSection
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext, FlyteEntities
-from flytekit.annotated.interface import (
+from flytekit.common import constants as _common_constants
+from flytekit.common.exceptions.user import FlyteValidationException
+from flytekit.core.condition import ConditionalSection
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteEntities
+from flytekit.core.interface import (
     Interface,
     transform_inputs_to_parameters,
     transform_interface_to_typed_interface,
     transform_signature_to_interface,
 )
-from flytekit.annotated.node import Node
-from flytekit.annotated.promise import NodeOutput, Promise, VoidPromise, create_and_link_node, create_task_output
-from flytekit.annotated.reference_entity import ReferenceEntity, WorkflowReference
-from flytekit.annotated.type_engine import TypeEngine
-from flytekit.common import constants as _common_constants
-from flytekit.common.exceptions.user import FlyteValidationException
+from flytekit.core.node import Node
+from flytekit.core.promise import (
+    NodeOutput,
+    Promise,
+    VoidPromise,
+    binding_from_python_std,
+    create_and_link_node,
+    create_task_output,
+)
+from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
+from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -204,7 +209,7 @@ class Workflow(object):
                     f"The Workflow specification indicates only one return value, received {len(workflow_outputs)}"
                 )
             t = self._native_interface.outputs[output_names[0]]
-            b = flytekit.annotated.promise.binding_from_python_std(
+            b = binding_from_python_std(
                 ctx, output_names[0], self.interface.outputs[output_names[0]].type, workflow_outputs, t,
             )
             bindings.append(b)
@@ -217,9 +222,7 @@ class Workflow(object):
                 if isinstance(workflow_outputs[i], ConditionalSection):
                     raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
                 t = self._native_interface.outputs[out]
-                b = flytekit.annotated.promise.binding_from_python_std(
-                    ctx, out, self.interface.outputs[out].type, workflow_outputs[i], t,
-                )
+                b = binding_from_python_std(ctx, out, self.interface.outputs[out].type, workflow_outputs[i], t,)
                 bindings.append(b)
 
         # Save all the things necessary to create an SdkWorkflow, except for the missing project and domain

@@ -1,8 +1,8 @@
 import re
 from typing import Any, Dict, Optional, Type, TypeVar
 
-from flytekit.annotated.base_task import PythonTask, TaskMetadata
-from flytekit.annotated.interface import Interface
+from flytekit.core.base_task import PythonTask, TaskMetadata
+from flytekit.core.interface import Interface
 
 T = TypeVar("T")
 

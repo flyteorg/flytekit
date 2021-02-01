@@ -6,8 +6,8 @@ from datetime import timedelta
 import pytest
 
 from flytekit import kwtypes
-from flytekit.annotated.context_manager import FlyteContext
-from flytekit.annotated.type_engine import (
+from flytekit.core.context_manager import FlyteContext
+from flytekit.core.type_engine import (
     DictTransformer,
     ListTransformer,
     PathLikeTransformer,

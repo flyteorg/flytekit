@@ -6,15 +6,15 @@ import typing
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from flytekit.annotated import context_manager as _flyte_context
-from flytekit.annotated import interface as flyte_interface
-from flytekit.annotated import type_engine
-from flytekit.annotated.context_manager import FlyteContext
-from flytekit.annotated.interface import Interface
-from flytekit.annotated.node import Node
-from flytekit.annotated.type_engine import DictTransformer, ListTransformer, TypeEngine
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.core import context_manager as _flyte_context
+from flytekit.core import interface as flyte_interface
+from flytekit.core import type_engine
+from flytekit.core.context_manager import FlyteContext
+from flytekit.core.interface import Interface
+from flytekit.core.node import Node
+from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import literals as _literals_models
@@ -263,7 +263,7 @@ class ConjunctionExpression(object):
 # TODO: The NodeOutput object, which this Promise wraps, has an sdk_type. Since we're no longer using sdk types,
 #  we should consider adding a literal type to this object as well for downstream checking when Bindings are created.
 class Promise(object):
-    # TODO: Currently, NodeOutput we're creating is the slimmer annotated package Node class, but since only the
+    # TODO: Currently, NodeOutput we're creating is the slimmer core package Node class, but since only the
     #  id is used, it's okay for now. Let's clean all this up though.
     def __init__(self, var: str, val: Union[NodeOutput, _literal_models.Literal]):
         self._var = var
@@ -642,7 +642,7 @@ def create_and_link_node(
         )
 
     # Detect upstream nodes
-    # These will be our annotated Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
+    # These will be our core Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
     upstream_nodes = list(
         set(
             [

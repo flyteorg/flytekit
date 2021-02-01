@@ -9,10 +9,8 @@ from google.protobuf import json_format
 from google.protobuf.json_format import MessageToDict
 
 from flytekit import FlyteContext
-from flytekit.annotated.base_task import PythonTask
-from flytekit.annotated.context_manager import SerializationSettings
-from flytekit.annotated.type_engine import DictTransformer, TypeEngine, TypeTransformer
 from flytekit.common.types import primitives
+from flytekit.extend import DictTransformer, PythonTask, SerializationSettings, TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal
 from flytekit.models.sagemaker import hpo_job as _hpo_job_model
 from flytekit.models.sagemaker import parameter_ranges as _params

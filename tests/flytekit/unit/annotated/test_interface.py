@@ -3,8 +3,8 @@ import os
 import typing
 from typing import Dict, List
 
-from flytekit.annotated import context_manager
-from flytekit.annotated.interface import (
+from flytekit.core import context_manager
+from flytekit.core.interface import (
     extract_return_annotation,
     transform_inputs_to_parameters,
     transform_signature_to_interface,

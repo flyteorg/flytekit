@@ -13,8 +13,8 @@ from dataclasses_json import DataClassJsonMixin
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
-from flytekit.annotated.context_manager import FlyteContext
 from flytekit.common.types import primitives as _primitives
+from flytekit.core.context_manager import FlyteContext
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types

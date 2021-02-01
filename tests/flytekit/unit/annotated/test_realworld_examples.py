@@ -3,8 +3,8 @@ from collections import OrderedDict
 
 import pandas as pd
 
-from flytekit.annotated.task import task
-from flytekit.annotated.workflow import workflow
+from flytekit.core.task import task
+from flytekit.core.workflow import workflow
 from flytekit.types.file.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
 

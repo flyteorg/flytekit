@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Type
 
-from flytekit.annotated import workflow as _annotated_workflow
-from flytekit.annotated.context_manager import FlyteContext, FlyteEntities
-from flytekit.annotated.interface import Interface, transform_inputs_to_parameters
-from flytekit.annotated.promise import create_and_link_node, translate_inputs_to_literals
-from flytekit.annotated.reference_entity import LaunchPlanReference, ReferenceEntity
+from flytekit.core import workflow as _annotated_workflow
+from flytekit.core.context_manager import FlyteContext, FlyteEntities
+from flytekit.core.interface import Interface, transform_inputs_to_parameters
+from flytekit.core.promise import create_and_link_node, translate_inputs_to_literals
+from flytekit.core.reference_entity import LaunchPlanReference, ReferenceEntity
 from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models

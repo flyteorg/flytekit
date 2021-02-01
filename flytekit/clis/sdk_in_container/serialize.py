@@ -8,11 +8,6 @@ from typing import List
 import click
 
 import flytekit as _flytekit
-from flytekit.annotated import context_manager as flyte_context
-from flytekit.annotated.base_task import PythonTask
-from flytekit.annotated.context_manager import InstanceVar
-from flytekit.annotated.launch_plan import LaunchPlan
-from flytekit.annotated.workflow import Workflow
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
@@ -21,6 +16,11 @@ from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.translator import get_serializable
 from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
 from flytekit.configuration import internal as _internal_config
+from flytekit.core import context_manager as flyte_context
+from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import InstanceVar
+from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.workflow import Workflow
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order

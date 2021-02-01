@@ -5,11 +5,9 @@ from google.protobuf.json_format import MessageToDict
 from k8s.io.api.core.v1.generated_pb2 import Container, EnvVar, PodSpec, ResourceRequirements
 from k8s.io.apimachinery.pkg.api.resource.generated_pb2 import Quantity
 
-from flytekit.annotated.context_manager import FlyteContext, SerializationSettings
-from flytekit.annotated.promise import Promise
-from flytekit.annotated.python_function_task import PythonFunctionTask
-from flytekit.annotated.task import TaskPlugins
+from flytekit import PythonFunctionTask
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.extend import FlyteContext, Promise, SerializationSettings, TaskPlugins
 from flytekit.models import task as _task_models
 
 

@@ -3,9 +3,9 @@ import typing
 import pytest
 
 from flytekit import task, workflow
-from flytekit.annotated.condition import conditional
-from flytekit.annotated.context_manager import Image, ImageConfig, SerializationSettings
 from flytekit.common.translator import get_serializable
+from flytekit.core.condition import conditional
+from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings
 
 
 @task

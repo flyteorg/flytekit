@@ -5,10 +5,10 @@ import shutil
 import pytest
 
 import flytekit
-from flytekit.annotated import context_manager
-from flytekit.annotated.task import task
-from flytekit.annotated.type_engine import TypeEngine
-from flytekit.annotated.workflow import workflow
+from flytekit.core import context_manager
+from flytekit.core.task import task
+from flytekit.core.type_engine import TypeEngine
+from flytekit.core.workflow import workflow
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core.types import BlobType
 from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer

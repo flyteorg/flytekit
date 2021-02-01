@@ -10,12 +10,9 @@ from flyteidl.core.literals_pb2 import LiteralMap as _pb2_LiteralMap
 from google.protobuf import text_format as _text_format
 from nbconvert import HTMLExporter
 
-from flytekit import FlyteContext
-from flytekit.annotated.interface import Interface
-from flytekit.annotated.python_function_task import PythonInstanceTask
-from flytekit.annotated.task import TaskPlugins
-from flytekit.annotated.type_engine import TypeEngine
+from flytekit import FlyteContext, PythonInstanceTask
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
+from flytekit.extend import Interface, TaskPlugins, TypeEngine
 from flytekit.models.literals import LiteralMap
 from flytekit.types.file import HTMLPage, PythonNotebook
 

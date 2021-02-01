@@ -1,9 +1,9 @@
 import os
 
 import flytekit
-from flytekit.annotated import context_manager
-from flytekit.annotated.task import task
-from flytekit.annotated.workflow import workflow
+from flytekit.core import context_manager
+from flytekit.core.task import task
+from flytekit.core.workflow import workflow
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.types.file.file import FlyteFile
 

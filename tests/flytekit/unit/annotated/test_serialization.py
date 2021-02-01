@@ -2,13 +2,13 @@ import os
 import typing
 
 from flytekit import ContainerTask, kwtypes
-from flytekit.annotated import context_manager
-from flytekit.annotated.condition import conditional
-from flytekit.annotated.context_manager import Image, ImageConfig, get_image_config
-from flytekit.annotated.task import task
-from flytekit.annotated.workflow import workflow
 from flytekit.common.translator import get_serializable
 from flytekit.configuration import set_flyte_config_file
+from flytekit.core import context_manager
+from flytekit.core.condition import conditional
+from flytekit.core.context_manager import Image, ImageConfig, get_image_config
+from flytekit.core.task import task
+from flytekit.core.workflow import workflow
 
 
 def test_serialization():

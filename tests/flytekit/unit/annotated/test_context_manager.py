@@ -1,4 +1,4 @@
-from flytekit.annotated.context_manager import CompilationState, FlyteContext, look_up_image_info
+from flytekit.core.context_manager import CompilationState, FlyteContext, look_up_image_info
 
 
 class SampleTestClass(object):

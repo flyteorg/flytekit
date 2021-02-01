@@ -3,13 +3,13 @@ from __future__ import annotations
 import collections
 from typing import Type, Union
 
-from flytekit.annotated.base_task import PythonTask
-from flytekit.annotated.context_manager import BranchEvalMode, ExecutionState, FlyteContext
-from flytekit.annotated.launch_plan import LaunchPlan
-from flytekit.annotated.node import Node
-from flytekit.annotated.promise import VoidPromise
-from flytekit.annotated.workflow import Workflow
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext
+from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.node import Node
+from flytekit.core.promise import VoidPromise
+from flytekit.core.workflow import Workflow
 from flytekit.loggers import logger
 
 # This file exists instead of moving to node.py because it needs Task/Workflow/LaunchPlan and those depend on Node

@@ -1,8 +1,8 @@
 import typing
 
-from flytekit.annotated import launch_plan
-from flytekit.annotated.task import task
-from flytekit.annotated.workflow import workflow
+from flytekit.core import launch_plan
+from flytekit.core.task import task
+from flytekit.core.workflow import workflow
 
 
 def test_wf1_with_subwf():

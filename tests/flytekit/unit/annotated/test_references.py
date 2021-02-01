@@ -2,16 +2,16 @@ import typing
 
 import pytest
 
-from flytekit.annotated import context_manager
-from flytekit.annotated.base_task import kwtypes
-from flytekit.annotated.context_manager import Image, ImageConfig
-from flytekit.annotated.promise import VoidPromise
-from flytekit.annotated.reference import get_reference_entity
-from flytekit.annotated.reference_entity import ReferenceEntity, TaskReference
-from flytekit.annotated.task import reference_task, task
-from flytekit.annotated.testing import patch, task_mock
-from flytekit.annotated.workflow import reference_workflow, workflow
 from flytekit.common.translator import get_serializable
+from flytekit.core import context_manager
+from flytekit.core.base_task import kwtypes
+from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.promise import VoidPromise
+from flytekit.core.reference import get_reference_entity
+from flytekit.core.reference_entity import ReferenceEntity, TaskReference
+from flytekit.core.task import reference_task, task
+from flytekit.core.testing import patch, task_mock
+from flytekit.core.workflow import reference_workflow, workflow
 from flytekit.models.core import identifier as _identifier_model
 
 
@@ -170,7 +170,7 @@ def test_ref_plain_two_outputs():
     ctx = context_manager.FlyteContext.current_context()
     with ctx.new_compilation_context():
         xx, yy = r1(a="five", b=6)
-        # Note - misnomer, these are not SdkNodes, they are annotated.Nodes
+        # Note - misnomer, these are not SdkNodes, they are core.Nodes
         assert xx.ref.node is yy.ref.node
         assert xx.var == "x"
         assert yy.var == "y"
