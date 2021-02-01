@@ -7,7 +7,7 @@ from google.protobuf.json_format import MessageToDict
 
 from flytekit import FlyteContext, PythonFunctionTask
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.extend import ExecutionState, FlyteContext, SerializationSettings, TaskPlugins
+from flytekit.extend import ExecutionState, SerializationSettings, TaskPlugins
 from flytekit.models import task as _task_model
 from flytekit.sdk.spark_types import SparkType
 

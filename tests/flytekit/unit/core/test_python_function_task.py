@@ -8,7 +8,7 @@ from flytekit.core.python_function_task import (
     isnested,
     istestfunction,
 )
-from tests.flytekit.unit.annotated import tasks
+from tests.flytekit.unit.core import tasks
 
 
 def foo():
