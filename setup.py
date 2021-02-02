@@ -38,9 +38,9 @@ extras_require = {
 
 setup(
     name="flytekit",
-    version="0.16.0b4",
-    maintainer="Lyft",
-    maintainer_email="flyte-eng@lyft.com",
+    version="0.16.0b5",
+    maintainer="Flyte Org",
+    maintainer_email="admin@flyte.org",
     packages=find_packages(exclude=["tests*"]),
     url="https://github.com/lyft/flytekit",
     description="Flyte SDK for Python",
