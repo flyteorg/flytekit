@@ -457,7 +457,7 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    @_handle_rpc_error
+    @_handle_rpc_error()
     def create_execution(self, create_execution_request):
         """
         This will create an execution for the given execution spec.
