@@ -15,7 +15,7 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
 spark = ["pyspark>=2.4.0,<3.0.0"]
 spark3 = ["pyspark>=3.0.0"]
 sidecar = ["k8s-proto>=0.0.3,<1.0.0"]
-schema = ["numpy>=1.14.0,<2.0.0", "pandas>=0.22.0,<2.0.0", "pyarrow>=0.11.0,<1.0.0"]
+schema = ["numpy>=1.14.0,<2.0.0", "pandas>=0.22.0,<2.0.0", "pyarrow>2.0.0,<3.0.0"]
 hive_sensor = ["hmsclient>=0.0.1,<1.0.0"]
 notebook = ["papermill>=1.2.0", "nbconvert>=6.0.7", "ipykernel>=5.0.0", "black==19.10b0"]
 sagemaker = ["sagemaker-training>=3.6.2,<4.0.0"]
@@ -38,7 +38,7 @@ extras_require = {
 
 setup(
     name="flytekit",
-    version="0.16.0b3",
+    version="0.16.0b4",
     maintainer="Lyft",
     maintainer_email="flyte-eng@lyft.com",
     packages=find_packages(exclude=["tests*"]),
