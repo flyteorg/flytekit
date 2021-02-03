@@ -9,13 +9,13 @@ from google.protobuf.json_format import MessageToDict
 import flytekit
 from flytekit import FlyteContext, PythonFunctionTask, kwtypes
 from flytekit.extend import (
+    ExecutionParameters,
     ExecutionState,
     IgnoreOutputs,
     Interface,
     PythonTask,
     SerializationSettings,
     TaskPlugins,
-    ExecutionParameters,
 )
 from flytekit.models.sagemaker import training_job as _training_job_models
 from flytekit.types.directory.types import FlyteDirectory
