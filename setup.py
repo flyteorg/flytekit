@@ -38,7 +38,7 @@ extras_require = {
 
 setup(
     name="flytekit",
-    version="0.16.0b5",
+    version="0.16.0b6",
     maintainer="Flyte Org",
     maintainer_email="admin@flyte.org",
     packages=find_packages(exclude=["tests*"]),
