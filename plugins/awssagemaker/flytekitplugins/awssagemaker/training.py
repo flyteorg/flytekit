@@ -8,7 +8,6 @@ from google.protobuf.json_format import MessageToDict
 
 import flytekit
 from flytekit import FlyteContext, PythonFunctionTask, kwtypes
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.extend import (
     ExecutionState,
     IgnoreOutputs,
@@ -16,6 +15,7 @@ from flytekit.extend import (
     PythonTask,
     SerializationSettings,
     TaskPlugins,
+    ExecutionParameters,
 )
 from flytekit.models.sagemaker import training_job as _training_job_models
 from flytekit.types.directory.types import FlyteDirectory
