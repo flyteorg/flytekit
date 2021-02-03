@@ -192,6 +192,8 @@ def serialize_all(
                 fname = _os.path.join(folder, fname)
             _write_proto_to_file(serialized, fname)
 
+        click.secho(f"Successfully serialized {len(loaded_entities)} flyte objects", fg="green")
+
 
 def _determine_text_chars(length):
     """
@@ -212,7 +214,7 @@ def _determine_text_chars(length):
     "--local-source-root",
     required=False,
     help="Root dir for python code containing workflow definitions to operate on when not the current working directory"
-    "Required for running `pyflyte serialize` in out of container mode",
+    "Optional when running `pyflyte serialize` in out of container mode and your code lies outside of your working directory",
 )
 @click.option(
     "--in-container-config-path",
@@ -243,15 +245,14 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
     if not image:
         raise click.UsageError("Could not find image from config, please specify a value for ``--image``")
     ctx.obj[CTX_IMAGE] = image
+
+    if local_source_root is None:
+        local_source_root = _os.getcwd()
     ctx.obj[CTX_LOCAL_SRC_ROOT] = local_source_root
     click.echo("Serializing Flyte elements with image {}".format(image))
 
-    if bool(local_source_root) != bool(in_container_config_path):
-        raise click.UsageError(
-            "When running out of container serialization you must specify --local-source-root AND --in-container-config-path"
-        )
     ctx.obj[CTX_CONFIG_FILE_LOC] = in_container_config_path
-    if local_source_root is not None and in_container_config_path is not None:
+    if in_container_config_path is not None:
         # We're in the process of an out of container serialize call.
         # Set the entrypoint path to the in container default unless a user-specified option exists.
         ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = (
@@ -320,6 +321,15 @@ def fast_workflows(ctx, folder=None):
     if folder:
         click.echo(f"Writing output to {folder}")
 
+    source_dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
+    digest = _compute_digest(source_dir)
+    folder = folder if folder else ""
+    archive_fname = _os.path.join(folder, f"{digest}.tar.gz")
+    click.echo(f"Writing compressed archive to {archive_fname}")
+    # Write using gzip
+    with _tarfile.open(archive_fname, "w:gz") as tar:
+        tar.add(source_dir, arcname="", filter=_filter_tar_file_fn)
+
     pkgs = ctx.obj[CTX_PACKAGES]
     dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
     serialize_all(
@@ -331,15 +341,6 @@ def fast_workflows(ctx, folder=None):
         config_path=ctx.obj[CTX_CONFIG_FILE_LOC],
         flytekit_virtualenv_root=ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT],
     )
-
-    source_dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
-    digest = _compute_digest(source_dir)
-    folder = folder if folder else ""
-    archive_fname = _os.path.join(folder, f"{digest}.tar.gz")
-    click.echo(f"Writing compressed archive to {archive_fname}")
-    # Write using gzip
-    with _tarfile.open(archive_fname, "w:gz") as tar:
-        tar.add(source_dir, arcname="", filter=_filter_tar_file_fn)
 
 
 fast.add_command(fast_workflows)

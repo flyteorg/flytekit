@@ -1830,13 +1830,15 @@ def fast_register_files(
             _click.echo(f"  {f}")
             pb_files.append(f)
 
-    if not compressed_source:
-        _click.UsageError("Could not discover compressed source, did you remember to run `pyflyte serialize fast ...`?")
+    if compressed_source is None:
+        raise _click.UsageError(
+            "Could not discover compressed source, did you remember to run `pyflyte serialize fast ...`?"
+        )
 
     version = version if version else digest
     full_remote_path = _get_additional_distribution_loc(additional_distribution_dir, version)
     Data.put_data(compressed_source, full_remote_path)
-    _click.echo(f"Uploaded compressed code archive {compressed_source} to {full_remote_path}")
+    _click.secho(f"Uploaded compressed code archive {compressed_source} to {full_remote_path}", fg="green")
 
     def fast_register_task(entity: _GeneratedProtocolMessageType) -> _GeneratedProtocolMessageType:
         """
