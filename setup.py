@@ -1,6 +1,7 @@
 import sys
 
 from setuptools import find_packages, setup  # noqa
+from flytekit import __version__
 
 # from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
 # extras_require = LazyLoadPlugin.get_extras_require()
@@ -38,7 +39,7 @@ extras_require = {
 
 setup(
     name="flytekit",
-    version="0.16.0b6",
+    version=__version__,
     maintainer="Flyte Org",
     maintainer_email="admin@flyte.org",
     packages=find_packages(exclude=["tests*"]),
