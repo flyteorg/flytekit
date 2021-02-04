@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import ExecutionState, FlyteContext, ImageConfig, SerializationSettings
+from flytekit.core.context_manager import ExecutionState, FlyteContext, ImageConfig, SerializationSettings, InstanceVar
 from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.workflow import Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults
@@ -157,6 +157,21 @@ def istestfunction(func) -> bool:
             mod_name = mod_name.split(".")[-1]
         return mod_name.startswith("test_")
     return False
+
+
+class TaskLoader(object):
+    """
+    A TaskLoader that can be used to load the task itself from the actual argument that is captured.
+    The argument itself should be discoverable through the class loading framework.
+    """
+
+    @abstractmethod
+    def load_task(self, loader_args: List[str]) -> PythonTask:
+        pass
+
+    @abstractmethod
+    def loader_args(self, var: InstanceVar) -> List[str]:
+        pass
 
 
 class PythonFunctionTask(PythonAutoContainerTask[T]):

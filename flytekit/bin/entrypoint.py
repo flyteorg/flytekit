@@ -21,6 +21,7 @@ from flytekit.configuration import sdk as _sdk_config
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
 from flytekit.core.promise import VoidPromise
+from flytekit.core.python_function_task import TaskLoader
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -198,7 +199,7 @@ def _handle_annotated_task(task_def: PythonTask, inputs: str, output_prefix: str
 
 
 @_scopes.system_entry_point
-def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
+def _execute_task(task_module, task_name, loader_args, inputs, output_prefix, raw_output_data_prefix, test):
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with _utils.AutoDeletingTempDir("input_dir") as input_dir:
             # Load user code
@@ -206,38 +207,41 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
             task_module = _importlib.import_module(task_module)
             task_def = getattr(task_module, task_name)
 
-            # Everything else
-            if not test and not isinstance(task_def, PythonTask):
-                local_inputs_file = input_dir.get_named_tempfile("inputs.pb")
+            if not test:
+                if isinstance(task_def, PythonTask):
+                    _handle_annotated_task(task_def, inputs, output_prefix, raw_output_data_prefix)
+                elif isinstance(task_def, TaskLoader):
+                    _task_def = task_def.load_task(loader_args=loader_args)
+                    _handle_annotated_task(_task_def, inputs, output_prefix, raw_output_data_prefix)
+                else:
+                    # Old Style
+                    local_inputs_file = input_dir.get_named_tempfile("inputs.pb")
 
-                # Handle inputs/outputs for array job.
-                if _os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
-                    job_index = _compute_array_job_index()
+                    # Handle inputs/outputs for array job.
+                    if _os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
+                        job_index = _compute_array_job_index()
 
-                    # TODO: Perhaps remove.  This is a workaround to an issue we perceived with limited entropy in
-                    # TODO: AWS batch array jobs.
-                    _flyte_random.seed_flyte_random(
-                        "{} {} {}".format(_random.random(), _datetime.datetime.utcnow(), job_index)
+                        # TODO: Perhaps remove.  This is a workaround to an issue we perceived with limited entropy in
+                        # TODO: AWS batch array jobs.
+                        _flyte_random.seed_flyte_random(
+                            "{} {} {}".format(_random.random(), _datetime.datetime.utcnow(), job_index)
+                        )
+
+                        # If an ArrayTask is discoverable, the original job index may be different than the one specified in
+                        # the environment variable. Look up the correct input/outputs in the index lookup mapping file.
+                        job_index = _map_job_index_to_child_index(input_dir, inputs, job_index)
+
+                        inputs = _os.path.join(inputs, str(job_index), "inputs.pb")
+                        output_prefix = _os.path.join(output_prefix, str(job_index))
+
+                    _data_proxy.Data.get_data(inputs, local_inputs_file)
+                    input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+
+                    _engine_loader.get_engine().get_task(task_def).execute(
+                        _literal_models.LiteralMap.from_flyte_idl(input_proto),
+                        context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
                     )
 
-                    # If an ArrayTask is discoverable, the original job index may be different than the one specified in
-                    # the environment variable. Look up the correct input/outputs in the index lookup mapping file.
-                    job_index = _map_job_index_to_child_index(input_dir, inputs, job_index)
-
-                    inputs = _os.path.join(inputs, str(job_index), "inputs.pb")
-                    output_prefix = _os.path.join(output_prefix, str(job_index))
-
-                _data_proxy.Data.get_data(inputs, local_inputs_file)
-                input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-
-                _engine_loader.get_engine().get_task(task_def).execute(
-                    _literal_models.LiteralMap.from_flyte_idl(input_proto),
-                    context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
-                )
-
-            # New core style task
-            elif not test and isinstance(task_def, PythonTask):
-                _handle_annotated_task(task_def, inputs, output_prefix, raw_output_data_prefix)
 
 
 @_click.group()
@@ -256,11 +260,13 @@ _test = _click.option("--test", is_flag=True)
 @_pass_through.command("pyflyte-execute")
 @_click.option("--task-module", required=True)
 @_click.option("--task-name", required=True)
+@_click.option("--loader-arg", required=False, multiple=True,
+               help="Special arguments in the form str that will be passed to the loader")
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--test", is_flag=True)
-def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
+def execute_task_cmd(task_module, task_name, loader_arg, inputs, output_prefix, raw_output_data_prefix, test):
     _click.echo(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
     # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
@@ -268,7 +274,7 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
     if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
         raw_output_data_prefix = None
 
-    _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
+    _execute_task(task_module, task_name, loader_arg, inputs, output_prefix, raw_output_data_prefix, test)
 
 
 @_pass_through.command("pyflyte-fast-execute")
