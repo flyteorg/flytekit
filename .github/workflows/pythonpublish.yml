@@ -32,7 +32,10 @@ jobs:
         run: |
           python setup.py sdist bdist_wheel
           twine upload -r testpypi dist/*
+      - run: pwd
+      - run: ls ./
       - run: cd plugins
+      - run: ls ./
       - name: Autobump plugin version
         run: |
           # from refs/tags/v1.2.3 get 1.2.3
