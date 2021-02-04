@@ -3,11 +3,8 @@ from typing import List
 from flytekitplugins.pod.task import Pod, PodFunctionTask
 from k8s.io.api.core.v1 import generated_pb2
 
-from flytekit.annotated import context_manager
-from flytekit.annotated.context_manager import ExecutionState, Image, ImageConfig, SerializationSettings
-from flytekit.annotated.dynamic_workflow_task import dynamic
-from flytekit.annotated.resources import Resources
-from flytekit.annotated.task import task
+from flytekit import Resources, dynamic, task
+from flytekit.extend import ExecutionState, Image, ImageConfig, SerializationSettings
 
 
 def get_pod_spec():
@@ -96,8 +93,8 @@ def test_dynamic_pod_task():
     )
     assert len(custom["podSpec"]["containers"]) == 2
 
-    with context_manager.FlyteContext.current_context().new_serialization_settings(
-        serialization_settings=context_manager.SerializationSettings(
+    with FlyteContext.current_context().new_serialization_settings(
+        serialization_settings=SerializationSettings(
             project="test_proj",
             domain="test_domain",
             version="abc",

@@ -8,9 +8,6 @@ import random as _random
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit.annotated.base_task import IgnoreOutputs, PythonTask
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
-from flytekit.annotated.promise import VoidPromise
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common import utils as _utils
@@ -21,6 +18,9 @@ from flytekit.configuration import TemporaryConfiguration as _TemporaryConfigura
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
+from flytekit.core.base_task import IgnoreOutputs, PythonTask
+from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
+from flytekit.core.promise import VoidPromise
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -235,7 +235,7 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                     context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
                 )
 
-            # New annotated style task
+            # New core style task
             elif not test and isinstance(task_def, PythonTask):
                 _handle_annotated_task(task_def, inputs, output_prefix, raw_output_data_prefix)
 

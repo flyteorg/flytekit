@@ -2,7 +2,7 @@ from flytekitplugins.spark import Spark
 
 import flytekit
 from flytekit import task
-from flytekit.annotated.context_manager import Image, ImageConfig, SerializationSettings
+from flytekit.extend import Image, ImageConfig, SerializationSettings
 
 
 def test_spark_task():

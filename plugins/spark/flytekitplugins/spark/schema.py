@@ -4,7 +4,7 @@ from typing import Type
 import pyspark
 
 from flytekit import FlyteContext
-from flytekit.annotated.type_engine import T, TypeEngine, TypeTransformer
+from flytekit.extend import T, TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.types.schema import SchemaEngine, SchemaFormat, SchemaHandler, SchemaReader, SchemaWriter
