@@ -28,7 +28,7 @@ jobs:
       - name: Build and publish
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_TEST_PASSWORD }}
         run: |
           python setup.py sdist bdist_wheel
           twine upload -r testpypi dist/*
@@ -42,7 +42,7 @@ jobs:
       - name: Build all Plugins and publish
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_TEST_PASSWORD }}
         run: |
           make build_all_plugins
           make publish_all_plugins
