@@ -200,11 +200,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
         if not istestfunction(func=task_function) and isnested(func=task_function):
-            raise ValueError(
-                "TaskFunction cannot be a nested/inner or local function. "
-                "It should be accessible at a module level for Flyte to execute it. Test modules with "
-                "names begining with `test_` are allowed to have nested tasks"
-            )
+            logger.warning(f"Hi there.")
+            # raise ValueError(
+            #     "TaskFunction cannot be a nested/inner or local function. "
+            #     "It should be accessible at a module level for Flyte to execute it. Test modules with "
+            #     "names begining with `test_` are allowed to have nested tasks"
+            # )
         self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         super().__init__(
