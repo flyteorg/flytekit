@@ -60,11 +60,11 @@ coverage:
 	coverage report -m --include="flytekit/core/*,flytekit/types/*,plugins/*"
 
 PLACEHOLDER := "__version__\ =\ \"develop\""
-VERSION_FILE := "flytekit/__init__.py"
 
 .PHONY: update_version
 update_version:
 	# ensure the placeholder is there. If grep doesn't find the placeholder
 	# it exits with exit code 1 and github actions aborts the build. 
 	grep "$(PLACEHOLDER)" "$(VERSION_FILE)"
-	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" $(VERSION_FILE)
+	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "flytekit/__init__.py"
+	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "setup.py"
