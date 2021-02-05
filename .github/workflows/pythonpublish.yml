@@ -32,20 +32,16 @@ jobs:
         run: |
           python setup.py sdist bdist_wheel
           twine upload -r testpypi dist/*
-      - run: pwd
-      - run: ls ./
-      - run: cd plugins
-      - run: ls ./
       - name: Autobump plugin version
         run: |
           # from refs/tags/v1.2.3 get 1.2.3
           VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
-          VERSION=$VERSION make update_all_versions
+          VERSION=$VERSION make -C plugins update_all_versions
         shell: bash
       - name: Build all Plugins and publish
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_TEST_PASSWORD }}
         run: |
-          make build_all_plugins
-          make publish_all_plugins
+          make -C plugins build_all_plugins
+          make -C plugins publish_all_plugins
