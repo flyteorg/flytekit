@@ -1,20 +1,20 @@
 from typing import Dict, List, Optional, Union
 
-from flytekit.annotated.base_task import PythonTask, TaskMetadata
-from flytekit.annotated.condition import BranchNode
-from flytekit.annotated.context_manager import SerializationSettings
-from flytekit.annotated.launch_plan import LaunchPlan, ReferenceLaunchPlan
-from flytekit.annotated.node import Node
-from flytekit.annotated.python_function_task import PythonAutoContainerTask
-from flytekit.annotated.reference_entity import ReferenceEntity
-from flytekit.annotated.task import ReferenceTask
-from flytekit.annotated.workflow import ReferenceWorkflow, Workflow, WorkflowFailurePolicy, WorkflowMetadata
 from flytekit.common import constants as _common_constants
 from flytekit.common.interface import TypedInterface
 from flytekit.common.launch_plan import SdkLaunchPlan
 from flytekit.common.nodes import SdkNode
 from flytekit.common.tasks.task import SdkTask
 from flytekit.common.workflow import SdkWorkflow
+from flytekit.core.base_task import PythonTask, TaskMetadata
+from flytekit.core.condition import BranchNode
+from flytekit.core.context_manager import SerializationSettings
+from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
+from flytekit.core.node import Node
+from flytekit.core.python_function_task import PythonAutoContainerTask
+from flytekit.core.reference_entity import ReferenceEntity
+from flytekit.core.task import ReferenceTask
+from flytekit.core.workflow import ReferenceWorkflow, Workflow, WorkflowFailurePolicy, WorkflowMetadata
 from flytekit.models import common as _common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models

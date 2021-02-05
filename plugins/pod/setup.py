@@ -8,7 +8,7 @@ plugin_requires = ["flytekit>=0.16.0b0,<1.0.0", "k8s-proto>=0.0.3,<1.0.0"]
 
 setup(
     name=microlib_name,
-    version="0.1.0",
+    version="0.1.1",
     author="flyteorg",
     author_email="admin@flyte.org",
     description="Flytekit plugin to support K8s Pod tasks",

@@ -2,12 +2,9 @@ import pandas
 import pytest
 from flytekitplugins.hive.task import HiveConfig, HiveSelectTask, HiveTask
 
-from flytekit.annotated import context_manager
-from flytekit.annotated.base_task import kwtypes
-from flytekit.annotated.context_manager import Image, ImageConfig
-from flytekit.annotated.testing import task_mock
-from flytekit.annotated.workflow import workflow
-from flytekit.common.translator import get_serializable
+from flytekit import kwtypes, workflow
+from flytekit.extend import Image, ImageConfig, SerializationSettings, get_serializable
+from flytekit.testing import task_mock
 from flytekit.types.schema import FlyteSchema
 
 
@@ -32,7 +29,7 @@ def test_serialization():
         return hive_task(my_schema=in_schema, ds=ds)
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = SerializationSettings(
         project="proj",
         domain="dom",
         version="123",
@@ -104,7 +101,7 @@ def test_query_no_inputs_or_outputs():
         hive_task()
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = SerializationSettings(
         project="proj",
         domain="dom",
         version="123",

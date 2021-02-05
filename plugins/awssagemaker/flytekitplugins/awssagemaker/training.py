@@ -7,12 +7,16 @@ from flytekitplugins.awssagemaker.distributed_training import DistributedTrainin
 from google.protobuf.json_format import MessageToDict
 
 import flytekit
-from flytekit.annotated.base_task import IgnoreOutputs, PythonTask, kwtypes
-from flytekit.annotated.context_manager import ExecutionState, FlyteContext, SerializationSettings
-from flytekit.annotated.interface import Interface
-from flytekit.annotated.python_function_task import PythonFunctionTask
-from flytekit.annotated.task import TaskPlugins
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
+from flytekit import FlyteContext, PythonFunctionTask, kwtypes
+from flytekit.extend import (
+    ExecutionParameters,
+    ExecutionState,
+    IgnoreOutputs,
+    Interface,
+    PythonTask,
+    SerializationSettings,
+    TaskPlugins,
+)
 from flytekit.models.sagemaker import training_job as _training_job_models
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import FlyteFile

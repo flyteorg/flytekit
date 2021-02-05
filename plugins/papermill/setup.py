@@ -8,7 +8,7 @@ plugin_requires = ["flytekit>=0.16.0b0,<1.0.0", "papermill>=1.2.0", "nbconvert>=
 
 setup(
     name=microlib_name,
-    version="0.1.0",
+    version="0.1.1",
     author="flyteorg",
     author_email="admin@flyte.org",
     description="This is the flytekit papermill plugin",
