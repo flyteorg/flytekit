@@ -86,6 +86,10 @@ hmsclient==0.1.1
     # via flytekit
 idna==2.10
     # via requests
+importlib-metadata==3.4.0
+    # via
+    #   jsonschema
+    #   keyring
 inotify_simple==1.2.1
     # via sagemaker-training
 ipykernel==5.4.3
@@ -193,7 +197,7 @@ py4j==0.10.9
     # via pyspark
 py==1.10.0
     # via retry
-pyarrow==2.0.0
+pyarrow==3.0.0
     # via flytekit
 pycparser==2.20
     # via cffi
@@ -299,7 +303,9 @@ traitlets==5.0.5
 typed-ast==1.4.2
     # via black
 typing-extensions==3.7.4.3
-    # via typing-inspect
+    # via
+    #   importlib-metadata
+    #   typing-inspect
 typing-inspect==0.6.0
     # via dataclasses-json
 urllib3==1.25.11
@@ -320,6 +326,8 @@ wrapt==1.12.1
     # via
     #   deprecated
     #   flytekit
+zipp==3.4.0
+    # via importlib-metadata
 zope.event==4.5.0
     # via gevent
 zope.interface==5.2.0
