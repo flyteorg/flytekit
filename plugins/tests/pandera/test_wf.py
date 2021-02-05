@@ -1,6 +1,7 @@
 import pandas
 import pandera
 import pytest
+from flytekitplugins.pandera import schema  # noqa: F401
 
 from flytekit import task, workflow
 

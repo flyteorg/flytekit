@@ -15,12 +15,14 @@ def get_specified_images() -> typing.Dict[str, str]:
 
     :returns a dictionary of name: image<fqn+version> Version is optional
     """
+    images: typing.Dict[str, str] = {}
+    if _config_common.CONFIGURATION_SINGLETON.config is None:
+        return images
     try:
         image_names = _config_common.CONFIGURATION_SINGLETON.config.options("images")
     except configparser.NoSectionError:
         print("No images specified, will use the default image")
         image_names = None
-    images: typing.Dict[str, str] = {}
     if image_names:
         for i in image_names:
             images[str(i)] = _config_common.FlyteStringConfigurationEntry("images", i).get()

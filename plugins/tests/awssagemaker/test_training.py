@@ -7,8 +7,8 @@ from flytekitplugins.awssagemaker.training import SagemakerBuiltinAlgorithmsTask
 
 import flytekit
 from flytekit import task
-from flytekit.annotated.context_manager import Image, ImageConfig, SerializationSettings
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
+from flytekit.extend import Image, ImageConfig, SerializationSettings
 from flytekit.models.sagemaker.training_job import (
     AlgorithmName,
     AlgorithmSpecification,

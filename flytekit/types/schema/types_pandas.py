@@ -3,8 +3,8 @@ import typing
 from typing import Type
 
 from flytekit import FlyteContext
-from flytekit.annotated.type_engine import T, TypeEngine, TypeTransformer
 from flytekit.configuration import sdk
+from flytekit.core.type_engine import T, TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.plugins import pandas

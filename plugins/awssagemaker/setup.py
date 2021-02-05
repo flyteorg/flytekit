@@ -9,7 +9,7 @@ plugin_requires = ["flytekit>=0.16.0b0,<1.0.0", "sagemaker-training>=3.6.2,<4.0.
 # TODO: move sagemaker install script here.
 setup(
     name=microlib_name,
-    version="0.1.0",
+    version="0.1.1",
     author="flyteorg",
     author_email="admin@flyte.org",
     description="AWS Plugins for flytekit",
