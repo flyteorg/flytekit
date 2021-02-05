@@ -23,9 +23,6 @@ from flytekit.types import schema
 __version__ = "0.16.0b3"
 
 
-flytekit.plugins.import_plugins()
-
-
 def current_context() -> ExecutionParameters:
     """
     Use this method to get a handle of specific parameters available in a flyte task.

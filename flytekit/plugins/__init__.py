@@ -34,13 +34,3 @@ _lazy_loader.LazyLoadPlugin(
 _lazy_loader.LazyLoadPlugin("hive_sensor", ["hmsclient>=0.0.1,<1.0.0"], [hmsclient])
 
 _lazy_loader.LazyLoadPlugin("sagemaker", ["sagemaker-training>=3.6.2,<4.0.0"], [sagemaker_training])
-
-
-def import_plugins():
-    import importlib
-
-    for plugin in ["awssagemaker", "hive", "kfpytorch", "kftensorflow", "pandera", "papermill", "pod", "spark"]:
-        try:
-            importlib.import_module(f"flytekitplugins.{plugin}")
-        except ImportError:
-            pass
