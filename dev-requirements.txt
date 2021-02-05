@@ -61,13 +61,19 @@ idna==2.10
     #   requests
 imagesize==1.2.0
     # via sphinx
+importlib-metadata==3.4.0
+    # via
+    #   -c requirements.txt
+    #   flake8
+    #   pluggy
+    #   pytest
 iniconfig==1.1.1
     # via pytest
 isort==5.7.0
     # via
     #   -r dev-requirements.in
     #   flake8-isort
-jinja2==2.11.2
+jinja2==2.11.3
     # via
     #   -c requirements.txt
     #   sphinx
@@ -90,7 +96,7 @@ mypy-extensions==0.4.3
     #   mypy
 mypy==0.800
     # via -r dev-requirements.in
-packaging==20.8
+packaging==20.9
     # via
     #   -c requirements.txt
     #   pytest
@@ -147,7 +153,7 @@ snowballstemmer==2.1.0
     # via sphinx
 soupsieve==2.1
     # via beautifulsoup4
-sphinx-autoapi==1.6.0
+sphinx-autoapi==1.7.0
     # via -r doc-requirements.in
 sphinx-code-include==1.1.1
     # via -r doc-requirements.in
@@ -192,13 +198,15 @@ toml==0.10.2
 typed-ast==1.4.2
     # via
     #   -c requirements.txt
+    #   astroid
     #   black
     #   mypy
 typing-extensions==3.7.4.3
     # via
     #   -c requirements.txt
+    #   importlib-metadata
     #   mypy
-unidecode==1.1.2
+unidecode==1.2.0
     # via
     #   python-slugify
     #   sphinx-autoapi
@@ -210,6 +218,10 @@ wrapt==1.12.1
     # via
     #   -c requirements.txt
     #   astroid
+zipp==3.4.0
+    # via
+    #   -c requirements.txt
+    #   importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
