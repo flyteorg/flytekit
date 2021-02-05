@@ -166,11 +166,28 @@ class TaskLoader(object):
     """
 
     @abstractmethod
-    def load_task(self, loader_args: List[str]) -> "PythonInstanceTask":
+    def name(self) -> str:
         pass
 
     @abstractmethod
-    def loader_args(self, var: InstanceVar) -> List[str]:
+    def load_task(self, loader_args: List[str]) -> "PythonInstanceTask":
+        """
+        Given the set of identifier keys, should return one Python Task or raise an error if not found
+        """
+        pass
+
+    @abstractmethod
+    def loader_args(self, var: InstanceVar, for_task: "PythonInstanceTask") -> List[str]:
+        """
+        Return a list of strings that can help identify the parameter Task
+        """
+        pass
+
+    @abstractmethod
+    def get_all_tasks(self) -> List["PythonInstanceTask"]:
+        """
+         Future proof method. Just making it easy to access all tasks (Not required today as we auto register them)
+        """
         pass
 
 
@@ -209,7 +226,14 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
         NOTE: This command is different, it tries to retrieve the actual LHS of where this object was assigned, so that
         the module loader can easily retreive this for execution - at runtime.
         """
-        var = settings.get_instance_var(self)
+        if self.task_loader is None:
+            var = settings.get_instance_var(self)
+        else:
+            var = settings.get_instance_var(self.task_loader)
+
+        if var is None:
+            raise AssertionError(f"Unable to load instance of task {self.name}, should be loadable in module")
+
         command = [
             "pyflyte-execute",
             "--task-module",
@@ -225,7 +249,7 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
         ]
 
         if self.task_loader is not None:
-            for arg in self.task_loader.loader_args(var=var):
+            for arg in self.task_loader.loader_args(var=var, for_task=self):
                 command.extend(["--loader-arg", arg])
 
         return command
@@ -260,6 +284,7 @@ class PythonFunctionTask(PythonInstanceTask[T]):
         task_type="python-task",
         ignore_input_vars: Optional[List[str]] = None,
         execution_mode: Optional[ExecutionBehavior] = ExecutionBehavior.DEFAULT,
+        allow_nested: bool = False,
         **kwargs,
     ):
         """
@@ -271,12 +296,13 @@ class PythonFunctionTask(PythonInstanceTask[T]):
         """
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
-        if not istestfunction(func=task_function) and isnested(func=task_function):
-            raise ValueError(
-                "TaskFunction cannot be a nested/inner or local function. "
-                "It should be accessible at a module level for Flyte to execute it. Test modules with "
-                "names begining with `test_` are allowed to have nested tasks"
-            )
+        if not allow_nested:
+            if not istestfunction(func=task_function) and isnested(func=task_function):
+                raise ValueError(
+                    "TaskFunction cannot be a nested/inner or local function. "
+                    "It should be accessible at a module level for Flyte to execute it. Test modules with "
+                    "names begining with `test_` are allowed to have nested tasks"
+                )
         self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         super().__init__(

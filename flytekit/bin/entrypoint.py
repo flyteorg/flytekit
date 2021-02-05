@@ -207,40 +207,48 @@ def _execute_task(task_module, task_name, loader_args, inputs, output_prefix, ra
             task_module = _importlib.import_module(task_module)
             task_def = getattr(task_module, task_name)
 
-            if not test:
-                if isinstance(task_def, PythonTask):
-                    _handle_annotated_task(task_def, inputs, output_prefix, raw_output_data_prefix)
-                elif isinstance(task_def, TaskLoader):
-                    _task_def = task_def.load_task(loader_args=loader_args)
-                    _handle_annotated_task(_task_def, inputs, output_prefix, raw_output_data_prefix)
-                else:
-                    # Old Style
-                    local_inputs_file = input_dir.get_named_tempfile("inputs.pb")
+            if isinstance(task_def, PythonTask):
+                if test:
+                    print(f"PythonTask type found - {task_def.name}")
+                    return
+                _handle_annotated_task(task_def, inputs, output_prefix, raw_output_data_prefix)
+            elif isinstance(task_def, TaskLoader):
+                _task_def = task_def.load_task(loader_args=loader_args)
+                if test:
+                    print(f"Loader type found - {loader_args}/{task_def.name()} - task {_task_def.name}")
+                    return
+                _handle_annotated_task(_task_def, inputs, output_prefix, raw_output_data_prefix)
+            else:
+                if test:
+                    print(f"Legacy type task found {task_def.name}")
+                    return
+                # Old Style
+                local_inputs_file = input_dir.get_named_tempfile("inputs.pb")
 
-                    # Handle inputs/outputs for array job.
-                    if _os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
-                        job_index = _compute_array_job_index()
+                # Handle inputs/outputs for array job.
+                if _os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
+                    job_index = _compute_array_job_index()
 
-                        # TODO: Perhaps remove.  This is a workaround to an issue we perceived with limited entropy in
-                        # TODO: AWS batch array jobs.
-                        _flyte_random.seed_flyte_random(
-                            "{} {} {}".format(_random.random(), _datetime.datetime.utcnow(), job_index)
-                        )
-
-                        # If an ArrayTask is discoverable, the original job index may be different than the one specified in
-                        # the environment variable. Look up the correct input/outputs in the index lookup mapping file.
-                        job_index = _map_job_index_to_child_index(input_dir, inputs, job_index)
-
-                        inputs = _os.path.join(inputs, str(job_index), "inputs.pb")
-                        output_prefix = _os.path.join(output_prefix, str(job_index))
-
-                    _data_proxy.Data.get_data(inputs, local_inputs_file)
-                    input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-
-                    _engine_loader.get_engine().get_task(task_def).execute(
-                        _literal_models.LiteralMap.from_flyte_idl(input_proto),
-                        context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
+                    # TODO: Perhaps remove.  This is a workaround to an issue we perceived with limited entropy in
+                    # TODO: AWS batch array jobs.
+                    _flyte_random.seed_flyte_random(
+                        "{} {} {}".format(_random.random(), _datetime.datetime.utcnow(), job_index)
                     )
+
+                    # If an ArrayTask is discoverable, the original job index may be different than the one specified in
+                    # the environment variable. Look up the correct input/outputs in the index lookup mapping file.
+                    job_index = _map_job_index_to_child_index(input_dir, inputs, job_index)
+
+                    inputs = _os.path.join(inputs, str(job_index), "inputs.pb")
+                    output_prefix = _os.path.join(output_prefix, str(job_index))
+
+                _data_proxy.Data.get_data(inputs, local_inputs_file)
+                input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+
+                _engine_loader.get_engine().get_task(task_def).execute(
+                    _literal_models.LiteralMap.from_flyte_idl(input_proto),
+                    context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
+                )
 
 
 @_click.group()
