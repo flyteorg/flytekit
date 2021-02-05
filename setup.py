@@ -35,10 +35,11 @@ extras_require = {
     "all": spark3 + all_but_spark,
 }
 
+__version__ = "develop"
 
 setup(
     name="flytekit",
-    version="0.16.0b6",
+    version=__version__,
     maintainer="Flyte Org",
     maintainer_email="admin@flyte.org",
     packages=find_packages(exclude=["tests*"]),

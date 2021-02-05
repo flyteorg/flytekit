@@ -6,9 +6,11 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = ["flytekit>=0.16.0b0,<1.0.0"]
 
+__version__ = "develop"
+
 setup(
     name=microlib_name,
-    version="0.1.1",
+    version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
     description="This package holds Hive plugins for flytekit",

@@ -58,3 +58,15 @@ requirements: requirements.txt dev-requirements.txt requirements-spark3.txt ## C
 coverage:
 	coverage run -m pytest tests/flytekit/unit/core flytekit/types plugins/tests
 	coverage report -m --include="flytekit/core/*,flytekit/types/*,plugins/*"
+
+PLACEHOLDER := "__version__\ =\ \"develop\""
+
+.PHONY: update_version
+update_version:
+	# ensure the placeholder is there. If grep doesn't find the placeholder
+	# it exits with exit code 1 and github actions aborts the build. 
+	grep "$(PLACEHOLDER)" "flytekit/__init__.py"
+	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "flytekit/__init__.py"
+	
+	grep "$(PLACEHOLDER)" "setup.py"
+	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "setup.py"
