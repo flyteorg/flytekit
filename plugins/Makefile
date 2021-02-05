@@ -12,7 +12,7 @@ build_all_plugins:
 
 .PHONY: publish_all_plugins
 publish_all_plugins:
-	twine upload -r testpypi */dist/*
+	twine upload */dist/*
 
 PLACEHOLDER := "__version__\ =\ \"develop\""
 VERSION_FILE := "setup.py"
