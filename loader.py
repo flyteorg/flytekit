@@ -2,6 +2,8 @@ from typing import List
 
 from flytekit.core.context_manager import InstanceVar
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask, TaskLoader
+from flytekit.core.workflow import Workflow
+from flytekit import workflow
 
 
 class Builder(TaskLoader):
@@ -31,12 +33,20 @@ class Builder(TaskLoader):
     def loader_args(self, var: InstanceVar, for_task: PythonInstanceTask) -> List[str]:
         return [self.reverse[for_task]]
 
-    @classmethod
-    def build(cls) -> "Builder":
-        c = cls()
-        c.add("x")
-        c.add("y")
-        return c
+    def build(self) -> Workflow:
+        self.add("x")
+        self.add("y")
+        @workflow
+        def foo():
+            pass
+
+        return foo
 
 
-tasks = Builder.build()
+# Note you have to have the builder available, else the tasks wont be loaded
+builder = Builder()
+wf = builder.build()
+
+
+if __name__ == "__main__":
+    tk = builder.get_all_tasks()
