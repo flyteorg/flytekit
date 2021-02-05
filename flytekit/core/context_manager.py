@@ -5,6 +5,7 @@ import logging as _logging
 import os
 import pathlib
 import re
+from abc import abstractmethod
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
@@ -97,14 +98,14 @@ class EntrypointSettings(object):
 
 class SerializationSettings(object):
     def __init__(
-        self,
-        project: str,
-        domain: str,
-        version: str,
-        image_config: ImageConfig,
-        env: Optional[Dict[str, str]],
-        flytekit_virtualenv_root: str = None,
-        entrypoint_settings: EntrypointSettings = None,
+            self,
+            project: str,
+            domain: str,
+            version: str,
+            image_config: ImageConfig,
+            env: Optional[Dict[str, str]],
+            flytekit_virtualenv_root: str = None,
+            entrypoint_settings: EntrypointSettings = None,
     ):
         self._project = project
         self._domain = domain
@@ -150,6 +151,44 @@ class SerializationSettings(object):
         if o in self._instance_lookup:
             return self._instance_lookup[o]
         raise KeyError(f"Instance Variable not found for object id {o}")
+
+
+class TaskResolverMixin(object):
+    """
+    A TaskResolver that can be used to load the task itself from the actual argument that is captured.
+    The argument itself should be discoverable through the class loading framework.
+
+    .. note::
+
+        Task Resolver can only be used for cases in which the Task can be fully loaded using constant module level variables
+        and/or can be returned using the loader-args. Loader args are simple strings
+
+    """
+
+    @abstractmethod
+    def name(self) -> str:
+        pass
+
+    @abstractmethod
+    def load_task(self, loader_args: List[str]) -> "PythonInstanceTask":
+        """
+        Given the set of identifier keys, should return one Python Task or raise an error if not found
+        """
+        pass
+
+    @abstractmethod
+    def loader_args(self, var: InstanceVar, for_task: "PythonInstanceTask") -> List[str]:
+        """
+        Return a list of strings that can help identify the parameter Task
+        """
+        pass
+
+    @abstractmethod
+    def get_all_tasks(self) -> List["PythonInstanceTask"]:
+        """
+         Future proof method. Just making it easy to access all tasks (Not required today as we auto register them)
+        """
+        pass
 
 
 class CompilationState(object):
@@ -231,7 +270,8 @@ class ExecutionState(object):
         LOCAL_TASK_EXECUTION = 3
 
     def __init__(
-        self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike, additional_context: Dict[Any, Any] = None
+            self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike,
+            additional_context: Dict[Any, Any] = None
     ):
         self._mode = mode
         self._working_dir = working_dir
@@ -293,14 +333,14 @@ class FlyteContext(object):
     OBJS = []
 
     def __init__(
-        self,
-        parent=None,
-        file_access: _data_proxy.FileAccessProvider = None,
-        compilation_state: CompilationState = None,
-        execution_state: ExecutionState = None,
-        flyte_client: friendly_client.SynchronousFlyteClient = None,
-        user_space_params: ExecutionParameters = None,
-        serialization_settings: SerializationSettings = None,
+            self,
+            parent=None,
+            file_access: _data_proxy.FileAccessProvider = None,
+            compilation_state: CompilationState = None,
+            execution_state: ExecutionState = None,
+            flyte_client: friendly_client.SynchronousFlyteClient = None,
+            user_space_params: ExecutionParameters = None,
+            serialization_settings: SerializationSettings = None,
     ):
         # TODO: Should we have this auto-parenting feature?
         if parent is None and len(FlyteContext.OBJS) > 0:
@@ -365,11 +405,11 @@ class FlyteContext(object):
 
     @contextmanager
     def new_execution_context(
-        self,
-        mode: ExecutionState.Mode,
-        additional_context: Dict[Any, Any] = None,
-        execution_params: Optional[ExecutionParameters] = None,
-        working_dir: Optional[str] = None,
+            self,
+            mode: ExecutionState.Mode,
+            additional_context: Dict[Any, Any] = None,
+            execution_params: Optional[ExecutionParameters] = None,
+            working_dir: Optional[str] = None,
     ) -> Generator[FlyteContext, None, None]:
         # Create a working directory for the execution to use
         working_dir = working_dir or self.file_access.get_random_local_directory()
@@ -421,7 +461,7 @@ class FlyteContext(object):
 
     @contextmanager
     def new_serialization_settings(
-        self, serialization_settings: SerializationSettings
+            self, serialization_settings: SerializationSettings
     ) -> Generator[FlyteContext, None, None]:
         new_ctx = FlyteContext(parent=self, serialization_settings=serialization_settings)
         FlyteContext.OBJS.append(new_ctx)

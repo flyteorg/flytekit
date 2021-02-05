@@ -19,9 +19,9 @@ from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
-from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
+from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config, \
+    TaskResolverMixin
 from flytekit.core.promise import VoidPromise
-from flytekit.core.python_function_task import TaskLoader
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -212,7 +212,7 @@ def _execute_task(task_module, task_name, loader_args, inputs, output_prefix, ra
                     print(f"PythonTask type found - {task_def.name}")
                     return
                 _handle_annotated_task(task_def, inputs, output_prefix, raw_output_data_prefix)
-            elif isinstance(task_def, TaskLoader):
+            elif isinstance(task_def, TaskResolverMixin):
                 _task_def = task_def.load_task(loader_args=loader_args)
                 if test:
                     print(f"Loader type found - {loader_args}/{task_def.name()} - task {_task_def.name}")

@@ -1,12 +1,12 @@
 from typing import List
 
-from flytekit.core.context_manager import InstanceVar
-from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask, TaskLoader
+from flytekit.core.context_manager import InstanceVar, TaskResolverMixin
+from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.workflow import Workflow
 from flytekit import workflow
 
 
-class Builder(TaskLoader):
+class Builder(TaskResolverMixin):
     def __init__(self):
         self.d = {}
         self.reverse = {}
@@ -21,7 +21,7 @@ class Builder(TaskLoader):
         def foo(x: int) -> int:
             return x
 
-        fn = PythonFunctionTask(task_config=None, task_function=foo, allow_nested=True, task_loader=self)
+        fn = PythonFunctionTask(task_config=None, task_function=foo, task_resolver=self)
         self.d[x] = fn
         self.reverse[fn] = x
 
