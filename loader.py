@@ -3,7 +3,7 @@ from typing import List
 from flytekit.core.context_manager import InstanceVar, TaskResolverMixin
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.workflow import Workflow
-from flytekit import workflow
+from flytekit import workflow, task
 
 
 class Builder(TaskResolverMixin):
@@ -48,5 +48,19 @@ builder = Builder()
 wf = builder.build()
 
 
+@workflow
+def my_workflow(i: int) -> int:
+    # This works, but with a important caveat, my_workflow variables `i` should not be used inside the task. this will
+    # cause implicit binding and will fail at runtime. The registration will be wrong! Not sure how to detect this.
+    @task
+    def foo(j: int) -> int:
+        return j
+
+    return foo(j=i)
+
+
 if __name__ == "__main__":
     tk = builder.get_all_tasks()
+
+    print(my_workflow.get_all_tasks()[0].name)
+    print(my_workflow.load_task(["__main__.foo"])(j=10))

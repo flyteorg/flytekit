@@ -185,6 +185,10 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
     ):
         super().__init__(name=name, task_config=task_config, task_type=task_type, **kwargs)
         self._task_resolver = task_resolver
+        if self._task_resolver is None:
+            ctx = FlyteContext.current_context().compilation_state
+            if ctx is not None and ctx.task_resolver() is not None:
+                self._task_resolver = ctx.task_resolver()
 
     @property
     def task_resolver(self) -> Optional[TaskResolverMixin]:

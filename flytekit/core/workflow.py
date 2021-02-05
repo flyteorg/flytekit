@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteEntities
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteEntities, TaskResolverMixin, InstanceVar
 from flytekit.core.interface import (
     Interface,
     transform_inputs_to_parameters,
@@ -123,7 +123,7 @@ def construct_input_promises(inputs: List[str]):
     }
 
 
-class Workflow(object):
+class Workflow(TaskResolverMixin):
     """
     When you assign a name to a node.
     * Any upstream node that is not assigned, recursively assign
@@ -152,6 +152,7 @@ class Workflow(object):
         #    we can re-evaluate.
         self._input_parameters = None
         FlyteEntities.entities.append(self)
+        self._interned_tasks = {}
 
     @property
     def function(self):
@@ -181,21 +182,38 @@ class Workflow(object):
     def workflow_metadata_defaults(self):
         return self._workflow_metadata_defaults
 
+    def load_task(self, loader_args: List[str]) -> "PythonInstanceTask":
+        return self._interned_tasks[loader_args[0]]
+
+    def loader_args(self, var: InstanceVar, for_task: "PythonInstanceTask") -> List[str]:
+        for k, t in self._interned_tasks.items():
+            if t == for_task:
+                return [k]
+        raise AssertionError(f"Task {for_task.name} not found in Workflow Task resolver {self._name}")
+
+    def get_all_tasks(self) -> List["PythonInstanceTask"]:
+        return [t for k, t in self._interned_tasks.items()]
+
     def compile(self, **kwargs):
         """
         Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics
         a 'closure' in the traditional sense of the word.
         """
+        from flytekit.core.python_function_task import PythonInstanceTask
         ctx = FlyteContext.current_context()
         self._input_parameters = transform_inputs_to_parameters(ctx, self._native_interface)
         all_nodes = []
         prefix = f"{ctx.compilation_state.prefix}-{self.short_name}-" if ctx.compilation_state is not None else None
-        with ctx.new_compilation_context(prefix=prefix) as comp_ctx:
+        with ctx.new_compilation_context(prefix=prefix, task_resolver=self) as comp_ctx:
             # Construct the default input promise bindings, but then override with the provided inputs, if any
             input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
             input_kwargs.update(kwargs)
             workflow_outputs = self._workflow_function(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
+            for n in comp_ctx.compilation_state.nodes:
+                if isinstance(n.flyte_entity, PythonInstanceTask) and n.flyte_entity.task_resolver == self:
+                    print(f"Found Interned Task {n.flyte_entity.name}")
+                    self._interned_tasks[n.flyte_entity.name] = n.flyte_entity
 
         # Iterate through the workflow outputs
         bindings = []
