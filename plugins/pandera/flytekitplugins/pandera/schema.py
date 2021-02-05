@@ -5,7 +5,7 @@ import pandas
 import pandera
 
 from flytekit import FlyteContext
-from flytekit.annotated.type_engine import TypeEngine, TypeTransformer
+from flytekit.extend import TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.types.schema import FlyteSchema, PandasSchemaWriter, SchemaFormat, SchemaOpenMode
