@@ -1,11 +1,10 @@
 from typing import List
 
 from flytekit.core.context_manager import InstanceVar
-from flytekit.core.python_function_task import TaskLoader, PythonInstanceTask, PythonFunctionTask
+from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask, TaskLoader
 
 
 class Builder(TaskLoader):
-
     def __init__(self):
         self.d = {}
         self.reverse = {}
@@ -19,6 +18,7 @@ class Builder(TaskLoader):
     def add(self, x: str):
         def foo(x: int) -> int:
             return x
+
         fn = PythonFunctionTask(task_config=None, task_function=foo, allow_nested=True, task_loader=self)
         self.d[x] = fn
         self.reverse[fn] = x
@@ -32,7 +32,7 @@ class Builder(TaskLoader):
         return [self.reverse[for_task]]
 
     @classmethod
-    def build(cls) -> 'Builder':
+    def build(cls) -> "Builder":
         c = cls()
         c.add("x")
         c.add("y")
