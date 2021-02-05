@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import ExecutionState, FlyteContext, ImageConfig, SerializationSettings, InstanceVar
+from flytekit.core.context_manager import ExecutionState, FlyteContext, ImageConfig, InstanceVar, SerializationSettings
 from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.workflow import Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults
@@ -166,7 +166,7 @@ class TaskLoader(object):
     """
 
     @abstractmethod
-    def load_task(self, loader_args: List[str]) -> PythonTask:
+    def load_task(self, loader_args: List[str]) -> "PythonInstanceTask":
         pass
 
     @abstractmethod
@@ -174,7 +174,64 @@ class TaskLoader(object):
         pass
 
 
-class PythonFunctionTask(PythonAutoContainerTask[T]):
+class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
+    """
+    This class should be used as the base class for all Tasks that do not have a user defined function body, but have
+    a platform defined execute method. (Execute needs to be overriden). This base class ensures that the module loader
+    will invoke the right class automatically, by capturing the module name and variable in the module name.
+
+    .. code-block: python
+
+        x = MyInstanceTask(name="x", .....)
+
+        # this can be invoked as
+        x(a=5) # depending on the interface of the defined task
+
+    """
+
+    def __init__(
+        self,
+        name: str,
+        task_config: T,
+        task_type: str = "python-task",
+        task_loader: Optional[TaskLoader] = None,
+        **kwargs,
+    ):
+        super().__init__(name=name, task_config=task_config, task_type=task_type, **kwargs)
+        self._task_loader = task_loader
+
+    @property
+    def task_loader(self):
+        return self._task_loader
+
+    def get_command(self, settings: SerializationSettings) -> List[str]:
+        """
+        NOTE: This command is different, it tries to retrieve the actual LHS of where this object was assigned, so that
+        the module loader can easily retreive this for execution - at runtime.
+        """
+        var = settings.get_instance_var(self)
+        command = [
+            "pyflyte-execute",
+            "--task-module",
+            var.module,
+            "--task-name",
+            var.name,
+            "--inputs",
+            "{{.input}}",
+            "--output-prefix",
+            "{{.outputPrefix}}",
+            "--raw-output-data-prefix",
+            "{{.rawOutputDataPrefix}}",
+        ]
+
+        if self.task_loader is not None:
+            for arg in self.task_loader.loader_args(var=var):
+                command.extend(["--loader-arg", arg])
+
+        return command
+
+
+class PythonFunctionTask(PythonInstanceTask[T]):
     """
     A Python Function task should be used as the base for all extensions that have a python function. It will
     automatically detect interface of the python function and also, create the write execution command to execute the
@@ -251,6 +308,8 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             return self.dynamic_execute(self._task_function, **kwargs)
 
     def get_command(self, settings: SerializationSettings) -> List[str]:
+        if self.task_loader is not None:
+            return super().get_command(settings)
         return [
             "pyflyte-execute",
             "--task-module",
@@ -343,42 +402,3 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             return self.compile_into_workflow(ctx, task_function, **kwargs)
-
-
-class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
-    """
-    This class should be used as the base class for all Tasks that do not have a user defined function body, but have
-    a platform defined execute method. (Execute needs to be overriden). This base class ensures that the module loader
-    will invoke the right class automatically, by capturing the module name and variable in the module name.
-
-    .. code-block: python
-
-        x = MyInstanceTask(name="x", .....)
-
-        # this can be invoked as
-        x(a=5) # depending on the interface of the defined task
-
-    """
-
-    def __init__(self, name: str, task_config: T, task_type: str = "python-task", **kwargs):
-        super().__init__(name=name, task_config=task_config, task_type=task_type, **kwargs)
-
-    def get_command(self, settings: SerializationSettings) -> List[str]:
-        """
-        NOTE: This command is different, it tries to retrieve the actual LHS of where this object was assigned, so that
-        the module loader can easily retreive this for execution - at runtime.
-        """
-        var = settings.get_instance_var(self)
-        return [
-            "pyflyte-execute",
-            "--task-module",
-            var.module,
-            "--task-name",
-            var.name,
-            "--inputs",
-            "{{.input}}",
-            "--output-prefix",
-            "{{.outputPrefix}}",
-            "--raw-output-data-prefix",
-            "{{.rawOutputDataPrefix}}",
-        ]

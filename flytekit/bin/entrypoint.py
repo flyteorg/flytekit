@@ -243,7 +243,6 @@ def _execute_task(task_module, task_name, loader_args, inputs, output_prefix, ra
                     )
 
 
-
 @_click.group()
 def _pass_through():
     pass
@@ -260,8 +259,12 @@ _test = _click.option("--test", is_flag=True)
 @_pass_through.command("pyflyte-execute")
 @_click.option("--task-module", required=True)
 @_click.option("--task-name", required=True)
-@_click.option("--loader-arg", required=False, multiple=True,
-               help="Special arguments in the form str that will be passed to the loader")
+@_click.option(
+    "--loader-arg",
+    required=False,
+    multiple=True,
+    help="Special arguments in the form str that will be passed to the loader",
+)
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
