@@ -2,5 +2,5 @@
 Type System
 #############
 
-.. automodule:: flytekit.annotated.type_engine
+.. automodule:: flytekit.core.type_engine
     :members:

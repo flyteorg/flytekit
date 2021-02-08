@@ -80,7 +80,7 @@ Locally Executing tasks
 Test utilities when working with a task
 ----------------------------------------
 
-.. automodule:: flytekit.annotated.testing
+.. automodule:: flytekit.core.testing
 
 Generate a mock for a task
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -93,7 +93,7 @@ use mock.patch to patch a task
 .. autofunction:: patch
 
 
-.. automodule:: flytekit.annotated.base_task
+.. automodule:: flytekit.core.base_task
 
 Base Task
 ------------
