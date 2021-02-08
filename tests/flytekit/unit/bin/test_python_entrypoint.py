@@ -4,12 +4,16 @@ import mock
 import six
 from click.testing import CliRunner
 from flyteidl.core import literals_pb2 as _literals_pb2
+from flyteidl.core.errors_pb2 import ErrorDocument
 
-from flytekit.bin.entrypoint import _execute_task, execute_task_cmd
+from flytekit.bin.entrypoint import _dispatch_execute, _execute_task, execute_task_cmd
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _utils
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
+from flytekit.core import context_manager
+from flytekit.core.base_task import IgnoreOutputs
+from flytekit.core.promise import VoidPromise
 from flytekit.models import literals as _literal_models
 from flytekit.models import literals as _literals
 from tests.flytekit.common import task_definitions as _task_defs
@@ -160,3 +164,77 @@ def test_backwards_compatible_replacement(mock_execute_task):
                 cmd.extend(["--raw-output-data-prefix", "{{.rawOutputDataPrefix}}"])
                 result = CliRunner().invoke(execute_task_cmd, cmd)
                 assert result.exit_code == 0
+
+
+@mock.patch("flytekit.common.utils.load_proto_from_file")
+@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
+@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.common.utils.write_proto_to_file")
+def test_dispatch_execute_void(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
+    # Just leave these here, mock them out so nothing happens
+    mock_get_data.return_value = True
+    mock_upload_dir.return_value = True
+
+    ctx = context_manager.FlyteContext.current_context()
+    with ctx.new_execution_context(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION) as ctx:
+
+        python_task = mock.MagicMock()
+        python_task.dispatch_execute.return_value = VoidPromise("testing")
+
+        empty_literal_map = _literal_models.LiteralMap({}).to_flyte_idl()
+        mock_load_proto.return_value = empty_literal_map
+
+        def verify_output(*args, **kwargs):
+            assert args[0] == empty_literal_map
+
+        mock_write_to_file.side_effect = verify_output
+        _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
+        assert mock_write_to_file.call_count == 1
+
+
+@mock.patch("flytekit.common.utils.load_proto_from_file")
+@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
+@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.common.utils.write_proto_to_file")
+def test_dispatch_execute_ignore(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
+    # Just leave these here, mock them out so nothing happens
+    mock_get_data.return_value = True
+    mock_upload_dir.return_value = True
+    ctx = context_manager.FlyteContext.current_context()
+
+    # IgnoreOutputs
+    with ctx.new_execution_context(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION) as ctx:
+        python_task = mock.MagicMock()
+        python_task.dispatch_execute.side_effect = IgnoreOutputs()
+
+        empty_literal_map = _literal_models.LiteralMap({}).to_flyte_idl()
+        mock_load_proto.return_value = empty_literal_map
+
+        _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
+        assert mock_write_to_file.call_count == 0
+
+
+@mock.patch("flytekit.common.utils.load_proto_from_file")
+@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
+@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.common.utils.write_proto_to_file")
+def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
+    # Just leave these here, mock them out so nothing happens
+    mock_get_data.return_value = True
+    mock_upload_dir.return_value = True
+
+    ctx = context_manager.FlyteContext.current_context()
+    with ctx.new_execution_context(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION) as ctx:
+
+        python_task = mock.MagicMock()
+        python_task.dispatch_execute.side_effect = Exception("random")
+
+        empty_literal_map = _literal_models.LiteralMap({}).to_flyte_idl()
+        mock_load_proto.return_value = empty_literal_map
+
+        def verify_output(*args, **kwargs):
+            assert isinstance(args[0], ErrorDocument)
+
+        mock_write_to_file.side_effect = verify_output
+        _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
+        assert mock_write_to_file.call_count == 1
