@@ -22,16 +22,11 @@ Tasks are the building blocks of Flyte. They represent users code. Tasks have th
 
 .. currentmodule:: flytekit
 
-.. autosummary::
-    :toctree: generated
-    :nosignatures:
-
 
 TaskMetadata
 -------------
 
 .. autoclass:: TaskMetadata
-
 
 
 Specifying Task resources

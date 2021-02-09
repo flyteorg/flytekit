@@ -10,44 +10,82 @@ This package contains all the basic abstractions you'll need to write Flyte.
 Basic Authoring
 ===============
 
+Here is some stuff
+
 .. autosummary::
+   :nosignatures:
    :toctree: generated/
 
    task
    workflow
    TaskMetadata
    kwtypes
+   current_context
    ExecutionParameters
    FlyteContext
-   conditional
-   dynamic
-   WorkflowFailurePolicy
-   logger
 
-Core Task Types
-=================
+This is some more stuff.
+
+My sub heading
+----------------
+fsdafsa
+
+
+Branching and Conditionals
+==========================
+
+Branches and conditionals can be expressed explicitly in Flyte. These conditions are evaluated
+in the flyte engine and hence should be used for control flow. ``dynamic workflows`` can be used to perform custom conditional logic not supported by flytekit
+
 
 .. autosummary::
+   :nosignatures:
    :toctree: generated/
 
-   SQLTask
-   ContainerTask
-   PythonFunctionTask
-   LaunchPlan
+   conditional
 
+
+
+Customizing Tasks & Workflows
+==============================
+
+   WorkflowFailurePolicy
+   Resources
+
+
+Dynamic and Nested Workflows
+==============================
+Subworkflows blah blah blah
+
+.. autosummary::
+   :nosignatures:
+   :toctree: generated/
+
+   dynamic
+
+.. autoclass:: flytekit.core.dynamic_workflow_task.DynamicWorkflowTask
+
+.. currentmodule:: flytekit.core.dynamic_workflow_task
+
+.. automodule:: flytekit.core.dynamic_workflow_task
+   :members:
+
+
+
+.. currentmodule:: flytekit
 
 Scheduling and Notifications
 ============================
 
 .. autosummary::
+   :nosignatures:
    :toctree: generated/
 
-   Resources
    CronSchedule
+   FixedRate
    Email
    PagerDuty
    Slack
-   FixedRate
 
 Reference Entities
 ====================
@@ -62,6 +100,17 @@ Reference Entities
    reference_task
    reference_workflow
 
+Core Task Types
+=================
+
+.. autosummary::
+   :nosignatures:
+   :toctree: generated/
+
+   SQLTask
+   ContainerTask
+   PythonFunctionTask
+   LaunchPlan
 
 
 """

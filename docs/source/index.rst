@@ -23,8 +23,6 @@ Welcome to ``Flytekit``'s documentation!
    launchplan
    types
    context
-   conditions
-   subworkflows
    dynamic
    testing
    extend
