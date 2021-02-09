@@ -47,6 +47,9 @@ def task_mock(t: PythonTask) -> MagicMock:
 
 
 def patch(target: Union[PythonTask, Workflow, ReferenceEntity]):
+    """
+    This is a decorator duh.
+    """
     if (
         not isinstance(target, PythonTask)
         and not isinstance(target, Workflow)

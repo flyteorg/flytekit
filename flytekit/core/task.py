@@ -12,7 +12,7 @@ class TaskPlugins(object):
     """
     This is the TaskPlugins factory for task types that are derivative of PythonFunctionTask.
     Every task that the user wishes to use should be available in this factory.
-     Usage
+    Usage
 
     .. code-block:: python
 
@@ -26,9 +26,10 @@ class TaskPlugins(object):
     @classmethod
     def register_pythontask_plugin(cls, plugin_config_type: type, plugin: Type[PythonFunctionTask]):
         """
-        Use this method to register a new plugin into Flytekit
-          Usage
+        Use this method to register a new plugin into Flytekit. Usage ::
+
         .. code-block:: python
+
             TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
             # config_object_type is any class that will be passed to the plugin_object as task_config
             # Plugin_object_type is a derivative of ``PythonFunctionTask``
@@ -72,19 +73,19 @@ def task(
     This is the core decorator to use for any task type in FlyteKit.
     Usage: for a simple python task
 
-        .. code-block:: python
+    .. code-block:: python
 
-            @task(retries=3)
-            def my_task(x: int, y: typing.Dict[str, str]) -> str:
-                pass
+        @task(retries=3)
+        def my_task(x: int, y: typing.Dict[str, str]) -> str:
+            pass
 
     Usage: for specific task types
 
-        .. code-block:: python
+    .. code-block:: python
 
-            @task(task_config=Spark(), retries=3)
-            def my_task(x: int, y: typing.Dict[str, str]) -> str:
-                pass
+        @task(task_config=Spark(), retries=3)
+        def my_task(x: int, y: typing.Dict[str, str]) -> str:
+            pass
 
     :param _task_function: This argument is implicitly passed and represents the decorated function
     :param task_config: This argument provides configuration for a specific task types.

@@ -33,18 +33,6 @@ TaskMetadata
 .. autoclass:: TaskMetadata
 
 
-Task as a python function
---------------------------
-
-.. autofunction:: task
-
-.. autosummary::
-    .. toctree::
-        :maxdepth: 2
-        :caption: Plugins
-
-        tasks.function.plugins
-
 
 Specifying Task resources
 ^^^^^^^^^^^^^^^^^^^^^^^^^^

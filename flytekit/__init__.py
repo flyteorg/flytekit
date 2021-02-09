@@ -1,4 +1,73 @@
-import flytekit.plugins
+"""
+=====================
+Core Flytekit
+=====================
+
+.. currentmodule:: flytekit
+
+This package contains all the basic abstractions you'll need to write Flyte.
+
+Basic Authoring
+===============
+
+.. autosummary::
+   :toctree: generated/
+
+   task
+   workflow
+   TaskMetadata
+   kwtypes
+   ExecutionParameters
+   FlyteContext
+   conditional
+   dynamic
+   WorkflowFailurePolicy
+   logger
+
+Core Task Types
+=================
+
+.. autosummary::
+   :toctree: generated/
+
+   SQLTask
+   ContainerTask
+   PythonFunctionTask
+   LaunchPlan
+
+
+Scheduling and Notifications
+============================
+
+.. autosummary::
+   :toctree: generated/
+
+   Resources
+   CronSchedule
+   Email
+   PagerDuty
+   Slack
+   FixedRate
+
+Reference Entities
+====================
+
+.. autosummary::
+   :toctree: generated/
+
+   get_reference_entity
+   LaunchPlanReference
+   TaskReference
+   WorkflowReference
+   reference_task
+   reference_workflow
+
+
+
+"""
+
+
+import flytekit.plugins  # This will be deprecated, these are the old plugins, the new plugins live in plugins/
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import TaskMetadata, kwtypes
 from flytekit.core.condition import conditional

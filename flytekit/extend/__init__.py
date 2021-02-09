@@ -1,4 +1,37 @@
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
+"""
+=====================
+Extending Flytekit
+=====================
+
+.. currentmodule:: flytekit.extend
+
+This package contains things that are useful when extending Flytekit.
+
+Filters
+=======
+
+.. autosummary::
+   :toctree: generated/
+
+   get_serializable - fdjsalkfsd
+   context_manager - naive
+   SQLTask
+   IgnoreOutputs
+   PythonTask
+   ExecutionState
+   Image
+   ImageConfig
+   SerializationSettings
+   Interface
+   Promise
+   TaskPlugins
+   DictTransformer
+   T
+   TypeEngine
+   TypeTransformer
+
+"""
+
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.base_sql_task import SQLTask

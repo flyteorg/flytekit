@@ -8,15 +8,16 @@ Welcome to ``Flytekit``'s documentation!
 
 .. toctree::
    :maxdepth: 1
-   :caption: Flytekit Learn by Example
+   :caption: Other Documentation
 
+   Flyte Documentation <http://flyte.readthedocs.io/>
    Flytekit Learn by Example <http://flytecookbook.readthedocs.io/>
-   Flyte Documentation <https://lyft.github.io/flyte/>
 
 .. toctree::
    :maxdepth: 2
    :caption: Python API
    
+   flytekit
    tasks
    workflow
    launchplan
@@ -25,14 +26,14 @@ Welcome to ``Flytekit``'s documentation!
    conditions
    subworkflows
    dynamic
-
+   testing
+   extend
 
 .. toctree::
    :maxdepth: 2
    :caption: Plugins
 
    plugins
-
 
 .. toctree::
    :maxdepth: 2
