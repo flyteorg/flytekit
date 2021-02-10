@@ -5,30 +5,28 @@ Core Flytekit
 
 .. currentmodule:: flytekit
 
-This package contains all the basic abstractions you'll need to write Flyte.
+This package contains all of the most common abstractions you'll need to write Flytekit.
 
 Basic Authoring
 ===============
 
-Here is some stuff
+These are the essentials needed to get started writing tasks and workflows. The elements here correspond well with :std:ref:`Basic <cookbook:sphx_glr_auto_core_basic>` section of the cookbook.
 
 .. autosummary::
    :nosignatures:
    :toctree: generated/
 
-   task
-   workflow
-   TaskMetadata
-   kwtypes
-   current_context
-   ExecutionParameters
-   FlyteContext
+   task - This is the basic decorator to use to turn a properly type-annotated function into a Flyte task.
+   workflow - This will turn a properly type-annotated function into a Flyte workflow.
+   kwtypes - Helper function that makes it slightly easier to declare certain functions.
+   current_context - This function returns an ExecutionParameters object.
+   ExecutionParameters - This object gives the user at Task run time useful information about the execution environment.
+   FlyteContext - This is an flytekit-internal context that is sometimes useful for end-users to have access to.
 
-This is some more stuff.
 
-My sub heading
-----------------
-fsdafsa
+Running Locally
+------------------
+Tasks and Workflows can both be locally run (assuming the relevant tasks are capable of local execution). This is useful for unit testing.
 
 
 Branching and Conditionals
@@ -45,34 +43,29 @@ in the flyte engine and hence should be used for control flow. ``dynamic workflo
    conditional
 
 
-
 Customizing Tasks & Workflows
 ==============================
 
-   WorkflowFailurePolicy
-   Resources
+   TaskMetadata - Wrapper object that allows users to specify Task
+   Resources - Things like CPUs/Memory, etc.
+   WorkflowFailurePolicy - Customizes what happens when a workflow fails.
+   dynamic
 
 
 Dynamic and Nested Workflows
 ==============================
 Subworkflows blah blah blah
 
+:py:mod:`Dynamic  <flytekit.core.dynamic_workflow_task>`
+
+.. TODO: Figure out how to get rid of the core.dynamic_workflow_task below, but still generate the page
+
+
 .. autosummary::
    :nosignatures:
    :toctree: generated/
 
    dynamic
-
-.. autoclass:: flytekit.core.dynamic_workflow_task.DynamicWorkflowTask
-
-.. currentmodule:: flytekit.core.dynamic_workflow_task
-
-.. automodule:: flytekit.core.dynamic_workflow_task
-   :members:
-
-
-
-.. currentmodule:: flytekit
 
 Scheduling and Notifications
 ============================
@@ -91,6 +84,7 @@ Reference Entities
 ====================
 
 .. autosummary::
+   :nosignatures:
    :toctree: generated/
 
    get_reference_entity

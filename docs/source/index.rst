@@ -14,7 +14,7 @@ Welcome to ``Flytekit``'s documentation!
    Flytekit Learn by Example <http://flytecookbook.readthedocs.io/>
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Python API
    
    flytekit
@@ -23,7 +23,6 @@ Welcome to ``Flytekit``'s documentation!
    launchplan
    types
    context
-   dynamic
    testing
    extend
 
@@ -39,6 +38,10 @@ Welcome to ``Flytekit``'s documentation!
 
    tasks.extend
    types.extend
+
+Some words.
+
+fdsa
 
 
 Indices and tables

@@ -1,12 +1,20 @@
 """
+=====================
+Dynamic Workflows
+=====================
+
+
 This is some stuff in the dynamic_workflow_task.py file. At the top.
 
 
-This is some more stuff
+Declaring a dynamic workflow
+-----------------------------
+
+.. autoclass:: flytekit.core.dynamic_workflow_task.DynamicWorkflowTask
 
 
-Im a header
--------------
+Caveats when using a dynamic workflow
+--------------------------------------
 
 """
 import functools
@@ -51,3 +59,6 @@ TaskPlugins.register_pythontask_plugin(_Dynamic, DynamicWorkflowTask)
 dynamic = functools.partial(
     task.task, task_config=_Dynamic(), execution_mode=PythonFunctionTask.ExecutionBehavior.DYNAMIC
 )
+dynamic.__doc__ = """
+This is the decorator for a dynamic workflow. Dynamic workflows are awesome.
+"""
