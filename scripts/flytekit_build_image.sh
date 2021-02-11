@@ -16,8 +16,15 @@ echo "           DOCKER BUILD"
 echo "------------------------------------"
 echo ""
 
+if [ -z "$DOCKERFILE_PATH" ]; then
+  DOCKERFILE_PATH=""
+fi
+
+if [ -z "$DOCKER_CONTEXT" ]; then
+  DOCKER_CONTEXT="."
+fi
+
 DIRPATH=""
-DOCKERFILE_PATH=""
 if [ -d "$1" ]; then
   DIRPATH=$(cd "$1" && pwd)
   DOCKERFILE_PATH=${DIRPATH}/"Dockerfile"
@@ -64,7 +71,7 @@ fi
 echo "Building: $FLYTE_INTERNAL_IMAGE"
 
 # This build command is the raison d'etre of this script, it ensures that the version is injected into the image itself
-docker build . --build-arg tag="$FLYTE_INTERNAL_IMAGE" -t "$FLYTE_INTERNAL_IMAGE" -f "${DOCKERFILE_PATH}"
+docker build "${DOCKER_CONTEXT}" --build-arg tag="$FLYTE_INTERNAL_IMAGE" -t "$FLYTE_INTERNAL_IMAGE" -f "${DOCKERFILE_PATH}"
 echo "$IMAGE_NAME built locally."
 
 # Create the appropriate tags
