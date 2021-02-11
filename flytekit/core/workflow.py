@@ -347,13 +347,22 @@ def workflow(
     interruptible: Optional[bool] = False,
 ):
     """
+    This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
+    of tasks using the data flow between tasks.
+
+    Unlike a task, the function body of a workflow is evaluated at serialization-time (aka compile-time). This is because
+    while we can determine the entire structure of a task by looking at the function's signature,
+    workflows need to run through the function itself because the body of the function is what expresses the workflow structure.
+    It's also important to note that, local execution notwithstanding, it is not evaluated again when the workflow runs on Flyte.
+    That is, workflows should not call non-Flyte entities since they are only run once (again, this is with respect to
+    the platform, local runs notwithstanding).
+
+    Please see the :std:doc:`auto_core_basic/basic_workflow` for more usage examples.
+
+    :param _workflow_function: This argument is implicitly passed and represents the decorated function.
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
     :param interruptible: Whether or not tasks launched from this workflow are by default interruptible
     """
-
-    # Unlike for tasks, where we can determine the entire structure of the task by looking at the function's signature,
-    # workflows need to have the body of the function itself run at module-load time. This is because the body of the
-    # workflow is what expresses the workflow structure.
     def wrapper(fn):
         workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
 
