@@ -95,7 +95,7 @@ def task(
     :param retries: for retries=n; n > 0, on failures of this task, the task will be retried at-least n number of times.
     :param interruptable: Boolean that indicates that this task can be interrupted and/or scheduled on nodes
                           with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
-                           at the cost of performance penalties due to potential interruptions
+                          at the cost of performance penalties due to potential interruptions
     :param deprecated: A string that can be used to provide a warning message for deprecated task. Absence / empty str
                        indicates that the task is active and not deprecated
     :param timeout: the max amount of time for which one execution of this task should be executed for. If the execution
@@ -105,10 +105,12 @@ def task(
                 bloat because of various dependencies and a dependency is only required for this or a set of tasks,
                 and they vary from the default. E.g.
                 Usage:
+
                 .. code-block:: python
+
                     # Use default image name `fqn` and alter the tag to `tag-{{default.tag}}` tag of the default image
                     # with a prefix. In this case, it is assumed that the image like
-                    #  flytecookbook:tag-gitsha is published alongwith the default of flytecookbook:gitsha
+                    # flytecookbook:tag-gitsha is published alongwith the default of flytecookbook:gitsha
                     @task(container_image='{{.images.default.fqn}}:tag-{{images.default.tag}}')
                     def foo():
                         pass

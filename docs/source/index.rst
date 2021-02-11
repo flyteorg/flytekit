@@ -3,8 +3,38 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+=========================================
 Welcome to ``Flytekit``'s documentation!
 =========================================
+
+*************
+Flytekit API
+*************
+
+.. toctree::
+   :maxdepth: 1
+   :caption: This section documents the various Python imports users will need to work with to build Flyte workflows, extend Flytekit, etc.
+
+   flytekit
+   testing
+   extend
+
+
+********************
+Flytekit Design
+********************
+
+.. toctree::
+   :maxdepth: 1
+   :caption: This section details how flytekit is laid out, its general design, and some of the rationale for why it is the way it is.
+
+   tasks.extend
+   types.extend
+
+
+******************************
+Additional Flyte Documentation
+******************************
 
 .. toctree::
    :maxdepth: 1
@@ -13,36 +43,13 @@ Welcome to ``Flytekit``'s documentation!
    Flyte Documentation <http://flyte.readthedocs.io/>
    Flytekit Learn by Example <http://flytecookbook.readthedocs.io/>
 
-.. toctree::
-   :maxdepth: 3
-   :caption: Python API
-   
-   flytekit
-   tasks
-   workflow
-   launchplan
-   types
-   context
-   testing
-   extend
+
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Plugins
+   :maxdepth: 1
+   :hidden:
 
-   plugins
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Extend
-
-   tasks.extend
-   types.extend
-
-Some words.
-
-fdsa
-
+   generator
 
 Indices and tables
 ==================
