@@ -1,19 +1,18 @@
 """
-=====================
 Dynamic Workflows
-=====================
+-----------------------------
 
 This is some stuff in the dynamic_workflow_task.py file. At the top.
 
 
 Declaring a dynamic workflow
------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: flytekit.core.dynamic_workflow_task.DynamicWorkflowTask
 
 
 Caveats when using a dynamic workflow
---------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 """
 import functools

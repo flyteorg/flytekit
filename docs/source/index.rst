@@ -13,11 +13,13 @@ Flytekit API
 
 .. toctree::
    :maxdepth: 1
-   :caption: This section documents the various Python imports users will need to work with to build Flyte workflows, extend Flytekit, etc.
+   :caption: APIs
 
    flytekit
    testing
    extend
+
+This section documents the various Python imports users will need to work with to build Flyte workflows, extend Flytekit, etc.
 
 
 ********************
@@ -26,11 +28,12 @@ Flytekit Design
 
 .. toctree::
    :maxdepth: 1
-   :caption: This section details how flytekit is laid out, its general design, and some of the rationale for why it is the way it is.
+   :caption: Design
 
    tasks.extend
    types.extend
 
+This section details how flytekit is laid out, its general design, and some of the rationale for why it is the way it is.
 
 ******************************
 Additional Flyte Documentation
@@ -47,7 +50,6 @@ Additional Flyte Documentation
 
 .. toctree::
    :maxdepth: 1
-   :hidden:
 
    generator
 

@@ -1,4 +1,4 @@
 .. automodule:: flytekit
-   :members:
+   :no-members:
    :no-inherited-members:
    :no-special-members:

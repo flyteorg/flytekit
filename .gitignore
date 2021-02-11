@@ -23,3 +23,5 @@ dist
 *-out.html
 *-out.ipynb
 .python-version
+_build/
+docs/source/generated/
