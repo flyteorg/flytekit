@@ -8,9 +8,6 @@ Unit Testing
 The imports exposed in this package will help you unit test your Flyte tasks. These are particularly helpful when
 testing workflows that contain tasks that cannot run locally (a Hive task for instance).
 
-Filters
-=======
-
 .. autosummary::
    :toctree: generated/
 
