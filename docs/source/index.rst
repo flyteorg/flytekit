@@ -47,9 +47,9 @@ Additional Flyte Documentation
    Flytekit Learn by Example <http://flytecookbook.readthedocs.io/>
 
 
-
 .. toctree::
    :maxdepth: 1
+   :hidden:
 
    generator
 

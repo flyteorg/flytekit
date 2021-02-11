@@ -5,7 +5,7 @@ Core Flytekit
 
 .. currentmodule:: flytekit
 
-This package contains all of the most common abstractions you'll need to write Flytekit.
+This package contains all of the most common abstractions you'll need to write Flyte workflows, and extend Flytekit.
 
 Basic Authoring
 ===============
@@ -35,7 +35,6 @@ Branching and Conditionals
 Branches and conditionals can be expressed explicitly in Flyte. These conditions are evaluated
 in the flyte engine and hence should be used for control flow. ``dynamic workflows`` can be used to perform custom conditional logic not supported by flytekit
 
-
 .. autosummary::
    :nosignatures:
    :toctree: generated/
@@ -46,6 +45,10 @@ in the flyte engine and hence should be used for control flow. ``dynamic workflo
 Customizing Tasks & Workflows
 ==============================
 
+.. autosummary::
+   :nosignatures:
+   :toctree: generated/
+
    TaskMetadata - Wrapper object that allows users to specify Task
    Resources - Things like CPUs/Memory, etc.
    WorkflowFailurePolicy - Customizes what happens when a workflow fails.
@@ -54,10 +57,7 @@ Customizing Tasks & Workflows
 
 Dynamic and Nested Workflows
 ==============================
-Subworkflows blah blah blah
-
-:py:mod:`Dynamic  <flytekit.core.dynamic_workflow_task>`
-
+Please see the :py:mod:`Dynamic <flytekit.core.dynamic_workflow_task>` module for more information as well.
 
 .. autosummary::
    :nosignatures:
@@ -103,7 +103,6 @@ Core Task Types
    ContainerTask
    PythonFunctionTask
    LaunchPlan
-
 
 """
 
