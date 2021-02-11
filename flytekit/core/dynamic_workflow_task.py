@@ -1,8 +1,7 @@
 """
 Dynamic Workflows
 -----------------------------
-
-This is some stuff in the dynamic_workflow_task.py file. At the top.
+Dynamic workflows are one of the powerful aspects of Flyte. Please take a look at the :py:func:`flytekit.dynamic` documentation first to get started.
 
 
 Declaring a dynamic workflow
@@ -13,6 +12,10 @@ Declaring a dynamic workflow
 
 Caveats when using a dynamic workflow
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Because of the dynamic nature of the workflow generated, it can easily be abused. Keep in mind that the workflow
+that's compiled out of the decorated function needs to be processed like any other workflow. It's rare to see a
+manually written workflow that has 5000 nodes for instance, but you can easily get there with a loop. Please keep,
+dynamic workflows to under fifty tasks. For large-scale identical runs, we recommend the upcoming map task.
 
 """
 import functools
