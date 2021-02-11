@@ -10,8 +10,8 @@ This package contains things that are useful when extending Flytekit.
 .. autosummary::
    :toctree: generated/
 
-   get_serializable - fdjsalkfsd
-   context_manager - naive
+   get_serializable
+   context_manager
    SQLTask
    IgnoreOutputs
    PythonTask
