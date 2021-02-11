@@ -71,4 +71,4 @@ workflow but it is here. You can even express dependencies between tasks.
         return t2(b=b, x=x)
 
 See the :std:ref:`cookbook <cookbook:sphx_glr_auto_core_intermediate_subworkflows.py>` for a longer discussion.
-"""
+"""  # noqa: W293
