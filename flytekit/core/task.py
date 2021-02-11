@@ -92,7 +92,8 @@ def task(
                         Please refer to the plugins documentation for the right object to use.
     :param cache: Boolean that indicates if caching should be enabled
     :param cache_version: Cache version to use. Changes to the task signature will automatically trigger a cache miss,
-           but you can always manually update this field as well.
+           but you can always manually update this field as well to force a cache miss. You should also manually bump
+           this version if the function body/business logic has changed, but the signature hasn't.
     :param retries: Number of times to retry this task during a workflow execution.
     :param interruptable: Boolean that indicates that this task can be interrupted and/or scheduled on nodes
                           with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,

@@ -26,6 +26,9 @@ Tasks are the building blocks of Flyte. They represent users code. Tasks have th
     :toctree: generated
     :nosignatures:
 
+   task
+   workflow
+   dynamic
 
 TaskMetadata
 -------------
