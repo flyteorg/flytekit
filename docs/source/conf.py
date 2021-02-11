@@ -188,4 +188,5 @@ texinfo_documents = [
 # intersphinx configuration
 intersphinx_mapping = {
     "python": ("https://docs.python.org/{.major}".format(sys.version_info), None),
+    "cookbook": ("https://flytecookbook.readthedocs.io/en/latest/", None),
 }
