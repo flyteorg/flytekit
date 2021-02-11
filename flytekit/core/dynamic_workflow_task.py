@@ -3,7 +3,6 @@
 Dynamic Workflows
 =====================
 
-
 This is some stuff in the dynamic_workflow_task.py file. At the top.
 
 
@@ -59,6 +58,3 @@ TaskPlugins.register_pythontask_plugin(_Dynamic, DynamicWorkflowTask)
 dynamic = functools.partial(
     task.task, task_config=_Dynamic(), execution_mode=PythonFunctionTask.ExecutionBehavior.DYNAMIC
 )
-dynamic.__doc__ = """
-This is the decorator for a dynamic workflow. Dynamic workflows are awesome.
-"""

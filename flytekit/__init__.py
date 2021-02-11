@@ -58,8 +58,6 @@ Subworkflows blah blah blah
 
 :py:mod:`Dynamic  <flytekit.core.dynamic_workflow_task>`
 
-.. TODO: Figure out how to get rid of the core.dynamic_workflow_task below, but still generate the page
-
 
 .. autosummary::
    :nosignatures:
