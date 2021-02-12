@@ -8,7 +8,6 @@ from typing import List
 
 import click
 
-import flytekit as _flytekit
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
