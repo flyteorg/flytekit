@@ -927,7 +927,8 @@ def list_launch_plan_versions(
                     "{:50} {:80} ".format(_tt(l.id.version), _tt(_identifier.Identifier.promote_from_model(l.id)),),
                     nl=False,
                 )
-                if l.spec.entity_metadata.schedule.cron_expression or l.spec.entity_metadata.schedule.rate:
+                if l.spec.entity_metadata.schedule is not None and (
+                        l.spec.entity_metadata.schedule.cron_expression or l.spec.entity_metadata.schedule.rate):
                     _click.echo("{:30} ".format(_render_schedule_expr(l)), nl=False)
                     _click.secho(
                         _launch_plan.LaunchPlanState.enum_to_string(l.closure.state),
