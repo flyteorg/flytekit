@@ -25,10 +25,14 @@ certifi==2020.12.5
     # via
     #   -c dev-requirements.txt
     #   requests
+cffi==1.14.5
+    # via cryptography
 chardet==4.0.0
     # via
     #   -c dev-requirements.txt
     #   requests
+cryptography==3.4.3
+    # via -r doc-requirements.in
 css-html-js-minify==2.5.5
     # via
     #   -c dev-requirements.txt
@@ -68,6 +72,8 @@ packaging==20.8
     # via
     #   -c dev-requirements.txt
     #   sphinx
+pycparser==2.20
+    # via cffi
 pygments==2.7.4
     # via
     #   -c dev-requirements.txt
