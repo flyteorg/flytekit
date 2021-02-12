@@ -8,4 +8,4 @@ sphinx-code-include
 sphinx-autoapi
 sphinx-copybutton
 grpcio
-cryptography!=3.4.4
+cryptography
