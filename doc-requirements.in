@@ -1,3 +1,5 @@
+-c dev-requirements.txt
+
 sphinx
 sphinx-gallery
 sphinx-prompt
@@ -5,3 +7,5 @@ sphinx-material
 sphinx-code-include
 sphinx-autoapi
 sphinx-copybutton
+grpcio
+cryptography

@@ -43,15 +43,19 @@ requirements-spark3.txt: requirements-spark3.in install-piptools
 	$(call PIP_COMPILE,requirements-spark3.in)
 
 requirements.txt: export CUSTOM_COMPILE_COMMAND := make requirements.txt
-requirements.txt: requirements.in install-piptools
+requirements.txt: install-piptools
 	$(call PIP_COMPILE,requirements.in)
 
 dev-requirements.txt: export CUSTOM_COMPILE_COMMAND := make dev-requirements.txt
-dev-requirements.txt: dev-requirements.in requirements.txt install-piptools
+dev-requirements.txt: requirements.txt install-piptools
 	$(call PIP_COMPILE,dev-requirements.in)
 
+doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
+doc-requirements.txt: dev-requirements.txt install-piptools
+	$(call PIP_COMPILE,doc-requirements.in)
+
 .PHONY: requirements
-requirements: requirements.txt dev-requirements.txt requirements-spark3.txt ## Compile requirements
+requirements: requirements.txt dev-requirements.txt requirements-spark3.txt doc-requirements.txt ## Compile requirements
 
 # TODO: Change this in the future to be all of flytekit
 .PHONY: coverage
