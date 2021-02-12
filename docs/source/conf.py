@@ -16,7 +16,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath("../../flytekit/"))
-
+sys.path.insert(0, os.path.abspath("../.."))
 
 # -- Project information -----------------------------------------------------
 
@@ -25,7 +25,7 @@ copyright = "2021, Flyte"
 author = "Flyte"
 
 # The full version, including alpha/beta/rc tags
-release = "0.16.0b1"
+release = "0.16.0b7"
 
 
 # -- General configuration ---------------------------------------------------
@@ -187,6 +187,8 @@ texinfo_documents = [
 # -- Extension configuration -------------------------------------------------
 # intersphinx configuration
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/{.major}".format(sys.version_info), None),
+    "python": ("https://docs.python.org/3", None),
+    "flytectl": ("https://flytectl.readthedocs.io/en/latest/", None),
+    # "flytectl": ("/Users/yourusername/go/src/github.com/flyteorg/flytectl/docs/build/html", None),
     "cookbook": ("https://flytecookbook.readthedocs.io/en/latest/", None),
 }

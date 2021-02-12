@@ -1,4 +1,113 @@
-import flytekit.plugins
+"""
+=====================
+Core Flytekit
+=====================
+
+.. currentmodule:: flytekit
+
+This package contains all of the most common abstractions you'll need to write Flyte workflows, and extend Flytekit.
+
+Basic Authoring
+===============
+
+These are the essentials needed to get started writing tasks and workflows. The elements here correspond well with :std:ref:`Basic <cookbook:sphx_glr_auto_core_basic>` section of the cookbook.
+
+.. autosummary::
+   :nosignatures:
+   :toctree: generated/
+
+   task - This is the basic decorator to use to turn a properly type-annotated function into a Flyte task.
+   workflow - This will turn a properly type-annotated function into a Flyte workflow.
+   kwtypes - Helper function that makes it slightly easier to declare certain functions.
+   current_context - This function returns an ExecutionParameters object.
+   ExecutionParameters - This object gives the user at Task run time useful information about the execution environment.
+   FlyteContext - This is an flytekit-internal context that is sometimes useful for end-users to have access to.
+
+
+Running Locally
+------------------
+Tasks and Workflows can both be locally run (assuming the relevant tasks are capable of local execution). This is useful for unit testing.
+
+
+Branching and Conditionals
+==========================
+
+Branches and conditionals can be expressed explicitly in Flyte. These conditions are evaluated
+in the flyte engine and hence should be used for control flow. ``dynamic workflows`` can be used to perform custom conditional logic not supported by flytekit
+
+.. autosummary::
+   :nosignatures:
+   :toctree: generated/
+
+   conditional
+
+
+Customizing Tasks & Workflows
+==============================
+
+.. autosummary::
+   :nosignatures:
+   :toctree: generated/
+
+   TaskMetadata - Wrapper object that allows users to specify Task
+   Resources - Things like CPUs/Memory, etc.
+   WorkflowFailurePolicy - Customizes what happens when a workflow fails.
+   dynamic
+
+
+Dynamic and Nested Workflows
+==============================
+Please see the :py:mod:`Dynamic <flytekit.core.dynamic_workflow_task>` module for more information as well.
+
+.. autosummary::
+   :nosignatures:
+   :toctree: generated/
+
+   dynamic
+
+Scheduling and Notifications
+============================
+
+.. autosummary::
+   :nosignatures:
+   :toctree: generated/
+
+   CronSchedule
+   FixedRate
+   Email
+   PagerDuty
+   Slack
+
+Reference Entities
+====================
+
+.. autosummary::
+   :nosignatures:
+   :toctree: generated/
+
+   get_reference_entity
+   LaunchPlanReference
+   TaskReference
+   WorkflowReference
+   reference_task
+   reference_workflow
+
+Core Task Types
+=================
+
+.. autosummary::
+   :nosignatures:
+   :toctree: generated/
+
+   SQLTask
+   ContainerTask
+   PythonFunctionTask
+   LaunchPlan
+
+"""
+
+
+import flytekit.plugins  # This will be deprecated, these are the old plugins, the new plugins live in plugins/
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import TaskMetadata, kwtypes
 from flytekit.core.condition import conditional

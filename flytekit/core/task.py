@@ -12,7 +12,7 @@ class TaskPlugins(object):
     """
     This is the TaskPlugins factory for task types that are derivative of PythonFunctionTask.
     Every task that the user wishes to use should be available in this factory.
-     Usage
+    Usage
 
     .. code-block:: python
 
@@ -26,9 +26,10 @@ class TaskPlugins(object):
     @classmethod
     def register_pythontask_plugin(cls, plugin_config_type: type, plugin: Type[PythonFunctionTask]):
         """
-        Use this method to register a new plugin into Flytekit
-          Usage
+        Use this method to register a new plugin into Flytekit. Usage ::
+
         .. code-block:: python
+
             TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
             # config_object_type is any class that will be passed to the plugin_object as task_config
             # Plugin_object_type is a derivative of ``PythonFunctionTask``
@@ -69,7 +70,17 @@ def task(
     **kwargs,
 ) -> Union[Callable, PythonFunctionTask]:
     """
-    This is the core decorator to use for any task type in flytekit. For a simple python task,
+    This is the core decorator to use for any task type in flytekit.
+
+    Tasks are the building blocks of Flyte. They represent users code. Tasks have the following properties
+
+    * Versioned (usually tied to the git sha)
+    * Strong interfaces (specified inputs and outputs)
+    * Declarative
+    * Independently executable
+    * Unit testable
+
+    For a simple python task,
 
     .. code-block:: python
 
@@ -112,7 +123,7 @@ def task(
 
                     # Use default image name `fqn` and alter the tag to `tag-{{default.tag}}` tag of the default image
                     # with a prefix. In this case, it is assumed that the image like
-                    #  flytecookbook:tag-gitsha is published alongwith the default of flytecookbook:gitsha
+                    # flytecookbook:tag-gitsha is published alongwith the default of flytecookbook:gitsha
                     @task(container_image='{{.images.default.fqn}}:tag-{{images.default.tag}}')
                     def foo():
                         ...
