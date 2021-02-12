@@ -268,9 +268,9 @@ def _update_one_launch_plan(urn, host, insecure, state):
 
 def _render_schedule_expr(lp):
     sched_expr = "NONE"
-    if lp.spec.entity_metadata.schedule.cron_expression:
+    if lp.spec.entity_metadata.schedule and lp.spec.entity_metadata.schedule.cron_expression:
         sched_expr = "cron({cron_expr})".format(cron_expr=_tt(lp.spec.entity_metadata.schedule.cron_expression))
-    elif lp.spec.entity_metadata.schedule.rate:
+    elif lp.spec.entity_metadata.schedule and lp.spec.entity_metadata.schedule.rate:
         sched_expr = "rate({unit}={value})".format(
             unit=_tt(_Schedule.FixedRateUnit.enum_to_string(lp.spec.entity_metadata.schedule.rate.unit)),
             value=_tt(lp.spec.entity_metadata.schedule.rate.value),
