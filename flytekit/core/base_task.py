@@ -48,13 +48,13 @@ class TaskMetadata(object):
       cache: Boolean that indicates if caching should be enabled
       cache_version: Version string to be used for the cached value
       interruptable: Boolean that indicates that this task can be interrupted and/or scheduled on nodes
-                           with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
-                            at the cost of performance penalties due to potential interruptions
+                     with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
+                     at the cost of performance penalties due to potential interruptions
       deprecated: A string that can be used to provide a warning message for deprecated task. Absence / empty str
-                       indicates that the task is active and not deprecated
+                  indicates that the task is active and not deprecated
       retries: for retries=n; n > 0, on failures of this task, the task will be retried at-least n number of times.
       timeout: the max amount of time for which one execution of this task should be executed for. If the execution
-                     will be terminated if the runtime exceeds the given timeout (approximately)
+               will be terminated if the runtime exceeds the given timeout (approximately)
      """
 
     cache: bool = False
@@ -332,10 +332,11 @@ class PythonTask(Task, Generic[T]):
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
         This method is also invoked during runtime.
-            `VoidPromise` is returned in the case when the task itself declares no outputs.
-            `Literal Map` is returned when the task returns either one more outputs in the declaration. Individual outputs
-                           may be none
-            `DynamicJobSpec` is returned when a dynamic workflow is executed
+
+        * ``VoidPromise`` is returned in the case when the task itself declares no outputs.
+        * ``Literal Map`` is returned when the task returns either one more outputs in the declaration. Individual outputs
+          may be none
+        * ``DynamicJobSpec`` is returned when a dynamic workflow is executed
         """
 
         # Invoked before the task is executed

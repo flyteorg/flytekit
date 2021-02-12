@@ -12,7 +12,7 @@ class TaskPlugins(object):
     """
     This is the TaskPlugins factory for task types that are derivative of PythonFunctionTask.
     Every task that the user wishes to use should be available in this factory.
-     Usage
+    Usage
 
     .. code-block:: python
 
@@ -26,9 +26,10 @@ class TaskPlugins(object):
     @classmethod
     def register_pythontask_plugin(cls, plugin_config_type: type, plugin: Type[PythonFunctionTask]):
         """
-        Use this method to register a new plugin into Flytekit
-          Usage
+        Use this method to register a new plugin into Flytekit. Usage ::
+
         .. code-block:: python
+
             TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
             # config_object_type is any class that will be passed to the plugin_object as task_config
             # Plugin_object_type is a derivative of ``PythonFunctionTask``
@@ -69,58 +70,73 @@ def task(
     **kwargs,
 ) -> Union[Callable, PythonFunctionTask]:
     """
-    This is the core decorator to use for any task type in FlyteKit.
-    Usage: for a simple python task
+    This is the core decorator to use for any task type in flytekit.
 
-        .. code-block:: python
+    Tasks are the building blocks of Flyte. They represent users code. Tasks have the following properties
 
-            @task(retries=3)
-            def my_task(x: int, y: typing.Dict[str, str]) -> str:
-                pass
+    * Versioned (usually tied to the git sha)
+    * Strong interfaces (specified inputs and outputs)
+    * Declarative
+    * Independently executable
+    * Unit testable
 
-    Usage: for specific task types
+    For a simple python task,
 
-        .. code-block:: python
+    .. code-block:: python
 
-            @task(task_config=Spark(), retries=3)
-            def my_task(x: int, y: typing.Dict[str, str]) -> str:
-                pass
+        @task
+        def my_task(x: int, y: typing.Dict[str, str]) -> str:
+            ...
+
+    For specific task types
+
+    .. code-block:: python
+
+        @task(task_config=Spark(), retries=3)
+        def my_task(x: int, y: typing.Dict[str, str]) -> str:
+            ...
+
+    Please see some cookbook :std:ref:`task examples <cookbook:tasks>` for additional information.
 
     :param _task_function: This argument is implicitly passed and represents the decorated function
     :param task_config: This argument provides configuration for a specific task types.
-                        Please refer to the plugins documentation for the right Object to use
+                        Please refer to the plugins documentation for the right object to use.
     :param cache: Boolean that indicates if caching should be enabled
-    :param cache_version: Version string to be used for the cached value
-    :param retries: for retries=n; n > 0, on failures of this task, the task will be retried at-least n number of times.
+    :param cache_version: Cache version to use. Changes to the task signature will automatically trigger a cache miss,
+           but you can always manually update this field as well to force a cache miss. You should also manually bump
+           this version if the function body/business logic has changed, but the signature hasn't.
+    :param retries: Number of times to retry this task during a workflow execution.
     :param interruptable: Boolean that indicates that this task can be interrupted and/or scheduled on nodes
                           with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
-                           at the cost of performance penalties due to potential interruptions
+                          at the cost of performance penalties due to potential interruptions. Requires additional
+                          Flyte platform level configuration.
     :param deprecated: A string that can be used to provide a warning message for deprecated task. Absence / empty str
                        indicates that the task is active and not deprecated
-    :param timeout: the max amount of time for which one execution of this task should be executed for. If the execution
-                    will be terminated if the runtime exceeds the given timeout (approximately)
+    :param timeout: the max amount of time for which one execution of this task should be executed for. The execution
+                    will be terminated if the runtime exceeds the given timeout (approximately).
     :param container_image: By default the configured FLYTE_INTERNAL_IMAGE is used for every task. This directive can be
                 used to provide an alternate image for a specific task. This is useful for the cases in which images
                 bloat because of various dependencies and a dependency is only required for this or a set of tasks,
-                and they vary from the default. E.g.
-                Usage:
+                and they vary from the default.
+
                 .. code-block:: python
+
                     # Use default image name `fqn` and alter the tag to `tag-{{default.tag}}` tag of the default image
                     # with a prefix. In this case, it is assumed that the image like
-                    #  flytecookbook:tag-gitsha is published alongwith the default of flytecookbook:gitsha
+                    # flytecookbook:tag-gitsha is published alongwith the default of flytecookbook:gitsha
                     @task(container_image='{{.images.default.fqn}}:tag-{{images.default.tag}}')
                     def foo():
-                        pass
+                        ...
 
                     # Refer to configurations to configure fqns for other images besides default. In this case it will
                     # lookup for an image named xyz
                     @task(container_image='{{.images.xyz.fqn}}:{{images.default.tag}}')
                     def foo2():
-                        pass
+                        ...
 
     :param environment: Environment variables that should be added for this tasks execution
     :param kwargs: Additional Kwargs. Refer to specific task implementations to find supported keywords. Ideally
-                    all additional configuration values should be part of the ``task_config``
+                   all additional configuration values should be part of the ``task_config``
     """
 
     def wrapper(fn) -> PythonFunctionTask:
