@@ -1,13 +1,13 @@
 import logging as _logging
 import math as _math
 import os as _os
+import sys
 import tarfile as _tarfile
 from enum import Enum as _Enum
 from typing import List
 
 import click
 
-import flytekit as _flytekit
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
@@ -263,11 +263,7 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
     else:
         # For in container serialize we make sure to never accept an override the entrypoint path and determine it here
         # instead.
-        entrypoint_path = _os.path.abspath(_flytekit.__file__)
-        if entrypoint_path.endswith(".pyc"):
-            entrypoint_path = entrypoint_path[:-1]
-
-        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = entrypoint_path
+        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = sys.executable
 
 
 @click.command("tasks")
