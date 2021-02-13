@@ -1,4 +1,5 @@
--c dev-requirements.txt
+.[all]
+-e file:.#egg=flytekit
 
 sphinx
 sphinx-gallery
