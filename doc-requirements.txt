@@ -4,6 +4,8 @@
 #
 #    pip-compile doc-requirements.in
 #
+-e file:.#egg=flytekit
+    # via -r doc-requirements.in
 alabaster==0.7.12
     # via sphinx
 ansiwrap==0.8.4
@@ -88,8 +90,6 @@ entrypoints==0.3
     #   papermill
 flyteidl==0.18.12
     # via flytekit
-file:///Users/ytong/go/src/github.com/flyteorg/flytekit
-    # via -r doc-requirements.in
 future==0.18.2
     # via croniter
 gevent==21.1.2

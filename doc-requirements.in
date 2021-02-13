@@ -1,4 +1,5 @@
 .[all]
+-e file:.#egg=flytekit
 
 sphinx
 sphinx-gallery
