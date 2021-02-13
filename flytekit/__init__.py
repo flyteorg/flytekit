@@ -67,6 +67,9 @@ Please see the :py:mod:`Dynamic <flytekit.core.dynamic_workflow_task>` module fo
 
 Scheduling and Notifications
 ============================
+:py:mod:`Notifications Module <flytekit.core.notification>`
+
+:py:mod:`Schedules Module <flytekit.core.schedule>`
 
 .. autosummary::
    :nosignatures:
