@@ -1,4 +1,4 @@
--c dev-requirements.txt
+.[all]
 
 sphinx
 sphinx-gallery
