@@ -1,3 +1,9 @@
+"""
+.. autoclass:: flytekit.core.schedule.CronSchedule
+   :noindex:
+
+"""
+
 import datetime
 import re as _re
 

@@ -191,4 +191,5 @@ intersphinx_mapping = {
     "flytectl": ("https://flytectl.readthedocs.io/en/latest/", None),
     # "flytectl": ("/Users/yourusername/go/src/github.com/flyteorg/flytectl/docs/build/html", None),
     "cookbook": ("https://flytecookbook.readthedocs.io/en/latest/", None),
+    "flyte": ("https://flyte.readthedocs.io/en/latest/", None),
 }
