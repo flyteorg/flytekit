@@ -260,6 +260,7 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
             if in_container_virtualenv_root is not None
             else _DEFAULT_FLYTEKIT_VIRTUALENV_ROOT
         )
+        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] + "/bin/python3"
     else:
         # For in container serialize we make sure to never accept an override the entrypoint path and determine it here
         # instead.
