@@ -59,6 +59,7 @@ class PagerDuty(Notification):
     """
     This notification should be used when sending emails to the PagerDuty service.
     """
+
     def __init__(self, phases: List[int], recipients_email: List[str]):
         """
         :param list[int] phases: A required list of phases for which to fire the event.  Events can only be fired for
@@ -72,6 +73,7 @@ class Email(Notification):
     """
     This notification should be used when sending regular emails to people.
     """
+
     def __init__(self, phases: List[int], recipients_email: List[str]):
         """
         :param list[int] phases: A required list of phases for which to fire the event.  Events can only be fired for
@@ -85,6 +87,7 @@ class Slack(Notification):
     """
     This notification should be used when sending emails to the Slack.
     """
+
     def __init__(self, phases: List[int], recipients_email: List[str]):
         """
         :param list[int] phases: A required list of phases for which to fire the event.  Events can only be fired for

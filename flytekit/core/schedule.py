@@ -26,6 +26,7 @@ class CronSchedule(_schedule_models.Schedule):
 
     See :std:ref:`cookbook <cookbook:sphx_glr_auto_core_remote_flyte_lp_schedules.py>` for further examples.
     """
+
     _VALID_CRON_ALIASES = [
         "hourly",
         "hours",
