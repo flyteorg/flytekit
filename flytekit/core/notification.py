@@ -9,7 +9,8 @@ the Flyte platform to send emails when a workflow run reaches certain stages (fa
 
 Each notification type takes a list of :py:class:`flytekit.models.core.execution.WorkflowExecutionPhase` and a list of
 emails. Even though there are different notification classes in this module, they all just send email. The differentiation
-offers semantic meaning to the end-user but do not functionally behave differently.
+offers semantic meaning to the end-user but do not functionally behave differently. Successful integration with Slack
+and Pagerduty is incumbent on those email API being set-up correctly.
 
 .. autoclass:: flytekit.core.notification.Notification
 
