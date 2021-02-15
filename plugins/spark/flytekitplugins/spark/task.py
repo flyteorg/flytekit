@@ -78,7 +78,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
             spark_conf=self.task_config.spark_conf,
             hadoop_conf=self.task_config.hadoop_conf,
             application_file="local://" + settings.entrypoint_settings.path,
-            executor_path=settings.flytekit_virtualenv_root,
+            executor_path=settings.python_interpreter,
             main_class="",
             spark_type=SparkType.PYTHON,
         )

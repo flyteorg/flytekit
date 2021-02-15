@@ -104,6 +104,7 @@ class SerializationSettings(object):
         image_config: ImageConfig,
         env: Optional[Dict[str, str]],
         flytekit_virtualenv_root: str = None,
+        python_interpreter: str = None,
         entrypoint_settings: EntrypointSettings = None,
     ):
         self._project = project
@@ -113,6 +114,7 @@ class SerializationSettings(object):
         self._env = env or {}
         self._instance_lookup = {}
         self._flytekit_virtualenv_root = flytekit_virtualenv_root
+        self._python_interpreter = python_interpreter
         self._entrypoint_settings = entrypoint_settings
 
     @property
@@ -138,6 +140,10 @@ class SerializationSettings(object):
     @property
     def flytekit_virtualenv_root(self) -> str:
         return self._flytekit_virtualenv_root
+
+    @property
+    def python_interpreter(self) -> str:
+        return self._python_interpreter
 
     @property
     def entrypoint_settings(self) -> EntrypointSettings:
