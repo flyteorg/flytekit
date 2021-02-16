@@ -270,15 +270,11 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
     else:
         # For in container serialize we make sure to never accept an override the entrypoint path and determine it here
         # instead.
-
-        # is this needed now? Or should we revert to how it was prior to change https://github.com/flyteorg/flytekit/pull/379
-        # ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = sys.executable
         entrypoint_path = _os.path.abspath(_flytekit.__file__)
         if entrypoint_path.endswith(".pyc"):
             entrypoint_path = entrypoint_path[:-1]
 
         ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = _os.path.dirname(entrypoint_path)
-
         ctx.obj[CTX_PYTHON_INTERPRETER] = sys.executable
 
 
