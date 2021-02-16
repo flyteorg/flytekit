@@ -8,6 +8,7 @@ from typing import List
 
 import click
 
+import flytekit as _flytekit
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
@@ -271,7 +272,12 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
         # instead.
 
         # is this needed now? Or should we revert to how it was prior to change https://github.com/flyteorg/flytekit/pull/379
-        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = sys.executable
+        # ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = sys.executable
+        entrypoint_path = _os.path.abspath(_flytekit.__file__)
+        if entrypoint_path.endswith(".pyc"):
+            entrypoint_path = entrypoint_path[:-1]
+
+        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = entrypoint_path
 
         ctx.obj[CTX_PYTHON_INTERPRETER] = sys.executable
 
