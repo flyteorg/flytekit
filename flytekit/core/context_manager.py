@@ -28,6 +28,10 @@ class Image(object):
     fqn: str
     tag: str
 
+    @property
+    def full(self):
+        return f"{self.fqn}:{self.tag}"
+
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class ImageConfig(object):
