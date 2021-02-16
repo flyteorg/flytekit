@@ -16,6 +16,12 @@ from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 
 
+# Matches {{.image.<name>.<attr>}}. A name can be either 'default' indicating the default image passed during
+# serialization or it can be a custom name for an image that must be defined in the config section Images. An attribute
+# can be either 'fqn', 'version' or non-existent.
+# fqn will access the fully qualified name of the image (e.g. registry/imagename:version -> registry/imagename)
+# version will access the version part of the image (e.g. registry/imagename:version -> version)
+# With empty attribute, it'll access the full image path (e.g. registry/imagename:version -> registry/imagename:version)
 _IMAGE_REPLACE_REGEX = re.compile(r"({{\s*\.image[s]?(?:\.([a-zA-Z]+))(?:\.([a-zA-Z]+))?\s*}})", re.IGNORECASE)
 
 
