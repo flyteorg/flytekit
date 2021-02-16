@@ -1,4 +1,4 @@
-.. _design-control-plane::
+.. _design-control-plane:
 
 ############################
 Control Plane Objects

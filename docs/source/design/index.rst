@@ -1,4 +1,4 @@
-.. _design::
+.. _design:
 
 ############################
 Structure of Flytekit
@@ -18,7 +18,7 @@ Flytekit is comprised of a handful of different logical components, each discuss
    :caption: Structure and Layout of Flytekit
 
    models
-   authoring
+   authoring/index
    control_plane
    execution
    clis

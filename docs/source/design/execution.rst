@@ -1,4 +1,4 @@
-.. _design-execution::
+.. _design-execution:
 
 #######################
 Execution Time Support

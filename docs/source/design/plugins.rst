@@ -1,4 +1,4 @@
-.. _design-plugins::
+.. _design-plugins:
 
 ##################
 Flytekit Plugins

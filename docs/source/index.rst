@@ -31,7 +31,7 @@ Flytekit Design
    :caption: Design
 
    contributing
-   design.structure
+   design/index
    tasks.extend
    types.extend
 

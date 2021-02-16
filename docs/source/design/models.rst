@@ -1,4 +1,4 @@
-.. _design-models::
+.. _design-models:
 
 ######################
 Flytekit Model Files
