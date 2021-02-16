@@ -277,7 +277,7 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
         if entrypoint_path.endswith(".pyc"):
             entrypoint_path = entrypoint_path[:-1]
 
-        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = entrypoint_path
+        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = _os.path.dirname(entrypoint_path)
 
         ctx.obj[CTX_PYTHON_INTERPRETER] = sys.executable
 
