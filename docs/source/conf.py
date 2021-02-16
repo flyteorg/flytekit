@@ -25,7 +25,7 @@ copyright = "2021, Flyte"
 author = "Flyte"
 
 # The full version, including alpha/beta/rc tags
-release = "0.16.0b7"
+release = "0.16.0b9"
 
 
 # -- General configuration ---------------------------------------------------
