@@ -100,23 +100,24 @@ def serialize_all(
     python_interpreter: str = None,
 ):
     """
-    In order to register, we have to comply with Admin's endpoints. Those endpoints take the following objects. These
-    flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
-    flyteidl.admin.workflow_pb2.WorkflowSpec
-    flyteidl.admin.task_pb2.TaskSpec
+      This function will write to the folder specified the following protobuf types ::
+          flyteidl.admin.launch_plan_pb2.LaunchPlan
+          flyteidl.admin.workflow_pb2.WorkflowSpec
+          flyteidl.admin.task_pb2.TaskSpec
 
-    However, if we were to merely call .to_flyte_idl() on all the discovered entities, what we would get are:
-    flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
-    flyteidl.core.workflow_pb2.WorkflowTemplate
-    flyteidl.core.tasks_pb2.TaskTemplate
+      These can be inspected by calling (in the launch plan case) ::
+          flyte-cli parse-proto -f filename.pb -p flyteidl.admin.launch_plan_pb2.LaunchPlan
 
-    For Workflows and Tasks therefore, there is special logic in the serialize function that translates these objects.
-
-    :param list[Text] pkgs:
-    :param Text folder:
-
-    :return:
-    """
+      See :py:class:`flytekit.models.core.identifier.ResourceType` to match the trailing index in the file name with the
+      entity type.
+      :param pkgs: Dot-delimited Python packages/subpackages to look into for serialization.
+      :param local_source_root: Where to start looking for the code.
+      :param folder: Where to write the output protobuf files
+      :param mode: Regular vs fast
+      :param image: The fully qualified and versioned default image to use
+      :param config_path: Path to the config file, if any, to be used during serialization
+      :param flytekit_virtualenv_root: The full path of the virtual env in the container.
+      """
 
     # m = module (i.e. python file)
     # k = value of dir(m), type str
