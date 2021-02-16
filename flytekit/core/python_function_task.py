@@ -15,7 +15,6 @@ from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 
-
 # Matches {{.image.<name>.<attr>}}. A name can be either 'default' indicating the default image passed during
 # serialization or it can be a custom name for an image that must be defined in the config section Images. An attribute
 # can be either 'fqn', 'version' or non-existent.
