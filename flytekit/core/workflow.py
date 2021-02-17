@@ -252,8 +252,8 @@ class Workflow(object):
         wf_outputs_as_literal_dict = translate_inputs_to_literals(
             ctx,
             wf_outputs_as_map,
-            flyte_interface_inputs=self.interface.outputs,
-            native_input_types=self.python_interface.outputs,
+            flyte_interface_types=self.interface.outputs,
+            native_types=self.python_interface.outputs,
         )
 
         new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in expected_output_names]

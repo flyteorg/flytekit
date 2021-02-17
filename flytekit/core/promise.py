@@ -26,11 +26,14 @@ from flytekit.models.literals import Primitive
 
 def translate_inputs_to_literals(
     ctx: FlyteContext,
-    input_kwargs: Dict[str, Any],
-    flyte_interface_inputs: Dict[str, _interface_models.Variable],
-    native_input_types: Dict[str, type],
+    incoming_values: Dict[str, Any],
+    flyte_interface_types: Dict[str, _interface_models.Variable],
+    native_types: Dict[str, type],
 ) -> Dict[str, _literal_models.Literal]:
     """
+    The point of this function is to extract out Literals from a collection of either Python native values (which would
+    be converted into Flyte literals) or Promises (the literals in which would just get extracted).
+
     When calling a task inside a workflow, a user might do something like this.
 
         def my_wf(in1: int) -> int:
@@ -50,6 +53,13 @@ def translate_inputs_to_literals(
 
     Here, in task_2, during execution we'd have a list of Promises. We have to make sure to give task2 a Flyte
     LiteralCollection (Flyte's name for list), not a Python list of Flyte literals.
+
+    This helper function is used both when sorting out inputs to a task, as well as outputs of a function.
+
+    :param ctx: Context needed in case a non-primitive literal needs to be translated to a Flyte literal (like a file)
+    :param incoming_values: This is a map of your task's input kwargs basically
+    :param flyte_interface_types: One side of an :py:class:`flytekit.models.interface.TypedInterface` basically.
+    :param native_types: Map to native Python type.
     """
 
     def extract_value(
@@ -92,11 +102,11 @@ def translate_inputs_to_literals(
             return TypeEngine.to_literal(ctx, input_val, val_type, flyte_literal_type)
 
     result = {}  # So as to not overwrite the input_kwargs
-    for k, v in input_kwargs.items():
-        if k not in flyte_interface_inputs:
+    for k, v in incoming_values.items():
+        if k not in flyte_interface_types:
             raise ValueError(f"Received unexpected keyword argument {k}")
-        var = flyte_interface_inputs[k]
-        t = native_input_types[k]
+        var = flyte_interface_types[k]
+        t = native_types[k]
         result[k] = extract_value(ctx, v, t, var.type)
 
     return result

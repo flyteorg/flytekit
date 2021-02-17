@@ -181,9 +181,9 @@ class Task(object):
         #  Also alongwith promises and constants, there could be dictionary or list of promises or constants
         kwargs = translate_inputs_to_literals(
             ctx,
-            input_kwargs=kwargs,
-            flyte_interface_inputs=self.interface.inputs,
-            native_input_types=self.get_input_types(),
+            incoming_values=kwargs,
+            flyte_interface_types=self.interface.inputs,
+            native_types=self.get_input_types(),
         )
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 

@@ -157,9 +157,9 @@ class ReferenceEntity(object):
         #  Also alongwith promises and constants, there could be dictionary or list of promises or constants
         kwargs = translate_inputs_to_literals(
             ctx,
-            input_kwargs=kwargs,
-            flyte_interface_inputs=self.typed_interface.inputs,
-            native_input_types=self.interface.inputs,
+            incoming_values=kwargs,
+            flyte_interface_types=self.typed_interface.inputs,
+            native_types=self.interface.inputs,
         )
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
