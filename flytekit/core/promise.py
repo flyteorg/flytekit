@@ -57,7 +57,7 @@ def translate_inputs_to_literals(
     This helper function is used both when sorting out inputs to a task, as well as outputs of a function.
 
     :param ctx: Context needed in case a non-primitive literal needs to be translated to a Flyte literal (like a file)
-    :param incoming_values: This is a map of your task's input kwargs basically
+    :param incoming_values: This is a map of your task's input or wf's output kwargs basically
     :param flyte_interface_types: One side of an :py:class:`flytekit.models.interface.TypedInterface` basically.
     :param native_types: Map to native Python type.
     """
@@ -100,6 +100,9 @@ def translate_inputs_to_literals(
         else:
             # This handles native values, the 5 example
             return TypeEngine.to_literal(ctx, input_val, val_type, flyte_literal_type)
+
+    if incoming_values is None:
+        raise ValueError("Incoming values cannot be None, must be a dict")
 
     result = {}  # So as to not overwrite the input_kwargs
     for k, v in incoming_values.items():
