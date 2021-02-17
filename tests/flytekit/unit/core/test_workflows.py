@@ -48,3 +48,25 @@ def test_workflow_values():
     sdk_wf = get_serializable(serialization_settings, wf)
     assert sdk_wf.metadata_defaults.interruptible
     assert sdk_wf.metadata.on_failure == 1
+
+
+def test_fdsafdsa():
+    @task
+    def t1(a: int) -> int:
+        a = a + 5
+        return a
+
+    @workflow
+    def list_output_wf() -> typing.List[int]:
+        v = []
+        for i in range(2):
+            v.append(t1(a=i))
+        return v
+
+        o1 = t2()  # list of ints
+
+        return o1[2:5]
+
+    x = list_output_wf()
+    # import ipdb; ipdb.set_trace()
+    print(x)

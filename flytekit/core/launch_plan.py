@@ -67,7 +67,7 @@ class LaunchPlan(object):
         fixed_literals = translate_inputs_to_literals(
             ctx,
             input_kwargs=fixed_inputs,
-            interface=workflow.interface,
+            flyte_interface_inputs=workflow.interface.inputs,
             native_input_types=workflow._native_interface.inputs,
         )
         fixed_lm = _literal_models.LiteralMap(literals=fixed_literals)

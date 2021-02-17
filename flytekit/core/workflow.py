@@ -24,6 +24,7 @@ from flytekit.core.promise import (
     binding_from_python_std,
     create_and_link_node,
     create_task_output,
+    translate_inputs_to_literals,
 )
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.type_engine import TypeEngine
@@ -87,6 +88,10 @@ def _workflow_fn_outputs_to_promise(
     typed_outputs: Dict[str, _interface_models.Variable],
     outputs: Union[Any, Tuple[Any]],
 ) -> List[Promise]:
+    """
+    The point of this function is to extract out Promises, back to a literal map effectively, and then recreate
+    new Promises (or rather, renaming them).
+    """
     if len(native_outputs) == 1:
         if isinstance(outputs, tuple):
             if len(outputs) != 1:
@@ -250,28 +255,57 @@ class Workflow(object):
                 t = self._native_interface.inputs[k]
                 kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
 
+        # The output of this will always be a combination of Python native values and Promises containing Flyte
+        # Literals.
         function_outputs = self.execute(**kwargs)
+
+        # First handle the empty return case.
+        # A workflow function may return a task that doesn't return anything
+        #   def wf():
+        #       return t1()
+        # or it may not return at all
+        #   def wf():
+        #       t1()
+        # In the former case we get the task's VoidPromise, in the latter we get None
         if (
             isinstance(function_outputs, VoidPromise)
             or function_outputs is None
             or len(self.python_interface.outputs) == 0
         ):
-            # The reason this is here is because a workflow function may return a task that doesn't return anything
-            #   def wf():
-            #       return t1()
-            # or it may not return at all
-            #   def wf():
-            #       t1()
-            # In the former case we get the task's VoidPromise, in the latter we get None
             return VoidPromise(self.name)
 
-        # TODO: Can we refactor the task code to be similar to what's in this function?
-        promises = _workflow_fn_outputs_to_promise(
-            ctx, self._native_interface.outputs, self.interface.outputs, function_outputs
+        expected_output_names = list(self.interface.outputs.keys())
+        if len(expected_output_names) == 1:
+            # Here we have to handle the fact that the wf could've been declared with a typing.NamedTuple of
+            # length one. That convention is used for naming outputs - and single-length-NamedTuples are
+            # particularly troublesome but elegant handling of them is not a high priority
+            # Again, we're using the output_tuple_name as a proxy.
+            if self.python_interface.output_tuple_name and isinstance(function_outputs, tuple):
+                wf_outputs_as_map = {expected_output_names[0]: function_outputs[0]}
+            else:
+                wf_outputs_as_map = {expected_output_names[0]: function_outputs}
+        else:
+            wf_outputs_as_map = {expected_output_names[i]: function_outputs[i] for i, _ in enumerate(function_outputs)}
+
+        # Basically we need to repackage the promises coming from the tasks into Promises that match the workflow's
+        # interface. We do that by extracting out the literals, and creating new Promises
+        wf_outputs_as_literal_dict = translate_inputs_to_literals(
+            ctx,
+            wf_outputs_as_map,
+            flyte_interface_inputs=self.interface.outputs,
+            native_input_types=self.python_interface.outputs,
         )
+
+        # # TODO: Can we refactor the task code to be similar to what's in this function?
+        # promises = _workflow_fn_outputs_to_promise(
+        #     ctx, self._native_interface.outputs, self.interface.outputs, function_outputs
+        # )
+
+        new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in expected_output_names]
+
         # TODO: With the native interface, create_task_output should be able to derive the typed interface, and it
         #   should be able to do the conversion of the output of the execute() call directly.
-        return create_task_output(promises, self._native_interface)
+        return create_task_output(new_promises, self._native_interface)
 
     def execute(self, **kwargs):
         """
@@ -327,7 +361,10 @@ class Workflow(object):
             ):
                 if isinstance(result, Promise):
                     v = [v for k, v in self._native_interface.outputs.items()][0]
-                    return TypeEngine.to_python_value(ctx, result.val, v)
+                    # import ipdb;
+                    # ipdb.set_trace()
+                    xx = TypeEngine.to_python_value(ctx, result.val, v)
+                    return xx
                 else:
                     for prom in result:
                         if not isinstance(prom, Promise):

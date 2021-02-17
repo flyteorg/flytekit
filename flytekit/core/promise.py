@@ -27,7 +27,7 @@ from flytekit.models.literals import Primitive
 def translate_inputs_to_literals(
     ctx: FlyteContext,
     input_kwargs: Dict[str, Any],
-    interface: _interface_models.TypedInterface,
+    flyte_interface_inputs: Dict[str, _interface_models.Variable],
     native_input_types: Dict[str, type],
 ) -> Dict[str, _literal_models.Literal]:
     """
@@ -93,9 +93,9 @@ def translate_inputs_to_literals(
 
     result = {}  # So as to not overwrite the input_kwargs
     for k, v in input_kwargs.items():
-        if k not in interface.inputs:
+        if k not in flyte_interface_inputs:
             raise ValueError(f"Received unexpected keyword argument {k}")
-        var = interface.inputs[k]
+        var = flyte_interface_inputs[k]
         t = native_input_types[k]
         result[k] = extract_value(ctx, v, t, var.type)
 
@@ -369,7 +369,7 @@ class Promise(object):
 
     def __repr__(self):
         if self._promise_ready:
-            return f"Var({self._var}={self._val})"
+            return f"Resolved({self._var}={self._val})"
         return f"Promise(node:{self.ref.node_id}.{self._var})"
 
     def __str__(self):

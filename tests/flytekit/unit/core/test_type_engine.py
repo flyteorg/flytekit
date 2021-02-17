@@ -16,7 +16,7 @@ from flytekit.core.type_engine import (
 )
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Primitive, Scalar
+from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.file.file import FlyteFile
 from flytekit.types.schema import FlyteSchema, SchemaFormat
@@ -167,3 +167,14 @@ def test_dict_transformer():
         Literal(map=LiteralMap(literals={"x": Literal(scalar=Scalar(primitive=Primitive(integer=1)))})),
         typing.Dict[str, int],
     )
+
+
+def test_list_transformer():
+    l0 = Literal(scalar=Scalar(primitive=Primitive(integer=3)))
+    l1 = Literal(scalar=Scalar(primitive=Primitive(integer=4)))
+    lc = LiteralCollection(literals=[l0, l1])
+    lit = Literal(collection=lc)
+
+    ctx = FlyteContext.current_context()
+    xx = TypeEngine.to_python_value(ctx, lit, typing.List[int])
+    assert xx == [3, 4]
