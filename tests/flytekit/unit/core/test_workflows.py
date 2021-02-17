@@ -50,7 +50,7 @@ def test_workflow_values():
     assert sdk_wf.metadata.on_failure == 1
 
 
-def test_fdsafdsa():
+def test_list_output_wf():
     @task
     def t1(a: int) -> int:
         a = a + 5
@@ -63,10 +63,26 @@ def test_fdsafdsa():
             v.append(t1(a=i))
         return v
 
-        o1 = t2()  # list of ints
-
-        return o1[2:5]
-
     x = list_output_wf()
-    # import ipdb; ipdb.set_trace()
-    print(x)
+    assert x == [5, 6]
+
+
+def test_sub_wf_single_named_tuple():
+    nt = typing.NamedTuple("SingleNamedOutput", named1=int)
+
+    @task
+    def t1(a: int) -> nt:
+        a = a + 2
+        return (a,)
+
+    @workflow
+    def subwf(a: int) -> nt:
+        return t1(a=a)
+
+    @workflow
+    def wf(b: int) -> nt:
+        out = subwf(a=b)
+        return t1(a=out.named1)
+
+    x = wf(b=3)
+    assert x == (7,)

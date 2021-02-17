@@ -82,45 +82,6 @@ class WorkflowMetadataDefaults(object):
         return _workflow_model.WorkflowMetadataDefaults(interruptible=self.interruptible)
 
 
-def _workflow_fn_outputs_to_promise(
-    ctx: FlyteContext,
-    native_outputs: typing.Dict[str, type],  # Actually an orderedDict
-    typed_outputs: Dict[str, _interface_models.Variable],
-    outputs: Union[Any, Tuple[Any]],
-) -> List[Promise]:
-    """
-    The point of this function is to extract out Promises, back to a literal map effectively, and then recreate
-    new Promises (or rather, renaming them).
-    """
-    if len(native_outputs) == 1:
-        if isinstance(outputs, tuple):
-            if len(outputs) != 1:
-                raise AssertionError(
-                    f"The Workflow specification indicates only one return value, received {len(outputs)}"
-                )
-        else:
-            outputs = (outputs,)
-
-    if len(native_outputs) > 1:
-        if not isinstance(outputs, tuple) or len(native_outputs) != len(outputs):
-            # Length check, clean up exception
-            raise AssertionError(
-                f"The workflow specification indicates {len(native_outputs)} return vals, but received {len(outputs)}"
-            )
-
-    # This recasts the Promises provided by the outputs of the workflow's tasks into the correct output names
-    # of the workflow itself
-    return_vals = []
-    for (k, t), v in zip(native_outputs.items(), outputs):
-        if isinstance(v, Promise):
-            return_vals.append(v.with_var(k))
-        else:
-            # Found a return type that is not a promise, so we need to transform it
-            var = typed_outputs[k]
-            return_vals.append(Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, var.type)))
-    return return_vals
-
-
 def construct_input_promises(inputs: List[str]):
     return {
         input_name: Promise(var=input_name, val=NodeOutput(node=GLOBAL_START_NODE, var=input_name))
@@ -295,11 +256,6 @@ class Workflow(object):
             flyte_interface_inputs=self.interface.outputs,
             native_input_types=self.python_interface.outputs,
         )
-
-        # # TODO: Can we refactor the task code to be similar to what's in this function?
-        # promises = _workflow_fn_outputs_to_promise(
-        #     ctx, self._native_interface.outputs, self.interface.outputs, function_outputs
-        # )
 
         new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in expected_output_names]
 
