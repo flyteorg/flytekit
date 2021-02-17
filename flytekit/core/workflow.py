@@ -317,10 +317,7 @@ class Workflow(object):
             ):
                 if isinstance(result, Promise):
                     v = [v for k, v in self._native_interface.outputs.items()][0]
-                    # import ipdb;
-                    # ipdb.set_trace()
-                    xx = TypeEngine.to_python_value(ctx, result.val, v)
-                    return xx
+                    return TypeEngine.to_python_value(ctx, result.val, v)
                 else:
                     for prom in result:
                         if not isinstance(prom, Promise):
