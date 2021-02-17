@@ -7,9 +7,8 @@ from flytekitplugins.awssagemaker.distributed_training import DistributedTrainin
 from google.protobuf.json_format import MessageToDict
 
 import flytekit
-from flytekit import FlyteContext, PythonFunctionTask, kwtypes
+from flytekit import FlyteContext, PythonFunctionTask, kwtypes, ExecutionParameters
 from flytekit.extend import (
-    ExecutionParameters,
     ExecutionState,
     IgnoreOutputs,
     Interface,
