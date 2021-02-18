@@ -30,12 +30,21 @@ Flytekit Design
    :maxdepth: 1
    :caption: Design
 
-   contributing
    design/index
-   tasks.extend
-   types.extend
 
 This section details how flytekit is laid out, its general design, and some of the rationale for why it is the way it is.
+
+********************
+Conributing
+********************
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Contributing
+
+   contributing
+   tasks.extend
+   types.extend
 
 ******************************
 Additional Flyte Documentation

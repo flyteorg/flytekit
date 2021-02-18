@@ -1,8 +1,8 @@
 .. _contributing:
 
-##############
-Contributing
-##############
+#################
+Contributor Guide
+#################
 
 First off, thank you for thinking about contributing! Below you'll find instructions that will hopefully guide you through how to fix, improve, and extend flytekit.
 
@@ -18,6 +18,11 @@ We recommend using a virtual environment to develop flytekit. Inside the top lev
     source ~/.virtualenvs/flytekit/bin/activate
     make setup
     pip install -e .
+
+.. note::
+    It's important not to use a virtualenv that you also use for *using* flytekit. The reason is that installing a Python
+    library in editable mode will link it to your source code. That is, the behavior will change as you work on the code,
+    check out different branches, etc.
 
 This will install flytekit dependencies and also install flytekit itself in editable mode. This basically links your virtual Python's ``site-packages`` with your local repo folder, allowing your local changes to take effect when the same Python interpreter runs ``import flytekit``
 
@@ -57,6 +62,18 @@ Running unit tests ::
 
     source ~/.virtualenvs/flytekit/bin/activate
     make test
+
+Cookbook Testing
+----------------
+Please see the `cookbook <https://github.com/flyteorg/flytesnacks/tree/master/cookbook>`__ and the generated `docs <https://flytecookbook.readthedocs.io/en/latest/>`__ for more information. This example repo can be cloned and run on a local Flyte cluster, or just in your IDE or other Python environment.
+
+Follow the set up instructions for the cookbook and then override it with the version of flytekit you're interested in testing by running something like ::
+
+    pip install https://github.com/flyteorg/flytekit/archive/a32ab82bef4d9ff53c2b7b4e69ff11f1e93858ea.zip#egg=flytekit
+    # Or for a plugin
+    pip install https://github.com/flyteorg/flytekit/archive/e128f66dda48bbfc6076d240d39e4221d6af2d2b.zip#subdirectory=plugins/pod&egg=flytekitplugins-pod
+
+Change the actual link to be from your fork if you're using a fork.
 
 End-to-end Testing
 --------------------

@@ -11,15 +11,13 @@ Flytekit is comprised of a handful of different logical components, each discuss
 * Control Plane - The code here allows users to interact with the control plane through Python objecs.
 * Execution - A small shim layer basically that handles interaction with the Flyte ecosystem at execution time.
 * CLIs and Clients - Command line tools users may find themselves interacting with and the control plane client the CLIs call.
-* Plugins - This can be thought of as a separate repo entirely and contains user (and Flyte) provided extended functionality.
 
 .. toctree::
    :maxdepth: 1
    :caption: Structure and Layout of Flytekit
 
    models
-   authoring/index
+   authoring
    control_plane
    execution
    clis
-   plugins

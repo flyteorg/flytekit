@@ -106,7 +106,7 @@ class IgnoreOutputs(Exception):
 
 class Task(object):
     """
-    The base of all Tasks in flytekit. This task is closes to the FlyteIDL TaskTemplate and captures information in
+    The base of all Tasks in flytekit. This task is closest to the FlyteIDL TaskTemplate and captures information in
     FlyteIDL specification and does not have python native interfaces associated. For any real extension please
     refer to the derived classes.
     """
@@ -284,8 +284,8 @@ T = TypeVar("T")
 
 class PythonTask(Task, Generic[T]):
     """
-    Base Class for all Tasks with a python native ``Interface``. This should be directly used for task types, that do not
-    have a python function to be executed. Otherwise refer to PythonFunctionTask
+    Base Class for all Tasks with a Python native ``Interface``. This should be directly used for task types, that do
+    not have a python function to be executed. Otherwise refer to :py:class:`flytekit.PythonFunctionTask`.
     """
 
     def __init__(

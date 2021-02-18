@@ -126,6 +126,7 @@ def construct_input_promises(inputs: List[str]):
 class Workflow(object):
     """
     When you assign a name to a node.
+
     * Any upstream node that is not assigned, recursively assign
     * When you get the call to the constructor, keep in mind there may be duplicate nodes, because they all should
       be wrapper nodes.
