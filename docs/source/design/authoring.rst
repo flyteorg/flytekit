@@ -30,6 +30,7 @@ Tasks
 
 .. inheritance-diagram:: flytekit.core.python_function_task.PythonFunctionTask flytekit.core.python_function_task.PythonInstanceTask flytekit.extras.sqlite3.task.SQLite3Task
    :parts: 1
+   :top-classes: flytekit.core.base_task.Task
 
 
 This is how the task class hierarchy looks for now.
