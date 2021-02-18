@@ -87,7 +87,7 @@ The Flyte developer experience team has put together an end-to-end testing frame
 Formatting
 ****************
 
-We use [black](https://github.com/psf/black) and [isort](https://github.com/timothycrosley/isort) to autoformat code. Run the following command to execute the formatters ::
+We use `black <https://github.com/psf/black>`__ and `isort <https://github.com/timothycrosley/isort>`__ to autoformat code. Run the following command to execute the formatters ::
 
     source ~/.virtualenvs/flytekit/bin/activate
     make fmt
