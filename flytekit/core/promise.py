@@ -263,6 +263,25 @@ class ConjunctionExpression(object):
 # TODO: The NodeOutput object, which this Promise wraps, has an sdk_type. Since we're no longer using sdk types,
 #  we should consider adding a literal type to this object as well for downstream checking when Bindings are created.
 class Promise(object):
+    """
+    This object is a wrapper and exists for three main reasons. Let's assume we're dealing with a task like ::
+
+        @task
+        def t1() -> (int, str): ...
+
+    #. Handling the duality between compilation and local execution - when the task function is run in a local execution
+       mode inside a workflow function, a Python integer and string are produced. When the task is being compiled as
+       part of the workflow, the task call creates a Node instead, and the task returns two Promise objects that
+       point to that Node.
+    #. One needs to be able to call ::
+
+          x = t1().with_overrides(...)
+
+       If the task returns an integer or a ``(int, str)`` tuple like ``t1`` above, calling ``with_overrides`` on the
+       result would throw an error. This Promise object adds that.
+    #. Assorted handling for conditionals.
+    """
+
     # TODO: Currently, NodeOutput we're creating is the slimmer core package Node class, but since only the
     #  id is used, it's okay for now. Let's clean all this up though.
     def __init__(self, var: str, val: Union[NodeOutput, _literal_models.Literal]):

@@ -3,9 +3,9 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-=========================================
+##########################################
 Welcome to ``Flytekit``'s documentation!
-=========================================
+##########################################
 
 *************
 Flytekit API
@@ -30,10 +30,21 @@ Flytekit Design
    :maxdepth: 1
    :caption: Design
 
-   tasks.extend
-   types.extend
+   design/index
 
 This section details how flytekit is laid out, its general design, and some of the rationale for why it is the way it is.
+
+********************
+Conributing
+********************
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Contributing
+
+   contributing
+   tasks.extend
+   types.extend
 
 ******************************
 Additional Flyte Documentation

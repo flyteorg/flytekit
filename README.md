@@ -21,7 +21,7 @@ Flytekit is the core extensible library to author Flyte workflows and tasks and 
 ### Base Installation
 
 ```bash
-pip install flytekit==0.16.0b6
+pip install flytekit==0.16.0b7
 ```
 
 ### Simple getting started
@@ -46,6 +46,9 @@ def my_workflow(x: int, y: int) -> int:
 - [Learn flytekit by examples](https://flytecookbook.readthedocs.io/)
 - [Flytekit API documentation](http://flytekit.readthedocs.io/)
 - [Flyte documentation Hub](http://flytekit.readthedocs.io/)
+
+### Contributions and Issues
+Please see the [contributor guide](https://flyte.readthedocs.io/projects/flytekit/en/latest/contributing) and file issues against the main [Flyte repo](https://github.com/flyteorg/flyte/issues).
 
 ### Plugins:
 Refer to [plugins/README.md](plugins/README.md) for a list of available

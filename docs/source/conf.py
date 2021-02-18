@@ -43,6 +43,8 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.coverage",
+    "sphinx.ext.inheritance_diagram",
+    "sphinx.ext.graphviz",
     "sphinx-prompt",
     "sphinx_copybutton",
 ]
