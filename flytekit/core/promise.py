@@ -281,6 +281,7 @@ class Promise(object):
        result would throw an error. This Promise object adds that.
     #. Assorted handling for conditionals.
     """
+
     # TODO: Currently, NodeOutput we're creating is the slimmer core package Node class, but since only the
     #  id is used, it's okay for now. Let's clean all this up though.
     def __init__(self, var: str, val: Union[NodeOutput, _literal_models.Literal]):
