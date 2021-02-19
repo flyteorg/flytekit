@@ -1,6 +1,7 @@
 import inspect
 from typing import Any, Optional, Callable, Union
 
+from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.models.types import OutputReference
 
 from flytekit.core.condition import ConditionalSection
@@ -27,7 +28,7 @@ class MapPythonTask(PythonTask):
     To do this we might have to give up on supporting lambda functions initially
     """
 
-    def __init__(self, tk: PythonTask, metadata: Optional[TaskMetadata] = None, concurrency=None, **kwargs):
+    def __init__(self, tk: PythonFunctionTask, metadata: Optional[TaskMetadata] = None, concurrency=None, **kwargs):
         collection_interface = transform_interface_to_list_interface(tk.python_interface)
         name = f"{tk._task_function.__module__}.mapper_{tk._task_function.__name__}"
         self._run_task = tk
@@ -56,8 +57,7 @@ class MapPythonTask(PythonTask):
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             return self.compile_into_workflow(ctx, self.run_task, **kwargs)
 
-    def compile_into_workflow(
-        self, ctx: FlyteContext, **kwargs) -> Union[DynamicJobSpec, LiteralMap]:
+    def compile_into_workflow(self, ctx: FlyteContext, **kwargs) -> Union[DynamicJobSpec, LiteralMap]:
 
         # TODO(katrogan): Add support for collection type inputs.
         if self._are_inputs_collection_type():
@@ -72,8 +72,8 @@ class MapPythonTask(PythonTask):
             collection_interface = self.python_interface
             self._python_interface = self._array_task_interface
             compile_once_inputs = {k: v[0] for (k, v) in kwargs.items()}
-            # self.run_task.compile(comp_ctx, **compile_once_inputs)
-            self.compile(comp_ctx, **compile_once_inputs)
+            self.run_task.compile(comp_ctx, **compile_once_inputs)
+            # self.compile(comp_ctx, **compile_once_inputs)
             self._python_interface = collection_interface
             workflow_nodes = comp_ctx.compilation_state.nodes
             if len(workflow_nodes) != 1:
@@ -83,12 +83,14 @@ class MapPythonTask(PythonTask):
             # Iterate through the workflow outputs
             output_names = list(self.interface.outputs.keys())
 
-            any_key = list(self._run_task.interface.inputs.keys())[
-                0] if self._run_task.interface.inputs.items() is not None else None
+            any_key = (
+                list(self._run_task.interface.inputs.keys())[0]
+                if self._run_task.interface.inputs.items() is not None
+                else None
+            )
             outputs_expected = True
             if not self.interface.outputs:
                 outputs_expected = False
-
 
             node_id = sdk_workflow_node.id
             bindings = []
@@ -99,7 +101,9 @@ class MapPythonTask(PythonTask):
                         promise = OutputReference(node_id, f"[{i}].{output_name}")
                         binding_data = BindingData(promise=promise)
                         binding_data_collection.append(binding_data)
-                    binding = Binding(var=output_name, binding=BindingData(collection=BindingDataCollection(binding_data_collection)))
+                    binding = Binding(
+                        var=output_name, binding=BindingData(collection=BindingDataCollection(binding_data_collection))
+                    )
                     bindings.append(binding)
 
         sdk_node = get_serializable(ctx.serialization_settings, sdk_workflow_node)
@@ -111,11 +115,7 @@ class MapPythonTask(PythonTask):
         sdk_task_node.sdk_task.assign_custom_and_return(array_job.to_dict()).assign_type_and_return("container_array")
 
         dj_spec = DynamicJobSpec(
-            min_successes=1,
-            tasks=[sdk_task_node.sdk_task],
-            nodes=[sdk_node],
-            outputs=bindings,
-            subworkflows=[],
+            min_successes=1, tasks=[sdk_task_node.sdk_task], nodes=[sdk_node], outputs=bindings, subworkflows=[],
         )
 
         logger.info("dj_spec {}".format(dj_spec))
@@ -131,7 +131,11 @@ class MapPythonTask(PythonTask):
 
     def _raw_execute(self, **kwargs) -> Any:
         all_types_are_collection = self._are_inputs_collection_type()
-        any_key = list(self._run_task.interface.inputs.keys())[0] if self._run_task.interface.inputs.items() is not None else None
+        any_key = (
+            list(self._run_task.interface.inputs.keys())[0]
+            if self._run_task.interface.inputs.items() is not None
+            else None
+        )
 
         # If all types are collection we can just handle the call as a pass through
         if all_types_are_collection:

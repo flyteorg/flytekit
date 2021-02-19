@@ -140,6 +140,7 @@ def test_katrina():
 
     assert False
 
+
 def test_batch_task():
     assert isinstance(sample_batch_task, _sdk_runnable.SdkRunnableTask)
     assert isinstance(sample_batch_task, _sdk_dynamic.SdkDynamicTask)

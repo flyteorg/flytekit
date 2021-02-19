@@ -7,6 +7,7 @@ from enum import Enum as _Enum
 from typing import List
 
 import click
+from flytekit.models.core.identifier import ResourceType
 
 import flytekit as _flytekit
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
@@ -144,19 +145,21 @@ def serialize_all(
     with flyte_context.FlyteContext.current_context().new_serialization_settings(
         serialization_settings=serialization_settings
     ) as ctx:
-        loaded_entities = []
+        old_style_entities = []
         for m, k, o in iterate_registerable_entities_in_order(pkgs, local_source_root=local_source_root):
             name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
             _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
             o._id = _identifier.Identifier(
                 o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
             )
-            loaded_entities.append(o)
+            old_style_entities.append(o)
             ctx.serialization_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
 
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
 
         mode = mode if mode else SerializationMode.DEFAULT
+
+        loaded_entities_types = {ResourceType.TASK: [], ResourceType.WORKFLOW: [], ResourceType.LAUNCH_PLAN: []}
         # TODO: Clean up the copy() - it's here because we call get_default_launch_plan, which may create a LaunchPlan
         #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
         for entity in flyte_context.FlyteEntities.entities.copy():
@@ -175,14 +178,23 @@ def serialize_all(
                         serializable = get_serializable(ctx.serialization_settings, entity, fast=True)
                     else:
                         raise AssertionError(f"Unrecognized serialization mode: {mode}")
+                    loaded_entities_types[ResourceType.TASK].append(serializable)
                 else:
                     serializable = get_serializable(ctx.serialization_settings, entity)
-                loaded_entities.append(serializable)
-
                 if isinstance(entity, Workflow):
+                    loaded_entities_types[ResourceType.WORKFLOW].append(serializable)
                     lp = LaunchPlan.get_default_launch_plan(ctx, entity)
                     launch_plan = get_serializable(ctx.serialization_settings, lp)
-                    loaded_entities.append(launch_plan)
+                    loaded_entities_types[ResourceType.LAUNCH_PLAN].append(launch_plan)
+                if isinstance(entity, LaunchPlan):
+                    loaded_entities_types[ResourceType.LAUNCH_PLAN].append(serializable)
+
+        loaded_entities = (
+            old_style_entities
+            + loaded_entities_types[ResourceType.TASK]
+            + loaded_entities_types[ResourceType.WORKFLOW]
+            + loaded_entities_types[ResourceType.LAUNCH_PLAN]
+        )
 
         zero_padded_length = _determine_text_chars(len(loaded_entities))
         for i, entity in enumerate(loaded_entities):

@@ -330,14 +330,12 @@ def test_wf1_with_map():
     assert x == (15, "world-7world-8")
 
 
-
 def test_katrina():
     @task
     def t1(a: int) -> str:
         inc = a + 2
         stringified = str(inc)
         return stringified
-
 
     @workflow
     def my_wf(a: typing.List[int]) -> typing.List[str]:
