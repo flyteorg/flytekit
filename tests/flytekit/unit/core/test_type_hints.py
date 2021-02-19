@@ -360,6 +360,8 @@ def test_katrina():
             assert len(dynamic_job_spec.tasks) == 1
             assert dynamic_job_spec.tasks[0].type == "container_array"
 
+            assert my_maptask.name == "test_type_hints.mapper_t1"
+
     x = my_wf(a=[5, 6])
     assert x == ["7", "8"]
 

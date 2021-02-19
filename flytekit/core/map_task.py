@@ -29,7 +29,7 @@ class MapPythonTask(PythonTask):
 
     def __init__(self, tk: PythonTask, metadata: Optional[TaskMetadata] = None, concurrency=None, **kwargs):
         collection_interface = transform_interface_to_list_interface(tk.python_interface)
-        name = "mapper_" + tk.name
+        name = f"{tk._task_function.__module__}.mapper_{tk._task_function.__name__}"
         self._run_task = tk
         self._max_concurrency = concurrency
         self._array_task_interface = tk.python_interface
@@ -72,7 +72,8 @@ class MapPythonTask(PythonTask):
             collection_interface = self.python_interface
             self._python_interface = self._array_task_interface
             compile_once_inputs = {k: v[0] for (k, v) in kwargs.items()}
-            self.run_task.compile(comp_ctx, **compile_once_inputs)
+            # self.run_task.compile(comp_ctx, **compile_once_inputs)
+            self.compile(comp_ctx, **compile_once_inputs)
             self._python_interface = collection_interface
             workflow_nodes = comp_ctx.compilation_state.nodes
             if len(workflow_nodes) != 1:
