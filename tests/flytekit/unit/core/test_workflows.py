@@ -2,7 +2,7 @@ import typing
 
 import pytest
 
-from flytekit.common.exceptions.user import FlyteValidationException
+from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
@@ -86,3 +86,26 @@ def test_sub_wf_single_named_tuple():
 
     x = wf(b=3)
     assert x == (7,)
+
+
+def test_fdsjaf():
+    @task
+    def t1(a: int) -> int:
+        a = a + 5
+        return a
+
+    @workflow
+    def no_outputs_wf():
+        return t1(a=3)
+
+    # Should raise an exception because the workflow returns something when it shouldn't
+    with pytest.raises(FlyteValueException):
+        no_outputs_wf()
+
+    @workflow
+    def one_output_wf() -> int:  # noqa
+        t1(a=3)
+
+    # Should raise an exception because it doesn't return something when it should
+    with pytest.raises(FlyteValueException):
+        one_output_wf()
