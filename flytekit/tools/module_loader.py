@@ -121,14 +121,21 @@ def _get_entity_to_module(pkgs):
     return entity_to_module_key
 
 
-def load_module_object_for_type(pkgs, t):
-    entity_to_module_key = {}
-    for m in iterate_modules(pkgs):
-        for k in dir(m):
-            o = m.__dict__[k]
-            if isinstance(o, t):
-                entity_to_module_key[o] = (m.__name__, k)
-    return entity_to_module_key
+def load_module_object_for_type(pkgs, t, additional_path=None):
+    def iterate():
+        entity_to_module_key = {}
+        for m in iterate_modules(pkgs):
+            for k in dir(m):
+                o = m.__dict__[k]
+                if isinstance(o, t):
+                    entity_to_module_key[o] = (m.__name__, k)
+        return entity_to_module_key
+
+    if additional_path is not None:
+        with add_sys_path(additional_path):
+            return iterate()
+    else:
+        return iterate()
 
 
 def iterate_registerable_entities_in_order(
