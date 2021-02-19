@@ -6,6 +6,7 @@ import typing
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from flytekit.loggers import logger
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.core import context_manager as _flyte_context
@@ -634,6 +635,8 @@ def create_and_link_node(
 
     typed_interface = flyte_interface.transform_interface_to_typed_interface(interface)
 
+    logger.info("interface.inputs {}".format(interface.inputs))
+    logger.info("kwargs {}".format(kwargs))
     for k in sorted(interface.inputs):
         var = typed_interface.inputs[k]
         if k not in kwargs:

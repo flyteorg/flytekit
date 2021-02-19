@@ -330,6 +330,40 @@ def test_wf1_with_map():
     assert x == (15, "world-7world-8")
 
 
+
+def test_katrina():
+    @task
+    def t1(a: int) -> str:
+        inc = a + 2
+        stringified = str(inc)
+        return stringified
+
+
+    @workflow
+    def my_wf(a: typing.List[int]) -> typing.List[str]:
+        resp = maptask(t1, metadata=TaskMetadata(retries=1))(a=a)
+        return resp
+
+    with context_manager.FlyteContext.current_context().new_serialization_settings(
+        serialization_settings=context_manager.SerializationSettings(
+            project="test_proj",
+            domain="test_domain",
+            version="abc",
+            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+            env={},
+        )
+    ) as ctx:
+        with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
+            my_maptask = maptask(t1, metadata=TaskMetadata(retries=1))
+            dynamic_job_spec = my_maptask.compile_into_workflow(ctx, a=[1, 2, 3, 4, 5])
+            assert len(dynamic_job_spec._nodes) == 1
+            assert len(dynamic_job_spec.tasks) == 1
+            assert dynamic_job_spec.tasks[0].type == "container_array"
+
+    x = my_wf(a=[5, 6])
+    assert x == ["7", "8"]
+
+
 def test_wf1_compile_time_constant_vars():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
