@@ -121,16 +121,6 @@ def _get_entity_to_module(pkgs):
     return entity_to_module_key
 
 
-def load_module_object_for_type(pkgs, t):
-    entity_to_module_key = {}
-    for m in iterate_modules(pkgs):
-        for k in dir(m):
-            o = m.__dict__[k]
-            if isinstance(o, t):
-                entity_to_module_key[o] = (m.__name__, k)
-    return entity_to_module_key
-
-
 def iterate_registerable_entities_in_order(
     pkgs, local_source_root=None, ignore_entities=None, include_entities=None, detect_unreferenced_entities=True,
 ):
@@ -179,3 +169,20 @@ def iterate_registerable_entities_in_order(
                 detect_unreferenced_entities=detect_unreferenced_entities,
             ):
                 yield m, k, o2
+
+
+def find_lhs(entity) -> (str, str):
+    """
+    Given an object, this function looks up a variable it was assigned to, in the module where it was assigned.
+
+    :param entity: This should be the object (most likely PythonInstanceTask) that you're looking for.
+    """
+    module_name = entity.__module__
+    m = importlib.import_module(module_name)
+
+    for k in dir(m):
+        o = m.__dict__[k]
+        if o == entity:
+            return module_name, k
+
+    raise Exception(f"LHS cannot be found for {entity} with module {module_name}")

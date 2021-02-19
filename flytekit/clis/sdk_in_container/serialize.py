@@ -25,7 +25,7 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.workflow import Workflow
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
-from flytekit.tools.module_loader import iterate_registerable_entities_in_order, load_module_object_for_type
+from flytekit.tools.module_loader import iterate_registerable_entities_in_order, find_lhs
 
 # Identifier fields use placeholders for registration-time substitution.
 # Additional fields, such as auth and the raw output data prefix have more complex structures
@@ -101,24 +101,24 @@ def serialize_all(
     python_interpreter: str = None,
 ):
     """
-      This function will write to the folder specified the following protobuf types ::
-          flyteidl.admin.launch_plan_pb2.LaunchPlan
-          flyteidl.admin.workflow_pb2.WorkflowSpec
-          flyteidl.admin.task_pb2.TaskSpec
+    This function will write to the folder specified the following protobuf types ::
+        flyteidl.admin.launch_plan_pb2.LaunchPlan
+        flyteidl.admin.workflow_pb2.WorkflowSpec
+        flyteidl.admin.task_pb2.TaskSpec
 
-      These can be inspected by calling (in the launch plan case) ::
-          flyte-cli parse-proto -f filename.pb -p flyteidl.admin.launch_plan_pb2.LaunchPlan
+    These can be inspected by calling (in the launch plan case) ::
+        flyte-cli parse-proto -f filename.pb -p flyteidl.admin.launch_plan_pb2.LaunchPlan
 
-      See :py:class:`flytekit.models.core.identifier.ResourceType` to match the trailing index in the file name with the
-      entity type.
-      :param pkgs: Dot-delimited Python packages/subpackages to look into for serialization.
-      :param local_source_root: Where to start looking for the code.
-      :param folder: Where to write the output protobuf files
-      :param mode: Regular vs fast
-      :param image: The fully qualified and versioned default image to use
-      :param config_path: Path to the config file, if any, to be used during serialization
-      :param flytekit_virtualenv_root: The full path of the virtual env in the container.
-      """
+    See :py:class:`flytekit.models.core.identifier.ResourceType` to match the trailing index in the file name with the
+    entity type.
+    :param pkgs: Dot-delimited Python packages/subpackages to look into for serialization.
+    :param local_source_root: Where to start looking for the code.
+    :param folder: Where to write the output protobuf files
+    :param mode: Regular vs fast
+    :param image: The fully qualified and versioned default image to use
+    :param config_path: Path to the config file, if any, to be used during serialization
+    :param flytekit_virtualenv_root: The full path of the virtual env in the container.
+    """
 
     # m = module (i.e. python file)
     # k = value of dir(m), type str
@@ -146,6 +146,8 @@ def serialize_all(
         serialization_settings=serialization_settings
     ) as ctx:
         loaded_entities = []
+        # This first for loop is for legacy API entities - SdkTask, SdkWorkflow, etc. The _get_entity_to_module
+        # function that this iterate calls only works on legacy objects
         for m, k, o in iterate_registerable_entities_in_order(pkgs, local_source_root=local_source_root):
             name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
             _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
@@ -154,16 +156,17 @@ def serialize_all(
             )
             loaded_entities.append(o)
 
-        for o, v in load_module_object_for_type(pkgs, PythonInstanceTask).items():
-            m, k = v
-            ctx.serialization_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
-
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
 
         mode = mode if mode else SerializationMode.DEFAULT
         # TODO: Clean up the copy() - it's here because we call get_default_launch_plan, which may create a LaunchPlan
         #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
         for entity in flyte_context.FlyteEntities.entities.copy():
+            # PythonInstanceTasks are special because we need to look up the LHS, a variable to which it's been assigned
+            if isinstance(entity, PythonInstanceTask):
+                m, k = find_lhs(entity)
+                ctx.serialization_settings.add_instance_var(InstanceVar(module=m, name=k, o=entity))
+
             # TODO: Add a reachable check. Since these entities are always added by the constructor, weird things can
             #  happen. If someone creates a workflow inside a workflow, we don't actually want the inner workflow to be
             #  registered. Or do we? Certainly, we don't want inner tasks to be registered because we don't know how
