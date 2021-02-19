@@ -2,7 +2,7 @@ import typing
 
 import pytest
 
-from flytekit.common.exceptions.user import FlyteValidationException
+from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
@@ -48,3 +48,64 @@ def test_workflow_values():
     sdk_wf = get_serializable(serialization_settings, wf)
     assert sdk_wf.metadata_defaults.interruptible
     assert sdk_wf.metadata.on_failure == 1
+
+
+def test_list_output_wf():
+    @task
+    def t1(a: int) -> int:
+        a = a + 5
+        return a
+
+    @workflow
+    def list_output_wf() -> typing.List[int]:
+        v = []
+        for i in range(2):
+            v.append(t1(a=i))
+        return v
+
+    x = list_output_wf()
+    assert x == [5, 6]
+
+
+def test_sub_wf_single_named_tuple():
+    nt = typing.NamedTuple("SingleNamedOutput", named1=int)
+
+    @task
+    def t1(a: int) -> nt:
+        a = a + 2
+        return (a,)
+
+    @workflow
+    def subwf(a: int) -> nt:
+        return t1(a=a)
+
+    @workflow
+    def wf(b: int) -> nt:
+        out = subwf(a=b)
+        return t1(a=out.named1)
+
+    x = wf(b=3)
+    assert x == (7,)
+
+
+def test_unexpected_outputs():
+    @task
+    def t1(a: int) -> int:
+        a = a + 5
+        return a
+
+    @workflow
+    def no_outputs_wf():
+        return t1(a=3)
+
+    # Should raise an exception because the workflow returns something when it shouldn't
+    with pytest.raises(FlyteValueException):
+        no_outputs_wf()
+
+    @workflow
+    def one_output_wf() -> int:  # noqa
+        t1(a=3)
+
+    # Should raise an exception because it doesn't return something when it should
+    with pytest.raises(FlyteValueException):
+        one_output_wf()
