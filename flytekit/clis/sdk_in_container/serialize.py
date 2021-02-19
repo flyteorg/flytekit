@@ -25,7 +25,7 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.workflow import Workflow
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
-from flytekit.tools.module_loader import iterate_registerable_entities_in_order, find_lhs
+from flytekit.tools.module_loader import iterate_registerable_entities_in_order, load_module_object_for_type
 
 # Identifier fields use placeholders for registration-time substitution.
 # Additional fields, such as auth and the raw output data prefix have more complex structures
@@ -156,17 +156,17 @@ def serialize_all(
             )
             loaded_entities.append(o)
 
+        # PythonInstanceTasks will not be picked up by the above, so we need to reiterate
+        for o, v in load_module_object_for_type(pkgs, PythonInstanceTask, additional_path=local_source_root).items():
+            m, k = v
+            ctx.serialization_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
+
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
 
         mode = mode if mode else SerializationMode.DEFAULT
         # TODO: Clean up the copy() - it's here because we call get_default_launch_plan, which may create a LaunchPlan
         #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
         for entity in flyte_context.FlyteEntities.entities.copy():
-            # PythonInstanceTasks are special because we need to look up the LHS, a variable to which it's been assigned
-            if isinstance(entity, PythonInstanceTask):
-                m, k = find_lhs(entity)
-                ctx.serialization_settings.add_instance_var(InstanceVar(module=m, name=k, o=entity))
-
             # TODO: Add a reachable check. Since these entities are always added by the constructor, weird things can
             #  happen. If someone creates a workflow inside a workflow, we don't actually want the inner workflow to be
             #  registered. Or do we? Certainly, we don't want inner tasks to be registered because we don't know how
