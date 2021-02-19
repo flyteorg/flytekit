@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from flytekit.common import constants as _common_constants
-from flytekit.common.exceptions.user import FlyteValidationException
+from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.core.condition import ConditionalSection
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteEntities
 from flytekit.core.interface import (
@@ -227,12 +227,20 @@ class Workflow(object):
         #   def wf():
         #       t1()
         # In the former case we get the task's VoidPromise, in the latter we get None
-        if (
-            isinstance(function_outputs, VoidPromise)
-            or function_outputs is None
-            or len(self.python_interface.outputs) == 0
-        ):
+        if isinstance(function_outputs, VoidPromise) or function_outputs is None:
+            if len(self.python_interface.outputs) != 0:
+                raise FlyteValueException(
+                    function_outputs,
+                    f"{function_outputs} received but interface has {len(self.python_interface.outputs)} outputs.",
+                )
+
             return VoidPromise(self.name)
+
+        # Because we should've already returned in the above check, we just raise an Exception here.
+        if len(self.python_interface.outputs) == 0:
+            raise FlyteValueException(
+                function_outputs, f"{function_outputs} received but should've been VoidPromise or None."
+            )
 
         expected_output_names = list(self.interface.outputs.keys())
         if len(expected_output_names) == 1:
