@@ -80,6 +80,7 @@ setup(
         "dataclasses-json>=0.5.2",
         "natsort>=7.0.1",
         "dirhash>=0.2.1",
+        "docker-image-py>=0.1.10",
     ],
     extras_require=extras_require,
     scripts=[
