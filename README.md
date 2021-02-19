@@ -48,7 +48,7 @@ def my_workflow(x: int, y: int) -> int:
 - [Flyte documentation Hub](http://flytekit.readthedocs.io/)
 
 ### Contributions and Issues
-Please see the [contributor guide](https://flyte.readthedocs.io/projects/flytekit/en/latest/contributing) and file issues against the main [Flyte repo](https://github.com/flyteorg/flyte/issues).
+Please see the [contributor guide](https://docs.flyte.org/projects/flytekit/en/latest/contributing.html) and file issues against the main [Flyte repo](https://github.com/flyteorg/flyte/issues).
 
 ### Plugins:
 Refer to [plugins/README.md](plugins/README.md) for a list of available
