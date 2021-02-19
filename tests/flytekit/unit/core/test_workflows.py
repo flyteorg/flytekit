@@ -88,7 +88,7 @@ def test_sub_wf_single_named_tuple():
     assert x == (7,)
 
 
-def test_fdsjaf():
+def test_unexpected_outputs():
     @task
     def t1(a: int) -> int:
         a = a + 5
