@@ -6,9 +6,11 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = ["flytekit>=0.16.0b6,<1.0.0", "pandera>=0.6.1"]
 
+__version__ = "develop"
+
 setup(
     name=microlib_name,
-    version="0.1.0",
+    version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
     description="Pandera plugin for flytekit",
