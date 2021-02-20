@@ -350,8 +350,8 @@ _filter_option = _click.option(
     "-f",
     "--filter",
     multiple=True,
-    help="""Filter to be applied.  Multiple filters can be applied and they will be ANDed together.
-    Filters may be supllied as strings such as 'eq(name, workflow_name)'. Additionnal documentation on filter
+    help="""Filter to be applied.  Multiple filters can be applied and they will be ANDed together. 
+    Filters may be supplied as strings such as 'eq(name, workflow_name)'. Additional documentation on filter
     syntax can be found here: https://docs.flyte.org/en/latest/dive_deep/admin_service.html#adding-request-filters""",
 )
 _state_choice = _click.option(
