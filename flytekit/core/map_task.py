@@ -40,6 +40,7 @@ class MapPythonTask(PythonTask):
     def get_command(self, settings: SerializationSettings) -> List[str]:
         return [
             "pyflyte-map-execute",
+            "--task-module",
             self._run_task._task_function.__module__,
             "--task-name",
             f"{self._run_task._task_function.__name__}",
