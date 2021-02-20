@@ -19,11 +19,7 @@ from flytekit.models.types import OutputReference
 
 class MapPythonTask(PythonTask):
     """
-    TODO We might need a special entrypoint to start execution of this task type as there is possibly no instance of this
-    type and it needs to be dynamically generated at runtime. We can easily generate it by passing it the actual task
-    that is to be generated.
-
-    To do this we might have to give up on supporting lambda functions initially
+    TODO: support lambda functions
     """
 
     def __init__(self, tk: PythonFunctionTask, metadata: Optional[TaskMetadata] = None, concurrency=None, **kwargs):
