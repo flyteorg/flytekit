@@ -46,7 +46,7 @@ class MapPythonTask(PythonTask):
             "pyflyte-map-execute",
             self._run_task._task_function.__module__,
             "--task-name",
-            f"mapper_{self._run_task._task_function.__name__}",
+            f"{self._run_task._task_function.__name__}",
             "--inputs",
             "{{.input}}",
             "--output-prefix",
