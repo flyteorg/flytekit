@@ -1,19 +1,20 @@
 from setuptools import setup
 
-PLUGIN_NAME = "pandera"
+PLUGIN_NAME = "awssagemaker"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.16.0b6,<1.0.0", "pandera>=0.6.1"]
+plugin_requires = ["flytekit>=0.16.0b0,<1.0.0", "sagemaker-training>=3.6.2,<4.0.0"]
 
 __version__ = "develop"
 
+# TODO: move sagemaker install script here.
 setup(
     name=microlib_name,
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="Pandera plugin for flytekit",
+    description="AWS Plugins for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,

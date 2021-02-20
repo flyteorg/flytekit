@@ -1,10 +1,10 @@
 from setuptools import setup
 
-PLUGIN_NAME = "pandera"
+PLUGIN_NAME = "spark"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.16.0b6,<1.0.0", "pandera>=0.6.1"]
+plugin_requires = ["flytekit>=0.16.0b0,<1.0.0", "pyspark>=3.0.0"]
 
 __version__ = "develop"
 
@@ -13,7 +13,7 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="Pandera plugin for flytekit",
+    description="Spark 3 plugin for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
@@ -31,4 +31,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
+    scripts=["scripts/flytekit_install_spark3.sh"],
 )
