@@ -74,7 +74,7 @@ class MapPythonTask(PythonTask):
                 return self._raw_execute(**kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            return self.compile_into_workflow(ctx, self.run_task, **kwargs)
+            return self.compile_into_workflow(ctx, **kwargs)
 
     def compile_into_workflow(self, ctx: FlyteContext, **kwargs) -> Union[DynamicJobSpec, LiteralMap]:
 
