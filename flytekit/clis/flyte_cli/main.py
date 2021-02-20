@@ -350,7 +350,7 @@ _filter_option = _click.option(
     "-f",
     "--filter",
     multiple=True,
-    help="Filter to be applied.  Multiple filters can be applied and they will be ANDed together.",
+    help="Filter to be applied.  Multiple filters can be applied and they will be ANDed together. Filtery may be supllied as strings such as test",
 )
 _state_choice = _click.option(
     "--state",
