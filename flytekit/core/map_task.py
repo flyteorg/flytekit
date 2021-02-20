@@ -1,22 +1,20 @@
 import inspect
-from typing import Any, Optional, Callable, Union
+from typing import Any, Callable, List, Optional, Union
 
-from flytekit.core.python_function_task import PythonFunctionTask
-from flytekit.models.types import OutputReference
-
-from flytekit.core.condition import ConditionalSection
-from flytekit.core.promise import binding_from_python_std, Promise
-from flytekit.models.array_job import ArrayJob
-
-from flytekit.core.workflow import WorkflowMetadata, WorkflowFailurePolicy, WorkflowMetadataDefaults, Workflow
-from flytekit.models.dynamic_job import DynamicJobSpec
-
-from flytekit.models.literals import LiteralMap, BindingData, Binding, BindingDataCollection
-
+from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask, TaskMetadata
-from flytekit.core.context_manager import ExecutionState, FlyteContext
+from flytekit.core.condition import ConditionalSection
+from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings
 from flytekit.core.interface import transform_interface_to_list_interface, transform_signature_to_interface
+from flytekit.core.promise import Promise, binding_from_python_std
+from flytekit.core.python_function_task import PythonFunctionTask, get_registerable_container_image
+from flytekit.core.workflow import Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults
 from flytekit.loggers import logger
+from flytekit.models.array_job import ArrayJob
+from flytekit.models.dynamic_job import DynamicJobSpec
+from flytekit.models.literals import Binding, BindingData, BindingDataCollection, LiteralMap
+from flytekit.models.task import Container
+from flytekit.models.types import OutputReference
 
 
 class MapPythonTask(PythonTask):
@@ -41,6 +39,30 @@ class MapPythonTask(PythonTask):
             task_type="map_task",
             task_config=None,
             **kwargs,
+        )
+
+    def get_command(self, settings: SerializationSettings) -> List[str]:
+        return [
+            "pyflyte-map-execute",
+            self._run_task._task_function.__module__,
+            "--task-name",
+            f"mapper_{self._run_task._task_function.__name__}",
+            "--inputs",
+            "{{.input}}",
+            "--output-prefix",
+            "{{.outputPrefix}}",
+            "--raw-output-data-prefix",
+            "{{.rawOutputDataPrefix}}",
+        ]
+
+    def get_container(self, settings: SerializationSettings) -> Container:
+        env = {**settings.env, **self.environment} if self.environment else settings.env
+        return _get_container_definition(
+            image=get_registerable_container_image(None, settings.image_config),
+            command=[],
+            args=self.get_command(settings=settings),
+            data_loading_config=None,
+            environment=env,
         )
 
     @property
@@ -163,8 +185,8 @@ class MapPythonTask(PythonTask):
         return tuple(outputs)
 
 
-def maptask(tk: PythonTask, concurrency="auto", metadata=None):
+def maptask(tk: PythonTask, concurrency=None, metadata=None):
     if not isinstance(tk, PythonTask):
         raise ValueError(f"Only Flyte Task types are supported in maptask currently, received {type(tk)}")
     # We could register in a global singleton here?
-    return MapPythonTask(tk, metadata=metadata)
+    return MapPythonTask(tk, concurrency=concurrency, metadata=metadata)

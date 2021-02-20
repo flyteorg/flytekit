@@ -7,7 +7,6 @@ from enum import Enum as _Enum
 from typing import List
 
 import click
-from flytekit.models.core.identifier import ResourceType
 
 import flytekit as _flytekit
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
@@ -23,6 +22,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import InstanceVar
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.workflow import Workflow
+from flytekit.models.core.identifier import ResourceType
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order

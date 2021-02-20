@@ -6,7 +6,6 @@ import typing
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from flytekit.loggers import logger
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.core import context_manager as _flyte_context
@@ -16,6 +15,7 @@ from flytekit.core.context_manager import FlyteContext
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine
+from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import literals as _literals_models
