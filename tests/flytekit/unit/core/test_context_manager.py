@@ -37,3 +37,8 @@ def test_look_up_image_info():
     assert img.name == "x"
     assert img.tag == "latest"
     assert img.fqn == "docker.io/xyz"
+
+    img = look_up_image_info(name="x", tag="localhost:5000/xyz:latest", optional_tag=False)
+    assert img.name == "x"
+    assert img.tag == "latest"
+    assert img.fqn == "localhost:5000/xyz"
