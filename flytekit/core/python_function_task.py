@@ -95,14 +95,13 @@ class PythonAutoContainerTask(PythonTask[T], ABC):
         :param Resources limits: custom resource limit settings.
         """
         super().__init__(
-            task_type=task_type, name=name, task_config=task_config, **kwargs,
+            task_type=task_type, name=name, task_config=task_config, environment=environment, **kwargs,
         )
         self._container_image = container_image
         # TODO(katrogan): Implement resource overrides
         self._resources = ResourceSpec(
             requests=requests if requests else Resources(), limits=limits if limits else Resources()
         )
-        self._environment = environment
 
     @property
     def container_image(self) -> Optional[str]:
