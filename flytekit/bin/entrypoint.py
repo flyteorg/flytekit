@@ -353,8 +353,7 @@ def map_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_outp
 
     # TODO delete me
     _click.echo(f"Executing map task with args {task_module}, {task_name}, {inputs}, {output_prefix}, {raw_output_data_prefix}")
-    fully_realized_inputs_path = f"{inputs}/inputs.pb"
-    _execute_map_task(task_module, task_name, fully_realized_inputs_path, output_prefix, raw_output_data_prefix, max_concurrency, test)
+    _execute_map_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, max_concurrency, test)
 
 
 if __name__ == "__main__":
