@@ -289,8 +289,13 @@ class PythonTask(Task, Generic[T]):
     """
 
     def __init__(
-            self, task_type: str, name: str, task_config: T, interface: Optional[Interface] = None, environment=None,
-            **kwargs,
+        self,
+        task_type: str,
+        name: str,
+        task_config: T,
+        interface: Optional[Interface] = None,
+        environment=None,
+        **kwargs,
     ):
         super().__init__(
             task_type=task_type, name=name, interface=transform_interface_to_typed_interface(interface), **kwargs
