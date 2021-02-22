@@ -1,14 +1,10 @@
-import inspect
-from typing import Any, Callable, List, Optional, Union
+from typing import Any,  List, Optional, Union
 
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask, TaskMetadata
-from flytekit.core.condition import ConditionalSection
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings
-from flytekit.core.interface import transform_interface_to_list_interface, transform_signature_to_interface
-from flytekit.core.promise import Promise, binding_from_python_std
+from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, get_registerable_container_image
-from flytekit.core.workflow import Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults
 from flytekit.loggers import logger
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.dynamic_job import DynamicJobSpec
