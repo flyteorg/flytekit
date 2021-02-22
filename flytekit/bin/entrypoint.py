@@ -314,6 +314,9 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
     if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
         raw_output_data_prefix = None
 
+    # TODO delete me
+    _click.echo(
+        f"Executing task with args {task_module}, {task_name}, {inputs}, {output_prefix}, {raw_output_data_prefix}")
     _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
 
 
@@ -351,8 +354,6 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 def map_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, max_concurrency, test):
     _click.echo(_utils.get_version_message())
 
-    # TODO delete me
-    _click.echo(f"Executing map task with args {task_module}, {task_name}, {inputs}, {output_prefix}, {raw_output_data_prefix}")
     _execute_map_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, max_concurrency, test)
 
 
