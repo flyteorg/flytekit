@@ -29,6 +29,7 @@ class MapPythonTask(PythonTask):
             interface=collection_interface,
             metadata=metadata,
             task_type="map_task",
+            # task_type="container_array",
             task_config=None,
             **kwargs,
         )
@@ -123,8 +124,9 @@ class MapPythonTask(PythonTask):
 
         sdk_node = get_serializable(ctx.serialization_settings, sdk_workflow_node)
 
+        # TODO: calculate failure ratio
         array_job = ArrayJob(
-            parallelism=self._max_concurrency if self._max_concurrency else 0, size=1, min_successes=1,
+            parallelism=self._max_concurrency if self._max_concurrency else 0, size=len(kwargs[any_key]), min_successes=len(kwargs[any_key]),
         )
         sdk_task_node = sdk_node.task_node
         sdk_task_node.sdk_task.assign_custom_and_return(array_job.to_dict()).assign_type_and_return("container_array")
