@@ -11,7 +11,7 @@ from flytekit.core.condition import BranchNode
 from flytekit.core.context_manager import SerializationSettings
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.node import Node
-from flytekit.core.python_function_task import PythonAutoContainerTask
+from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity
 from flytekit.core.task import ReferenceTask
 from flytekit.core.workflow import ReferenceWorkflow, Workflow, WorkflowFailurePolicy, WorkflowMetadata

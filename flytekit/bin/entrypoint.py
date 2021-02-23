@@ -4,6 +4,7 @@ import logging as _logging
 import os as _os
 import pathlib
 import random as _random
+from typing import List
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -199,7 +200,7 @@ def _handle_annotated_task(task_def: PythonTask, inputs: str, output_prefix: str
 
 
 @_scopes.system_entry_point
-def _execute_task(task_module, task_name, loader_args, inputs, output_prefix, raw_output_data_prefix, test):
+def _old_execute_task(task_module, task_name, loader_args, inputs, output_prefix, raw_output_data_prefix, test):
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with _utils.AutoDeletingTempDir("input_dir") as input_dir:
             # Load user code
@@ -251,6 +252,18 @@ def _execute_task(task_module, task_name, loader_args, inputs, output_prefix, ra
                 )
 
 
+@_scopes.system_entry_point
+def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver: TaskResolverMixin, loader_args: List[str]):
+    with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
+        with _utils.AutoDeletingTempDir("input_dir") as input_dir:
+            # Load task object
+            _task_def = resolver.load_task(loader_args=loader_args)
+            if test:
+                print(f"Loader type found - {loader_args}/{task_def.name()} - task {_task_def.name}")
+                return
+            _handle_annotated_task(_task_def, inputs, output_prefix, raw_output_data_prefix)
+
+
 @_click.group()
 def _pass_through():
     pass
@@ -264,20 +277,19 @@ _raw_output_date_prefix_option = _click.option("--raw-output-data-prefix", requi
 _test = _click.option("--test", is_flag=True)
 
 
-@_pass_through.command("pyflyte-execute")
-@_click.option("--task-module", required=True)
-@_click.option("--task-name", required=True)
-@_click.option(
-    "--loader-arg",
-    required=False,
-    multiple=True,
-    help="Special arguments in the form str that will be passed to the loader",
-)
+@_pass_through.command("pyflyte-execute", ignore_unknown_options=True)
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--test", is_flag=True)
-def execute_task_cmd(task_module, task_name, loader_arg, inputs, output_prefix, raw_output_data_prefix, test):
+@_click.option(
+    "--loader-args",
+    required=False,
+    type=_click.UNPROCESSED,
+    nargs=-1,
+    help="Special arguments in the form str that will be passed to the loader",
+)
+def execute_task_cmd(inputs, output_prefix, raw_output_data_prefix, test, loader_args):
     _click.echo(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
     # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
@@ -285,7 +297,22 @@ def execute_task_cmd(task_module, task_name, loader_arg, inputs, output_prefix, 
     if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
         raw_output_data_prefix = None
 
-    _execute_task(task_module, task_name, loader_arg, inputs, output_prefix, raw_output_data_prefix, test)
+    # loader args should be something like:
+    #     flytekit.core.python_auto_container.DefaultTaskResolver task_module app.workflows task_name task_1
+    if len(loader_args) < 1:
+        raise Exception("nope")
+
+    resolver = loader_args[0]  # the resolver should always be the first thing, see example above.
+    resolver = resolver.split(".")
+    # TODO: Handle corner cases, like where the first part is [] maybe
+    resolver_mod = resolver[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
+    resolver_class = resolver[-1]  # e.g. 'DefaultTaskResolver'
+
+    resolver_mod = _importlib.import_module('.'.join(resolver_mod))
+    resolver_class = getattr(resolver_mod, resolver_class)
+    resolver = resolver_class()
+
+    _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, loader_args[1:])
 
 
 @_pass_through.command("pyflyte-fast-execute")

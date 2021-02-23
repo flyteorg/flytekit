@@ -153,44 +153,6 @@ class SerializationSettings(object):
         raise KeyError(f"Instance Variable not found for object id {o}")
 
 
-class TaskResolverMixin(object):
-    """
-    A TaskResolver that can be used to load the task itself from the actual argument that is captured.
-    The argument itself should be discoverable through the class loading framework.
-
-    .. note::
-
-        Task Resolver can only be used for cases in which the Task can be fully loaded using constant module level variables
-        and/or can be returned using the loader-args. Loader args are simple strings
-
-    """
-
-    @abstractmethod
-    def name(self) -> str:
-        pass
-
-    @abstractmethod
-    def load_task(self, loader_args: List[str]) -> "PythonInstanceTask":
-        """
-        Given the set of identifier keys, should return one Python Task or raise an error if not found
-        """
-        pass
-
-    @abstractmethod
-    def loader_args(self, var: InstanceVar, for_task: "PythonInstanceTask") -> List[str]:
-        """
-        Return a list of strings that can help identify the parameter Task
-        """
-        pass
-
-    @abstractmethod
-    def get_all_tasks(self) -> List["PythonInstanceTask"]:
-        """
-         Future proof method. Just making it easy to access all tasks (Not required today as we auto register them)
-        """
-        pass
-
-
 class CompilationState(object):
     def __init__(self, prefix: str, task_resolver: Optional[TaskResolverMixin] = None):
         """

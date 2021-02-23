@@ -9,7 +9,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteEntities, TaskResolverMixin, InstanceVar
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteEntities, InstanceVar
+from flytekit.core.python_auto_container import TaskResolverMixin
+
 from flytekit.core.interface import (
     Interface,
     transform_inputs_to_parameters,
