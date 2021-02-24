@@ -28,8 +28,8 @@ class MapPythonTask(PythonTask):
             name=name,
             interface=collection_interface,
             metadata=metadata,
-            task_type="map_task",
-            # task_type="container_array",
+            # task_type="map_task",
+            task_type="dynamic-task",
             task_config=None,
             **kwargs,
         )
