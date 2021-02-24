@@ -4,12 +4,6 @@ Dynamic Workflows
 Dynamic workflows are one of the powerful aspects of Flyte. Please take a look at the :py:func:`flytekit.dynamic` documentation first to get started.
 
 
-Declaring a dynamic workflow
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. autoclass:: flytekit.core.dynamic_workflow_task.DynamicWorkflowTask
-
-
 Caveats when using a dynamic workflow
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Because of the dynamic nature of the workflow generated, it can easily be abused. Keep in mind that the workflow
