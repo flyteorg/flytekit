@@ -9,6 +9,7 @@ from flytekit.core.condition import conditional
 from flytekit.core.context_manager import Image, ImageConfig, get_image_config
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
+from flytekit.models.types import SimpleType
 
 
 def test_serialization():
@@ -289,6 +290,6 @@ def test_serialization_types():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
     wf = get_serializable(serialization_settings, compute_square_wf)
-    print(wf)
+    assert wf.interface.outputs["o0"].type.collection_type.map_value_type.simple == SimpleType.INTEGER
     ser = get_serializable(serialization_settings, squared)
-    print(ser)
+    assert ser.interface.outputs["o0"].type.collection_type.map_value_type.simple == SimpleType.INTEGER
