@@ -6,6 +6,7 @@ from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, get_registerable_container_image
+from flytekit.core.workflow import Workflow, workflow
 from flytekit.loggers import logger
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.dynamic_job import DynamicJobSpec
@@ -13,6 +14,53 @@ from flytekit.models.literals import Binding, BindingData, BindingDataCollection
 from flytekit.models.task import Container
 from flytekit.models.types import OutputReference
 
+
+class ArrayTask(PythonTask):
+    def __init__(
+            self,
+            tk: PythonFunctionTask,
+            metadata: Optional[TaskMetadata] = None,
+            concurrency=None,
+            min_success_ratio=None,
+            **kwargs,
+    ):
+        self._python_task = tk
+        self._concurrency = concurrency
+        self._min_success_ratio = min_success_ratio
+        name = f"{tk._task_function.__module__}.array_{tk._task_function.__name__}"
+        super().__init__(
+            name=name,
+            interface=tk.python_interface,
+            metadata=metadata,
+            task_type="container_array",
+            task_config=None,
+            **kwargs,
+        )
+
+    def get_container(self, settings: SerializationSettings) -> Container:
+        env = {**settings.env, **self.environment} if self.environment else settings.env
+        return _get_container_definition(
+            image=get_registerable_container_image(None, settings.image_config),
+            command=[],
+            args=self.get_command(settings=settings),
+            data_loading_config=None,
+            environment=env,
+        )
+
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+        array_job = ArrayJob(
+            parallelism=self._max_concurrency if self._max_concurrency else 0,
+            min_success_ratio=self._min_success_ratio if self._min_success_ratio is not None else 1.0,
+        )
+        return array_job
+
+
+def create_map_workflow(collection_interface):
+
+    def function_template(collection_interface):
+        pass
+
+    return function_template
 
 class MapPythonTask(PythonTask):
     """
@@ -42,6 +90,14 @@ class MapPythonTask(PythonTask):
             **kwargs,
         )
 
+        worfklow_fn  = workflow(_workflow_function=create_map_workflow(collection_interface))
+        workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
+
+        workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
+
+        workflow_instance = Workflow(fn, metadata=workflow_metadata, default_metadata=workflow_metadata_defaults)
+
+
     def get_command(self, settings: SerializationSettings) -> List[str]:
         return [
             "pyflyte-map-execute",
@@ -67,13 +123,32 @@ class MapPythonTask(PythonTask):
             environment=env,
         )
 
-    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+    def compile(self, ctx: FlyteContext, *args, **kwargs):
+        with ctx.new_compilation_context(prefix="map") as comp_ctx:
+            # Let's create a workflow with one node that runs the container array task
+
+
+
+            # TODO: Resolve circular import
+            from flytekit.common.translator import get_serializable
+
+            # Let's create a workflow, with one node that runs a container array task
+            compile_once_inputs = {k: v[0] for (k, v) in kwargs.items()}
+            self.run_task.compile(comp_ctx, **compile_once_inputs)
+            workflow_nodes = comp_ctx.compilation_state.nodes
+            if len(workflow_nodes) != 1:
+                logger.error(f"Expected one node when compiling map task, got f{len(workflow_nodes)}")
+
+            sdk_workflow_node = workflow_nodes[0]
+
+        sdk_node = get_serializable(ctx.serialization_settings, sdk_workflow_node)
+
         array_job = ArrayJob(
             parallelism=self._max_concurrency if self._max_concurrency else 0,
             min_success_ratio=self._min_success_ratio if self._min_success_ratio is not None else 1.0,
         )
-
-        return array_job.to_dict()
+        sdk_task_node = sdk_node.task_node
+        sdk_task_node.sdk_task.assign_custom_and_return(array_job.to_dict()).assign_type_and_return("container_array")
 
     @property
     def run_task(self) -> PythonTask:
