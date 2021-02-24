@@ -4,6 +4,7 @@ import typing
 from datetime import timedelta
 
 import pytest
+from flyteidl.core import errors_pb2
 
 from flytekit import kwtypes
 from flytekit.core.context_manager import FlyteContext
@@ -178,3 +179,16 @@ def test_list_transformer():
     ctx = FlyteContext.current_context()
     xx = TypeEngine.to_python_value(ctx, lit, typing.List[int])
     assert xx == [3, 4]
+
+
+def test_protos():
+    ctx = FlyteContext.current_context()
+
+    pb = errors_pb2.ContainerError(code="code", message="message")
+    lt = TypeEngine.to_literal_type(errors_pb2.ContainerError)
+    assert lt.simple == SimpleType.STRUCT
+    assert lt.metadata["pb_type"] == "flyteidl.core.errors_pb2.ContainerError"
+
+    lit = TypeEngine.to_literal(ctx, pb, errors_pb2.ContainerError, lt)
+    new_python_val = TypeEngine.to_python_value(ctx, lit, errors_pb2.ContainerError)
+    assert new_python_val == pb
