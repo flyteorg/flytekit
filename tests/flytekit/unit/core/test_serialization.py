@@ -266,3 +266,29 @@ def test_serialization_images():
 
     t5_ser = get_serializable(rs, t5)
     assert t5_ser.container.image == "docker.io/org/myimage:version"
+
+
+def test_serialization_types():
+    @task(cache=True, cache_version="1.0.0")
+    def squared(value: int) -> typing.List[typing.Dict[str, int]]:
+        return [
+            {"squared_value": value ** 2},
+        ]
+
+    @workflow
+    def compute_square_wf(input_integer: int) -> typing.List[typing.Dict[str, int]]:
+        compute_square_result = squared(value=input_integer)
+        return compute_square_result
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    serialization_settings = context_manager.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+    wf = get_serializable(serialization_settings, compute_square_wf)
+    print(wf)
+    ser = get_serializable(serialization_settings, squared)
+    print(ser)
