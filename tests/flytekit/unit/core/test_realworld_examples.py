@@ -3,6 +3,7 @@ from collections import OrderedDict
 
 import pandas as pd
 
+from flytekit import Resources
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.types.file.file import FlyteFile
@@ -76,7 +77,7 @@ def test_diabetes():
 
     # load data
     # Example file: https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv
-    @task(cache_version="1.0", cache=True, memory_limit="200Mi")
+    @task(cache_version="1.0", cache=True, limits=Resources(mem="200Mi"))
     def split_traintest_dataset(
         dataset: FlyteFile[typing.TypeVar("csv")], seed: int, test_split_ratio: float
     ) -> (
@@ -105,7 +106,7 @@ def test_diabetes():
 
     nt = typing.NamedTuple("Outputs", model=FlyteFile[MODELSER_JOBLIB])
 
-    @task(cache_version="1.0", cache=True, memory_limit="200Mi")
+    @task(cache_version="1.0", cache=True, limits=Resources(mem="200Mi"))
     def fit(x: FlyteSchema[FEATURE_COLUMNS], y: FlyteSchema[CLASSES_COLUMNS], hyperparams: dict) -> nt:
         """
         This function takes the given input features and their corresponding classes to train a XGBClassifier.
@@ -126,7 +127,7 @@ def test_diabetes():
             f.write("Some binary data")
         return nt(model=fname)
 
-    @task(cache_version="1.0", cache=True, memory_limit="200Mi")
+    @task(cache_version="1.0", cache=True, limits=Resources(mem="200Mi"))
     def predict(x: FlyteSchema[FEATURE_COLUMNS], model_ser: FlyteFile[MODELSER_JOBLIB]) -> FlyteSchema[CLASSES_COLUMNS]:
         """
         Given a any trained model, serialized using joblib (this method can be shared!) and features, this method returns
@@ -140,7 +141,7 @@ def test_diabetes():
         y_pred_df.round(0)
         return y_pred_df
 
-    @task(cache_version="1.0", cache=True, memory_limit="200Mi")
+    @task(cache_version="1.0", cache=True, limits=Resources(mem="200Mi"))
     def score(predictions: FlyteSchema[CLASSES_COLUMNS], y: FlyteSchema[CLASSES_COLUMNS]) -> float:
         """
         Compares the predictions with the actuals and returns the accuracy score.
