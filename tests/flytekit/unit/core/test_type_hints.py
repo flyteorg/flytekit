@@ -24,7 +24,7 @@ from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.task import Resources as _resource_models
-from flytekit.models.types import LiteralType
+from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 
 
@@ -984,3 +984,56 @@ def test_wf_explicitly_returning_empty_task():
         return t1()  # This forces the wf _local_execute to handle VoidPromises
 
     assert my_subwf() is None
+
+
+def test_simple_map_output():
+    @task
+    def squared(value: int) -> typing.Dict[str, int]:
+        return {"squared_value": value ** 2}
+
+    @workflow
+    def compute_square_wf(input_integer: int) -> typing.Dict[str, int]:
+        return squared(value=input_integer)
+
+    assert compute_square_wf(input_integer=3) == {"squared_value": 9}
+
+    serialization_settings = context_manager.SerializationSettings(
+        project="proj",
+        domain="dom",
+        version="123",
+        image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
+        env={},
+    )
+    srz_t = get_serializable(serialization_settings, squared)
+    assert srz_t.interface.outputs["o0"].type.map_value_type.simple == SimpleType.INTEGER
+
+
+def test_list_map_output():
+    @task
+    def squared(value: int) -> typing.List[typing.Dict[str, int]]:
+        return [{"squared_value": value ** 2}]
+
+    @task
+    def concat(
+        a: typing.List[typing.Dict[str, int]], b: typing.List[typing.Dict[str, int]]
+    ) -> typing.List[typing.Dict[str, int]]:
+        a.extend(b)
+        return a
+
+    @workflow
+    def compute_square_wf(input_integer: int) -> typing.List[typing.Dict[str, int]]:
+        a = squared(value=input_integer)
+        return concat(a=a, b=[{"k1": 1}, {"k2": 2}])
+
+    res = compute_square_wf(input_integer=3)
+    assert res == [{"squared_value": 9}, {"k1": 1}, {"k2": 2}]
+
+    serialization_settings = context_manager.SerializationSettings(
+        project="proj",
+        domain="dom",
+        version="123",
+        image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
+        env={},
+    )
+    srz_t = get_serializable(serialization_settings, squared)
+    assert srz_t.interface.outputs["o0"].type.collection_type.map_value_type.simple == SimpleType.INTEGER
