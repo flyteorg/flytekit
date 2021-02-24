@@ -1,10 +1,5 @@
 from flyteidl.core import errors_pb2
 
-from flyteidl.core import errors_pb2
-
-from flytekit.common.translator import get_serializable
-from flytekit.core import context_manager
-from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 
