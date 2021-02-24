@@ -330,6 +330,19 @@ def test_wf1_with_map():
     assert x == (15, "world-7world-8")
 
 
+def test_katrina2():
+    @task
+    def t1(a: int) -> str:
+        inc = a + 2
+        stringified = str(inc)
+        return stringified
+
+    mappy = maptask(t1, metadata=TaskMetadata(retries=1))
+    with context_manager.FlyteContext.current_context() as ctx:
+        resp = mappy._execute_map_task(ctx, a=[1, 2, 3])
+    assert resp == 2
+
+
 def test_katrina():
     @task
     def t1(a: int) -> str:

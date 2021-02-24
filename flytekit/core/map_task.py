@@ -1,4 +1,5 @@
-from typing import Any, List, Optional, Union, Dict
+import os
+from typing import Any, Dict, List, Optional, Union
 
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask, TaskMetadata
@@ -18,8 +19,14 @@ class MapPythonTask(PythonTask):
     TODO: support lambda functions
     """
 
-    def __init__(self, tk: PythonFunctionTask, metadata: Optional[TaskMetadata] = None, concurrency=None,
-                 min_success_ratio =None, **kwargs):
+    def __init__(
+        self,
+        tk: PythonFunctionTask,
+        metadata: Optional[TaskMetadata] = None,
+        concurrency=None,
+        min_success_ratio=None,
+        **kwargs,
+    ):
         collection_interface = transform_interface_to_list_interface(tk.python_interface)
         name = f"{tk._task_function.__module__}.mapper_{tk._task_function.__name__}"
         self._run_task = tk
@@ -60,7 +67,6 @@ class MapPythonTask(PythonTask):
             environment=env,
         )
 
-
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         array_job = ArrayJob(
             parallelism=self._max_concurrency if self._max_concurrency else 0,
@@ -85,7 +91,9 @@ class MapPythonTask(PythonTask):
             return self._execute_map_task(ctx, **kwargs)
 
     def _execute_map_task(self, ctx: FlyteContext, **kwargs) -> Any:
-        task_index = 1 # get from env
+        task_index = os.getenv("FLYTE_K8S_ARRAY_INDEX")
+        if task_index is None:
+            task_index = 1  # TODO uhhh nope.
         map_task_inputs = {}
         for k in self.interface.inputs.keys():
             map_task_inputs[k] = kwargs[k][task_index]
@@ -144,7 +152,9 @@ class MapPythonTask(PythonTask):
 
         # TODO: calculate failure ratio
         array_job = ArrayJob(
-            parallelism=self._max_concurrency if self._max_concurrency else 0, size=len(kwargs[any_key]), min_successes=len(kwargs[any_key]),
+            parallelism=self._max_concurrency if self._max_concurrency else 0,
+            size=len(kwargs[any_key]),
+            min_successes=len(kwargs[any_key]),
         )
         sdk_task_node = sdk_node.task_node
         sdk_task_node.sdk_task.assign_custom_and_return(array_job.to_dict()).assign_type_and_return("container_array")

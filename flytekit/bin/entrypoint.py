@@ -316,7 +316,8 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
 
     # TODO delete me
     _click.echo(
-        f"Executing task with args {task_module}, {task_name}, {inputs}, {output_prefix}, {raw_output_data_prefix}")
+        f"Executing task with args {task_module}, {task_name}, {inputs}, {output_prefix}, {raw_output_data_prefix}"
+    )
     _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
 
 
