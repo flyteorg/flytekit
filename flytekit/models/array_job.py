@@ -7,7 +7,7 @@ from flytekit.models import common as _common
 
 
 class ArrayJob(_common.FlyteCustomIdlEntity):
-    def __init__(self, parallelism, size, min_successes):
+    def __init__(self, parallelism, size, min_successes, min_success_ratio):
         """
         Initializes a new ArrayJob.
         :param int parallelism: Defines the minimum number of instances to bring up concurrently at any given point.
@@ -19,6 +19,7 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
         self._parallelism = parallelism
         self._size = size
         self._min_successes = min_successes
+        self._min_success_ratio = min_success_ratio
 
     @property
     def parallelism(self):
@@ -52,6 +53,10 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
         :rtype: int
         """
         return self._min_successes
+
+    @property
+    def min_success_ratio(self):
+        return self._min_success_ratio
 
     @min_successes.setter
     def min_successes(self, value):

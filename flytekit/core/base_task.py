@@ -326,6 +326,9 @@ class PythonTask(Task, Generic[T]):
             **kwargs,
         )
 
+    def _inputs_interface(self) -> Dict[str, Type]:
+        return self.python_interface.inputs
+
     def dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
     ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
@@ -350,7 +353,7 @@ class PythonTask(Task, Generic[T]):
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
-            native_inputs = TypeEngine.literal_map_to_kwargs(exec_ctx, input_literal_map, self.python_interface.inputs)
+            native_inputs = TypeEngine.literal_map_to_kwargs(exec_ctx, input_literal_map, self._inputs_interface())
 
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc

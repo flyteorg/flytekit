@@ -57,7 +57,6 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl>=0.18.11,<1.0.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=2.0.0,<4.0.0",
@@ -81,6 +80,9 @@ setup(
         "dataclasses-json>=0.5.2",
         "natsort>=7.0.1",
         "dirhash>=0.2.1",
+    ],
+    dependency_links=[
+        "https://github.com/lyft/flyteidl/tarball/map-task-changes#egg=73cf22d60fd597643faa68c4ef8a3c6382011895"
     ],
     extras_require=extras_require,
     scripts=[

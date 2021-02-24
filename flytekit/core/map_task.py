@@ -1,4 +1,4 @@
-from typing import Any,  List, Optional, Union
+from typing import Any, List, Optional, Union, Dict
 
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask, TaskMetadata
@@ -18,18 +18,19 @@ class MapPythonTask(PythonTask):
     TODO: support lambda functions
     """
 
-    def __init__(self, tk: PythonFunctionTask, metadata: Optional[TaskMetadata] = None, concurrency=None, **kwargs):
+    def __init__(self, tk: PythonFunctionTask, metadata: Optional[TaskMetadata] = None, concurrency=None,
+                 min_success_ratio =None, **kwargs):
         collection_interface = transform_interface_to_list_interface(tk.python_interface)
         name = f"{tk._task_function.__module__}.mapper_{tk._task_function.__name__}"
         self._run_task = tk
         self._max_concurrency = concurrency
+        self._min_success_ratio = min_success_ratio
         self._array_task_interface = tk.python_interface
         super().__init__(
             name=name,
             interface=collection_interface,
             metadata=metadata,
-            # task_type="map_task",
-            task_type="dynamic-task",
+            task_type="container_array",
             task_config=None,
             **kwargs,
         )
@@ -59,6 +60,15 @@ class MapPythonTask(PythonTask):
             environment=env,
         )
 
+
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+        array_job = ArrayJob(
+            parallelism=self._max_concurrency if self._max_concurrency else 0,
+            min_success_ratio=self._min_success_ratio if self._min_success_ratio is not None else 1.0,
+        )
+
+        return array_job.to_dict()
+
     @property
     def run_task(self) -> PythonTask:
         return self._run_task
@@ -71,7 +81,15 @@ class MapPythonTask(PythonTask):
                 return self._raw_execute(**kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            return self.compile_into_workflow(ctx, **kwargs)
+            # return self.compile_into_workflow(ctx, **kwargs)
+            return self._execute_map_task(ctx, **kwargs)
+
+    def _execute_map_task(self, ctx: FlyteContext, **kwargs) -> Any:
+        task_index = 1 # get from env
+        map_task_inputs = {}
+        for k in self.interface.inputs.keys():
+            map_task_inputs[k] = kwargs[k][task_index]
+        return self._run_task.execute(**map_task_inputs)
 
     def compile_into_workflow(self, ctx: FlyteContext, **kwargs) -> Union[DynamicJobSpec, LiteralMap]:
 
@@ -180,8 +198,8 @@ class MapPythonTask(PythonTask):
         return tuple(outputs)
 
 
-def maptask(tk: PythonTask, concurrency=None, metadata=None):
+def maptask(tk: PythonTask, concurrency=None, min_success_ratio=None, metadata=None):
     if not isinstance(tk, PythonTask):
         raise ValueError(f"Only Flyte Task types are supported in maptask currently, received {type(tk)}")
     # We could register in a global singleton here?
-    return MapPythonTask(tk, concurrency=concurrency, metadata=metadata)
+    return MapPythonTask(tk, concurrency=concurrency, min_success_ratio=min_success_ratio, metadata=metadata)
