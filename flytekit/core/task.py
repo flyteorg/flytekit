@@ -137,8 +137,10 @@ def task(
                     def foo2():
                         ...
     :param environment: Environment variables that should be added for this tasks execution
-    :param requests: Compute requests.
-    :param limits: Compute limits.
+    :param requests: Specify compute resource requests for your task. For Pod-plugin tasks, these values will apply only
+      to the primary container.
+    :param limits: Compute limits. Specify compute resource limits for your task. For Pod-plugin tasks, these values
+      will apply only to the primary container. For more information, please see :py:class:`flytekit.Resources`.
     :param execution_mode: This is mainly for internal use. Please ignore. It is filled in automatically.
     """
 
