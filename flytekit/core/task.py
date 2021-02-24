@@ -6,6 +6,7 @@ from flytekit.core.base_task import TaskMetadata
 from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
+from flytekit.core.resources import Resources
 
 
 class TaskPlugins(object):
@@ -67,7 +68,9 @@ def task(
     timeout: Union[_datetime.timedelta, int] = 0,
     container_image: Optional[str] = None,
     environment: Optional[Dict[str, str]] = None,
-    **kwargs,
+    requests: Optional[Resources] = None,
+    limits: Optional[Resources] = None,
+    execution_mode: Optional[PythonFunctionTask.ExecutionBehavior] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
 ) -> Union[Callable, PythonFunctionTask]:
     """
     This is the core decorator to use for any task type in flytekit.
@@ -133,10 +136,10 @@ def task(
                     @task(container_image='{{.images.xyz.fqn}}:{{images.default.tag}}')
                     def foo2():
                         ...
-
     :param environment: Environment variables that should be added for this tasks execution
-    :param kwargs: Additional Kwargs. Refer to specific task implementations to find supported keywords. Ideally
-                   all additional configuration values should be part of the ``task_config``
+    :param requests: Compute requests.
+    :param limits: Compute limits.
+    :param execution_mode: This is mainly for internal use. Please ignore. It is filled in automatically.
     """
 
     def wrapper(fn) -> PythonFunctionTask:
@@ -150,7 +153,14 @@ def task(
         )
 
         task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
-            task_config, fn, metadata=_metadata, container_image=container_image, environment=environment, **kwargs,
+            task_config,
+            fn,
+            metadata=_metadata,
+            container_image=container_image,
+            environment=environment,
+            requests=requests,
+            limits=limits,
+            execution_mode=execution_mode,
         )
 
         return task_instance
