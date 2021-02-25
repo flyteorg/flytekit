@@ -168,7 +168,8 @@ class MapPythonTask(PythonTask):
         if os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
             offset = int(os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"))
         return offset + int(os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
-    
+
+    @property
     def _outputs_interface(self) -> Dict[Any, Variable]:
         return self._run_task.interface.outputs
 

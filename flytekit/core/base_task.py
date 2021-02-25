@@ -334,6 +334,7 @@ class PythonTask(Task, Generic[T]):
             **kwargs,
         )
 
+    @property
     def _outputs_interface(self) -> Dict[Any, Variable]:
         return self.interface.outputs
 
