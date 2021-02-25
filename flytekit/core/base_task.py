@@ -319,7 +319,7 @@ class PythonTask(Task, Generic[T]):
         return self._python_interface.inputs[k]
 
     def get_type_for_output_var(self, k: str, v: Any) -> Optional[Type[Any]]:
-        return self._outputs_interface[k]
+        return self._python_interface.outputs[k]
 
     def get_input_types(self) -> Optional[Dict[str, type]]:
         return self._python_interface.inputs
@@ -418,7 +418,7 @@ class PythonTask(Task, Generic[T]):
                     logger.info(f"trying to transform {v} to literal with py_type {py_type} and literal_type {literal_type}")
                     literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
                 except Exception as e:
-                    raise AssertionError(f"failed to convert return value for var {k} with {e}") from e
+                    raise AssertionError(f"failed to convert return value for var {k}") from e
 
             logger.info(f"literals {literals}")
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)

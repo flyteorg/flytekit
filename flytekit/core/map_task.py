@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Type
 
 from flytekit.models.interface import Variable
 
@@ -172,6 +172,9 @@ class MapPythonTask(PythonTask):
     @property
     def _outputs_interface(self) -> Dict[Any, Variable]:
         return self._run_task.interface.outputs
+
+    def get_type_for_output_var(self, k: str, v: Any) -> Optional[Type[Any]]:
+        return self._run_task._python_interface.outputs[k]
 
     def _execute_map_task(self, ctx: FlyteContext, **kwargs) -> Any:
         task_index = self._compute_array_job_index()
