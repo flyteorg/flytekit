@@ -386,7 +386,7 @@ class PythonTask(Task, Generic[T]):
             ):
                 return native_outputs
 
-            expected_output_names = list(self.interface.outputs.keys())
+            expected_output_names = list(self._outputs_interface.keys())
             if len(expected_output_names) == 1:
                 # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
                 # length one. That convention is used for naming outputs - and single-length-NamedTuples are
@@ -402,6 +402,8 @@ class PythonTask(Task, Generic[T]):
                 native_outputs_as_map = {
                     expected_output_names[i]: native_outputs[i] for i, _ in enumerate(native_outputs)
                 }
+            logger.info(f"self._outputs_interface {self._outputs_interface}")
+            logger.info(f"expected_output_names {expected_output_names}")
 
             # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
             # built into the IDL that all the values of a literal map are of the same type.
@@ -416,7 +418,9 @@ class PythonTask(Task, Generic[T]):
                 except Exception as e:
                     raise AssertionError(f"failed to convert return value for var {k}") from e
 
+            logger.info(f"literals {literals}")
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
+            logger.info(f"outputs_literal_map {outputs_literal_map}")
             # After the execute has been successfully completed
             return outputs_literal_map
 
