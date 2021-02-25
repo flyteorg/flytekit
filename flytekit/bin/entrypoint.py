@@ -129,6 +129,7 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
         _logging.error("!! End Error Captured by Flyte !!")
 
     for k, v in output_file_dict.items():
+        _logging.info("Writing output [{}] -> {}".format(str(k), str(v)))
         _common_utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
 
     ctx.file_access.upload_directory(ctx.execution_state.engine_dir, output_prefix)
@@ -273,13 +274,11 @@ def _execute_map_task(task_module, task_name, inputs, output_prefix, raw_output_
             task_def = getattr(task_module, task_name)
 
             if not test and isinstance(task_def, PythonTask):
-                # TODO(katrogan): support metadata
                 map_task = MapPythonTask(task_def, max_concurrency)
 
                 task_index = _compute_array_job_index()
                 output_prefix = _os.path.join(output_prefix, str(task_index))
 
-                _logging.info(f"Writing map task outputs to {output_prefix}")
                 _handle_annotated_task(map_task, inputs, output_prefix, raw_output_data_prefix)
 
             # Old style task

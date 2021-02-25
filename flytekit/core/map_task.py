@@ -152,12 +152,23 @@ class MapPythonTask(PythonTask):
         logger.info("dj_spec {}".format(dj_spec))
         return dj_spec
 
+
+    @staticmethod
+    def _compute_array_job_index():
+        # type () -> int
+        """
+        Computes the absolute index of the current array job. This is determined by summing the compute-environment-specific
+        environment variable and the offset (if one's set). The offset will be set and used when the user request that the
+        job runs in a number of slots less than the size of the input.
+        :rtype: int
+        """
+        offset = 0
+        if os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
+            offset = int(os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"))
+        return offset + int(os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
+
     def _execute_map_task(self, ctx: FlyteContext, **kwargs) -> Any:
-        task_index = os.getenv("FLYTE_K8S_ARRAY_INDEX")
-        if task_index is None:
-            task_index = 1  # TODO uhhh nope.
-        else:
-            task_index = int(task_index)
+        task_index = self._compute_array_job_index()
 
         logger.info(f"Executing array task instance {task_index}")
         map_task_inputs = {}
