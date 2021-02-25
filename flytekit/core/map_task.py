@@ -1,6 +1,8 @@
 import os
 from typing import Any, Dict, List, Optional, Union
 
+from flytekit.models.interface import Variable
+
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings
@@ -166,6 +168,9 @@ class MapPythonTask(PythonTask):
         if os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
             offset = int(os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"))
         return offset + int(os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
+    
+    def _outputs_interface(self) -> Dict[Any, Variable]:
+        return self._run_task.interface.outputs
 
     def _execute_map_task(self, ctx: FlyteContext, **kwargs) -> Any:
         task_index = self._compute_array_job_index()

@@ -4,6 +4,8 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, Union
 
+from flytekit.models.interface import Variable
+
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.context_manager import (
@@ -332,8 +334,8 @@ class PythonTask(Task, Generic[T]):
             **kwargs,
         )
 
-    def _inputs_interface(self) -> Dict[str, Type]:
-        return self.python_interface.inputs
+    def _outputs_interface(self) -> Dict[Any, Variable]:
+        return self.interface.outputs
 
     def dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
@@ -359,7 +361,7 @@ class PythonTask(Task, Generic[T]):
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
-            native_inputs = TypeEngine.literal_map_to_kwargs(exec_ctx, input_literal_map, self._inputs_interface())
+            native_inputs = TypeEngine.literal_map_to_kwargs(exec_ctx, input_literal_map, self.python_interface.inputs)
 
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
@@ -404,7 +406,7 @@ class PythonTask(Task, Generic[T]):
             # built into the IDL that all the values of a literal map are of the same type.
             literals = {}
             for k, v in native_outputs_as_map.items():
-                literal_type = self.interface.outputs[k].type
+                literal_type = self._outputs_interface[k].type
                 py_type = self.get_type_for_output_var(k, v)
                 if isinstance(v, tuple):
                     raise AssertionError(f"Output({k}) in task{self.name} received a tuple {v}, instead of {py_type}")
