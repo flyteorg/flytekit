@@ -5,7 +5,7 @@ from typing import Any, Callable, List, Optional, TypeVar, Union
 
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings
 from flytekit.core.interface import transform_signature_to_interface
-from flytekit.core.python_auto_container import PythonAutoContainerTask, TaskResolverMixin, default_task_resolver
+from flytekit.core.python_auto_container import PythonAutoContainerTask, TaskResolverMixin, DefaultTaskResolver
 from flytekit.core.workflow import Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -164,7 +164,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             task_config=task_config,
             **kwargs,
         )
-        self._task_resolver = task_resolver or default_task_resolver
+        self._task_resolver = task_resolver or DefaultTaskResolver
         self._task_function = task_function
         self._execution_mode = execution_mode
 
@@ -193,7 +193,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
     def get_command(self, settings: SerializationSettings) -> List[str]:
         if self.task_resolver is not None:
             resolver_args = self.task_resolver.loader_args(settings, self)
-            print(f"Resolver args alone are: {resolver_args}")
             default = [
                 "pyflyte-execute",
                 "--inputs",
@@ -205,7 +204,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 "--loader-args"
             ]
 
-            default.append(self.task_resolver.location)
+            default.append(self.task_resolver.location())
             default.extend(resolver_args)
             return default
         return [

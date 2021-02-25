@@ -1,88 +1,26 @@
-from typing import List, Callable
 
-from flytekit.core.context_manager import InstanceVar
-from flytekit.core.python_auto_container import TaskResolverMixin, PythonAutoContainerTask
-from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
-from flytekit.core.workflow import Workflow
-from flytekit import workflow, task
-from flytekit.core.context_manager import SerializationSettings
+from flytekit.pattern.cloud_pickle_resolver import CloudPickleResolver
+from flytekit import task, workflow
 
 
-@task
-def tsk_write(in1: str):
-    print(f"Write task {in1}")
-
-
-# class Builder:
-#     def __init__(self, query: str):
-#         self.do_fn = None
-#         self.query = query
-#
-#     @staticmethod
-#     def create(query: str = None):
-#         return Builder(query)
-#
-#     def assign_function(self, do_fn):
-#         self.do_fn = do_fn
-#         return self
-#
-#     def build(self):
-#         @task
-#         def my_task() -> str:
-#             print(f"In nested task, query is {self.query}")
-#             self.do_fn()
-#             return "hello from the inner function"
-#
-#         @workflow
-#         def my_wf() -> None:
-#             inner_task_output = my_task()
-#             tsk_write(in1=inner_task_output)
-#
-#         return my_wf, my_task
-
-
-# Single task workflow builder
-class Builder(TaskResolverMixin):
+class PickleBuilder(object):
     def __init__(self):
-        self.d = {}
-        self.reverse = {}
+        self.do_fn = None
 
-    def name(self) -> str:
-        return "Builder"
+    def set_do_fn(self, do_fn):
+        self.do_fn = do_fn
+        return self
 
-    def get_all_tasks(self) -> List[PythonAutoContainerTask]:
-        return list(self.reverse.keys())
+    def build(self):
+        @task(task_resolver=CloudPickleResolver)
+        def my_task_fn(project: str) -> str:
+            return self.do_fn(project)
 
-    def add(self, user_function: Callable):
-        fn = PythonFunctionTask(task_config=None, task_function=user_function, task_resolver=self)
-        print(user_function)
-        self.d[user_function] = fn
-        self.reverse[fn] = user_function
+        # Hash or something to create a unique name
+        my_task_fn._name = f"my_task_fn_random"
 
-    def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
-        if len(loader_args) != 1:
-            raise RuntimeError(f"Unable to load task, received ambiguous loader args {loader_args}, expected only one")
-        return self.d[loader_args[0]]
-
-    def loader_args(self, settings: SerializationSettings, t: PythonAutoContainerTask) -> List[str]:
-        """
-        This is responsible for turning an instance of a task into args that the load_task function can reconstitute.
-
-        At run time, pyflyte-execute will instantiate the given resolver
-
-            b = Builder()
-
-        and then call b.load_task(loader_args)
-        """
-        if t not in self.reverse:
-            raise Exception("no such task")
-
-        return []
-
-    @staticmethod
-    def build() -> Workflow:
         @workflow
-        def foo():
-            pass
+        def my_wf(project: str):
+            my_task_fn(project=project)
 
-        return foo
+        return my_wf

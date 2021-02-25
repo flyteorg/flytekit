@@ -98,32 +98,34 @@ class TaskResolverMixin(object):
         and/or can be returned using the loader-args. Loader args are simple strings
 
     """
+    @classmethod
+    def location(cls) -> str:
+        return f"{cls.__module__}.{cls.__name__}"
 
+    @classmethod
     @abstractmethod
-    @property
-    def location(self) -> str:
+    def name(cls) -> str:
         pass
 
+    @classmethod
     @abstractmethod
-    def name(self) -> str:
-        pass
-
-    @abstractmethod
-    def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
+    def load_task(cls, loader_args: List[str]) -> PythonAutoContainerTask:
         """
         Given the set of identifier keys, should return one Python Task or raise an error if not found
         """
         pass
 
+    @classmethod
     @abstractmethod
-    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:
+    def loader_args(cls, settings: SerializationSettings, t: PythonAutoContainerTask) -> List[str]:
         """
         Return a list of strings that can help identify the parameter Task
         """
         pass
 
+    @classmethod
     @abstractmethod
-    def get_all_tasks(self) -> List[PythonAutoContainerTask]:
+    def get_all_tasks(cls) -> List[PythonAutoContainerTask]:
         """
          Future proof method. Just making it easy to access all tasks (Not required today as we auto register them)
         """
@@ -131,14 +133,12 @@ class TaskResolverMixin(object):
 
 
 class DefaultTaskResolver(TaskResolverMixin):
-    @property
-    def location(self) -> str:
-        return f"{self.__module__}.{self.__name__}"
-
-    def name(self) -> str:
+    @classmethod
+    def name(cls) -> str:
         return "DefaultTaskResolver"
 
-    def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
+    @classmethod
+    def load_task(cls, loader_args: List[str]) -> PythonAutoContainerTask:
         print(f"Default resolver, loader args {loader_args}")
         task_module = loader_args[1]
         task_name = loader_args[3]
@@ -147,14 +147,15 @@ class DefaultTaskResolver(TaskResolverMixin):
         task_def = getattr(task_module, task_name)
         return task_def
 
-    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:
-        #     if not istestfunction(func=task_function) and isnested(func=task_function):
-        #         raise ValueError(
-        #             "TaskFunction cannot be a nested/inner or local function. "
-        #             "It should be accessible at a module level for Flyte to execute it. Test modules with "
-        #             "names begining with `test_` are allowed to have nested tasks. If you want to create your own tasks"
-        #             "use the TaskResolverMixin"
-        #         )
+    @classmethod
+    def loader_args(cls, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:
+        # if not istestfunction(func=task_function) and isnested(func=task_function):
+        #     raise ValueError(
+        #         "TaskFunction cannot be a nested/inner or local function. "
+        #         "It should be accessible at a module level for Flyte to execute it. Test modules with "
+        #         "names begining with `test_` are allowed to have nested tasks. If you want to create your own tasks"
+        #         "use the TaskResolverMixin"
+        #     )
         return [
             "--task-module",
             task.__module__,
@@ -162,11 +163,9 @@ class DefaultTaskResolver(TaskResolverMixin):
             task.__name__,
         ]
 
-    def get_all_tasks(self) -> List[PythonAutoContainerTask]:
-        pass
-
-
-default_task_resolver = DefaultTaskResolver()
+    @classmethod
+    def get_all_tasks(cls) -> List[PythonAutoContainerTask]:
+        raise Exception("should not be needed")
 
 
 def get_registerable_container_image(img: Optional[str], cfg: ImageConfig) -> str:
