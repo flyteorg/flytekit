@@ -12,11 +12,15 @@ from flytekit.core.context_manager import SerializationSettings, ImageConfig
 from flytekit.core.resources import ResourceSpec
 from flytekit.core.resources import Resources
 from flytekit.models import task as _task_model
-
+from flytekit.core.tracker import TrackedInstance
 T = TypeVar("T")
 
 
-class PythonAutoContainerTask(PythonTask[T], ABC):
+class FlyteTrackedABC(type(TrackedInstance), type(ABC)):
+    ...
+
+
+class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
     """
     A Python AutoContainer task should be used as the base for all extensions that want the users code to be in the container
     and the container information to be automatically captured.
@@ -158,9 +162,9 @@ class DefaultTaskResolver(TaskResolverMixin):
         #     )
         return [
             "--task-module",
-            task.__module__,
+            task._task_function.__module__,
             "--task-name",
-            task.__name__,
+            task._task_function.__name__,
         ]
 
     @classmethod

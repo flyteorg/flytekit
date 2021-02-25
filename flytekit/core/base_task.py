@@ -3,7 +3,7 @@ import datetime
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, Union
-
+from flytekit.core.tracker import TrackedInstance
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.context_manager import (
@@ -282,7 +282,7 @@ class Task(object):
 T = TypeVar("T")
 
 
-class PythonTask(Task, Generic[T]):
+class PythonTask(TrackedInstance, Task, Generic[T]):
     """
     Base Class for all Tasks with a python native ``Interface``. This should be directly used for task types, that do not
     have a python function to be executed. Otherwise refer to PythonFunctionTask

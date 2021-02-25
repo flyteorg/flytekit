@@ -17,11 +17,6 @@ def get_hello(a: int):
     return hello
 
 
-# User would have to write - using the class-based task resolver
-class MyBuilder(ClassStorageTaskResolver):
-    ...
-
-
 if __name__ == "__main__":
     # Using the class-based task resolver
     # What the user would write, not qualified by a main conditional

@@ -20,8 +20,7 @@ from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
-from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config, \
-    TaskResolverMixin
+from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
 from flytekit.core.promise import VoidPromise
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
@@ -200,7 +199,7 @@ def _handle_annotated_task(task_def: PythonTask, inputs: str, output_prefix: str
 
 
 @_scopes.system_entry_point
-def _legacy_execute_task(task_module, task_name, loader_args, inputs, output_prefix, raw_output_data_prefix, test):
+def _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with _utils.AutoDeletingTempDir("input_dir") as input_dir:
             # Load user code
@@ -241,7 +240,7 @@ def _legacy_execute_task(task_module, task_name, loader_args, inputs, output_pre
 
 
 @_scopes.system_entry_point
-def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver: TaskResolverMixin, loader_args: List[str]):
+def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, loader_args: List[str]):
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with _utils.AutoDeletingTempDir("input_dir") as input_dir:
             # Load task object
@@ -265,17 +264,16 @@ _raw_output_date_prefix_option = _click.option("--raw-output-data-prefix", requi
 _test = _click.option("--test", is_flag=True)
 
 
-@_pass_through.command("pyflyte-execute", ignore_unknown_options=True)
+@_pass_through.command("pyflyte-execute")
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--test", is_flag=True)
-@_click.option(
+@_click.argument(
     "--loader-args",
     required=False,
     type=_click.UNPROCESSED,
     nargs=-1,
-    help="Special arguments in the form str that will be passed to the loader",
 )
 def execute_task_cmd(inputs, output_prefix, raw_output_data_prefix, test, loader_args):
     _click.echo(_utils.get_version_message())
@@ -298,7 +296,7 @@ def execute_task_cmd(inputs, output_prefix, raw_output_data_prefix, test, loader
     resolver_class = resolver[-1]  # e.g. 'DefaultTaskResolver'
 
     resolver_mod = _importlib.import_module('.'.join(resolver_mod))
-    resolver = getattr(resolver_mod, resolver_class)
+    resolver = getattr(resolver_mod, resolver_class)()
 
     _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, loader_args[1:])
 
