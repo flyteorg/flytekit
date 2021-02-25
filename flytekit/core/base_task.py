@@ -412,14 +412,13 @@ class PythonTask(Task, Generic[T]):
                 literal_type = self._outputs_interface[k].type
                 py_type = self.get_type_for_output_var(k, v)
 
-                logger.info(f"literal_type f{literal_type}")
-                logger.info(f"py_type f{py_type}")
                 if isinstance(v, tuple):
                     raise AssertionError(f"Output({k}) in task{self.name} received a tuple {v}, instead of {py_type}")
                 try:
+                    logger.info(f"trying to transform {v} to literal with py_type {py_type} and literal_type {literal_type}")
                     literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
                 except Exception as e:
-                    raise AssertionError(f"failed to convert return value for var {k}") from e
+                    raise AssertionError(f"failed to convert return value for var {k} with {e}") from e
 
             logger.info(f"literals {literals}")
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
