@@ -150,7 +150,7 @@ class Task(object):
 
     @property
     def task_type_version(self) -> int:
-        return self.task_type_version
+        return self._task_type_version
 
     def get_type_for_input_var(self, k: str, v: Any) -> type:
         """
