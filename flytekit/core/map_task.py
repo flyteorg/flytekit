@@ -156,6 +156,10 @@ class MapPythonTask(PythonTask):
         task_index = os.getenv("FLYTE_K8S_ARRAY_INDEX")
         if task_index is None:
             task_index = 1  # TODO uhhh nope.
+        else:
+            task_index = int(task_index)
+
+        logger.info(f"Executing array task instance {task_index}")
         map_task_inputs = {}
         for k in self.interface.inputs.keys():
             map_task_inputs[k] = kwargs[k][task_index]
