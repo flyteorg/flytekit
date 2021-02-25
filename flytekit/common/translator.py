@@ -123,6 +123,7 @@ def get_serializable_task(
         interface=entity.interface,
         custom=entity.get_custom(settings),
         container=entity.get_container(settings),
+        task_type_version=entity.task_type_version,
     )
     # Reset just to make sure it's what we give it
     cp_entity.id._project = settings.project

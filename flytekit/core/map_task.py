@@ -40,6 +40,7 @@ class MapPythonTask(PythonTask):
             metadata=metadata,
             task_type="container_array",
             task_config=None,
+            task_type_version=1,
             **kwargs,
         )
 

@@ -291,7 +291,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
 
 
 class TaskTemplate(_common.FlyteIdlEntity):
-    def __init__(self, id, type, metadata, interface, custom, container=None):
+    def __init__(self, id, type, metadata, interface, custom, container=None, task_type_version=0):
         """
         A task template represents the full set of information necessary to perform a unit of work in the Flyte system.
         It contains the metadata about what inputs and outputs are consumed or produced.  It also contains the metadata
@@ -313,6 +313,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         self._interface = interface
         self._custom = custom
         self._container = container
+        self._task_type_version = task_type_version
 
     @property
     def id(self):
@@ -356,6 +357,10 @@ class TaskTemplate(_common.FlyteIdlEntity):
         return self._custom
 
     @property
+    def task_type_version(self):
+        return self._task_type_version
+
+    @property
     def container(self):
         """
         If not None, the target of execution should be a container.
@@ -374,6 +379,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             interface=self.interface.to_flyte_idl(),
             custom=_json_format.Parse(_json.dumps(self.custom), _struct.Struct()) if self.custom else None,
             container=self.container.to_flyte_idl() if self.container else None,
+            task_type_version=self.task_type_version,
         )
 
     @classmethod
@@ -389,6 +395,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             interface=_interface.TypedInterface.from_flyte_idl(pb2_object.interface),
             custom=_json_format.MessageToDict(pb2_object.custom) if pb2_object else None,
             container=Container.from_flyte_idl(pb2_object.container) if pb2_object.HasField("container") else None,
+            task_type_version=pb2_object.task_type_version,
         )
 
 

@@ -117,12 +117,14 @@ class Task(object):
         name: str,
         interface: Optional[_interface_models.TypedInterface] = None,
         metadata: Optional[TaskMetadata] = None,
+        task_type_version=0,
         **kwargs,
     ):
         self._task_type = task_type
         self._name = name
         self._interface = interface
         self._metadata = metadata if metadata else TaskMetadata()
+        self._task_type_version = task_type_version
 
         FlyteEntities.entities.append(self)
 
@@ -145,6 +147,10 @@ class Task(object):
     @property
     def python_interface(self) -> Optional[Interface]:
         return None
+
+    @property
+    def task_type_version(self) -> int:
+        return self.task_type_version
 
     def get_type_for_input_var(self, k: str, v: Any) -> type:
         """
@@ -289,10 +295,10 @@ class PythonTask(Task, Generic[T]):
     """
 
     def __init__(
-        self, task_type: str, name: str, task_config: T, interface: Optional[Interface] = None, **kwargs,
+        self, task_type: str, name: str, task_config: T, interface: Optional[Interface] = None, task_type_version=0, **kwargs,
     ):
         super().__init__(
-            task_type=task_type, name=name, interface=transform_interface_to_typed_interface(interface), **kwargs
+            task_type=task_type, name=name, interface=transform_interface_to_typed_interface(interface), task_type_version=task_type_version, **kwargs
         )
         self._python_interface = interface if interface else Interface()
         self._environment = kwargs.get("environment", {})
