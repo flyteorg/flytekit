@@ -319,7 +319,7 @@ class PythonTask(Task, Generic[T]):
         return self._python_interface.inputs[k]
 
     def get_type_for_output_var(self, k: str, v: Any) -> Optional[Type[Any]]:
-        return self._python_interface.outputs[k]
+        return self._outputs_interface[k]
 
     def get_input_types(self) -> Optional[Dict[str, type]]:
         return self._python_interface.inputs
@@ -411,6 +411,9 @@ class PythonTask(Task, Generic[T]):
             for k, v in native_outputs_as_map.items():
                 literal_type = self._outputs_interface[k].type
                 py_type = self.get_type_for_output_var(k, v)
+
+                logger.info(f"literal_type f{literal_type}")
+                logger.info(f"py_type f{py_type}")
                 if isinstance(v, tuple):
                     raise AssertionError(f"Output({k}) in task{self.name} received a tuple {v}, instead of {py_type}")
                 try:
