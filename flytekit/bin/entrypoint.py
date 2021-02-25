@@ -275,6 +275,11 @@ def _execute_map_task(task_module, task_name, inputs, output_prefix, raw_output_
             if not test and isinstance(task_def, PythonTask):
                 # TODO(katrogan): support metadata
                 map_task = MapPythonTask(task_def, max_concurrency)
+
+                task_index = _compute_array_job_index()
+                output_prefix = _os.path.join(output_prefix, task_index)
+
+                _logging.info(f"Writing map task outputs to {output_prefix}")
                 _handle_annotated_task(map_task, inputs, output_prefix, raw_output_data_prefix)
 
             # Old style task
