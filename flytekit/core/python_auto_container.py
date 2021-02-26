@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-import re
 import importlib
+import re
 from abc import ABC, abstractmethod
-from typing import Dict
-from typing import List, Optional, TypeVar
+from typing import Dict, List, Optional, TypeVar
 
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import SerializationSettings, ImageConfig
-from flytekit.core.resources import ResourceSpec
-from flytekit.core.resources import Resources
-from flytekit.models import task as _task_model
+from flytekit.core.context_manager import ImageConfig, SerializationSettings
+from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracker import TrackedInstance
+from flytekit.models import task as _task_model
+
 T = TypeVar("T")
 
 
@@ -102,6 +101,7 @@ class TaskResolverMixin(TrackedInstance):
         and/or can be returned using the loader-args. Loader args are simple strings
 
     """
+
     @abstractmethod
     def name(self) -> str:
         pass
@@ -143,14 +143,8 @@ class DefaultTaskResolver(TaskResolverMixin):
 
     def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:
         from flytekit.core.python_function_task import PythonFunctionTask
+
         if isinstance(task, PythonFunctionTask):
-            # if not istestfunction(func=task_function) and isnested(func=task_function):
-            #     raise ValueError(
-            #         "TaskFunction cannot be a nested/inner or local function. "
-            #         "It should be accessible at a module level for Flyte to execute it. Test modules with "
-            #         "names begining with `test_` are allowed to have nested tasks. If you want to create your own tasks"
-            #         "use the TaskResolverMixin"
-            #     )
             return [
                 "--task-module",
                 task.task_function.__module__,

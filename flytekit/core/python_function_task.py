@@ -70,48 +70,29 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
         **kwargs,
     ):
         super().__init__(name=name, task_config=task_config, task_type=task_type, **kwargs)
-        self._task_resolver = task_resolver
-        if self._task_resolver is None:
-            ctx = FlyteContext.current_context().compilation_state
-            if ctx is not None and ctx.task_resolver() is not None:
-                self._task_resolver = ctx.task_resolver()
+        self._task_resolver = task_resolver or default_task_resolver
 
     @property
     def task_resolver(self) -> Optional[TaskResolverMixin]:
         return self._task_resolver
 
     def get_command(self, settings: SerializationSettings) -> List[str]:
-        """
-        NOTE: This command is different, it tries to retrieve the actual LHS of where this object was assigned, so that
-        the module loader can easily retreive this for execution - at runtime.
-        """
-        if self.task_resolver is None:
-            var = settings.get_instance_var(self)
-        else:
-            var = settings.get_instance_var(self.task_resolver)
-
-        if var is None:
-            raise AssertionError(f"Unable to load instance of task {self.name}, should be loadable in module")
-
-        command = [
+        container_args = [
             "pyflyte-execute",
-            "--task-module",
-            var.module,
-            "--task-name",
-            var.name,
             "--inputs",
             "{{.input}}",
             "--output-prefix",
             "{{.outputPrefix}}",
             "--raw-output-data-prefix",
             "{{.rawOutputDataPrefix}}",
+            "--resolver",
+            self.task_resolver.location,
+            "--resolver-args",
         ]
 
-        if self.task_resolver is not None:
-            for arg in self.task_resolver.loader_args(var=var, for_task=self):
-                command.extend(["--loader-arg", arg])
-
-        return command
+        resolver_args = self.task_resolver.loader_args(settings, self)
+        container_args.extend(resolver_args)
+        return container_args
 
 
 class PythonFunctionTask(PythonAutoContainerTask[T]):
@@ -201,14 +182,22 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             return self.dynamic_execute(self._task_function, **kwargs)
 
     def get_command(self, settings: SerializationSettings) -> List[str]:
-        if self.task_resolver is not None:
-            container_args = ["pyflyte-execute", "--inputs", "{{.input}}", "--output-prefix", "{{.outputPrefix}}",
-                              "--raw-output-data-prefix", "{{.rawOutputDataPrefix}}", "--resolver",
-                              self.task_resolver.location, "--resolver-args"]
+        container_args = [
+            "pyflyte-execute",
+            "--inputs",
+            "{{.input}}",
+            "--output-prefix",
+            "{{.outputPrefix}}",
+            "--raw-output-data-prefix",
+            "{{.rawOutputDataPrefix}}",
+            "--resolver",
+            self.task_resolver.location,
+            "--resolver-args",
+        ]
 
-            resolver_args = self.task_resolver.loader_args(settings, self)
-            container_args.extend(resolver_args)
-            return container_args
+        resolver_args = self.task_resolver.loader_args(settings, self)
+        container_args.extend(resolver_args)
+        return container_args
 
     def compile_into_workflow(
         self, ctx: FlyteContext, task_function: Callable, **kwargs

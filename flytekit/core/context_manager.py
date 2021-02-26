@@ -98,14 +98,14 @@ class EntrypointSettings(object):
 
 class SerializationSettings(object):
     def __init__(
-            self,
-            project: str,
-            domain: str,
-            version: str,
-            image_config: ImageConfig,
-            env: Optional[Dict[str, str]],
-            flytekit_virtualenv_root: str = None,
-            entrypoint_settings: EntrypointSettings = None,
+        self,
+        project: str,
+        domain: str,
+        version: str,
+        image_config: ImageConfig,
+        env: Optional[Dict[str, str]],
+        flytekit_virtualenv_root: str = None,
+        entrypoint_settings: EntrypointSettings = None,
     ):
         self._project = project
         self._domain = domain
@@ -236,8 +236,7 @@ class ExecutionState(object):
         LOCAL_TASK_EXECUTION = 3
 
     def __init__(
-            self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike,
-            additional_context: Dict[Any, Any] = None
+        self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike, additional_context: Dict[Any, Any] = None
     ):
         self._mode = mode
         self._working_dir = working_dir
@@ -299,14 +298,14 @@ class FlyteContext(object):
     OBJS = []
 
     def __init__(
-            self,
-            parent=None,
-            file_access: _data_proxy.FileAccessProvider = None,
-            compilation_state: CompilationState = None,
-            execution_state: ExecutionState = None,
-            flyte_client: friendly_client.SynchronousFlyteClient = None,
-            user_space_params: ExecutionParameters = None,
-            serialization_settings: SerializationSettings = None,
+        self,
+        parent=None,
+        file_access: _data_proxy.FileAccessProvider = None,
+        compilation_state: CompilationState = None,
+        execution_state: ExecutionState = None,
+        flyte_client: friendly_client.SynchronousFlyteClient = None,
+        user_space_params: ExecutionParameters = None,
+        serialization_settings: SerializationSettings = None,
     ):
         # TODO: Should we have this auto-parenting feature?
         if parent is None and len(FlyteContext.OBJS) > 0:
@@ -371,11 +370,11 @@ class FlyteContext(object):
 
     @contextmanager
     def new_execution_context(
-            self,
-            mode: ExecutionState.Mode,
-            additional_context: Dict[Any, Any] = None,
-            execution_params: Optional[ExecutionParameters] = None,
-            working_dir: Optional[str] = None,
+        self,
+        mode: ExecutionState.Mode,
+        additional_context: Dict[Any, Any] = None,
+        execution_params: Optional[ExecutionParameters] = None,
+        working_dir: Optional[str] = None,
     ) -> Generator[FlyteContext, None, None]:
         # Create a working directory for the execution to use
         working_dir = working_dir or self.file_access.get_random_local_directory()
@@ -405,12 +404,16 @@ class FlyteContext(object):
             return None
 
     @contextmanager
-    def new_compilation_context(self, prefix: Optional[str] = None, task_resolver: Optional[TaskResolverMixin] = None) -> Generator[FlyteContext, None, None]:
+    def new_compilation_context(
+        self, prefix: Optional[str] = None, task_resolver: Optional[TaskResolverMixin] = None
+    ) -> Generator[FlyteContext, None, None]:
         """
         :param prefix: See CompilationState comments
         :param task_resolver: resolver for tasks within this compilation context
         """
-        new_ctx = FlyteContext(parent=self, compilation_state=CompilationState(prefix=prefix or "", task_resolver=task_resolver))
+        new_ctx = FlyteContext(
+            parent=self, compilation_state=CompilationState(prefix=prefix or "", task_resolver=task_resolver)
+        )
         FlyteContext.OBJS.append(new_ctx)
         try:
             yield new_ctx
@@ -428,7 +431,7 @@ class FlyteContext(object):
 
     @contextmanager
     def new_serialization_settings(
-            self, serialization_settings: SerializationSettings
+        self, serialization_settings: SerializationSettings
     ) -> Generator[FlyteContext, None, None]:
         new_ctx = FlyteContext(parent=self, serialization_settings=serialization_settings)
         FlyteContext.OBJS.append(new_ctx)

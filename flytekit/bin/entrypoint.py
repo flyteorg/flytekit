@@ -253,14 +253,16 @@ def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver,
     resolver = resolver.split(".")
     resolver_mod = resolver[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
     resolver_key = resolver[-1]  # e.g. 'default_task_resolver'
-    resolver_mod = _importlib.import_module('.'.join(resolver_mod))
+    resolver_mod = _importlib.import_module(".".join(resolver_mod))
     resolver_obj = getattr(resolver_mod, resolver_key)()
 
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         # Use the resolver to load the actual task object
         _task_def = resolver_obj.load_task(loader_args=resolver_args)
         if test:
-            _click.echo(f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}")
+            _click.echo(
+                f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
+            )
             return
         _handle_annotated_task(_task_def, inputs, output_prefix, raw_output_data_prefix)
 
@@ -278,13 +280,12 @@ def _pass_through():
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--resolver", required=False)
 @_click.argument(
-    "--resolver-args",
-    required=False,
-    type=_click.UNPROCESSED,
-    nargs=-1,
+    "--resolver-args", required=False, type=_click.UNPROCESSED, nargs=-1,
 )
 @_click.option("--test", is_flag=True)
-def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, resolver, resolver_args, test):
+def execute_task_cmd(
+    task_module, task_name, inputs, output_prefix, raw_output_data_prefix, resolver, resolver_args, test
+):
     _click.echo(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
     # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
@@ -310,10 +311,7 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--test", is_flag=True)
 @_click.argument(
-    "--loader-args",
-    required=False,
-    type=_click.UNPROCESSED,
-    nargs=-1,
+    "--loader-args", required=False, type=_click.UNPROCESSED, nargs=-1,
 )
 def execute_task_cmd(inputs, output_prefix, raw_output_data_prefix, test, loader_args):
     _click.echo(_utils.get_version_message())
@@ -335,7 +333,7 @@ def execute_task_cmd(inputs, output_prefix, raw_output_data_prefix, test, loader
     resolver_mod = resolver[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
     resolver_class = resolver[-1]  # e.g. 'DefaultTaskResolver'
 
-    resolver_mod = _importlib.import_module('.'.join(resolver_mod))
+    resolver_mod = _importlib.import_module(".".join(resolver_mod))
     resolver = getattr(resolver_mod, resolver_class)()
 
     _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, loader_args[1:])

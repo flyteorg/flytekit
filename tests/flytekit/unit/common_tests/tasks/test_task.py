@@ -57,6 +57,7 @@ def get_sample_task():
 
 def test_task_serialization():
     from tests.flytekit.unit.common_tests.tasks.ttt import my_task as t
+
     # t = get_sample_task()
     with TemporaryConfiguration(
         _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../../common/configs/local.config",),

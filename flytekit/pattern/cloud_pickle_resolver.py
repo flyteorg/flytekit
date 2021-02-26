@@ -4,7 +4,7 @@ from typing import List
 import cloudpickle
 
 from flytekit.core.context_manager import SerializationSettings
-from flytekit.core.python_auto_container import TaskResolverMixin, PythonAutoContainerTask
+from flytekit.core.python_auto_container import PythonAutoContainerTask, TaskResolverMixin
 
 
 class CloudPickleResolver(TaskResolverMixin):

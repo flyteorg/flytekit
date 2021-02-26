@@ -10,7 +10,7 @@ EXAMPLE_DB = "https://cdn.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.
 
 # This task belongs to test_task_static but is intentionally here to help test tracking
 tk = SQLite3Task(
-    "test", query_template="select * from tracks", task_config=SQLite3Config(uri=EXAMPLE_DB, compressed=True, ),
+    "test", query_template="select * from tracks", task_config=SQLite3Config(uri=EXAMPLE_DB, compressed=True,),
 )
 
 

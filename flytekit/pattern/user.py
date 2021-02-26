@@ -1,19 +1,22 @@
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
-
 from flytekit.pattern.class_based_resolver import ClassStorageTaskResolver
+
 
 def get_hello(a: int):
     if a == 5:
+
         def hello() -> int:
             print("hello")
             return 5
+
         return hello
 
     def hello() -> int:
         print(f"Hello, A was {a}")
         return 42
+
     return hello
 
 

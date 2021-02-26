@@ -3,7 +3,7 @@ import datetime
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, Union
-from flytekit.core.tracker import TrackedInstance
+
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.context_manager import (
@@ -21,6 +21,7 @@ from flytekit.core.promise import (
     create_task_output,
     translate_inputs_to_literals,
 )
+from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job

@@ -10,8 +10,6 @@ from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.core.condition import ConditionalSection
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteEntities, InstanceVar
-from flytekit.core.python_auto_container import TaskResolverMixin
-
 from flytekit.core.interface import (
     Interface,
     transform_inputs_to_parameters,
@@ -27,6 +25,7 @@ from flytekit.core.promise import (
     create_and_link_node,
     create_task_output,
 )
+from flytekit.core.python_auto_container import TaskResolverMixin
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
@@ -202,6 +201,7 @@ class Workflow(TaskResolverMixin):
         a 'closure' in the traditional sense of the word.
         """
         from flytekit.core.python_function_task import PythonInstanceTask
+
         ctx = FlyteContext.current_context()
         self._input_parameters = transform_inputs_to_parameters(ctx, self._native_interface)
         all_nodes = []

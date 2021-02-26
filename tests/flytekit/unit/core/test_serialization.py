@@ -266,3 +266,28 @@ def test_serialization_images():
 
     t5_ser = get_serializable(rs, t5)
     assert t5_ser.container.image == "docker.io/org/myimage:version"
+
+
+def test_serialization_command1():
+    @task
+    def t1(a: str) -> str:
+        return a
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    serialization_settings = context_manager.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+    srz_t = get_serializable(serialization_settings, t1)
+    assert srz_t.container.args[-7:] == [
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--resolver-args",
+        "--task-module",
+        "test_serialization",
+        "--task-name",
+        "t1",
+    ]

@@ -1,6 +1,5 @@
-
-from flytekit.pattern.cloud_pickle_resolver import default_cloud_pickle_resolver
 from flytekit import task, workflow
+from flytekit.pattern.cloud_pickle_resolver import default_cloud_pickle_resolver
 
 
 class PickleBuilder(object):

@@ -1,8 +1,9 @@
+import importlib as _importlib
 import inspect as _inspect
 import logging as _logging
-import importlib as _importlib
-from flytekit.common.exceptions import system as _system_exceptions
 from abc import ABC
+
+from flytekit.common.exceptions import system as _system_exceptions
 
 
 class InstanceTrackingMeta(type):
@@ -75,6 +76,7 @@ class B(TrackedInstance):
     def __init__(self):
         print(f"In B init")
 
+
 class MyMeta(type(TrackedInstance), type(ABC)):
     ...
 
@@ -87,4 +89,3 @@ if __name__ == "__main__":
     a = TrackedInstance()
     b = B()
     print(f"type {type(TrackedInstance)}")
-
