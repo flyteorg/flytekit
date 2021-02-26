@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Generator, List, Optional
 
+from docker_image import reference
+
 from flytekit.clients import friendly as friendly_client  # noqa
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
@@ -28,6 +30,10 @@ class Image(object):
     name: str
     fqn: str
     tag: str
+
+    @property
+    def full(self):
+        return f"{self.fqn}:{self.tag}"
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -60,18 +66,11 @@ def look_up_image_info(name: str, tag: str, optional_tag: bool = False) -> Image
     :param Text tag: e.g. somedocker.com/myimage:someversion123
     :rtype: Text
     """
-    if tag is None or tag == "":
-        raise Exception("Bad input for image tag {}".format(tag))
-    matches = _IMAGE_FQN_TAG_REGEX.findall(tag)
-    if matches is not None:
-        if len(matches) == 1 and optional_tag:
-            return Image(name=name, fqn=matches[0], tag=None)
-        elif len(matches) == 2:
-            return Image(name=name, fqn=matches[0], tag=matches[1])
-        else:
-            raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
-
-    raise Exception("Could not parse given image and version from configuration.")
+    ref = reference.Reference.parse(tag)
+    if not optional_tag and ref["tag"] is None:
+        raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
+    else:
+        return Image(name=name, fqn=ref["name"], tag=ref["tag"])
 
 
 def get_image_config(img_name: str = None) -> ImageConfig:
@@ -105,6 +104,7 @@ class SerializationSettings(object):
         image_config: ImageConfig,
         env: Optional[Dict[str, str]],
         flytekit_virtualenv_root: str = None,
+        python_interpreter: str = None,
         entrypoint_settings: EntrypointSettings = None,
     ):
         self._project = project
@@ -114,6 +114,7 @@ class SerializationSettings(object):
         self._env = env or {}
         self._instance_lookup = {}
         self._flytekit_virtualenv_root = flytekit_virtualenv_root
+        self._python_interpreter = python_interpreter
         self._entrypoint_settings = entrypoint_settings
 
     @property
@@ -139,6 +140,10 @@ class SerializationSettings(object):
     @property
     def flytekit_virtualenv_root(self) -> str:
         return self._flytekit_virtualenv_root
+
+    @property
+    def python_interpreter(self) -> str:
+        return self._python_interpreter
 
     @property
     def entrypoint_settings(self) -> EntrypointSettings:

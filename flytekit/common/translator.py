@@ -225,6 +225,7 @@ def get_serializable_node(
             bindings=entity._bindings,
             metadata=entity._metadata,
             sdk_task=get_serializable(settings, entity._flyte_entity, fast),
+            parameter_mapping=False,
         )
         if entity._aliases:
             cp_entity._output_aliases = entity._aliases
@@ -235,6 +236,7 @@ def get_serializable_node(
             bindings=entity._bindings,
             metadata=entity._metadata,
             sdk_workflow=get_serializable(settings, entity._flyte_entity),
+            parameter_mapping=False,
         )
     elif isinstance(entity._flyte_entity, BranchNode):
         cp_entity = SdkNode(
@@ -243,6 +245,7 @@ def get_serializable_node(
             bindings=entity._bindings,
             metadata=entity._metadata,
             sdk_branch=get_serializable(settings, entity._flyte_entity),
+            parameter_mapping=False,
         )
     elif isinstance(entity._flyte_entity, LaunchPlan):
         cp_entity = SdkNode(
@@ -251,6 +254,7 @@ def get_serializable_node(
             bindings=entity._bindings,
             metadata=entity._metadata,
             sdk_launch_plan=get_serializable(settings, entity._flyte_entity),
+            parameter_mapping=False,
         )
     else:
         raise Exception(f"Node contained non-serializable entity {entity._flyte_entity}")

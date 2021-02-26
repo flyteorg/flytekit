@@ -4,6 +4,7 @@ import logging as _logging
 import os as _os
 import pathlib
 import random as _random
+import traceback as _traceback
 from typing import List
 
 import click as _click
@@ -12,6 +13,7 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common import utils as _utils
+from flytekit.common.exceptions import scopes as _scoped_exceptions
 from flytekit.common.exceptions import scopes as _scopes
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
@@ -30,6 +32,7 @@ from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
+from flytekit.models.core import errors as _error_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 
@@ -77,6 +80,7 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
             b: OR if IgnoreOutputs is raised, then ignore uploading outputs
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
     """
+    output_file_dict = {}
     try:
         # Step1
         local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
@@ -85,6 +89,7 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
         # Step2
         outputs = task_def.dispatch_execute(ctx, idl_input_literals)
+        # Step3a
         if isinstance(outputs, VoidPromise):
             _logging.getLogger().warning("Task produces no outputs")
             output_file_dict = {_constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
@@ -94,15 +99,20 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
             output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
         else:
             _logging.getLogger().error(f"SystemError: received unknown outputs from task {outputs}")
-            # TODO This should probably cause an error file
-            return
-
-        for k, v in output_file_dict.items():
-            _common_utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
-
-        # Step3a
-        ctx.file_access.upload_directory(ctx.execution_state.engine_dir, output_prefix)
-        _logging.info(f"Outputs written successful the the output prefix {output_prefix}")
+            output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+                _error_models.ContainerError(
+                    "UNKNOWN_OUTPUT",
+                    f"Type of output received not handled {type(outputs)} outputs: {outputs}",
+                    _error_models.ContainerError.Kind.RECOVERABLE,
+                )
+            )
+    except _scoped_exceptions.FlyteScopedException as e:
+        _logging.error("!! Begin Error Captured by Flyte !!")
+        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+            _error_models.ContainerError(e.error_code, e.verbose_message, e.kind)
+        )
+        _logging.error(e.verbose_message)
+        _logging.error("!! End Error Captured by Flyte !!")
     except Exception as e:
         if isinstance(e, IgnoreOutputs):
             # Step 3b
@@ -110,7 +120,19 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
             return
         # Step 3c
         _logging.error(f"Exception when executing task {task_def.name}, reason {str(e)}")
-        raise e
+        _logging.error("!! Begin Unknown System Error Captured by Flyte !!")
+        exc_str = _traceback.format_exc()
+        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+            _error_models.ContainerError("SYSTEM:Unknown", exc_str, _error_models.ContainerError.Kind.RECOVERABLE,)
+        )
+        _logging.error(exc_str)
+        _logging.error("!! End Error Captured by Flyte !!")
+
+    for k, v in output_file_dict.items():
+        _common_utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
+
+    ctx.file_access.upload_directory(ctx.execution_state.engine_dir, output_prefix)
+    _logging.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
 
 def _handle_annotated_task(task_def: PythonTask, inputs: str, output_prefix: str, raw_output_data_prefix: str):

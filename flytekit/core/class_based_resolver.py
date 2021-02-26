@@ -3,8 +3,8 @@ from typing import Callable, List
 
 from flytekit.core.context_manager import SerializationSettings
 from flytekit.core.python_auto_container import PythonAutoContainerTask, TaskResolverMixin
-from flytekit.core.tracker import TrackedInstance
 from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.tracker import TrackedInstance
 
 
 class ClassStorageTaskResolver(TrackedInstance, TaskResolverMixin):
@@ -12,6 +12,7 @@ class ClassStorageTaskResolver(TrackedInstance, TaskResolverMixin):
     Stores tasks inside a class variable. The class must be inherited from at the point of usage because the task
     loading process basically relies on the same sequence of things happening.
     """
+
     def __init__(self):
         self.mapping = OrderedDict()
         super().__init__()

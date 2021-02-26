@@ -121,6 +121,7 @@ class SdkNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node, metaclass=
         sdk_workflow=None,
         sdk_launch_plan=None,
         sdk_branch=None,
+        parameter_mapping=True,
     ):
         """
         :param Text id: A workflow-level unique identifier that identifies this node in the workflow. "inputs" and
@@ -167,10 +168,11 @@ class SdkNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node, metaclass=
         )
         self._upstream = upstream_nodes
         self._executable_sdk_object = sdk_task or sdk_workflow or sdk_launch_plan
-        if not sdk_branch:
-            self._outputs = OutputParameterMapper(self._executable_sdk_object.interface.outputs, self)
-        else:
-            self._outputs = None
+        if parameter_mapping:
+            if not sdk_branch:
+                self._outputs = OutputParameterMapper(self._executable_sdk_object.interface.outputs, self)
+            else:
+                self._outputs = None
 
     @property
     def executable_sdk_object(self):

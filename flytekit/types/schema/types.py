@@ -263,10 +263,11 @@ class FlyteSchema(object):
         overridden, but will depend on whether the override can be performed. For example, if the Object was
         created in a read-mode a "write mode" override is not allowed.
         if the object was created in write-mode, a read is allowed.
+
         :param dataframe_fmt: Type of the dataframe for example pandas.DataFrame etc
         :param override_mode: overrides the default mode (Read, Write) SchemaOpenMode.READ, SchemaOpenMode.Write
-                              So if you have written to a schema and want to re-open it for reading, you can use this
-                              mode. A ReadOnly Schema object cannot be opened in write mode.
+               So if you have written to a schema and want to re-open it for reading, you can use this
+               mode. A ReadOnly Schema object cannot be opened in write mode.
         """
         if override_mode and self._supported_mode == SchemaOpenMode.READ and override_mode == SchemaOpenMode.WRITE:
             raise AssertionError("Readonly schema cannot be opened in write mode!")

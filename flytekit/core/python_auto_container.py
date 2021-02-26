@@ -21,8 +21,8 @@ class FlyteTrackedABC(type(TrackedInstance), type(ABC)):
 
 class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
     """
-    A Python AutoContainer task should be used as the base for all extensions that want the users code to be in the container
-    and the container information to be automatically captured.
+    A Python AutoContainer task should be used as the base for all extensions that want the user's code to be in the
+    container and the container information to be automatically captured.
     This base will auto configure the image and image version to be used for all its derivatives.
 
     If you are looking to extend, you might prefer to use ``PythonFunctionTask`` or ``PythonInstanceTask``
@@ -177,13 +177,13 @@ def get_registerable_container_image(img: Optional[str], cfg: ImageConfig) -> st
         if matches is None or len(matches) == 0:
             return img
         for m in matches:
-            if len(m) < 2:
+            if len(m) < 3:
                 raise AssertionError(
                     "Image specification should be of the form <fqn>:<tag> OR <fqn>:{{.image.default.version}} OR "
-                    f"{{.image.xyz.fqn}}:{{.image.xyz.version}} - Received {m}"
+                    f"{{.image.xyz.fqn}}:{{.image.xyz.version}} OR {{.image.xyz}} - Received {m}"
                 )
             replace_group, name, attr = m
-            if name is None or name == "" or attr is None or attr == "":
+            if name is None or name == "":
                 raise AssertionError(f"Image format is incorrect {m}")
             img_cfg = cfg.find_image(name)
             if img_cfg is None:
@@ -195,10 +195,18 @@ def get_registerable_container_image(img: Optional[str], cfg: ImageConfig) -> st
                     img = img.replace(replace_group, cfg.default_image.tag)
             elif attr == "fqn":
                 img = img.replace(replace_group, img_cfg.fqn)
+            elif attr == "":
+                img = img.replace(replace_group, img_cfg.full)
             else:
                 raise AssertionError(f"Only fqn and version are supported replacements, {attr} is not supported")
         return img
     return f"{cfg.default_image.fqn}:{cfg.default_image.tag}"
 
 
-_IMAGE_REPLACE_REGEX = re.compile(r"({{\s*.image[s]?.(\w+).(\w+)\s*}})", re.IGNORECASE)
+# Matches {{.image.<name>.<attr>}}. A name can be either 'default' indicating the default image passed during
+# serialization or it can be a custom name for an image that must be defined in the config section Images. An attribute
+# can be either 'fqn', 'version' or non-existent.
+# fqn will access the fully qualified name of the image (e.g. registry/imagename:version -> registry/imagename)
+# version will access the version part of the image (e.g. registry/imagename:version -> version)
+# With empty attribute, it'll access the full image path (e.g. registry/imagename:version -> registry/imagename:version)
+_IMAGE_REPLACE_REGEX = re.compile(r"({{\s*\.image[s]?(?:\.([a-zA-Z]+))(?:\.([a-zA-Z]+))?\s*}})", re.IGNORECASE)

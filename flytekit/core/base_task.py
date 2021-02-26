@@ -49,13 +49,13 @@ class TaskMetadata(object):
       cache: Boolean that indicates if caching should be enabled
       cache_version: Version string to be used for the cached value
       interruptable: Boolean that indicates that this task can be interrupted and/or scheduled on nodes
-                           with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
-                            at the cost of performance penalties due to potential interruptions
+                     with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
+                     at the cost of performance penalties due to potential interruptions
       deprecated: A string that can be used to provide a warning message for deprecated task. Absence / empty str
-                       indicates that the task is active and not deprecated
+                  indicates that the task is active and not deprecated
       retries: for retries=n; n > 0, on failures of this task, the task will be retried at-least n number of times.
       timeout: the max amount of time for which one execution of this task should be executed for. If the execution
-                     will be terminated if the runtime exceeds the given timeout (approximately)
+               will be terminated if the runtime exceeds the given timeout (approximately)
      """
 
     cache: bool = False
@@ -107,7 +107,7 @@ class IgnoreOutputs(Exception):
 
 class Task(object):
     """
-    The base of all Tasks in flytekit. This task is closes to the FlyteIDL TaskTemplate and captures information in
+    The base of all Tasks in flytekit. This task is closest to the FlyteIDL TaskTemplate and captures information in
     FlyteIDL specification and does not have python native interfaces associated. For any real extension please
     refer to the derived classes.
     """
@@ -181,7 +181,10 @@ class Task(object):
         #  native constants are just bound to this specific task (default values for a task input)
         #  Also alongwith promises and constants, there could be dictionary or list of promises or constants
         kwargs = translate_inputs_to_literals(
-            ctx, input_kwargs=kwargs, interface=self.interface, native_input_types=self.get_input_types()
+            ctx,
+            incoming_values=kwargs,
+            flyte_interface_types=self.interface.inputs,
+            native_types=self.get_input_types(),
         )
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
@@ -285,18 +288,24 @@ T = TypeVar("T")
 
 class PythonTask(TrackedInstance, Task, Generic[T]):
     """
-    Base Class for all Tasks with a python native ``Interface``. This should be directly used for task types, that do not
-    have a python function to be executed. Otherwise refer to PythonFunctionTask
+    Base Class for all Tasks with a Python native ``Interface``. This should be directly used for task types, that do
+    not have a python function to be executed. Otherwise refer to :py:class:`flytekit.PythonFunctionTask`.
     """
 
     def __init__(
-        self, task_type: str, name: str, task_config: T, interface: Optional[Interface] = None, **kwargs,
+        self,
+        task_type: str,
+        name: str,
+        task_config: T,
+        interface: Optional[Interface] = None,
+        environment=None,
+        **kwargs,
     ):
         super().__init__(
             task_type=task_type, name=name, interface=transform_interface_to_typed_interface(interface), **kwargs
         )
         self._python_interface = interface if interface else Interface()
-        self._environment = kwargs.get("environment", {})
+        self._environment = environment if environment else {}
         self._task_config = task_config
 
     # TODO lets call this interface and the other as flyte_interface?
@@ -333,10 +342,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
         This method is also invoked during runtime.
-            `VoidPromise` is returned in the case when the task itself declares no outputs.
-            `Literal Map` is returned when the task returns either one more outputs in the declaration. Individual outputs
-                           may be none
-            `DynamicJobSpec` is returned when a dynamic workflow is executed
+
+        * ``VoidPromise`` is returned in the case when the task itself declares no outputs.
+        * ``Literal Map`` is returned when the task returns either one more outputs in the declaration. Individual outputs
+          may be none
+        * ``DynamicJobSpec`` is returned when a dynamic workflow is executed
         """
 
         # Invoked before the task is executed
