@@ -134,6 +134,7 @@ def dynamic_wf_task(wf_params, task_input_num, out):
     unregistered_workflow_execution = MyUnregisteredWorkflow(a=task_input_num)
     out.set(unregistered_workflow_execution.outputs.ooo)
 
+
 def test_batch_task():
     assert isinstance(sample_batch_task, _sdk_runnable.SdkRunnableTask)
     assert isinstance(sample_batch_task, _sdk_dynamic.SdkDynamicTask)

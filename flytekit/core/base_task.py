@@ -4,8 +4,6 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, Union
 
-from flytekit.models.interface import Variable
-
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.context_manager import (
@@ -29,6 +27,7 @@ from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
+from flytekit.models.interface import Variable
 
 
 def kwtypes(**kwargs) -> Dict[str, Type]:
@@ -310,7 +309,11 @@ class PythonTask(Task, Generic[T]):
         **kwargs,
     ):
         super().__init__(
-            task_type=task_type, name=name, interface=transform_interface_to_typed_interface(interface), task_type_version=task_type_version, **kwargs
+            task_type=task_type,
+            name=name,
+            interface=transform_interface_to_typed_interface(interface),
+            task_type_version=task_type_version,
+            **kwargs,
         )
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}

@@ -1,20 +1,13 @@
 import os
-from typing import Any, Dict, List, Optional, Union, Type
-
-from flytekit.models.interface import Variable
+from typing import Any, Dict, List, Optional, Type
 
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, get_registerable_container_image
-from flytekit.core.workflow import Workflow, workflow
-from flytekit.loggers import logger
-from flytekit.models.array_job import ArrayJob
-from flytekit.models.dynamic_job import DynamicJobSpec
-from flytekit.models.literals import Binding, BindingData, BindingDataCollection, LiteralMap
+from flytekit.models.interface import Variable
 from flytekit.models.task import Container
-from flytekit.models.types import OutputReference
 
 
 class MapPythonTask(PythonTask):
@@ -80,7 +73,8 @@ class MapPythonTask(PythonTask):
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             return self._execute_map_task(ctx, **kwargs)
 
-        return self._raw_execute(**kwargs)
+        outputs = self._raw_execute(**kwargs)
+        return outputs
 
     @staticmethod
     def _compute_array_job_index() -> int:
@@ -103,6 +97,10 @@ class MapPythonTask(PythonTask):
         according to the underlying run_task interface and the array plugin handler will actually create a collection
         from these individual outputs as the final output value.
         """
+
+        ctx = FlyteContext.current_context()
+        if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            return self.interface.outputs
         return self._run_task.interface.outputs
 
     def get_type_for_output_var(self, k: str, v: Any) -> Optional[Type[Any]]:
@@ -112,6 +110,9 @@ class MapPythonTask(PythonTask):
         according to the underlying run_task interface and the array plugin handler will actually create a collection
         from these individual outputs as the final output value.
         """
+        ctx = FlyteContext.current_context()
+        if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            return self._python_interface.outputs[k]
         return self._run_task._python_interface.outputs[k]
 
     def _execute_map_task(self, ctx: FlyteContext, **kwargs) -> Any:
@@ -154,6 +155,7 @@ class MapPythonTask(PythonTask):
             return outputs[0]
 
         return tuple(outputs)
+
 
 def maptask(tk: PythonFunctionTask, concurrency=None, min_success_ratio=None, metadata=None):
     if not isinstance(tk, PythonFunctionTask):

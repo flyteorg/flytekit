@@ -266,9 +266,8 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
 @_scopes.system_entry_point
 def _execute_map_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, max_concurrency, test):
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        with _utils.AutoDeletingTempDir("input_dir") as input_dir:
+        with _utils.AutoDeletingTempDir("input_dir"):
             # Load user code
-
             task_module = _importlib.import_module(task_module)
             task_def = getattr(task_module, task_name)
 

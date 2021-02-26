@@ -307,7 +307,7 @@ def test_wf1_with_sql_with_patch():
 
 def test_wf1_with_map():
     @task
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+    def t1(a: int) -> (int, str):
         a = a + 2
         return a, "world-" + str(a)
 
@@ -329,18 +329,10 @@ def test_wf1_with_map():
     x = my_wf(a=[5, 6])
     assert x == (15, "world-7world-8")
 
-
-def test_katrina2():
-    @task
-    def t1(a: int) -> (int, str):
-        inc = a + 2
-        return inc, str(inc)
-
-    mappy = maptask(t1, metadata=TaskMetadata(retries=1))
-    with context_manager.FlyteContext.current_context() as ctx:
-        resp = mappy.execute(a=[1, 2, 3])
-    assert resp[0] == [3, 4, 5]
-    assert resp[1] == ["3", "4", "5"]
+    a = [5, 6]
+    x, y = maptask(t1, metadata=TaskMetadata(retries=1))(a=a)
+    resp = t2(a=x, b=y)
+    assert resp == (15, "world-7world-8")
 
 
 def test_wf1_compile_time_constant_vars():
