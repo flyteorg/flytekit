@@ -1,5 +1,5 @@
 from flytekit import task, workflow
-from flytekit.pattern.cloud_pickle_resolver import default_cloud_pickle_resolver
+from flytekit.extras.cloud_pickle_resolver import experimental_cloud_pickle_resolver
 
 
 class PickleBuilder(object):
@@ -11,7 +11,7 @@ class PickleBuilder(object):
         return self
 
     def build(self):
-        @task(task_resolver=default_cloud_pickle_resolver)
+        @task(task_resolver=experimental_cloud_pickle_resolver)
         def my_task_fn(project: str) -> str:
             return self.do_fn(project)
 

@@ -1,13 +1,13 @@
 from base64 import b64decode, b64encode
 from typing import List
 
-import cloudpickle
+import cloudpickle  # intentionally not yet part of setup.py
 
 from flytekit.core.context_manager import SerializationSettings
 from flytekit.core.python_auto_container import PythonAutoContainerTask, TaskResolverMixin
 
 
-class CloudPickleResolver(TaskResolverMixin):
+class ExperimentalNaiveCloudPickleResolver(TaskResolverMixin):
     def name(self) -> str:
         return "cloud pickling task resolver"
 
@@ -23,4 +23,4 @@ class CloudPickleResolver(TaskResolverMixin):
         pass
 
 
-default_cloud_pickle_resolver = CloudPickleResolver()
+experimental_cloud_pickle_resolver = ExperimentalNaiveCloudPickleResolver()
