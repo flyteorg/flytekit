@@ -13,21 +13,18 @@ class ClassStorageTaskResolver(TrackedInstance, TaskResolverMixin):
     loading process basically relies on the same sequence of things happening.
     """
     def __init__(self):
-        self.reverse = OrderedDict()
-        self.d = {}
+        self.mapping = OrderedDict()
         super().__init__()
 
     def name(self) -> str:
         return "ClassStorageTaskResolver"
 
     def get_all_tasks(self) -> List[PythonAutoContainerTask]:
-        return list(self.reverse.keys())
+        return list(self.mapping.keys())
 
     def add(self, user_function: Callable):
         fn = PythonFunctionTask(task_config=None, task_function=user_function, task_resolver=cls)
-        print(user_function)
-        self.d[user_function] = fn
-        self.reverse[fn] = user_function
+        self.mapping[fn] = user_function
 
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         if len(loader_args) != 1:
@@ -36,15 +33,15 @@ class ClassStorageTaskResolver(TrackedInstance, TaskResolverMixin):
         # string should be parseable a an int
         print(loader_args[0])
         idx = int(loader_args[0])
-        k = list(self.reverse.keys())
+        k = list(self.mapping.keys())
 
-        return self.reverse[k[idx]]
+        return self.mapping[k[idx]]
 
     def loader_args(self, settings: SerializationSettings, t: PythonAutoContainerTask) -> List[str]:
         """
         This is responsible for turning an instance of a task into args that the load_task function can reconstitute.
         """
-        if t not in self.reverse:
+        if t not in self.mapping:
             raise Exception("no such task")
 
-        return [f"{list(cls.reverse.keys()).index(t)}"]
+        return [f"{list(cls.mapping.keys()).index(t)}"]
