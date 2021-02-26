@@ -24,7 +24,7 @@ Flyte plugins are structured as micro-libs and can be authored in an
 independent repository. The plugins maintained by the core team are maintained
 in this repository
 
-## (Refer to this Blog to understand the idea of microlibs)[https://medium.com/@jherreras/python-microlibs-5be9461ad979]
+## [Refer to this Blog to understand the idea of microlibs](https://medium.com/@jherreras/python-microlibs-5be9461ad979)
 
 ## Conventions
 All plugins should expose a library in the format **flytekitplugins-{}**, where

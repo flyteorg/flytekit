@@ -1,6 +1,7 @@
 import logging as _logging
 import math as _math
 import os as _os
+import sys
 import tarfile as _tarfile
 from enum import Enum as _Enum
 from typing import List
@@ -8,6 +9,7 @@ from typing import List
 import click
 
 import flytekit as _flytekit
+from flytekit import PythonInstanceTask
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
@@ -23,7 +25,7 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.workflow import Workflow
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
-from flytekit.tools.module_loader import iterate_registerable_entities_in_order
+from flytekit.tools.module_loader import iterate_registerable_entities_in_order, load_module_object_for_type
 
 # Identifier fields use placeholders for registration-time substitution.
 # Additional fields, such as auth and the raw output data prefix have more complex structures
@@ -43,6 +45,7 @@ CTX_IMAGE = "image"
 CTX_LOCAL_SRC_ROOT = "local_source_root"
 CTX_CONFIG_FILE_LOC = "config_file_loc"
 CTX_FLYTEKIT_VIRTUALENV_ROOT = "flytekit_virtualenv_root"
+CTX_PYTHON_INTERPRETER = "python_interpreter"
 
 
 class SerializationMode(_Enum):
@@ -95,24 +98,26 @@ def serialize_all(
     image: str = None,
     config_path: str = None,
     flytekit_virtualenv_root: str = None,
+    python_interpreter: str = None,
 ):
     """
-    In order to register, we have to comply with Admin's endpoints. Those endpoints take the following objects. These
-    flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
-    flyteidl.admin.workflow_pb2.WorkflowSpec
-    flyteidl.admin.task_pb2.TaskSpec
+    This function will write to the folder specified the following protobuf types ::
+        flyteidl.admin.launch_plan_pb2.LaunchPlan
+        flyteidl.admin.workflow_pb2.WorkflowSpec
+        flyteidl.admin.task_pb2.TaskSpec
 
-    However, if we were to merely call .to_flyte_idl() on all the discovered entities, what we would get are:
-    flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
-    flyteidl.core.workflow_pb2.WorkflowTemplate
-    flyteidl.core.tasks_pb2.TaskTemplate
+    These can be inspected by calling (in the launch plan case) ::
+        flyte-cli parse-proto -f filename.pb -p flyteidl.admin.launch_plan_pb2.LaunchPlan
 
-    For Workflows and Tasks therefore, there is special logic in the serialize function that translates these objects.
-
-    :param list[Text] pkgs:
-    :param Text folder:
-
-    :return:
+    See :py:class:`flytekit.models.core.identifier.ResourceType` to match the trailing index in the file name with the
+    entity type.
+    :param pkgs: Dot-delimited Python packages/subpackages to look into for serialization.
+    :param local_source_root: Where to start looking for the code.
+    :param folder: Where to write the output protobuf files
+    :param mode: Regular vs fast
+    :param image: The fully qualified and versioned default image to use
+    :param config_path: Path to the config file, if any, to be used during serialization
+    :param flytekit_virtualenv_root: The full path of the virtual env in the container.
     """
 
     # m = module (i.e. python file)
@@ -132,6 +137,7 @@ def serialize_all(
         image_config=flyte_context.get_image_config(img_name=image),
         env=env,
         flytekit_virtualenv_root=flytekit_virtualenv_root,
+        python_interpreter=python_interpreter,
         entrypoint_settings=flyte_context.EntrypointSettings(
             path=_os.path.join(flytekit_virtualenv_root, _DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC)
         ),
@@ -140,6 +146,8 @@ def serialize_all(
         serialization_settings=serialization_settings
     ) as ctx:
         loaded_entities = []
+        # This first for loop is for legacy API entities - SdkTask, SdkWorkflow, etc. The _get_entity_to_module
+        # function that this iterate calls only works on legacy objects
         for m, k, o in iterate_registerable_entities_in_order(pkgs, local_source_root=local_source_root):
             name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
             _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
@@ -147,6 +155,10 @@ def serialize_all(
                 o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
             )
             loaded_entities.append(o)
+
+        # PythonInstanceTasks will not be picked up by the above, so we need to reiterate
+        for o, v in load_module_object_for_type(pkgs, PythonInstanceTask, additional_path=local_source_root).items():
+            m, k = v
             ctx.serialization_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
 
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
@@ -260,6 +272,9 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
             if in_container_virtualenv_root is not None
             else _DEFAULT_FLYTEKIT_VIRTUALENV_ROOT
         )
+
+        # append python3
+        ctx.obj[CTX_PYTHON_INTERPRETER] = ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] + "/bin/python3"
     else:
         # For in container serialize we make sure to never accept an override the entrypoint path and determine it here
         # instead.
@@ -267,7 +282,8 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
         if entrypoint_path.endswith(".pyc"):
             entrypoint_path = entrypoint_path[:-1]
 
-        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = entrypoint_path
+        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = _os.path.dirname(entrypoint_path)
+        ctx.obj[CTX_PYTHON_INTERPRETER] = sys.executable
 
 
 @click.command("tasks")

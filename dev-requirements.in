@@ -1,5 +1,4 @@
 -c requirements.txt
--r doc-requirements.in
 
 black==19.10b0
 coverage

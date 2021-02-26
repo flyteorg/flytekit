@@ -1,9 +1,9 @@
 from typing import List
 
+from flytekit import task, workflow
 from flytekit.core.context_manager import InstanceVar, TaskResolverMixin
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.workflow import Workflow
-from flytekit import workflow, task
 
 
 class Builder(TaskResolverMixin):
@@ -36,6 +36,7 @@ class Builder(TaskResolverMixin):
     def build(self) -> Workflow:
         self.add("x")
         self.add("y")
+
         @workflow
         def foo():
             pass

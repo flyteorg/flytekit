@@ -11,7 +11,7 @@ from flytekit.core.condition import BranchNode
 from flytekit.core.context_manager import SerializationSettings
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.node import Node
-from flytekit.core.python_function_task import PythonAutoContainerTask
+from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity
 from flytekit.core.task import ReferenceTask
 from flytekit.core.workflow import ReferenceWorkflow, Workflow, WorkflowFailurePolicy, WorkflowMetadata
@@ -225,6 +225,7 @@ def get_serializable_node(
             bindings=entity._bindings,
             metadata=entity._metadata,
             sdk_task=get_serializable(settings, entity._flyte_entity, fast),
+            parameter_mapping=False,
         )
         if entity._aliases:
             cp_entity._output_aliases = entity._aliases
@@ -235,6 +236,7 @@ def get_serializable_node(
             bindings=entity._bindings,
             metadata=entity._metadata,
             sdk_workflow=get_serializable(settings, entity._flyte_entity),
+            parameter_mapping=False,
         )
     elif isinstance(entity._flyte_entity, BranchNode):
         cp_entity = SdkNode(
@@ -243,6 +245,7 @@ def get_serializable_node(
             bindings=entity._bindings,
             metadata=entity._metadata,
             sdk_branch=get_serializable(settings, entity._flyte_entity),
+            parameter_mapping=False,
         )
     elif isinstance(entity._flyte_entity, LaunchPlan):
         cp_entity = SdkNode(
@@ -251,6 +254,7 @@ def get_serializable_node(
             bindings=entity._bindings,
             metadata=entity._metadata,
             sdk_launch_plan=get_serializable(settings, entity._flyte_entity),
+            parameter_mapping=False,
         )
     else:
         raise Exception(f"Node contained non-serializable entity {entity._flyte_entity}")

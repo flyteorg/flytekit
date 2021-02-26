@@ -4,6 +4,7 @@ from flytekitplugins.pod.task import Pod, PodFunctionTask
 from k8s.io.api.core.v1 import generated_pb2
 
 from flytekit import Resources, dynamic, task
+from flytekit.core import context_manager
 from flytekit.extend import ExecutionState, Image, ImageConfig, SerializationSettings
 
 
@@ -72,7 +73,9 @@ def test_dynamic_pod_task():
     def t1(a: int) -> int:
         return a + 10
 
-    @dynamic(task_config=dynamic_pod)
+    @dynamic(
+        task_config=dynamic_pod, requests=Resources(cpu="10"), limits=Resources(gpu="2"), environment={"FOO": "bar"}
+    )
     def dynamic_pod_task(a: int) -> List[int]:
         s = []
         for i in range(a):
@@ -92,8 +95,14 @@ def test_dynamic_pod_task():
         )
     )
     assert len(custom["podSpec"]["containers"]) == 2
+    primary_container = custom["podSpec"]["containers"][0]
+    assert isinstance(dynamic_pod_task.task_config, Pod)
+    assert primary_container["resources"] == {
+        "requests": {"cpu": {"string": "10"}},
+        "limits": {"gpu": {"string": "2"}},
+    }
 
-    with FlyteContext.current_context().new_serialization_settings(
+    with context_manager.FlyteContext.current_context().new_serialization_settings(
         serialization_settings=SerializationSettings(
             project="test_proj",
             domain="test_domain",

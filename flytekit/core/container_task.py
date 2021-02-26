@@ -55,8 +55,11 @@ class ContainerTask(PythonTask):
 
     def execute(self, **kwargs) -> Any:
         print(kwargs)
+        env = ""
+        for k, v in self.environment.items():
+            env += f" -e {k}={v}"
         print(
-            f"\ndocker run --rm -v /tmp/inputs:{self._input_data_dir} -v /tmp/outputs:{self._output_data_dir} -e x=y "
+            f"\ndocker run --rm -v /tmp/inputs:{self._input_data_dir} -v /tmp/outputs:{self._output_data_dir} {env}"
             f"{self._image} {self._cmd} {self._args}"
         )
         return None

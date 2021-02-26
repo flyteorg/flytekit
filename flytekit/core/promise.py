@@ -26,11 +26,14 @@ from flytekit.models.literals import Primitive
 
 def translate_inputs_to_literals(
     ctx: FlyteContext,
-    input_kwargs: Dict[str, Any],
-    interface: _interface_models.TypedInterface,
-    native_input_types: Dict[str, type],
+    incoming_values: Dict[str, Any],
+    flyte_interface_types: Dict[str, _interface_models.Variable],
+    native_types: Dict[str, type],
 ) -> Dict[str, _literal_models.Literal]:
     """
+    The point of this function is to extract out Literals from a collection of either Python native values (which would
+    be converted into Flyte literals) or Promises (the literals in which would just get extracted).
+
     When calling a task inside a workflow, a user might do something like this.
 
         def my_wf(in1: int) -> int:
@@ -50,6 +53,13 @@ def translate_inputs_to_literals(
 
     Here, in task_2, during execution we'd have a list of Promises. We have to make sure to give task2 a Flyte
     LiteralCollection (Flyte's name for list), not a Python list of Flyte literals.
+
+    This helper function is used both when sorting out inputs to a task, as well as outputs of a function.
+
+    :param ctx: Context needed in case a non-primitive literal needs to be translated to a Flyte literal (like a file)
+    :param incoming_values: This is a map of your task's input or wf's output kwargs basically
+    :param flyte_interface_types: One side of an :py:class:`flytekit.models.interface.TypedInterface` basically.
+    :param native_types: Map to native Python type.
     """
 
     def extract_value(
@@ -91,12 +101,15 @@ def translate_inputs_to_literals(
             # This handles native values, the 5 example
             return TypeEngine.to_literal(ctx, input_val, val_type, flyte_literal_type)
 
+    if incoming_values is None:
+        raise ValueError("Incoming values cannot be None, must be a dict")
+
     result = {}  # So as to not overwrite the input_kwargs
-    for k, v in input_kwargs.items():
-        if k not in interface.inputs:
+    for k, v in incoming_values.items():
+        if k not in flyte_interface_types:
             raise ValueError(f"Received unexpected keyword argument {k}")
-        var = interface.inputs[k]
-        t = native_input_types[k]
+        var = flyte_interface_types[k]
+        t = native_types[k]
         result[k] = extract_value(ctx, v, t, var.type)
 
     return result
@@ -263,6 +276,25 @@ class ConjunctionExpression(object):
 # TODO: The NodeOutput object, which this Promise wraps, has an sdk_type. Since we're no longer using sdk types,
 #  we should consider adding a literal type to this object as well for downstream checking when Bindings are created.
 class Promise(object):
+    """
+    This object is a wrapper and exists for three main reasons. Let's assume we're dealing with a task like ::
+
+        @task
+        def t1() -> (int, str): ...
+
+    #. Handling the duality between compilation and local execution - when the task function is run in a local execution
+       mode inside a workflow function, a Python integer and string are produced. When the task is being compiled as
+       part of the workflow, the task call creates a Node instead, and the task returns two Promise objects that
+       point to that Node.
+    #. One needs to be able to call ::
+
+          x = t1().with_overrides(...)
+
+       If the task returns an integer or a ``(int, str)`` tuple like ``t1`` above, calling ``with_overrides`` on the
+       result would throw an error. This Promise object adds that.
+    #. Assorted handling for conditionals.
+    """
+
     # TODO: Currently, NodeOutput we're creating is the slimmer core package Node class, but since only the
     #  id is used, it's okay for now. Let's clean all this up though.
     def __init__(self, var: str, val: Union[NodeOutput, _literal_models.Literal]):
@@ -369,7 +401,7 @@ class Promise(object):
 
     def __repr__(self):
         if self._promise_ready:
-            return f"Var({self._var}={self._val})"
+            return f"Resolved({self._var}={self._val})"
         return f"Promise(node:{self.ref.node_id}.{self._var})"
 
     def __str__(self):

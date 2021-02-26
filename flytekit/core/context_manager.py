@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Generator, List, Optional
 
+from docker_image import reference
+
 from flytekit.clients import friendly as friendly_client  # noqa
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
@@ -28,6 +30,10 @@ class Image(object):
     name: str
     fqn: str
     tag: str
+
+    @property
+    def full(self):
+        return f"{self.fqn}:{self.tag}"
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -60,18 +66,11 @@ def look_up_image_info(name: str, tag: str, optional_tag: bool = False) -> Image
     :param Text tag: e.g. somedocker.com/myimage:someversion123
     :rtype: Text
     """
-    if tag is None or tag == "":
-        raise Exception("Bad input for image tag {}".format(tag))
-    matches = _IMAGE_FQN_TAG_REGEX.findall(tag)
-    if matches is not None:
-        if len(matches) == 1 and optional_tag:
-            return Image(name=name, fqn=matches[0], tag=None)
-        elif len(matches) == 2:
-            return Image(name=name, fqn=matches[0], tag=matches[1])
-        else:
-            raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
-
-    raise Exception("Could not parse given image and version from configuration.")
+    ref = reference.Reference.parse(tag)
+    if not optional_tag and ref["tag"] is None:
+        raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
+    else:
+        return Image(name=name, fqn=ref["name"], tag=ref["tag"])
 
 
 def get_image_config(img_name: str = None) -> ImageConfig:
@@ -98,14 +97,15 @@ class EntrypointSettings(object):
 
 class SerializationSettings(object):
     def __init__(
-            self,
-            project: str,
-            domain: str,
-            version: str,
-            image_config: ImageConfig,
-            env: Optional[Dict[str, str]],
-            flytekit_virtualenv_root: str = None,
-            entrypoint_settings: EntrypointSettings = None,
+        self,
+        project: str,
+        domain: str,
+        version: str,
+        image_config: ImageConfig,
+        env: Optional[Dict[str, str]],
+        flytekit_virtualenv_root: str = None,
+        python_interpreter: str = None,
+        entrypoint_settings: EntrypointSettings = None,
     ):
         self._project = project
         self._domain = domain
@@ -114,6 +114,7 @@ class SerializationSettings(object):
         self._env = env or {}
         self._instance_lookup = {}
         self._flytekit_virtualenv_root = flytekit_virtualenv_root
+        self._python_interpreter = python_interpreter
         self._entrypoint_settings = entrypoint_settings
 
     @property
@@ -141,6 +142,10 @@ class SerializationSettings(object):
         return self._flytekit_virtualenv_root
 
     @property
+    def python_interpreter(self) -> str:
+        return self._python_interpreter
+
+    @property
     def entrypoint_settings(self) -> EntrypointSettings:
         return self._entrypoint_settings
 
@@ -151,44 +156,6 @@ class SerializationSettings(object):
         if o in self._instance_lookup:
             return self._instance_lookup[o]
         raise KeyError(f"Instance Variable not found for object id {o}")
-
-
-class TaskResolverMixin(object):
-    """
-    A TaskResolver that can be used to load the task itself from the actual argument that is captured.
-    The argument itself should be discoverable through the class loading framework.
-
-    .. note::
-
-        Task Resolver can only be used for cases in which the Task can be fully loaded using constant module level variables
-        and/or can be returned using the loader-args. Loader args are simple strings
-
-    """
-
-    @abstractmethod
-    def name(self) -> str:
-        pass
-
-    @abstractmethod
-    def load_task(self, loader_args: List[str]) -> "PythonInstanceTask":
-        """
-        Given the set of identifier keys, should return one Python Task or raise an error if not found
-        """
-        pass
-
-    @abstractmethod
-    def loader_args(self, var: InstanceVar, for_task: "PythonInstanceTask") -> List[str]:
-        """
-        Return a list of strings that can help identify the parameter Task
-        """
-        pass
-
-    @abstractmethod
-    def get_all_tasks(self) -> List["PythonInstanceTask"]:
-        """
-         Future proof method. Just making it easy to access all tasks (Not required today as we auto register them)
-        """
-        pass
 
 
 class CompilationState(object):
@@ -274,8 +241,7 @@ class ExecutionState(object):
         LOCAL_TASK_EXECUTION = 3
 
     def __init__(
-            self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike,
-            additional_context: Dict[Any, Any] = None
+        self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike, additional_context: Dict[Any, Any] = None
     ):
         self._mode = mode
         self._working_dir = working_dir
@@ -337,14 +303,14 @@ class FlyteContext(object):
     OBJS = []
 
     def __init__(
-            self,
-            parent=None,
-            file_access: _data_proxy.FileAccessProvider = None,
-            compilation_state: CompilationState = None,
-            execution_state: ExecutionState = None,
-            flyte_client: friendly_client.SynchronousFlyteClient = None,
-            user_space_params: ExecutionParameters = None,
-            serialization_settings: SerializationSettings = None,
+        self,
+        parent=None,
+        file_access: _data_proxy.FileAccessProvider = None,
+        compilation_state: CompilationState = None,
+        execution_state: ExecutionState = None,
+        flyte_client: friendly_client.SynchronousFlyteClient = None,
+        user_space_params: ExecutionParameters = None,
+        serialization_settings: SerializationSettings = None,
     ):
         # TODO: Should we have this auto-parenting feature?
         if parent is None and len(FlyteContext.OBJS) > 0:
@@ -409,11 +375,11 @@ class FlyteContext(object):
 
     @contextmanager
     def new_execution_context(
-            self,
-            mode: ExecutionState.Mode,
-            additional_context: Dict[Any, Any] = None,
-            execution_params: Optional[ExecutionParameters] = None,
-            working_dir: Optional[str] = None,
+        self,
+        mode: ExecutionState.Mode,
+        additional_context: Dict[Any, Any] = None,
+        execution_params: Optional[ExecutionParameters] = None,
+        working_dir: Optional[str] = None,
     ) -> Generator[FlyteContext, None, None]:
         # Create a working directory for the execution to use
         working_dir = working_dir or self.file_access.get_random_local_directory()
@@ -443,12 +409,16 @@ class FlyteContext(object):
             return None
 
     @contextmanager
-    def new_compilation_context(self, prefix: Optional[str] = None, task_resolver: Optional[TaskResolverMixin] = None) -> Generator[FlyteContext, None, None]:
+    def new_compilation_context(
+        self, prefix: Optional[str] = None, task_resolver: Optional[TaskResolverMixin] = None
+    ) -> Generator[FlyteContext, None, None]:
         """
         :param prefix: See CompilationState comments
         :param task_resolver: resolver for tasks within this compilation context
         """
-        new_ctx = FlyteContext(parent=self, compilation_state=CompilationState(prefix=prefix or "", task_resolver=task_resolver))
+        new_ctx = FlyteContext(
+            parent=self, compilation_state=CompilationState(prefix=prefix or "", task_resolver=task_resolver)
+        )
         FlyteContext.OBJS.append(new_ctx)
         try:
             yield new_ctx
@@ -466,7 +436,7 @@ class FlyteContext(object):
 
     @contextmanager
     def new_serialization_settings(
-            self, serialization_settings: SerializationSettings
+        self, serialization_settings: SerializationSettings
     ) -> Generator[FlyteContext, None, None]:
         new_ctx = FlyteContext(parent=self, serialization_settings=serialization_settings)
         FlyteContext.OBJS.append(new_ctx)

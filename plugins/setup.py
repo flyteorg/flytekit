@@ -12,8 +12,9 @@ SOURCES = {
     "flytekitplugins-spark": "spark",
     "flytekitplugins-pod": "pod",
     "flytekitplugins-kfpytorch": "kfpytorch",
-    "flytekitplugins-aws": "aws",
+    "flytekitplugins-awssagemaker": "awssagemaker",
     "flytekitplugins-kftensorflow": "kftensorflow",
+    "flytekitplugins-pandera": "pandera",
 }
 
 

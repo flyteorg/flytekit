@@ -1,3 +1,9 @@
+"""
+.. autoclass:: flytekit.core.schedule.CronSchedule
+   :noindex:
+
+"""
+
 import datetime
 import re as _re
 
@@ -8,6 +14,19 @@ from flytekit.models import schedule as _schedule_models
 
 # Duplicates flytekit.common.schedules.Schedule to avoid using the ExtendedSdkType metaclass.
 class CronSchedule(_schedule_models.Schedule):
+    """
+    Use this when you have a launch plan that you want to run on a cron expression. The syntax currently used for this
+    follows the `AWS convention <https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions>`__
+
+    .. code-block::
+
+        CronSchedule(
+            cron_expression="0 10 * * ? *",
+        )
+
+    See :std:ref:`cookbook <cookbook:sphx_glr_auto_core_remote_flyte_lp_schedules.py>` for further examples.
+    """
+
     _VALID_CRON_ALIASES = [
         "hourly",
         "hours",
@@ -35,10 +54,22 @@ class CronSchedule(_schedule_models.Schedule):
         self, cron_expression: str = None, schedule: str = None, offset: str = None, kickoff_time_input_arg: str = None
     ):
         """
-        :param str cron_expression:
-        :param str schedule:
+        :param str cron_expression: This should be a cron expression in AWS style.
+        :param str schedule: This takes a cron alias (see ``_VALID_CRON_ALIASES``) or a croniter parseable schedule.
+          Only one of this or ``cron_expression`` can be set, not both.
         :param str offset:
-        :param str kickoff_time_input_arg:
+        :param str kickoff_time_input_arg: This is a convenient argument to use when your code needs to know what time
+          a run was kicked off. Supply the name of the input argument of your workflow to this argument here. Note
+          that until Flyte has an atomic clock, there could be a few seconds here and there. That is, if your run is
+          supposed to kick off at 3pm UTC every Weds, it may actually be 15:00:02 or something.  Example ::
+
+            @workflow
+            def my_wf(kickoff_time: datetime): ...
+
+            schedule = CronSchedule(
+                cron_expression="0 10 * * ? *",
+                kickoff_time_input_arg="kickoff_time")
+
         """
         if cron_expression is None and schedule is None:
             raise AssertionError("Either `cron_expression` or `schedule` should be specified.")

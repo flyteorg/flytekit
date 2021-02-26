@@ -4,6 +4,8 @@ import logging as _logging
 import os as _os
 import pathlib
 import random as _random
+import traceback as _traceback
+from typing import List
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -11,6 +13,7 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common import utils as _utils
+from flytekit.common.exceptions import scopes as _scoped_exceptions
 from flytekit.common.exceptions import scopes as _scopes
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
@@ -19,8 +22,7 @@ from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
-from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config, \
-    TaskResolverMixin
+from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
 from flytekit.core.promise import VoidPromise
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
@@ -30,6 +32,7 @@ from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
+from flytekit.models.core import errors as _error_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 
@@ -77,6 +80,7 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
             b: OR if IgnoreOutputs is raised, then ignore uploading outputs
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
     """
+    output_file_dict = {}
     try:
         # Step1
         local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
@@ -85,6 +89,7 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
         # Step2
         outputs = task_def.dispatch_execute(ctx, idl_input_literals)
+        # Step3a
         if isinstance(outputs, VoidPromise):
             _logging.getLogger().warning("Task produces no outputs")
             output_file_dict = {_constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
@@ -94,15 +99,20 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
             output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
         else:
             _logging.getLogger().error(f"SystemError: received unknown outputs from task {outputs}")
-            # TODO This should probably cause an error file
-            return
-
-        for k, v in output_file_dict.items():
-            _common_utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
-
-        # Step3a
-        ctx.file_access.upload_directory(ctx.execution_state.engine_dir, output_prefix)
-        _logging.info(f"Outputs written successful the the output prefix {output_prefix}")
+            output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+                _error_models.ContainerError(
+                    "UNKNOWN_OUTPUT",
+                    f"Type of output received not handled {type(outputs)} outputs: {outputs}",
+                    _error_models.ContainerError.Kind.RECOVERABLE,
+                )
+            )
+    except _scoped_exceptions.FlyteScopedException as e:
+        _logging.error("!! Begin Error Captured by Flyte !!")
+        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+            _error_models.ContainerError(e.error_code, e.verbose_message, e.kind)
+        )
+        _logging.error(e.verbose_message)
+        _logging.error("!! End Error Captured by Flyte !!")
     except Exception as e:
         if isinstance(e, IgnoreOutputs):
             # Step 3b
@@ -110,7 +120,19 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
             return
         # Step 3c
         _logging.error(f"Exception when executing task {task_def.name}, reason {str(e)}")
-        raise e
+        _logging.error("!! Begin Unknown System Error Captured by Flyte !!")
+        exc_str = _traceback.format_exc()
+        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+            _error_models.ContainerError("SYSTEM:Unknown", exc_str, _error_models.ContainerError.Kind.RECOVERABLE,)
+        )
+        _logging.error(exc_str)
+        _logging.error("!! End Error Captured by Flyte !!")
+
+    for k, v in output_file_dict.items():
+        _common_utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
+
+    ctx.file_access.upload_directory(ctx.execution_state.engine_dir, output_prefix)
+    _logging.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
 
 def _handle_annotated_task(task_def: PythonTask, inputs: str, output_prefix: str, raw_output_data_prefix: str):
@@ -199,56 +221,72 @@ def _handle_annotated_task(task_def: PythonTask, inputs: str, output_prefix: str
 
 
 @_scopes.system_entry_point
-def _execute_task(task_module, task_name, loader_args, inputs, output_prefix, raw_output_data_prefix, test):
+def _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with _utils.AutoDeletingTempDir("input_dir") as input_dir:
             # Load user code
-
             task_module = _importlib.import_module(task_module)
             task_def = getattr(task_module, task_name)
 
-            if isinstance(task_def, PythonTask):
-                if test:
-                    print(f"PythonTask type found - {task_def.name}")
-                    return
-                _handle_annotated_task(task_def, inputs, output_prefix, raw_output_data_prefix)
-            elif isinstance(task_def, TaskResolverMixin):
-                _task_def = task_def.load_task(loader_args=loader_args)
-                if test:
-                    print(f"Loader type found - {loader_args}/{task_def.name()} - task {_task_def.name}")
-                    return
-                _handle_annotated_task(_task_def, inputs, output_prefix, raw_output_data_prefix)
-            else:
-                if test:
-                    print(f"Legacy type task found {task_def.name}")
-                    return
-                # Old Style
-                local_inputs_file = input_dir.get_named_tempfile("inputs.pb")
+            local_inputs_file = input_dir.get_named_tempfile("inputs.pb")
 
-                # Handle inputs/outputs for array job.
-                if _os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
-                    job_index = _compute_array_job_index()
+            # Handle inputs/outputs for array job.
+            if _os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
+                job_index = _compute_array_job_index()
 
-                    # TODO: Perhaps remove.  This is a workaround to an issue we perceived with limited entropy in
-                    # TODO: AWS batch array jobs.
-                    _flyte_random.seed_flyte_random(
-                        "{} {} {}".format(_random.random(), _datetime.datetime.utcnow(), job_index)
-                    )
-
-                    # If an ArrayTask is discoverable, the original job index may be different than the one specified in
-                    # the environment variable. Look up the correct input/outputs in the index lookup mapping file.
-                    job_index = _map_job_index_to_child_index(input_dir, inputs, job_index)
-
-                    inputs = _os.path.join(inputs, str(job_index), "inputs.pb")
-                    output_prefix = _os.path.join(output_prefix, str(job_index))
-
-                _data_proxy.Data.get_data(inputs, local_inputs_file)
-                input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-
-                _engine_loader.get_engine().get_task(task_def).execute(
-                    _literal_models.LiteralMap.from_flyte_idl(input_proto),
-                    context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
+                # TODO: Perhaps remove.  This is a workaround to an issue we perceived with limited entropy in
+                # TODO: AWS batch array jobs.
+                _flyte_random.seed_flyte_random(
+                    "{} {} {}".format(_random.random(), _datetime.datetime.utcnow(), job_index)
                 )
+
+                # If an ArrayTask is discoverable, the original job index may be different than the one specified in
+                # the environment variable. Look up the correct input/outputs in the index lookup mapping file.
+                job_index = _map_job_index_to_child_index(input_dir, inputs, job_index)
+
+                inputs = _os.path.join(inputs, str(job_index), "inputs.pb")
+                output_prefix = _os.path.join(output_prefix, str(job_index))
+
+            _data_proxy.Data.get_data(inputs, local_inputs_file)
+            input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+
+            _engine_loader.get_engine().get_task(task_def).execute(
+                _literal_models.LiteralMap.from_flyte_idl(input_proto),
+                context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
+            )
+
+
+@_scopes.system_entry_point
+def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args: List[str]):
+    """
+    resolver should be something like:
+        flytekit.core.python_auto_container.default_task_resolver
+    resolver args should be something like
+        --task_module app.workflows --task_name task_1
+    whether the dashes mean anything is up to the resolver. (For the default one, they do not.)
+    """
+    # TODO: If loader args isn't there, call the legacy API execute
+    if len(resolver_args) < 1:
+        raise Exception("cannot be <1")
+
+    # Load the actual resolver - this cannot be a nested thing, whatever kind of resolver it is, it has to be loadable
+    # directly from importlib
+    # TODO: Handle corner cases, like where the first part is [] maybe
+    resolver = resolver.split(".")
+    resolver_mod = resolver[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
+    resolver_key = resolver[-1]  # e.g. 'default_task_resolver'
+    resolver_mod = _importlib.import_module(".".join(resolver_mod))
+    resolver_obj = getattr(resolver_mod, resolver_key)()
+
+    with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
+        # Use the resolver to load the actual task object
+        _task_def = resolver_obj.load_task(loader_args=resolver_args)
+        if test:
+            _click.echo(
+                f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
+            )
+            return
+        _handle_annotated_task(_task_def, inputs, output_prefix, raw_output_data_prefix)
 
 
 @_click.group()
@@ -256,28 +294,20 @@ def _pass_through():
     pass
 
 
-_task_module_option = _click.option("--task-module", required=True)
-_task_name_option = _click.option("--task-name", required=True)
-_inputs_option = _click.option("--inputs", required=True)
-_output_prefix_option = _click.option("--output-prefix", required=True)
-_raw_output_date_prefix_option = _click.option("--raw-output-data-prefix", required=False)
-_test = _click.option("--test", is_flag=True)
-
-
 @_pass_through.command("pyflyte-execute")
-@_click.option("--task-module", required=True)
-@_click.option("--task-name", required=True)
-@_click.option(
-    "--loader-arg",
-    required=False,
-    multiple=True,
-    help="Special arguments in the form str that will be passed to the loader",
-)
+@_click.option("--task-module", required=False)
+@_click.option("--task-name", required=False)
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--resolver", required=False)
+@_click.argument(
+    "--resolver-args", required=False, type=_click.UNPROCESSED, nargs=-1,
+)
 @_click.option("--test", is_flag=True)
-def execute_task_cmd(task_module, task_name, loader_arg, inputs, output_prefix, raw_output_data_prefix, test):
+def execute_task_cmd(
+    task_module, task_name, inputs, output_prefix, raw_output_data_prefix, resolver, resolver_args, test
+):
     _click.echo(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
     # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
@@ -285,7 +315,50 @@ def execute_task_cmd(task_module, task_name, loader_arg, inputs, output_prefix, 
     if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
         raw_output_data_prefix = None
 
-    _execute_task(task_module, task_name, loader_arg, inputs, output_prefix, raw_output_data_prefix, test)
+    # For new API tasks, we need to call a different function.
+    # Use the presence of the resolver to differentiate between old API tasks and new API tasks
+    # The addition of a new top-level command seemed out of scope at the time of this writing to pursue given how
+    # pervasive this top level command already (plugins mostly).
+    if not resolver:
+        _click.echo("No resolver found, assuming legacy API task...")
+        _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
+    else:
+        _click.echo(f"Attempting to run with {resolver}...")
+        _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args)
+
+
+@_pass_through.command("pyflyte-execute")
+@_click.option("--inputs", required=True)
+@_click.option("--output-prefix", required=True)
+@_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--test", is_flag=True)
+@_click.argument(
+    "--loader-args", required=False, type=_click.UNPROCESSED, nargs=-1,
+)
+def execute_task_cmd(inputs, output_prefix, raw_output_data_prefix, test, loader_args):
+    _click.echo(_utils.get_version_message())
+    # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
+    # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
+    # to the original shard formatter/prefix config.
+    if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
+        raw_output_data_prefix = None
+
+    # loader args should be something like:
+    #     flytekit.core.python_auto_container.DefaultTaskResolver task_module app.workflows task_name task_1
+    # TODO: If loader args isn't there, call the legacy API execute
+    if len(loader_args) < 1:
+        raise Exception("nope")
+
+    resolver = loader_args[0]  # the resolver should always be the first thing, see example above.
+    resolver = resolver.split(".")
+    # TODO: Handle corner cases, like where the first part is [] maybe
+    resolver_mod = resolver[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
+    resolver_class = resolver[-1]  # e.g. 'DefaultTaskResolver'
+
+    resolver_mod = _importlib.import_module(".".join(resolver_mod))
+    resolver = getattr(resolver_mod, resolver_class)()
+
+    _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, loader_args[1:])
 
 
 @_pass_through.command("pyflyte-fast-execute")

@@ -2,12 +2,8 @@ import pytest
 
 from flytekit import task
 from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings
-from flytekit.core.python_function_task import (
-    PythonFunctionTask,
-    get_registerable_container_image,
-    isnested,
-    istestfunction,
-)
+from flytekit.core.python_auto_container import get_registerable_container_image
+from flytekit.core.python_function_task import PythonFunctionTask, isnested, istestfunction
 from tests.flytekit.unit.core import tasks
 
 
@@ -64,6 +60,8 @@ def test_container_image_conversion():
 
     with pytest.raises(AssertionError):
         get_registerable_container_image("{{.image.blah}}", cfg)
+
+    assert get_registerable_container_image("{{.image.default}}", cfg) == "xyz.com/abc:tag1"
 
 
 def test_py_func_task_get_container():

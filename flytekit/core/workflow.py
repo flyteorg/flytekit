@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import inspect
-import typing
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from flytekit.common import constants as _common_constants
-from flytekit.common.exceptions.user import FlyteValidationException
+from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteEntities, TaskResolverMixin, InstanceVar
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteEntities, InstanceVar
 from flytekit.core.interface import (
     Interface,
     transform_inputs_to_parameters,
@@ -24,7 +23,9 @@ from flytekit.core.promise import (
     binding_from_python_std,
     create_and_link_node,
     create_task_output,
+    translate_inputs_to_literals,
 )
+from flytekit.core.python_auto_container import TaskResolverMixin
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
@@ -81,41 +82,6 @@ class WorkflowMetadataDefaults(object):
         return _workflow_model.WorkflowMetadataDefaults(interruptible=self.interruptible)
 
 
-def _workflow_fn_outputs_to_promise(
-    ctx: FlyteContext,
-    native_outputs: typing.Dict[str, type],  # Actually an orderedDict
-    typed_outputs: Dict[str, _interface_models.Variable],
-    outputs: Union[Any, Tuple[Any]],
-) -> List[Promise]:
-    if len(native_outputs) == 1:
-        if isinstance(outputs, tuple):
-            if len(outputs) != 1:
-                raise AssertionError(
-                    f"The Workflow specification indicates only one return value, received {len(outputs)}"
-                )
-        else:
-            outputs = (outputs,)
-
-    if len(native_outputs) > 1:
-        if not isinstance(outputs, tuple) or len(native_outputs) != len(outputs):
-            # Length check, clean up exception
-            raise AssertionError(
-                f"The workflow specification indicates {len(native_outputs)} return vals, but received {len(outputs)}"
-            )
-
-    # This recasts the Promises provided by the outputs of the workflow's tasks into the correct output names
-    # of the workflow itself
-    return_vals = []
-    for (k, t), v in zip(native_outputs.items(), outputs):
-        if isinstance(v, Promise):
-            return_vals.append(v.with_var(k))
-        else:
-            # Found a return type that is not a promise, so we need to transform it
-            var = typed_outputs[k]
-            return_vals.append(Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, var.type)))
-    return return_vals
-
-
 def construct_input_promises(inputs: List[str]):
     return {
         input_name: Promise(var=input_name, val=NodeOutput(node=GLOBAL_START_NODE, var=input_name))
@@ -126,6 +92,7 @@ def construct_input_promises(inputs: List[str]):
 class Workflow(TaskResolverMixin):
     """
     When you assign a name to a node.
+
     * Any upstream node that is not assigned, recursively assign
     * When you get the call to the constructor, keep in mind there may be duplicate nodes, because they all should
       be wrapper nodes.
@@ -200,6 +167,7 @@ class Workflow(TaskResolverMixin):
         a 'closure' in the traditional sense of the word.
         """
         from flytekit.core.python_function_task import PythonInstanceTask
+
         ctx = FlyteContext.current_context()
         self._input_parameters = transform_inputs_to_parameters(ctx, self._native_interface)
         all_nodes = []
@@ -268,28 +236,60 @@ class Workflow(TaskResolverMixin):
                 t = self._native_interface.inputs[k]
                 kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
 
+        # The output of this will always be a combination of Python native values and Promises containing Flyte
+        # Literals.
         function_outputs = self.execute(**kwargs)
-        if (
-            isinstance(function_outputs, VoidPromise)
-            or function_outputs is None
-            or len(self.python_interface.outputs) == 0
-        ):
-            # The reason this is here is because a workflow function may return a task that doesn't return anything
-            #   def wf():
-            #       return t1()
-            # or it may not return at all
-            #   def wf():
-            #       t1()
-            # In the former case we get the task's VoidPromise, in the latter we get None
+
+        # First handle the empty return case.
+        # A workflow function may return a task that doesn't return anything
+        #   def wf():
+        #       return t1()
+        # or it may not return at all
+        #   def wf():
+        #       t1()
+        # In the former case we get the task's VoidPromise, in the latter we get None
+        if isinstance(function_outputs, VoidPromise) or function_outputs is None:
+            if len(self.python_interface.outputs) != 0:
+                raise FlyteValueException(
+                    function_outputs,
+                    f"{function_outputs} received but interface has {len(self.python_interface.outputs)} outputs.",
+                )
+
             return VoidPromise(self.name)
 
-        # TODO: Can we refactor the task code to be similar to what's in this function?
-        promises = _workflow_fn_outputs_to_promise(
-            ctx, self._native_interface.outputs, self.interface.outputs, function_outputs
+        # Because we should've already returned in the above check, we just raise an Exception here.
+        if len(self.python_interface.outputs) == 0:
+            raise FlyteValueException(
+                function_outputs, f"{function_outputs} received but should've been VoidPromise or None."
+            )
+
+        expected_output_names = list(self.interface.outputs.keys())
+        if len(expected_output_names) == 1:
+            # Here we have to handle the fact that the wf could've been declared with a typing.NamedTuple of
+            # length one. That convention is used for naming outputs - and single-length-NamedTuples are
+            # particularly troublesome but elegant handling of them is not a high priority
+            # Again, we're using the output_tuple_name as a proxy.
+            if self.python_interface.output_tuple_name and isinstance(function_outputs, tuple):
+                wf_outputs_as_map = {expected_output_names[0]: function_outputs[0]}
+            else:
+                wf_outputs_as_map = {expected_output_names[0]: function_outputs}
+        else:
+            wf_outputs_as_map = {expected_output_names[i]: function_outputs[i] for i, _ in enumerate(function_outputs)}
+
+        # Basically we need to repackage the promises coming from the tasks into Promises that match the workflow's
+        # interface. We do that by extracting out the literals, and creating new Promises
+        wf_outputs_as_literal_dict = translate_inputs_to_literals(
+            ctx,
+            wf_outputs_as_map,
+            flyte_interface_types=self.interface.outputs,
+            native_types=self.python_interface.outputs,
         )
+
+        new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in expected_output_names]
+
         # TODO: With the native interface, create_task_output should be able to derive the typed interface, and it
         #   should be able to do the conversion of the output of the execute() call directly.
-        return create_task_output(promises, self._native_interface)
+        return create_task_output(new_promises, self._native_interface)
 
     def execute(self, **kwargs):
         """
@@ -365,13 +365,23 @@ def workflow(
     interruptible: Optional[bool] = False,
 ):
     """
+    This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
+    of tasks using the data flow between tasks.
+
+    Unlike a task, the function body of a workflow is evaluated at serialization-time (aka compile-time). This is because
+    while we can determine the entire structure of a task by looking at the function's signature,
+    workflows need to run through the function itself because the body of the function is what expresses the workflow structure.
+    It's also important to note that, local execution notwithstanding, it is not evaluated again when the workflow runs on Flyte.
+    That is, workflows should not call non-Flyte entities since they are only run once (again, this is with respect to
+    the platform, local runs notwithstanding).
+
+    Please see the :std:doc:`auto_core_basic/basic_workflow` for more usage examples.
+
+    :param _workflow_function: This argument is implicitly passed and represents the decorated function.
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
     :param interruptible: Whether or not tasks launched from this workflow are by default interruptible
     """
 
-    # Unlike for tasks, where we can determine the entire structure of the task by looking at the function's signature,
-    # workflows need to have the body of the function itself run at module-load time. This is because the body of the
-    # workflow is what expresses the workflow structure.
     def wrapper(fn):
         workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
 
