@@ -46,14 +46,14 @@ class MapPythonTask(PythonTask):
             **kwargs,
         )
 
-
     def get_command(self, settings: SerializationSettings) -> List[str]:
         return [
             "pyflyte-map-execute",
             "--task-module",
             self._run_task._task_function.__module__,
             "--task-name",
-            f"{self._run_task._task_function.__name__}",
+            #f"{self._run_task._task_function.__name__}",
+            self.name,
             "--inputs",
             "{{.input}}",
             "--output-prefix",
@@ -84,76 +84,7 @@ class MapPythonTask(PythonTask):
                 return self._raw_execute(**kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            # return self.compile_into_workflow(ctx, **kwargs)
             return self._execute_map_task(ctx, **kwargs)
-
-    def compile_into_workflow(self, ctx: FlyteContext, **kwargs) -> Union[DynamicJobSpec, LiteralMap]:
-
-        # TODO(katrogan): Add support for collection type inputs.
-        if self._are_inputs_collection_type():
-            logger.info("Not handling collection type inputs, defaulting to raw execution")
-            return self._raw_execute(**kwargs)
-
-        with ctx.new_compilation_context(prefix="dynamic") as comp_ctx:
-            # TODO: Resolve circular import
-            from flytekit.common.translator import get_serializable
-
-            # Let's create a workflow, with one node that runs a container array task
-            collection_interface = self.python_interface
-            self._python_interface = self._array_task_interface
-            compile_once_inputs = {k: v[0] for (k, v) in kwargs.items()}
-            self.run_task.compile(comp_ctx, **compile_once_inputs)
-            # self.compile(comp_ctx, **compile_once_inputs)
-            self._python_interface = collection_interface
-            workflow_nodes = comp_ctx.compilation_state.nodes
-            if len(workflow_nodes) != 1:
-                logger.error(f"Expected one node when compiling map task, got f{len(workflow_nodes)}")
-
-            sdk_workflow_node = workflow_nodes[0]
-            # Iterate through the workflow outputs
-            output_names = list(self.interface.outputs.keys())
-
-            any_key = (
-                list(self._run_task.interface.inputs.keys())[0]
-                if self._run_task.interface.inputs.items() is not None
-                else None
-            )
-            outputs_expected = True
-            if not self.interface.outputs:
-                outputs_expected = False
-
-            node_id = sdk_workflow_node.id
-            bindings = []
-            if outputs_expected:
-                for output_name in output_names:
-                    binding_data_collection = []
-                    for i in range(len(kwargs[any_key])):
-                        promise = OutputReference(node_id, f"[{i}].{output_name}")
-                        binding_data = BindingData(promise=promise)
-                        binding_data_collection.append(binding_data)
-                    binding = Binding(
-                        var=output_name, binding=BindingData(collection=BindingDataCollection(binding_data_collection))
-                    )
-                    bindings.append(binding)
-
-        sdk_node = get_serializable(ctx.serialization_settings, sdk_workflow_node)
-
-        # TODO: calculate failure ratio
-        array_job = ArrayJob(
-            parallelism=self._max_concurrency if self._max_concurrency else 0,
-            size=len(kwargs[any_key]),
-            min_successes=len(kwargs[any_key]),
-        )
-        sdk_task_node = sdk_node.task_node
-        sdk_task_node.sdk_task.assign_custom_and_return(array_job.to_dict()).assign_type_and_return("container_array")
-
-        dj_spec = DynamicJobSpec(
-            min_successes=1, tasks=[sdk_task_node.sdk_task], nodes=[sdk_node], outputs=bindings, subworkflows=[],
-        )
-
-        logger.info("dj_spec {}".format(dj_spec))
-        return dj_spec
-
 
     @staticmethod
     def _compute_array_job_index():

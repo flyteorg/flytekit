@@ -402,8 +402,6 @@ class PythonTask(Task, Generic[T]):
                 native_outputs_as_map = {
                     expected_output_names[i]: native_outputs[i] for i, _ in enumerate(native_outputs)
                 }
-            logger.info(f"self._outputs_interface {self._outputs_interface}")
-            logger.info(f"expected_output_names {expected_output_names}")
 
             # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
             # built into the IDL that all the values of a literal map are of the same type.
@@ -415,14 +413,11 @@ class PythonTask(Task, Generic[T]):
                 if isinstance(v, tuple):
                     raise AssertionError(f"Output({k}) in task{self.name} received a tuple {v}, instead of {py_type}")
                 try:
-                    logger.info(f"trying to transform {v} to literal with py_type {py_type} and literal_type {literal_type}")
                     literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
                 except Exception as e:
                     raise AssertionError(f"failed to convert return value for var {k}") from e
 
-            logger.info(f"literals {literals}")
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
-            logger.info(f"outputs_literal_map {outputs_literal_map}")
             # After the execute has been successfully completed
             return outputs_literal_map
 
