@@ -203,14 +203,9 @@ def _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_outp
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with _utils.AutoDeletingTempDir("input_dir") as input_dir:
             # Load user code
-
             task_module = _importlib.import_module(task_module)
             task_def = getattr(task_module, task_name)
 
-            if test:
-                print(f"Legacy type task found {task_def.name}")
-                return
-            # Old Style
             local_inputs_file = input_dir.get_named_tempfile("inputs.pb")
 
             # Handle inputs/outputs for array job.
@@ -240,15 +235,34 @@ def _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_outp
 
 
 @_scopes.system_entry_point
-def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, loader_args: List[str]):
+def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args: List[str]):
+    """
+    resolver should be something like:
+        flytekit.core.python_auto_container.default_task_resolver
+    resolver args should be something like
+        --task_module app.workflows --task_name task_1
+    whether the dashes mean anything is up to the resolver. (For the default one, they do not.)
+    """
+    # TODO: If loader args isn't there, call the legacy API execute
+    if len(resolver_args) < 1:
+        raise Exception("cannot be <1")
+
+    # Load the actual resolver - this cannot be a nested thing, whatever kind of resolver it is, it has to be loadable
+    # directly from importlib
+    # TODO: Handle corner cases, like where the first part is [] maybe
+    resolver = resolver.split(".")
+    resolver_mod = resolver[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
+    resolver_key = resolver[-1]  # e.g. 'default_task_resolver'
+    resolver_mod = _importlib.import_module('.'.join(resolver_mod))
+    resolver_obj = getattr(resolver_mod, resolver_key)()
+
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        with _utils.AutoDeletingTempDir("input_dir") as input_dir:
-            # Load task object
-            _task_def = resolver.load_task(loader_args=loader_args)
-            if test:
-                print(f"Loader type found - {loader_args}/{task_def.name()} - task {_task_def.name}")
-                return
-            _handle_annotated_task(_task_def, inputs, output_prefix, raw_output_data_prefix)
+        # Use the resolver to load the actual task object
+        _task_def = resolver_obj.load_task(loader_args=resolver_args)
+        if test:
+            _click.echo(f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}")
+            return
+        _handle_annotated_task(_task_def, inputs, output_prefix, raw_output_data_prefix)
 
 
 @_click.group()
@@ -256,12 +270,38 @@ def _pass_through():
     pass
 
 
-_task_module_option = _click.option("--task-module", required=True)
-_task_name_option = _click.option("--task-name", required=True)
-_inputs_option = _click.option("--inputs", required=True)
-_output_prefix_option = _click.option("--output-prefix", required=True)
-_raw_output_date_prefix_option = _click.option("--raw-output-data-prefix", required=False)
-_test = _click.option("--test", is_flag=True)
+@_pass_through.command("pyflyte-execute")
+@_click.option("--task-module", required=False)
+@_click.option("--task-name", required=False)
+@_click.option("--inputs", required=True)
+@_click.option("--output-prefix", required=True)
+@_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--resolver", required=False)
+@_click.argument(
+    "--resolver-args",
+    required=False,
+    type=_click.UNPROCESSED,
+    nargs=-1,
+)
+@_click.option("--test", is_flag=True)
+def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, resolver, resolver_args, test):
+    _click.echo(_utils.get_version_message())
+    # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
+    # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
+    # to the original shard formatter/prefix config.
+    if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
+        raw_output_data_prefix = None
+
+    # For new API tasks, we need to call a different function.
+    # Use the presence of the resolver to differentiate between old API tasks and new API tasks
+    # The addition of a new top-level command seemed out of scope at the time of this writing to pursue given how
+    # pervasive this top level command already (plugins mostly).
+    if not resolver:
+        _click.echo("No resolver found, assuming legacy API task...")
+        _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
+    else:
+        _click.echo(f"Attempting to run with {resolver}...")
+        _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args)
 
 
 @_pass_through.command("pyflyte-execute")

@@ -8,20 +8,19 @@ from flytekit.core.python_auto_container import TaskResolverMixin, PythonAutoCon
 
 
 class CloudPickleResolver(TaskResolverMixin):
-    @classmethod
-    def name(cls) -> str:
+    def name(self) -> str:
         return "cloud pickling task resolver"
 
-    @classmethod
-    def load_task(cls, loader_args: List[str]) -> PythonAutoContainerTask:
+    def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         raw_bytes = loader_args[0].encode("ascii")
         pickled = b64decode(raw_bytes)
         return cloudpickle.loads(pickled)
 
-    @classmethod
-    def loader_args(cls, settings: SerializationSettings, t: PythonAutoContainerTask) -> List[str]:
+    def loader_args(self, settings: SerializationSettings, t: PythonAutoContainerTask) -> List[str]:
         return [b64encode(cloudpickle.dumps(t)).decode("ascii")]
 
-    @classmethod
-    def get_all_tasks(cls) -> List[PythonAutoContainerTask]:
+    def get_all_tasks(self) -> List[PythonAutoContainerTask]:
         pass
+
+
+default_cloud_pickle_resolver = CloudPickleResolver()

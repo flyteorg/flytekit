@@ -26,9 +26,27 @@ class InstanceTrackingMeta(type):
 class TrackedInstance(metaclass=InstanceTrackingMeta):
     def __init__(self, *args, **kwargs):
         self._instantiated_in = None
+        self._lhs = None
         super().__init__(*args, **kwargs)
 
+    @property
+    def instantiated_in(self) -> str:
+        return self._instantiated_in
+
+    @property
+    def location(self) -> str:
+        return f"{self.instantiated_in}.{self.lhs}"
+
+    @property
     def lhs(self):
+        if self._lhs is not None:
+            return self._lhs
+        return self.find_lhs()
+
+    def find_lhs(self) -> str:
+        if self._lhs is not None:
+            return self._lhs
+
         if self._instantiated_in is None or self._instantiated_in == "":
             raise _system_exceptions.FlyteSystemException(f"Object {self} does not have an _instantiated in")
 
@@ -38,6 +56,7 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
             try:
                 if getattr(m, k) is self:
                     _logging.debug(f"Found LHS for {self}, {k}")
+                    self._lhs = k
                     return k
             except ValueError as err:
                 # Empty pandas dataframes behave weirdly here such that calling `m.df` raises:
