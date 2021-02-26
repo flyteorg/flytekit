@@ -14,7 +14,7 @@ from flytekit.models import literals as _literal_models
 T = TypeVar("T")
 
 
-def isnested(func) -> bool:
+def isnested(func: Callable) -> bool:
     """
     Returns true if a function is local to another function and is not accessible through a module
 
@@ -164,6 +164,16 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             task_config=task_config,
             **kwargs,
         )
+        if task_resolver is None:
+            # If task_resolver is None, that means we'll use the default, which can't handle nested functions
+            # TODO: Consider moving this to a can_handle function or something inside the resolver itself.
+            if not istestfunction(func=task_function) and isnested(func=task_function):
+                raise ValueError(
+                    "TaskFunction cannot be a nested/inner or local function. "
+                    "It should be accessible at a module level for Flyte to execute it. Test modules with "
+                    "names begining with `test_` are allowed to have nested tasks. If you want to create your own tasks"
+                    "use the TaskResolverMixin"
+                )
         self._task_resolver = task_resolver or default_task_resolver
         self._task_function = task_function
         self._execution_mode = execution_mode
