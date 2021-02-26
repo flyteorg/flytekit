@@ -327,40 +327,6 @@ def execute_task_cmd(
         _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args)
 
 
-@_pass_through.command("pyflyte-execute")
-@_click.option("--inputs", required=True)
-@_click.option("--output-prefix", required=True)
-@_click.option("--raw-output-data-prefix", required=False)
-@_click.option("--test", is_flag=True)
-@_click.argument(
-    "--loader-args", required=False, type=_click.UNPROCESSED, nargs=-1,
-)
-def execute_task_cmd(inputs, output_prefix, raw_output_data_prefix, test, loader_args):
-    _click.echo(_utils.get_version_message())
-    # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
-    # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
-    # to the original shard formatter/prefix config.
-    if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
-        raw_output_data_prefix = None
-
-    # loader args should be something like:
-    #     flytekit.core.python_auto_container.DefaultTaskResolver task_module app.workflows task_name task_1
-    # TODO: If loader args isn't there, call the legacy API execute
-    if len(loader_args) < 1:
-        raise Exception("nope")
-
-    resolver = loader_args[0]  # the resolver should always be the first thing, see example above.
-    resolver = resolver.split(".")
-    # TODO: Handle corner cases, like where the first part is [] maybe
-    resolver_mod = resolver[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
-    resolver_class = resolver[-1]  # e.g. 'DefaultTaskResolver'
-
-    resolver_mod = _importlib.import_module(".".join(resolver_mod))
-    resolver = getattr(resolver_mod, resolver_class)()
-
-    _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, loader_args[1:])
-
-
 @_pass_through.command("pyflyte-fast-execute")
 @_click.option("--additional-distribution", required=False)
 @_click.option("--dest-dir", required=False)
