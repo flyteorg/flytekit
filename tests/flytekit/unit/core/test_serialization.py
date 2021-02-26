@@ -287,7 +287,7 @@ def test_serialization_command1():
         "flytekit.core.python_auto_container.default_task_resolver",
         "--resolver-args",
         "--task-module",
-        "test_serialization",
+        "test_serialization",  # when unit testing, t1.task_function.__module__ just gives this file
         "--task-name",
         "t1",
     ]
