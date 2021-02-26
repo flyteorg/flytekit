@@ -90,7 +90,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         )
 
 
-class TaskResolverMixin(TrackedInstance):
+class TaskResolverMixin(object):
     """
     A TaskResolver that can be used to load the task itself from the actual argument that is captured.
     The argument itself should be discoverable through the class loading framework.
@@ -128,7 +128,7 @@ class TaskResolverMixin(TrackedInstance):
         pass
 
 
-class DefaultTaskResolver(TaskResolverMixin):
+class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     def name(self) -> str:
         return "DefaultTaskResolver"
 
