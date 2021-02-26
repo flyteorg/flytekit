@@ -80,6 +80,7 @@ setup(
         "dataclasses-json>=0.5.2",
         "natsort>=7.0.1",
         "dirhash>=0.2.1",
+        "docker-image-py>=0.1.10",
     ],
     dependency_links=[
         "https://github.com/lyft/flyteidl/tarball/map-task-changes#egg=73cf22d60fd597643faa68c4ef8a3c6382011895"

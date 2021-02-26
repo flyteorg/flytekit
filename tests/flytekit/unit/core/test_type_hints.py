@@ -997,3 +997,29 @@ def test_wf_explicitly_returning_empty_task():
         return t1()  # This forces the wf _local_execute to handle VoidPromises
 
     assert my_subwf() is None
+
+
+def test_nested_dict():
+    @task(cache=True, cache_version="1.0.0")
+    def squared(value: int) -> typing.Dict[str, int]:
+        return {"value:": value ** 2}
+
+    @workflow
+    def compute_square_wf(input_integer: int) -> typing.Dict[str, int]:
+        compute_square_result = squared(value=input_integer)
+        return compute_square_result
+
+    compute_square_wf(input_integer=5)
+
+
+def test_nested_dict2():
+    @task(cache=True, cache_version="1.0.0")
+    def squared(value: int) -> typing.List[typing.Dict[str, int]]:
+        return [
+            {"squared_value": value ** 2},
+        ]
+
+    @workflow
+    def compute_square_wf(input_integer: int) -> typing.List[typing.Dict[str, int]]:
+        compute_square_result = squared(value=input_integer)
+        return compute_square_result

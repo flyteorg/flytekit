@@ -31,15 +31,15 @@ black==19.10b0
     #   papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.2
+boto3==1.17.12
     # via sagemaker-training
-botocore==1.20.2
+botocore==1.20.12
     # via
     #   boto3
     #   s3transfer
 certifi==2020.12.5
     # via requests
-cffi==1.14.4
+cffi==1.14.5
     # via
     #   bcrypt
     #   cryptography
@@ -54,7 +54,7 @@ click==7.1.2
     #   papermill
 croniter==1.0.6
     # via flytekit
-cryptography==3.3.1
+cryptography==3.4.6
     # via paramiko
 dataclasses-json==0.5.2
     # via flytekit
@@ -67,6 +67,8 @@ defusedxml==0.6.0
 deprecated==1.2.11
     # via flytekit
 dirhash==0.2.1
+    # via flytekit
+docker-image-py==0.1.10
     # via flytekit
 entrypoints==0.3
     # via
@@ -86,13 +88,9 @@ hmsclient==0.1.1
     # via flytekit
 idna==2.10
     # via requests
-importlib-metadata==3.4.0
-    # via
-    #   jsonschema
-    #   keyring
 inotify_simple==1.2.1
     # via sagemaker-training
-ipykernel==5.4.3
+ipykernel==5.5.0
     # via flytekit
 ipython-genutils==0.2.0
     # via
@@ -141,7 +139,7 @@ natsort==7.1.1
     # via
     #   croniter
     #   flytekit
-nbclient==0.5.1
+nbclient==0.5.2
     # via
     #   nbconvert
     #   papermill
@@ -154,7 +152,7 @@ nbformat==5.1.2
     #   papermill
 nest-asyncio==1.5.1
     # via nbclient
-numpy==1.20.0
+numpy==1.20.1
     # via
     #   flytekit
     #   pandas
@@ -163,7 +161,7 @@ numpy==1.20.0
     #   scipy
 packaging==20.9
     # via bleach
-pandas==1.2.1
+pandas==1.2.2
     # via flytekit
 pandocfilters==1.4.3
     # via nbconvert
@@ -181,9 +179,9 @@ pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
     # via ipython
-prompt-toolkit==3.0.14
+prompt-toolkit==3.0.16
     # via ipython
-protobuf==3.14.0
+protobuf==3.15.1
     # via
     #   flyteidl
     #   flytekit
@@ -201,7 +199,7 @@ pyarrow==3.0.0
     # via flytekit
 pycparser==2.20
     # via cffi
-pygments==2.7.4
+pygments==2.8.0
     # via
     #   ipython
     #   jupyterlab-pygments
@@ -212,7 +210,7 @@ pyparsing==2.4.7
     # via packaging
 pyrsistent==0.17.3
     # via jsonschema
-pyspark==3.0.1
+pyspark==3.0.2
     # via flytekit
 python-dateutil==2.8.1
     # via
@@ -229,10 +227,12 @@ pytz==2018.4
     #   pandas
 pyyaml==5.4.1
     # via papermill
-pyzmq==22.0.2
+pyzmq==22.0.3
     # via jupyter-client
 regex==2020.11.13
-    # via black
+    # via
+    #   black
+    #   docker-image-py
 requests==2.25.1
     # via
     #   flytekit
@@ -250,13 +250,12 @@ sagemaker-training==3.7.3
     # via flytekit
 scantree==0.0.1
     # via dirhash
-scipy==1.6.0
+scipy==1.6.1
     # via sagemaker-training
 six==1.15.0
     # via
     #   bcrypt
     #   bleach
-    #   cryptography
     #   flytekit
     #   grpcio
     #   jsonschema
@@ -289,7 +288,7 @@ tornado==6.1
     # via
     #   ipykernel
     #   jupyter-client
-tqdm==4.56.0
+tqdm==4.57.0
     # via papermill
 traitlets==5.0.5
     # via
@@ -303,9 +302,7 @@ traitlets==5.0.5
 typed-ast==1.4.2
     # via black
 typing-extensions==3.7.4.3
-    # via
-    #   importlib-metadata
-    #   typing-inspect
+    # via typing-inspect
 typing-inspect==0.6.0
     # via dataclasses-json
 urllib3==1.25.11
@@ -326,8 +323,6 @@ wrapt==1.12.1
     # via
     #   deprecated
     #   flytekit
-zipp==3.4.0
-    # via importlib-metadata
 zope.event==4.5.0
     # via gevent
 zope.interface==5.2.0

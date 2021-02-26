@@ -188,7 +188,10 @@ class Task(object):
         #  native constants are just bound to this specific task (default values for a task input)
         #  Also alongwith promises and constants, there could be dictionary or list of promises or constants
         kwargs = translate_inputs_to_literals(
-            ctx, input_kwargs=kwargs, interface=self.interface, native_input_types=self.get_input_types()
+            ctx,
+            incoming_values=kwargs,
+            flyte_interface_types=self.interface.inputs,
+            native_types=self.get_input_types(),
         )
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
@@ -297,13 +300,20 @@ class PythonTask(Task, Generic[T]):
     """
 
     def __init__(
-        self, task_type: str, name: str, task_config: T, interface: Optional[Interface] = None, task_type_version=0, **kwargs,
+        self,
+        task_type: str,
+        name: str,
+        task_config: T,
+        interface: Optional[Interface] = None,
+        environment=None,
+        task_type_version=0,
+        **kwargs,
     ):
         super().__init__(
             task_type=task_type, name=name, interface=transform_interface_to_typed_interface(interface), task_type_version=task_type_version, **kwargs
         )
         self._python_interface = interface if interface else Interface()
-        self._environment = kwargs.get("environment", {})
+        self._environment = environment if environment else {}
         self._task_config = task_config
 
     # TODO lets call this interface and the other as flyte_interface?
