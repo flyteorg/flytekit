@@ -262,8 +262,8 @@ def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver,
     resolver should be something like:
         flytekit.core.python_auto_container.default_task_resolver
     resolver args should be something like
-        --task_module app.workflows --task_name task_1
-    whether the dashes mean anything is up to the resolver. (For the default one, they do not.)
+        task_module app.workflows task_name task_1
+    have dashes seems to mess up click, like --task_module seems to interfere
     """
     # TODO: If loader args isn't there, call the legacy API execute
     if len(resolver_args) < 1:
@@ -276,7 +276,7 @@ def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver,
     resolver_mod = resolver[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
     resolver_key = resolver[-1]  # e.g. 'default_task_resolver'
     resolver_mod = _importlib.import_module(".".join(resolver_mod))
-    resolver_obj = getattr(resolver_mod, resolver_key)()
+    resolver_obj = getattr(resolver_mod, resolver_key)
 
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         # Use the resolver to load the actual task object
@@ -303,7 +303,7 @@ def _pass_through():
 @_click.option("--test", is_flag=True)
 @_click.option("--resolver", required=False)
 @_click.argument(
-    "resolver-args", required=False, type=_click.UNPROCESSED, nargs=-1,
+    "resolver-args", type=_click.UNPROCESSED, nargs=-1,
 )
 def execute_task_cmd(
     task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args
