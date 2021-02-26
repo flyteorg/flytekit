@@ -38,12 +38,11 @@ def sample_batch_task(wf_params, in1, out_str, out_ints):
     out_ints.set(res2)
 
 
-@inputs(inty=Types.Integer)
 @outputs(out_ints=[Types.Integer])
 @dynamic_task
-def sample_batch_task_sq(wf_params, inty, out_ints):
+def sample_batch_task_sq(wf_params, out_ints):
     res2 = []
-    for i in _six_moves.range(0, inty):
+    for i in _six_moves.range(0, 3):
         task = sq_sub_task(in1=i)
         yield task
         res2.append(task.outputs.out1)
@@ -156,8 +155,6 @@ def test_batch_task():
 
     res = sample_batch_task.unit_test(in1=3)
     assert expected == res
-
-    assert False
 
 
 def test_no_future_batch_task():

@@ -648,8 +648,6 @@ def create_and_link_node(
 
     typed_interface = flyte_interface.transform_interface_to_typed_interface(interface)
 
-    logger.info("interface.inputs {}".format(interface.inputs))
-    logger.info("kwargs {}".format(kwargs))
     for k in sorted(interface.inputs):
         var = typed_interface.inputs[k]
         if k not in kwargs:
