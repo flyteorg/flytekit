@@ -300,13 +300,13 @@ def _pass_through():
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--test", is_flag=True)
 @_click.option("--resolver", required=False)
 @_click.argument(
-    "--resolver-args", required=False, type=_click.UNPROCESSED, nargs=-1,
+    "resolver-args", required=False, type=_click.UNPROCESSED, nargs=-1,
 )
-@_click.option("--test", is_flag=True)
 def execute_task_cmd(
-    task_module, task_name, inputs, output_prefix, raw_output_data_prefix, resolver, resolver_args, test
+    task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args
 ):
     _click.echo(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
