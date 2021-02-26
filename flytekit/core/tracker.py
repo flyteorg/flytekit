@@ -17,10 +17,8 @@ class InstanceTrackingMeta(type):
         return None
 
     def __call__(cls, *args, **kwargs):
-        print(f"Starting I call for cls {cls}")
         o = super(InstanceTrackingMeta, cls).__call__(*args, **kwargs)
         o._instantiated_in = InstanceTrackingMeta._find_instance_module()
-        print(f"In I call {type(o)}, {o._instantiated_in}")
         return o
 
 

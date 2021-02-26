@@ -284,13 +284,14 @@ def test_serialization_command1():
         return a
 
     srz_t = get_serializable(serialization_settings, t1)
-    assert srz_t.container.args[-7:] == [
+    assert srz_t.container.args[-8:] == [
         "--resolver",
         "flytekit.core.python_auto_container.default_task_resolver",
         "--resolver-args",
-        "--task-module",
+        "--",
+        "task-module",
         "test_serialization",  # when unit testing, t1.task_function.__module__ just gives this file
-        "--task-name",
+        "task-name",
         "t1",
     ]
 

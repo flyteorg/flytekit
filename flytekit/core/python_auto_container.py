@@ -101,6 +101,10 @@ class TaskResolverMixin(object):
         and/or can be returned using the loader-args. Loader args are simple strings
 
     """
+    @property
+    @abstractmethod
+    def location(self) -> str:
+        pass
 
     @abstractmethod
     def name(self) -> str:

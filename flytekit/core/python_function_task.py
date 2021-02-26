@@ -88,6 +88,7 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
             "--resolver",
             self.task_resolver.location,
             "--resolver-args",
+            "--",
         ]
 
         resolver_args = self.task_resolver.loader_args(settings, self)
@@ -193,6 +194,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             "--resolver",
             self.task_resolver.location,
             "--resolver-args",
+            "--",
         ]
 
         resolver_args = self.task_resolver.loader_args(settings, self)
