@@ -273,8 +273,7 @@ def _execute_map_task(task_module, task_name, inputs, output_prefix, raw_output_
             task_def = getattr(task_module, task_name)
 
             if not test and isinstance(task_def, PythonTask):
-                # map_task = MapPythonTask(task_def, max_concurrency)
-                map_task = task_def
+                map_task = MapPythonTask(task_def, max_concurrency)
 
                 task_index = _compute_array_job_index()
                 output_prefix = _os.path.join(output_prefix, str(task_index))

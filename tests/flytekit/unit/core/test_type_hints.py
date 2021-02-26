@@ -332,49 +332,15 @@ def test_wf1_with_map():
 
 def test_katrina2():
     @task
-    def t1(a: int) -> str:
+    def t1(a: int) -> (int, str):
         inc = a + 2
-        stringified = str(inc)
-        return stringified
+        return inc, str(inc)
 
     mappy = maptask(t1, metadata=TaskMetadata(retries=1))
     with context_manager.FlyteContext.current_context() as ctx:
-        resp = mappy._execute_map_task(ctx, a=[1, 2, 3])
-    assert resp == 2
-
-
-def test_katrina():
-    @task
-    def t1(a: int) -> str:
-        inc = a + 2
-        stringified = str(inc)
-        return stringified
-
-    @workflow
-    def my_wf(a: typing.List[int]) -> typing.List[str]:
-        resp = maptask(t1, metadata=TaskMetadata(retries=1))(a=a)
-        return resp
-
-    with context_manager.FlyteContext.current_context().new_serialization_settings(
-        serialization_settings=context_manager.SerializationSettings(
-            project="test_proj",
-            domain="test_domain",
-            version="abc",
-            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-            env={},
-        )
-    ) as ctx:
-        with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
-            my_maptask = maptask(t1, metadata=TaskMetadata(retries=1))
-            dynamic_job_spec = my_maptask.compile_into_workflow(ctx, a=[1, 2, 3, 4, 5])
-            assert len(dynamic_job_spec._nodes) == 1
-            assert len(dynamic_job_spec.tasks) == 1
-            assert dynamic_job_spec.tasks[0].type == "container_array"
-
-            assert my_maptask.name == "test_type_hints.mapper_t1"
-
-    x = my_wf(a=[5, 6])
-    assert x == ["7", "8"]
+        resp = mappy.execute(a=[1, 2, 3])
+    assert resp[0] == [3, 4, 5]
+    assert resp[1] == ["3", "4", "5"]
 
 
 def test_wf1_compile_time_constant_vars():
