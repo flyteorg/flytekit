@@ -73,8 +73,7 @@ class MapPythonTask(PythonTask):
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             return self._execute_map_task(ctx, **kwargs)
 
-        outputs = self._raw_execute(**kwargs)
-        return outputs
+        return self._raw_execute(**kwargs)
 
     @staticmethod
     def _compute_array_job_index() -> int:
@@ -82,7 +81,6 @@ class MapPythonTask(PythonTask):
         Computes the absolute index of the current array job. This is determined by summing the compute-environment-specific
         environment variable and the offset (if one's set). The offset will be set and used when the user request that the
         job runs in a number of slots less than the size of the input.
-        :rtype: int
         """
         offset = 0
         if os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
@@ -100,6 +98,7 @@ class MapPythonTask(PythonTask):
 
         ctx = FlyteContext.current_context()
         if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            # In workflow execution mode we actually need to use the parent (mapper) task output interface.
             return self.interface.outputs
         return self._run_task.interface.outputs
 
@@ -112,6 +111,7 @@ class MapPythonTask(PythonTask):
         """
         ctx = FlyteContext.current_context()
         if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            # In workflow execution mode we actually need to use the parent (mapper) task output interface.
             return self._python_interface.outputs[k]
         return self._run_task._python_interface.outputs[k]
 
@@ -129,6 +129,10 @@ class MapPythonTask(PythonTask):
         return self._run_task.execute(**map_task_inputs)
 
     def _raw_execute(self, **kwargs) -> Any:
+        """
+        This is called during locally run executions. Unlike array task execution on the Flyte platform, _raw_execute
+        produces the full output collection.
+        """
         outputs_expected = True
         if not self.interface.outputs:
             outputs_expected = False
