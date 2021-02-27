@@ -52,7 +52,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
             # In the case of the primary container, we overwrite specific container attributes with the default values
             # used in an SDK runnable task.
             if container.name == self.task_config.primary_container_name:
-                sdk_default_container = self.bget_container(settings)
+                sdk_default_container = self.get_container(settings)
 
                 container.image = sdk_default_container.image
                 # clear existing commands
