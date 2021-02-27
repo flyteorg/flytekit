@@ -6,7 +6,7 @@ from click.testing import CliRunner
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core.errors_pb2 import ErrorDocument
 
-from flytekit.bin.entrypoint import _dispatch_execute, _execute_task, execute_task_cmd
+from flytekit.bin.entrypoint import _dispatch_execute, _execute_task, execute_task_cmd, _legacy_execute_task
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _utils
 from flytekit.common.types import helpers as _type_helpers
@@ -36,7 +36,7 @@ def test_single_step_entrypoint_in_proc():
             _utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
 
             with _utils.AutoDeletingTempDir("out") as output_dir:
-                _execute_task(
+                _legacy_execute_task(
                     _task_defs.add_one.task_module,
                     _task_defs.add_one.task_function_name,
                     input_file,
@@ -116,7 +116,7 @@ def test_arrayjob_entrypoint_in_proc():
             os.environ["BATCH_JOB_ARRAY_INDEX_VAR_NAME"] = "AWS_BATCH_JOB_ARRAY_INDEX"
             os.environ["AWS_BATCH_JOB_ARRAY_INDEX"] = "0"
 
-            _execute_task(
+            _legacy_execute_task(
                 _task_defs.add_one.task_module,
                 _task_defs.add_one.task_function_name,
                 dir.name,
@@ -143,12 +143,12 @@ def test_arrayjob_entrypoint_in_proc():
                 os.environ["AWS_BATCH_JOB_ARRAY_INDEX"] = orig_env_array_index
 
 
-@mock.patch("flytekit.bin.entrypoint._execute_task")
-def test_backwards_compatible_replacement(mock_execute_task):
+@mock.patch("flytekit.bin.entrypoint._legacy_execute_task")
+def test_backwards_compatible_replacement(mock_legacy_execute_task):
     def return_args(*args, **kwargs):
         assert args[4] is None
 
-    mock_execute_task.side_effect = return_args
+    mock_legacy_execute_task.side_effect = return_args
 
     with _TemporaryConfiguration(
         os.path.join(os.path.dirname(__file__), "fake.config"),
