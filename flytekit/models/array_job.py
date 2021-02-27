@@ -16,6 +16,8 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
         :param int min_successes: An absolute number of the minimum number of successful completions of subtasks. As
             soon as this criteria is met, the array job will be marked as successful and outputs will be computed.
         """
+        if min_successes and min_success_ratio:
+            raise ValueError("Only one of min_successes or min_success_ratio can be set")
         self._parallelism = parallelism
         self._size = size
         self._min_successes = min_successes
