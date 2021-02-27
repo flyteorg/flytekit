@@ -6,7 +6,7 @@ from click.testing import CliRunner
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core.errors_pb2 import ErrorDocument
 
-from flytekit.bin.entrypoint import _dispatch_execute, _execute_task, execute_task_cmd, _legacy_execute_task
+from flytekit.bin.entrypoint import _dispatch_execute, _legacy_execute_task, execute_task_cmd
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _utils
 from flytekit.common.types import helpers as _type_helpers
