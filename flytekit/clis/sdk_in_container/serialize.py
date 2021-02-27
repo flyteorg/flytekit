@@ -154,11 +154,6 @@ def serialize_all(
             )
             loaded_entities.append(o)
 
-        # # PythonInstanceTasks will not be picked up by the above, so we need to reiterate
-        # for o, v in load_module_object_for_type(pkgs, PythonInstanceTask, additional_path=local_source_root).items():
-        #     m, k = v
-        #     ctx.serialization_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
-
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
 
         mode = mode if mode else SerializationMode.DEFAULT
