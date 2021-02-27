@@ -101,6 +101,7 @@ class TaskResolverMixin(object):
         and/or can be returned using the loader-args. Loader args are simple strings
 
     """
+
     @property
     @abstractmethod
     def location(self) -> str:
@@ -127,7 +128,7 @@ class TaskResolverMixin(object):
     @abstractmethod
     def get_all_tasks(self) -> List[PythonAutoContainerTask]:
         """
-         Future proof method. Just making it easy to access all tasks (Not required today as we auto register them)
+        Future proof method. Just making it easy to access all tasks (Not required today as we auto register them)
         """
         pass
 

@@ -70,7 +70,11 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
         **kwargs,
     ):
         super().__init__(name=name, task_config=task_config, task_type=task_type, **kwargs)
-        self._task_resolver = task_resolver or default_task_resolver
+        compilation_state = FlyteContext.current_context().compilation_state
+        if compilation_state and compilation_state.task_resolver:
+            self._task_resolver = compilation_state.task_resolver
+        else:
+            self._task_resolver = task_resolver or default_task_resolver
 
     @property
     def task_resolver(self) -> Optional[TaskResolverMixin]:
@@ -146,8 +150,18 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             task_config=task_config,
             **kwargs,
         )
-        if task_resolver is None:
-            # If task_resolver is None, that means we'll use the default, which can't handle nested functions
+        compilation_state = FlyteContext.current_context().compilation_state
+        if compilation_state and compilation_state.task_resolver:
+            if task_resolver:
+                logger.info(
+                    f"Not using the passed in task resolver {task_resolver} because one found in compilation context"
+                )
+            self._task_resolver = compilation_state.task_resolver
+        else:
+            self._task_resolver = task_resolver or default_task_resolver
+
+        if self._task_resolver is default_task_resolver:
+            # The default task resolver can't handle nested functions
             # TODO: Consider moving this to a can_handle function or something inside the resolver itself.
             if not istestfunction(func=task_function) and isnested(func=task_function):
                 raise ValueError(
@@ -156,7 +170,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                     "names begining with `test_` are allowed to have nested tasks. If you want to create your own tasks"
                     "use the TaskResolverMixin"
                 )
-        self._task_resolver = task_resolver or default_task_resolver
         self._task_function = task_function
         self._execution_mode = execution_mode
 

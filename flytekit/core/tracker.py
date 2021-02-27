@@ -72,7 +72,7 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
 
 class B(TrackedInstance):
     def __init__(self):
-        print(f"In B init")
+        print("In B init")
 
 
 class MyMeta(type(TrackedInstance), type(ABC)):

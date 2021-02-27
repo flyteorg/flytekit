@@ -13,9 +13,9 @@ class ClassStorageTaskResolver(TrackedInstance, TaskResolverMixin):
     loading process basically relies on the same sequence of things happening.
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self.mapping = OrderedDict()
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def name(self) -> str:
         return "ClassStorageTaskResolver"

@@ -16,7 +16,7 @@ class PickleBuilder(object):
             return self.do_fn(project)
 
         # Hash or something to create a unique name
-        my_task_fn._name = f"my_task_fn_random"
+        my_task_fn._name = "my_task_fn_random"
 
         @workflow
         def my_wf(project: str):

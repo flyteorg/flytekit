@@ -5,7 +5,6 @@ import logging as _logging
 import os
 import pathlib
 import re
-from abc import abstractmethod
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
@@ -213,6 +212,7 @@ class CompilationState(object):
     def is_in_a_branch(self) -> bool:
         return self._branch
 
+    @property
     def task_resolver(self) -> TaskResolverMixin:
         return self._task_resolver
 

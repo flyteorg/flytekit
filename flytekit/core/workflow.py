@@ -25,7 +25,7 @@ from flytekit.core.promise import (
     create_task_output,
     translate_inputs_to_literals,
 )
-from flytekit.core.python_auto_container import TaskResolverMixin
+from flytekit.core.python_auto_container import PythonAutoContainerTask, TaskResolverMixin
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
@@ -122,6 +122,10 @@ class Workflow(TaskResolverMixin):
         self._interned_tasks = {}
 
     @property
+    def location(self) -> str:
+        return self._name
+
+    @property
     def function(self):
         return self._workflow_function
 
@@ -149,16 +153,16 @@ class Workflow(TaskResolverMixin):
     def workflow_metadata_defaults(self):
         return self._workflow_metadata_defaults
 
-    def load_task(self, loader_args: List[str]) -> "PythonInstanceTask":
+    def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         return self._interned_tasks[loader_args[0]]
 
-    def loader_args(self, var: InstanceVar, for_task: "PythonInstanceTask") -> List[str]:
+    def loader_args(self, var: InstanceVar, for_task: PythonAutoContainerTask) -> List[str]:
         for k, t in self._interned_tasks.items():
             if t == for_task:
                 return [k]
         raise AssertionError(f"Task {for_task.name} not found in Workflow Task resolver {self._name}")
 
-    def get_all_tasks(self) -> List["PythonInstanceTask"]:
+    def get_all_tasks(self) -> List[PythonAutoContainerTask]:
         return [t for k, t in self._interned_tasks.items()]
 
     def compile(self, **kwargs):
