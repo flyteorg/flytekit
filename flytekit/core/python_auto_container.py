@@ -140,6 +140,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         task_module = loader_args[1]
         task_name = loader_args[3]
+        # import ipdb; ipdb.set_trace()
 
         task_module = importlib.import_module(task_module)
         task_def = getattr(task_module, task_name)
