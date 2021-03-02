@@ -13,6 +13,8 @@ from flytekit.models.task import Container
 
 class MapPythonTask(PythonTask):
     """
+    A MapPythonTask defines a :py:class:`flytekit.PythonTask` which specifies how to run
+    an inner :py:class:`flytekit.PythonFunctionTask` across a range of inputs in parallel.
     TODO: support lambda functions
     """
 
@@ -170,12 +172,12 @@ class MapPythonTask(PythonTask):
         return tuple(outputs)
 
 
-def maptask(task_function: PythonFunctionTask, concurrency: int = None, min_success_ratio: float = None, **kwargs):
+def map(task_function: PythonFunctionTask, concurrency: int = None, min_success_ratio: float = None, **kwargs):
     """
-    Use a maptask for parallelizable tasks that are run across a List of an input type. A maptask can be composed of any
-    individual :py:class:`flytekit.PythonFunctionTask`.
+    Use a map task for parallelizable tasks that are run across a List of an input type. A map task can be composed of
+    any individual :py:class:`flytekit.PythonFunctionTask`.
 
-    Invoke a maptask with arguments using the :py:class:`list` version of the expected input. TODO this will one day
+    Invoke a map task with arguments using the :py:class:`list` version of the expected input. TODO this will one day
     change to tuples
 
     Usage:
@@ -188,8 +190,8 @@ def maptask(task_function: PythonFunctionTask, concurrency: int = None, min_succ
 
         @workflows
         def my_wf(x: typing.List[int]) -> typing.List[str]:
-             return maptask(my_mappable_task, metadata=TaskMetadata(retries=1), requests=Resources(cpu="10M"),
-                            concurrency=10, min_success_ratio=0.75)(a=x)
+             return flytekit.map(my_mappable_task, metadata=TaskMetadata(retries=1), requests=Resources(cpu="10M"),
+                                 concurrency=10, min_success_ratio=0.75)(a=x)
 
     At run time, the underlying map task will be run for every value in the input collection. Task-specific attributes
     such as :py:class:`flytekit.TaskMetadata` and :py:class:`flytekit.Resources` are applied to individual instances
@@ -204,7 +206,6 @@ def maptask(task_function: PythonFunctionTask, concurrency: int = None, min_succ
     """
     if not isinstance(task_function, PythonFunctionTask):
         raise ValueError(
-            f"Only Flyte python task types are supported in maptask currently, received {type(task_function)}"
+            f"Only Flyte python task types are supported in map tasks currently, received {type(task_function)}"
         )
-    # We could register in a global singleton here?
     return MapPythonTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)

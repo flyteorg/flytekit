@@ -119,7 +119,7 @@ from flytekit.core.container_task import ContainerTask
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.launch_plan import LaunchPlan
-from flytekit.core.map_task import maptask
+from flytekit.core.map_task import map
 from flytekit.core.notification import Email, PagerDuty, Slack
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.reference import get_reference_entity

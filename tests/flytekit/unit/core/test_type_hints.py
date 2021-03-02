@@ -8,7 +8,7 @@ import pytest
 from dataclasses_json import dataclass_json
 
 import flytekit
-from flytekit import ContainerTask, SQLTask, dynamic, kwtypes, maptask
+from flytekit import ContainerTask, SQLTask, dynamic, kwtypes, map
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
@@ -323,7 +323,7 @@ def test_wf1_with_map():
 
     @workflow
     def my_wf(a: typing.List[int]) -> (int, str):
-        x, y = maptask(t1, metadata=TaskMetadata(retries=1))(a=a)
+        x, y = map(t1, metadata=TaskMetadata(retries=1))(a=a)
         return t2(a=x, b=y)
 
     x = my_wf(a=[5, 6])
@@ -337,14 +337,14 @@ def test_map_task():
         return str(b)
 
     a = [5, 6]
-    strs = maptask(t1, metadata=TaskMetadata(retries=1))(a=a)
+    strs = map(t1, metadata=TaskMetadata(retries=1))(a=a)
     assert strs == ["7", "8"]
 
     with pytest.raises(TypeError):
-        strs = maptask(t1, metadata=TaskMetadata(retries=1))(a=1)
+        strs = map(t1, metadata=TaskMetadata(retries=1))(a=1)
 
     with pytest.raises(TypeError):
-        strs = maptask(t1, metadata=TaskMetadata(retries=1))(a=["invalid", "args"])
+        strs = map(t1, metadata=TaskMetadata(retries=1))(a=["invalid", "args"])
 
 
 def test_wf1_compile_time_constant_vars():
