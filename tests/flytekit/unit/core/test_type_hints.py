@@ -329,10 +329,22 @@ def test_wf1_with_map():
     x = my_wf(a=[5, 6])
     assert x == (15, "world-7world-8")
 
+
+def test_map_task():
+    @task
+    def t1(a: int) -> str:
+        b = a + 2
+        return str(b)
+
     a = [5, 6]
-    x, y = maptask(t1, metadata=TaskMetadata(retries=1))(a=a)
-    resp = t2(a=x, b=y)
-    assert resp == (15, "world-7world-8")
+    strs = maptask(t1, metadata=TaskMetadata(retries=1))(a=a)
+    assert strs == ["7", "8"]
+
+    with pytest.raises(TypeError):
+        strs = maptask(t1, metadata=TaskMetadata(retries=1))(a=1)
+
+    with pytest.raises(TypeError):
+        strs = maptask(t1, metadata=TaskMetadata(retries=1))(a=["invalid", "args"])
 
 
 def test_wf1_compile_time_constant_vars():

@@ -188,7 +188,8 @@ def maptask(task_function: PythonFunctionTask, concurrency: int = None, min_succ
 
         @workflows
         def my_wf(x: typing.List[int]) -> typing.List[str]:
-             return maptask(my_mappable_task, metadata=TaskMetadata(retries=1), requests=Resources(cpu="10M"))(a=x)
+             return maptask(my_mappable_task, metadata=TaskMetadata(retries=1), requests=Resources(cpu="10M"),
+                            concurrency=10, min_success_ratio=0.75)(a=x)
 
     At run time, the underlying map task will be run for every value in the input collection. Task-specific attributes
     such as :py:class:`flytekit.TaskMetadata` and :py:class:`flytekit.Resources` are applied to individual instances
@@ -196,7 +197,8 @@ def maptask(task_function: PythonFunctionTask, concurrency: int = None, min_succ
 
     :param task_function: This argument is implicitly passed and represents the repeatable function
     :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
-        size
+        size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
+        all inputs are processed.
     :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
         successfully before terminating this task and marking it successful.
     """
