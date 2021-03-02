@@ -45,4 +45,4 @@ class ClassStorageTaskResolver(TrackedInstance, TaskResolverMixin):
         if t not in self.mapping:
             raise Exception("no such task")
 
-        return [f"{list(cls.mapping.keys()).index(t)}"]
+        return [f"{list(self.mapping.keys()).index(t)}"]
