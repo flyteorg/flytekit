@@ -265,27 +265,24 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
 
 @_scopes.system_entry_point
 def _execute_map_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, max_concurrency, test):
-    with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        with _utils.AutoDeletingTempDir("input_dir"):
-            # Load user code
-            task_module = _importlib.import_module(task_module)
-            task_def = getattr(task_module, task_name)
+    task_module = _importlib.import_module(task_module)
+    task_def = getattr(task_module, task_name)
 
-            if not test and isinstance(task_def, PythonTask):
-                map_task = MapPythonTask(task_def, max_concurrency)
+    if not test and isinstance(task_def, PythonTask):
+        map_task = MapPythonTask(task_def, max_concurrency)
 
-                task_index = _compute_array_job_index()
-                output_prefix = _os.path.join(output_prefix, str(task_index))
+        task_index = _compute_array_job_index()
+        output_prefix = _os.path.join(output_prefix, str(task_index))
 
-                _handle_annotated_task(map_task, inputs, output_prefix, raw_output_data_prefix)
+        _handle_annotated_task(map_task, inputs, output_prefix, raw_output_data_prefix)
 
-            # Old style task
-            elif not test and isinstance(task_def, PythonTask):
-                raise _system_exceptions.FlyteSystemAssertion(
-                    "Map tasks are only supported for task of type `PythonTask` got task {} of type {} instead".format(
-                        task_name, type(task_def)
-                    )
-                )
+    # Old style task
+    elif not test and isinstance(task_def, PythonTask):
+        raise _system_exceptions.FlyteSystemAssertion(
+            "Map tasks are only supported for task of type `PythonTask` got task {} of type {} instead".format(
+                task_name, type(task_def)
+            )
+        )
 
 
 @_click.group()

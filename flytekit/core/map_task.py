@@ -2,10 +2,11 @@ import os
 from typing import Any, Dict, List, Optional, Type
 
 from flytekit.common.tasks.raw_container import _get_container_definition
-from flytekit.core.base_task import PythonTask, TaskMetadata
+from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, get_registerable_container_image
+from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container
 
@@ -17,22 +18,27 @@ class MapPythonTask(PythonTask):
 
     def __init__(
         self,
-        tk: PythonFunctionTask,
-        metadata: Optional[TaskMetadata] = None,
-        concurrency=None,
-        min_success_ratio=None,
+        python_function_task: PythonFunctionTask,
+        concurrency: int = None,
+        min_success_ratio: float = None,
         **kwargs,
     ):
-        collection_interface = transform_interface_to_list_interface(tk.python_interface)
-        name = f"{tk._task_function.__module__}.mapper_{tk._task_function.__name__}"
-        self._run_task = tk
+        """
+        :param task_function: This argument is implicitly passed and represents the repeatable function
+        :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given
+        batch size
+        :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
+            successfully before terminating this task and marking it successful.
+        """
+        collection_interface = transform_interface_to_list_interface(python_function_task.python_interface)
+        name = f"{python_function_task._task_function.__module__}.mapper_{python_function_task._task_function.__name__}"
+        self._run_task = python_function_task
         self._max_concurrency = concurrency
         self._min_success_ratio = min_success_ratio
-        self._array_task_interface = tk.python_interface
+        self._array_task_interface = python_function_task.python_interface
         super().__init__(
             name=name,
             interface=collection_interface,
-            metadata=metadata,
             task_type="container_array",
             task_config=None,
             task_type_version=1,
@@ -63,6 +69,9 @@ class MapPythonTask(PythonTask):
             data_loading_config=None,
             environment=env,
         )
+
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+        return ArrayJob(parallelism=self._max_concurrency, min_success_ratio=self._min_success_ratio).to_dict()
 
     @property
     def run_task(self) -> PythonTask:
@@ -161,8 +170,39 @@ class MapPythonTask(PythonTask):
         return tuple(outputs)
 
 
-def maptask(tk: PythonFunctionTask, concurrency=None, min_success_ratio=None, metadata=None):
-    if not isinstance(tk, PythonFunctionTask):
-        raise ValueError(f"Only Flyte python task types are supported in maptask currently, received {type(tk)}")
+def maptask(task_function: PythonFunctionTask, concurrency: int = None, min_success_ratio: float = None, **kwargs):
+    """
+    Use a maptask for parallelizable tasks that are run across a List of an input type. A maptask can be composed of any
+    individual :py:class:`flytekit.PythonFunctionTask`.
+
+    Invoke a maptask with arguments using the :py:class:`list` version of the expected input. TODO this will one day
+    change to tuples
+
+    Usage:
+
+    .. code-block:: python
+
+        @task
+        def my_mappable_task(a: int) -> str:
+            return str(a)
+
+        @workflows
+        def my_wf(x: typing.List[int]) -> typing.List[str]:
+             return maptask(my_mappable_task, metadata=TaskMetadata(retries=1), requests=Resources(cpu="10M"))(a=x)
+
+    At run time, the underlying map task will be run for every value in the input collection. Task-specific attributes
+    such as :py:class:`flytekit.TaskMetadata` and :py:class:`flytekit.Resources` are applied to individual instances
+    of the mapped task.
+
+    :param task_function: This argument is implicitly passed and represents the repeatable function
+    :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
+        size
+    :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
+        successfully before terminating this task and marking it successful.
+    """
+    if not isinstance(task_function, PythonFunctionTask):
+        raise ValueError(
+            f"Only Flyte python task types are supported in maptask currently, received {type(task_function)}"
+        )
     # We could register in a global singleton here?
-    return MapPythonTask(tk, concurrency=concurrency, min_success_ratio=min_success_ratio, metadata=metadata)
+    return MapPythonTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
