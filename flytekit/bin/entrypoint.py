@@ -9,6 +9,7 @@ import traceback as _traceback
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
+from flytekit import PythonFunctionTask
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common import utils as _utils
@@ -268,7 +269,7 @@ def _execute_map_task(task_module, task_name, inputs, output_prefix, raw_output_
     task_module = _importlib.import_module(task_module)
     task_def = getattr(task_module, task_name)
 
-    if not test and isinstance(task_def, PythonTask):
+    if not test and isinstance(task_def, PythonFunctionTask):
         map_task = MapPythonTask(task_def, max_concurrency)
 
         task_index = _compute_array_job_index()
@@ -277,7 +278,7 @@ def _execute_map_task(task_module, task_name, inputs, output_prefix, raw_output_
         _handle_annotated_task(map_task, inputs, output_prefix, raw_output_data_prefix)
 
     # Old style task
-    elif not test and isinstance(task_def, PythonTask):
+    elif not test:
         raise _system_exceptions.FlyteSystemAssertion(
             "Map tasks are only supported for task of type `PythonTask` got task {} of type {} instead".format(
                 task_name, type(task_def)
