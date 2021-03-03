@@ -1,5 +1,4 @@
 from tests.flytekit.unit.core.tracker.b import b_local_a
-
 from tests.flytekit.unit.core.tracker.c import c_local_a
 
 

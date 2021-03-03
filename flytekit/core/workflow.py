@@ -7,8 +7,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
+from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteEntities, InstanceVar
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteEntities
 from flytekit.core.interface import (
     Interface,
     transform_inputs_to_parameters,
@@ -25,7 +26,7 @@ from flytekit.core.promise import (
     create_task_output,
     translate_inputs_to_literals,
 )
-from flytekit.core.python_auto_container import PythonAutoContainerTask, TaskResolverMixin
+from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
@@ -89,7 +90,7 @@ def construct_input_promises(inputs: List[str]):
     }
 
 
-class Workflow(TaskResolverMixin):
+class Workflow(ClassStorageTaskResolver):
     """
     When you assign a name to a node.
 
@@ -119,11 +120,7 @@ class Workflow(TaskResolverMixin):
         #    we can re-evaluate.
         self._input_parameters = None
         FlyteEntities.entities.append(self)
-        self._interned_tasks = {}
-
-    @property
-    def location(self) -> str:
-        return self._name
+        super().__init__()
 
     @property
     def function(self):
@@ -153,25 +150,11 @@ class Workflow(TaskResolverMixin):
     def workflow_metadata_defaults(self):
         return self._workflow_metadata_defaults
 
-    def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
-        return self._interned_tasks[loader_args[0]]
-
-    def loader_args(self, var: InstanceVar, for_task: PythonAutoContainerTask) -> List[str]:
-        for k, t in self._interned_tasks.items():
-            if t == for_task:
-                return [k]
-        raise AssertionError(f"Task {for_task.name} not found in Workflow Task resolver {self._name}")
-
-    def get_all_tasks(self) -> List[PythonAutoContainerTask]:
-        return [t for k, t in self._interned_tasks.items()]
-
     def compile(self, **kwargs):
         """
         Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics
         a 'closure' in the traditional sense of the word.
         """
-        from flytekit.core.python_function_task import PythonInstanceTask
-
         ctx = FlyteContext.current_context()
         self._input_parameters = transform_inputs_to_parameters(ctx, self._native_interface)
         all_nodes = []
@@ -182,10 +165,12 @@ class Workflow(TaskResolverMixin):
             input_kwargs.update(kwargs)
             workflow_outputs = self._workflow_function(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
+
+            # This needs a longer comment.
             for n in comp_ctx.compilation_state.nodes:
-                if isinstance(n.flyte_entity, PythonInstanceTask) and n.flyte_entity.task_resolver == self:
-                    print(f"Found Interned Task {n.flyte_entity.name}")
-                    self._interned_tasks[n.flyte_entity.name] = n.flyte_entity
+                if isinstance(n.flyte_entity, PythonAutoContainerTask) and n.flyte_entity.task_resolver == self:
+                    logger.debug(f"WF {self.name} saving task {n.flyte_entity.name}")
+                    self.add(n.flyte_entity)
 
         # Iterate through the workflow outputs
         bindings = []

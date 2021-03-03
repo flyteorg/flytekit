@@ -69,16 +69,7 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
         task_resolver: Optional[TaskResolverMixin] = None,
         **kwargs,
     ):
-        super().__init__(name=name, task_config=task_config, task_type=task_type, **kwargs)
-        compilation_state = FlyteContext.current_context().compilation_state
-        if compilation_state and compilation_state.task_resolver:
-            self._task_resolver = compilation_state.task_resolver
-        else:
-            self._task_resolver = task_resolver or default_task_resolver
-
-    @property
-    def task_resolver(self) -> Optional[TaskResolverMixin]:
-        return self._task_resolver
+        super().__init__(name=name, task_config=task_config, task_type=task_type, task_resolver=task_resolver, **kwargs)
 
     def get_command(self, settings: SerializationSettings) -> List[str]:
         container_args = [
@@ -148,17 +139,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             name=f"{task_function.__module__}.{task_function.__name__}",
             interface=mutated_interface,
             task_config=task_config,
+            task_resolver=task_resolver,
             **kwargs,
         )
-        compilation_state = FlyteContext.current_context().compilation_state
-        if compilation_state and compilation_state.task_resolver:
-            if task_resolver:
-                logger.info(
-                    f"Not using the passed in task resolver {task_resolver} because one found in compilation context"
-                )
-            self._task_resolver = compilation_state.task_resolver
-        else:
-            self._task_resolver = task_resolver or default_task_resolver
 
         if self._task_resolver is default_task_resolver:
             # The default task resolver can't handle nested functions
@@ -172,10 +155,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 )
         self._task_function = task_function
         self._execution_mode = execution_mode
-
-    @property
-    def task_resolver(self) -> TaskResolverMixin:
-        return self._task_resolver
 
     @property
     def execution_mode(self) -> ExecutionBehavior:

@@ -7,9 +7,10 @@ from typing import Dict, List, Optional, TypeVar
 
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import ImageConfig, SerializationSettings
+from flytekit.core.context_manager import FlyteContext, ImageConfig, SerializationSettings
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracker import TrackedInstance
+from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 
 T = TypeVar("T")
@@ -37,6 +38,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
         environment: Optional[Dict[str, str]] = None,
+        task_resolver: Optional[TaskResolverMixin] = None,
         **kwargs,
     ):
         """
@@ -58,6 +60,20 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
             requests=requests if requests else Resources(), limits=limits if limits else Resources()
         )
         self._environment = environment
+
+        compilation_state = FlyteContext.current_context().compilation_state
+        if compilation_state and compilation_state.task_resolver:
+            if task_resolver:
+                logger.info(
+                    f"Not using the passed in task resolver {task_resolver} because one found in compilation context"
+                )
+            self._task_resolver = compilation_state.task_resolver
+        else:
+            self._task_resolver = task_resolver or default_task_resolver
+
+    @property
+    def task_resolver(self) -> TaskResolverMixin:
+        return self._task_resolver
 
     @property
     def container_image(self) -> Optional[str]:

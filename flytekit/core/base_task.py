@@ -365,7 +365,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
-            native_outputs = None
             try:
                 native_outputs = self.execute(**native_inputs)
             except Exception as e:

@@ -21,6 +21,8 @@ from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models.core import identifier as _identifier
 
+# TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
+
 _DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC = "bin/entrypoint.py"
 
 
@@ -158,7 +160,7 @@ class SerializationSettings(object):
 
 
 class CompilationState(object):
-    def __init__(self, prefix: str, task_resolver: Optional[TaskResolverMixin] = None):
+    def __init__(self, prefix: str, task_resolver: Optional["TaskResolverMixin"] = None):
         """
         :param prefix: This is because we may one day want to be able to have subworkflows inside other workflows. If
           users choose to not specify their node names, then we can end up with multiple "n0"s. This prefix allows
@@ -213,7 +215,7 @@ class CompilationState(object):
         return self._branch
 
     @property
-    def task_resolver(self) -> TaskResolverMixin:
+    def task_resolver(self) -> "TaskResolverMixin":
         return self._task_resolver
 
 
@@ -410,7 +412,7 @@ class FlyteContext(object):
 
     @contextmanager
     def new_compilation_context(
-        self, prefix: Optional[str] = None, task_resolver: Optional[TaskResolverMixin] = None
+        self, prefix: Optional[str] = None, task_resolver: Optional["TaskResolverMixin"] = None
     ) -> Generator[FlyteContext, None, None]:
         """
         :param prefix: See CompilationState comments
