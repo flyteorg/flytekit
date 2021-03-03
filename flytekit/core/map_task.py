@@ -164,7 +164,7 @@ class MapPythonTask(PythonTask):
         outputs_expected = True
         if not self.interface.outputs:
             outputs_expected = False
-        outputs = [[] for _ in self._outputs_interface.keys()]
+        outputs = []
 
         any_input_key = (
             list(self._run_task.interface.inputs.keys())[0]
@@ -178,13 +178,9 @@ class MapPythonTask(PythonTask):
                 single_instance_inputs[k] = kwargs[k][i]
             o = self._run_task.execute(**single_instance_inputs)
             if outputs_expected:
-                for x in range(len(outputs)):
-                    outputs[x].append(o[x])
+                outputs.append(o)
 
-        if len(outputs) == 1:
-            return outputs[0]
-
-        return tuple(outputs)
+        return outputs
 
 
 def map(task_function: PythonFunctionTask, concurrency: int = None, min_success_ratio: float = None, **kwargs):

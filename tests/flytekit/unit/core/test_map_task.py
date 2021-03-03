@@ -5,8 +5,8 @@ import pytest
 from flytekit import LaunchPlan, map
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
-from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.map_task import MapPythonTask
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow
 
@@ -58,7 +58,12 @@ def test_serialization():
 
 
 def test_serialization_workflow_def():
-    maptask = map(t1, metadata=TaskMetadata(retries=1))
+    @task
+    def complex_task(a: int) -> str:
+        b = a + 2
+        return str(b)
+
+    maptask = map(complex_task, metadata=TaskMetadata(retries=1))
 
     @workflow
     def w1(a: typing.List[int]) -> typing.List[str]:
@@ -66,7 +71,7 @@ def test_serialization_workflow_def():
 
     @workflow
     def w2(a: typing.List[int]) -> typing.List[str]:
-        return map(t1, metadata=TaskMetadata(retries=2))(a=a)
+        return map(complex_task, metadata=TaskMetadata(retries=2))(a=a)
 
     default_img = Image(name="default", fqn="test", tag="tag")
     serialization_settings = context_manager.SerializationSettings(
@@ -84,13 +89,12 @@ def test_serialization_workflow_def():
     assert wf2_serialized is not None
     assert len(wf2_serialized.nodes) == 1
 
-    assert len(context_manager.FlyteEntities.entities) == 5
     tasks_seen = []
     for entity in context_manager.FlyteEntities.entities:
-        if isinstance(entity, PythonTask):
+        if isinstance(entity, MapPythonTask) and "complex" in entity.name:
             tasks_seen.append(entity)
 
-    assert len(tasks_seen) == 3
+    assert len(tasks_seen) == 2
 
 
 def test_map_tasks_only():

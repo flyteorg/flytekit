@@ -1,4 +1,5 @@
 import datetime
+import functools
 import os
 import typing
 from dataclasses import dataclass
@@ -307,27 +308,21 @@ def test_wf1_with_sql_with_patch():
 
 def test_wf1_with_map():
     @task
-    def t1(a: int) -> (int, str):
+    def t1(a: int) -> int:
         a = a + 2
-        return a, "world-" + str(a)
+        return a
 
     @task
-    def t2(a: typing.List[int], b: typing.List[str]) -> (int, str):
-        ra = 0
-        for x in a:
-            ra += x
-        rb = ""
-        for x in b:
-            rb += x
-        return ra, rb
+    def t2(x: typing.List[int]) -> int:
+        return functools.reduce(lambda a, b: a + b, x)
 
     @workflow
-    def my_wf(a: typing.List[int]) -> (int, str):
-        x, y = map(t1, metadata=TaskMetadata(retries=1))(a=a)
-        return t2(a=x, b=y)
+    def my_wf(a: typing.List[int]) -> int:
+        x = map(t1, metadata=TaskMetadata(retries=1))(a=a)
+        return t2(x=x)
 
     x = my_wf(a=[5, 6])
-    assert x == (15, "world-7world-8")
+    assert x == 15
 
 
 def test_wf1_compile_time_constant_vars():
