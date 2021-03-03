@@ -3,8 +3,10 @@ Flytekit map tasks specify how to run a single task across a list of inputs. Map
 a reference task as well as run-time parameters that limit execution concurrency and failure tolerations.
 """
 import os
+from itertools import count
 from typing import Any, Dict, List, Optional, Type
 
+from flytekit.common.constants import SdkTaskType
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings
@@ -22,6 +24,10 @@ class MapPythonTask(PythonTask):
     TODO: support lambda functions
     """
 
+    # To support multiple map tasks declared around identical python function tasks, we keep a global count of
+    # MapPythonTask instances to uniquely differentiate map task names for each declared instance.
+    _ids = count(0)
+
     def __init__(
         self,
         python_function_task: PythonFunctionTask,
@@ -30,14 +36,22 @@ class MapPythonTask(PythonTask):
         **kwargs,
     ):
         """
-        :param task_function: This argument is implicitly passed and represents the repeatable function
+        :param python_function_task: This argument is implicitly passed and represents the repeatable function
         :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given
         batch size
         :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
             successfully before terminating this task and marking it successful.
         """
+        if len(python_function_task.python_interface.inputs.keys()) > 1:
+            raise ValueError("Map tasks only accept python function tasks with 0 or 1 inputs")
+
+        if len(python_function_task.python_interface.outputs.keys()) > 1:
+            raise ValueError("Map tasks only accept python function tasks with 0 or 1 outputs")
+
         collection_interface = transform_interface_to_list_interface(python_function_task.python_interface)
-        name = f"{python_function_task._task_function.__module__}.mapper_{python_function_task._task_function.__name__}"
+        instance = next(self._ids)
+        name = f"{python_function_task._task_function.__module__}.mapper_{python_function_task._task_function.__name__}_{instance}"
+
         self._run_task = python_function_task
         self._max_concurrency = concurrency
         self._min_success_ratio = min_success_ratio
@@ -45,7 +59,7 @@ class MapPythonTask(PythonTask):
         super().__init__(
             name=name,
             interface=collection_interface,
-            task_type="container_array",
+            task_type=SdkTaskType.CONTAINER_ARRAY_TASK,
             task_config=None,
             task_type_version=1,
             **kwargs,
@@ -97,10 +111,9 @@ class MapPythonTask(PythonTask):
         environment variable and the offset (if one's set). The offset will be set and used when the user request that the
         job runs in a number of slots less than the size of the input.
         """
-        offset = 0
-        if os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
-            offset = int(os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"))
-        return offset + int(os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
+        return int(os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET", 0)) + int(
+            os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"))
+        )
 
     @property
     def _outputs_interface(self) -> Dict[Any, Variable]:
@@ -151,9 +164,7 @@ class MapPythonTask(PythonTask):
         outputs_expected = True
         if not self.interface.outputs:
             outputs_expected = False
-        outputs = []
-        for _ in self._outputs_interface.keys():
-            outputs.append([])
+        outputs = [[] for _ in self._outputs_interface.keys()]
 
         any_input_key = (
             list(self._run_task.interface.inputs.keys())[0]
@@ -181,8 +192,7 @@ def map(task_function: PythonFunctionTask, concurrency: int = None, min_success_
     Use a map task for parallelizable tasks that are run across a List of an input type. A map task can be composed of
     any individual :py:class:`flytekit.PythonFunctionTask`.
 
-    Invoke a map task with arguments using the :py:class:`list` version of the expected input. TODO this will one day
-    change to tuples
+    Invoke a map task with arguments using the :py:class:`list` version of the expected input.
 
     Usage:
 

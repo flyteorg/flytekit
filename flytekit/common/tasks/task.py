@@ -46,6 +46,8 @@ class SdkTask(
         :param dict[Text, T] custom: Arbitrary type for use by plugins.
         :param Container container: Provides the necessary entrypoint information for execution.  For instance,
             a Container might be specified with the necessary command line arguments.
+        :param int task_type_version: Specific version of this task type used by plugins to potentially modify
+            execution behavior or serialization.
         """
         # TODO: Remove the identifier portion and fill in with local values.
         super(SdkTask, self).__init__(

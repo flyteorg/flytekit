@@ -306,6 +306,8 @@ class TaskTemplate(_common.FlyteIdlEntity):
         :param dict[Text, T] custom: Dictionary that must be serializable to a protobuf Struct for custom task plugins.
         :param Container container: Provides the necessary entrypoint information for execution.  For instance,
             a Container might be specified with the necessary command line arguments.
+        :param int task_type_version: Specific version of this task type used by plugins to potentially modify
+            execution behavior or serialization.
         """
         self._id = id
         self._type = type

@@ -15,6 +15,8 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
             the input if the job requires processing of all input data. This has to be a positive number.
         :param int min_successes: An absolute number of the minimum number of successful completions of subtasks. As
             soon as this criteria is met, the array job will be marked as successful and outputs will be computed.
+        :param float min_success_ratio: Determines the minimum fraction of total jobs which can complete successfully
+            before terminating the job and marking it successful.
         """
         if min_successes and min_success_ratio:
             raise ValueError("Only one of min_successes or min_success_ratio can be set")

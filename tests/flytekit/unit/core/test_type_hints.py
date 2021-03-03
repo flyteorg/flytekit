@@ -330,23 +330,6 @@ def test_wf1_with_map():
     assert x == (15, "world-7world-8")
 
 
-def test_map_task():
-    @task
-    def t1(a: int) -> str:
-        b = a + 2
-        return str(b)
-
-    a = [5, 6]
-    strs = map(t1, metadata=TaskMetadata(retries=1))(a=a)
-    assert strs == ["7", "8"]
-
-    with pytest.raises(TypeError):
-        strs = map(t1, metadata=TaskMetadata(retries=1))(a=1)
-
-    with pytest.raises(TypeError):
-        strs = map(t1, metadata=TaskMetadata(retries=1))(a=["invalid", "args"])
-
-
 def test_wf1_compile_time_constant_vars():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
