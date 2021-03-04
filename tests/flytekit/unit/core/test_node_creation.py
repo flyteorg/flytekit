@@ -1,4 +1,5 @@
 import typing
+from collections import OrderedDict
 
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
@@ -28,7 +29,7 @@ def test_normal_task():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    sdk_wf = get_serializable(serialization_settings, my_wf)
+    sdk_wf = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(sdk_wf.nodes) == 1
     assert len(sdk_wf.outputs) == 1
 
@@ -62,11 +63,11 @@ def test_normal_task():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    sdk_wf = get_serializable(serialization_settings, empty_wf)
+    sdk_wf = get_serializable(OrderedDict(), serialization_settings, empty_wf)
     assert sdk_wf.nodes[0].upstream_node_ids[0] == "n1"
     assert sdk_wf.nodes[0].id == "n0"
 
-    sdk_wf = get_serializable(serialization_settings, empty_wf2)
+    sdk_wf = get_serializable(OrderedDict(), serialization_settings, empty_wf2)
     assert sdk_wf.nodes[0].upstream_node_ids[0] == "n1"
     assert sdk_wf.nodes[0].id == "n0"
 

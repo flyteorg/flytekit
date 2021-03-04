@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from typing import Dict, List, Optional, Union
 
 from flytekit.common import constants as _common_constants
@@ -39,21 +40,23 @@ FlyteLocalEntity = Union[
 FlyteControlPlaneEntity = Union[SdkTask, SdkLaunchPlan, SdkWorkflow, SdkNode, BranchNodeModel]
 
 
-def to_serializable_case(settings: SerializationSettings, c: _core_wf.IfBlock) -> _core_wf.IfBlock:
+def to_serializable_case(
+    entity_mapping: OrderedDict, settings: SerializationSettings, c: _core_wf.IfBlock
+) -> _core_wf.IfBlock:
     if c is None:
         raise ValueError("Cannot convert none cases to registrable")
-    then_node = get_serializable(settings, c.then_node)
+    then_node = get_serializable(entity_mapping, settings, c.then_node)
     return _core_wf.IfBlock(condition=c.condition, then_node=then_node)
 
 
 def to_serializable_cases(
-    settings: SerializationSettings, cases: List[_core_wf.IfBlock]
+    entity_mapping: OrderedDict, settings: SerializationSettings, cases: List[_core_wf.IfBlock]
 ) -> Optional[List[_core_wf.IfBlock]]:
     if cases is None:
         return None
     ret_cases = []
     for c in cases:
-        ret_cases.append(to_serializable_case(settings, c))
+        ret_cases.append(to_serializable_case(entity_mapping, settings, c))
     return ret_cases
 
 
@@ -62,7 +65,7 @@ GLOBAL_CACHE: Dict[FlyteLocalEntity, FlyteControlPlaneEntity] = {}
 
 
 def get_serializable_references(
-    settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool
+    entity_mapping: OrderedDict, settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool,
 ) -> FlyteControlPlaneEntity:
     # TODO: This entire function isn't necessary. We should just return None or raise an Exception or something.
     #   Reference entities should already exist on the Admin control plane - they should not be serialized/registered
@@ -115,7 +118,7 @@ def get_serializable_references(
 
 
 def get_serializable_task(
-    settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool
+    entity_mapping: OrderedDict, settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool,
 ) -> FlyteControlPlaneEntity:
     cp_entity = SdkTask(
         type=entity.task_type,
@@ -151,7 +154,7 @@ def get_serializable_task(
 
 
 def get_serializable_workflow(
-    settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool
+    entity_mapping: OrderedDict, settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool,
 ) -> FlyteControlPlaneEntity:
     workflow_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.WORKFLOW, settings.project, settings.domain, entity.name, settings.version
@@ -159,7 +162,9 @@ def get_serializable_workflow(
 
     # Translate nodes
     upstream_sdk_nodes = [
-        get_serializable(settings, n) for n in entity._nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
+        get_serializable(entity_mapping, settings, n)
+        for n in entity._nodes
+        if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
     ]
 
     cp_entity = SdkWorkflow(
@@ -179,9 +184,9 @@ def get_serializable_workflow(
 
 
 def get_serializable_launch_plan(
-    settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool
+    entity_mapping: OrderedDict, settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool,
 ) -> FlyteControlPlaneEntity:
-    sdk_workflow = get_serializable(settings, entity.workflow)
+    sdk_workflow = get_serializable(entity_mapping, settings, entity.workflow)
     cp_entity = SdkLaunchPlan(
         workflow_id=sdk_workflow.id,
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
@@ -210,13 +215,15 @@ def get_serializable_launch_plan(
 
 
 def get_serializable_node(
-    settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool
+    entity_mapping: OrderedDict, settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool,
 ) -> FlyteControlPlaneEntity:
     if entity._flyte_entity is None:
         raise Exception(f"Node {entity.id} has no flyte entity")
 
     upstream_sdk_nodes = [
-        get_serializable(settings, n) for n in entity._upstream_nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
+        get_serializable(entity_mapping, settings, n)
+        for n in entity._upstream_nodes
+        if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
     ]
 
     if isinstance(entity._flyte_entity, PythonTask):
@@ -225,7 +232,7 @@ def get_serializable_node(
             upstream_nodes=upstream_sdk_nodes,
             bindings=entity._bindings,
             metadata=entity._metadata,
-            sdk_task=get_serializable(settings, entity._flyte_entity, fast),
+            sdk_task=get_serializable(entity_mapping, settings, entity._flyte_entity, fast),
             parameter_mapping=False,
         )
         if entity._aliases:
@@ -236,7 +243,7 @@ def get_serializable_node(
             upstream_nodes=upstream_sdk_nodes,
             bindings=entity._bindings,
             metadata=entity._metadata,
-            sdk_workflow=get_serializable(settings, entity._flyte_entity),
+            sdk_workflow=get_serializable(entity_mapping, settings, entity._flyte_entity),
             parameter_mapping=False,
         )
     elif isinstance(entity._flyte_entity, BranchNode):
@@ -245,7 +252,7 @@ def get_serializable_node(
             upstream_nodes=upstream_sdk_nodes,
             bindings=entity._bindings,
             metadata=entity._metadata,
-            sdk_branch=get_serializable(settings, entity._flyte_entity),
+            sdk_branch=get_serializable(entity_mapping, settings, entity._flyte_entity),
             parameter_mapping=False,
         )
     elif isinstance(entity._flyte_entity, LaunchPlan):
@@ -254,7 +261,7 @@ def get_serializable_node(
             upstream_nodes=upstream_sdk_nodes,
             bindings=entity._bindings,
             metadata=entity._metadata,
-            sdk_launch_plan=get_serializable(settings, entity._flyte_entity),
+            sdk_launch_plan=get_serializable(entity_mapping, settings, entity._flyte_entity),
             parameter_mapping=False,
         )
     else:
@@ -264,15 +271,15 @@ def get_serializable_node(
 
 
 def get_serializable_branch_node(
-    settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool
+    entity_mapping: OrderedDict, settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool,
 ) -> FlyteControlPlaneEntity:
     # We have to iterate through the blocks to convert the nodes from their current type to SDKNode
     # TODO this should be cleaned up instead of mutation, we probaby should just create a new object
-    first = to_serializable_case(settings, entity._ifelse_block.case)
-    other = to_serializable_cases(settings, entity._ifelse_block.other)
+    first = to_serializable_case(entity_mapping, settings, entity._ifelse_block.case)
+    other = to_serializable_cases(entity_mapping, settings, entity._ifelse_block.other)
     else_node = None
     if entity._ifelse_block.else_node:
-        else_node = get_serializable(settings, entity._ifelse_block.else_node)
+        else_node = get_serializable(entity_mapping, settings, entity._ifelse_block.else_node)
 
     return BranchNodeModel(
         if_else=_core_wf.IfElseBlock(case=first, other=other, else_node=else_node, error=entity._ifelse_block.error)
@@ -280,30 +287,36 @@ def get_serializable_branch_node(
 
 
 def get_serializable(
-    settings: SerializationSettings, entity: FlyteLocalEntity, fast: Optional[bool] = False
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    entity: FlyteLocalEntity,
+    fast: Optional[bool] = False,
 ) -> FlyteControlPlaneEntity:
-    if entity in GLOBAL_CACHE:
-        return GLOBAL_CACHE[entity]
+    """
+    This function will modify the first list parameter (by appending to it) in place. If a
+    """
+    if entity in entity_mapping:
+        return entity_mapping[entity]
 
     if isinstance(entity, ReferenceEntity):
-        cp_entity = get_serializable_references(settings, entity, fast)
+        cp_entity = get_serializable_references(entity_mapping, settings, entity, fast)
 
     elif isinstance(entity, PythonTask):
-        cp_entity = get_serializable_task(settings, entity, fast)
+        cp_entity = get_serializable_task(entity_mapping, settings, entity, fast)
 
     elif isinstance(entity, Workflow):
-        cp_entity = get_serializable_workflow(settings, entity, fast)
+        cp_entity = get_serializable_workflow(entity_mapping, settings, entity, fast)
 
     elif isinstance(entity, Node):
-        cp_entity = get_serializable_node(settings, entity, fast)
+        cp_entity = get_serializable_node(entity_mapping, settings, entity, fast)
 
     elif isinstance(entity, LaunchPlan):
-        cp_entity = get_serializable_launch_plan(settings, entity, fast)
+        cp_entity = get_serializable_launch_plan(entity_mapping, settings, entity, fast)
 
     elif isinstance(entity, BranchNode):
-        cp_entity = get_serializable_branch_node(settings, entity, fast)
+        cp_entity = get_serializable_branch_node(entity_mapping, settings, entity, fast)
     else:
         raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")
 
-    GLOBAL_CACHE[entity] = cp_entity
+    entity_mapping[entity] = cp_entity
     return cp_entity

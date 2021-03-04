@@ -1,4 +1,5 @@
 import typing
+from collections import OrderedDict
 
 import pytest
 
@@ -38,7 +39,7 @@ def test_serialization():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    serialized = get_serializable(serialization_settings, maptask)
+    serialized = get_serializable(OrderedDict(), serialization_settings, maptask)
 
     assert serialized.type == "container_array"
     assert serialized.task_type_version == 1
@@ -81,11 +82,11 @@ def test_serialization_workflow_def():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf1_serialized = get_serializable(serialization_settings, w1)
+    wf1_serialized = get_serializable(OrderedDict(), serialization_settings, w1)
     assert wf1_serialized is not None
     assert len(wf1_serialized.nodes) == 1
 
-    wf2_serialized = get_serializable(serialization_settings, w2)
+    wf2_serialized = get_serializable(OrderedDict(), serialization_settings, w2)
     assert wf2_serialized is not None
     assert len(wf2_serialized.nodes) == 1
 

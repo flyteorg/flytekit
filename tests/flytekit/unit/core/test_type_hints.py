@@ -2,6 +2,7 @@ import datetime
 import functools
 import os
 import typing
+from collections import OrderedDict
 from dataclasses import dataclass
 
 import pandas
@@ -612,11 +613,11 @@ def test_lp_serialize():
         image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
     )
-    sdk_lp = get_serializable(serialization_settings, lp)
+    sdk_lp = get_serializable(OrderedDict(), serialization_settings, lp)
     assert len(sdk_lp.default_inputs.parameters) == 0
     assert len(sdk_lp.fixed_inputs.literals) == 0
 
-    sdk_lp = get_serializable(serialization_settings, lp_with_defaults)
+    sdk_lp = get_serializable(OrderedDict(), serialization_settings, lp_with_defaults)
     assert len(sdk_lp.default_inputs.parameters) == 1
     assert len(sdk_lp.fixed_inputs.literals) == 0
 
@@ -925,7 +926,7 @@ def test_environment():
         env={"FOO": "foo", "BAR": "bar"},
     )
     with context_manager.FlyteContext.current_context().new_compilation_context():
-        sdk_task = get_serializable(serialization_settings, t1)
+        sdk_task = get_serializable(OrderedDict(), serialization_settings, t1)
         assert sdk_task.container.env == {"FOO": "foofoo", "BAR": "bar", "BAZ": "baz"}
 
 
@@ -953,7 +954,7 @@ def test_resources():
         env={},
     )
     with context_manager.FlyteContext.current_context().new_compilation_context():
-        sdk_task = get_serializable(serialization_settings, t1)
+        sdk_task = get_serializable(OrderedDict(), serialization_settings, t1)
         assert sdk_task.container.resources.requests == [
             _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "1")
         ]
@@ -962,7 +963,7 @@ def test_resources():
             _resource_models.ResourceEntry(_resource_models.ResourceName.MEMORY, "400M"),
         ]
 
-        sdk_task2 = get_serializable(serialization_settings, t2)
+        sdk_task2 = get_serializable(OrderedDict(), serialization_settings, t2)
         assert sdk_task2.container.resources.requests == [
             _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "3")
         ]

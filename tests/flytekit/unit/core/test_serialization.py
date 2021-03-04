@@ -1,5 +1,6 @@
 import os
 import typing
+from collections import OrderedDict
 
 from flytekit import ContainerTask, kwtypes
 from flytekit.common.translator import get_serializable
@@ -45,12 +46,12 @@ def test_serialization():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf = get_serializable(serialization_settings, raw_container_wf)
+    wf = get_serializable(OrderedDict(), serialization_settings, raw_container_wf)
     assert wf is not None
     assert len(wf.nodes) == 3
-    sqn = get_serializable(serialization_settings, square)
+    sqn = get_serializable(OrderedDict(), serialization_settings, square)
     assert sqn.container.image == "alpine"
-    sumn = get_serializable(serialization_settings, sum)
+    sumn = get_serializable(OrderedDict(), serialization_settings, sum)
     assert sumn.container.image == "alpine"
 
 
@@ -86,7 +87,7 @@ def test_serialization_branch_complex():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf = get_serializable(serialization_settings, my_wf)
+    wf = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert wf is not None
     assert len(wf.nodes) == 3
     assert wf.nodes[1].branch_node is not None
@@ -115,7 +116,7 @@ def test_serialization_branch_sub_wf():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf = get_serializable(serialization_settings, my_wf)
+    wf = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert wf is not None
     assert len(wf.nodes[0].inputs) == 1
     assert wf.nodes[0].inputs[0].var == ".a"
@@ -148,7 +149,7 @@ def test_serialization_branch_compound_conditions():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf = get_serializable(serialization_settings, my_wf)
+    wf = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert wf is not None
     assert len(wf.nodes[0].inputs) == 1
     assert wf.nodes[0].inputs[0].var == ".a"
@@ -186,7 +187,7 @@ def test_serialization_branch_complex_2():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf = get_serializable(serialization_settings, my_wf)
+    wf = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert wf is not None
     assert wf.nodes[1].inputs[0].var == "n0.t1_int_output"
 
@@ -220,7 +221,7 @@ def test_serialization_branch():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf = get_serializable(serialization_settings, my_wf)
+    wf = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert wf is not None
     assert len(wf.nodes) == 2
     assert wf.nodes[1].branch_node is not None
@@ -252,20 +253,20 @@ def test_serialization_images():
     rs = context_manager.SerializationSettings(
         project="project", domain="domain", version="version", env=None, image_config=get_image_config(),
     )
-    t1_ser = get_serializable(rs, t1)
+    t1_ser = get_serializable(OrderedDict(), rs, t1)
     assert t1_ser.container.image == "docker.io/xyz:version"
     t1_ser.to_flyte_idl()
 
-    t2_ser = get_serializable(rs, t2)
+    t2_ser = get_serializable(OrderedDict(), rs, t2)
     assert t2_ser.container.image == "docker.io/default:version"
 
-    t3_ser = get_serializable(rs, t3)
+    t3_ser = get_serializable(OrderedDict(), rs, t3)
     assert t3_ser.container.image == "docker.io/default:version"
 
-    t4_ser = get_serializable(rs, t4)
+    t4_ser = get_serializable(OrderedDict(), rs, t4)
     assert t4_ser.container.image == "docker.io/org/myimage:latest"
 
-    t5_ser = get_serializable(rs, t5)
+    t5_ser = get_serializable(OrderedDict(), rs, t5)
     assert t5_ser.container.image == "docker.io/org/myimage:version"
 
 
@@ -289,7 +290,7 @@ def test_serialization_types():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf = get_serializable(serialization_settings, compute_square_wf)
+    wf = get_serializable(OrderedDict(), serialization_settings, compute_square_wf)
     assert wf.interface.outputs["o0"].type.collection_type.map_value_type.simple == SimpleType.INTEGER
-    ser = get_serializable(serialization_settings, squared)
+    ser = get_serializable(OrderedDict(), serialization_settings, squared)
     assert ser.interface.outputs["o0"].type.collection_type.map_value_type.simple == SimpleType.INTEGER
