@@ -68,6 +68,8 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
                     f"Not using the passed in task resolver {task_resolver} because one found in compilation context"
                 )
             self._task_resolver = compilation_state.task_resolver
+            if self._task_resolver.task_name(self) is not None:
+                self._name = self._task_resolver.task_name(self)
         else:
             self._task_resolver = task_resolver or default_task_resolver
 
@@ -147,6 +149,12 @@ class TaskResolverMixin(object):
         Future proof method. Just making it easy to access all tasks (Not required today as we auto register them)
         """
         pass
+
+    def task_name(self, t: PythonAutoContainerTask) -> str:
+        """
+        Overridable function that can optionally return a custom name for a given task
+        """
+        return None
 
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):

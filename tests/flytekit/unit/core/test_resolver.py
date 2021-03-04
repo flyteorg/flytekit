@@ -49,19 +49,17 @@ def test_wf_resolving():
     # The tasks should get the location the workflow was assigned to as the resolver.
     # The args are the index.
     srz_t0 = get_serializable(serialization_settings, workflows_tasks[0])
-    assert srz_t0.container.args[-5:] == [
+    assert srz_t0.container.args[-4:] == [
         "--resolver",
         "example.module.example_var_name",
-        "--resolver-args",
         "--",
         "0",
     ]
 
     srz_t1 = get_serializable(serialization_settings, workflows_tasks[1])
-    assert srz_t1.container.args[-5:] == [
+    assert srz_t1.container.args[-4:] == [
         "--resolver",
         "example.module.example_var_name",
-        "--resolver-args",
         "--",
         "1",
     ]

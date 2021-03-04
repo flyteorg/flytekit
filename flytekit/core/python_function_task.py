@@ -6,44 +6,13 @@ from typing import Any, Callable, List, Optional, TypeVar, Union
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings
 from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask, TaskResolverMixin, default_task_resolver
+from flytekit.core.tracker import isnested, istestfunction
 from flytekit.core.workflow import Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 
 T = TypeVar("T")
-
-
-def isnested(func: Callable) -> bool:
-    """
-    Returns true if a function is local to another function and is not accessible through a module
-
-    This would essentially be any function with a `.<local>.` (defined within a function) e.g.
-
-    .. code:: python
-
-        def foo():
-            def foo_inner():
-                pass
-            pass
-
-    In the above example `foo_inner` is the local function or a nested function.
-    """
-    return func.__code__.co_flags & inspect.CO_NESTED != 0
-
-
-def istestfunction(func) -> bool:
-    """
-    Returns true if the function is defined in a test module. A test module has to have `test_` as the prefix.
-    False in all other cases
-    """
-    mod = inspect.getmodule(func)
-    if mod:
-        mod_name = mod.__name__
-        if "." in mod_name:
-            mod_name = mod_name.split(".")[-1]
-        return mod_name.startswith("test_")
-    return False
 
 
 class PythonInstanceTask(PythonAutoContainerTask[T], ABC):

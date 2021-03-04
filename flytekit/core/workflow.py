@@ -150,6 +150,9 @@ class Workflow(ClassStorageTaskResolver):
     def workflow_metadata_defaults(self):
         return self._workflow_metadata_defaults
 
+    def task_name(self, t: PythonAutoContainerTask) -> str:
+        return f"{self.name}.{t.__module__}.{t.name}"
+
     def compile(self, **kwargs):
         """
         Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics

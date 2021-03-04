@@ -5,9 +5,10 @@ import cloudpickle  # intentionally not yet part of setup.py
 
 from flytekit.core.context_manager import SerializationSettings
 from flytekit.core.python_auto_container import PythonAutoContainerTask, TaskResolverMixin
+from flytekit.core.tracker import TrackedInstance
 
 
-class ExperimentalNaiveCloudPickleResolver(TaskResolverMixin):
+class ExperimentalNaiveCloudPickleResolver(TrackedInstance, TaskResolverMixin):
     def name(self) -> str:
         return "cloud pickling task resolver"
 

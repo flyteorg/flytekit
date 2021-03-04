@@ -1,7 +1,8 @@
 import importlib as _importlib
+import inspect
 import inspect as _inspect
 import logging as _logging
-from abc import ABC
+from typing import Callable
 
 from flytekit.common.exceptions import system as _system_exceptions
 
@@ -70,20 +71,33 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
         raise _system_exceptions.FlyteSystemException(f"Error looking for LHS in {self._instantiated_in}")
 
 
-class B(TrackedInstance):
-    def __init__(self):
-        print("In B init")
+def isnested(func: Callable) -> bool:
+    """
+    Returns true if a function is local to another function and is not accessible through a module
+
+    This would essentially be any function with a `.<local>.` (defined within a function) e.g.
+
+    .. code:: python
+
+        def foo():
+            def foo_inner():
+                pass
+            pass
+
+    In the above example `foo_inner` is the local function or a nested function.
+    """
+    return func.__code__.co_flags & inspect.CO_NESTED != 0
 
 
-class MyMeta(type(TrackedInstance), type(ABC)):
-    ...
-
-
-class C(B, metaclass=MyMeta):
-    ...
-
-
-if __name__ == "__main__":
-    a = TrackedInstance()
-    b = B()
-    print(f"type {type(TrackedInstance)}")
+def istestfunction(func) -> bool:
+    """
+    Returns true if the function is defined in a test module. A test module has to have `test_` as the prefix.
+    False in all other cases
+    """
+    mod = inspect.getmodule(func)
+    if mod:
+        mod_name = mod.__name__
+        if "." in mod_name:
+            mod_name = mod_name.split(".")[-1]
+        return mod_name.startswith("test_")
+    return False
