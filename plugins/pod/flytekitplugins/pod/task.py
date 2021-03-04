@@ -1,18 +1,15 @@
 from typing import Any, Callable, Dict, Tuple, Union
 
 from flyteidl.core import tasks_pb2 as _core_task
-from google.protobuf.json_format import MessageToDict
-from k8s.io.api.core.v1.generated_pb2 import Container, EnvVar, PodSpec, ResourceRequirements
-from k8s.io.apimachinery.pkg.api.resource.generated_pb2 import Quantity
+from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements
 
 from flytekit import FlyteContext, PythonFunctionTask
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.extend import Promise, SerializationSettings, TaskPlugins
-from flytekit.models import task as _task_models
 
 
 class Pod(object):
-    def __init__(self, pod_spec: PodSpec, primary_container_name: str):
+    def __init__(self, pod_spec: V1PodSpec, primary_container_name: str):
         if not pod_spec:
             raise _user_exceptions.FlyteValidationException("A pod spec cannot be undefined")
         if not primary_container_name:
@@ -22,7 +19,7 @@ class Pod(object):
         self._primary_container_name = primary_container_name
 
     @property
-    def pod_spec(self) -> PodSpec:
+    def pod_spec(self) -> V1PodSpec:
         return self._pod_spec
 
     @property
@@ -32,8 +29,9 @@ class Pod(object):
 
 class PodFunctionTask(PythonFunctionTask[Pod]):
     def __init__(self, task_config: Pod, task_function: Callable, **kwargs):
+        # TODO(katrogan): Bump to task_type_version = 1
         super(PodFunctionTask, self).__init__(
-            task_config=task_config, task_type="sidecar", task_function=task_function, **kwargs,
+            task_config=task_config, task_type="pod", task_function=task_function, **kwargs,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
@@ -45,7 +43,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
                 break
         if not primary_exists:
             # insert a placeholder primary container if it is not defined in the pod spec.
-            containers.extend([Container(name=self.task_config.primary_container_name)])
+            containers.append(V1Container(name=self.task_config.primary_container_name))
 
         final_containers = []
         for container in containers:
@@ -56,37 +54,32 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
 
                 container.image = sdk_default_container.image
                 # clear existing commands
-                del container.command[:]
-                container.command.extend(sdk_default_container.command)
+                container.command = sdk_default_container.command
                 # also clear existing args
-                del container.args[:]
-                container.args.extend(sdk_default_container.args)
+                container.args = sdk_default_container.args
 
-                resource_requirements = ResourceRequirements()
+                limits, requests = {}, {}
                 for resource in sdk_default_container.resources.limits:
-                    resource_requirements.limits[
-                        _core_task.Resources.ResourceName.Name(resource.name).lower()
-                    ].CopyFrom(Quantity(string=resource.value))
+                    limits[_core_task.Resources.ResourceName.Name(resource.name).lower()] = resource.value
                 for resource in sdk_default_container.resources.requests:
-                    resource_requirements.requests[
-                        _core_task.Resources.ResourceName.Name(resource.name).lower()
-                    ].CopyFrom(Quantity(string=resource.value))
-                if resource_requirements.ByteSize():
-                    # Important! Only copy over resource requirements if they are non-empty.
-                    container.resources.CopyFrom(resource_requirements)
+                    requests[_core_task.Resources.ResourceName.Name(resource.name).lower()] = resource.value
 
-                del container.env[:]
-                container.env.extend([EnvVar(name=key, value=val) for key, val in sdk_default_container.env.items()])
+                resource_requirements = V1ResourceRequirements(limits=limits, requests=requests)
+                if len(limits) > 0 or len(requests) > 0:
+                    # Important! Only copy over resource requirements if they are non-empty.
+                    container.resources = resource_requirements
+
+                container.env = [V1EnvVar(name=key, value=val) for key, val in sdk_default_container.env.items()]
 
             final_containers.append(container)
 
-        del self.task_config._pod_spec.containers[:]
-        self.task_config._pod_spec.containers.extend(final_containers)
+        self.task_config._pod_spec.containers = final_containers
 
-        pod_job_plugin = _task_models.SidecarJob(
-            pod_spec=self.task_config.pod_spec, primary_container_name=self.task_config.primary_container_name,
-        ).to_flyte_idl()
-        return MessageToDict(pod_job_plugin)
+        custom = {
+            "pod_spec": self.task_config.pod_spec.to_dict(),
+            "primary_container_name": self.task_config.primary_container_name,
+        }
+        return custom
 
     def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, None]:
         raise _user_exceptions.FlyteUserException("Local execute is not currently supported for pod tasks")
