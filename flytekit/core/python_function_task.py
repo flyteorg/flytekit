@@ -297,6 +297,10 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
 
     @staticmethod
     def aggregate(tasks, workflows, node) -> None:
+        """
+        Collects all tasks and workflows from the given Node recursively. This is because a node may have a workflow,
+        and other nodes, which have tasks.
+        """
         if node.task_node is not None:
             tasks.add(node.task_node.sdk_task)
         if node.workflow_node is not None:

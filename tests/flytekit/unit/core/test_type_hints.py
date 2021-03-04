@@ -10,6 +10,7 @@ from dataclasses_json import dataclass_json
 import flytekit
 from flytekit import ContainerTask, SQLTask, dynamic, kwtypes, maptask
 from flytekit.common.translator import get_serializable
+from flytekit.configuration import secrets
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import ExecutionState, Image, ImageConfig
@@ -1010,3 +1011,15 @@ def test_nested_dict2():
     def compute_square_wf(input_integer: int) -> typing.List[typing.Dict[str, int]]:
         compute_square_result = squared(value=input_integer)
         return compute_square_result
+
+
+def test_secrets():
+    @task(secret_keys=["my_secret"])
+    def foo() -> str:
+        return flytekit.current_context().secrets.get("my_secrets")
+
+    with pytest.raises(ValueError):
+        foo()
+
+    os.environ[f"{secrets.SECRETS_ENV_PREFIX.get()}MY_SECRETS"] = "super-secret-value"
+    assert foo() == "super-secret-value"

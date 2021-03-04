@@ -1,6 +1,6 @@
 import datetime as _datetime
 import inspect
-from typing import Any, Callable, Dict, Optional, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 from flytekit.core.base_task import TaskMetadata
 from flytekit.core.interface import transform_signature_to_interface
@@ -70,6 +70,7 @@ def task(
     environment: Optional[Dict[str, str]] = None,
     requests: Optional[Resources] = None,
     limits: Optional[Resources] = None,
+    secret_keys: Optional[List[str]] = None,
     execution_mode: Optional[PythonFunctionTask.ExecutionBehavior] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
 ) -> Union[Callable, PythonFunctionTask]:
     """
@@ -141,6 +142,10 @@ def task(
       to the primary container.
     :param limits: Compute limits. Specify compute resource limits for your task. For Pod-plugin tasks, these values
       will apply only to the primary container. For more information, please see :py:class:`flytekit.Resources`.
+    :param secret_keys: Keys that can identify the secrets supplied at runtime. Ideally the secret keys should also be
+                     semi-descriptive. The key values will be available from runtime, if the backend is configured
+                     to provide secrets and if secrets are available in the configured secrets store.
+                     Possible options for secret stores are - Vault, Confidant, Kube secrets, AWS KMS etc
     :param execution_mode: This is mainly for internal use. Please ignore. It is filled in automatically.
     """
 
@@ -162,6 +167,7 @@ def task(
             environment=environment,
             requests=requests,
             limits=limits,
+            secret_keys=secret_keys,
             execution_mode=execution_mode,
         )
 

@@ -2,7 +2,7 @@ import collections
 import datetime
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
@@ -297,15 +297,36 @@ class PythonTask(Task, Generic[T]):
         name: str,
         task_config: T,
         interface: Optional[Interface] = None,
-        environment=None,
+        environment: Optional[Dict[str, str]] = None,
+        secret_keys: Optional[List[str]] = None,
         **kwargs,
     ):
+        """
+        Args:
+            task_type: a string that defines a unique task-type for every new extension. If a backend plugin is required
+                       then this has to be done in-concert with the backend plugin identifier
+            name: A unique name for the task instantiation. This is unique for every instance of task.
+            task_config: Configuration for the task. This is used to configure the specific plugin that handles this task
+            interface: A python native typed interface ``(inputs) -> outputs`` that declares the signature of the task
+            environment: Any environment variables that should be supplied during the execution of the task. Supplied as
+                         a dictionary of key/value pairs
+            secret_keys: Keys that can identify the secrets supplied at runtime. Ideally the secret keys should also be
+                         semi-descriptive. The key values will be available from runtime, if the backend is configured
+                         to provide secrets and if secrets are available in the configured secrets store.
+                         Possible options for secret stores are
+                          - `Vault <https://www.vaultproject.io/>`,
+                          - `Confidant <https://lyft.github.io/confidant/>`,
+                          - `Kube secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`
+                          - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`_
+                          etc
+        """
         super().__init__(
             task_type=task_type, name=name, interface=transform_interface_to_typed_interface(interface), **kwargs
         )
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}
         self._task_config = task_config
+        self._secret_keys = secret_keys
 
     # TODO lets call this interface and the other as flyte_interface?
     @property
