@@ -53,9 +53,7 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
             task_type=self._TF_JOB_TASK_TYPE,
             task_config=task_config,
             task_function=task_function,
-            requests=task_config.per_replica_requests,
-            limits=task_config.per_replica_limits,
-            **kwargs
+            **{**kwargs, "requests": task_config.per_replica_requests, "limits": task_config.per_replica_limits}
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
