@@ -280,9 +280,8 @@ def _execute_map_task(task_module, task_name, inputs, output_prefix, raw_output_
     # Old style task
     elif not test:
         raise _system_exceptions.FlyteSystemAssertion(
-            "Map tasks are only supported for task of type `PythonTask` got task {} of type {} instead".format(
-                task_name, type(task_def)
-            )
+            "Map tasks are only supported for task of type `PythonTask` created using flytekit>=0.16.0"
+            " got task {} of type {} instead".format(task_name, type(task_def))
         )
 
 
