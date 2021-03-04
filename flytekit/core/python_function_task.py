@@ -82,7 +82,6 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
             "{{.rawOutputDataPrefix}}",
             "--resolver",
             self.task_resolver.location,
-            "--resolver-args",
             "--",
         ]
 
@@ -185,7 +184,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             "{{.rawOutputDataPrefix}}",
             "--resolver",
             self.task_resolver.location,
-            "--resolver-args",
             "--",
         ]
 
