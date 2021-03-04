@@ -60,10 +60,6 @@ def to_serializable_cases(
     return ret_cases
 
 
-# Can make this part of the function in the future.
-GLOBAL_CACHE: Dict[FlyteLocalEntity, FlyteControlPlaneEntity] = {}
-
-
 def get_serializable_references(
     entity_mapping: OrderedDict, settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool,
 ) -> FlyteControlPlaneEntity:

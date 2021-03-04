@@ -194,12 +194,16 @@ def serialize_all(
                     lp = LaunchPlan.get_default_launch_plan(ctx, entity)
                     get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp)
 
+        all_entities = list(new_api_serializable_entities.values())
+        registerable_entities = list(filter(
+            lambda x: isinstance(x, PythonTask) or isinstance(x, Workflow) or isinstance(x, LaunchPlan), all_entities
+        ))
         # Always register new style entities in order by task, workflow and then launch plan so that
         # Any workflows that reference a task will be guaranteed to have that registered, and likewise for any workflows
         # that reference a launch plan.
         loaded_entities = (
             old_style_entities
-            + list(new_api_serializable_entities.values())
+            + registerable_entities
             # + loaded_entities_types[ResourceType.TASK]
             # + loaded_entities_types[ResourceType.WORKFLOW]
             # + loaded_entities_types[ResourceType.LAUNCH_PLAN]

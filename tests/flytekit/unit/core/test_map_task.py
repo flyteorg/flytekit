@@ -82,20 +82,24 @@ def test_serialization_workflow_def():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf1_serialized = get_serializable(OrderedDict(), serialization_settings, w1)
+    serialized_control_plane_entities = OrderedDict()
+    wf1_serialized = get_serializable(serialized_control_plane_entities, serialization_settings, w1)
     assert wf1_serialized is not None
     assert len(wf1_serialized.nodes) == 1
 
-    wf2_serialized = get_serializable(OrderedDict(), serialization_settings, w2)
+    wf2_serialized = get_serializable(serialized_control_plane_entities, serialization_settings, w2)
     assert wf2_serialized is not None
     assert len(wf2_serialized.nodes) == 1
 
+    flyte_entities = list(serialized_control_plane_entities.keys())
+
     tasks_seen = []
-    for entity in context_manager.FlyteEntities.entities:
+    for entity in flyte_entities:
         if isinstance(entity, MapPythonTask) and "complex" in entity.name:
             tasks_seen.append(entity)
 
     assert len(tasks_seen) == 2
+    print(tasks_seen[0])
 
 
 def test_map_tasks_only():
