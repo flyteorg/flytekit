@@ -17,9 +17,6 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
         type, SchemaType.SchemaColumn.SchemaColumnType
     ] = FlyteSchemaTransformer._SUPPORTED_TYPES
 
-    class EmptySchema(pandera.SchemaModel):
-        pass
-
     def __init__(self):
         super().__init__("Pandera Transformer", pandera.typing.DataFrame)
 
@@ -32,9 +29,10 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
 
         if type_args:
             schema_model, *_ = type_args
+            schema = schema_model.to_schema()
         else:
-            schema_model = self.EmptySchema
-        return schema_model.to_schema()
+            schema = pandera.DataFrameSchema()
+        return schema
 
     def _get_col_dtypes(self, t: Type[pandera.typing.DataFrame]):
         return {k: v.pandas_dtype for k, v in self._pandera_schema(t).columns.items()}
