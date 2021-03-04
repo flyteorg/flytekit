@@ -27,6 +27,7 @@ from flytekit.core.workflow import Workflow
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order, load_module_object_for_type
+from flytekit.common.mixins.registerable import RegisterableEntity
 
 # Identifier fields use placeholders for registration-time substitution.
 # Additional fields, such as auth and the raw output data prefix have more complex structures
@@ -195,9 +196,7 @@ def serialize_all(
                     get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp)
 
         all_entities = list(new_api_serializable_entities.values())
-        registerable_entities = list(filter(
-            lambda x: isinstance(x, PythonTask) or isinstance(x, Workflow) or isinstance(x, LaunchPlan), all_entities
-        ))
+        registerable_entities = list(filter(lambda x: isinstance(x, RegisterableEntity), all_entities))
         # Always register new style entities in order by task, workflow and then launch plan so that
         # Any workflows that reference a task will be guaranteed to have that registered, and likewise for any workflows
         # that reference a launch plan.
