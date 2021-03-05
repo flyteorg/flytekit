@@ -62,21 +62,9 @@ def test_pod_task():
         "requests": {"cpu": "10"},
         "limits": {"gpu": "2"},
     }
-    assert primary_container["env"] == [{"name": "FOO", "value": "bar", "value_from": None}]
+    assert primary_container["env"] == [{"name": "FOO", "value": "bar"}]
     assert custom["pod_spec"]["containers"][1]["name"] == "another container"
     assert custom["primary_container_name"] == "a container"
-
-    ssettings = SerializationSettings(
-        project="test_proj",
-        domain="test_domain",
-        version="abc",
-        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-        env={},
-    )
-    serial = get_serializable(ssettings, simple_pod_task)
-    print(f"{serial}")
-
-    assert False
 
 
 def test_dynamic_pod_task():
