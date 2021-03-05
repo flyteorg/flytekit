@@ -1,4 +1,5 @@
 import typing
+from collections import OrderedDict
 
 import pytest
 
@@ -45,7 +46,7 @@ def test_workflow_values():
         image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
     )
-    sdk_wf = get_serializable(serialization_settings, wf)
+    sdk_wf = get_serializable(OrderedDict(), serialization_settings, wf)
     assert sdk_wf.metadata_defaults.interruptible
     assert sdk_wf.metadata.on_failure == 1
 

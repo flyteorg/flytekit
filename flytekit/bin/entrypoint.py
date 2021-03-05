@@ -10,6 +10,7 @@ from typing import List
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
+from flytekit import PythonFunctionTask
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common import utils as _utils
@@ -23,7 +24,9 @@ from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
+from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
+from flytekit.core.python_auto_container import TaskResolverMixin
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -256,8 +259,19 @@ def _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_outp
             )
 
 
+def _load_resolver(resolver_location: str) -> TaskResolverMixin:
+    # Load the actual resolver - this cannot be a nested thing, whatever kind of resolver it is, it has to be loadable
+    # directly from importlib
+    # TODO: Handle corner cases, like where the first part is [] maybe
+    resolver = resolver_location.split(".")
+    resolver_mod = resolver[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
+    resolver_key = resolver[-1]  # e.g. 'default_task_resolver'
+    resolver_mod = _importlib.import_module(".".join(resolver_mod))
+    return getattr(resolver_mod, resolver_key)
+
+
 @_scopes.system_entry_point
-def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args: List[str]):
+def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver: str, resolver_args: List[str]):
     """
     resolver should be something like:
         flytekit.core.python_auto_container.default_task_resolver
@@ -265,19 +279,10 @@ def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver,
         task_module app.workflows task_name task_1
     have dashes seems to mess up click, like --task_module seems to interfere
     """
-    # TODO: If loader args isn't there, call the legacy API execute
     if len(resolver_args) < 1:
         raise Exception("cannot be <1")
 
-    # Load the actual resolver - this cannot be a nested thing, whatever kind of resolver it is, it has to be loadable
-    # directly from importlib
-    # TODO: Handle corner cases, like where the first part is [] maybe
-    resolver = resolver.split(".")
-    resolver_mod = resolver[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
-    resolver_key = resolver[-1]  # e.g. 'default_task_resolver'
-    resolver_mod = _importlib.import_module(".".join(resolver_mod))
-    resolver_obj = getattr(resolver_mod, resolver_key)
-
+    resolver_obj = _load_resolver(resolver)
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         # Use the resolver to load the actual task object
         _task_def = resolver_obj.load_task(loader_args=resolver_args)
@@ -287,6 +292,35 @@ def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver,
             )
             return
         _handle_annotated_task(_task_def, inputs, output_prefix, raw_output_data_prefix)
+
+
+@_scopes.system_entry_point
+def _execute_map_task(
+    inputs, output_prefix, raw_output_data_prefix, max_concurrency, test, resolver: str, resolver_args: List[str]
+):
+    if len(resolver_args) < 1:
+        raise Exception("cannot be <1")
+
+    resolver_obj = _load_resolver(resolver)
+    with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
+        # Use the resolver to load the actual task object
+        _task_def = resolver_obj.load_task(loader_args=resolver_args)
+        if not isinstance(_task_def, PythonFunctionTask):
+            raise Exception("Cannot be run with instance tasks.")
+        map_task = MapPythonTask(_task_def, max_concurrency)
+
+        task_index = _compute_array_job_index()
+        output_prefix = _os.path.join(output_prefix, str(task_index))
+
+        if test:
+            _click.echo(
+                f"Test detected, returning. Inputs: {inputs} Computed task index: {task_index} "
+                f"New output prefix: {output_prefix} Raw output path: {raw_output_data_prefix} "
+                f"Resolver and args: {resolver} {resolver_args}"
+            )
+            return
+
+        _handle_annotated_task(map_task, inputs, output_prefix, raw_output_data_prefix)
 
 
 @_click.group()
@@ -348,6 +382,42 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
     _os.system(" ".join(task_execute_cmd))
+
+
+@_pass_through.command("pyflyte-map-execute")
+@_click.option("--inputs", required=True)
+@_click.option("--output-prefix", required=True)
+@_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--max-concurrency", type=int, required=False)
+@_click.option("--test", is_flag=True)
+@_click.option("--resolver", required=True)
+@_click.argument(
+    "resolver-args", type=_click.UNPROCESSED, nargs=-1,
+)
+def map_execute_task_cmd(
+    task_module,
+    task_name,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    max_concurrency,
+    test,
+    resolver,
+    resolver_args,
+):
+    _click.echo(_utils.get_version_message())
+
+    _execute_map_task(
+        task_module,
+        task_name,
+        inputs,
+        output_prefix,
+        raw_output_data_prefix,
+        max_concurrency,
+        test,
+        resolver,
+        resolver_args,
+    )
 
 
 if __name__ == "__main__":

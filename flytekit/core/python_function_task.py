@@ -1,5 +1,6 @@
 import inspect
 from abc import ABC
+from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
@@ -174,7 +175,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             self._wf.compile(**kwargs)
 
             wf = self._wf
-            sdk_workflow = get_serializable(ctx.serialization_settings, wf)
+            sdk_workflow = get_serializable(OrderedDict(), ctx.serialization_settings, wf)
 
             # If no nodes were produced, let's just return the strict outputs
             if len(sdk_workflow.nodes) == 0:

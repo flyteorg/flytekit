@@ -37,7 +37,7 @@ class SdkTask(
     _task_model.TaskTemplate,
     metaclass=_sdk_bases.ExtendedSdkType,
 ):
-    def __init__(self, type, metadata, interface, custom, container=None):
+    def __init__(self, type, metadata, interface, custom, container=None, task_type_version=0):
         """
         :param Text type: This is used to define additional extensions for use by Propeller or SDK.
         :param TaskMetadata metadata: This contains information needed at runtime to determine behavior such as
@@ -46,6 +46,8 @@ class SdkTask(
         :param dict[Text, T] custom: Arbitrary type for use by plugins.
         :param Container container: Provides the necessary entrypoint information for execution.  For instance,
             a Container might be specified with the necessary command line arguments.
+        :param int task_type_version: Specific version of this task type used by plugins to potentially modify
+            execution behavior or serialization.
         """
         # TODO: Remove the identifier portion and fill in with local values.
         super(SdkTask, self).__init__(
@@ -61,6 +63,7 @@ class SdkTask(
             interface,
             custom,
             container=container,
+            task_type_version=task_type_version,
         )
 
     @property
@@ -97,6 +100,7 @@ class SdkTask(
             interface=_interfaces.TypedInterface.promote_from_model(base_model.interface),
             custom=base_model.custom,
             container=base_model.container,
+            task_type_version=base_model.task_type_version,
         )
         # Override the newly generated name if one exists in the base model
         if not base_model.id.is_empty:
