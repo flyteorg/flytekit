@@ -1,4 +1,5 @@
 import typing
+from collections import OrderedDict
 
 from flytekit import ContainerTask
 from flytekit.common.translator import get_serializable
@@ -21,15 +22,15 @@ serialization_settings = context_manager.SerializationSettings(
 
 def test_references():
     rlp = ReferenceLaunchPlan("media", "stg", "some.name", "cafe", inputs=kwtypes(in1=str), outputs=kwtypes())
-    sdk_lp = get_serializable(serialization_settings, rlp)
+    sdk_lp = get_serializable(OrderedDict(), serialization_settings, rlp)
     assert sdk_lp.has_registered
 
     rt = ReferenceTask("media", "stg", "some.name", "cafe", inputs=kwtypes(in1=str), outputs=kwtypes())
-    sdk_task = get_serializable(serialization_settings, rt)
+    sdk_task = get_serializable(OrderedDict(), serialization_settings, rt)
     assert sdk_task.has_registered
 
     rw = ReferenceWorkflow("media", "stg", "some.name", "cafe", inputs=kwtypes(in1=str), outputs=kwtypes())
-    sdk_wf = get_serializable(serialization_settings, rw)
+    sdk_wf = get_serializable(OrderedDict(), serialization_settings, rw)
     assert sdk_wf.has_registered
 
 
@@ -48,17 +49,17 @@ def test_basics():
         d = t2(a=y, b=b)
         return x, d
 
-    sdk_wf = get_serializable(serialization_settings, my_wf, False)
+    sdk_wf = get_serializable(OrderedDict(), serialization_settings, my_wf, False)
     assert len(sdk_wf.interface.inputs) == 2
     assert len(sdk_wf.interface.outputs) == 2
     assert len(sdk_wf.nodes) == 2
 
     # Gets cached the first time around so it's not actually fast.
-    sdk_task = get_serializable(serialization_settings, t1, True)
+    sdk_task = get_serializable(OrderedDict(), serialization_settings, t1, True)
     assert "pyflyte-execute" in sdk_task.container.args
 
     lp = LaunchPlan.create("testlp", my_wf,)
-    sdk_lp = get_serializable(serialization_settings, lp)
+    sdk_lp = get_serializable(OrderedDict(), serialization_settings, lp)
     assert sdk_lp.id.name == "testlp"
 
 
@@ -71,7 +72,7 @@ def test_fast():
     def t2(a: str, b: str) -> str:
         return b + a
 
-    sdk_task = get_serializable(serialization_settings, t1, True)
+    sdk_task = get_serializable(OrderedDict(), serialization_settings, t1, True)
     assert "pyflyte-fast-execute" in sdk_task.container.args
 
 
@@ -90,5 +91,5 @@ def test_container():
         arguments=["/tmp/a"],
     )
 
-    sdk_task = get_serializable(serialization_settings, t2, fast=True)
+    sdk_task = get_serializable(OrderedDict(), serialization_settings, t2, fast=True)
     assert "pyflyte" not in sdk_task.container.args

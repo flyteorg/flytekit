@@ -3,6 +3,7 @@ import math as _math
 import os as _os
 import sys
 import tarfile as _tarfile
+from collections import OrderedDict
 from enum import Enum as _Enum
 from typing import List
 
@@ -14,6 +15,7 @@ from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions.scopes import system_entry_point
+from flytekit.common.mixins.registerable import RegisterableEntity
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.translator import get_serializable
 from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
@@ -23,7 +25,6 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import InstanceVar
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.workflow import Workflow
-from flytekit.models.core.identifier import ResourceType
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order, load_module_object_for_type
@@ -166,7 +167,7 @@ def serialize_all(
 
         mode = mode if mode else SerializationMode.DEFAULT
 
-        loaded_entities_types = {ResourceType.TASK: [], ResourceType.WORKFLOW: [], ResourceType.LAUNCH_PLAN: []}
+        new_api_serializable_entities = OrderedDict()
         # TODO: Clean up the copy() - it's here because we call get_default_launch_plan, which may create a LaunchPlan
         #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
         for entity in flyte_context.FlyteEntities.entities.copy():
@@ -176,35 +177,27 @@ def serialize_all(
             #  to reach them, but perhaps workflows should be okay to take into account generated workflows.
             #  Also a user may import dir_b.workflows from dir_a.workflows but workflow packages might only
             #  specify dir_a
-
             if isinstance(entity, PythonTask) or isinstance(entity, Workflow) or isinstance(entity, LaunchPlan):
                 if isinstance(entity, PythonTask):
                     if mode == SerializationMode.DEFAULT:
-                        serializable = get_serializable(ctx.serialization_settings, entity)
+                        get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
                     elif mode == SerializationMode.FAST:
-                        serializable = get_serializable(ctx.serialization_settings, entity, fast=True)
+                        get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity, fast=True)
                     else:
                         raise AssertionError(f"Unrecognized serialization mode: {mode}")
-                    loaded_entities_types[ResourceType.TASK].append(serializable)
                 else:
-                    serializable = get_serializable(ctx.serialization_settings, entity)
-                if isinstance(entity, Workflow):
-                    loaded_entities_types[ResourceType.WORKFLOW].append(serializable)
-                    lp = LaunchPlan.get_default_launch_plan(ctx, entity)
-                    launch_plan = get_serializable(ctx.serialization_settings, lp)
-                    loaded_entities_types[ResourceType.LAUNCH_PLAN].append(launch_plan)
-                if isinstance(entity, LaunchPlan):
-                    loaded_entities_types[ResourceType.LAUNCH_PLAN].append(serializable)
+                    get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
 
-        # Always register new style entities in order by task, workflow and then launch plan so that
-        # Any workflows that reference a task will be guaranteed to have that registered, and likewise for any workflows
-        # that reference a launch plan.
-        loaded_entities = (
-            old_style_entities
-            + loaded_entities_types[ResourceType.TASK]
-            + loaded_entities_types[ResourceType.WORKFLOW]
-            + loaded_entities_types[ResourceType.LAUNCH_PLAN]
-        )
+                if isinstance(entity, Workflow):
+                    lp = LaunchPlan.get_default_launch_plan(ctx, entity)
+                    get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp)
+
+        # This will pick up all the serializable entities, but we'll need to filter them because the process of
+        # serializing creates a lot of objects that don't need to be directly registered, namely SdkNodes and
+        # BranchNodes and other branching constructs
+        all_entities = list(new_api_serializable_entities.values())
+        registerable_entities = list(filter(lambda x: isinstance(x, RegisterableEntity), all_entities))
+        loaded_entities = old_style_entities + registerable_entities
 
         zero_padded_length = _determine_text_chars(len(loaded_entities))
         for i, entity in enumerate(loaded_entities):
