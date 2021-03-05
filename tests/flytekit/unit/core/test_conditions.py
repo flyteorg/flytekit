@@ -1,4 +1,5 @@
 import typing
+from collections import OrderedDict
 
 import pytest
 
@@ -115,7 +116,7 @@ def test_condition_tuple_branches():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
 
-    sdk_wf = get_serializable(serialization_settings, math_ops)
+    sdk_wf = get_serializable(OrderedDict(), serialization_settings, math_ops)
     assert sdk_wf.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name == "test_conditions.sum_sub"
 
 
