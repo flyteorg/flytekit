@@ -168,7 +168,6 @@ def serialize_all(
         mode = mode if mode else SerializationMode.DEFAULT
 
         new_api_serializable_entities = OrderedDict()
-        # loaded_entities_types = {ResourceType.TASK: [], ResourceType.WORKFLOW: [], ResourceType.LAUNCH_PLAN: []}
         # TODO: Clean up the copy() - it's here because we call get_default_launch_plan, which may create a LaunchPlan
         #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
         for entity in flyte_context.FlyteEntities.entities.copy():
@@ -178,7 +177,6 @@ def serialize_all(
             #  to reach them, but perhaps workflows should be okay to take into account generated workflows.
             #  Also a user may import dir_b.workflows from dir_a.workflows but workflow packages might only
             #  specify dir_a
-
             if isinstance(entity, PythonTask) or isinstance(entity, Workflow) or isinstance(entity, LaunchPlan):
                 if isinstance(entity, PythonTask):
                     if mode == SerializationMode.DEFAULT:
@@ -189,24 +187,17 @@ def serialize_all(
                         raise AssertionError(f"Unrecognized serialization mode: {mode}")
                 else:
                     get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
-                # loaded_entities.append(serializable)
 
                 if isinstance(entity, Workflow):
                     lp = LaunchPlan.get_default_launch_plan(ctx, entity)
                     get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp)
 
+        # This will pick up all the serializable entities, but we'll need to filter them because the process of
+        # serializing creates a lot of objects that don't need to be directly registered, namely SdkNodes and
+        # BranchNodes and other branching constructs
         all_entities = list(new_api_serializable_entities.values())
         registerable_entities = list(filter(lambda x: isinstance(x, RegisterableEntity), all_entities))
-        # Always register new style entities in order by task, workflow and then launch plan so that
-        # Any workflows that reference a task will be guaranteed to have that registered, and likewise for any workflows
-        # that reference a launch plan.
-        loaded_entities = (
-            old_style_entities
-            + registerable_entities
-            # + loaded_entities_types[ResourceType.TASK]
-            # + loaded_entities_types[ResourceType.WORKFLOW]
-            # + loaded_entities_types[ResourceType.LAUNCH_PLAN]
-        )
+        loaded_entities = old_style_entities + registerable_entities
 
         zero_padded_length = _determine_text_chars(len(loaded_entities))
         for i, entity in enumerate(loaded_entities):

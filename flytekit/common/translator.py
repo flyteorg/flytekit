@@ -289,7 +289,21 @@ def get_serializable(
     fast: Optional[bool] = False,
 ) -> FlyteControlPlaneEntity:
     """
-    This function will modify the first list parameter (by appending to it) in place. If a
+    The flytekit authoring code produces objects representing Flyte entities (tasks, workflows, etc.). In order to
+    register these, they need to be converted into objects that Flyte Admin understands (the IDL objects basically, but
+    this function currently translates to the layer above (e.g. SdkTask) - this will be changed to the IDL objects
+    directly in the future).
+
+    :param entity_mapping: This is an ordered dict that will be mutated in place. The reason this argument exists is
+      because there is a natural ordering to the entities at registration time. That is, underlying tasks have to be
+      registered before the workflows that use them. The recursive search done by this function and the functions
+      above form a natural topological sort, finding the dependent entities and adding them to this parameter before
+      the parent entity this function is called with.
+    :param settings: used to pick up project/domain/name - to be deprecated.
+    :param entity: The local flyte entity to try to convert (along with its dependencies)
+    :param fast: For tasks only, fast serialization produces a different command.
+    :return: The resulting control plane entity, in addition to being added to the mutable entity_mapping parameter
+      is also returned.
     """
     if entity in entity_mapping:
         return entity_mapping[entity]
@@ -314,5 +328,6 @@ def get_serializable(
     else:
         raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")
 
+    # This needs to be at the bottom not the top - i.e. dependent tasks get added before the workflow containing it
     entity_mapping[entity] = cp_entity
     return cp_entity
