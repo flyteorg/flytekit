@@ -18,7 +18,7 @@ We recommend using a virtual environment to develop flytekit. Inside the top lev
     source ~/.virtualenvs/flytekit/bin/activate
     make setup
     pip install -e .
-    pip install gsutil
+    pip install gsutil awscli
 
 Install `shellcheck <https://github.com/koalaman/shellcheck>`__ for linting shell scripts.
 
