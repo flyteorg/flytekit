@@ -191,6 +191,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     """
     Please see the notes in the TaskResolverMixin as it describes this default behavior.
     """
+
     def name(self) -> str:
         return "DefaultTaskResolver"
 

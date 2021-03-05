@@ -18,6 +18,7 @@ class ExperimentalNaiveCloudPickleResolver(TrackedInstance, TaskResolverMixin):
     TODO: Replace this with a version that will upload the data to S3 or some other durable store upon ``loader_args``
       and will download the data upon ``load_task``. This will require additional changes to Admin however.
     """
+
     def name(self) -> str:
         return "cloud pickling task resolver"
 

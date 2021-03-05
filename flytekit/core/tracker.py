@@ -16,6 +16,7 @@ class InstanceTrackingMeta(type):
     caused the instance to be created. This is useful because it means that we can then (at least try to) find the
     variable that the instance was assigned to.
     """
+
     @staticmethod
     def _find_instance_module():
         frame = _inspect.currentframe()
@@ -42,6 +43,7 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
       classes, not the classes themselves, which means we need to look on the left hand side of them to see how to
       find them at task execution time.
     """
+
     def __init__(self, *args, **kwargs):
         self._instantiated_in = None
         self._lhs = None
