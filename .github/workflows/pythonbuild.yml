@@ -43,9 +43,7 @@ jobs:
       uses: ludeeus/action-shellcheck@master
     - name: Test with coverage
       run: |
-        coverage run -m pytest tests/flytekit/unit
-        coverage run -m pytest tests/scripts
-        coverage run -m pytest plugins/tests
+        coverage run -m pytest tests/flytekit/unit tests/scripts plugins/tests
     - name: Codecov
       uses: codecov/codecov-action@v1
       with:
