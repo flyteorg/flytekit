@@ -9,6 +9,15 @@ from flytekit.core.tracker import TrackedInstance
 
 
 class ExperimentalNaiveCloudPickleResolver(TrackedInstance, TaskResolverMixin):
+    """
+    Please do not use this resolver, basically ever. This is here for demonstration purposes only. The critical flaw
+    of this resolver is that pretty much any task that it resolves results in loader_args that are enormous. This
+    payload is serialized as part of the ``TaskTemplate`` protobuf object and will live in Admin and then be loaded
+    into Flyte Propeller memory and will pretty much clog up performance along the entire platform.
+
+    TODO: Replace this with a version that will upload the data to S3 or some other durable store upon ``loader_args``
+      and will download the data upon ``load_task``. This will require additional changes to Admin however.
+    """
     def name(self) -> str:
         return "cloud pickling task resolver"
 

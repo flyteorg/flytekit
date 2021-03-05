@@ -8,6 +8,14 @@ from flytekit.common.exceptions import system as _system_exceptions
 
 
 class InstanceTrackingMeta(type):
+    """
+    Please see the original class :py:class`flytekit.common.mixins.registerable._InstanceTracker` also and also look
+    at the tests in the ``tests/flytekit/unit/core/tracker/test_tracking/`` folder to see how it's used.
+
+    Basically, this will make instances of classes that use this metaclass aware of the module (the .py file) that
+    caused the instance to be created. This is useful because it means that we can then (at least try to) find the
+    variable that the instance was assigned to.
+    """
     @staticmethod
     def _find_instance_module():
         frame = _inspect.currentframe()
@@ -24,6 +32,16 @@ class InstanceTrackingMeta(type):
 
 
 class TrackedInstance(metaclass=InstanceTrackingMeta):
+    """
+    Please see the notes for the metaclass above first.
+
+    This functionality has two use-cases currently,
+    * Keep track of naming for non-function ``PythonAutoContainerTasks``.  That is, things like the
+      :py:class:`flytekit.extras.sqlite3.task.SQLite3Task` task.
+    * Task resolvers, because task resolvers are instances of :py:class:`flytekit.core.python_auto_container.TaskResolverMixin`
+      classes, not the classes themselves, which means we need to look on the left hand side of them to see how to
+      find them at task execution time.
+    """
     def __init__(self, *args, **kwargs):
         self._instantiated_in = None
         self._lhs = None
