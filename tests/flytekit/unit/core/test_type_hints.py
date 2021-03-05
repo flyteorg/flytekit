@@ -10,7 +10,7 @@ import pytest
 from dataclasses_json import dataclass_json
 
 import flytekit
-from flytekit import ContainerTask, SQLTask, dynamic, kwtypes, map
+from flytekit import ContainerTask, SQLTask, dynamic, kwtypes, map_task
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
@@ -319,7 +319,7 @@ def test_wf1_with_map():
 
     @workflow
     def my_wf(a: typing.List[int]) -> int:
-        x = map(t1, metadata=TaskMetadata(retries=1))(a=a)
+        x = map_task(t1, metadata=TaskMetadata(retries=1))(a=a)
         return t2(x=x)
 
     x = my_wf(a=[5, 6])

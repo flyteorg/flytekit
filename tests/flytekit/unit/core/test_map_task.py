@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 import pytest
 
-from flytekit import LaunchPlan, map
+from flytekit import LaunchPlan, map_task
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
@@ -19,18 +19,18 @@ def t1(a: int) -> str:
 
 
 def test_map_task_types():
-    strs = map(t1, metadata=TaskMetadata(retries=1))(a=[5, 6])
+    strs = map_task(t1, metadata=TaskMetadata(retries=1))(a=[5, 6])
     assert strs == ["7", "8"]
 
     with pytest.raises(TypeError):
-        _ = map(t1, metadata=TaskMetadata(retries=1))(a=1)
+        _ = map_task(t1, metadata=TaskMetadata(retries=1))(a=1)
 
     with pytest.raises(TypeError):
-        _ = map(t1, metadata=TaskMetadata(retries=1))(a=["invalid", "args"])
+        _ = map_task(t1, metadata=TaskMetadata(retries=1))(a=["invalid", "args"])
 
 
 def test_serialization():
-    maptask = map(t1, metadata=TaskMetadata(retries=1))
+    maptask = map_task(t1, metadata=TaskMetadata(retries=1))
     default_img = Image(name="default", fqn="test", tag="tag")
     serialization_settings = context_manager.SerializationSettings(
         project="project",
@@ -64,7 +64,7 @@ def test_serialization_workflow_def():
         b = a + 2
         return str(b)
 
-    maptask = map(complex_task, metadata=TaskMetadata(retries=1))
+    maptask = map_task(complex_task, metadata=TaskMetadata(retries=1))
 
     @workflow
     def w1(a: typing.List[int]) -> typing.List[str]:
@@ -72,7 +72,7 @@ def test_serialization_workflow_def():
 
     @workflow
     def w2(a: typing.List[int]) -> typing.List[str]:
-        return map(complex_task, metadata=TaskMetadata(retries=2))(a=a)
+        return map_task(complex_task, metadata=TaskMetadata(retries=2))(a=a)
 
     default_img = Image(name="default", fqn="test", tag="tag")
     serialization_settings = context_manager.SerializationSettings(
@@ -111,7 +111,7 @@ def test_map_tasks_only():
 
         @workflow
         def wf2(a: typing.List[int]):
-            return map(wf1)(a=a)
+            return map_task(wf1)(a=a)
 
     lp = LaunchPlan.create("test", wf1)
 
@@ -119,7 +119,7 @@ def test_map_tasks_only():
 
         @workflow
         def wf3(a: typing.List[int]):
-            return map(lp)(a=a)
+            return map_task(lp)(a=a)
 
 
 def test_inputs_outputs_length():
@@ -128,11 +128,11 @@ def test_inputs_outputs_length():
         return f"{a} - {b} - {c}"
 
     with pytest.raises(ValueError):
-        _ = map(many_inputs)
+        _ = map_task(many_inputs)
 
     @task
     def many_outputs(a: int) -> (int, str):
         return a, f"{a}"
 
     with pytest.raises(ValueError):
-        _ = map(many_inputs)
+        _ = map_task(many_inputs)

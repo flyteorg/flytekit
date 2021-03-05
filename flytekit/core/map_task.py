@@ -183,7 +183,7 @@ class MapPythonTask(PythonTask):
         return outputs
 
 
-def map(task_function: PythonFunctionTask, concurrency: int = None, min_success_ratio: float = None, **kwargs):
+def map_task(task_function: PythonFunctionTask, concurrency: int = None, min_success_ratio: float = None, **kwargs):
     """
     Use a map task for parallelizable tasks that are run across a List of an input type. A map task can be composed of
     any individual :py:class:`flytekit.PythonFunctionTask`.

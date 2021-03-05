@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 from flytekit.common import constants as _common_constants
 from flytekit.common.interface import TypedInterface
