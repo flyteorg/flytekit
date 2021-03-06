@@ -14,7 +14,7 @@ from flytekit.core.task import reference_task, task
 from flytekit.core.testing import patch, task_mock
 from flytekit.core.workflow import reference_workflow, workflow
 from flytekit.models.core import identifier as _identifier_model
-
+from flytekit.core.launch_plan import LaunchPlan
 
 def test_ref():
     @reference_task(
@@ -292,3 +292,22 @@ def test_lp_with_output():
     sdk_wf = get_serializable(OrderedDict(), serialization_settings, wf1)
     assert sdk_wf.nodes[1].workflow_node.launchplan_ref.project == "proj"
     assert sdk_wf.nodes[1].workflow_node.launchplan_ref.name == "app.other.flyte_entity"
+
+
+def test_lp_from_ref_wf():
+    @reference_workflow(
+        project="project",
+        domain="domain",
+        name="name",
+        version="version")
+    def ref_wf1(p1: str, p2: str) -> None:
+        ...
+
+    lp = LaunchPlan.create(
+        "reference-wf-12345",
+        ref_wf1,
+        fixed_inputs={
+            "p1": "p1-value",
+            "p2": "p2-value",
+        }
+    )
