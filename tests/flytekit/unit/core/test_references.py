@@ -7,6 +7,7 @@ from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
 from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.promise import VoidPromise
 from flytekit.core.reference import get_reference_entity
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
@@ -14,7 +15,7 @@ from flytekit.core.task import reference_task, task
 from flytekit.core.testing import patch, task_mock
 from flytekit.core.workflow import reference_workflow, workflow
 from flytekit.models.core import identifier as _identifier_model
-from flytekit.core.launch_plan import LaunchPlan
+
 
 def test_ref():
     @reference_task(
@@ -295,19 +296,8 @@ def test_lp_with_output():
 
 
 def test_lp_from_ref_wf():
-    @reference_workflow(
-        project="project",
-        domain="domain",
-        name="name",
-        version="version")
+    @reference_workflow(project="project", domain="domain", name="name", version="version")
     def ref_wf1(p1: str, p2: str) -> None:
         ...
 
-    lp = LaunchPlan.create(
-        "reference-wf-12345",
-        ref_wf1,
-        fixed_inputs={
-            "p1": "p1-value",
-            "p2": "p2-value",
-        }
-    )
+    LaunchPlan.create("reference-wf-12345", ref_wf1, fixed_inputs={"p1": "p1-value", "p2": "p2-value"})
