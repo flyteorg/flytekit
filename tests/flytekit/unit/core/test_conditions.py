@@ -164,6 +164,16 @@ def test_condition_unary_bool():
 
 def test_subworkflow_condition_serialization():
     """Test that subworkflows are correctly extracted from serialized workflows with condiationals."""
+
+    @task
+    def t() -> int:
+        return 5
+
+    @workflow
+    def wf1() -> int:
+        return t()
+
+    @workflow
     def wf2() -> int:
         return t()
 
@@ -178,6 +188,10 @@ def test_subworkflow_condition_serialization():
     @workflow
     def ifelse_branching(x: int) -> int:
         return conditional("simple branching test").if_(x == 2).then(wf1()).else_().then(wf2())
+
+    @workflow
+    def ifelse_branching_fail(x: int) -> int:
+        return conditional("simple branching test").if_(x == 2).then(wf1()).else_().fail("failed")
 
     @workflow
     def if_elif_else_branching(x: int) -> int:
@@ -212,6 +226,7 @@ def test_subworkflow_condition_serialization():
 
     for wf, expected_subworkflows in [
         (ifelse_branching, ["test_conditions.{}".format(x) for x in ("wf1", "wf2")]),
+        (ifelse_branching_fail, ["test_conditions.{}".format(x) for x in ("wf1",)]),
         (if_elif_else_branching, ["test_conditions.{}".format(x) for x in ("wf1", "wf2", "wf3", "wf4")]),
         (nested_branching, ["test_conditions.{}".format(x) for x in ("ifelse_branching", "wf1", "wf2", "wf5")]),
     ]:
@@ -220,7 +235,7 @@ def test_subworkflow_condition_serialization():
 
         assert [sub_wf.id.name for sub_wf in subworkflows] == expected_subworkflows
 
-        
+
 def test_subworkflow_condition():
     @task
     def t() -> int:

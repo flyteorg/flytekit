@@ -123,11 +123,14 @@ class SdkWorkflow(
             # get subworkflows in conditional branches
             if node.branch_node is not None:
                 if_else: _workflow_models.IfElseBlock = node.branch_node.if_else
-                leaf_nodes: List[_nodes.SdkNode] = [
-                    if_else.case.then_node,
-                    *([] if if_else.other is None else [x.then_node for x in if_else.other]),
-                    if_else.else_node,
-                ]
+                leaf_nodes: List[_nodes.SdkNode] = filter(
+                    None,
+                    [
+                        if_else.case.then_node,
+                        *([] if if_else.other is None else [x.then_node for x in if_else.other]),
+                        if_else.else_node,
+                    ],
+                )
                 for leaf_node in leaf_nodes:
                     exec_sdk_obj = leaf_node.executable_sdk_object
                     if exec_sdk_obj is not None and exec_sdk_obj.entity_type_text == "Workflow":
