@@ -5,6 +5,7 @@ import pytest
 
 from flytekit import task, workflow
 from flytekit.common.translator import get_serializable
+from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings
 
@@ -159,3 +160,72 @@ def test_condition_unary_bool():
         return conditional("test").if_(result.is_true()).then(success()).else_().then(failed())
 
     assert decompose() == 20
+
+
+def test_subworkflow_condition_serialization():
+    """Test that subworkflows are correctly extracted from serialized workflows with condiationals."""
+
+    @task
+    def t() -> int:
+        return 5
+
+    @workflow
+    def wf1() -> int:
+        return t()
+
+    @workflow
+    def wf2() -> int:
+        return t()
+
+    @workflow
+    def wf3() -> int:
+        return t()
+
+    @workflow
+    def wf4() -> int:
+        return t()
+
+    @workflow
+    def ifelse_branching(x: int) -> int:
+        return conditional("simple branching test").if_(x == 2).then(wf1()).else_().then(wf2())
+
+    @workflow
+    def if_elif_else_branching(x: int) -> int:
+        return (
+            conditional("test")
+            .if_(x == 2)
+            .then(wf1())
+            .elif_(x == 3)
+            .then(wf2())
+            .elif_(x == 4)
+            .then(wf3())
+            .else_()
+            .then(wf4())
+        )
+
+    @workflow
+    def wf5() -> int:
+        return t()
+
+    @workflow
+    def nested_branching(x: int) -> int:
+        return conditional("nested test").if_(x == 2).then(ifelse_branching(x=x)).else_().then(wf5())
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    serialization_settings = context_manager.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
+    for wf, expected_subworkflows in [
+        (ifelse_branching, ["test_conditions.{}".format(x) for x in ("wf1", "wf2")]),
+        (if_elif_else_branching, ["test_conditions.{}".format(x) for x in ("wf1", "wf2", "wf3", "wf4")]),
+        (nested_branching, ["test_conditions.{}".format(x) for x in ("ifelse_branching", "wf1", "wf2", "wf5")]),
+    ]:
+        serializable_wf = get_serializable(OrderedDict(), serialization_settings, wf)
+        subworkflows = serializable_wf.get_sub_workflows()
+
+        assert [sub_wf.id.name for sub_wf in subworkflows] == expected_subworkflows

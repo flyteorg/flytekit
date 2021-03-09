@@ -1,4 +1,5 @@
 import datetime as _datetime
+from typing import List
 
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
@@ -108,17 +109,30 @@ class SdkWorkflow(
         :rtype: list[SdkWorkflow]
         """
         result = []
-        for n in self.nodes:
-            if n.workflow_node is not None and n.workflow_node.sub_workflow_ref is not None:
-                if n.executable_sdk_object is not None and n.executable_sdk_object.entity_type_text == "Workflow":
-                    result.append(n.executable_sdk_object)
-                    result.extend(n.executable_sdk_object.get_sub_workflows())
+        for node in self.nodes:
+            if node.workflow_node is not None and node.workflow_node.sub_workflow_ref is not None:
+                if node.executable_sdk_object is not None and node.executable_sdk_object.entity_type_text == "Workflow":
+                    result.append(node.executable_sdk_object)
+                    result.extend(node.executable_sdk_object.get_sub_workflows())
                 else:
                     raise _system_exceptions.FlyteSystemException(
                         "workflow node with subworkflow found but bad executable "
-                        "object {}".format(n.executable_sdk_object)
+                        "object {}".format(node.executable_sdk_object)
                     )
-            # Ignore other node types (branch, task)
+
+            # get subworkflows in conditional branches
+            if node.branch_node is not None:
+                if_else: _workflow_models.IfElseBlock = node.branch_node.if_else
+                leaf_nodes: List[_nodes.SdkNode] = [
+                    if_else.case.then_node,
+                    *([] if if_else.other is None else [x.then_node for x in if_else.other]),
+                    if_else.else_node,
+                ]
+                for leaf_node in leaf_nodes:
+                    exec_sdk_obj = leaf_node.executable_sdk_object
+                    if exec_sdk_obj is not None and exec_sdk_obj.entity_type_text == "Workflow":
+                        result.append(exec_sdk_obj)
+                        result.extend(exec_sdk_obj.get_sub_workflows())
 
         return result
 
@@ -261,7 +275,6 @@ class SdkWorkflow(
                 "When adding a workflow as a node in a workflow, all inputs must be specified with kwargs only.  We "
                 "detected {} positional args.".format(len(args))
             )
-
         bindings, upstream_nodes = self.interface.create_bindings_for_inputs(input_map)
 
         node = _nodes.SdkNode(
