@@ -192,3 +192,8 @@ def test_protos():
     lit = TypeEngine.to_literal(ctx, pb, errors_pb2.ContainerError, lt)
     new_python_val = TypeEngine.to_python_value(ctx, lit, errors_pb2.ContainerError)
     assert new_python_val == pb
+
+    # Test error
+    l0 = Literal(scalar=Scalar(primitive=Primitive(integer=4)))
+    with pytest.raises(AssertionError):
+        TypeEngine.to_python_value(ctx, l0, errors_pb2.ContainerError)
