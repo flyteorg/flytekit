@@ -27,6 +27,7 @@ from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
+from flytekit.models.interface import Variable
 
 
 def kwtypes(**kwargs) -> Dict[str, Type]:
@@ -117,12 +118,14 @@ class Task(object):
         name: str,
         interface: Optional[_interface_models.TypedInterface] = None,
         metadata: Optional[TaskMetadata] = None,
+        task_type_version=0,
         **kwargs,
     ):
         self._task_type = task_type
         self._name = name
         self._interface = interface
         self._metadata = metadata if metadata else TaskMetadata()
+        self._task_type_version = task_type_version
 
         FlyteEntities.entities.append(self)
 
@@ -145,6 +148,10 @@ class Task(object):
     @property
     def python_interface(self) -> Optional[Interface]:
         return None
+
+    @property
+    def task_type_version(self) -> int:
+        return self._task_type_version
 
     def get_type_for_input_var(self, k: str, v: Any) -> type:
         """
@@ -299,6 +306,7 @@ class PythonTask(Task, Generic[T]):
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
         secret_keys: Optional[List[str]] = None,
+        task_type_version=0,
         **kwargs,
     ):
         """
@@ -321,7 +329,11 @@ class PythonTask(Task, Generic[T]):
                           etc
         """
         super().__init__(
-            task_type=task_type, name=name, interface=transform_interface_to_typed_interface(interface), **kwargs
+            task_type=task_type,
+            name=name,
+            interface=transform_interface_to_typed_interface(interface),
+            task_type_version=task_type_version,
+            **kwargs,
         )
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}
@@ -355,6 +367,10 @@ class PythonTask(Task, Generic[T]):
             retry_strategy=self.metadata.retry_strategy,
             **kwargs,
         )
+
+    @property
+    def _outputs_interface(self) -> Dict[Any, Variable]:
+        return self.interface.outputs
 
     def dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
@@ -404,7 +420,7 @@ class PythonTask(Task, Generic[T]):
             ):
                 return native_outputs
 
-            expected_output_names = list(self.interface.outputs.keys())
+            expected_output_names = list(self._outputs_interface.keys())
             if len(expected_output_names) == 1:
                 # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
                 # length one. That convention is used for naming outputs - and single-length-NamedTuples are
@@ -425,8 +441,9 @@ class PythonTask(Task, Generic[T]):
             # built into the IDL that all the values of a literal map are of the same type.
             literals = {}
             for k, v in native_outputs_as_map.items():
-                literal_type = self.interface.outputs[k].type
+                literal_type = self._outputs_interface[k].type
                 py_type = self.get_type_for_output_var(k, v)
+
                 if isinstance(v, tuple):
                     raise AssertionError(f"Output({k}) in task{self.name} received a tuple {v}, instead of {py_type}")
                 try:

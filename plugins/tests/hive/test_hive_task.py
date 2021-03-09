@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import pandas
 import pytest
 from flytekitplugins.hive.task import HiveConfig, HiveSelectTask, HiveTask
@@ -36,13 +38,13 @@ def test_serialization():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
         env={},
     )
-    sdk_task = get_serializable(serialization_settings, hive_task)
+    sdk_task = get_serializable(OrderedDict(), serialization_settings, hive_task)
     assert "{{ .rawOutputDataPrefix" in sdk_task.custom["query"]["query"]
     assert "insert overwrite directory" in sdk_task.custom["query"]["query"]
     assert len(sdk_task.interface.inputs) == 2
     assert len(sdk_task.interface.outputs) == 1
 
-    sdk_wf = get_serializable(serialization_settings, my_wf)
+    sdk_wf = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert sdk_wf.interface.outputs["o0"].type.schema is not None
     assert sdk_wf.outputs[0].var == "o0"
     assert sdk_wf.outputs[0].binding.promise.node_id == "n0"
@@ -108,11 +110,11 @@ def test_query_no_inputs_or_outputs():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
         env={},
     )
-    sdk_task = get_serializable(serialization_settings, hive_task)
+    sdk_task = get_serializable(OrderedDict(), serialization_settings, hive_task)
     assert len(sdk_task.interface.inputs) == 0
     assert len(sdk_task.interface.outputs) == 0
 
-    get_serializable(serialization_settings, my_wf)
+    get_serializable(OrderedDict(), serialization_settings, my_wf)
 
 
 def test_hive_select():

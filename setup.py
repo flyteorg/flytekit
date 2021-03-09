@@ -51,6 +51,7 @@ setup(
         "console_scripts": [
             "pyflyte-execute=flytekit.bin.entrypoint:execute_task_cmd",
             "pyflyte-fast-execute=flytekit.bin.entrypoint:fast_execute_task_cmd",
+            "pyflyte-map-execute=flytekit.bin.entrypoint:map_execute_task_cmd",
             "pyflyte=flytekit.clis.sdk_in_container.pyflyte:main",
             "flyte-cli=flytekit.clis.flyte_cli.main:_flyte_cli",
         ]
