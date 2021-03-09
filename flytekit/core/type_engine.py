@@ -204,7 +204,7 @@ class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMes
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         if not (lv and lv.scalar and lv.scalar.generic):
-            raise AssertionError("Can only cover a generic literal to a Protobuf")
+            raise AssertionError("Can only covert a generic literal to a Protobuf")
 
         pb_obj = expected_python_type()
         dictionary = _MessageToDict(lv.scalar.generic)
