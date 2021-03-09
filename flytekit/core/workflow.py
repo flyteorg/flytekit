@@ -120,10 +120,6 @@ class Workflow(object):
         self._input_parameters = None
         FlyteEntities.entities.append(self)
 
-    def define(self, nodes: List[Node]):
-        def placeholder():
-            raise Exception("This should never be called")
-
     @property
     def function(self):
         return self._workflow_function
