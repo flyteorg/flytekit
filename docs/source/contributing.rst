@@ -18,9 +18,12 @@ We recommend using a virtual environment to develop flytekit. Inside the top lev
     source ~/.virtualenvs/flytekit/bin/activate
     make setup
     pip install -e .
+    pip install gsutil awscli
+
+Install `shellcheck <https://github.com/koalaman/shellcheck>`__ for linting shell scripts.
 
 .. note::
-    It's important not to use a virtualenv that you also use for *using* flytekit. The reason is that installing a Python
+    It's important to maintain separate virtualenvs for flytekit *development* and flytekit *use*. The reason is that installing a Python
     library in editable mode will link it to your source code. That is, the behavior will change as you work on the code,
     check out different branches, etc.
 

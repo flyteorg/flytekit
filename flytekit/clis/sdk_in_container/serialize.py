@@ -3,6 +3,7 @@ import math as _math
 import os as _os
 import sys
 import tarfile as _tarfile
+from collections import OrderedDict
 from enum import Enum as _Enum
 from typing import List
 
@@ -14,6 +15,7 @@ from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions.scopes import system_entry_point
+from flytekit.common.mixins.registerable import RegisterableEntity
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.translator import get_serializable
 from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
@@ -145,7 +147,7 @@ def serialize_all(
     with flyte_context.FlyteContext.current_context().new_serialization_settings(
         serialization_settings=serialization_settings
     ) as ctx:
-        loaded_entities = []
+        old_style_entities = []
         # This first for loop is for legacy API entities - SdkTask, SdkWorkflow, etc. The _get_entity_to_module
         # function that this iterate calls only works on legacy objects
         for m, k, o in iterate_registerable_entities_in_order(pkgs, local_source_root=local_source_root):
@@ -154,7 +156,7 @@ def serialize_all(
             o._id = _identifier.Identifier(
                 o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
             )
-            loaded_entities.append(o)
+            old_style_entities.append(o)
 
         # PythonInstanceTasks will not be picked up by the above, so we need to reiterate
         for o, v in load_module_object_for_type(pkgs, PythonInstanceTask, additional_path=local_source_root).items():
@@ -164,6 +166,8 @@ def serialize_all(
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
 
         mode = mode if mode else SerializationMode.DEFAULT
+
+        new_api_serializable_entities = OrderedDict()
         # TODO: Clean up the copy() - it's here because we call get_default_launch_plan, which may create a LaunchPlan
         #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
         for entity in flyte_context.FlyteEntities.entities.copy():
@@ -173,23 +177,27 @@ def serialize_all(
             #  to reach them, but perhaps workflows should be okay to take into account generated workflows.
             #  Also a user may import dir_b.workflows from dir_a.workflows but workflow packages might only
             #  specify dir_a
-
             if isinstance(entity, PythonTask) or isinstance(entity, Workflow) or isinstance(entity, LaunchPlan):
                 if isinstance(entity, PythonTask):
                     if mode == SerializationMode.DEFAULT:
-                        serializable = get_serializable(ctx.serialization_settings, entity)
+                        get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
                     elif mode == SerializationMode.FAST:
-                        serializable = get_serializable(ctx.serialization_settings, entity, fast=True)
+                        get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity, fast=True)
                     else:
                         raise AssertionError(f"Unrecognized serialization mode: {mode}")
                 else:
-                    serializable = get_serializable(ctx.serialization_settings, entity)
-                loaded_entities.append(serializable)
+                    get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
 
                 if isinstance(entity, Workflow):
                     lp = LaunchPlan.get_default_launch_plan(ctx, entity)
-                    launch_plan = get_serializable(ctx.serialization_settings, lp)
-                    loaded_entities.append(launch_plan)
+                    get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp)
+
+        # This will pick up all the serializable entities, but we'll need to filter them because the process of
+        # serializing creates a lot of objects that don't need to be directly registered, namely SdkNodes and
+        # BranchNodes and other branching constructs
+        all_entities = list(new_api_serializable_entities.values())
+        registerable_entities = list(filter(lambda x: isinstance(x, RegisterableEntity), all_entities))
+        loaded_entities = old_style_entities + registerable_entities
 
         zero_padded_length = _determine_text_chars(len(loaded_entities))
         for i, entity in enumerate(loaded_entities):

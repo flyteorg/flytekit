@@ -51,12 +51,13 @@ setup(
         "console_scripts": [
             "pyflyte-execute=flytekit.bin.entrypoint:execute_task_cmd",
             "pyflyte-fast-execute=flytekit.bin.entrypoint:fast_execute_task_cmd",
+            "pyflyte-map-execute=flytekit.bin.entrypoint:map_execute_task_cmd",
             "pyflyte=flytekit.clis.sdk_in_container.pyflyte:main",
             "flyte-cli=flytekit.clis.flyte_cli.main:_flyte_cli",
         ]
     },
     install_requires=[
-        "flyteidl>=0.18.11,<1.0.0",
+        "flyteidl>=0.18.14,<1.0.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=2.0.0,<4.0.0",

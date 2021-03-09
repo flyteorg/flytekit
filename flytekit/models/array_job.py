@@ -7,7 +7,7 @@ from flytekit.models import common as _common
 
 
 class ArrayJob(_common.FlyteCustomIdlEntity):
-    def __init__(self, parallelism, size, min_successes):
+    def __init__(self, parallelism=None, size=None, min_successes=None, min_success_ratio=None):
         """
         Initializes a new ArrayJob.
         :param int parallelism: Defines the minimum number of instances to bring up concurrently at any given point.
@@ -15,10 +15,15 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
             the input if the job requires processing of all input data. This has to be a positive number.
         :param int min_successes: An absolute number of the minimum number of successful completions of subtasks. As
             soon as this criteria is met, the array job will be marked as successful and outputs will be computed.
+        :param float min_success_ratio: Determines the minimum fraction of total jobs which can complete successfully
+            before terminating the job and marking it successful.
         """
+        if min_successes and min_success_ratio:
+            raise ValueError("Only one of min_successes or min_success_ratio can be set")
         self._parallelism = parallelism
         self._size = size
         self._min_successes = min_successes
+        self._min_success_ratio = min_success_ratio
 
     @property
     def parallelism(self):
@@ -52,6 +57,10 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
         :rtype: int
         """
         return self._min_successes
+
+    @property
+    def min_success_ratio(self):
+        return self._min_success_ratio
 
     @min_successes.setter
     def min_successes(self, value):
