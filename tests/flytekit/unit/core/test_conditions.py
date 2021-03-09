@@ -159,3 +159,57 @@ def test_condition_unary_bool():
         return conditional("test").if_(result.is_true()).then(success()).else_().then(failed())
 
     assert decompose() == 20
+
+
+def test_subworkflow_condition():
+    @task
+    def t() -> int:
+        return 5
+
+    @workflow
+    def wf1() -> int:
+        return t()
+
+    @workflow
+    def branching(x: int) -> int:
+        return conditional("test").if_(x == 2).then(t()).else_().then(wf1())
+
+    assert branching(x=2) == 5
+    assert branching(x=3) == 5
+
+
+def test_subworkflow_condition_named_tuple():
+    nt = typing.NamedTuple("SampleNamedTuple", b=int, c=str)
+
+    @task
+    def t() -> nt:
+        return 5, "foo"
+
+    @workflow
+    def wf1() -> nt:
+        return 3, "bar"
+
+    @workflow
+    def branching(x: int) -> nt:
+        return conditional("test").if_(x == 2).then(t()).else_().then(wf1())
+
+    assert branching(x=2) == (5, "foo")
+    assert branching(x=3) == (3, "bar")
+
+
+def test_subworkflow_condition_single_named_tuple():
+    nt = typing.NamedTuple("SampleNamedTuple", b=int)
+
+    @task
+    def t() -> nt:
+        return (5,)
+
+    @workflow
+    def wf1() -> nt:
+        return t()
+
+    @workflow
+    def branching(x: int) -> int:
+        return conditional("test").if_(x == 2).then(t().b).else_().then(wf1().b)
+
+    assert branching(x=2) == 5
