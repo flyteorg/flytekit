@@ -982,7 +982,6 @@ def test_wf_explicitly_returning_empty_task():
     assert my_subwf() is None
 
 
-<<<<<<< HEAD
 def test_simple_map_output():
     @task
     def squared(value: int) -> typing.Dict[str, int]:
