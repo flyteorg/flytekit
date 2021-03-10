@@ -65,7 +65,7 @@ class ReferenceEntity(object):
     def __init__(
         self,
         reference: Union[WorkflowReference, TaskReference, LaunchPlanReference],
-        inputs: Dict[str, Type],
+        inputs: Optional[Dict[str, Union[Type[Any], Tuple[Type[Any], Any]]]],
         outputs: Dict[str, Type],
     ):
         if (
@@ -75,14 +75,11 @@ class ReferenceEntity(object):
         ):
             raise Exception("Must be one of task, workflow, or launch plan")
         self._reference = reference
-        self.reset_interface(inputs, outputs)
+        self._native_interface = Interface(inputs=inputs, outputs=outputs)
+        self._interface = transform_interface_to_typed_interface(self._native_interface)
 
     def execute(self, **kwargs) -> Any:
         raise Exception("Remote reference entities cannot be run locally. You must mock this out.")
-
-    def reset_interface(self, inputs: Optional[Dict[str, Type]], outputs: Dict[str, Type]):
-        self._native_interface = Interface(inputs=inputs, outputs=outputs)
-        self._interface = transform_interface_to_typed_interface(self._native_interface)
 
     @property
     def interface(self) -> Optional[_interface_models.TypedInterface]:

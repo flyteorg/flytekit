@@ -300,4 +300,10 @@ def test_lp_from_ref_wf():
     def ref_wf1(p1: str, p2: str) -> None:
         ...
 
-    LaunchPlan.create("reference-wf-12345", ref_wf1, fixed_inputs={"p1": "p1-value", "p2": "p2-value"})
+    lp = LaunchPlan.create("reference-wf-12345", ref_wf1, fixed_inputs={"p1": "p1-value", "p2": "p2-value"})
+    assert lp.name == "reference-wf-12345"
+    assert lp.workflow == ref_wf1
+    assert lp.workflow.id.name == "name"
+    assert lp.workflow.id.project == "project"
+    assert lp.workflow.id.domain == "domain"
+    assert lp.workflow.id.version == "version"
