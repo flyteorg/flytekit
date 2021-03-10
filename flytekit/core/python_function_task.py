@@ -22,6 +22,8 @@ from flytekit.models import task as _task_model
 # fqn will access the fully qualified name of the image (e.g. registry/imagename:version -> registry/imagename)
 # version will access the version part of the image (e.g. registry/imagename:version -> version)
 # With empty attribute, it'll access the full image path (e.g. registry/imagename:version -> registry/imagename:version)
+from flytekit.models.security import Secret, SecurityContext
+
 _IMAGE_REPLACE_REGEX = re.compile(r"({{\s*\.image[s]?(?:\.([a-zA-Z]+))(?:\.([a-zA-Z]+))?\s*}})", re.IGNORECASE)
 
 
@@ -83,6 +85,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC):
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
         environment: Optional[Dict[str, str]] = None,
+        secret_requests: Optional[List[Secret]] = None,
         **kwargs,
     ):
         """
@@ -94,9 +97,28 @@ class PythonAutoContainerTask(PythonTask[T], ABC):
         :param container_image: String FQN for the image.
         :param Resources requests: custom resource request settings.
         :param Resources limits: custom resource limit settings.
+        :param List[Secret] secret_requests: Secrets that are requested by this container execution. These secrets will
+                                             be mounted based on the configuration in the Secret and available through
+                                             the SecretManager using the name of the secret as the key
+                                             security_ctx: Keys that can identify the secrets supplied at runtime.
+                                             Ideally the secret keys should also be semi-descriptive.
+                                             The key values will be available from runtime, if the backend is configured
+                         to provide secrets and if secrets are available in the configured secrets store.
+                         Possible options for secret stores are
+                          - `Vault <https://www.vaultproject.io/>`,
+                          - `Confidant <https://lyft.github.io/confidant/>`,
+                          - `Kube secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`
+                          - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`_
+                          etc
         """
+        sec_ctx = SecurityContext(secrets=secret_requests) if secret_requests else None
         super().__init__(
-            task_type=task_type, name=name, task_config=task_config, environment=environment, **kwargs,
+            task_type=task_type,
+            name=name,
+            task_config=task_config,
+            environment=environment,
+            security_ctx=sec_ctx,
+            **kwargs,
         )
         self._container_image = container_image
         # TODO(katrogan): Implement resource overrides
@@ -111,6 +133,12 @@ class PythonAutoContainerTask(PythonTask[T], ABC):
     @property
     def resources(self) -> ResourceSpec:
         return self._resources
+
+    @property
+    def secret_requests(self) -> Optional[List[Secret]]:
+        if self.security_context:
+            return self.security_context.secrets
+        return None
 
     @abstractmethod
     def get_command(self, settings: SerializationSettings) -> List[str]:

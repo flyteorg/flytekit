@@ -1010,7 +1010,7 @@ def test_nested_dict2():
 
 
 def test_secrets():
-    @task(secret_keys=["my_secret"])
+    @task(secret_requests=["my_secret"])
     def foo() -> str:
         return flytekit.current_context().secrets.get("my_secrets")
 

@@ -2,7 +2,7 @@ import collections
 import datetime
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, Union
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
@@ -28,6 +28,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.interface import Variable
+from flytekit.models.security import SecurityContext
 
 
 def kwtypes(**kwargs) -> Dict[str, Type]:
@@ -119,6 +120,7 @@ class Task(object):
         interface: Optional[_interface_models.TypedInterface] = None,
         metadata: Optional[TaskMetadata] = None,
         task_type_version=0,
+        security_ctx: Optional[SecurityContext] = None,
         **kwargs,
     ):
         self._task_type = task_type
@@ -126,6 +128,7 @@ class Task(object):
         self._interface = interface
         self._metadata = metadata if metadata else TaskMetadata()
         self._task_type_version = task_type_version
+        self._security_ctx = security_ctx
 
         FlyteEntities.entities.append(self)
 
@@ -152,6 +155,10 @@ class Task(object):
     @property
     def task_type_version(self) -> int:
         return self._task_type_version
+
+    @property
+    def security_context(self) -> SecurityContext:
+        return self._security_ctx
 
     def get_type_for_input_var(self, k: str, v: Any) -> type:
         """
@@ -305,8 +312,6 @@ class PythonTask(Task, Generic[T]):
         task_config: T,
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
-        secret_keys: Optional[List[str]] = None,
-        task_type_version=0,
         **kwargs,
     ):
         """
@@ -318,27 +323,13 @@ class PythonTask(Task, Generic[T]):
             interface: A python native typed interface ``(inputs) -> outputs`` that declares the signature of the task
             environment: Any environment variables that should be supplied during the execution of the task. Supplied as
                          a dictionary of key/value pairs
-            secret_keys: Keys that can identify the secrets supplied at runtime. Ideally the secret keys should also be
-                         semi-descriptive. The key values will be available from runtime, if the backend is configured
-                         to provide secrets and if secrets are available in the configured secrets store.
-                         Possible options for secret stores are
-                          - `Vault <https://www.vaultproject.io/>`,
-                          - `Confidant <https://lyft.github.io/confidant/>`,
-                          - `Kube secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`
-                          - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`_
-                          etc
         """
         super().__init__(
-            task_type=task_type,
-            name=name,
-            interface=transform_interface_to_typed_interface(interface),
-            task_type_version=task_type_version,
-            **kwargs,
+            task_type=task_type, name=name, interface=transform_interface_to_typed_interface(interface), **kwargs,
         )
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}
         self._task_config = task_config
-        self._secret_keys = secret_keys
 
     # TODO lets call this interface and the other as flyte_interface?
     @property
