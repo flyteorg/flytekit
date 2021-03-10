@@ -71,7 +71,7 @@ def test_wf_resolving():
 
 def test_class_resolver():
     c = ClassStorageTaskResolver()
-    assert c.name != ""
+    assert c.name() != ""
 
     with pytest.raises(RuntimeError):
         c.load_task([])
