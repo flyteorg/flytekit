@@ -1,0 +1,3 @@
+ignore:
+  - "flytekit/bin"
+  - "test_*.py"
