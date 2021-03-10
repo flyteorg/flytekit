@@ -23,7 +23,7 @@ def test_secrets_manager():
 
     d = tempfile.TemporaryDirectory()
     os.environ["FLYTE_SECRETS_DEFAULT_DIR"] = d.name
-    f = os.path.join(secrets.SECRETS_DEFAULT_DIR.get(), secrets.SECRETS_FILE_PREFIX.get(), "test")
+    f = sec.get_secrets_file("test")
     sec = SecretsManager()
     with open(f, "w+") as w:
         w.write("my-password")
@@ -31,5 +31,5 @@ def test_secrets_manager():
     del d
 
     sec = SecretsManager()
-    os.environ[f"{secrets.SECRETS_ENV_PREFIX.get()}TEST"] = "value"
+    os.environ[sec.get_secrets_env_var("test")] = "value"
     assert sec.get("test") == "value"
