@@ -244,9 +244,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         else:
             ctx_hash = hash(ctx)
             if remote_path is None:
-                remote_path = self._remote_path_cache.get(
-                    ctx_hash, ctx.file_access.get_random_remote_path(source_path)
-                )
+                remote_path = self._remote_path_cache.get(ctx_hash, ctx.file_access.get_random_remote_path(source_path))
             if ctx_hash not in self._remote_path_cache:
                 self._remote_path_cache[ctx_hash] = remote_path
             ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
@@ -266,9 +264,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         # For the remote case, return an FlyteFile object that can download
         ctx_hash = hash(ctx)
-        local_path = self._local_path_cache.get(
-            ctx_hash, ctx.file_access.get_random_local_path(uri)
-        )
+        local_path = self._local_path_cache.get(ctx_hash, ctx.file_access.get_random_local_path(uri))
         if ctx_hash not in self._local_path_cache:
             self._local_path_cache[ctx_hash] = local_path
 
