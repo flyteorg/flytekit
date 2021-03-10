@@ -225,6 +225,9 @@ def _handle_annotated_task(task_def: PythonTask, inputs: str, output_prefix: str
 
 @_scopes.system_entry_point
 def _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
+    """
+    This function should be called for old flytekit api tasks (the only API that was available in 0.15.x and earlier)
+    """
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with _utils.AutoDeletingTempDir("input_dir") as input_dir:
             # Load user code
@@ -263,6 +266,7 @@ def _load_resolver(resolver_location: str) -> TaskResolverMixin:
     # Load the actual resolver - this cannot be a nested thing, whatever kind of resolver it is, it has to be loadable
     # directly from importlib
     # TODO: Handle corner cases, like where the first part is [] maybe
+    # e.g. flytekit.core.python_auto_container.default_task_resolver
     resolver = resolver_location.split(".")
     resolver_mod = resolver[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
     resolver_key = resolver[-1]  # e.g. 'default_task_resolver'
@@ -273,11 +277,23 @@ def _load_resolver(resolver_location: str) -> TaskResolverMixin:
 @_scopes.system_entry_point
 def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver: str, resolver_args: List[str]):
     """
+    This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
+    native typing).
+
     resolver should be something like:
         flytekit.core.python_auto_container.default_task_resolver
     resolver args should be something like
         task_module app.workflows task_name task_1
     have dashes seems to mess up click, like --task_module seems to interfere
+
+    :param inputs: Where to read inputs
+    :param output_prefix: Where to write primitive outputs
+    :param raw_output_data_prefix: Where to write offloaded data (files, directories, dataframes).
+    :param test: Dry run
+    :param resolver: The task resolver to use. This needs to be loadable directly from importlib (and thus cannot be
+      nested).
+    :param resolver_args: Args that will be passed to the aforementioned resolver's load_task function
+    :return:
     """
     if len(resolver_args) < 1:
         raise Exception("cannot be <1")
