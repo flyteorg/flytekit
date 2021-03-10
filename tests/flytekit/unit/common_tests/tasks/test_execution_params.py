@@ -12,6 +12,11 @@ def test_secrets_manager():
     with pytest.raises(ValueError):
         sec.get("test")
 
+    assert sec.get_secrets_env_var("test") == f"{secrets.SECRETS_ENV_PREFIX.get()}TEST"
+    assert sec.get_secrets_file("test") == os.path.join(
+        secrets.SECRETS_DEFAULT_DIR.get(), secrets.SECRETS_FILE_PREFIX.get(), "test"
+    )
+
     with pytest.raises(ValueError):
         os.environ["TEST"] = "value"
         sec.get("test")

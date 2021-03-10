@@ -55,8 +55,8 @@ class SecretsManager(object):
         if secrets_key is None or secrets_key == "":
             raise ValueError("Bad secrets key. Cannot be an empty string or None.")
 
-        env_var = self._env_prefix + secrets_key.upper()
-        fpath = os.path.join(self._base_dir, secrets_key.lower())
+        env_var = self.get_secrets_env_var(secrets_key)
+        fpath = self.get_secrets_file(secrets_key)
         v = os.environ.get(env_var)
         if v is not None:
             return v
@@ -64,6 +64,12 @@ class SecretsManager(object):
             with open(fpath, "r") as f:
                 return f.read()
         raise ValueError(f"Unable to find secret for key {secrets_key} in Env Var:{env_var} and FilePath: {fpath}")
+
+    def get_secrets_env_var(self, name: str) -> str:
+        return self._env_prefix + name.upper()
+
+    def get_secrets_file(self, name: str) -> str:
+        return os.path.join(self._base_dir, name.lower())
 
 
 # TODO: Clean up working dir name
