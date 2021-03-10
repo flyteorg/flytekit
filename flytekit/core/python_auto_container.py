@@ -46,14 +46,15 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         **kwargs,
     ):
         """
+        :param name: unique name for the task, usually the function's module and name.
         :param task_config: Configuration object for Task. Should be a unique type for that specific Task
-        :param task_function: Python function that has type annotations and works for the task
-        :param metadata: Task execution metadata e.g. retries, timeout etc
-        :param ignore_input_vars:
         :param task_type: String task type to be associated with this Task
         :param container_image: String FQN for the image.
-        :param Resources requests: custom resource request settings.
-        :param Resources limits: custom resource limit settings.
+        :param requests: custom resource request settings.
+        :param limits: custom resource limit settings.
+        :param environment: Environment variables you want the task to have when run.
+        :param task_resolver: Custom resolver - will pick up the default resolver if empty, or the resolver set
+          in the compilation context if one is set.
         """
         super().__init__(
             task_type=task_type, name=name, task_config=task_config, **kwargs,
@@ -132,7 +133,7 @@ class TaskResolverMixin(object):
         --raw-output-data-prefix /tmp/data \
         --resolver flytekit.core.python_auto_container.default_task_resolver \
         -- \
-        task-module repo_root.workflows task-name t1
+        task-module repo_root.workflows.example task-name t1
 
     At serialization time, the container created for the task will start out automatically with the ``pyflyte-execute``
     bit, along with the requisite input/output args and the offloaded data prefix. Appended to that will be two things,
@@ -198,7 +199,6 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         task_module = loader_args[1]
         task_name = loader_args[3]
-        # import ipdb; ipdb.set_trace()
 
         task_module = importlib.import_module(task_module)
         task_def = getattr(task_module, task_name)

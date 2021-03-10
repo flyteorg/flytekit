@@ -349,7 +349,7 @@ def execute_task_cmd(
     if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
         raw_output_data_prefix = None
 
-    # For new API tasks, we need to call a different function.
+    # For new API tasks (as of 0.16.x), we need to call a different function.
     # Use the presence of the resolver to differentiate between old API tasks and new API tasks
     # The addition of a new top-level command seemed out of scope at the time of this writing to pursue given how
     # pervasive this top level command already (plugins mostly).
