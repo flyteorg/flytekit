@@ -299,14 +299,14 @@ def _execute_map_task(
     inputs, output_prefix, raw_output_data_prefix, max_concurrency, test, resolver: str, resolver_args: List[str]
 ):
     if len(resolver_args) < 1:
-        raise Exception("cannot be <1")
+        raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
 
     resolver_obj = _load_resolver(resolver)
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         # Use the resolver to load the actual task object
         _task_def = resolver_obj.load_task(loader_args=resolver_args)
         if not isinstance(_task_def, PythonFunctionTask):
-            raise Exception("Cannot be run with instance tasks.")
+            raise Exception("Map tasks cannot be run with instance tasks.")
         map_task = MapPythonTask(_task_def, max_concurrency)
 
         task_index = _compute_array_job_index()
