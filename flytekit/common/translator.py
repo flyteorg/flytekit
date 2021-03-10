@@ -71,7 +71,7 @@ def get_serializable_references(
         cp_entity = SdkTask(
             type="ignore",
             metadata=TaskMetadata().to_taskmetadata_model(),
-            interface=entity.typed_interface,
+            interface=entity.interface,
             custom={},
             container=None,
         )
@@ -84,7 +84,7 @@ def get_serializable_references(
             id=entity.reference.id,
             metadata=workflow_metadata,
             metadata_defaults=workflow_model.WorkflowMetadataDefaults(),
-            interface=entity.typed_interface,
+            interface=entity.interface,
             output_bindings=[],
         )
 
@@ -101,7 +101,7 @@ def get_serializable_references(
         )
         # Because of how SdkNodes work, it needs one of these interfaces
         # Hopefully this is more trickery that can be cleaned up in the future
-        cp_entity._interface = TypedInterface.promote_from_model(entity.typed_interface)
+        cp_entity._interface = TypedInterface.promote_from_model(entity.interface)
 
     else:
         raise Exception("Invalid reference type when serializing")
