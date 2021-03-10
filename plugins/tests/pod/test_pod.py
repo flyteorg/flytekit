@@ -55,7 +55,7 @@ def test_pod_task():
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
         "task-module",
-        "pod.test_pod",
+        "plugins.tests.pod.test_pod",
         "task-name",
         "simple_pod_task",
     ]

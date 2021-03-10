@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections
 import inspect
 from dataclasses import dataclass
 from enum import Enum
@@ -9,7 +10,7 @@ from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteEntities
+from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteEntities
 from flytekit.core.interface import (
     Interface,
     transform_inputs_to_parameters,
@@ -305,6 +306,14 @@ class Workflow(ClassStorageTaskResolver):
         elif (
             ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
+            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
+                if self.python_interface and self.python_interface.output_tuple_name:
+                    variables = [k for k in self.python_interface.outputs.keys()]
+                    output_tuple = collections.namedtuple(self.python_interface.output_tuple_name, variables)
+                    nones = [None for _ in self.python_interface.outputs.keys()]
+                    return output_tuple(*nones)
+                else:
+                    return None
             # We are already in a local execution, just continue the execution context
             return self._local_execute(ctx, **kwargs)
 

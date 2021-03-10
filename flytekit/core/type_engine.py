@@ -11,7 +11,11 @@ from typing import Type
 
 from dataclasses_json import DataClassJsonMixin
 from google.protobuf import json_format as _json_format
+from google.protobuf import reflection as _proto_reflection
 from google.protobuf import struct_pb2 as _struct
+from google.protobuf.json_format import MessageToDict as _MessageToDict
+from google.protobuf.json_format import ParseDict as _ParseDict
+from google.protobuf.struct_pb2 import Struct
 
 from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
@@ -180,6 +184,34 @@ class DataclassTransformer(TypeTransformer[object]):
         return dc
 
 
+class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMessageType]):
+    PB_FIELD_KEY = "pb_type"
+
+    def __init__(self):
+        super().__init__("Protobuf-Transformer", _proto_reflection.GeneratedProtocolMessageType)
+
+    @staticmethod
+    def tag(expected_python_type: Type[T]) -> str:
+        return f"{expected_python_type.__module__}.{expected_python_type.__name__}"
+
+    def get_literal_type(self, t: Type[T]) -> LiteralType:
+        return LiteralType(simple=SimpleType.STRUCT, metadata={ProtobufTransformer.PB_FIELD_KEY: self.tag(t)})
+
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        struct = Struct()
+        struct.update(_MessageToDict(python_val))
+        return Literal(scalar=Scalar(generic=struct))
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        if not (lv and lv.scalar and lv.scalar.generic):
+            raise AssertionError("Can only covert a generic literal to a Protobuf")
+
+        pb_obj = expected_python_type()
+        dictionary = _MessageToDict(lv.scalar.generic)
+        pb_obj = _ParseDict(dictionary, pb_obj)
+        return pb_obj
+
+
 class TypeEngine(typing.Generic[T]):
     """
     Core Extensible TypeEngine of Flytekit. This should be used to extend the capabilities of FlyteKits type system.
@@ -210,10 +242,18 @@ class TypeEngine(typing.Generic[T]):
         if hasattr(python_type, "__origin__"):
             if python_type.__origin__ in cls._REGISTRY:
                 return cls._REGISTRY[python_type.__origin__]
-            raise ValueError(f"Generic Type{python_type.__origin__} not supported currently in Flytekit.")
+            raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
         if dataclasses.is_dataclass(python_type):
             return cls._DATACLASS_TRANSFORMER
-        raise ValueError(f"Type{python_type} not supported currently in Flytekit. Please register a new transformer")
+
+        # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
+        # parent.
+        for base_type in cls._REGISTRY.keys():
+            if base_type is None:
+                continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
+            if isinstance(python_type, base_type) or issubclass(python_type, base_type):
+                return cls._REGISTRY[base_type]
+        raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
 
     @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:
@@ -570,3 +610,5 @@ def _register_default_type_transformers():
 
 
 _register_default_type_transformers()
+
+TypeEngine.register(ProtobufTransformer())
