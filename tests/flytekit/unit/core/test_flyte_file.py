@@ -170,7 +170,7 @@ def test_file_handling_remote_file_handling_flyte_file():
 
     # This creates a random directory that we know is empty.
     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
-    # Creating a new FileAccessProvider will add two folderst to the random dir
+    # Creating a new FileAccessProvider will add two folders to the random dir
     fs = FileAccessProvider(local_sandbox_dir=random_dir)
     with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs):
         working_dir = os.listdir(random_dir)

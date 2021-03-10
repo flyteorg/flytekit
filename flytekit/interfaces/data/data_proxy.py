@@ -1,7 +1,6 @@
 import datetime
 import os
 import pathlib
-from functools import lru_cache
 from typing import Optional, Union
 
 from flytekit.common import constants as _constants
@@ -258,7 +257,6 @@ class FileAccessProvider(object):
     def local_access(self) -> _local_file_proxy.LocalFileProxy:
         return self._local
 
-    @lru_cache(maxsize=None, typed=True)
     def get_random_remote_path(self, file_path_or_file_name: Optional[str] = None) -> str:
         """
         :param file_path_or_file_name: For when you want a random directory, but want to preserve the leaf file name
@@ -274,7 +272,6 @@ class FileAccessProvider(object):
     def get_random_remote_directory(self):
         return self.remote.get_random_directory()
 
-    @lru_cache(maxsize=None, typed=True)
     def get_random_local_path(self, file_path_or_file_name: Optional[str] = None) -> str:
         """
         :param file_path_or_file_name:  For when you want a random directory, but want to preserve the leaf file name

@@ -194,6 +194,8 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
 class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def __init__(self):
         super().__init__(name="FlyteFilePath", t=FlyteFile)
+        self._remote_path_cache: Dict[str, str] = {}
+        self._local_path_cache: Dict[str, str] = {}
 
     @staticmethod
     def get_format(t: typing.Type[FlyteFile]) -> str:
@@ -240,8 +242,13 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         # For local paths, we will upload to the Flyte store (note that for local execution, the remote store is just
         # a subfolder), unless remote_path=False was given
         else:
+            ctx_hash = hash(ctx)
             if remote_path is None:
-                remote_path = ctx.file_access.get_random_remote_path(source_path)
+                remote_path = self._remote_path_cache.get(
+                    ctx_hash, ctx.file_access.get_random_remote_path(source_path)
+                )
+            if ctx_hash not in self._remote_path_cache:
+                self._remote_path_cache[ctx_hash] = remote_path
             ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
             meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path or source_path)))
@@ -258,7 +265,12 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return expected_python_type(uri)
 
         # For the remote case, return an FlyteFile object that can download
-        local_path = ctx.file_access.get_random_local_path(uri)
+        ctx_hash = hash(ctx)
+        local_path = self._local_path_cache.get(
+            ctx_hash, ctx.file_access.get_random_local_path(uri)
+        )
+        if ctx_hash not in self._local_path_cache:
+            self._local_path_cache[ctx_hash] = local_path
 
         def _downloader():
             return ctx.file_access.get_data(uri, local_path, is_multipart=False)
