@@ -4,7 +4,9 @@ import pytest
 
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
+from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.python_auto_container import TaskResolverMixin
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 
@@ -65,3 +67,37 @@ def test_wf_resolving():
         "--",
         "1",
     ]
+
+
+def test_class_resolver():
+    c = ClassStorageTaskResolver()
+    assert c.name != ""
+
+    with pytest.raises(RuntimeError):
+        c.load_task([])
+
+    @task
+    def t1(a: str, b: str) -> str:
+        return b + a
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    c.add(t2)
+    assert c.loader_args(None, t2) == ["0"]
+
+    with pytest.raises(Exception):
+        c.loader_args(t1)
+
+
+def test_mixin():
+    """
+    This test is only to make codecov happy. Actual logic is already tested above.
+    """
+    x = TaskResolverMixin()
+    x.location
+    x.name()
+    x.loader_args(None, None)
+    x.get_all_tasks()
+    x.load_task([])
