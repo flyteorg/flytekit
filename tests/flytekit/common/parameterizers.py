@@ -5,7 +5,7 @@ from six.moves import range
 
 from flytekit.common.types.impl import blobs as _blob_impl
 from flytekit.common.types.impl import schema as _schema_impl
-from flytekit.models import interface, literals, task, types
+from flytekit.models import interface, literals, security, task, types
 from flytekit.models.core import identifier
 from flytekit.models.core import types as _core_types
 
@@ -220,3 +220,19 @@ LIST_OF_LITERAL_COLLECTIONS_AND_PYTHON_VALUE = [
 LIST_OF_ALL_LITERALS_AND_VALUES = (
     LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE + LIST_OF_LITERAL_COLLECTIONS_AND_PYTHON_VALUE
 )
+
+LIST_OF_SECRETS = [
+    None,
+    security.Secret(name="x"),
+    security.Secret(name="y", mount_requirement=security.Secret.MountType.FILE),
+]
+
+LIST_RUN_AS = [
+    None,
+    security.Identity(iam_role="role"),
+    security.Identity(k8s_service_account="service_account"),
+]
+
+LIST_OF_SECURITY_CONTEXT = [
+    security.SecurityContext(run_as=r, secrets=s, tokens=None) for r in LIST_RUN_AS for s in LIST_OF_SECRETS
+] + [None]
