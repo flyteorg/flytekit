@@ -31,9 +31,9 @@ black==19.10b0
     #   papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.17
+boto3==1.17.26
     # via sagemaker-training
-botocore==1.20.17
+botocore==1.20.26
     # via
     #   boto3
     #   s3transfer
@@ -52,7 +52,7 @@ click==7.1.2
     #   flytekit
     #   hmsclient
     #   papermill
-croniter==1.0.6
+croniter==1.0.8
     # via flytekit
 cryptography==3.4.6
     # via paramiko
@@ -62,7 +62,7 @@ decorator==4.4.2
     # via
     #   ipython
     #   retry
-defusedxml==0.6.0
+defusedxml==0.7.1
     # via nbconvert
 deprecated==1.2.11
     # via flytekit
@@ -74,7 +74,7 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.18.14
+flyteidl==0.18.17
     # via flytekit
 future==0.18.2
     # via croniter
@@ -82,12 +82,14 @@ gevent==21.1.2
     # via sagemaker-training
 greenlet==1.0.0
     # via gevent
-grpcio==1.36.0
+grpcio==1.36.1
     # via flytekit
 hmsclient==0.1.1
     # via flytekit
 idna==2.10
     # via requests
+importlib-metadata==3.7.2
+    # via keyring
 inotify_simple==1.2.1
     # via sagemaker-training
 ipykernel==5.5.0
@@ -121,7 +123,7 @@ jupyterlab-pygments==0.1.2
     # via nbconvert
 k8s-proto==0.0.3
     # via flytekit
-keyring==22.2.0
+keyring==23.0.0
     # via flytekit
 markupsafe==1.1.1
     # via jinja2
@@ -161,11 +163,11 @@ numpy==1.20.1
     #   scipy
 packaging==20.9
     # via bleach
-pandas==1.2.2
+pandas==1.2.3
     # via flytekit
 pandocfilters==1.4.3
     # via nbconvert
-papermill==2.3.2
+papermill==2.3.3
     # via flytekit
 paramiko==2.7.2
     # via sagemaker-training
@@ -179,9 +181,9 @@ pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
     # via ipython
-prompt-toolkit==3.0.16
+prompt-toolkit==3.0.17
     # via ipython
-protobuf==3.15.3
+protobuf==3.15.6
     # via
     #   flyteidl
     #   flytekit
@@ -199,7 +201,7 @@ pyarrow==3.0.0
     # via flytekit
 pycparser==2.20
     # via cffi
-pygments==2.8.0
+pygments==2.8.1
     # via
     #   ipython
     #   jupyterlab-pygments
@@ -210,7 +212,7 @@ pyparsing==2.4.7
     # via packaging
 pyrsistent==0.17.3
     # via jsonschema
-pyspark==3.0.2
+pyspark==3.1.1
     # via flytekit
 python-dateutil==2.8.1
     # via
@@ -274,7 +276,7 @@ statsd==3.3.0
     # via flytekit
 stringcase==1.2.0
     # via dataclasses-json
-tenacity==6.3.1
+tenacity==7.0.0
     # via papermill
 testpath==0.4.4
     # via nbconvert
@@ -288,7 +290,7 @@ tornado==6.1
     # via
     #   ipykernel
     #   jupyter-client
-tqdm==4.58.0
+tqdm==4.59.0
     # via papermill
 traitlets==5.0.5
     # via
@@ -323,6 +325,8 @@ wrapt==1.12.1
     # via
     #   deprecated
     #   flytekit
+zipp==3.4.1
+    # via importlib-metadata
 zope.event==4.5.0
     # via gevent
 zope.interface==5.2.0

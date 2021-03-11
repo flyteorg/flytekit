@@ -22,7 +22,7 @@ click==7.1.2
     # via
     #   -c requirements.txt
     #   black
-coverage==5.4
+coverage==5.5
     # via -r dev-requirements.in
 flake8-black==0.2.1
     # via -r dev-requirements.in
