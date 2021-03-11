@@ -25,7 +25,7 @@ backcall==0.2.0
     # via ipython
 bcrypt==3.2.0
     # via paramiko
-black==19.10b0; extra == "all"
+black==19.10b0
     # via
     #   flytekit
     #   papermill
