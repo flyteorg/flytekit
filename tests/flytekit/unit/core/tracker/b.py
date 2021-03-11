@@ -5,3 +5,10 @@ b_local_a = A()
 
 def get_a():
     return A()
+
+
+class B(A):
+    ...
+
+
+local_b = B()

@@ -197,8 +197,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
         return "DefaultTaskResolver"
 
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
-        task_module = loader_args[1]
-        task_name = loader_args[3]
+        _, task_module, _, task_name, *_ = loader_args
 
         task_module = importlib.import_module(task_module)
         task_def = getattr(task_module, task_name)

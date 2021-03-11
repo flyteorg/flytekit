@@ -166,6 +166,7 @@ class CompilationState(object):
           users choose to not specify their node names, then we can end up with multiple "n0"s. This prefix allows
           us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
           # TODO: Ketan to revisit this whole concept when we re-organize the new structure
+        :param task_resolver: Please see :py:class:`flytekit.extend.TaskResolverMixin`
         """
         from flytekit.core.node import Node
 
