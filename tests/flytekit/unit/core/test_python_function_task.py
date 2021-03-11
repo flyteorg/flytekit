@@ -2,12 +2,9 @@ import pytest
 
 from flytekit import task
 from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings
-from flytekit.core.python_function_task import (
-    PythonFunctionTask,
-    get_registerable_container_image,
-    isnested,
-    istestfunction,
-)
+from flytekit.core.python_auto_container import get_registerable_container_image
+from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.tracker import isnested, istestfunction
 from tests.flytekit.unit.core import tasks
 
 

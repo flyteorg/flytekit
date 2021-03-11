@@ -11,7 +11,8 @@ from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings
 from flytekit.core.interface import transform_interface_to_list_interface
-from flytekit.core.python_function_task import PythonFunctionTask, get_registerable_container_image
+from flytekit.core.python_auto_container import get_registerable_container_image
+from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container
@@ -66,19 +67,21 @@ class MapPythonTask(PythonTask):
         )
 
     def get_command(self, settings: SerializationSettings) -> List[str]:
-        return [
+        container_args = [
             "pyflyte-map-execute",
-            "--task-module",
-            self._run_task._task_function.__module__,
-            "--task-name",
-            f"{self._run_task._task_function.__name__}",
             "--inputs",
             "{{.input}}",
             "--output-prefix",
             "{{.outputPrefix}}",
             "--raw-output-data-prefix",
             "{{.rawOutputDataPrefix}}",
+            "--resolver",
+            self._run_task.task_resolver.location,
+            "--",
+            *self._run_task.task_resolver.loader_args(settings, self._run_task),
         ]
+
+        return container_args
 
     def get_container(self, settings: SerializationSettings) -> Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env

@@ -21,6 +21,7 @@ from flytekit.core.promise import (
     create_task_output,
     translate_inputs_to_literals,
 )
+from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -292,7 +293,7 @@ class Task(object):
 T = TypeVar("T")
 
 
-class PythonTask(Task, Generic[T]):
+class PythonTask(TrackedInstance, Task, Generic[T]):
     """
     Base Class for all Tasks with a Python native ``Interface``. This should be directly used for task types, that do
     not have a python function to be executed. Otherwise refer to :py:class:`flytekit.PythonFunctionTask`.
@@ -380,7 +381,6 @@ class PythonTask(Task, Generic[T]):
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
-            native_outputs = None
             try:
                 native_outputs = self.execute(**native_inputs)
             except Exception as e:

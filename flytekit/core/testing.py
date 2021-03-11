@@ -55,7 +55,6 @@ def patch(target: Union[PythonTask, Workflow, ReferenceEntity]):
         and not isinstance(target, Workflow)
         and not isinstance(target, ReferenceEntity)
     ):
-
         raise Exception("Can only use mocks on tasks/workflows declared in Python.")
 
     def wrapper(test_fn):

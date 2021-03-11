@@ -10,7 +10,6 @@ from typing import List
 import click
 
 import flytekit as _flytekit
-from flytekit import PythonInstanceTask
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
@@ -22,12 +21,11 @@ from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
 from flytekit.configuration import internal as _internal_config
 from flytekit.core import context_manager as flyte_context
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import InstanceVar
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.workflow import Workflow
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
-from flytekit.tools.module_loader import iterate_registerable_entities_in_order, load_module_object_for_type
+from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
 # Identifier fields use placeholders for registration-time substitution.
 # Additional fields, such as auth and the raw output data prefix have more complex structures
@@ -157,11 +155,6 @@ def serialize_all(
                 o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
             )
             old_style_entities.append(o)
-
-        # PythonInstanceTasks will not be picked up by the above, so we need to reiterate
-        for o, v in load_module_object_for_type(pkgs, PythonInstanceTask, additional_path=local_source_root).items():
-            m, k = v
-            ctx.serialization_settings.add_instance_var(InstanceVar(module=m, name=k, o=o))
 
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
 

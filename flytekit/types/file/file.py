@@ -145,7 +145,6 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         self._downloader = downloader
         self._downloaded = False
         self._remote_path = remote_path
-
         self._remote_source = None
 
     def __fspath__(self):

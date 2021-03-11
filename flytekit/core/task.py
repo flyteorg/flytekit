@@ -185,6 +185,9 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
     ):
         super().__init__(TaskReference(project, domain, name, version), inputs, outputs)
 
+        # Reference tasks shouldn't call the parent constructor, but the parent constructor is what sets the resolver
+        self._task_resolver = None
+
 
 def reference_task(
     project: str, domain: str, name: str, version: str,

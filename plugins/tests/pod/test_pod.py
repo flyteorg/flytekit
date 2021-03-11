@@ -45,16 +45,19 @@ def test_pod_task():
     assert primary_container["name"] == "a container"
     assert primary_container["args"] == [
         "pyflyte-execute",
-        "--task-module",
-        "plugins.tests.pod.test_pod",
-        "--task-name",
-        "simple_pod_task",
         "--inputs",
         "{{.input}}",
         "--output-prefix",
         "{{.outputPrefix}}",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "plugins.tests.pod.test_pod",
+        "task-name",
+        "simple_pod_task",
     ]
     assert primary_container["volumeMounts"] == [{"mountPath": "some/where", "name": "volume mount"}]
     assert primary_container["resources"] == {
