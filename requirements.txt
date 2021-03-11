@@ -31,9 +31,9 @@ black==19.10b0; extra == "all"
     #   papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.24
+boto3==1.17.25
     # via sagemaker-training
-botocore==1.20.24
+botocore==1.20.25
     # via
     #   boto3
     #   s3transfer
