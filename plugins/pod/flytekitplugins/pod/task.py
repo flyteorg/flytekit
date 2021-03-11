@@ -1,6 +1,5 @@
 from typing import Any, Callable, Dict, Tuple, Union
 
-# from boltons.iterutils import remap
 from flyteidl.core import tasks_pb2 as _core_task
 from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements
 
@@ -9,10 +8,6 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.extend import Promise, SerializationSettings, TaskPlugins
 
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
-
-
-def sanitize_dictionary(_, key, value):
-    return key is not None and value is not None
 
 
 class Pod(object):
@@ -81,13 +76,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
 
         self.task_config._pod_spec.containers = final_containers
 
-        pod_spec_dict = self.task_config.pod_spec.to_dict()
-
-        # Remove unset values because it turns out coordinating versions across k8s libraries on the backend and the
-        # compatible versions that the kubernetes client library we use here is difficult.
-        # cleaned = remap(pod_spec_dict, visit=sanitize_dictionary)
-
-        return pod_spec_dict
+        return self.task_config.pod_spec.to_dict()
 
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
         return {_PRIMARY_CONTAINER_NAME_FIELD: self.task_config.primary_container_name}

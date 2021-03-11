@@ -135,3 +135,41 @@ def test_dynamic_pod_task():
         with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
             dynamic_job_spec = dynamic_pod_task.compile_into_workflow(ctx, dynamic_pod_task._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
+
+
+def test_pod_task_undefined_primary():
+    pod = Pod(pod_spec=get_pod_spec(), primary_container_name="an undefined container")
+
+    @task(task_config=pod, requests=Resources(cpu="10"), limits=Resources(gpu="2"), environment={"FOO": "bar"})
+    def simple_pod_task(i: int):
+        pass
+
+    assert isinstance(simple_pod_task, PodFunctionTask)
+    assert simple_pod_task.task_config == pod
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    custom = simple_pod_task.get_custom(
+        SerializationSettings(
+            project="project",
+            domain="domain",
+            version="version",
+            env={"FOO": "baz"},
+            image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        )
+    )
+
+    assert len(custom["containers"]) == 3
+
+    primary_container = custom["containers"][2]
+    assert primary_container["name"] == "an undefined container"
+
+    config = simple_pod_task.get_config(
+        SerializationSettings(
+            project="project",
+            domain="domain",
+            version="version",
+            env={"FOO": "baz"},
+            image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        )
+    )
+    assert config["primary_container_name"] == "an undefined container"
