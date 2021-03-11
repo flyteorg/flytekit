@@ -53,10 +53,9 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
             "--resolver",
             self.task_resolver.location,
             "--",
+            *self.task_resolver.loader_args(settings, self),
         ]
 
-        resolver_args = self.task_resolver.loader_args(settings, self)
-        container_args.extend(resolver_args)
         return container_args
 
 
@@ -155,10 +154,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             "--resolver",
             self.task_resolver.location,
             "--",
+            *self.task_resolver.loader_args(settings, self),
         ]
 
-        resolver_args = self.task_resolver.loader_args(settings, self)
-        container_args.extend(resolver_args)
         return container_args
 
     def compile_into_workflow(

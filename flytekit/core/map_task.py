@@ -78,10 +78,9 @@ class MapPythonTask(PythonTask):
             "--resolver",
             self._run_task.task_resolver.location,
             "--",
+            *self._run_task.task_resolver.loader_args(settings, self._run_task)
         ]
 
-        resolver_args = self._run_task.task_resolver.loader_args(settings, self._run_task)
-        container_args.extend(resolver_args)
         return container_args
 
     def get_container(self, settings: SerializationSettings) -> Container:
