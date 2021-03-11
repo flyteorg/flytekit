@@ -57,7 +57,7 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl>=0.18.14,<1.0.0",
+        # "flyteidl>=0.18.14,<1.0.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=2.0.0,<4.0.0",
@@ -82,6 +82,9 @@ setup(
         "natsort>=7.0.1",
         "dirhash>=0.2.1",
         "docker-image-py>=0.1.10",
+    ],
+    dependency_links=[
+        "http://github.com/flyteorg/flyteidl/tarball/e2e4d9fb84fcbf77b490661f78d6e1540ec4d0c0#egg=package-1.0"
     ],
     extras_require=extras_require,
     scripts=[

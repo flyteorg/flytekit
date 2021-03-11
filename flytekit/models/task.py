@@ -291,7 +291,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
 
 
 class TaskTemplate(_common.FlyteIdlEntity):
-    def __init__(self, id, type, metadata, interface, custom, container=None, task_type_version=0):
+    def __init__(self, id, type, metadata, interface, custom, container=None, task_type_version=0, config=None):
         """
         A task template represents the full set of information necessary to perform a unit of work in the Flyte system.
         It contains the metadata about what inputs and outputs are consumed or produced.  It also contains the metadata
@@ -308,6 +308,8 @@ class TaskTemplate(_common.FlyteIdlEntity):
             a Container might be specified with the necessary command line arguments.
         :param int task_type_version: Specific version of this task type used by plugins to potentially modify
             execution behavior or serialization.
+        :param dict[str, str] config: For plugin tasks this represents additional configuration information to be used
+            in tandem with the custom.
         """
         self._id = id
         self._type = type
@@ -316,6 +318,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         self._custom = custom
         self._container = container
         self._task_type_version = task_type_version
+        self._config = config
 
     @property
     def id(self):
@@ -370,11 +373,19 @@ class TaskTemplate(_common.FlyteIdlEntity):
         """
         return self._container
 
+    @property
+    def config(self):
+        """
+        Arbitrary dictionary containing metadata for parsing and handling custom plugins.
+        :rtype: dict[Text, T]
+        """
+        return self._config
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.TaskTemplate
         """
-        return _core_task.TaskTemplate(
+        task_template = _core_task.TaskTemplate(
             id=self.id.to_flyte_idl(),
             type=self.type,
             metadata=self.metadata.to_flyte_idl(),
@@ -383,6 +394,10 @@ class TaskTemplate(_common.FlyteIdlEntity):
             container=self.container.to_flyte_idl() if self.container else None,
             task_type_version=self.task_type_version,
         )
+        if self.config is not None:
+            for k, v in self.config.items():
+                task_template.config[k] = v
+        return task_template
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):

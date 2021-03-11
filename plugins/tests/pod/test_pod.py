@@ -3,7 +3,6 @@ from typing import List
 from kubernetes.client.models import V1Container, V1PodSpec, V1VolumeMount
 
 from flytekit import Resources, dynamic, task
-from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.extend import ExecutionState, Image, ImageConfig, SerializationSettings
 from plugins.pod.flytekitplugins.pod.task import Pod, PodFunctionTask
@@ -39,9 +38,9 @@ def test_pod_task():
             image_config=ImageConfig(default_image=default_img, images=[default_img]),
         )
     )
-    assert custom["pod_spec"]["restart_policy"] == "OnFailure"
-    assert len(custom["pod_spec"]["containers"]) == 2
-    primary_container = custom["pod_spec"]["containers"][0]
+    assert custom["restart_policy"] == "OnFailure"
+    assert len(custom["containers"]) == 2
+    primary_container = custom["containers"][0]
     assert primary_container["name"] == "a container"
     assert primary_container["args"] == [
         "pyflyte-execute",
@@ -62,9 +61,19 @@ def test_pod_task():
         "requests": {"cpu": "10"},
         "limits": {"gpu": "2"},
     }
-    assert primary_container["env"] == [{"name": "FOO", "value": "bar"}]
-    assert custom["pod_spec"]["containers"][1]["name"] == "another container"
-    assert custom["primary_container_name"] == "a container"
+    assert primary_container["env"] == [{"name": "FOO", "value": "bar", "value_from": None}]
+    assert custom["containers"][1]["name"] == "another container"
+
+    config = simple_pod_task.get_config(
+        SerializationSettings(
+            project="project",
+            domain="domain",
+            version="version",
+            env={"FOO": "baz"},
+            image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        )
+    )
+    assert config["primary_container_name"] == "a container"
 
 
 def test_dynamic_pod_task():
@@ -95,13 +104,24 @@ def test_dynamic_pod_task():
             image_config=ImageConfig(default_image=default_img, images=[default_img]),
         )
     )
-    assert len(custom["pod_spec"]["containers"]) == 2
-    primary_container = custom["pod_spec"]["containers"][0]
+    assert len(custom["containers"]) == 2
+    primary_container = custom["containers"][0]
     assert isinstance(dynamic_pod_task.task_config, Pod)
     assert primary_container["resources"] == {
         "requests": {"cpu": "10"},
         "limits": {"gpu": "2"},
     }
+
+    config = dynamic_pod_task.get_config(
+        SerializationSettings(
+            project="project",
+            domain="domain",
+            version="version",
+            env={"FOO": "baz"},
+            image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        )
+    )
+    assert config["primary_container_name"] == "a container"
 
     with context_manager.FlyteContext.current_context().new_serialization_settings(
         serialization_settings=SerializationSettings(

@@ -1,12 +1,14 @@
 from typing import Any, Callable, Dict, Tuple, Union
 
-from boltons.iterutils import remap
+# from boltons.iterutils import remap
 from flyteidl.core import tasks_pb2 as _core_task
 from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements
 
 from flytekit import FlyteContext, PythonFunctionTask
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.extend import Promise, SerializationSettings, TaskPlugins
+
+_PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
 
 
 def sanitize_dictionary(_, key, value):
@@ -34,9 +36,8 @@ class Pod(object):
 
 class PodFunctionTask(PythonFunctionTask[Pod]):
     def __init__(self, task_config: Pod, task_function: Callable, **kwargs):
-        # TODO(katrogan): Bump to task_type_version = 1
         super(PodFunctionTask, self).__init__(
-            task_config=task_config, task_type="sidecar", task_function=task_function, **kwargs,
+            task_config=task_config, task_type="sidecar", task_function=task_function, task_type_version=1, **kwargs,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
@@ -84,13 +85,12 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
 
         # Remove unset values because it turns out coordinating versions across k8s libraries on the backend and the
         # compatible versions that the kubernetes client library we use here is difficult.
-        cleaned = remap(pod_spec_dict, visit=sanitize_dictionary)
+        # cleaned = remap(pod_spec_dict, visit=sanitize_dictionary)
 
-        custom = {
-            "pod_spec": cleaned,
-            "primary_container_name": self.task_config.primary_container_name,
-        }
-        return custom
+        return pod_spec_dict
+
+    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+        return {_PRIMARY_CONTAINER_NAME_FIELD: self.task_config.primary_container_name}
 
     def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, None]:
         raise _user_exceptions.FlyteUserException("Local execute is not currently supported for pod tasks")

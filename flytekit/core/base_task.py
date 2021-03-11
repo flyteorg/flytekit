@@ -262,6 +262,9 @@ class Task(object):
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return None
 
+    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+        return None
+
     @abstractmethod
     def dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap,
