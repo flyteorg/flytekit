@@ -8,10 +8,11 @@ from flytekit.configuration import secrets
 
 
 def test_secrets_manager():
-    sec = SecretsManager()
     with pytest.raises(ValueError):
+        sec = SecretsManager()
         sec.get("test")
 
+    sec = SecretsManager()
     assert sec.get_secrets_env_var("test") == f"{secrets.SECRETS_ENV_PREFIX.get()}TEST"
     assert sec.get_secrets_file("test") == os.path.join(
         secrets.SECRETS_DEFAULT_DIR.get(), secrets.SECRETS_FILE_PREFIX.get(), "test"
@@ -19,12 +20,13 @@ def test_secrets_manager():
 
     with pytest.raises(ValueError):
         os.environ["TEST"] = "value"
+        sec = SecretsManager()
         sec.get("test")
 
     d = tempfile.TemporaryDirectory()
     os.environ["FLYTE_SECRETS_DEFAULT_DIR"] = d.name
-    f = sec.get_secrets_file("test")
     sec = SecretsManager()
+    f = sec.get_secrets_file("test")
     with open(f, "w+") as w:
         w.write("my-password")
     assert sec.get("test") == "my-password"
