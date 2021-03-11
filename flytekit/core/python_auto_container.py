@@ -118,7 +118,7 @@ class TaskResolverMixin(object):
     Flytekit tasks interact with the Flyte platform very, very broadly in two steps. They need to be uploaded to Admin,
     and then they are run by the user upon request (either as a single task execution or as part of a workflow). In any
     case, at execution time, the container image containing the task needs to be spun up again (for container tasks at
-    least which most tasks are) at which point the container needs to know which task it is it's supposed to run and
+    least which most tasks are) at which point the container needs to know which task it's supposed to run and
     how to rehydrate the task object.
 
     For example, the serialization of a simple task ::
