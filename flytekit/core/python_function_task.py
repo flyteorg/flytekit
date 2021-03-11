@@ -111,7 +111,12 @@ class PythonAutoContainerTask(PythonTask[T], ABC):
                           - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`_
                           etc
         """
-        sec_ctx = SecurityContext(secrets=secret_requests) if secret_requests else None
+        sec_ctx = None
+        if secret_requests:
+            for s in secret_requests:
+                if not isinstance(s, Secret):
+                    raise AssertionError(f"Secret {s} should be of type flytekit.Secret, received {type(s)}")
+            sec_ctx = SecurityContext(secrets=secret_requests)
         super().__init__(
             task_type=task_type,
             name=name,

@@ -10,7 +10,7 @@ import pytest
 from dataclasses_json import dataclass_json
 
 import flytekit
-from flytekit import ContainerTask, SQLTask, dynamic, kwtypes, map_task
+from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
 from flytekit.common.translator import get_serializable
 from flytekit.configuration import secrets
 from flytekit.core import context_manager, launch_plan, promise
@@ -1010,7 +1010,7 @@ def test_nested_dict2():
 
 
 def test_secrets():
-    @task(secret_requests=["my_secret"])
+    @task(secret_requests=[Secret("my_secret")])
     def foo() -> str:
         return flytekit.current_context().secrets.get("my_secrets")
 
@@ -1019,3 +1019,9 @@ def test_secrets():
 
     os.environ[f"{secrets.SECRETS_ENV_PREFIX.get()}MY_SECRETS"] = "super-secret-value"
     assert foo() == "super-secret-value"
+
+    with pytest.raises(AssertionError):
+
+        @task(secret_requests=["test"])
+        def foo() -> str:
+            pass
