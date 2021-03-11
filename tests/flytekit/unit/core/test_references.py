@@ -1,4 +1,5 @@
 import typing
+from collections import OrderedDict
 
 import pytest
 
@@ -6,6 +7,7 @@ from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
 from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.promise import VoidPromise
 from flytekit.core.reference import get_reference_entity
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
@@ -37,7 +39,7 @@ def test_ref():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    ss = get_serializable(serialization_settings, ref_t1)
+    ss = get_serializable(OrderedDict(), serialization_settings, ref_t1)
     assert ss.id == ref_t1.id
     assert ss.interface.inputs["a"] is not None
     assert ss.interface.outputs["o0"] is not None
@@ -49,7 +51,7 @@ def test_ref():
         image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
     )
-    sdk_task = get_serializable(serialization_settings, ref_t1)
+    sdk_task = get_serializable(OrderedDict(), serialization_settings, ref_t1)
     assert sdk_task.has_registered
     assert sdk_task.id.project == "flytesnacks"
     assert sdk_task.id.domain == "development"
@@ -232,7 +234,7 @@ def test_lps(resource_type):
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    sdk_wf = get_serializable(serialization_settings, wf1)
+    sdk_wf = get_serializable(OrderedDict(), serialization_settings, wf1)
     assert len(sdk_wf.interface.inputs) == 2
     assert len(sdk_wf.interface.outputs) == 0
     assert len(sdk_wf.nodes) == 1
@@ -288,6 +290,20 @@ def test_lp_with_output():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    sdk_wf = get_serializable(serialization_settings, wf1)
+    sdk_wf = get_serializable(OrderedDict(), serialization_settings, wf1)
     assert sdk_wf.nodes[1].workflow_node.launchplan_ref.project == "proj"
     assert sdk_wf.nodes[1].workflow_node.launchplan_ref.name == "app.other.flyte_entity"
+
+
+def test_lp_from_ref_wf():
+    @reference_workflow(project="project", domain="domain", name="name", version="version")
+    def ref_wf1(p1: str, p2: str) -> None:
+        ...
+
+    lp = LaunchPlan.create("reference-wf-12345", ref_wf1, fixed_inputs={"p1": "p1-value", "p2": "p2-value"})
+    assert lp.name == "reference-wf-12345"
+    assert lp.workflow == ref_wf1
+    assert lp.workflow.id.name == "name"
+    assert lp.workflow.id.project == "project"
+    assert lp.workflow.id.domain == "domain"
+    assert lp.workflow.id.version == "version"

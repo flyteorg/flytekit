@@ -9,6 +9,7 @@ import traceback as _traceback
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
+from flytekit import PythonFunctionTask
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common import utils as _utils
@@ -22,6 +23,7 @@ from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
+from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
@@ -262,6 +264,27 @@ def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data
                 _handle_annotated_task(task_def, inputs, output_prefix, raw_output_data_prefix)
 
 
+@_scopes.system_entry_point
+def _execute_map_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, max_concurrency, test):
+    task_module = _importlib.import_module(task_module)
+    task_def = getattr(task_module, task_name)
+
+    if not test and isinstance(task_def, PythonFunctionTask):
+        map_task = MapPythonTask(task_def, max_concurrency)
+
+        task_index = _compute_array_job_index()
+        output_prefix = _os.path.join(output_prefix, str(task_index))
+
+        _handle_annotated_task(map_task, inputs, output_prefix, raw_output_data_prefix)
+
+    # Old style task
+    elif not test:
+        raise _system_exceptions.FlyteSystemAssertion(
+            "Map tasks are only supported for task of type `PythonTask` created using flytekit>=0.16.0"
+            " got task {} of type {} instead".format(task_name, type(task_def))
+        )
+
+
 @_click.group()
 def _pass_through():
     pass
@@ -314,6 +337,20 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
     _os.system(" ".join(task_execute_cmd))
+
+
+@_pass_through.command("pyflyte-map-execute")
+@_click.option("--task-module", required=True)
+@_click.option("--task-name", required=True)
+@_click.option("--inputs", required=True)
+@_click.option("--output-prefix", required=True)
+@_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--max-concurrency", type=int, required=False)
+@_click.option("--test", is_flag=True)
+def map_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, max_concurrency, test):
+    _click.echo(_utils.get_version_message())
+
+    _execute_map_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, max_concurrency, test)
 
 
 if __name__ == "__main__":

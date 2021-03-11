@@ -31,9 +31,9 @@ black==19.10b0
     #   papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.12
+boto3==1.17.17
     # via sagemaker-training
-botocore==1.20.12
+botocore==1.20.17
     # via
     #   boto3
     #   s3transfer
@@ -74,7 +74,7 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.18.12
+flyteidl==0.18.14
     # via flytekit
 future==0.18.2
     # via croniter
@@ -82,7 +82,7 @@ gevent==21.1.2
     # via sagemaker-training
 greenlet==1.0.0
     # via gevent
-grpcio==1.35.0
+grpcio==1.36.0
     # via flytekit
 hmsclient==0.1.1
     # via flytekit
@@ -96,7 +96,7 @@ ipython-genutils==0.2.0
     # via
     #   nbformat
     #   traitlets
-ipython==7.20.0
+ipython==7.21.0
     # via ipykernel
 jedi==0.18.0
     # via ipython
@@ -121,7 +121,7 @@ jupyterlab-pygments==0.1.2
     # via nbconvert
 k8s-proto==0.0.3
     # via flytekit
-keyring==22.0.1
+keyring==22.2.0
     # via flytekit
 markupsafe==1.1.1
     # via jinja2
@@ -139,7 +139,7 @@ natsort==7.1.1
     # via
     #   croniter
     #   flytekit
-nbclient==0.5.2
+nbclient==0.5.3
     # via
     #   nbconvert
     #   papermill
@@ -181,7 +181,7 @@ pickleshare==0.7.5
     # via ipython
 prompt-toolkit==3.0.16
     # via ipython
-protobuf==3.15.1
+protobuf==3.15.3
     # via
     #   flyteidl
     #   flytekit
@@ -288,7 +288,7 @@ tornado==6.1
     # via
     #   ipykernel
     #   jupyter-client
-tqdm==4.57.0
+tqdm==4.58.0
     # via papermill
 traitlets==5.0.5
     # via

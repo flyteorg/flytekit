@@ -28,7 +28,10 @@ fmt: ## Format code with black and isort
 
 .PHONY: lint
 lint: ## Run linters
-	mypy || true
+	mypy flytekit/core || true
+	mypy flytekit/types || true
+	mypy tests/flytekit/unit/core || true
+	mypy plugins || true
 	flake8 .
 
 .PHONY: test
