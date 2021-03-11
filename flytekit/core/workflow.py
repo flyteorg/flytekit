@@ -135,6 +135,16 @@ class Workflow(ClassStorageTaskResolver):
     def short_name(self) -> str:
         return self._name.split(".")[-1]
 
+    @classmethod
+    def define(cls, name: str):
+        def blah():
+            raise Exception("fds")
+
+        wf = cls(workflow_function=blah, metadata=None, default_metadata=None)
+
+
+
+
     @property
     def python_interface(self) -> Interface:
         return self._native_interface
