@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Tuple, Type, Union
+from typing import Any, Dict, Optional, Tuple, Type, Union
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext
@@ -65,7 +65,7 @@ class ReferenceEntity(object):
     def __init__(
         self,
         reference: Union[WorkflowReference, TaskReference, LaunchPlanReference],
-        inputs: Dict[str, Type],
+        inputs: Optional[Dict[str, Union[Type[Any], Tuple[Type[Any], Any]]]],
         outputs: Dict[str, Type],
     ):
         if (
@@ -75,23 +75,19 @@ class ReferenceEntity(object):
         ):
             raise Exception("Must be one of task, workflow, or launch plan")
         self._reference = reference
-        self._interface = Interface(inputs=inputs, outputs=outputs)
-        self._typed_interface = transform_interface_to_typed_interface(self._interface)
+        self._native_interface = Interface(inputs=inputs, outputs=outputs)
+        self._interface = transform_interface_to_typed_interface(self._native_interface)
 
     def execute(self, **kwargs) -> Any:
         raise Exception("Remote reference entities cannot be run locally. You must mock this out.")
 
-    def reset_interface(self, inputs: Dict[str, Type], outputs: Dict[str, Type]):
-        self._interface = Interface(inputs=inputs, outputs=outputs)
-        self._typed_interface = transform_interface_to_typed_interface(self._interface)
+    @property
+    def python_interface(self) -> Optional[Interface]:
+        return self._native_interface
 
     @property
-    def interface(self) -> Interface:
+    def interface(self) -> Optional[_interface_models.TypedInterface]:
         return self._interface
-
-    @property
-    def typed_interface(self) -> _interface_models.TypedInterface:
-        return self._typed_interface
 
     @property
     def reference(self) -> Reference:
@@ -114,7 +110,7 @@ class ReferenceEntity(object):
 
         # Invoked before the task is executed
         # Translate the input literals to Python native
-        native_inputs = TypeEngine.literal_map_to_kwargs(ctx, input_literal_map, self.interface.inputs)
+        native_inputs = TypeEngine.literal_map_to_kwargs(ctx, input_literal_map, self.python_interface.inputs)
 
         logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
         try:
@@ -124,7 +120,7 @@ class ReferenceEntity(object):
             raise e
         logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
 
-        expected_output_names = list(self.interface.outputs.keys())
+        expected_output_names = list(self.python_interface.outputs.keys())
         if len(expected_output_names) == 1:
             native_outputs_as_map = {expected_output_names[0]: native_outputs}
         elif len(expected_output_names) == 0:
@@ -136,8 +132,8 @@ class ReferenceEntity(object):
         # built into the IDL that all the values of a literal map are of the same type.
         literals = {}
         for k, v in native_outputs_as_map.items():
-            literal_type = self.typed_interface.outputs[k].type
-            py_type = self.interface.outputs[k]
+            literal_type = self.interface.outputs[k].type
+            py_type = self.python_interface.outputs[k]
             if isinstance(v, tuple):
                 raise AssertionError(f"Output({k}) in task{self.name} received a tuple {v}, instead of {py_type}")
             literals[k] = TypeEngine.to_literal(ctx, v, py_type, literal_type)
@@ -158,8 +154,8 @@ class ReferenceEntity(object):
         kwargs = translate_inputs_to_literals(
             ctx,
             incoming_values=kwargs,
-            flyte_interface_types=self.typed_interface.inputs,
-            native_types=self.interface.inputs,
+            flyte_interface_types=self.interface.inputs,
+            native_types=self.python_interface.inputs,
         )
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
@@ -167,7 +163,7 @@ class ReferenceEntity(object):
 
         # After running, we again have to wrap the outputs, if any, back into Promise objects
         outputs_literals = outputs_literal_map.literals
-        output_names = list(self.interface.outputs.keys())
+        output_names = list(self.python_interface.outputs.keys())
         if len(output_names) != len(outputs_literals):
             # Length check, clean up exception
             raise AssertionError(f"Length difference {len(output_names)} {len(outputs_literals)}")
@@ -177,10 +173,10 @@ class ReferenceEntity(object):
             return VoidPromise(self.name)
 
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
-        return create_task_output(vals, self.interface)
+        return create_task_output(vals, self.python_interface)
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
-        return create_and_link_node(ctx, entity=self, interface=self.interface, **kwargs,)
+        return create_and_link_node(ctx, entity=self, interface=self.python_interface, **kwargs,)
 
     def __call__(self, *args, **kwargs):
         # When a Task is () aka __called__, there are three things we may do:

@@ -7,6 +7,7 @@ from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
 from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.promise import VoidPromise
 from flytekit.core.reference import get_reference_entity
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
@@ -292,3 +293,17 @@ def test_lp_with_output():
     sdk_wf = get_serializable(OrderedDict(), serialization_settings, wf1)
     assert sdk_wf.nodes[1].workflow_node.launchplan_ref.project == "proj"
     assert sdk_wf.nodes[1].workflow_node.launchplan_ref.name == "app.other.flyte_entity"
+
+
+def test_lp_from_ref_wf():
+    @reference_workflow(project="project", domain="domain", name="name", version="version")
+    def ref_wf1(p1: str, p2: str) -> None:
+        ...
+
+    lp = LaunchPlan.create("reference-wf-12345", ref_wf1, fixed_inputs={"p1": "p1-value", "p2": "p2-value"})
+    assert lp.name == "reference-wf-12345"
+    assert lp.workflow == ref_wf1
+    assert lp.workflow.id.name == "name"
+    assert lp.workflow.id.project == "project"
+    assert lp.workflow.id.domain == "domain"
+    assert lp.workflow.id.version == "version"
