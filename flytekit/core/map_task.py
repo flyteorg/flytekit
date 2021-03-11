@@ -78,7 +78,7 @@ class MapPythonTask(PythonTask):
             "--resolver",
             self._run_task.task_resolver.location,
             "--",
-            *self._run_task.task_resolver.loader_args(settings, self._run_task)
+            *self._run_task.task_resolver.loader_args(settings, self._run_task),
         ]
 
         return container_args

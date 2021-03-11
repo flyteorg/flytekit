@@ -404,3 +404,11 @@ class SdkTask(
             exec_id = _identifier.WorkflowExecutionIdentifier(project, domain, name)
         execution = client.get_execution(exec_id)
         return _workflow_execution.SdkWorkflowExecution.promote_from_model(execution)
+
+
+t = FlyteTask.fetch(...)
+
+
+@workflow
+def wf():
+    t(...)

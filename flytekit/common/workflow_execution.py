@@ -18,7 +18,7 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import execution as _core_execution_models
 
 
-class SdkWorkflowExecution(
+class FlyteWorkflowExecution(
     _execution_models.Execution, _artifact.ExecutionArtifact, metaclass=_sdk_bases.ExtendedSdkType,
 ):
     def __init__(self, *args, **kwargs):
