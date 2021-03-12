@@ -26,7 +26,6 @@ class Node(object):
         self._bindings = bindings
         self._upstream_nodes = upstream_nodes
         self._flyte_entity = flyte_entity
-        self._sdk_node = None
         self._aliases: _workflow_model.Alias = None
 
     def runs_before(self, other: Node):

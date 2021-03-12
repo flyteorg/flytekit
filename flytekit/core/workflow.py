@@ -10,7 +10,7 @@ from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteEntities
+from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteEntities, CompilationState
 from flytekit.core.interface import (
     Interface,
     transform_inputs_to_parameters,
@@ -89,6 +89,59 @@ def construct_input_promises(inputs: List[str]):
         input_name: Promise(var=input_name, val=NodeOutput(node=GLOBAL_START_NODE, var=input_name))
         for input_name in inputs
     }
+
+
+class WorkflowTwo(object):
+
+    def __init__(self, name: str):
+        self._name = name
+        self._compilation_state = CompilationState(prefix="")
+        self._interface = Interface()
+        self._output_bindings = []
+
+    @property
+    def compilation_state(self) -> CompilationState:
+        return self._compilation_state
+
+    def add_entity(self, entity: PythonAutoContainerTask, **kwargs) -> Node:
+        """
+        Anytime you add an entity, all the inputs to the entity must be bound.
+        """
+        ctx = FlyteContext.current_context()
+        if ctx.compilation_state is not None:
+            raise Exception("Can't already be compiling")
+        ctx._compilation_state = self.compilation_state
+        # Replace with just create_node?
+        outputs = entity(**kwargs)
+        node = ctx.compilation_state.nodes[-1]
+
+        # try/finally this.
+        ctx._compilation_state = None
+
+    def add_workflow_input(self, input_name: str, python_type: Type) -> Interface:
+        """
+
+        """
+        self._interface = self._interface.with_inputs(extra_inputs={input_name: python_type})
+        return self._interface
+
+    def add_workflow_output(self, output_name: str):
+        """
+        Add an output with the given name from the given node output.
+        """
+
+    def __call__(self, *args, **kwargs):
+        ...
+
+    def ready(self) -> bool:
+        """
+        This function returns whether or not the workflow is in a ready state, which means
+          * Has at least one node
+          * All workflow inputs are bound
+
+        These conditions assume that all nodes and workflow i/o changes were done with the functions above, which
+        do additional checking.
+        """
 
 
 class Workflow(ClassStorageTaskResolver):

@@ -50,7 +50,7 @@ def test_fdsafdsfds():
     empty_wf()
 
 
-    wb = WorkflowBuilder.new().add_task(t1)
+    wb = WorkflowTwo().add_task(t1)
     wb = wb.add_task(t2)
     wb = wb.add_input("in1", int)
     wb = wb.add_input("in2", float)
