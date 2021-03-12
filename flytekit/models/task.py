@@ -393,10 +393,8 @@ class TaskTemplate(_common.FlyteIdlEntity):
             custom=_json_format.Parse(_json.dumps(self.custom), _struct.Struct()) if self.custom else None,
             container=self.container.to_flyte_idl() if self.container else None,
             task_type_version=self.task_type_version,
-        )
-        if self.config is not None:
-            for k, v in self.config.items():
-                task_template.config[k] = v
+        config={k: v for k, v in self.config.items()} if self.config is not None else None,
+    )
         return task_template
 
     @classmethod
