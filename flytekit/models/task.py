@@ -411,7 +411,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             custom=_json_format.MessageToDict(pb2_object.custom) if pb2_object else None,
             container=Container.from_flyte_idl(pb2_object.container) if pb2_object.HasField("container") else None,
             task_type_version=pb2_object.task_type_version,
-            config={k: v for k, v in _six.iteritems(pb2_object.config)} if pb2_object.config is not None else None,
+            config={k: v for k, v in pb2_object.config.items()} if pb2_object.config is not None else None,
         )
 
 

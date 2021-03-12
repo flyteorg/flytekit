@@ -1,8 +1,10 @@
+from collections import OrderedDict
 from typing import List
 
 from kubernetes.client.models import V1Container, V1PodSpec, V1VolumeMount
 
 from flytekit import Resources, dynamic, task
+from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.extend import ExecutionState, Image, ImageConfig, SerializationSettings
 from plugins.pod.flytekitplugins.pod.task import Pod, PodFunctionTask
@@ -173,3 +175,26 @@ def test_pod_task_undefined_primary():
         )
     )
     assert config["primary_container_name"] == "an undefined container"
+
+
+def test_pod_task_serialized():
+    pod = Pod(pod_spec=get_pod_spec(), primary_container_name="an undefined container")
+
+    @task(task_config=pod, requests=Resources(cpu="10"), limits=Resources(gpu="2"), environment={"FOO": "bar"})
+    def simple_pod_task(i: int):
+        pass
+
+    assert isinstance(simple_pod_task, PodFunctionTask)
+    assert simple_pod_task.task_config == pod
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    ssettings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={"FOO": "baz"},
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+    serialized = get_serializable(OrderedDict(), ssettings, simple_pod_task)
+    assert serialized.task_type_version == 1
+    assert serialized.config["primary_container_name"] == "an undefined container"
