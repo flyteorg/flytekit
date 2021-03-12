@@ -35,7 +35,7 @@ beautifulsoup4==4.9.3
     # via
     #   sphinx-code-include
     #   sphinx-material
-black==19.10b0; extra == "all"
+black==19.10b0
     # via
     #   flytekit
     #   papermill
