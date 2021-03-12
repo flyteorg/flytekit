@@ -7,7 +7,6 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 from sortedcontainers import SortedDict as _SortedDict
 
 from flytekit.clients.helpers import iterate_task_executions as _iterate_task_executions
-from flytekit.common import component_nodes as _component_nodes
 from flytekit.common import constants as _constants
 from flytekit.common import promise as _promise
 from flytekit.common import sdk_bases as _sdk_bases
@@ -20,6 +19,7 @@ from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.tasks import executions as _task_executions
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import _dnsify
+from flytekit.control_plane import component_nodes as _component_nodes
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import common as _common_models
@@ -110,7 +110,7 @@ class OutputParameterMapper(ParameterMapper):
         return _promise.NodeOutput(sdk_node, sdk_type, name)
 
 
-class SdkNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node, metaclass=_sdk_bases.ExtendedSdkType):
+class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(
         self,
         id,
@@ -150,19 +150,19 @@ class SdkNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node, metaclass=
 
         workflow_node = None
         if sdk_workflow is not None:
-            workflow_node = _component_nodes.SdkWorkflowNode(sdk_workflow=sdk_workflow)
+            workflow_node = _component_nodes.FlyteWorkflowNode(sdk_workflow=sdk_workflow)
         elif sdk_launch_plan is not None:
-            workflow_node = _component_nodes.SdkWorkflowNode(sdk_launch_plan=sdk_launch_plan)
+            workflow_node = _component_nodes.FlyteWorkflowNode(sdk_launch_plan=sdk_launch_plan)
 
         # TODO: this calls the constructor which means it will set all the upstream node ids to None if at the time of
         #       this instantiation, the upstream nodes have not had their nodes assigned yet.
-        super(SdkNode, self).__init__(
+        super(FlyteNode, self).__init__(
             id=_dnsify(id) if id else None,
             metadata=metadata,
             inputs=bindings,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],  # TODO: Are aliases a thing in SDK nodes
-            task_node=_component_nodes.SdkTaskNode(sdk_task) if sdk_task else None,
+            task_node=_component_nodes.FlyteTaskNode(sdk_task) if sdk_task else None,
             workflow_node=workflow_node,
             branch_node=sdk_branch,
         )
@@ -197,9 +197,9 @@ class SdkNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node, metaclass=
 
         sdk_task_node, sdk_workflow_node = None, None
         if model.task_node is not None:
-            sdk_task_node = _component_nodes.SdkTaskNode.promote_from_model(model.task_node, tasks)
+            sdk_task_node = _component_nodes.FlyteTaskNode.promote_from_model(model.task_node, tasks)
         elif model.workflow_node is not None:
-            sdk_workflow_node = _component_nodes.SdkWorkflowNode.promote_from_model(
+            sdk_workflow_node = _component_nodes.FlyteWorkflowNode.promote_from_model(
                 model.workflow_node, sub_workflows, tasks
             )
         else:
@@ -310,11 +310,11 @@ class SdkNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node, metaclass=
         return "Node(ID: {} Executable: {})".format(self.id, self._executable_sdk_object)
 
 
-class SdkNodeExecution(
+class FlyteNodeExecution(
     _node_execution_models.NodeExecution, _artifact_mixin.ExecutionArtifact, metaclass=_sdk_bases.ExtendedSdkType
 ):
     def __init__(self, *args, **kwargs):
-        super(SdkNodeExecution, self).__init__(*args, **kwargs)
+        super(FlyteNodeExecution, self).__init__(*args, **kwargs)
         self._task_executions = None
         self._workflow_executions = None
         self._inputs = None
@@ -324,7 +324,7 @@ class SdkNodeExecution(
     def task_executions(self):
         """
         Returns the underlying task executions in order of try attempt.
-        :rtype: list[flytekit.common.tasks.executions.SdkTaskExecution]
+        :rtype: list[flytekit.control_plane.tasks.executions.FlyteTaskExecution]
         """
         return self._task_executions or []
 
@@ -332,7 +332,7 @@ class SdkNodeExecution(
     def workflow_executions(self):
         """
         Returns the underlying workflow executions in order of try attempt.
-        :rtype: list[flytekit.common.workflow_execution.SdkWorkflowExecution]
+        :rtype: list[flytekit.control_plane.workflow_execution.FlyteWorkflowExecution]
         """
         return self._workflow_executions or []
 

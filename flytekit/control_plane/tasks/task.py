@@ -30,7 +30,7 @@ from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
 
 
-class SdkTask(
+class FlyteTask(
     _hash_mixin.HashOnReferenceMixin,
     _registerable.RegisterableEntity,
     _launchable_mixin.LaunchableEntity,
@@ -50,7 +50,7 @@ class SdkTask(
             execution behavior or serialization.
         """
         # TODO: Remove the identifier portion and fill in with local values.
-        super(SdkTask, self).__init__(
+        super(FlyteTask, self).__init__(
             _identifier.Identifier(
                 _identifier_model.ResourceType.TASK,
                 _internal_config.PROJECT.get(),
@@ -67,25 +67,18 @@ class SdkTask(
         )
 
     @property
-    def interface(self):
-        """
-        :rtype: flytekit.common.interface.TypedInterface
-        """
-        return super(SdkTask, self).interface
+    def interface(self) -> _interfaces.TypedInterface:
+        return super(FlyteTask, self).interface
 
     @property
-    def resource_type(self):
+    def resource_type(self) -> int:
         """
         Integer from _identifier.ResourceType enum
-        :rtype: int
         """
         return _identifier_model.ResourceType.TASK
 
     @property
-    def entity_type_text(self):
-        """
-        :rtype: Text
-        """
+    def entity_type_text(self) -> str:
         return "Task"
 
     @classmethod

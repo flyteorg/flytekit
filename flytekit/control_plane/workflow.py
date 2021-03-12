@@ -25,7 +25,7 @@ from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
 
 
-class SdkWorkflow(
+class FlyteWorkflow(
     _hash_mixin.HashOnReferenceMixin,
     _registerable.HasDependencies,
     _registerable.RegisterableEntity,
@@ -65,7 +65,7 @@ class SdkWorkflow(
                         "list, dict, or tuple which is stored as an attribute in the class."
                     )
 
-        super(SdkWorkflow, self).__init__(
+        super(FlyteWorkflow, self).__init__(
             id=id,
             metadata=metadata,
             metadata_defaults=metadata_defaults,
@@ -85,7 +85,7 @@ class SdkWorkflow(
         """
         :rtype: flytekit.common.interface.TypedInterface
         """
-        return super(SdkWorkflow, self).interface
+        return super(FlyteWorkflow, self).interface
 
     @property
     def entity_type_text(self):
