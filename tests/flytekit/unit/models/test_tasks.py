@@ -97,6 +97,7 @@ def test_task_template(in_tuple):
         container=task.Container(
             "my_image", ["this", "is", "a", "cmd"], ["this", "is", "an", "arg"], resources, {"a": "b"}, {"d": "e"},
         ),
+        config={"a": "b"},
     )
     assert obj.id.resource_type == identifier.ResourceType.TASK
     assert obj.id.project == "project"
@@ -112,6 +113,7 @@ def test_task_template(in_tuple):
     assert text_format.MessageToString(obj.to_flyte_idl()) == text_format.MessageToString(
         task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
     )
+    assert obj.config == {"a": "b"}
 
 
 @pytest.mark.parametrize("task_closure", parameterizers.LIST_OF_TASK_CLOSURES)
