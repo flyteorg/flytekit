@@ -5,7 +5,6 @@ import re
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, TypeVar
 
-from flytekit import SecurityContext, Secret
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, ImageConfig, SerializationSettings
@@ -13,6 +12,7 @@ from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracker import TrackedInstance
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
+from flytekit.models.security import Secret, SecurityContext
 
 T = TypeVar("T")
 

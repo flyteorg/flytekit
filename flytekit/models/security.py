@@ -20,15 +20,18 @@ class Secret(_common.FlyteIdlEntity):
         Caution: May not be supported in all environments
         """
 
-    name: str
+    key: str
+    group: Optional[str] = None
     mount_requirement: MountType = MountType.ENV_VAR
 
     def to_flyte_idl(self) -> _sec.Secret:
-        return _sec.Secret(name=self.name, mount_requirement=self.mount_requirement.value,)
+        return _sec.Secret(key=self.key, group=self.group, mount_requirement=self.mount_requirement.value)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _sec.Secret) -> "Secret":
-        return cls(name=pb2_object.name, mount_requirement=Secret.MountType(pb2_object.mount_requirement),)
+        return cls(
+            key=pb2_object.key, group=pb2_object.group, mount_requirement=Secret.MountType(pb2_object.mount_requirement)
+        )
 
 
 @dataclass

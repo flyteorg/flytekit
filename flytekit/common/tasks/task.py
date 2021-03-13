@@ -37,7 +37,9 @@ class SdkTask(
     _task_model.TaskTemplate,
     metaclass=_sdk_bases.ExtendedSdkType,
 ):
-    def __init__(self, type, metadata, interface, custom, container=None, task_type_version=0, security_context=None, config=None):
+    def __init__(
+        self, type, metadata, interface, custom, container=None, task_type_version=0, security_context=None, config=None
+    ):
         """
         :param Text type: This is used to define additional extensions for use by Propeller or SDK.
         :param TaskMetadata metadata: This contains information needed at runtime to determine behavior such as

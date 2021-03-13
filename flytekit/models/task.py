@@ -293,7 +293,16 @@ class TaskMetadata(_common.FlyteIdlEntity):
 
 class TaskTemplate(_common.FlyteIdlEntity):
     def __init__(
-        self, id, type, metadata, interface, custom, container=None, task_type_version=0, security_context=None, config=None,
+        self,
+        id,
+        type,
+        metadata,
+        interface,
+        custom,
+        container=None,
+        task_type_version=0,
+        security_context=None,
+        config=None,
     ):
         """
         A task template represents the full set of information necessary to perform a unit of work in the Flyte system.
