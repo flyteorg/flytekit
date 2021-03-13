@@ -21,6 +21,8 @@ from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models.core import identifier as _identifier
 
+# TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
+
 _DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC = "bin/entrypoint.py"
 
 
@@ -158,12 +160,13 @@ class SerializationSettings(object):
 
 
 class CompilationState(object):
-    def __init__(self, prefix: str):
+    def __init__(self, prefix: str, task_resolver: Optional["TaskResolverMixin"] = None):
         """
         :param prefix: This is because we may one day want to be able to have subworkflows inside other workflows. If
           users choose to not specify their node names, then we can end up with multiple "n0"s. This prefix allows
           us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
           # TODO: Ketan to revisit this whole concept when we re-organize the new structure
+        :param task_resolver: Please see :py:class:`flytekit.extend.TaskResolverMixin`
         """
         from flytekit.core.node import Node
 
@@ -175,6 +178,7 @@ class CompilationState(object):
         # storing the nodes separately
         self._branch = False
         self._branch_nodes: List[Node] = []
+        self._task_resolver = task_resolver
 
     @property
     def prefix(self) -> str:
@@ -210,6 +214,10 @@ class CompilationState(object):
 
     def is_in_a_branch(self) -> bool:
         return self._branch
+
+    @property
+    def task_resolver(self) -> "TaskResolverMixin":
+        return self._task_resolver
 
 
 class BranchEvalMode(Enum):
@@ -404,11 +412,16 @@ class FlyteContext(object):
             return None
 
     @contextmanager
-    def new_compilation_context(self, prefix: Optional[str] = None) -> Generator[FlyteContext, None, None]:
+    def new_compilation_context(
+        self, prefix: Optional[str] = None, task_resolver: Optional["TaskResolverMixin"] = None
+    ) -> Generator[FlyteContext, None, None]:
         """
         :param prefix: See CompilationState comments
+        :param task_resolver: resolver for tasks within this compilation context
         """
-        new_ctx = FlyteContext(parent=self, compilation_state=CompilationState(prefix=prefix or ""))
+        new_ctx = FlyteContext(
+            parent=self, compilation_state=CompilationState(prefix=prefix or "", task_resolver=task_resolver)
+        )
         FlyteContext.OBJS.append(new_ctx)
         try:
             yield new_ctx

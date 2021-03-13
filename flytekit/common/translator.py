@@ -12,7 +12,7 @@ from flytekit.core.condition import BranchNode
 from flytekit.core.context_manager import SerializationSettings
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.node import Node
-from flytekit.core.python_function_task import PythonAutoContainerTask
+from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity
 from flytekit.core.task import ReferenceTask
 from flytekit.core.workflow import ReferenceWorkflow, Workflow, WorkflowFailurePolicy, WorkflowMetadata
@@ -124,6 +124,7 @@ def get_serializable_task(
         container=entity.get_container(settings),
         task_type_version=entity.task_type_version,
         security_context=entity.security_context,
+        config=entity.get_config(settings),
     )
     # Reset just to make sure it's what we give it
     cp_entity.id._project = settings.project

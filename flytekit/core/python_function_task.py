@@ -1,203 +1,62 @@
 import inspect
-import re
-from abc import ABC, abstractmethod
+from abc import ABC
 from collections import OrderedDict
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
+from typing import Any, Callable, List, Optional, TypeVar, Union
 
-from flytekit.common.tasks.raw_container import _get_container_definition
-from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import ExecutionState, FlyteContext, ImageConfig, SerializationSettings
+from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings
 from flytekit.core.interface import transform_signature_to_interface
-from flytekit.core.resources import Resources, ResourceSpec
+from flytekit.core.python_auto_container import PythonAutoContainerTask, TaskResolverMixin, default_task_resolver
+from flytekit.core.tracker import isnested, istestfunction
 from flytekit.core.workflow import Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
-from flytekit.models import task as _task_model
-
-# Matches {{.image.<name>.<attr>}}. A name can be either 'default' indicating the default image passed during
-# serialization or it can be a custom name for an image that must be defined in the config section Images. An attribute
-# can be either 'fqn', 'version' or non-existent.
-# fqn will access the fully qualified name of the image (e.g. registry/imagename:version -> registry/imagename)
-# version will access the version part of the image (e.g. registry/imagename:version -> version)
-# With empty attribute, it'll access the full image path (e.g. registry/imagename:version -> registry/imagename:version)
-from flytekit.models.security import Secret, SecurityContext
-
-_IMAGE_REPLACE_REGEX = re.compile(r"({{\s*\.image[s]?(?:\.([a-zA-Z]+))(?:\.([a-zA-Z]+))?\s*}})", re.IGNORECASE)
-
-
-def get_registerable_container_image(img: Optional[str], cfg: ImageConfig) -> str:
-    """
-    :param img: Configured image
-    :param cfg: Registration configuration
-    :return:
-    """
-    if img is not None and img != "":
-        matches = _IMAGE_REPLACE_REGEX.findall(img)
-        if matches is None or len(matches) == 0:
-            return img
-        for m in matches:
-            if len(m) < 3:
-                raise AssertionError(
-                    "Image specification should be of the form <fqn>:<tag> OR <fqn>:{{.image.default.version}} OR "
-                    f"{{.image.xyz.fqn}}:{{.image.xyz.version}} OR {{.image.xyz}} - Received {m}"
-                )
-            replace_group, name, attr = m
-            if name is None or name == "":
-                raise AssertionError(f"Image format is incorrect {m}")
-            img_cfg = cfg.find_image(name)
-            if img_cfg is None:
-                raise AssertionError(f"Image Config with name {name} not found in the configuration")
-            if attr == "version":
-                if img_cfg.tag is not None:
-                    img = img.replace(replace_group, img_cfg.tag)
-                else:
-                    img = img.replace(replace_group, cfg.default_image.tag)
-            elif attr == "fqn":
-                img = img.replace(replace_group, img_cfg.fqn)
-            elif attr == "":
-                img = img.replace(replace_group, img_cfg.full)
-            else:
-                raise AssertionError(f"Only fqn and version are supported replacements, {attr} is not supported")
-        return img
-    return f"{cfg.default_image.fqn}:{cfg.default_image.tag}"
-
 
 T = TypeVar("T")
 
 
-class PythonAutoContainerTask(PythonTask[T], ABC):
+class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
     """
-    A Python AutoContainer task should be used as the base for all extensions that want the user's code to be in the
-    container and the container information to be automatically captured.
-    This base will auto configure the image and image version to be used for all its derivatives.
+    This class should be used as the base class for all Tasks that do not have a user defined function body, but have
+    a platform defined execute method. (Execute needs to be overriden). This base class ensures that the module loader
+    will invoke the right class automatically, by capturing the module name and variable in the module name.
 
-    If you are looking to extend, you might prefer to use ``PythonFunctionTask`` or ``PythonInstanceTask``
+    .. code-block: python
+
+        x = MyInstanceTask(name="x", .....)
+
+        # this can be invoked as
+        x(a=5) # depending on the interface of the defined task
+
     """
 
     def __init__(
         self,
         name: str,
         task_config: T,
-        task_type="python-task",
-        container_image: Optional[str] = None,
-        requests: Optional[Resources] = None,
-        limits: Optional[Resources] = None,
-        environment: Optional[Dict[str, str]] = None,
-        secret_requests: Optional[List[Secret]] = None,
+        task_type: str = "python-task",
+        task_resolver: Optional[TaskResolverMixin] = None,
         **kwargs,
     ):
-        """
-        :param task_config: Configuration object for Task. Should be a unique type for that specific Task
-        :param task_function: Python function that has type annotations and works for the task
-        :param metadata: Task execution metadata e.g. retries, timeout etc
-        :param ignore_input_vars:
-        :param task_type: String task type to be associated with this Task
-        :param container_image: String FQN for the image.
-        :param Resources requests: custom resource request settings.
-        :param Resources limits: custom resource limit settings.
-        :param List[Secret] secret_requests: Secrets that are requested by this container execution. These secrets will
-                                             be mounted based on the configuration in the Secret and available through
-                                             the SecretManager using the name of the secret as the key
-                                             security_ctx: Keys that can identify the secrets supplied at runtime.
-                                             Ideally the secret keys should also be semi-descriptive.
-                                             The key values will be available from runtime, if the backend is configured
-                         to provide secrets and if secrets are available in the configured secrets store.
-                         Possible options for secret stores are
-                          - `Vault <https://www.vaultproject.io/>`,
-                          - `Confidant <https://lyft.github.io/confidant/>`,
-                          - `Kube secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`
-                          - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`_
-                          etc
-        """
-        sec_ctx = None
-        if secret_requests:
-            for s in secret_requests:
-                if not isinstance(s, Secret):
-                    raise AssertionError(f"Secret {s} should be of type flytekit.Secret, received {type(s)}")
-            sec_ctx = SecurityContext(secrets=secret_requests)
-        super().__init__(
-            task_type=task_type,
-            name=name,
-            task_config=task_config,
-            environment=environment,
-            security_ctx=sec_ctx,
-            **kwargs,
-        )
-        self._container_image = container_image
-        # TODO(katrogan): Implement resource overrides
-        self._resources = ResourceSpec(
-            requests=requests if requests else Resources(), limits=limits if limits else Resources()
-        )
+        super().__init__(name=name, task_config=task_config, task_type=task_type, task_resolver=task_resolver, **kwargs)
 
-    @property
-    def container_image(self) -> Optional[str]:
-        return self._container_image
-
-    @property
-    def resources(self) -> ResourceSpec:
-        return self._resources
-
-    @property
-    def secret_requests(self) -> Optional[List[Secret]]:
-        if self.security_context:
-            return self.security_context.secrets
-        return None
-
-    @abstractmethod
     def get_command(self, settings: SerializationSettings) -> List[str]:
-        pass
+        container_args = [
+            "pyflyte-execute",
+            "--inputs",
+            "{{.input}}",
+            "--output-prefix",
+            "{{.outputPrefix}}",
+            "--raw-output-data-prefix",
+            "{{.rawOutputDataPrefix}}",
+            "--resolver",
+            self.task_resolver.location,
+            "--",
+            *self.task_resolver.loader_args(settings, self),
+        ]
 
-    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
-        env = {**settings.env, **self.environment} if self.environment else settings.env
-        return _get_container_definition(
-            image=get_registerable_container_image(self.container_image, settings.image_config),
-            command=[],
-            args=self.get_command(settings=settings),
-            data_loading_config=None,
-            environment=env,
-            storage_request=self.resources.requests.storage,
-            cpu_request=self.resources.requests.cpu,
-            gpu_request=self.resources.requests.gpu,
-            memory_request=self.resources.requests.mem,
-            storage_limit=self.resources.limits.storage,
-            cpu_limit=self.resources.limits.cpu,
-            gpu_limit=self.resources.limits.gpu,
-            memory_limit=self.resources.limits.mem,
-        )
-
-
-def isnested(func) -> bool:
-    """
-    Returns true if a function is local to another function and is not accessible through a module
-
-    This would essentially be any function with a `.<local>.` (defined within a function) e.g.
-
-    .. code:: python
-
-        def foo():
-            def foo_inner():
-                pass
-            pass
-
-    In the above example `foo_inner` is the local function or a nested function.
-    """
-    return func.__code__.co_flags & inspect.CO_NESTED != 0
-
-
-def istestfunction(func) -> bool:
-    """
-    Returns true if the function is defined in a test module. A test module has to have `test_` as the prefix.
-    False in all other cases
-    """
-    mod = inspect.getmodule(func)
-    if mod:
-        mod_name = mod.__name__
-        if "." in mod_name:
-            mod_name = mod_name.split(".")[-1]
-        return mod_name.startswith("test_")
-    return False
+        return container_args
 
 
 class PythonFunctionTask(PythonAutoContainerTask[T]):
@@ -229,6 +88,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         task_type="python-task",
         ignore_input_vars: Optional[List[str]] = None,
         execution_mode: Optional[ExecutionBehavior] = ExecutionBehavior.DEFAULT,
+        task_resolver: Optional[TaskResolverMixin] = None,
         **kwargs,
     ):
         """
@@ -240,12 +100,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         """
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
-        if not istestfunction(func=task_function) and isnested(func=task_function):
-            raise ValueError(
-                "TaskFunction cannot be a nested/inner or local function. "
-                "It should be accessible at a module level for Flyte to execute it. Test modules with "
-                "names begining with `test_` are allowed to have nested tasks"
-            )
         self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         super().__init__(
@@ -253,8 +107,20 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             name=f"{task_function.__module__}.{task_function.__name__}",
             interface=mutated_interface,
             task_config=task_config,
+            task_resolver=task_resolver,
             **kwargs,
         )
+
+        if self._task_resolver is default_task_resolver:
+            # The default task resolver can't handle nested functions
+            # TODO: Consider moving this to a can_handle function or something inside the resolver itself.
+            if not istestfunction(func=task_function) and isnested(func=task_function):
+                raise ValueError(
+                    "TaskFunction cannot be a nested/inner or local function. "
+                    "It should be accessible at a module level for Flyte to execute it. Test modules with "
+                    "names begining with `test_` are allowed to have nested tasks. If you want to create your own tasks"
+                    "use the TaskResolverMixin"
+                )
         self._task_function = task_function
         self._execution_mode = execution_mode
 
@@ -277,19 +143,21 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             return self.dynamic_execute(self._task_function, **kwargs)
 
     def get_command(self, settings: SerializationSettings) -> List[str]:
-        return [
+        container_args = [
             "pyflyte-execute",
-            "--task-module",
-            self._task_function.__module__,
-            "--task-name",
-            self._task_function.__name__,
             "--inputs",
             "{{.input}}",
             "--output-prefix",
             "{{.outputPrefix}}",
             "--raw-output-data-prefix",
             "{{.rawOutputDataPrefix}}",
+            "--resolver",
+            self.task_resolver.location,
+            "--",
+            *self.task_resolver.loader_args(settings, self),
         ]
+
+        return container_args
 
     def compile_into_workflow(
         self, ctx: FlyteContext, task_function: Callable, **kwargs
@@ -331,10 +199,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
 
     @staticmethod
     def aggregate(tasks, workflows, node) -> None:
-        """
-        Collects all tasks and workflows from the given Node recursively. This is because a node may have a workflow,
-        and other nodes, which have tasks.
-        """
         if node.task_node is not None:
             tasks.add(node.task_node.sdk_task)
         if node.workflow_node is not None:
@@ -373,42 +237,3 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             return self.compile_into_workflow(ctx, task_function, **kwargs)
-
-
-class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
-    """
-    This class should be used as the base class for all Tasks that do not have a user defined function body, but have
-    a platform defined execute method. (Execute needs to be overriden). This base class ensures that the module loader
-    will invoke the right class automatically, by capturing the module name and variable in the module name.
-
-    .. code-block: python
-
-        x = MyInstanceTask(name="x", .....)
-
-        # this can be invoked as
-        x(a=5) # depending on the interface of the defined task
-
-    """
-
-    def __init__(self, name: str, task_config: T, task_type: str = "python-task", **kwargs):
-        super().__init__(name=name, task_config=task_config, task_type=task_type, **kwargs)
-
-    def get_command(self, settings: SerializationSettings) -> List[str]:
-        """
-        NOTE: This command is different, it tries to retrieve the actual LHS of where this object was assigned, so that
-        the module loader can easily retreive this for execution - at runtime.
-        """
-        var = settings.get_instance_var(self)
-        return [
-            "pyflyte-execute",
-            "--task-module",
-            var.module,
-            "--task-name",
-            var.name,
-            "--inputs",
-            "{{.input}}",
-            "--output-prefix",
-            "{{.outputPrefix}}",
-            "--raw-output-data-prefix",
-            "{{.rawOutputDataPrefix}}",
-        ]

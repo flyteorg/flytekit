@@ -321,6 +321,9 @@ class FileAccessProvider(object):
         :param Text local_path:
         :param Text remote_path:
         """
+        # TODO: Clean this up, this is a minor hack in lieu of https://github.com/flyteorg/flyte/issues/762
+        if remote_path.startswith("/"):
+            return self.local_access.upload_directory(local_path, remote_path)
         return self.remote.upload_directory(local_path, remote_path)
 
     def get_data(self, remote_path: str, local_path: str, is_multipart=False):

@@ -55,6 +55,10 @@ class Node(object):
     def upstream_nodes(self) -> List[Node]:
         return self._upstream_nodes
 
+    @property
+    def flyte_entity(self) -> Any:
+        return self._flyte_entity
+
     def with_overrides(self, *args, **kwargs):
         if "node_name" in kwargs:
             self._id = kwargs["node_name"]

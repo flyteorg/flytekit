@@ -5,6 +5,7 @@ import os as _os
 import pathlib
 import random as _random
 import traceback as _traceback
+from typing import List
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -25,6 +26,7 @@ from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
+from flytekit.core.python_auto_container import TaskResolverMixin
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -222,67 +224,119 @@ def _handle_annotated_task(task_def: PythonTask, inputs: str, output_prefix: str
 
 
 @_scopes.system_entry_point
-def _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
+def _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
+    """
+    This function should be called for old flytekit api tasks (the only API that was available in 0.15.x and earlier)
+    """
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with _utils.AutoDeletingTempDir("input_dir") as input_dir:
             # Load user code
-
             task_module = _importlib.import_module(task_module)
             task_def = getattr(task_module, task_name)
 
-            # Everything else
-            if not test and not isinstance(task_def, PythonTask):
-                local_inputs_file = input_dir.get_named_tempfile("inputs.pb")
+            local_inputs_file = input_dir.get_named_tempfile("inputs.pb")
 
-                # Handle inputs/outputs for array job.
-                if _os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
-                    job_index = _compute_array_job_index()
+            # Handle inputs/outputs for array job.
+            if _os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
+                job_index = _compute_array_job_index()
 
-                    # TODO: Perhaps remove.  This is a workaround to an issue we perceived with limited entropy in
-                    # TODO: AWS batch array jobs.
-                    _flyte_random.seed_flyte_random(
-                        "{} {} {}".format(_random.random(), _datetime.datetime.utcnow(), job_index)
-                    )
-
-                    # If an ArrayTask is discoverable, the original job index may be different than the one specified in
-                    # the environment variable. Look up the correct input/outputs in the index lookup mapping file.
-                    job_index = _map_job_index_to_child_index(input_dir, inputs, job_index)
-
-                    inputs = _os.path.join(inputs, str(job_index), "inputs.pb")
-                    output_prefix = _os.path.join(output_prefix, str(job_index))
-
-                _data_proxy.Data.get_data(inputs, local_inputs_file)
-                input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-
-                _engine_loader.get_engine().get_task(task_def).execute(
-                    _literal_models.LiteralMap.from_flyte_idl(input_proto),
-                    context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
+                # TODO: Perhaps remove.  This is a workaround to an issue we perceived with limited entropy in
+                # TODO: AWS batch array jobs.
+                _flyte_random.seed_flyte_random(
+                    "{} {} {}".format(_random.random(), _datetime.datetime.utcnow(), job_index)
                 )
 
-            # New core style task
-            elif not test and isinstance(task_def, PythonTask):
-                _handle_annotated_task(task_def, inputs, output_prefix, raw_output_data_prefix)
+                # If an ArrayTask is discoverable, the original job index may be different than the one specified in
+                # the environment variable. Look up the correct input/outputs in the index lookup mapping file.
+                job_index = _map_job_index_to_child_index(input_dir, inputs, job_index)
+
+                inputs = _os.path.join(inputs, str(job_index), "inputs.pb")
+                output_prefix = _os.path.join(output_prefix, str(job_index))
+
+            _data_proxy.Data.get_data(inputs, local_inputs_file)
+            input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+
+            _engine_loader.get_engine().get_task(task_def).execute(
+                _literal_models.LiteralMap.from_flyte_idl(input_proto),
+                context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
+            )
+
+
+def _load_resolver(resolver_location: str) -> TaskResolverMixin:
+    # Load the actual resolver - this cannot be a nested thing, whatever kind of resolver it is, it has to be loadable
+    # directly from importlib
+    # TODO: Handle corner cases, like where the first part is [] maybe
+    # e.g. flytekit.core.python_auto_container.default_task_resolver
+    resolver = resolver_location.split(".")
+    resolver_mod = resolver[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
+    resolver_key = resolver[-1]  # e.g. 'default_task_resolver'
+    resolver_mod = _importlib.import_module(".".join(resolver_mod))
+    return getattr(resolver_mod, resolver_key)
 
 
 @_scopes.system_entry_point
-def _execute_map_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, max_concurrency, test):
-    task_module = _importlib.import_module(task_module)
-    task_def = getattr(task_module, task_name)
+def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver: str, resolver_args: List[str]):
+    """
+    This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
+    native typing).
 
-    if not test and isinstance(task_def, PythonFunctionTask):
-        map_task = MapPythonTask(task_def, max_concurrency)
+    resolver should be something like:
+        flytekit.core.python_auto_container.default_task_resolver
+    resolver args should be something like
+        task_module app.workflows task_name task_1
+    have dashes seems to mess up click, like --task_module seems to interfere
+
+    :param inputs: Where to read inputs
+    :param output_prefix: Where to write primitive outputs
+    :param raw_output_data_prefix: Where to write offloaded data (files, directories, dataframes).
+    :param test: Dry run
+    :param resolver: The task resolver to use. This needs to be loadable directly from importlib (and thus cannot be
+      nested).
+    :param resolver_args: Args that will be passed to the aforementioned resolver's load_task function
+    :return:
+    """
+    if len(resolver_args) < 1:
+        raise Exception("cannot be <1")
+
+    resolver_obj = _load_resolver(resolver)
+    with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
+        # Use the resolver to load the actual task object
+        _task_def = resolver_obj.load_task(loader_args=resolver_args)
+        if test:
+            _click.echo(
+                f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
+            )
+            return
+        _handle_annotated_task(_task_def, inputs, output_prefix, raw_output_data_prefix)
+
+
+@_scopes.system_entry_point
+def _execute_map_task(
+    inputs, output_prefix, raw_output_data_prefix, max_concurrency, test, resolver: str, resolver_args: List[str]
+):
+    if len(resolver_args) < 1:
+        raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
+
+    resolver_obj = _load_resolver(resolver)
+    with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
+        # Use the resolver to load the actual task object
+        _task_def = resolver_obj.load_task(loader_args=resolver_args)
+        if not isinstance(_task_def, PythonFunctionTask):
+            raise Exception("Map tasks cannot be run with instance tasks.")
+        map_task = MapPythonTask(_task_def, max_concurrency)
 
         task_index = _compute_array_job_index()
         output_prefix = _os.path.join(output_prefix, str(task_index))
 
-        _handle_annotated_task(map_task, inputs, output_prefix, raw_output_data_prefix)
+        if test:
+            _click.echo(
+                f"Test detected, returning. Inputs: {inputs} Computed task index: {task_index} "
+                f"New output prefix: {output_prefix} Raw output path: {raw_output_data_prefix} "
+                f"Resolver and args: {resolver} {resolver_args}"
+            )
+            return
 
-    # Old style task
-    elif not test:
-        raise _system_exceptions.FlyteSystemAssertion(
-            "Map tasks are only supported for task of type `PythonTask` created using flytekit>=0.16.0"
-            " got task {} of type {} instead".format(task_name, type(task_def))
-        )
+        _handle_annotated_task(map_task, inputs, output_prefix, raw_output_data_prefix)
 
 
 @_click.group()
@@ -290,22 +344,20 @@ def _pass_through():
     pass
 
 
-_task_module_option = _click.option("--task-module", required=True)
-_task_name_option = _click.option("--task-name", required=True)
-_inputs_option = _click.option("--inputs", required=True)
-_output_prefix_option = _click.option("--output-prefix", required=True)
-_raw_output_date_prefix_option = _click.option("--raw-output-data-prefix", required=False)
-_test = _click.option("--test", is_flag=True)
-
-
 @_pass_through.command("pyflyte-execute")
-@_click.option("--task-module", required=True)
-@_click.option("--task-name", required=True)
+@_click.option("--task-module", required=False)
+@_click.option("--task-name", required=False)
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--test", is_flag=True)
-def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
+@_click.option("--resolver", required=False)
+@_click.argument(
+    "resolver-args", type=_click.UNPROCESSED, nargs=-1,
+)
+def execute_task_cmd(
+    task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args
+):
     _click.echo(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
     # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
@@ -313,7 +365,16 @@ def execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_d
     if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
         raw_output_data_prefix = None
 
-    _execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
+    # For new API tasks (as of 0.16.x), we need to call a different function.
+    # Use the presence of the resolver to differentiate between old API tasks and new API tasks
+    # The addition of a new top-level command seemed out of scope at the time of this writing to pursue given how
+    # pervasive this top level command already (plugins mostly).
+    if not resolver:
+        _click.echo("No resolver found, assuming legacy API task...")
+        _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
+    else:
+        _click.echo(f"Attempting to run with {resolver}...")
+        _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args)
 
 
 @_pass_through.command("pyflyte-fast-execute")
@@ -340,17 +401,39 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 
 
 @_pass_through.command("pyflyte-map-execute")
-@_click.option("--task-module", required=True)
-@_click.option("--task-name", required=True)
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--max-concurrency", type=int, required=False)
 @_click.option("--test", is_flag=True)
-def map_execute_task_cmd(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, max_concurrency, test):
+@_click.option("--resolver", required=True)
+@_click.argument(
+    "resolver-args", type=_click.UNPROCESSED, nargs=-1,
+)
+def map_execute_task_cmd(
+    task_module,
+    task_name,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    max_concurrency,
+    test,
+    resolver,
+    resolver_args,
+):
     _click.echo(_utils.get_version_message())
 
-    _execute_map_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, max_concurrency, test)
+    _execute_map_task(
+        task_module,
+        task_name,
+        inputs,
+        output_prefix,
+        raw_output_data_prefix,
+        max_concurrency,
+        test,
+        resolver,
+        resolver_args,
+    )
 
 
 if __name__ == "__main__":

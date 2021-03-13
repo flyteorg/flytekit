@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
+from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
 from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteEntities
 from flytekit.core.interface import (
@@ -26,6 +27,7 @@ from flytekit.core.promise import (
     create_task_output,
     translate_inputs_to_literals,
 )
+from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
@@ -89,7 +91,7 @@ def construct_input_promises(inputs: List[str]):
     }
 
 
-class Workflow(object):
+class Workflow(ClassStorageTaskResolver):
     """
     When you assign a name to a node.
 
@@ -119,6 +121,7 @@ class Workflow(object):
         #    we can re-evaluate.
         self._input_parameters = None
         FlyteEntities.entities.append(self)
+        super().__init__()
 
     @property
     def function(self):
@@ -148,6 +151,9 @@ class Workflow(object):
     def workflow_metadata_defaults(self):
         return self._workflow_metadata_defaults
 
+    def task_name(self, t: PythonAutoContainerTask) -> str:
+        return f"{self.name}.{t.__module__}.{t.name}"
+
     def compile(self, **kwargs):
         """
         Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics
@@ -157,12 +163,18 @@ class Workflow(object):
         self._input_parameters = transform_inputs_to_parameters(ctx, self._native_interface)
         all_nodes = []
         prefix = f"{ctx.compilation_state.prefix}-{self.short_name}-" if ctx.compilation_state is not None else None
-        with ctx.new_compilation_context(prefix=prefix) as comp_ctx:
+        with ctx.new_compilation_context(prefix=prefix, task_resolver=self) as comp_ctx:
             # Construct the default input promise bindings, but then override with the provided inputs, if any
             input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
             input_kwargs.update(kwargs)
             workflow_outputs = self._workflow_function(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
+
+            # This needs a longer comment.
+            for n in comp_ctx.compilation_state.nodes:
+                if isinstance(n.flyte_entity, PythonAutoContainerTask) and n.flyte_entity.task_resolver == self:
+                    logger.debug(f"WF {self.name} saving task {n.flyte_entity.name}")
+                    self.add(n.flyte_entity)
 
         # Iterate through the workflow outputs
         bindings = []

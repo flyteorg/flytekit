@@ -31,9 +31,9 @@ black==19.10b0
     #   papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.25
+boto3==1.17.27
     # via sagemaker-training
-botocore==1.20.25
+botocore==1.20.27
     # via
     #   boto3
     #   s3transfer
@@ -64,7 +64,7 @@ decorator==4.4.2
     #   retry
 defusedxml==0.7.1
     # via nbconvert
-deprecated==1.2.11
+deprecated==1.2.12
     # via flytekit
 dirhash==0.2.1
     # via flytekit
@@ -74,7 +74,7 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.18.16
+flyteidl==0.18.18
     # via flytekit
 future==0.18.2
     # via croniter
@@ -181,9 +181,9 @@ pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
     # via ipython
-prompt-toolkit==3.0.16
+prompt-toolkit==3.0.17
     # via ipython
-protobuf==3.15.5
+protobuf==3.15.6
     # via
     #   flyteidl
     #   flytekit

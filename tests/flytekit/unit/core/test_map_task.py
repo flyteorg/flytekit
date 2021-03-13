@@ -45,16 +45,19 @@ def test_serialization():
     assert serialized.task_type_version == 1
     assert serialized.container.args == [
         "pyflyte-map-execute",
-        "--task-module",
-        "test_map_task",
-        "--task-name",
-        "t1",
         "--inputs",
         "{{.input}}",
         "--output-prefix",
         "{{.outputPrefix}}",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "test_map_task",
+        "task-name",
+        "t1",
     ]
 
 
