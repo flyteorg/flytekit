@@ -11,6 +11,7 @@ import six as _six
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
+from flyteidl.admin import version_pb2 as _version_pb2
 from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_tasks_pb2
@@ -2167,6 +2168,18 @@ def list_matching_attributes(host, insecure, resource_type):
         )
         _click.echo("{}".format(configuration.attributes))
 
+
+@_flyte_cli.command("get_version", cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+def version(host, insecure):
+    """
+    Fetches version of control plane
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    version = client.raw.get_version(_version_pb2.GetVersionRequest())
+    print(version)
 
 @_flyte_cli.command("setup-config", cls=_click.Command)
 @_host_option

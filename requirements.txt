@@ -74,7 +74,7 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.18.17
+flyteidl==0.18.18
     # via flytekit
 future==0.18.2
     # via croniter

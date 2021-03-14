@@ -669,6 +669,16 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.ListMatchableAttributes(matchable_attributes_list_request, metadata=self._metadata)
 
+    @_handle_rpc_error(retry=True)
+    def get_version(self, get_version_request):
+        """
+        This fetches the version of control plane
+        :param flyteidl.admin.GetVersionRequest get_version_request:
+        :rtype: flyteidl.admin.GetVersionRequest
+        """
+        return self._stub.GetVersion(get_version_request, metadata=self._metadata)
+
+
     ####################################################################################################################
     #
     #  Event Endpoints
