@@ -48,28 +48,38 @@ class SecretsManager(object):
         self._file_prefix = str(secrets.SECRETS_FILE_PREFIX.get()).strip()
         self._env_prefix = str(secrets.SECRETS_ENV_PREFIX.get()).strip()
 
-    def get(self, secrets_key: str) -> str:
+    def get(self, secrets_key: str, secrets_group: typing.Optional[str] = None) -> str:
         """
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
         """
         if secrets_key is None or secrets_key == "":
             raise ValueError("Bad secrets key. Cannot be an empty string or None.")
 
-        env_var = self.get_secrets_env_var(secrets_key)
-        fpath = self.get_secrets_file(secrets_key)
+        env_var = self.get_secrets_env_var(secrets_key, secrets_group)
+        fpath = self.get_secrets_file(secrets_key, secrets_group)
         v = os.environ.get(env_var)
         if v is not None:
             return v
         if os.path.exists(fpath):
             with open(fpath, "r") as f:
                 return f.read()
+        if secrets_group:
+            raise ValueError(
+                f"Unable to find secret for key {secrets_key} in group {secrets_group} "
+                f"in Env Var:{env_var} and FilePath: {fpath}"
+            )
         raise ValueError(f"Unable to find secret for key {secrets_key} in Env Var:{env_var} and FilePath: {fpath}")
 
-    def get_secrets_env_var(self, name: str) -> str:
-        return self._env_prefix + name.upper()
+    def get_secrets_env_var(self, key: str, secrets_group: typing.Optional[str] = None) -> str:
+        if secrets_group:
+            return f"{self._env_prefix}{secrets_group.upper()}.{key.upper()}"
+        return f"{self._env_prefix}{key.upper()}"
 
-    def get_secrets_file(self, name: str) -> str:
-        return os.path.join(self._base_dir, name.lower())
+    def get_secrets_file(self, key: str, secrets_group: typing.Optional[str] = None) -> str:
+        fname = f"{self._file_prefix}{key.lower()}"
+        if secrets_group:
+            return os.path.join(self._base_dir, secrets_group.lower(), fname)
+        return os.path.join(self._base_dir, fname)
 
 
 # TODO: Clean up working dir name
