@@ -96,42 +96,155 @@ class WorkflowTwo(object):
     def __init__(self, name: str):
         self._name = name
         self._compilation_state = CompilationState(prefix="")
-        self._interface = Interface()
+        self._python_interface = Interface()
+        self._interface = None
+        self._inputs = {}
+        self._unbound_inputs = set()
         self._output_bindings = []
+
+    @property
+    def python_interface(self) -> Interface:
+        return self._python_interface
+
+    @property
+    def interface(self) -> _interface_models.TypedInterface:
+        return self._interface
 
     @property
     def compilation_state(self) -> CompilationState:
         return self._compilation_state
 
+    @property
+    def inputs(self) -> Dict[str, Promise]:
+        return self._inputs
+
+    def __repr__(self):
+        return f"WorkflowTwo - {self._name} && " \
+               f"Inputs ({len(self._python_interface.inputs)}): {self._python_interface.inputs} && " \
+               f"Outputs ({len(self._python_interface.outputs)}): {self._python_interface.outputs} && " \
+               f"Output bindings: {self._output_bindings} && " \
+               f"Nodes ({len(self.compilation_state.nodes)}): {self.compilation_state.nodes}"
+
     def add_entity(self, entity: PythonAutoContainerTask, **kwargs) -> Node:
         """
         Anytime you add an entity, all the inputs to the entity must be bound.
         """
+        # circular import
+        from flytekit.core.node_creation import create_node
+
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None:
             raise Exception("Can't already be compiling")
-        ctx._compilation_state = self.compilation_state
-        # Replace with just create_node?
-        outputs = entity(**kwargs)
-        node = ctx.compilation_state.nodes[-1]
+        with ctx.new_context(compilation_state=self.compilation_state) as ctx:
+            n = create_node(entity=entity, **kwargs)
 
-        # try/finally this.
-        ctx._compilation_state = None
+            # Every time an entity is added, see if
+            for input_name, input_value in kwargs.items():
+                if input_value in self._unbound_inputs:
+                    self._unbound_inputs.remove(input_value)
+            return n
 
     def add_workflow_input(self, input_name: str, python_type: Type) -> Interface:
         """
-
+        Adds an input to the workflow.
         """
-        self._interface = self._interface.with_inputs(extra_inputs={input_name: python_type})
-        return self._interface
+        if input_name in self._inputs:
+            raise FlyteValueException("already in")
+        self._python_interface = self._python_interface.with_inputs(extra_inputs={input_name: python_type})
+        self._interface = transform_interface_to_typed_interface(self._python_interface)
+        self._inputs[input_name] = Promise(var=input_name, val=NodeOutput(node=GLOBAL_START_NODE, var=input_name))
+        self._unbound_inputs.add(self._inputs[input_name])
+        return self._python_interface
 
-    def add_workflow_output(self, output_name: str):
+    def add_workflow_output(self, output_name: str, python_type: Type, p: Promise):
         """
         Add an output with the given name from the given node output.
         """
+        if output_name in self._python_interface.outputs:
+            raise FlyteValueException("already out")
+
+        flyte_type = TypeEngine.to_literal_type(python_type=python_type)
+
+        ctx = FlyteContext.current_context()
+        if ctx.compilation_state is not None:
+            raise Exception("Can't already be compiling")
+        with ctx.new_context(compilation_state=self.compilation_state) as ctx:
+            b = binding_from_python_std(ctx, output_name, expected_literal_type=flyte_type, t_value=p, t_value_type=python_type)
+            self._output_bindings.append(b)
+            self._python_interface = self._python_interface.with_outputs(extra_outputs={output_name: python_type})
+            self._interface = transform_interface_to_typed_interface(self._python_interface)
 
     def __call__(self, *args, **kwargs):
-        ...
+        """
+        Calling a Flyte entity typically results in one of two things happening:
+          * We're in a compiling state, so we need to create a node and return promises pointing to that node
+            Deal with this later.
+          * We're running locally so we need to run through the actual body of the code and return Python native values
+
+        This second workflow style is more difficult to run locally.
+        because everything has to be bound at creation time, the linear order will always be okay.
+        what is the relationship between the new workflow and the old workflow?
+          - compilation style is different
+          - local run style is different
+          - translation is different, but the contain the same things.
+          - calling both should produce a node
+
+        how do you run something locally?
+
+        how do you run something normally?
+        get python to call the first item.
+        record outputs
+        python will use the right outputs when calling the next item.
+
+        python will know which outputs are the final outputs
+
+        def x():
+          a, b = t()
+          c = y(a, b)
+          return c
+
+        how do you know what to call an entity with.
+
+        top level inputs need to be fulfilled.
+
+        when you add an entity, you specify the promises.  t2, a=n1.o1 this gets saved in bindings
+        what happens when you call it, retrieve the bindings, turn them back into promises, call the entities as normal,
+        capture the resulting promises, which can be used to further fulfill more bindings
+        """
+        # All the nodes already have their promises set up. Those promises point to NodeOutput objects. We want to
+        # make use of their structure, but we want to fulfill the promises.
+        ctx = FlyteContext.current_context()
+
+        # Create a map of old Promises (pointing to node outputs) to new Promises (containing literal values)
+        intermediate_node_outputs = {}  # type: Dict[Node, Dict[str, Promise]]
+        for k, v in self._inputs.items():
+            python_input_value = kwargs[k]
+            python_type = self._python_interface.inputs[k]
+            literal = TypeEngine.to_literal(ctx, python_input_value, python_type, self.interface.inputs[k].type)
+            if v.ref.node not in intermediate_node_outputs:
+                intermediate_node_outputs[v.ref.node] = {}
+            intermediate_node_outputs[v.ref.node][v.var] = Promise(var=v.var, val=literal)
+
+        # import ipdb; ipdb.set_trace()
+        for node in self.compilation_state.nodes:
+            entity = node.flyte_entity
+            # What do we call the entity with?
+            entity_kwargs = {}
+            for b in node.bindings:
+                binding_data = b.binding
+                if binding_data.promise is not None:
+                    if isinstance(binding_data.promise, NodeOutput):
+                        import ipdb; ipdb.set_trace()
+                        # b.var is the name of the input to the task
+                        # binding_data.promise.var is the name of the upstream node's output we want
+                        entity_kwargs[b.var] = intermediate_node_outputs[binding_data.promise.node][binding_data.promise.var]
+                    else:
+                        raise Exception("fdsa")
+
+            results = entity(**entity_kwargs)
+
+            # results should be Promises containing literals, we need to match them up to
+            import ipdb; ipdb.set_trace()
 
     def ready(self) -> bool:
         """
@@ -142,6 +255,13 @@ class WorkflowTwo(object):
         These conditions assume that all nodes and workflow i/o changes were done with the functions above, which
         do additional checking.
         """
+        if len(self.compilation_state.nodes) == 0:
+            return False
+
+        if len(self._unbound_inputs) > 0:
+            return False
+
+        return True
 
 
 class Workflow(ClassStorageTaskResolver):
@@ -187,16 +307,6 @@ class Workflow(ClassStorageTaskResolver):
     @property
     def short_name(self) -> str:
         return self._name.split(".")[-1]
-
-    @classmethod
-    def define(cls, name: str):
-        def blah():
-            raise Exception("fds")
-
-        wf = cls(workflow_function=blah, metadata=None, default_metadata=None)
-
-
-
 
     @property
     def python_interface(self) -> Interface:

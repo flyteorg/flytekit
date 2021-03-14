@@ -315,7 +315,6 @@ class FlyteContext(object):
         user_space_params: ExecutionParameters = None,
         serialization_settings: SerializationSettings = None,
     ):
-        # TODO: Should we have this auto-parenting feature?
         if parent is None and len(FlyteContext.OBJS) > 0:
             parent = FlyteContext.OBJS[-1]
 
@@ -344,6 +343,30 @@ class FlyteContext(object):
         if len(cls.OBJS) == 0:
             raise Exception("There should pretty much always be a base context object.")
         return cls.OBJS[-1]
+
+    @contextmanager
+    def new_context(self,
+        file_access: _data_proxy.FileAccessProvider = None,
+        compilation_state: CompilationState = None,
+        execution_state: ExecutionState = None,
+        flyte_client: friendly_client.SynchronousFlyteClient = None,
+        user_space_params: ExecutionParameters = None,
+        serialization_settings: SerializationSettings = None,
+    ):
+        new_ctx = FlyteContext(
+            parent=self,
+            file_access=file_access,
+            compilation_state=compilation_state,
+            execution_state=execution_state,
+            flyte_client=flyte_client,
+            user_space_params=user_space_params,
+            serialization_settings=serialization_settings,
+        )
+        FlyteContext.OBJS.append(new_ctx)
+        try:
+            yield new_ctx
+        finally:
+            FlyteContext.OBJS.pop()
 
     @property
     def file_access(self) -> _data_proxy.FileAccessProvider:
