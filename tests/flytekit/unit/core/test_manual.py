@@ -16,7 +16,7 @@ def test_wf2():
     wb = WorkflowTwo(name="my.workflow")
     wb.add_workflow_input("in1", str)
     node = wb.add_entity(t1, a=wb.inputs["in1"])
-    wb.add_workflow_output("from_n0t1", str, node.o0)
+    wb.add_workflow_output("from_n0t1", str, node.outputs["o0"])
     print(node)
     print(wb)
 

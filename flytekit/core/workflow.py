@@ -183,45 +183,35 @@ class WorkflowTwo(object):
         Calling a Flyte entity typically results in one of two things happening:
           * We're in a compiling state, so we need to create a node and return promises pointing to that node
             Deal with this later.
-          * We're running locally so we need to run through the actual body of the code and return Python native values
+          * We're running locally so we need to run through the actual body of the code and return Python native values.
+            This is further separated into two sub-options. Either we're
+            * starting off the local run, in which case we need to convert things to and from Python native values
+            * or this is being called as a subworkflow and we're already in a local execution context.
 
-        This second workflow style is more difficult to run locally.
-        because everything has to be bound at creation time, the linear order will always be okay.
-        what is the relationship between the new workflow and the old workflow?
-          - compilation style is different
-          - local run style is different
-          - translation is different, but the contain the same things.
-          - calling both should produce a node
+        This second workflow style is more difficult to run locally because there is no python function and python
+        interpreter to direct the data flow and execution of tasks (or other workflows or launch plans).
+        However, since everything has to be bound at creation time, the linear order will always be okay.
 
-        how do you run something locally?
+        TODO - Clean up the two workflow classes-
+            What is the relationship between this class and the Workflow class? How can we clean up all this copy/paste
+              - compilation style is different
+              - local run style is different
+              - translation is different, but the contain the same things.
+              - calling both should produce a node
 
-        how do you run something normally?
-        get python to call the first item.
-        record outputs
-        python will use the right outputs when calling the next item.
-
-        python will know which outputs are the final outputs
-
-        def x():
-          a, b = t()
-          c = y(a, b)
-          return c
-
-        how do you know what to call an entity with.
-
-        top level inputs need to be fulfilled.
-
-        when you add an entity, you specify the promises.  t2, a=n1.o1 this gets saved in bindings
-        what happens when you call it, retrieve the bindings, turn them back into promises, call the entities as normal,
-        capture the resulting promises, which can be used to further fulfill more bindings
+        Basically what we want to do is store all the outputs of each node in a way that downstream nodes can access
+        them based on their bindings. We go one node at a time until we're all done and then we use the workflow's
+        output bindings to determine the final outputs
         """
-        # All the nodes already have their promises set up. Those promises point to NodeOutput objects. We want to
-        # make use of their structure, but we want to fulfill the promises.
         ctx = FlyteContext.current_context()
+
+        # The first condition is compilation.
         if ctx.compilation_state is not None:
             input_kwargs = self.python_interface.default_inputs_as_kwargs
             input_kwargs.update(kwargs)
             return create_and_link_node(ctx, entity=self, interface=self.python_interface, **input_kwargs)
+
+        # Next is executing as a subworkflow
         elif (
             ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
@@ -235,6 +225,8 @@ class WorkflowTwo(object):
                     return None
             # We are already in a local execution, just continue the execution context
             return self._local_execute(ctx, **kwargs)
+
+        # Last is starting a local workflow execution
         else:
             for k, v in kwargs.items():
                 if k not in self.interface.inputs:
@@ -270,13 +262,13 @@ class WorkflowTwo(object):
 
             raise ValueError("expected outputs and actual outputs do not match")
 
-        # import ipdb; ipdb.set_trace()
-
-    # TODO: Make this class work with patch
+    # TODO: Make this class work with patch.  We'll need to add an execute function somehow that the patcher
+    #  can override
 
     def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
-        # Create a map of old Promises (pointing to node outputs) to new Promises (containing literal values)
+        # Create a map that holds the outputs of each node.
         intermediate_node_outputs = {}  # type: Dict[Node, Dict[str, Promise]]
+        # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
         for k, v in self._inputs.items():
             python_input_value = kwargs[k]
             python_type = self._python_interface.inputs[k]
@@ -285,7 +277,7 @@ class WorkflowTwo(object):
                 intermediate_node_outputs[v.ref.node] = {}
             intermediate_node_outputs[v.ref.node][v.var] = Promise(var=v.var, val=literal)
 
-        # import ipdb; ipdb.set_trace()
+        # Next iterate through the nodes in order.
         for node in self.compilation_state.nodes:
             if node not in intermediate_node_outputs.keys():
                 intermediate_node_outputs[node] = {}
@@ -305,6 +297,7 @@ class WorkflowTwo(object):
                     else:
                         raise Exception("fdsa")
 
+            # Handle the calling and outputs of each node's entity
             results = entity(**entity_kwargs)
             expected_output_names = list(entity.interface.outputs.keys())
 
@@ -335,9 +328,13 @@ class WorkflowTwo(object):
                 for idx, r in enumerate(results):
                     intermediate_node_outputs[node][expected_output_names[idx]] = r
 
+        # The rest of this function looks like the above but now we're doing it for the workflow as a whole rather
+        # than just one node at a time.
         if len(self.python_interface.outputs) == 0:
             return VoidPromise(self.name)
 
+        # Please see the _local_execute in the main Workflow class for more detailed comments. Most of this code
+        # has been copied from that.
         wf_outputs_as_map = {}
         for ob in self._output_bindings:
             # TODO: How can this work for lists?

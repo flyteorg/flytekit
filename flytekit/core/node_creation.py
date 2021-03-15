@@ -86,6 +86,16 @@ def create_node(
         # VoidPromise, Promise, or our custom namedtuple of Promises.
         node = ctx.compilation_state.nodes[-1]
 
+        # In addition to storing the outputs on the object itself, we also want to set them in a map. When used by
+        # the imperative workflow patterns, users will probably find themselves doing things like
+        #   n = create_node(...)  # then
+        #   output_name = "o0"
+        #   n.outputs[output_name]  # rather than
+        #   n.o0
+        # That is, they'll likely have the name of the output stored as a string variable, and dicts provide cleaner
+        # access than getattr
+        node.outputs = {}
+
         # If a VoidPromise, just return the node.
         if isinstance(outputs, VoidPromise):
             return node
@@ -103,6 +113,7 @@ def create_node(
                     if hasattr(node, output_name):
                         raise Exception(f"Node {node} already has attribute {output_name}, change the name of output.")
                     setattr(node, output_name, attr)
+                    node.outputs[output_name] = attr
             else:
                 output_names = entity.python_interface.output_names
                 if len(output_names) != 1:
@@ -112,6 +123,7 @@ def create_node(
                     raise Exception(f"Node {node} already has attribute {output_names[0]}, change the name of output.")
 
                 setattr(node, output_names[0], outputs)  # This should be a singular Promise
+                node.outputs[output_names[0]] = outputs
 
         return node
 
