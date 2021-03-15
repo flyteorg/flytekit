@@ -5,7 +5,7 @@ from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.node_creation import create_node
 from flytekit.core.task import task
-from flytekit.core.workflow import workflow, Workflow, WorkflowTwo
+from flytekit.core.workflow import Workflow, WorkflowTwo, workflow
 
 
 def test_wf2():

@@ -10,7 +10,7 @@ from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteEntities, CompilationState
+from flytekit.core.context_manager import BranchEvalMode, CompilationState, ExecutionState, FlyteContext, FlyteEntities
 from flytekit.core.interface import (
     Interface,
     transform_inputs_to_parameters,
@@ -92,7 +92,6 @@ def construct_input_promises(inputs: List[str]):
 
 
 class WorkflowTwo(object):
-
     def __init__(self, name: str):
         self._name = name
         self._compilation_state = CompilationState(prefix="")
@@ -116,18 +115,28 @@ class WorkflowTwo(object):
 
     @property
     def compilation_state(self) -> CompilationState:
+        """
+        Compilation is done a bit at a time, one task or other entity call at a time. This is why this workflow
+        class has to keep track of its own compilation state.
+        """
         return self._compilation_state
 
     @property
     def inputs(self) -> Dict[str, Promise]:
+        """
+        This holds the input promises to the workflow. The nodes in these Promise objects should always be from
+        the global start node.
+        """
         return self._inputs
 
     def __repr__(self):
-        return f"WorkflowTwo - {self._name} && " \
-               f"Inputs ({len(self._python_interface.inputs)}): {self._python_interface.inputs} && " \
-               f"Outputs ({len(self._python_interface.outputs)}): {self._python_interface.outputs} && " \
-               f"Output bindings: {self._output_bindings} && " \
-               f"Nodes ({len(self.compilation_state.nodes)}): {self.compilation_state.nodes}"
+        return (
+            f"WorkflowTwo - {self._name} && "
+            f"Inputs ({len(self._python_interface.inputs)}): {self._python_interface.inputs} && "
+            f"Outputs ({len(self._python_interface.outputs)}): {self._python_interface.outputs} && "
+            f"Output bindings: {self._output_bindings} && "
+            f"Nodes ({len(self.compilation_state.nodes)}): {self.compilation_state.nodes}"
+        )
 
     def add_entity(self, entity: PythonAutoContainerTask, **kwargs) -> Node:
         """
@@ -173,7 +182,9 @@ class WorkflowTwo(object):
         if ctx.compilation_state is not None:
             raise Exception("Can't already be compiling")
         with ctx.new_context(compilation_state=self.compilation_state) as ctx:
-            b = binding_from_python_std(ctx, output_name, expected_literal_type=flyte_type, t_value=p, t_value_type=python_type)
+            b = binding_from_python_std(
+                ctx, output_name, expected_literal_type=flyte_type, t_value=p, t_value_type=python_type
+            )
             self._output_bindings.append(b)
             self._python_interface = self._python_interface.with_outputs(extra_outputs={output_name: python_type})
             self._interface = transform_interface_to_typed_interface(self._python_interface)
@@ -293,7 +304,9 @@ class WorkflowTwo(object):
                         # import ipdb; ipdb.set_trace()
                         # b.var is the name of the input to the task
                         # binding_data.promise.var is the name of the upstream node's output we want
-                        entity_kwargs[b.var] = intermediate_node_outputs[binding_data.promise.node][binding_data.promise.var]
+                        entity_kwargs[b.var] = intermediate_node_outputs[binding_data.promise.node][
+                            binding_data.promise.var
+                        ]
                     else:
                         raise Exception("fdsa")
 
@@ -311,9 +324,7 @@ class WorkflowTwo(object):
 
             # Because we should've already returned in the above check, we just raise an Exception here.
             if len(entity.python_interface.outputs) == 0:
-                raise FlyteValueException(
-                    results, f"{results} received but should've been VoidPromise or None."
-                )
+                raise FlyteValueException(results, f"{results} received but should've been VoidPromise or None.")
 
             # if there's only one output,
             if len(expected_output_names) == 1:

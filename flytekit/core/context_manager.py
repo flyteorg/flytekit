@@ -345,7 +345,8 @@ class FlyteContext(object):
         return cls.OBJS[-1]
 
     @contextmanager
-    def new_context(self,
+    def new_context(
+        self,
         file_access: _data_proxy.FileAccessProvider = None,
         compilation_state: CompilationState = None,
         execution_state: ExecutionState = None,

@@ -27,6 +27,7 @@ class Node(object):
         self._upstream_nodes = upstream_nodes
         self._flyte_entity = flyte_entity
         self._aliases: _workflow_model.Alias = None
+        self._outputs = None
 
     def runs_before(self, other: Node):
         """
@@ -41,6 +42,12 @@ class Node(object):
 
     def __rshift__(self, other: Node):
         self.runs_before(other)
+
+    @property
+    def outputs(self):
+        if self._outputs is None:
+            raise AssertionError("Cannot use outputs with all Nodes, node must've been created from create_node()")
+        return self._outputs
 
     @property
     def id(self) -> str:

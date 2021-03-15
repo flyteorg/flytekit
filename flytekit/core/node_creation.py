@@ -94,7 +94,7 @@ def create_node(
         #   n.o0
         # That is, they'll likely have the name of the output stored as a string variable, and dicts provide cleaner
         # access than getattr
-        node.outputs = {}
+        node._outputs = {}
 
         # If a VoidPromise, just return the node.
         if isinstance(outputs, VoidPromise):
