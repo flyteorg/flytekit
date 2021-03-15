@@ -20,4 +20,4 @@ def test_wf2():
     print(node)
     print(wb)
 
-    wb(in1="hello")
+    assert wb(in1="hello") == "hello world"

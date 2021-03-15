@@ -103,6 +103,10 @@ class WorkflowTwo(object):
         self._output_bindings = []
 
     @property
+    def name(self) -> str:
+        return self._name
+
+    @property
     def python_interface(self) -> Interface:
         return self._python_interface
 
@@ -214,7 +218,63 @@ class WorkflowTwo(object):
         # All the nodes already have their promises set up. Those promises point to NodeOutput objects. We want to
         # make use of their structure, but we want to fulfill the promises.
         ctx = FlyteContext.current_context()
+        if ctx.compilation_state is not None:
+            input_kwargs = self.python_interface.default_inputs_as_kwargs
+            input_kwargs.update(kwargs)
+            return create_and_link_node(ctx, entity=self, interface=self.python_interface, **input_kwargs)
+        elif (
+            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+        ):
+            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
+                if self.python_interface and self.python_interface.output_tuple_name:
+                    variables = [k for k in self.python_interface.outputs.keys()]
+                    output_tuple = collections.namedtuple(self.python_interface.output_tuple_name, variables)
+                    nones = [None for _ in self.python_interface.outputs.keys()]
+                    return output_tuple(*nones)
+                else:
+                    return None
+            # We are already in a local execution, just continue the execution context
+            return self._local_execute(ctx, **kwargs)
+        else:
+            for k, v in kwargs.items():
+                if k not in self.interface.inputs:
+                    raise ValueError(f"Received unexpected keyword argument {k}")
+                if isinstance(v, Promise):
+                    raise ValueError(f"Received a promise for a workflow call, when expecting a native value for {k}")
 
+            with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
+                result = self._local_execute(ctx, **kwargs)
+
+            expected_outputs = len(self.python_interface.outputs)
+            if expected_outputs == 0:
+                if result is None or isinstance(result, VoidPromise):
+                    return None
+                else:
+                    raise Exception(f"Workflow local execution expected 0 outputs but something received {result}")
+
+            if (expected_outputs > 1 and len(result) == expected_outputs) or (
+                expected_outputs == 1 and result is not None
+            ):
+                if isinstance(result, Promise):
+                    v = [v for k, v in self.python_interface.outputs.items()][0]  # get output native type
+                    return TypeEngine.to_python_value(ctx, result.val, v)
+                else:
+                    for prom in result:
+                        if not isinstance(prom, Promise):
+                            raise Exception("should be promises")
+                        native_list = [
+                            TypeEngine.to_python_value(ctx, promise.val, self.python_interface.outputs[promise.var])
+                            for promise in result
+                        ]
+                        return tuple(native_list)
+
+            raise ValueError("expected outputs and actual outputs do not match")
+
+        # import ipdb; ipdb.set_trace()
+
+    # TODO: Make this class work with patch
+
+    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         # Create a map of old Promises (pointing to node outputs) to new Promises (containing literal values)
         intermediate_node_outputs = {}  # type: Dict[Node, Dict[str, Promise]]
         for k, v in self._inputs.items():
@@ -227,14 +287,18 @@ class WorkflowTwo(object):
 
         # import ipdb; ipdb.set_trace()
         for node in self.compilation_state.nodes:
+            if node not in intermediate_node_outputs.keys():
+                intermediate_node_outputs[node] = {}
+
             entity = node.flyte_entity
             # What do we call the entity with?
             entity_kwargs = {}
             for b in node.bindings:
                 binding_data = b.binding
+                # TODO: Handle lists and maps
                 if binding_data.promise is not None:
                     if isinstance(binding_data.promise, NodeOutput):
-                        import ipdb; ipdb.set_trace()
+                        # import ipdb; ipdb.set_trace()
                         # b.var is the name of the input to the task
                         # binding_data.promise.var is the name of the upstream node's output we want
                         entity_kwargs[b.var] = intermediate_node_outputs[binding_data.promise.node][binding_data.promise.var]
@@ -242,9 +306,53 @@ class WorkflowTwo(object):
                         raise Exception("fdsa")
 
             results = entity(**entity_kwargs)
+            expected_output_names = list(entity.interface.outputs.keys())
 
-            # results should be Promises containing literals, we need to match them up to
-            import ipdb; ipdb.set_trace()
+            if isinstance(results, VoidPromise) or results is None:
+                if len(entity.python_interface.outputs) != 0:
+                    raise FlyteValueException(
+                        results,
+                        f"{results} received but interface has {len(entity.python_interface.outputs)} outputs.",
+                    )
+                continue  # Move along, nothing to assign
+
+            # Because we should've already returned in the above check, we just raise an Exception here.
+            if len(entity.python_interface.outputs) == 0:
+                raise FlyteValueException(
+                    results, f"{results} received but should've been VoidPromise or None."
+                )
+
+            # if there's only one output,
+            if len(expected_output_names) == 1:
+                if entity.python_interface.output_tuple_name and isinstance(results, tuple):
+                    intermediate_node_outputs[node][expected_output_names[0]] = results[0]
+                else:
+                    intermediate_node_outputs[node][expected_output_names[0]] = results
+
+            else:
+                if len(results) != len(expected_output_names):
+                    raise FlyteValueException(f"Different lengths {results} {expected_output_names}")
+                for idx, r in enumerate(results):
+                    intermediate_node_outputs[node][expected_output_names[idx]] = r
+
+        if len(self.python_interface.outputs) == 0:
+            return VoidPromise(self.name)
+
+        wf_outputs_as_map = {}
+        for ob in self._output_bindings:
+            # TODO: How can this work for lists?
+            binding_data = ob.binding
+            wf_outputs_as_map[ob.var] = intermediate_node_outputs[binding_data.promise.node][binding_data.promise.var]
+
+        wf_outputs_as_literal_dict = translate_inputs_to_literals(
+            ctx,
+            wf_outputs_as_map,
+            flyte_interface_types=self.interface.outputs,
+            native_types=self.python_interface.outputs,
+        )
+
+        new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in list(self.interface.outputs.keys())]
+        return create_task_output(new_promises, self.python_interface)
 
     def ready(self) -> bool:
         """
