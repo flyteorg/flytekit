@@ -47,9 +47,7 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             task_config,
             task_function,
             task_type=self._PYTORCH_TASK_TYPE,
-            requests=task_config.per_replica_requests,
-            limits=task_config.per_replica_limits,
-            **kwargs
+            **{**kwargs, "requests": task_config.per_replica_requests, "limits": task_config.per_replica_limits}
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
