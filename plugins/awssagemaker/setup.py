@@ -6,7 +6,7 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = ["flytekit>=0.16.0b0,<1.0.0", "sagemaker-training>=3.6.2,<4.0.0"]
 
-__version__ = "develop"
+__version__ = "0.0.0+develop"
 
 # TODO: move sagemaker install script here.
 setup(

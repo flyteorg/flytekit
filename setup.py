@@ -35,7 +35,7 @@ extras_require = {
     "all": spark3 + all_but_spark,
 }
 
-__version__ = "develop"
+__version__ = "0.0.0+develop"
 
 setup(
     name="flytekit",

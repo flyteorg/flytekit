@@ -14,7 +14,7 @@ build_all_plugins:
 publish_all_plugins:
 	twine upload */dist/*
 
-PLACEHOLDER := "__version__\ =\ \"develop\""
+PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""
 VERSION_FILE := "setup.py"
 
 .PHONY: update_all_versions

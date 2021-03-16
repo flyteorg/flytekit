@@ -66,7 +66,7 @@ coverage:
 	coverage run -m pytest tests/flytekit/unit/core flytekit/types plugins/tests
 	coverage report -m --include="flytekit/core/*,flytekit/types/*,plugins/*"
 
-PLACEHOLDER := "__version__\ =\ \"develop\""
+PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""
 
 .PHONY: update_version
 update_version:
