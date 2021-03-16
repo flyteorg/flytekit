@@ -131,7 +131,7 @@ from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, wo
 from flytekit.loggers import logger
 from flytekit.types import schema
 
-__version__ = "develop"
+__version__ = "0.0.0+develop"
 
 
 def current_context() -> ExecutionParameters:
