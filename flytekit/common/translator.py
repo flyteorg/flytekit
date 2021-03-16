@@ -15,7 +15,7 @@ from flytekit.core.node import Node
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity
 from flytekit.core.task import ReferenceTask
-from flytekit.core.workflow import ReferenceWorkflow, Workflow, WorkflowFailurePolicy, WorkflowMetadata
+from flytekit.core.workflow import ReferenceWorkflow, Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowTwo
 from flytekit.models import common as _common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
@@ -32,6 +32,7 @@ FlyteLocalEntity = Union[
     Node,
     LaunchPlan,
     Workflow,
+    WorkflowTwo,
     ReferenceWorkflow,
     ReferenceTask,
     ReferenceLaunchPlan,
@@ -179,6 +180,36 @@ def get_serializable_workflow(
     return cp_entity
 
 
+def get_serializable_workflow_two(
+    entity_mapping: OrderedDict, settings: SerializationSettings, entity: WorkflowTwo, fast: bool,
+) -> FlyteControlPlaneEntity:
+    workflow_id = _identifier_model.Identifier(
+        _identifier_model.ResourceType.WORKFLOW, settings.project, settings.domain, entity.name, settings.version
+    )
+
+    # Translate nodes
+    upstream_sdk_nodes = [
+        get_serializable(entity_mapping, settings, n)
+        for n in entity.compilation_state.nodes
+        if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
+    ]
+
+    cp_entity = SdkWorkflow(
+        nodes=upstream_sdk_nodes,
+        id=workflow_id,
+        metadata=entity.workflow_metadata.to_flyte_model(),
+        metadata_defaults=entity.workflow_metadata_defaults.to_flyte_model(),
+        interface=entity.interface,
+        output_bindings=entity.output_bindings,
+    )
+    # Reset just to make sure it's what we give it
+    cp_entity.id._project = settings.project
+    cp_entity.id._domain = settings.domain
+    cp_entity.id._name = entity.name
+    cp_entity.id._version = settings.version
+    return cp_entity
+
+
 def get_serializable_launch_plan(
     entity_mapping: OrderedDict, settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool,
 ) -> FlyteControlPlaneEntity:
@@ -316,6 +347,9 @@ def get_serializable(
 
     elif isinstance(entity, Workflow):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, fast)
+
+    elif isinstance(entity, WorkflowTwo):
+        cp_entity = get_serializable_workflow_two(entity_mapping, settings, entity, fast)
 
     elif isinstance(entity, Node):
         cp_entity = get_serializable_node(entity_mapping, settings, entity, fast)

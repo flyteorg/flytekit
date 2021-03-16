@@ -91,9 +91,56 @@ def construct_input_promises(inputs: List[str]):
     }
 
 
+# given a binding to a binding collection, want to return a literal collection.
+def get_promise(binding_data: _literal_models.BindingData, outputs_cache: Dict[Node, Dict[str, Promise]]) -> Promise:
+    if binding_data.promise is not None:
+        if not isinstance(binding_data.promise, NodeOutput):
+            raise FlyteValidationException(
+                f"Binding data Promises have to be of the NodeOutput type {type(binding_data.promise)} found"
+            )
+        # b.var is the name of the input to the task
+        # binding_data.promise.var is the name of the upstream node's output we want
+        return outputs_cache[binding_data.promise.node][binding_data.promise.var]
+    elif binding_data.scalar is not None:
+        return Promise(var="placeholder", val=_literal_models.Literal(scalar=binding_data.scalar))
+    elif binding_data.collection is not None:
+        literals = []
+        for bd in binding_data.collection.bindings:
+            p = get_promise(bd, outputs_cache)
+            literals.append(p.val)
+        return Promise(
+            var="placeholder",
+            val=_literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literals)),
+        )
+    elif binding_data.map is not None:
+        literals = {}
+        for k, bd in binding_data.map.bindings.items():
+            p = get_promise(bd, outputs_cache)
+            literals[k] = p.val
+        return Promise(
+            var="placeholder", val=_literal_models.Literal(map=_literal_models.LiteralMap(literals=literals))
+        )
+
+    raise FlyteValidationException("Binding type unrecognized.")
+
+
+def get_promise_map(
+    bindings: List[_literal_models.Binding], outputs_cache: Dict[Node, Dict[str, Promise]]
+) -> Dict[str, Promise]:
+    entity_kwargs = {}
+    for b in bindings:
+        entity_kwargs[b.var] = get_promise(b.binding, outputs_cache)
+
+    return entity_kwargs
+
+
 class WorkflowTwo(object):
-    def __init__(self, name: str):
+    def __init__(
+        self, name: str, failure_policy: Optional[WorkflowFailurePolicy] = None, interruptible: Optional[bool] = False,
+    ):
         self._name = name
+        self._workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
+        self._workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
         self._compilation_state = CompilationState(prefix="")
         self._python_interface = Interface()
         self._interface = None
@@ -106,12 +153,24 @@ class WorkflowTwo(object):
         return self._name
 
     @property
+    def workflow_metadata(self) -> Optional[WorkflowMetadata]:
+        return self._workflow_metadata
+
+    @property
+    def workflow_metadata_defaults(self):
+        return self._workflow_metadata_defaults
+
+    @property
     def python_interface(self) -> Interface:
         return self._python_interface
 
     @property
     def interface(self) -> _interface_models.TypedInterface:
         return self._interface
+
+    @property
+    def output_bindings(self) -> List[_literal_models.Binding]:
+        return self._output_bindings
 
     @property
     def compilation_state(self) -> CompilationState:
@@ -151,8 +210,22 @@ class WorkflowTwo(object):
         with ctx.new_context(compilation_state=self.compilation_state) as ctx:
             n = create_node(entity=entity, **kwargs)
 
-            # Every time an entity is added, see if
-            for input_name, input_value in kwargs.items():
+            def get_input_values(input_value):
+                if isinstance(input_value, list):
+                    input_promises = []
+                    for x in input_value:
+                        input_promises.extend(get_input_values(x))
+                    return input_promises
+                if isinstance(input_value, dict):
+                    input_promises = []
+                    for _, v in input_value.items():
+                        input_promises.extend(get_input_values(v))
+                    return input_promises
+                else:
+                    return [input_value]
+
+            # Every time an entity is added, mark it as used.
+            for input_value in get_input_values(kwargs):
                 if input_value in self._unbound_inputs:
                     self._unbound_inputs.remove(input_value)
             return n
@@ -293,22 +366,10 @@ class WorkflowTwo(object):
             if node not in intermediate_node_outputs.keys():
                 intermediate_node_outputs[node] = {}
 
+            # Retrieve the entity from the node, and call it by looking up the promises the node's bindings require,
+            # and then fill them in using the node output tracker map we have.
             entity = node.flyte_entity
-            # What do we call the entity with?
-            entity_kwargs = {}
-            for b in node.bindings:
-                binding_data = b.binding
-                # TODO: Handle lists and maps
-                if binding_data.promise is not None:
-                    if isinstance(binding_data.promise, NodeOutput):
-                        # import ipdb; ipdb.set_trace()
-                        # b.var is the name of the input to the task
-                        # binding_data.promise.var is the name of the upstream node's output we want
-                        entity_kwargs[b.var] = intermediate_node_outputs[binding_data.promise.node][
-                            binding_data.promise.var
-                        ]
-                    else:
-                        raise Exception("fdsa")
+            entity_kwargs = get_promise_map(node.bindings, intermediate_node_outputs)
 
             # Handle the calling and outputs of each node's entity
             results = entity(**entity_kwargs)
