@@ -16,7 +16,7 @@ def test_secrets_manager_default():
 def test_secrets_manager_get_envvar():
     sec = SecretsManager()
     assert sec.get_secrets_env_var("test") == f"{secrets.SECRETS_ENV_PREFIX.get()}TEST"
-    assert sec.get_secrets_env_var("test", secrets_group="group") == f"{secrets.SECRETS_ENV_PREFIX.get()}GROUP.TEST"
+    assert sec.get_secrets_env_var("test", secrets_group="group") == f"{secrets.SECRETS_ENV_PREFIX.get()}GROUP_TEST"
 
 
 def test_secrets_manager_get_file():

@@ -72,7 +72,7 @@ class SecretsManager(object):
 
     def get_secrets_env_var(self, key: str, secrets_group: typing.Optional[str] = None) -> str:
         if secrets_group:
-            return f"{self._env_prefix}{secrets_group.upper()}.{key.upper()}"
+            return f"{self._env_prefix}{secrets_group.upper()}_{key.upper()}"
         return f"{self._env_prefix}{key.upper()}"
 
     def get_secrets_file(self, key: str, secrets_group: typing.Optional[str] = None) -> str:
