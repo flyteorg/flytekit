@@ -9,7 +9,7 @@ plugin_requires = [
     "kubernetes>=12.0.1",
 ]
 
-__version__ = "develop"
+__version__ = "0.0.0+develop"
 
 setup(
     name=microlib_name,
