@@ -186,7 +186,7 @@ def serialize_all(
                 else:
                     get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
 
-                if isinstance(entity, Workflow):
+                if isinstance(entity, Workflow) or isinstance(entity, WorkflowTwo):
                     lp = LaunchPlan.get_default_launch_plan(ctx, entity)
                     get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp)
 
