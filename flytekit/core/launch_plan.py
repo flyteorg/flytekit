@@ -23,7 +23,7 @@ class LaunchPlan(object):
         if workflow.name in LaunchPlan.CACHE:
             return LaunchPlan.CACHE[workflow.name]
 
-        parameter_map = transform_inputs_to_parameters(ctx, workflow._native_interface)
+        parameter_map = transform_inputs_to_parameters(ctx, workflow.python_interface)
 
         lp = LaunchPlan(
             name=workflow.name,
