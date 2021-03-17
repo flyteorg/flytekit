@@ -240,14 +240,17 @@ class WorkflowTwo(object):
         self._interface = transform_interface_to_typed_interface(self._python_interface)
         self._inputs[input_name] = Promise(var=input_name, val=NodeOutput(node=GLOBAL_START_NODE, var=input_name))
         self._unbound_inputs.add(self._inputs[input_name])
-        return self._python_interface
+        return self._inputs[input_name]
 
-    def add_workflow_output(self, output_name: str, python_type: Type, p: Promise):
+    def add_workflow_output(self, output_name: str, p: Promise):
         """
         Add an output with the given name from the given node output.
         """
         if output_name in self._python_interface.outputs:
             raise FlyteValueException("already out")
+
+        python_type = p.ref.node.flyte_entity.python_interface.outputs[p.var]
+        print(python_type)
 
         flyte_type = TypeEngine.to_literal_type(python_type=python_type)
 

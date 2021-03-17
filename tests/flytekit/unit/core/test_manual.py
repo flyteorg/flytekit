@@ -6,6 +6,7 @@ from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowTwo
+from flytekit.core.launch_plan import LaunchPlan
 
 
 def test_wf2():
@@ -21,7 +22,7 @@ def test_wf2():
     wb.add_workflow_input("in1", str)
     node = wb.add_entity(t1, a=wb.inputs["in1"])
     wb.add_entity(t2)
-    wb.add_workflow_output("from_n0t1", str, node.outputs["o0"])
+    wb.add_workflow_output("from_n0t1", node.outputs["o0"])
 
     assert wb(in1="hello") == "hello world"
 
@@ -36,6 +37,11 @@ def test_wf2():
     srz_wf = get_serializable(OrderedDict(), serialization_settings, wb)
     print(srz_wf)
 
+    # Create launch plan from wf, that can also be serialized.
+    lp = LaunchPlan.create("test_wb", wb)
+    srz_lp = get_serializable(OrderedDict(), serialization_settings, lp)
+    print(srz_lp)
+
 
 def test_wf2_list_bound():
     @task
@@ -46,7 +52,7 @@ def test_wf2_list_bound():
     wb.add_workflow_input("in1", int)
     wb.add_workflow_input("in2", int)
     node = wb.add_entity(t1, a=[wb.inputs["in1"], wb.inputs["in2"]])
-    wb.add_workflow_output("from_n0t1", int, node.outputs["o0"])
+    wb.add_workflow_output("from_n0t1", node.outputs["o0"])
 
     assert wb(in1=3, in2=4) == 7
 
@@ -61,7 +67,7 @@ def test_wf2_map_bound():
     wb.add_workflow_input("in2", int)
     wb.add_workflow_input("in3", int)
     node = wb.add_entity(t1, a={"a": [wb.inputs["in1"], wb.inputs["in2"]], "b": [wb.inputs["in3"], wb.inputs["in3"]]})
-    wb.add_workflow_output("from_n0t1", typing.Dict[str, int], node.outputs["o0"])
+    wb.add_workflow_output("from_n0t1", node.outputs["o0"])
 
     assert wb(in1=3, in2=4, in3=5) == {"a": 7, "b": 10}
 
@@ -78,9 +84,24 @@ def test_wf2_with_list_io():
     wb = WorkflowTwo(name="my.workflow.a")
     t1_node = wb.add_entity(t1, a=2)
     t2_node = wb.add_entity(t2, a=t1_node.outputs["o0"])
-    wb.add_workflow_output("from_n0t2", int, t2_node.outputs["o0"])
+    wb.add_workflow_output("from_n0t2", t2_node.outputs["o0"])
 
     assert wb() == 6
 
 
-# Get patch to patch
+def test_wf2_wf_list_input():
+    @task
+    def t1(a: int) -> typing.List[int]:
+        return [1, a, 3]
+
+    @task
+    def t2(a: typing.List[int], b: typing.List[int]) -> int:
+        return sum(a) + sum(b)
+
+    wb = WorkflowTwo(name="my.workflow.a")
+    wf_in1 = wb.add_workflow_input("in1", typing.List[int])
+    t1_node = wb.add_entity(t1, a=2)
+    t2_node = wb.add_entity(t2, a=t1_node.outputs["o0"], b=wf_in1)
+    wb.add_workflow_output("from_n0t2", t2_node.outputs["o0"])
+
+    assert wb(in1=[5, 6, 7]) == 24

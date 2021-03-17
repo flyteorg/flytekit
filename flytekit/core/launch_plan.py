@@ -51,13 +51,13 @@ class LaunchPlan(object):
         fixed_inputs = fixed_inputs or {}
         # Default inputs come from two places, the original signature of the workflow function, and the default_inputs
         # argument to this function. We'll take the latter as having higher precedence.
-        wf_signature_parameters = transform_inputs_to_parameters(ctx, workflow._native_interface)
+        wf_signature_parameters = transform_inputs_to_parameters(ctx, workflow.python_interface)
 
         # Construct a new Interface object with just the default inputs given to get Parameters, maybe there's an
         # easier way to do this, think about it later.
         temp_inputs = {}
         for k, v in default_inputs.items():
-            temp_inputs[k] = (workflow._native_interface.inputs[k], v)
+            temp_inputs[k] = (workflow.python_interface.inputs[k], v)
         temp_interface = Interface(inputs=temp_inputs, outputs={})
         temp_signature = transform_inputs_to_parameters(ctx, temp_interface)
         wf_signature_parameters._parameters.update(temp_signature.parameters)
@@ -68,7 +68,7 @@ class LaunchPlan(object):
             ctx,
             incoming_values=fixed_inputs,
             flyte_interface_types=workflow.interface.inputs,
-            native_types=workflow._native_interface.inputs,
+            native_types=workflow.python_interface.inputs,
         )
         fixed_lm = _literal_models.LiteralMap(literals=fixed_literals)
 

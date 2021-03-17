@@ -100,9 +100,6 @@ def create_node(
         if isinstance(outputs, VoidPromise):
             return node
 
-        # TODO: Change the outputs adding to be a dict in addition to the attr setting
-        #   Will the local execution tuple will need to be updated to be a special obj too?
-
         # If a Promise or custom namedtuple of Promises, we need to attach each output as an attribute to the node.
         if entity.python_interface.outputs:
             if isinstance(outputs, tuple):
