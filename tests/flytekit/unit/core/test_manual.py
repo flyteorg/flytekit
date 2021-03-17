@@ -4,9 +4,18 @@ from collections import OrderedDict
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowTwo, workflow
-from flytekit.core.launch_plan import LaunchPlan
+
+default_img = Image(name="default", fqn="test", tag="tag")
+serialization_settings = context_manager.SerializationSettings(
+    project="project",
+    domain="domain",
+    version="version",
+    env=None,
+    image_config=ImageConfig(default_image=default_img, images=[default_img]),
+)
 
 
 def test_wf2():
@@ -26,21 +35,18 @@ def test_wf2():
 
     assert wb(in1="hello") == "hello world"
 
-    default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
-        project="project",
-        domain="domain",
-        version="version",
-        env=None,
-        image_config=ImageConfig(default_image=default_img, images=[default_img]),
-    )
     srz_wf = get_serializable(OrderedDict(), serialization_settings, wb)
-    print(srz_wf)
+    assert len(srz_wf.nodes) == 2
+    assert srz_wf.nodes[0].task_node is not None
+    assert len(srz_wf.outputs) == 1
+    assert srz_wf.outputs[0].var == "from_n0t1"
+    assert len(srz_wf.interface.inputs) == 1
+    assert len(srz_wf.interface.outputs) == 1
 
     # Create launch plan from wf, that can also be serialized.
     lp = LaunchPlan.create("test_wb", wb)
     srz_lp = get_serializable(OrderedDict(), serialization_settings, lp)
-    print(srz_lp)
+    assert srz_lp.workflow_id.name == "my.workflow"
 
 
 def test_wf2_list_bound():
@@ -106,6 +112,10 @@ def test_wf2_wf_list_input():
 
     assert wb(in1=[5, 6, 7]) == 24
 
+    srz_wf = get_serializable(OrderedDict(), serialization_settings, wb)
+    assert len(srz_wf.nodes) == 2
+    assert srz_wf.nodes[0].task_node is not None
+
 
 def test_wf2_scalar_bindings():
     @task
@@ -116,7 +126,28 @@ def test_wf2_scalar_bindings():
     node = wb.add_entity(t1, a={"a": [3, 4], "b": [5, 6]})
     wb.add_workflow_output("from_n0t1", node.outputs["o0"])
 
-    assert wb() == {'a': 7, 'b': 11}
+    assert wb() == {"a": 7, "b": 11}
+
+    srz_wf = get_serializable(OrderedDict(), serialization_settings, wb)
+    assert len(srz_wf.nodes) == 1
+    assert srz_wf.nodes[0].task_node is not None
+
+
+def test_wf2_list_bound_output():
+    @task
+    def t1() -> int:
+        return 3
+
+    @task
+    def t2(a: typing.List[int]) -> int:
+        return sum(a)
+
+    wb = WorkflowTwo(name="my.workflow.a")
+    t1_node = wb.add_entity(t1)
+    t2_node = wb.add_entity(t2, a=[1, 2, 3])
+    wb.add_workflow_output("wf0", [t1_node.outputs["o0"], t2_node.outputs["o0"]], python_type=typing.List[int])
+
+    assert wb() == [3, 6]
 
 
 def test_call_normal():
@@ -135,14 +166,14 @@ def test_call_normal():
     wb.add_workflow_output("from_n0_1", node.outputs["o0"])
     wb.add_workflow_output("from_n0_2", node.outputs["o1"])
 
-    assert wb() == (5, 'world')
+    assert wb() == (5, "world")
 
     wb_lp = WorkflowTwo(name="imperio")
     node = wb_lp.add_entity(my_functional_lp)
     wb_lp.add_workflow_output("from_n0_1", node.outputs["o0"])
     wb_lp.add_workflow_output("from_n0_2", node.outputs["o1"])
 
-    assert wb_lp() == (5, 'world')
+    assert wb_lp() == (5, "world")
 
 
 def test_wf2_call_from_normal():
@@ -165,7 +196,7 @@ def test_wf2_call_from_normal():
     assert my_functional_wf(a="hello") == "hello world"
 
     # Create launch plan from wf
-    lp = LaunchPlan.create("test_wb_2", wb, fixed_inputs={"in1":"hello"})
+    lp = LaunchPlan.create("test_wb_2", wb, fixed_inputs={"in1": "hello"})
 
     @workflow
     def my_functional_wf_lp() -> str:
@@ -173,8 +204,3 @@ def test_wf2_call_from_normal():
         return x
 
     assert my_functional_wf_lp() == "hello world"
-
-
-# Call an imperative subwf from imperative
-# Call an inperative lp from imperative
-

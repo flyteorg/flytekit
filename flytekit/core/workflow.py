@@ -242,14 +242,23 @@ class WorkflowTwo(object):
         self._unbound_inputs.add(self._inputs[input_name])
         return self._inputs[input_name]
 
-    def add_workflow_output(self, output_name: str, p: Promise):
+    def add_workflow_output(
+        self, output_name: str, p: Union[Promise, List[Promise], Dict[str, Promise]], python_type: Optional[Type] = None
+    ):
         """
         Add an output with the given name from the given node output.
         """
         if output_name in self._python_interface.outputs:
             raise FlyteValidationException(f"Output {output_name} already exists in workflow {self.name}")
 
-        python_type = p.ref.node.flyte_entity.python_interface.outputs[p.var]
+        if python_type is None:
+            if type(p) == list or type(p) == dict:
+                raise FlyteValidationException(
+                    f"If not a straight up promise, wf output {output_name} needs to be given an explicit type."
+                )
+            python_type = p.ref.node.flyte_entity.python_interface.outputs[p.var]
+            logger.debug(f"Inferring python type for wf output {output_name} from Promise provided {python_type}")
+
         flyte_type = TypeEngine.to_literal_type(python_type=python_type)
 
         ctx = FlyteContext.current_context()
@@ -309,8 +318,7 @@ class WorkflowTwo(object):
                 else:
                     return None
             # We are already in a local execution, just continue the execution context
-            x = self._local_execute(ctx, **kwargs)
-            return x
+            return self._local_execute(ctx, **kwargs)
 
         # Last is starting a local workflow execution
         else:
@@ -353,27 +361,17 @@ class WorkflowTwo(object):
 
     def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         # Create a map that holds the outputs of each node.
-        intermediate_node_outputs = {
-            GLOBAL_START_NODE: {}
-        }  # type: Dict[Node, Dict[str, Promise]]
+        intermediate_node_outputs = {GLOBAL_START_NODE: {}}  # type: Dict[Node, Dict[str, Promise]]
 
         # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
         for k, v in kwargs.items():
             if not isinstance(v, Promise):
                 python_type = self.python_interface.inputs[k]
                 intermediate_node_outputs[GLOBAL_START_NODE][k] = Promise(
-                    var=k, val=TypeEngine.to_literal(ctx, v, python_type, self.interface.inputs[k].type))
+                    var=k, val=TypeEngine.to_literal(ctx, v, python_type, self.interface.inputs[k].type)
+                )
             else:
                 intermediate_node_outputs[GLOBAL_START_NODE][k] = v
-
-        # for k, v in self._inputs.items():
-        #     python_input_value = kwargs[k]
-        #     python_type = self._python_interface.inputs[k]
-        #     literal = TypeEngine.to_literal(ctx, python_input_value, python_type, self.interface.inputs[k].type)
-        #     if v.ref.node not in intermediate_node_outputs:
-        #         intermediate_node_outputs[v.ref.node] = {}
-        #     intermediate_node_outputs[v.ref.node][v.var] = Promise(var=v.var, val=literal)
-        # import ipdb; ipdb.set_trace()
 
         # Next iterate through the nodes in order.
         for node in self.compilation_state.nodes:
@@ -421,12 +419,11 @@ class WorkflowTwo(object):
 
         # Please see the _local_execute in the main Workflow class for more detailed comments. Most of this code
         # has been copied from that.
-        wf_outputs_as_map = {}
-        for ob in self._output_bindings:
-            # TODO: How can this work for lists?
-            binding_data = ob.binding
-            wf_outputs_as_map[ob.var] = intermediate_node_outputs[binding_data.promise.node][binding_data.promise.var]
+        # First pull in the results from all the nodes that have already run, as a map where the keys are the wf
+        # output names and the values are resolved Promise objects containing literals.
+        wf_outputs_as_map = get_promise_map(self._output_bindings, intermediate_node_outputs)
 
+        # Then pull out the literals from those promises.
         wf_outputs_as_literal_dict = translate_inputs_to_literals(
             ctx,
             wf_outputs_as_map,
@@ -434,6 +431,7 @@ class WorkflowTwo(object):
             native_types=self.python_interface.outputs,
         )
 
+        # Recreate new promises that use the workflow's output names.
         new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in list(self.interface.outputs.keys())]
         return create_task_output(new_promises, self.python_interface)
 
