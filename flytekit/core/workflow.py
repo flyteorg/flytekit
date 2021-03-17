@@ -247,11 +247,9 @@ class WorkflowTwo(object):
         Add an output with the given name from the given node output.
         """
         if output_name in self._python_interface.outputs:
-            raise FlyteValueException("already out")
+            raise FlyteValidationException(f"Output {output_name} already exists in workflow {self.name}")
 
         python_type = p.ref.node.flyte_entity.python_interface.outputs[p.var]
-        print(python_type)
-
         flyte_type = TypeEngine.to_literal_type(python_type=python_type)
 
         ctx = FlyteContext.current_context()
@@ -311,7 +309,8 @@ class WorkflowTwo(object):
                 else:
                     return None
             # We are already in a local execution, just continue the execution context
-            return self._local_execute(ctx, **kwargs)
+            x = self._local_execute(ctx, **kwargs)
+            return x
 
         # Last is starting a local workflow execution
         else:
@@ -354,15 +353,27 @@ class WorkflowTwo(object):
 
     def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         # Create a map that holds the outputs of each node.
-        intermediate_node_outputs = {}  # type: Dict[Node, Dict[str, Promise]]
+        intermediate_node_outputs = {
+            GLOBAL_START_NODE: {}
+        }  # type: Dict[Node, Dict[str, Promise]]
+
         # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
-        for k, v in self._inputs.items():
-            python_input_value = kwargs[k]
-            python_type = self._python_interface.inputs[k]
-            literal = TypeEngine.to_literal(ctx, python_input_value, python_type, self.interface.inputs[k].type)
-            if v.ref.node not in intermediate_node_outputs:
-                intermediate_node_outputs[v.ref.node] = {}
-            intermediate_node_outputs[v.ref.node][v.var] = Promise(var=v.var, val=literal)
+        for k, v in kwargs.items():
+            if not isinstance(v, Promise):
+                python_type = self.python_interface.inputs[k]
+                intermediate_node_outputs[GLOBAL_START_NODE][k] = Promise(
+                    var=k, val=TypeEngine.to_literal(ctx, v, python_type, self.interface.inputs[k].type))
+            else:
+                intermediate_node_outputs[GLOBAL_START_NODE][k] = v
+
+        # for k, v in self._inputs.items():
+        #     python_input_value = kwargs[k]
+        #     python_type = self._python_interface.inputs[k]
+        #     literal = TypeEngine.to_literal(ctx, python_input_value, python_type, self.interface.inputs[k].type)
+        #     if v.ref.node not in intermediate_node_outputs:
+        #         intermediate_node_outputs[v.ref.node] = {}
+        #     intermediate_node_outputs[v.ref.node][v.var] = Promise(var=v.var, val=literal)
+        # import ipdb; ipdb.set_trace()
 
         # Next iterate through the nodes in order.
         for node in self.compilation_state.nodes:
@@ -376,7 +387,7 @@ class WorkflowTwo(object):
 
             # Handle the calling and outputs of each node's entity
             results = entity(**entity_kwargs)
-            expected_output_names = list(entity.interface.outputs.keys())
+            expected_output_names = list(entity.python_interface.outputs.keys())
 
             if isinstance(results, VoidPromise) or results is None:
                 if len(entity.python_interface.outputs) != 0:
@@ -579,7 +590,7 @@ class Workflow(ClassStorageTaskResolver):
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
         for k, v in kwargs.items():
             if not isinstance(v, Promise):
-                t = self._native_interface.inputs[k]
+                t = self.python_interface.inputs[k]
                 kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
 
         # The output of this will always be a combination of Python native values and Promises containing Flyte
