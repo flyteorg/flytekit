@@ -299,6 +299,9 @@ class WorkflowTwo(object):
         """
         ctx = FlyteContext.current_context()
 
+        if not self.ready():
+            raise FlyteValidationException(f"Workflow not ready, wf is currently {self}")
+
         # The first condition is compilation.
         if ctx.compilation_state is not None:
             input_kwargs = self.python_interface.default_inputs_as_kwargs
