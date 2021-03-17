@@ -147,6 +147,7 @@ class WorkflowTwo(object):
         self._inputs = {}
         self._unbound_inputs = set()
         self._output_bindings = []
+        FlyteEntities.entities.append(self)
 
     @property
     def name(self) -> str:
