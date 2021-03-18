@@ -136,8 +136,12 @@ def get_promise_map(
 
 class WorkflowBase(object):
     def __init__(
-        self, name: str, workflow_metadata: WorkflowMetadata, workflow_metadata_defaults: WorkflowMetadataDefaults,
-        python_interface: Interface
+        self,
+        name: str,
+        workflow_metadata: WorkflowMetadata,
+        workflow_metadata_defaults: WorkflowMetadataDefaults,
+        python_interface: Interface,
+        **kwargs,
     ):
         self._name = name
         self._workflow_metadata = workflow_metadata
@@ -146,12 +150,17 @@ class WorkflowBase(object):
         self._interface = transform_interface_to_typed_interface(python_interface)
         self._inputs = {}
         self._unbound_inputs = set()
-        self._output_bindings = []
+        self._output_bindings: Optional[List[_literal_models.Binding]] = []
         FlyteEntities.entities.append(self)
+        super().__init__(**kwargs)
 
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def short_name(self) -> str:
+        return self._name.split(".")[-1]
 
     @property
     def workflow_metadata(self) -> Optional[WorkflowMetadata]:
@@ -312,45 +321,21 @@ class WorkflowBase(object):
         return create_task_output(new_promises, self.python_interface)
 
 
-class WorkflowTwo(object):
-
+class WorkflowTwo(WorkflowBase):
     def __init__(
         self, name: str, failure_policy: Optional[WorkflowFailurePolicy] = None, interruptible: Optional[bool] = False,
     ):
-        self._name = name
-        self._workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
-        self._workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
+        metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
+        workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
         self._compilation_state = CompilationState(prefix="")
-        self._python_interface = Interface()
-        self._interface = None
         self._inputs = {}
         self._unbound_inputs = set()
-        self._output_bindings = []
-        FlyteEntities.entities.append(self)
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def workflow_metadata(self) -> Optional[WorkflowMetadata]:
-        return self._workflow_metadata
-
-    @property
-    def workflow_metadata_defaults(self):
-        return self._workflow_metadata_defaults
-
-    @property
-    def python_interface(self) -> Interface:
-        return self._python_interface
-
-    @property
-    def interface(self) -> _interface_models.TypedInterface:
-        return self._interface
-
-    @property
-    def output_bindings(self) -> List[_literal_models.Binding]:
-        return self._output_bindings
+        super().__init__(
+            name=name,
+            workflow_metadata=metadata,
+            workflow_metadata_defaults=workflow_metadata_defaults,
+            python_interface=Interface(),
+        )
 
     @property
     def compilation_state(self) -> CompilationState:
@@ -369,20 +354,16 @@ class WorkflowTwo(object):
         return self._inputs
 
     def __repr__(self):
-        return (
-            f"WorkflowTwo - {self._name} && "
-            f"Inputs ({len(self._python_interface.inputs)}): {self._python_interface.inputs} && "
-            f"Outputs ({len(self._python_interface.outputs)}): {self._python_interface.outputs} && "
-            f"Output bindings: {self._output_bindings} && "
-            f"Nodes ({len(self.compilation_state.nodes)}): {self.compilation_state.nodes}"
-        )
-
+        return super().__repr__() + f"Nodes ({len(self.compilation_state.nodes)}): {self.compilation_state.nodes}"
 
     def execute(self, **kwargs):
         """
         Called by _local_execute
         :param kwargs:
         """
+        if not self.ready():
+            raise FlyteValidationException(f"Workflow not ready, wf is currently {self}")
+
         # Create a map that holds the outputs of each node.
         intermediate_node_outputs = {GLOBAL_START_NODE: {}}  # type: Dict[Node, Dict[str, Promise]]
 
@@ -445,7 +426,7 @@ class WorkflowTwo(object):
             # Again use presence of output_tuple_name to understand that we're dealing with a one-element
             # named tuple
             if self.python_interface.output_tuple_name:
-                return get_promise(self.output_bindings[0].binding, intermediate_node_outputs),
+                return (get_promise(self.output_bindings[0].binding, intermediate_node_outputs),)
             # Just a normal single element
             return get_promise(self.output_bindings[0].binding, intermediate_node_outputs)
         return tuple([get_promise(b.binding, intermediate_node_outputs) for b in self.output_bindings])
@@ -525,172 +506,6 @@ class WorkflowTwo(object):
             self._python_interface = self._python_interface.with_outputs(extra_outputs={output_name: python_type})
             self._interface = transform_interface_to_typed_interface(self._python_interface)
 
-    def __call__(self, *args, **kwargs):
-        """
-        Calling a Flyte entity typically results in one of two things happening:
-          * We're in a compiling state, so we need to create a node and return promises pointing to that node
-            Deal with this later.
-          * We're running locally so we need to run through the actual body of the code and return Python native values.
-            This is further separated into two sub-options. Either we're
-            * starting off the local run, in which case we need to convert things to and from Python native values
-            * or this is being called as a subworkflow and we're already in a local execution context.
-
-        This second workflow style is more difficult to run locally because there is no python function and python
-        interpreter to direct the data flow and execution of tasks (or other workflows or launch plans).
-        However, since everything has to be bound at creation time, the linear order will always be okay.
-
-        TODO - Clean up the two workflow classes-
-            What is the relationship between this class and the Workflow class? How can we clean up all this copy/paste
-              - compilation style is different
-              - local run style is different
-              - translation is different, but the contain the same things.
-              - calling both should produce a node
-
-        Basically what we want to do is store all the outputs of each node in a way that downstream nodes can access
-        them based on their bindings. We go one node at a time until we're all done and then we use the workflow's
-        output bindings to determine the final outputs
-        """
-        ctx = FlyteContext.current_context()
-
-        if not self.ready():
-            raise FlyteValidationException(f"Workflow not ready, wf is currently {self}")
-
-        # The first condition is compilation.
-        if ctx.compilation_state is not None:
-            input_kwargs = self.python_interface.default_inputs_as_kwargs
-            input_kwargs.update(kwargs)
-            return create_and_link_node(ctx, entity=self, interface=self.python_interface, **input_kwargs)
-
-        # Next is executing as a subworkflow
-        elif (
-            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
-        ):
-            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
-                if self.python_interface and self.python_interface.output_tuple_name:
-                    variables = [k for k in self.python_interface.outputs.keys()]
-                    output_tuple = collections.namedtuple(self.python_interface.output_tuple_name, variables)
-                    nones = [None for _ in self.python_interface.outputs.keys()]
-                    return output_tuple(*nones)
-                else:
-                    return None
-            # We are already in a local execution, just continue the execution context
-            return self._local_execute(ctx, **kwargs)
-
-        # Last is starting a local workflow execution
-        else:
-            for k, v in kwargs.items():
-                if k not in self.interface.inputs:
-                    raise ValueError(f"Received unexpected keyword argument {k}")
-                if isinstance(v, Promise):
-                    raise ValueError(f"Received a promise for a workflow call, when expecting a native value for {k}")
-
-            with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
-                result = self._local_execute(ctx, **kwargs)
-
-            expected_outputs = len(self.python_interface.outputs)
-            if expected_outputs == 0:
-                if result is None or isinstance(result, VoidPromise):
-                    return None
-                else:
-                    raise Exception(f"Workflow local execution expected 0 outputs but something received {result}")
-
-            if (expected_outputs > 1 and len(result) == expected_outputs) or (
-                expected_outputs == 1 and result is not None
-            ):
-                if isinstance(result, Promise):
-                    v = [v for k, v in self.python_interface.outputs.items()][0]  # get output native type
-                    return TypeEngine.to_python_value(ctx, result.val, v)
-                else:
-                    for prom in result:
-                        if not isinstance(prom, Promise):
-                            raise Exception("should be promises")
-                        native_list = [
-                            TypeEngine.to_python_value(ctx, promise.val, self.python_interface.outputs[promise.var])
-                            for promise in result
-                        ]
-                        return tuple(native_list)
-
-            raise ValueError("expected outputs and actual outputs do not match")
-
-    # TODO: Make this class work with patch.  We'll need to add an execute function somehow that the patcher
-    #  can override
-
-    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
-        # Create a map that holds the outputs of each node.
-        intermediate_node_outputs = {GLOBAL_START_NODE: {}}  # type: Dict[Node, Dict[str, Promise]]
-
-        # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
-        for k, v in kwargs.items():
-            if not isinstance(v, Promise):
-                python_type = self.python_interface.inputs[k]
-                intermediate_node_outputs[GLOBAL_START_NODE][k] = Promise(
-                    var=k, val=TypeEngine.to_literal(ctx, v, python_type, self.interface.inputs[k].type)
-                )
-            else:
-                intermediate_node_outputs[GLOBAL_START_NODE][k] = v
-
-        # Next iterate through the nodes in order.
-        for node in self.compilation_state.nodes:
-            if node not in intermediate_node_outputs.keys():
-                intermediate_node_outputs[node] = {}
-
-            # Retrieve the entity from the node, and call it by looking up the promises the node's bindings require,
-            # and then fill them in using the node output tracker map we have.
-            entity = node.flyte_entity
-            entity_kwargs = get_promise_map(node.bindings, intermediate_node_outputs)
-
-            # Handle the calling and outputs of each node's entity
-            results = entity(**entity_kwargs)
-            expected_output_names = list(entity.python_interface.outputs.keys())
-
-            if isinstance(results, VoidPromise) or results is None:
-                if len(entity.python_interface.outputs) != 0:
-                    raise FlyteValueException(
-                        results,
-                        f"{results} received but interface has {len(entity.python_interface.outputs)} outputs.",
-                    )
-                continue  # Move along, nothing to assign
-
-            # Because we should've already returned in the above check, we just raise an Exception here.
-            if len(entity.python_interface.outputs) == 0:
-                raise FlyteValueException(results, f"{results} received but should've been VoidPromise or None.")
-
-            # if there's only one output,
-            if len(expected_output_names) == 1:
-                if entity.python_interface.output_tuple_name and isinstance(results, tuple):
-                    intermediate_node_outputs[node][expected_output_names[0]] = results[0]
-                else:
-                    intermediate_node_outputs[node][expected_output_names[0]] = results
-
-            else:
-                if len(results) != len(expected_output_names):
-                    raise FlyteValueException(f"Different lengths {results} {expected_output_names}")
-                for idx, r in enumerate(results):
-                    intermediate_node_outputs[node][expected_output_names[idx]] = r
-
-        # The rest of this function looks like the above but now we're doing it for the workflow as a whole rather
-        # than just one node at a time.
-        if len(self.python_interface.outputs) == 0:
-            return VoidPromise(self.name)
-
-        # Please see the _local_execute in the main Workflow class for more detailed comments. Most of this code
-        # has been copied from that.
-        # First pull in the results from all the nodes that have already run, as a map where the keys are the wf
-        # output names and the values are resolved Promise objects containing literals.
-        wf_outputs_as_map = get_promise_map(self._output_bindings, intermediate_node_outputs)
-
-        # Then pull out the literals from those promises.
-        wf_outputs_as_literal_dict = translate_inputs_to_literals(
-            ctx,
-            wf_outputs_as_map,
-            flyte_interface_types=self.interface.outputs,
-            native_types=self.python_interface.outputs,
-        )
-
-        # Recreate new promises that use the workflow's output names.
-        new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in list(self.interface.outputs.keys())]
-        return create_task_output(new_promises, self.python_interface)
-
     def ready(self) -> bool:
         """
         This function returns whether or not the workflow is in a ready state, which means
@@ -709,7 +524,7 @@ class WorkflowTwo(object):
         return True
 
 
-class Workflow(ClassStorageTaskResolver):
+class Workflow(WorkflowBase, ClassStorageTaskResolver):
     """
     When you assign a name to a node.
 
@@ -724,50 +539,26 @@ class Workflow(ClassStorageTaskResolver):
         metadata: Optional[WorkflowMetadata],
         default_metadata: Optional[WorkflowMetadataDefaults],
     ):
-        self._name = f"{workflow_function.__module__}.{workflow_function.__name__}"
+        name = f"{workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
-        self._native_interface = transform_signature_to_interface(inspect.signature(workflow_function))
-        self._interface = transform_interface_to_typed_interface(self._native_interface)
+        native_interface = transform_signature_to_interface(inspect.signature(workflow_function))
         # These will get populated on compile only
         self._nodes = None
-        self._output_bindings: Optional[List[_literal_models.Binding]] = None
-        self._workflow_metadata = metadata
-        self._workflow_metadata_defaults = default_metadata
 
         # TODO do we need this - can this not be in launchplan only?
         #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or
         #    we can re-evaluate.
         self._input_parameters = None
-        FlyteEntities.entities.append(self)
-        super().__init__()
+        super().__init__(
+            name=name,
+            workflow_metadata=metadata,
+            workflow_metadata_defaults=default_metadata,
+            python_interface=native_interface,
+        )
 
     @property
     def function(self):
         return self._workflow_function
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def short_name(self) -> str:
-        return self._name.split(".")[-1]
-
-    @property
-    def python_interface(self) -> Interface:
-        return self._native_interface
-
-    @property
-    def interface(self) -> _interface_models.TypedInterface:
-        return self._interface
-
-    @property
-    def workflow_metadata(self) -> Optional[WorkflowMetadata]:
-        return self._workflow_metadata
-
-    @property
-    def workflow_metadata_defaults(self):
-        return self._workflow_metadata_defaults
 
     def task_name(self, t: PythonAutoContainerTask) -> str:
         return f"{self.name}.{t.__module__}.{t.name}"
@@ -778,7 +569,7 @@ class Workflow(ClassStorageTaskResolver):
         a 'closure' in the traditional sense of the word.
         """
         ctx = FlyteContext.current_context()
-        self._input_parameters = transform_inputs_to_parameters(ctx, self._native_interface)
+        self._input_parameters = transform_inputs_to_parameters(ctx, self.python_interface)
         all_nodes = []
         prefix = f"{ctx.compilation_state.prefix}-{self.short_name}-" if ctx.compilation_state is not None else None
         with ctx.new_compilation_context(prefix=prefix, task_resolver=self) as comp_ctx:
@@ -805,7 +596,7 @@ class Workflow(ClassStorageTaskResolver):
                 raise AssertionError(
                     f"The Workflow specification indicates only one return value, received {len(workflow_outputs)}"
                 )
-            t = self._native_interface.outputs[output_names[0]]
+            t = self.python_interface.outputs[output_names[0]]
             b = binding_from_python_std(
                 ctx, output_names[0], self.interface.outputs[output_names[0]].type, workflow_outputs, t,
             )
@@ -818,7 +609,7 @@ class Workflow(ClassStorageTaskResolver):
             for i, out in enumerate(output_names):
                 if isinstance(workflow_outputs[i], ConditionalSection):
                     raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
-                t = self._native_interface.outputs[out]
+                t = self.python_interface.outputs[out]
                 b = binding_from_python_std(ctx, out, self.interface.outputs[out].type, workflow_outputs[i], t,)
                 bindings.append(b)
 
@@ -831,77 +622,6 @@ class Workflow(ClassStorageTaskResolver):
             return bindings[0]
         return tuple(bindings)
 
-    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
-        """
-        Performs local execution of a workflow. kwargs are expected to be Promises for the most part (unless,
-        someone has hardcoded in my_wf(input_1=5) or something).
-        :param ctx: The FlyteContext
-        :param kwargs: parameters for the workflow itself
-        """
-        logger.info(f"Executing Workflow {self._name}, ctx{ctx.execution_state.Mode}")
-
-        # This is done to support the invariant that Workflow local executions always work with Promise objects
-        # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
-        for k, v in kwargs.items():
-            if not isinstance(v, Promise):
-                t = self.python_interface.inputs[k]
-                kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
-
-        # The output of this will always be a combination of Python native values and Promises containing Flyte
-        # Literals.
-        function_outputs = self.execute(**kwargs)
-
-        # First handle the empty return case.
-        # A workflow function may return a task that doesn't return anything
-        #   def wf():
-        #       return t1()
-        # or it may not return at all
-        #   def wf():
-        #       t1()
-        # In the former case we get the task's VoidPromise, in the latter we get None
-        if isinstance(function_outputs, VoidPromise) or function_outputs is None:
-            if len(self.python_interface.outputs) != 0:
-                raise FlyteValueException(
-                    function_outputs,
-                    f"{function_outputs} received but interface has {len(self.python_interface.outputs)} outputs.",
-                )
-
-            return VoidPromise(self.name)
-
-        # Because we should've already returned in the above check, we just raise an Exception here.
-        if len(self.python_interface.outputs) == 0:
-            raise FlyteValueException(
-                function_outputs, f"{function_outputs} received but should've been VoidPromise or None."
-            )
-
-        expected_output_names = list(self.interface.outputs.keys())
-        if len(expected_output_names) == 1:
-            # Here we have to handle the fact that the wf could've been declared with a typing.NamedTuple of
-            # length one. That convention is used for naming outputs - and single-length-NamedTuples are
-            # particularly troublesome but elegant handling of them is not a high priority
-            # Again, we're using the output_tuple_name as a proxy.
-            if self.python_interface.output_tuple_name and isinstance(function_outputs, tuple):
-                wf_outputs_as_map = {expected_output_names[0]: function_outputs[0]}
-            else:
-                wf_outputs_as_map = {expected_output_names[0]: function_outputs}
-        else:
-            wf_outputs_as_map = {expected_output_names[i]: function_outputs[i] for i, _ in enumerate(function_outputs)}
-
-        # Basically we need to repackage the promises coming from the tasks into Promises that match the workflow's
-        # interface. We do that by extracting out the literals, and creating new Promises
-        wf_outputs_as_literal_dict = translate_inputs_to_literals(
-            ctx,
-            wf_outputs_as_map,
-            flyte_interface_types=self.interface.outputs,
-            native_types=self.python_interface.outputs,
-        )
-
-        new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in expected_output_names]
-
-        # TODO: With the native interface, create_task_output should be able to derive the typed interface, and it
-        #   should be able to do the conversion of the output of the execute() call directly.
-        return create_task_output(new_promises, self._native_interface)
-
     def execute(self, **kwargs):
         """
         This function is here only to try to streamline the pattern between workflows and tasks. Since tasks
@@ -909,73 +629,6 @@ class Workflow(ClassStorageTaskResolver):
         _local_execute. This makes mocking cleaner.
         """
         return self._workflow_function(**kwargs)
-
-    def __call__(self, *args, **kwargs):
-        if len(args) > 0:
-            raise AssertionError("Only Keyword Arguments are supported for Workflow executions")
-
-        ctx = FlyteContext.current_context()
-
-        # Handle subworkflows in compilation
-        if ctx.compilation_state is not None:
-            input_kwargs = self._native_interface.default_inputs_as_kwargs
-            input_kwargs.update(kwargs)
-            return create_and_link_node(ctx, entity=self, interface=self._native_interface, **input_kwargs)
-        elif (
-            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
-        ):
-            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
-                if self.python_interface and self.python_interface.output_tuple_name:
-                    variables = [k for k in self.python_interface.outputs.keys()]
-                    output_tuple = collections.namedtuple(self.python_interface.output_tuple_name, variables)
-                    nones = [None for _ in self.python_interface.outputs.keys()]
-                    return output_tuple(*nones)
-                else:
-                    return None
-            # We are already in a local execution, just continue the execution context
-            return self._local_execute(ctx, **kwargs)
-
-        # When someone wants to run the workflow function locally. Assume that the inputs given are given as Python
-        # native values. _local_execute will always translate Python native literals to Flyte literals, so no worries
-        # there, but it'll return Promise objects.
-        else:
-            # Run some sanity checks
-            # Even though the _local_execute call generally expects inputs to be Promises, we don't have to do the
-            # conversion here in this loop. The reason is because we don't prevent users from specifying inputs
-            # as direct scalars, which means there's another Promise-generating loop inside _local_execute too
-            for k, v in kwargs.items():
-                if k not in self.interface.inputs:
-                    raise ValueError(f"Received unexpected keyword argument {k}")
-                if isinstance(v, Promise):
-                    raise ValueError(f"Received a promise for a workflow call, when expecting a native value for {k}")
-
-            with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
-                result = self._local_execute(ctx, **kwargs)
-
-            expected_outputs = len(self._native_interface.outputs)
-            if expected_outputs == 0:
-                if result is None or isinstance(result, VoidPromise):
-                    return None
-                else:
-                    raise Exception(f"Workflow local execution expected 0 outputs but something received {result}")
-
-            if (expected_outputs > 1 and len(result) == expected_outputs) or (
-                expected_outputs == 1 and result is not None
-            ):
-                if isinstance(result, Promise):
-                    v = [v for k, v in self._native_interface.outputs.items()][0]
-                    return TypeEngine.to_python_value(ctx, result.val, v)
-                else:
-                    for prom in result:
-                        if not isinstance(prom, Promise):
-                            raise Exception("should be promises")
-                        native_list = [
-                            TypeEngine.to_python_value(ctx, promise.val, self._native_interface.outputs[promise.var])
-                            for promise in result
-                        ]
-                        return tuple(native_list)
-
-            raise ValueError("expected outputs and actual outputs do not match")
 
 
 def workflow(
