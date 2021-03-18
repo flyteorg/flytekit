@@ -16,11 +16,11 @@ from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity
 from flytekit.core.task import ReferenceTask
 from flytekit.core.workflow import (
+    ImperativeWorkflow,
     PythonFunctionWorkflow,
     ReferenceWorkflow,
     WorkflowFailurePolicy,
     WorkflowMetadata,
-    ImperativeWorkflow,
 )
 from flytekit.models import common as _common_models
 from flytekit.models import interface as interface_models
