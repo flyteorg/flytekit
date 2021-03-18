@@ -19,7 +19,7 @@ class LaunchPlan(object):
     CACHE = {}
 
     @staticmethod
-    def get_default_launch_plan(ctx: FlyteContext, workflow: _annotated_workflow.Workflow) -> LaunchPlan:
+    def get_default_launch_plan(ctx: FlyteContext, workflow: _annotated_workflow.PythonFunctionWorkflow) -> LaunchPlan:
         if workflow.name in LaunchPlan.CACHE:
             return LaunchPlan.CACHE[workflow.name]
 
@@ -39,7 +39,7 @@ class LaunchPlan(object):
     def create(
         cls,
         name: str,
-        workflow: _annotated_workflow.Workflow,
+        workflow: _annotated_workflow.PythonFunctionWorkflow,
         default_inputs: Dict[str, Any] = None,
         fixed_inputs: Dict[str, Any] = None,
         schedule: _schedule_model.Schedule = None,
@@ -97,7 +97,7 @@ class LaunchPlan(object):
     def __init__(
         self,
         name: str,
-        workflow: _annotated_workflow.Workflow,
+        workflow: _annotated_workflow.PythonFunctionWorkflow,
         parameters: _interface_models.ParameterMap,
         fixed_inputs: _literal_models.LiteralMap,
         schedule: _schedule_model.Schedule = None,
@@ -144,7 +144,7 @@ class LaunchPlan(object):
         return self._fixed_inputs
 
     @property
-    def workflow(self) -> _annotated_workflow.Workflow:
+    def workflow(self) -> _annotated_workflow.PythonFunctionWorkflow:
         return self._workflow
 
     @property

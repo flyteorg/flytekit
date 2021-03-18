@@ -524,7 +524,7 @@ class WorkflowTwo(WorkflowBase):
         return True
 
 
-class Workflow(WorkflowBase, ClassStorageTaskResolver):
+class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
     """
     When you assign a name to a node.
 
@@ -659,7 +659,9 @@ def workflow(
 
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
 
-        workflow_instance = Workflow(fn, metadata=workflow_metadata, default_metadata=workflow_metadata_defaults)
+        workflow_instance = PythonFunctionWorkflow(
+            fn, metadata=workflow_metadata, default_metadata=workflow_metadata_defaults
+        )
         workflow_instance.compile()
         return workflow_instance
 
@@ -669,7 +671,7 @@ def workflow(
         return wrapper
 
 
-class ReferenceWorkflow(ReferenceEntity, Workflow):
+class ReferenceWorkflow(ReferenceEntity, PythonFunctionWorkflow):
     """
     A reference workflow is a pointer to a workflow that already exists on your Flyte installation. This
     object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface.

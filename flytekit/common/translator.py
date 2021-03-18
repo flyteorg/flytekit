@@ -15,7 +15,13 @@ from flytekit.core.node import Node
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity
 from flytekit.core.task import ReferenceTask
-from flytekit.core.workflow import ReferenceWorkflow, Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowTwo
+from flytekit.core.workflow import (
+    PythonFunctionWorkflow,
+    ReferenceWorkflow,
+    WorkflowFailurePolicy,
+    WorkflowMetadata,
+    WorkflowTwo,
+)
 from flytekit.models import common as _common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
@@ -31,7 +37,7 @@ FlyteLocalEntity = Union[
     BranchNode,
     Node,
     LaunchPlan,
-    Workflow,
+    PythonFunctionWorkflow,
     WorkflowTwo,
     ReferenceWorkflow,
     ReferenceTask,
@@ -264,7 +270,7 @@ def get_serializable_node(
         )
         if entity._aliases:
             cp_entity._output_aliases = entity._aliases
-    elif isinstance(entity._flyte_entity, Workflow):
+    elif isinstance(entity._flyte_entity, PythonFunctionWorkflow):
         cp_entity = SdkNode(
             entity._id,
             upstream_nodes=upstream_sdk_nodes,
@@ -345,7 +351,7 @@ def get_serializable(
     elif isinstance(entity, PythonTask):
         cp_entity = get_serializable_task(entity_mapping, settings, entity, fast)
 
-    elif isinstance(entity, Workflow):
+    elif isinstance(entity, PythonFunctionWorkflow):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, fast)
 
     elif isinstance(entity, WorkflowTwo):
