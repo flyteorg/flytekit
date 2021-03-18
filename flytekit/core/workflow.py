@@ -416,7 +416,7 @@ class ImperativeWorkflow(WorkflowBase):
 
             else:
                 if len(results) != len(expected_output_names):
-                    raise FlyteValueException(f"Different lengths {results} {expected_output_names}")
+                    raise FlyteValueException(results, f"Different lengths {results} {expected_output_names}")
                 for idx, r in enumerate(results):
                     intermediate_node_outputs[node][expected_output_names[idx]] = r
 

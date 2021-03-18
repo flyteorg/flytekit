@@ -1,12 +1,16 @@
 import typing
 from collections import OrderedDict
 
+import pytest
+
+from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
-from flytekit.core.workflow import ImperativeWorkflow, workflow
+from flytekit.core.workflow import ImperativeWorkflow, get_promise, workflow
+from flytekit.models import literals as literal_models
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = context_manager.SerializationSettings(
@@ -204,3 +208,28 @@ def test_wf2_call_from_normal():
         return x
 
     assert my_functional_wf_lp() == "hello world"
+
+
+def test_codecov():
+    with pytest.raises(FlyteValidationException):
+        get_promise(literal_models.BindingData(), {})
+
+    with pytest.raises(FlyteValidationException):
+        get_promise(literal_models.BindingData(promise=3), {})
+
+    @task
+    def t1(a: str) -> str:
+        return a + " world"
+
+    wb = ImperativeWorkflow(name="my.workflow")
+    wb.add_workflow_input("in1", str)
+    node = wb.add_entity(t1, a=wb.inputs["in1"])
+    wb.add_workflow_output("from_n0t1", node.outputs["o0"])
+
+    assert wb(in1="hello") == "hello world"
+
+    with pytest.raises(AssertionError):
+        wb(3)
+
+    with pytest.raises(ValueError):
+        wb(in2="hello")

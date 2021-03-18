@@ -1,6 +1,9 @@
 import typing
 from collections import OrderedDict
 
+import pytest
+
+from flytekit.common.exceptions.user import FlyteAssertion
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
@@ -71,6 +74,12 @@ def test_normal_task():
     assert sdk_wf.nodes[0].upstream_node_ids[0] == "n1"
     assert sdk_wf.nodes[0].id == "n0"
 
+    with pytest.raises(FlyteAssertion):
+
+        @workflow
+        def empty_wf2():
+            create_node(t2, "foo")
+
 
 def test_more_normal_task():
     nt = typing.NamedTuple("OneOutput", t1_str_output=str)
@@ -98,3 +107,19 @@ def test_more_normal_task():
 
     x = my_wf(a=5, b="hello")
     assert x == ("7", "7 7 hello")
+
+
+def test_reserved_keyword():
+    nt = typing.NamedTuple("OneOutput", outputs=str)
+
+    @task
+    def t1(a: int) -> nt:
+        # This one returns a regular tuple
+        return (f"{a + 2}",)
+
+    # Test that you can't name an output "outputs"
+    with pytest.raises(FlyteAssertion):
+        @workflow
+        def my_wf(a: int, b: str) -> str:
+            t1_node = create_node(t1, a=a)
+            return t1_node.outputs

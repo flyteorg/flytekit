@@ -39,7 +39,7 @@ class LaunchPlan(object):
     def create(
         cls,
         name: str,
-        workflow: _annotated_workflow.PythonFunctionWorkflow,
+        workflow: _annotated_workflow.WorkflowBase,
         default_inputs: Dict[str, Any] = None,
         fixed_inputs: Dict[str, Any] = None,
         schedule: _schedule_model.Schedule = None,

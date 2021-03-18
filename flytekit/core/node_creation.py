@@ -110,18 +110,24 @@ def create_node(
                 for output_name in entity.python_interface.output_names:
                     attr = getattr(outputs, output_name)
                     if attr is None:
-                        raise Exception(f"Output {output_name} in outputs when calling {entity.name} is empty {attr}.")
+                        raise _user_exceptions.FlyteAssertion(
+                            f"Output {output_name} in outputs when calling {entity.name} is empty {attr}."
+                        )
                     if hasattr(node, output_name):
-                        raise Exception(f"Node {node} already has attribute {output_name}, change the name of output.")
+                        raise _user_exceptions.FlyteAssertion(
+                            f"Node {node} already has attribute {output_name}, change the name of output."
+                        )
                     setattr(node, output_name, attr)
                     node.outputs[output_name] = attr
             else:
                 output_names = entity.python_interface.output_names
                 if len(output_names) != 1:
-                    raise Exception(f"Output of length 1 expected but {len(output_names)} found")
+                    raise _user_exceptions.FlyteAssertion(f"Output of length 1 expected but {len(output_names)} found")
 
                 if hasattr(node, output_names[0]):
-                    raise Exception(f"Node {node} already has attribute {output_names[0]}, change the name of output.")
+                    raise _user_exceptions.FlyteAssertion(
+                        f"Node {node} already has attribute {output_names[0]}, change the name of output."
+                    )
 
                 setattr(node, output_names[0], outputs)  # This should be a singular Promise
                 node.outputs[output_names[0]] = outputs
