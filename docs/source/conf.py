@@ -113,16 +113,8 @@ html_theme_options = {
     "master_doc": False,
     # custom nav in breadcrumb bar
     "nav_links": [
-        {
-            "href": "https://flyte.readthedocs.io/",
-            "internal": False,
-            "title": "Flyte",
-        },
-        {
-            "href": "https://flytecookbook.readthedocs.io",
-            "internal": False,
-            "title": "Flytekit Tutorials",
-        },
+        {"href": "https://flyte.readthedocs.io/", "internal": False, "title": "Flyte",},
+        {"href": "https://flytecookbook.readthedocs.io", "internal": False, "title": "Flytekit Tutorials",},
         {"href": "index", "internal": True, "title": "Flytekit Python Reference"},
     ],
 }
