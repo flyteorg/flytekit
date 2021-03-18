@@ -150,6 +150,7 @@ class WorkflowBase(object):
         self._interface = transform_interface_to_typed_interface(python_interface)
         self._inputs = {}
         self._unbound_inputs = set()
+        self._nodes = []
         self._output_bindings: Optional[List[_literal_models.Binding]] = []
         FlyteEntities.entities.append(self)
         super().__init__(**kwargs)
@@ -181,6 +182,10 @@ class WorkflowBase(object):
     @property
     def output_bindings(self) -> List[_literal_models.Binding]:
         return self._output_bindings
+
+    @property
+    def nodes(self) -> List[Node]:
+        return self._nodes
 
     def __repr__(self):
         return (
@@ -344,6 +349,10 @@ class ImperativeWorkflow(WorkflowBase):
         class has to keep track of its own compilation state.
         """
         return self._compilation_state
+
+    @property
+    def nodes(self) -> List[Node]:
+        return self._compilation_state.nodes
 
     @property
     def inputs(self) -> Dict[str, Promise]:
@@ -542,8 +551,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         name = f"{workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
         native_interface = transform_signature_to_interface(inspect.signature(workflow_function))
-        # These will get populated on compile only
-        self._nodes = None
 
         # TODO do we need this - can this not be in launchplan only?
         #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or

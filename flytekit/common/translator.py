@@ -15,13 +15,7 @@ from flytekit.core.node import Node
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity
 from flytekit.core.task import ReferenceTask
-from flytekit.core.workflow import (
-    ImperativeWorkflow,
-    PythonFunctionWorkflow,
-    ReferenceWorkflow,
-    WorkflowFailurePolicy,
-    WorkflowMetadata,
-)
+from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy, WorkflowMetadata
 from flytekit.models import common as _common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
@@ -37,8 +31,7 @@ FlyteLocalEntity = Union[
     BranchNode,
     Node,
     LaunchPlan,
-    PythonFunctionWorkflow,
-    ImperativeWorkflow,
+    WorkflowBase,
     ReferenceWorkflow,
     ReferenceTask,
     ReferenceLaunchPlan,
@@ -157,7 +150,7 @@ def get_serializable_task(
 
 
 def get_serializable_workflow(
-    entity_mapping: OrderedDict, settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool,
+    entity_mapping: OrderedDict, settings: SerializationSettings, entity: WorkflowBase, fast: bool,
 ) -> FlyteControlPlaneEntity:
     workflow_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.WORKFLOW, settings.project, settings.domain, entity.name, settings.version
@@ -166,37 +159,7 @@ def get_serializable_workflow(
     # Translate nodes
     upstream_sdk_nodes = [
         get_serializable(entity_mapping, settings, n)
-        for n in entity._nodes
-        if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
-    ]
-
-    cp_entity = SdkWorkflow(
-        nodes=upstream_sdk_nodes,
-        id=workflow_id,
-        metadata=entity.workflow_metadata.to_flyte_model(),
-        metadata_defaults=entity.workflow_metadata_defaults.to_flyte_model(),
-        interface=entity._interface,
-        output_bindings=entity._output_bindings,
-    )
-    # Reset just to make sure it's what we give it
-    cp_entity.id._project = settings.project
-    cp_entity.id._domain = settings.domain
-    cp_entity.id._name = entity.name
-    cp_entity.id._version = settings.version
-    return cp_entity
-
-
-def get_serializable_workflow_two(
-    entity_mapping: OrderedDict, settings: SerializationSettings, entity: ImperativeWorkflow, fast: bool,
-) -> FlyteControlPlaneEntity:
-    workflow_id = _identifier_model.Identifier(
-        _identifier_model.ResourceType.WORKFLOW, settings.project, settings.domain, entity.name, settings.version
-    )
-
-    # Translate nodes
-    upstream_sdk_nodes = [
-        get_serializable(entity_mapping, settings, n)
-        for n in entity.compilation_state.nodes
+        for n in entity.nodes
         if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
     ]
 
@@ -270,7 +233,7 @@ def get_serializable_node(
         )
         if entity._aliases:
             cp_entity._output_aliases = entity._aliases
-    elif isinstance(entity._flyte_entity, PythonFunctionWorkflow):
+    elif isinstance(entity._flyte_entity, WorkflowBase):
         cp_entity = SdkNode(
             entity._id,
             upstream_nodes=upstream_sdk_nodes,
@@ -351,11 +314,8 @@ def get_serializable(
     elif isinstance(entity, PythonTask):
         cp_entity = get_serializable_task(entity_mapping, settings, entity, fast)
 
-    elif isinstance(entity, PythonFunctionWorkflow):
+    elif isinstance(entity, WorkflowBase):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, fast)
-
-    elif isinstance(entity, ImperativeWorkflow):
-        cp_entity = get_serializable_workflow_two(entity_mapping, settings, entity, fast)
 
     elif isinstance(entity, Node):
         cp_entity = get_serializable_node(entity_mapping, settings, entity, fast)
