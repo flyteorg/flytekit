@@ -90,7 +90,7 @@ exclude_patterns = []
 html_theme = "sphinx_material"
 html_theme_options = {
     # Set the name of the project to appear in the navigation.
-    "nav_title": "Flyte",
+    "nav_title": "Flytekit Python Reference",
     # Set you GA account ID to enable tracking
     "google_analytics_account": "G-YQL24L5CKY",
     # Specify a base_url used to generate sitemap.xml. If not
@@ -108,6 +108,23 @@ html_theme_options = {
     "globaltoc_collapse": False,
     # If True, show hidden TOC entries
     "globaltoc_includehidden": False,
+    # don't include home link in breadcrumb bar, since it's included
+    # in the nav_links key below.
+    "master_doc": False,
+    # custom nav in breadcrumb bar
+    "nav_links": [
+        {
+            "href": "https://flyte.readthedocs.io/",
+            "internal": False,
+            "title": "Flyte",
+        },
+        {
+            "href": "https://flytecookbook.readthedocs.io",
+            "internal": False,
+            "title": "Flytekit Tutorials",
+        },
+        {"href": "index", "internal": True, "title": "Flytekit Python Reference"},
+    ],
 }
 
 # The default sidebars (for documents that don't match any pattern) are
@@ -125,6 +142,7 @@ html_static_path = []
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
 #
+html_logo = "flyte_circle_gradient_1_4x4.png"
 
 
 # -- Options for HTMLHelp output ---------------------------------------------
