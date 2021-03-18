@@ -20,7 +20,7 @@ from flytekit.core.workflow import (
     ReferenceWorkflow,
     WorkflowFailurePolicy,
     WorkflowMetadata,
-    WorkflowTwo,
+    ImperativeWorkflow,
 )
 from flytekit.models import common as _common_models
 from flytekit.models import interface as interface_models
@@ -38,7 +38,7 @@ FlyteLocalEntity = Union[
     Node,
     LaunchPlan,
     PythonFunctionWorkflow,
-    WorkflowTwo,
+    ImperativeWorkflow,
     ReferenceWorkflow,
     ReferenceTask,
     ReferenceLaunchPlan,
@@ -187,7 +187,7 @@ def get_serializable_workflow(
 
 
 def get_serializable_workflow_two(
-    entity_mapping: OrderedDict, settings: SerializationSettings, entity: WorkflowTwo, fast: bool,
+    entity_mapping: OrderedDict, settings: SerializationSettings, entity: ImperativeWorkflow, fast: bool,
 ) -> FlyteControlPlaneEntity:
     workflow_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.WORKFLOW, settings.project, settings.domain, entity.name, settings.version
@@ -354,7 +354,7 @@ def get_serializable(
     elif isinstance(entity, PythonFunctionWorkflow):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, fast)
 
-    elif isinstance(entity, WorkflowTwo):
+    elif isinstance(entity, ImperativeWorkflow):
         cp_entity = get_serializable_workflow_two(entity_mapping, settings, entity, fast)
 
     elif isinstance(entity, Node):

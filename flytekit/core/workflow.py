@@ -321,7 +321,7 @@ class WorkflowBase(object):
         return create_task_output(new_promises, self.python_interface)
 
 
-class WorkflowTwo(WorkflowBase):
+class ImperativeWorkflow(WorkflowBase):
     def __init__(
         self, name: str, failure_policy: Optional[WorkflowFailurePolicy] = None, interruptible: Optional[bool] = False,
     ):

@@ -22,7 +22,7 @@ from flytekit.configuration import internal as _internal_config
 from flytekit.core import context_manager as flyte_context
 from flytekit.core.base_task import PythonTask
 from flytekit.core.launch_plan import LaunchPlan
-from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowTwo
+from flytekit.core.workflow import PythonFunctionWorkflow, ImperativeWorkflow
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
@@ -173,7 +173,7 @@ def serialize_all(
             if (
                 isinstance(entity, PythonTask)
                 or isinstance(entity, PythonFunctionWorkflow)
-                or isinstance(entity, WorkflowTwo)
+                or isinstance(entity, ImperativeWorkflow)
                 or isinstance(entity, LaunchPlan)
             ):
                 if isinstance(entity, PythonTask):
@@ -186,7 +186,7 @@ def serialize_all(
                 else:
                     get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
 
-                if isinstance(entity, PythonFunctionWorkflow) or isinstance(entity, WorkflowTwo):
+                if isinstance(entity, PythonFunctionWorkflow) or isinstance(entity, ImperativeWorkflow):
                     lp = LaunchPlan.get_default_launch_plan(ctx, entity)
                     get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp)
 
