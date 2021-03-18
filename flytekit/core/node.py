@@ -75,3 +75,4 @@ class Node(object):
             self._aliases = []
             for k, v in alias_dict.items():
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
+        return self
