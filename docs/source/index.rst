@@ -3,13 +3,19 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-##########################################
-Welcome to ``Flytekit``'s documentation!
-##########################################
+*************************
+Flytekit Python Reference
+*************************
 
-*************
-Flytekit API
-*************
+This section of the documentation provides more detailed descriptions of the high-level design of ``flytekit`` and an
+API reference for specific usage details of python functions, classes, and decorators that you import to specify tasks,
+build workflows, extend ``flytekit``.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Design
+
+   design/index
 
 .. toctree::
    :maxdepth: 1
@@ -19,25 +25,6 @@ Flytekit API
    testing
    extend
 
-This section documents the various Python imports users will need to work with to build Flyte workflows, extend Flytekit, etc.
-
-
-********************
-Flytekit Design
-********************
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Design
-
-   design/index
-
-This section details how flytekit is laid out, its general design, and some of the rationale for why it is the way it is.
-
-********************
-Conributing
-********************
-
 .. toctree::
    :maxdepth: 1
    :caption: Contributing
@@ -45,17 +32,6 @@ Conributing
    contributing
    tasks.extend
    types.extend
-
-******************************
-Additional Flyte Documentation
-******************************
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Other Documentation
-
-   Flyte Documentation <http://flyte.readthedocs.io/>
-   Flytekit Learn by Example <http://flytecookbook.readthedocs.io/>
 
 
 .. toctree::
