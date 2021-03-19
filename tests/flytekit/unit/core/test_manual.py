@@ -22,7 +22,7 @@ serialization_settings = context_manager.SerializationSettings(
 )
 
 
-def test_wf2():
+def test_imperative():
     @task
     def t1(a: str) -> str:
         return a + " world"
@@ -53,7 +53,7 @@ def test_wf2():
     assert srz_lp.workflow_id.name == "my.workflow"
 
 
-def test_wf2_list_bound():
+def test_imperative_list_bound():
     @task
     def t1(a: typing.List[int]) -> int:
         return sum(a)
@@ -67,7 +67,7 @@ def test_wf2_list_bound():
     assert wb(in1=3, in2=4) == 7
 
 
-def test_wf2_map_bound():
+def test_imperative_map_bound():
     @task
     def t1(a: typing.Dict[str, typing.List[int]]) -> typing.Dict[str, int]:
         return {k: sum(v) for k, v in a.items()}
@@ -82,7 +82,7 @@ def test_wf2_map_bound():
     assert wb(in1=3, in2=4, in3=5) == {"a": 7, "b": 9}
 
 
-def test_wf2_with_list_io():
+def test_imperative_with_list_io():
     @task
     def t1(a: int) -> typing.List[int]:
         return [1, a, 3]
@@ -99,7 +99,7 @@ def test_wf2_with_list_io():
     assert wb() == 6
 
 
-def test_wf2_wf_list_input():
+def test_imperative_wf_list_input():
     @task
     def t1(a: int) -> typing.List[int]:
         return [1, a, 3]
@@ -121,7 +121,7 @@ def test_wf2_wf_list_input():
     assert srz_wf.nodes[0].task_node is not None
 
 
-def test_wf2_scalar_bindings():
+def test_imperative_scalar_bindings():
     @task
     def t1(a: typing.Dict[str, typing.List[int]]) -> typing.Dict[str, int]:
         return {k: sum(v) for k, v in a.items()}
@@ -137,7 +137,7 @@ def test_wf2_scalar_bindings():
     assert srz_wf.nodes[0].task_node is not None
 
 
-def test_wf2_list_bound_output():
+def test_imperative_list_bound_output():
     @task
     def t1() -> int:
         return 3
@@ -180,7 +180,7 @@ def test_call_normal():
     assert wb_lp() == (5, "world")
 
 
-def test_wf2_call_from_normal():
+def test_imperative_call_from_normal():
     @task
     def t1(a: str) -> str:
         return a + " world"

@@ -6,7 +6,7 @@ from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.core.testing import patch as flyte_patch
-from flytekit.core.workflow import ImperativeWorkflow
+from flytekit.core.workflow import ImperativeWorkflow, workflow
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = context_manager.SerializationSettings(
@@ -46,3 +46,15 @@ def test_none_conversion(mock_t1):
     # This will try to convert None to a string
     with pytest.raises(AssertionError):
         wb(in1="hello")
+
+
+@flyte_patch(wb)
+def test_imperative_patching(mock_wb):
+    mock_wb.return_value = "hi"
+
+    @workflow
+    def my_functional_wf(a: str) -> str:
+        x = wb(in1=a)
+        return x
+
+    assert my_functional_wf(a="hello") == "hi"

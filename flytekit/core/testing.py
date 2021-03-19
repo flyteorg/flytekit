@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 from flytekit.core.base_task import PythonTask
 from flytekit.core.reference_entity import ReferenceEntity
-from flytekit.core.workflow import PythonFunctionWorkflow
+from flytekit.core.workflow import WorkflowBase
 from flytekit.loggers import logger
 
 
@@ -31,11 +31,7 @@ def task_mock(t: PythonTask) -> MagicMock:
                # The mock is valid only within this context
     """
 
-    if (
-        not isinstance(t, PythonTask)
-        and not isinstance(t, PythonFunctionWorkflow)
-        and not isinstance(t, ReferenceEntity)
-    ):
+    if not isinstance(t, PythonTask) and not isinstance(t, WorkflowBase) and not isinstance(t, ReferenceEntity):
         raise Exception("Can only be used for tasks")
 
     m = MagicMock()
@@ -50,13 +46,13 @@ def task_mock(t: PythonTask) -> MagicMock:
     t.execute = _captured_fn
 
 
-def patch(target: Union[PythonTask, PythonFunctionWorkflow, ReferenceEntity]):
+def patch(target: Union[PythonTask, WorkflowBase, ReferenceEntity]):
     """
     This is a decorator used for testing.
     """
     if (
         not isinstance(target, PythonTask)
-        and not isinstance(target, PythonFunctionWorkflow)
+        and not isinstance(target, WorkflowBase)
         and not isinstance(target, ReferenceEntity)
     ):
         raise Exception("Can only use mocks on tasks/workflows declared in Python.")
