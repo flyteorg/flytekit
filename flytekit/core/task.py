@@ -147,6 +147,8 @@ def task(
                      semi-descriptive. The key values will be available from runtime, if the backend is configured
                      to provide secrets and if secrets are available in the configured secrets store.
                      Possible options for secret stores are - Vault, Confidant, Kube secrets, AWS KMS etc
+                     Refer to :py:class:`Secret` to understand how to specify the request for a secret. It
+                     may change based on the backend provider.
     :param execution_mode: This is mainly for internal use. Please ignore. It is filled in automatically.
     """
 

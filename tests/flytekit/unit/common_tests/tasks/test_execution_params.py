@@ -16,7 +16,7 @@ def test_secrets_manager_default():
 def test_secrets_manager_get_envvar():
     sec = SecretsManager()
     assert sec.get_secrets_env_var("test") == f"{secrets.SECRETS_ENV_PREFIX.get()}TEST"
-    assert sec.get_secrets_env_var("test", secrets_group="group") == f"{secrets.SECRETS_ENV_PREFIX.get()}GROUP_TEST"
+    assert sec.get_secrets_env_var("group", "test") == f"{secrets.SECRETS_ENV_PREFIX.get()}GROUP_TEST"
 
 
 def test_secrets_manager_get_file():
@@ -24,7 +24,7 @@ def test_secrets_manager_get_file():
     assert sec.get_secrets_file("test") == os.path.join(
         secrets.SECRETS_DEFAULT_DIR.get(), f"{secrets.SECRETS_FILE_PREFIX.get()}test",
     )
-    assert sec.get_secrets_file("test", secrets_group="group") == os.path.join(
+    assert sec.get_secrets_file("group", "test") == os.path.join(
         secrets.SECRETS_DEFAULT_DIR.get(), "group", f"{secrets.SECRETS_FILE_PREFIX.get()}test",
     )
 
@@ -42,14 +42,14 @@ def test_secrets_manager_file(tmpdir: py.path.local):
 
     # Group dir not exists
     with pytest.raises(ValueError):
-        sec.get("test", secrets_group="group")
+        sec.get("group", "test")
 
     g = os.path.join(tmp, "group")
     os.makedirs(g)
     f = os.path.join(g, "test")
     with open(f, "w+") as w:
         w.write("my-password")
-    assert sec.get("test", secrets_group="group") == "my-password"
+    assert sec.get("group", "test") == "my-password"
     del os.environ["FLYTE_SECRETS_DEFAULT_DIR"]
 
 
@@ -63,7 +63,7 @@ def test_secrets_manager_bad_env():
     with pytest.raises(ValueError):
         os.environ[sec.get_secrets_env_var("test")] = "value"
         sec = SecretsManager()
-        sec.get("test", secrets_group="group")
+        sec.get("group", "key")
 
 
 def test_secrets_manager_env():
@@ -71,5 +71,5 @@ def test_secrets_manager_env():
     os.environ[sec.get_secrets_env_var("test")] = "value"
     assert sec.get("test") == "value"
 
-    os.environ[sec.get_secrets_env_var("test", secrets_group="group")] = "value"
-    assert sec.get("test", secrets_group="group") == "value"
+    os.environ[sec.get_secrets_env_var(group="group", key="key")] = "value"
+    assert sec.get(group="group", key="key") == "value"

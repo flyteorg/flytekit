@@ -1017,8 +1017,18 @@ def test_secrets():
     with pytest.raises(ValueError):
         foo()
 
-    os.environ[f"{secrets.SECRETS_ENV_PREFIX.get()}MY_SECRETS"] = "super-secret-value"
+    os.environ[flytekit.current_context().secrets.get_secrets_env_var("my_secrets")] = "super-secret-value"
     assert foo() == "super-secret-value"
+
+    @task(secret_requests=[Secret("group", group_version="v1", key="key")])
+    def foo2() -> str:
+        return flytekit.current_context().secrets.get("group", "key")
+
+    with pytest.raises(ValueError):
+        foo2()
+
+    os.environ[flytekit.current_context().secrets.get_secrets_env_var("group", "key")] = "super-secret-value2"
+    assert foo2() == "super-secret-value2"
 
     with pytest.raises(AssertionError):
 
