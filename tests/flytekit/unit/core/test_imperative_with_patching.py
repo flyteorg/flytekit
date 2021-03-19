@@ -1,5 +1,4 @@
 import pytest
-from mock import patch
 
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
