@@ -4,8 +4,7 @@ from mock import patch
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.task import task
-from flytekit.core.testing import patch as flyte_patch
-from flytekit.core.workflow import ImperativeWorkflow, workflow
+from flytekit.core.workflow import ImperativeWorkflow
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = context_manager.SerializationSettings(
@@ -28,33 +27,9 @@ node = wb.add_entity(t1, a=wb.inputs["in1"])
 wb.add_workflow_output("from_n0t1", node.outputs["o0"])
 
 
-def test_base_case():
-    assert wb(in1="hello") == "hello world"
-
-
 @patch("flytekit.core.workflow.ImperativeWorkflow.execute")
-def test_fdsa(mock_execute):
-    print("===== WEIRD TEST START =====")
+def test_fdsa_debug(mock_execute):
+    print("===== WEIRD TEST START DEBUG =====")
     mock_execute.return_value = None
     with pytest.raises(Exception):
         wb(in1="hello")
-
-
-@flyte_patch(t1)
-def test_none_conversion(mock_t1):
-    mock_t1.return_value = None
-    # This will try to convert None to a string
-    with pytest.raises(AssertionError):
-        wb(in1="hello")
-
-
-@flyte_patch(wb)
-def test_imperative_patching(mock_wb):
-    mock_wb.return_value = "hi"
-
-    @workflow
-    def my_functional_wf(a: str) -> str:
-        x = wb(in1=a)
-        return x
-
-    assert my_functional_wf(a="hello") == "hi"
