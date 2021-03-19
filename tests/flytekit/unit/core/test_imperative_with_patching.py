@@ -1,4 +1,5 @@
 import pytest
+from mock import patch as _system_patch
 
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
@@ -31,12 +32,12 @@ def test_base_case():
     assert wb(in1="hello") == "hello world"
 
 
-# @patch("flytekit.core.workflow.ImperativeWorkflow.execute")
-# def test_fdsa_debug(mock_execute):
-#     print("===== WEIRD TEST START DEBUG =====")
-#     mock_execute.return_value = None
-#     with pytest.raises(Exception):
-#         wb(in1="hello")
+@_system_patch("flytekit.core.workflow.ImperativeWorkflow.execute")
+def test_fdsa_debug(mock_execute):
+    print("===== WEIRD TEST START DEBUG =====")
+    mock_execute.return_value = None
+    with pytest.raises(Exception):
+        wb(in1="hello")
 
 
 @flyte_patch(t1)
