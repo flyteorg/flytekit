@@ -9,6 +9,13 @@ from flytekit.models import common as _common
 
 @dataclass
 class Secret(_common.FlyteIdlEntity):
+    """
+    Args:
+        group is the Name of the secret. For example in kubernetes secrets is the name of the secret
+        key is optional and can be an individual secret identifier within the secret For k8s this is required
+        version is the version of the secret. This is an optional field
+        mount_requirement provides a hint to the system as to how the secret should be injected
+    """
     class MountType(Enum):
         ENV_VAR = _sec.Secret.MountType.ENV_VAR
         """
@@ -20,17 +27,24 @@ class Secret(_common.FlyteIdlEntity):
         Caution: May not be supported in all environments
         """
 
-    key: str
-    group: Optional[str] = None
+    group: str
+    group_version: Optional[str] = None
+    key: Optional[str] = None
     mount_requirement: MountType = MountType.ENV_VAR
 
+    def __post_init__(self):
+        if self.group is None:
+            raise ValueError("Group is a required parameter")
+
     def to_flyte_idl(self) -> _sec.Secret:
-        return _sec.Secret(key=self.key, group=self.group, mount_requirement=self.mount_requirement.value)
+        return _sec.Secret(group=self.group, group_version=self.group_version,
+                           key=self.key, mount_requirement=self.mount_requirement.value)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _sec.Secret) -> "Secret":
         return cls(
-            key=pb2_object.key, group=pb2_object.group, mount_requirement=Secret.MountType(pb2_object.mount_requirement)
+            group=pb2_object.group, group_version=pb2_object.group_version,
+            key=pb2_object.key,  mount_requirement=Secret.MountType(pb2_object.mount_requirement)
         )
 
 

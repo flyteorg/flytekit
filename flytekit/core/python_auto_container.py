@@ -59,8 +59,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
           in the compilation context if one is set.
         :param List[Secret] secret_requests: Secrets that are requested by this container execution. These secrets will
                                            be mounted based on the configuration in the Secret and available through
-                                           the SecretManager using the name of the secret as the key
-                                           security_ctx: Keys that can identify the secrets supplied at runtime.
+                                           the SecretManager using the name of the secret as the group
                                            Ideally the secret keys should also be semi-descriptive.
                                            The key values will be available from runtime, if the backend is configured
                        to provide secrets and if secrets are available in the configured secrets store.
