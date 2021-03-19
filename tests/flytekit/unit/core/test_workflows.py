@@ -103,10 +103,8 @@ def test_unexpected_outputs():
     with pytest.raises(FlyteValueException):
         no_outputs_wf()
 
-    @workflow
-    def one_output_wf() -> int:  # noqa
-        t1(a=3)
-
     # Should raise an exception because it doesn't return something when it should
-    with pytest.raises(FlyteValueException):
-        one_output_wf()
+    with pytest.raises(AssertionError):
+        @workflow
+        def one_output_wf() -> int:  # noqa
+            t1(a=3)

@@ -121,6 +121,6 @@ def test_reserved_keyword():
     with pytest.raises(FlyteAssertion):
 
         @workflow
-        def my_wf(a: int, b: str) -> str:
+        def my_wf(a: int) -> str:
             t1_node = create_node(t1, a=a)
             return t1_node.outputs
