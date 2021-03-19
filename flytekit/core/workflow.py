@@ -207,7 +207,8 @@ class WorkflowBase(object):
             input_kwargs.update(kwargs)
             return create_and_link_node(ctx, entity=self, interface=self.python_interface, **input_kwargs)
 
-        # Next is executing as a subworkflow
+        # This condition is hit when this workflow (self) is being called as part of a parent's workflow local run.
+        # The context specifying the local workflow execution has already been set.
         elif (
             ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
@@ -357,7 +358,7 @@ class ImperativeWorkflow(WorkflowBase):
     @property
     def inputs(self) -> Dict[str, Promise]:
         """
-        This holds the input promises to the workflow. The nodes in these Promise objects should always be from
+        This holds the input promises to the workflow. The nodes in these Promise objects should always point to
         the global start node.
         """
         return self._inputs
@@ -473,7 +474,7 @@ class ImperativeWorkflow(WorkflowBase):
         Adds an input to the workflow.
         """
         if input_name in self._inputs:
-            raise FlyteValueException("already in")
+            raise FlyteValidationException(f"Input {input_name} has already been specified for wf {self.name}.")
         self._python_interface = self._python_interface.with_inputs(extra_inputs={input_name: python_type})
         self._interface = transform_interface_to_typed_interface(self._python_interface)
         self._inputs[input_name] = Promise(var=input_name, val=NodeOutput(node=GLOBAL_START_NODE, var=input_name))
@@ -492,7 +493,8 @@ class ImperativeWorkflow(WorkflowBase):
         if python_type is None:
             if type(p) == list or type(p) == dict:
                 raise FlyteValidationException(
-                    f"If not a straight up promise, wf output {output_name} needs to be given an explicit type."
+                    f"If specifying a list or dict of Promises, you must specify the python_type type for {output_name}"
+                    f" starting with the container type (e.g. List[int]"
                 )
             python_type = p.ref.node.flyte_entity.python_interface.outputs[p.var]
             logger.debug(f"Inferring python type for wf output {output_name} from Promise provided {python_type}")
@@ -530,11 +532,7 @@ class ImperativeWorkflow(WorkflowBase):
 
 class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
     """
-    When you assign a name to a node.
-
-    * Any upstream node that is not assigned, recursively assign
-    * When you get the call to the constructor, keep in mind there may be duplicate nodes, because they all should
-      be wrapper nodes.
+    More comments to come.
     """
 
     def __init__(
