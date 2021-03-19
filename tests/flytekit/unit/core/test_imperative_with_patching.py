@@ -1,7 +1,6 @@
 import pytest
 from mock import patch
 
-from flytekit.common.exceptions.user import FlyteValueException
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.task import task
