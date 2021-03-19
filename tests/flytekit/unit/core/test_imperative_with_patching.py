@@ -32,13 +32,6 @@ def test_base_case():
     assert wb(in1="hello") == "hello world"
 
 
-@patch("flytekit.core.workflow.ImperativeWorkflow.execute")
-def test_error(mock_execute):
-    mock_execute.return_value = None
-    # with pytest.raises(FlyteValueException):
-    wb(in1="hello")
-
-
 @flyte_patch(t1)
 def test_none_conversion(mock_t1):
     mock_t1.return_value = None
