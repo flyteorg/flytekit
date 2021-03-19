@@ -396,12 +396,7 @@ class ImperativeWorkflow(WorkflowBase):
             expected_output_names = list(entity.python_interface.outputs.keys())
 
             if isinstance(results, VoidPromise) or results is None:
-                if len(entity.python_interface.outputs) != 0:
-                    raise FlyteValueException(
-                        results,
-                        f"{results} received but interface has {len(entity.python_interface.outputs)} outputs.",
-                    )
-                continue  # Move along, nothing to assign
+                continue  # pragma: no cover # Move along, nothing to assign
 
             # Because we should've already returned in the above check, we just raise an Exception here.
             if len(entity.python_interface.outputs) == 0:
