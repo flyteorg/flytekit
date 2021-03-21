@@ -48,13 +48,11 @@ class SecretsManager(object):
         self._file_prefix = str(secrets.SECRETS_FILE_PREFIX.get()).strip()
         self._env_prefix = str(secrets.SECRETS_ENV_PREFIX.get()).strip()
 
-    def get(self, group: str, key: typing.Optional[str] = None) -> str:
+    def get(self, group: str, key: str) -> str:
         """
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
         """
-        if group is None or group == "":
-            raise ValueError("secrets group is a mandatory field.")
-
+        self.check_group_key(group, key)
         env_var = self.get_secrets_env_var(group, key)
         fpath = self.get_secrets_file(group, key)
         v = os.environ.get(env_var)
@@ -63,28 +61,30 @@ class SecretsManager(object):
         if os.path.exists(fpath):
             with open(fpath, "r") as f:
                 return f.read()
-        if key:
-            raise ValueError(
-                f"Unable to find secret for key {key} in group {group} " f"in Env Var:{env_var} and FilePath: {fpath}"
-            )
-        raise ValueError(f"Unable to find secret for group {group} in Env Var:{env_var} and FilePath: {fpath}")
+        raise ValueError(
+            f"Unable to find secret for key {key} in group {group} " f"in Env Var:{env_var} and FilePath: {fpath}"
+        )
 
-    def get_secrets_env_var(self, group: str, key: typing.Optional[str] = None) -> str:
+    def get_secrets_env_var(self, group: str, key: str) -> str:
         """
         Returns a string that matches the ENV Variable to look for the secrets
         """
-        if key:
-            return f"{self._env_prefix}{group.upper()}_{key.upper()}"
-        return f"{self._env_prefix}{group.upper()}"
+        self.check_group_key(group, key)
+        return f"{self._env_prefix}{group.upper()}_{key.upper()}"
 
-    def get_secrets_file(self, group: str, key: typing.Optional[str] = None) -> str:
+    def get_secrets_file(self, group: str, key: str) -> str:
         """
         Returns a path that matches the file to look for the secrets
         """
-        if key:
-            fname = f"{self._file_prefix}{key.lower()}"
-            return os.path.join(self._base_dir, group.lower(), fname)
-        return os.path.join(self._base_dir, f"{self._file_prefix}{group.lower()}")
+        self.check_group_key(group, key)
+        return os.path.join(self._base_dir, group.lower(), f"{self._file_prefix}{key.lower()}")
+
+    @staticmethod
+    def check_group_key(group: str, key: str):
+        if group is None or group == "":
+            raise ValueError("secrets group is a mandatory field.")
+        if key is None or key == "":
+            raise ValueError("secrets key is a mandatory field.")
 
 
 # TODO: Clean up working dir name

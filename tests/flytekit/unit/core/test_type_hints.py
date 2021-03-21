@@ -1010,15 +1010,12 @@ def test_nested_dict2():
 
 
 def test_secrets():
-    @task(secret_requests=[Secret("my_secret")])
+    @task(secret_requests=[Secret("my_group", "my_key")])
     def foo() -> str:
-        return flytekit.current_context().secrets.get("my_secrets")
+        return flytekit.current_context().secrets.get("my_group", "")
 
     with pytest.raises(ValueError):
         foo()
-
-    os.environ[flytekit.current_context().secrets.get_secrets_env_var("my_secrets")] = "super-secret-value"
-    assert foo() == "super-secret-value"
 
     @task(secret_requests=[Secret("group", group_version="v1", key="key")])
     def foo2() -> str:

@@ -223,7 +223,6 @@ LIST_OF_ALL_LITERALS_AND_VALUES = (
 
 LIST_OF_SECRETS = [
     None,
-    security.Secret(group="x"),
     security.Secret(group="x", key="g"),
     security.Secret(group="x", key="y", mount_requirement=security.Secret.MountType.FILE),
     security.Secret(group="x", key="y", group_version="1", mount_requirement=security.Secret.MountType.FILE),
