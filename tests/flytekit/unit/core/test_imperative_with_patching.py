@@ -32,12 +32,21 @@ def test_base_case():
     assert wb(in1="hello") == "hello world"
 
 
+# Please see https://github.com/flyteorg/flyte/issues/854 for more information.
+# This mock_patch_wf object is a duplicate of the wb object above. Because of the issue 854, we can't
+# use the same object.
+# TODO: Remove this duplicate object pending resolution of #854
+mock_patch_wf = ImperativeWorkflow(name="my.workflow")
+mock_patch_wf.add_workflow_input("in1", str)
+node = mock_patch_wf.add_entity(t1, a=mock_patch_wf.inputs["in1"])
+mock_patch_wf.add_workflow_output("from_n0t1", node.outputs["o0"])
+
+
 @_system_patch("flytekit.core.workflow.ImperativeWorkflow.execute")
-def test_fdsa_debug(mock_execute):
-    print("===== WEIRD TEST START DEBUG =====")
+def test_return_none_errors(mock_execute):
     mock_execute.return_value = None
     with pytest.raises(Exception):
-        wb(in1="hello")
+        mock_patch_wf(in1="hello")
 
 
 @flyte_patch(t1)

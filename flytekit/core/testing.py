@@ -57,6 +57,12 @@ def patch(target: Union[PythonTask, WorkflowBase, ReferenceEntity]):
     ):
         raise Exception("Can only use mocks on tasks/workflows declared in Python.")
 
+    logger.info(
+        "When using this patch function on Flyte entities, please be aware weird issues may arise if also"
+        "using mock.patch on internal Flyte classes like PythonFunctionWorkflow. See"
+        "https://github.com/flyteorg/flyte/issues/854 for more information"
+    )
+
     def wrapper(test_fn):
         def new_test(*args, **kwargs):
             logger.warning(f"Invoking mock method for target: '{target.name}'")
