@@ -91,8 +91,11 @@ def construct_input_promises(inputs: List[str]):
     }
 
 
-# given a binding to a binding collection, want to return a literal collection.
 def get_promise(binding_data: _literal_models.BindingData, outputs_cache: Dict[Node, Dict[str, Promise]]) -> Promise:
+    """
+    This is a helper function that will turn a binding into a Promise object, using a lookup map. Please see
+    get_promise_map for the rest of the details.
+    """
     if binding_data.promise is not None:
         if not isinstance(binding_data.promise, NodeOutput):
             raise FlyteValidationException(
@@ -127,6 +130,12 @@ def get_promise(binding_data: _literal_models.BindingData, outputs_cache: Dict[N
 def get_promise_map(
     bindings: List[_literal_models.Binding], outputs_cache: Dict[Node, Dict[str, Promise]]
 ) -> Dict[str, Promise]:
+    """
+    Local execution of imperatively defined workflows is done node by node. This function will fill in the node's
+    entity's input arguments, which are specified using the bindings list, and a map of nodes to its outputs.
+    Basically this takes the place of propeller in resolving bindings, pulling in outputs from previously completed
+    nodes and filling in the necessary inputs.
+    """
     entity_kwargs = {}
     for b in bindings:
         entity_kwargs[b.var] = get_promise(b.binding, outputs_cache)
@@ -196,6 +205,15 @@ class WorkflowBase(object):
         )
 
     def __call__(self, *args, **kwargs):
+        """
+        The call pattern for Workflows is close to, but not exactly, the call pattern for Tasks. For local execution,
+        it goes
+
+        __call__ -> _local_execute -> execute
+
+        From execute, different things happen for the two Workflow styles. For PythonFunctionWorkflows, the Python
+        function is run, for the ImperativeWorkflow, each node is run one at a time.
+        """
         if len(args) > 0:
             raise AssertionError("Only Keyword Arguments are supported for Workflow executions")
 
@@ -368,8 +386,13 @@ class ImperativeWorkflow(WorkflowBase):
 
     def execute(self, **kwargs):
         """
-        Called by _local_execute
-        :param kwargs:
+        Called by _local_execute. This function is how local execution for imperative workflows runs. Because when an
+        entity is added using the add_entity function, all inputs to that entity should've been already declared, we
+        can just iterate through the nodes in order and we shouldn't run into any dependency issues. That is, we force
+        the user to declare entities already in a topological sort. To keep track of outputs, we create a map to
+        start things off, filled in only with the workflow inputs (if any). As things are run, their outputs are stored
+        in this map.
+        After all nodes are run, we fill in workflow level outputs the same way as any other previous node.
         """
         if not self.ready():
             raise FlyteValidationException(f"Workflow not ready, wf is currently {self}")
