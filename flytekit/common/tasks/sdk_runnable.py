@@ -60,7 +60,7 @@ class SecretsManager(object):
             return v
         if os.path.exists(fpath):
             with open(fpath, "r") as f:
-                return f.read()
+                return f.read().strip()
         raise ValueError(
             f"Unable to find secret for key {key} in group {group} " f"in Env Var:{env_var} and FilePath: {fpath}"
         )
