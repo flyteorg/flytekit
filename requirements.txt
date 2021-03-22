@@ -71,7 +71,7 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.18.37
+flyteidl==0.18.38
     # via flytekit
 gevent==21.1.2
     # via sagemaker-training

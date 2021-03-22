@@ -88,7 +88,11 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
+<<<<<<< HEAD
 flyteidl==0.18.37
+=======
+flyteidl==0.18.38
+>>>>>>> implement new control plane classes
     # via flytekit
 furo==2021.4.11b34
     # via -r doc-requirements.in
