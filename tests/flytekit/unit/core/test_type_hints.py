@@ -1022,8 +1022,7 @@ def test_secrets_2():
     def foo2() -> str:
         return flytekit.current_context().secrets.get("group", "key")
 
-    with pytest.raises(ValueError):
-        foo2()
+    foo2()
 
     os.environ[flytekit.current_context().secrets.get_secrets_env_var("group", "key")] = "super-secret-value2"
     assert foo2() == "super-secret-value2"
