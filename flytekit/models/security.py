@@ -18,6 +18,11 @@ class Secret(_common.FlyteIdlEntity):
     """
 
     class MountType(Enum):
+        ANY = _sec.Secret.MountType.ANY
+        """
+        Use this if the secret can be injected as either an environment variable / file and this should be left for the
+        platform to decide. This is the most flexible option
+        """
         ENV_VAR = _sec.Secret.MountType.ENV_VAR
         """
         Use this if the secret can be injected as an environment variable. Usually works for symmetric keys, passwords etc
@@ -31,7 +36,7 @@ class Secret(_common.FlyteIdlEntity):
     group: str
     key: str
     group_version: Optional[str] = None
-    mount_requirement: MountType = MountType.ENV_VAR
+    mount_requirement: MountType = MountType.ANY
 
     def __post_init__(self):
         if self.group is None:

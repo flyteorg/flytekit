@@ -1,3 +1,5 @@
+import os
+
 from flytekit.configuration import common as _common_config
 
 # Secrets management
@@ -7,7 +9,9 @@ This is the prefix that will be used to lookup for injected secrets at runtime. 
 FLYTE_SECRETS_ENV_PREFIX variable
 """
 
-SECRETS_DEFAULT_DIR = _common_config.FlyteStringConfigurationEntry("secrets", "default_dir", default="/etc/secrets")
+SECRETS_DEFAULT_DIR = _common_config.FlyteStringConfigurationEntry(
+    "secrets", "default_dir", default=os.path.join("etc", "secrets")
+)
 """
 This is the default directory that will be used to find secrets as individual files under. This can be overriden using
 FLYTE_SECRETS_DEFAULT_DIR.
