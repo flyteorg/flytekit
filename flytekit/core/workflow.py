@@ -602,7 +602,11 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             workflow_outputs = self._workflow_function(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
 
-            # This needs a longer comment.
+            # This little loop was added as part of the task resolver change. The task resolver interface itself is
+            # more or less stateless (the future-proofing get_all_tasks function notwithstanding). However the
+            # implementation of the TaskResolverMixin that this workflow class inherits from (ClassStorageTaskResolver)
+            # does store state. This loop adds Tasks that are defined within the body of the workflow to the workflow
+            # object itself.
             for n in comp_ctx.compilation_state.nodes:
                 if isinstance(n.flyte_entity, PythonAutoContainerTask) and n.flyte_entity.task_resolver == self:
                     logger.debug(f"WF {self.name} saving task {n.flyte_entity.name}")

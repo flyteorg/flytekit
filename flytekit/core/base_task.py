@@ -87,7 +87,6 @@ class TaskMetadata(object):
 
         return _task_model.TaskMetadata(
             discoverable=self.cache,
-            # TODO Fix the version circular dependency before beta
             runtime=_task_model.RuntimeMetadata(
                 _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"
             ),
