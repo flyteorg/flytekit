@@ -38,7 +38,8 @@ class SecretsManager(object):
     The resolution order is
       - Try env var first. The env var should have the configuration.SECRETS_ENV_PREFIX. The env var will be all upper
          cased
-      - If not then try the file where the name matches the key as lower case in configuration.SECRETS_DEFAULT_DIR
+      - If not then try the file where the name matches lower case
+        ``configuration.SECRETS_DEFAULT_DIR/<group>/configuration.SECRETS_FILE_PREFIX<key>``
 
     All configuration values can always be overriden by injecting an environment variable
     """
