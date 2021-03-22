@@ -1016,6 +1016,8 @@ def test_secrets():
     with pytest.raises(ValueError):
         foo()
 
+
+def test_secrets_2():
     @task(secret_requests=[Secret("group", group_version="v1", key="key")])
     def foo2() -> str:
         return flytekit.current_context().secrets.get("group", "key")
