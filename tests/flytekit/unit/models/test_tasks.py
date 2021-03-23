@@ -97,6 +97,7 @@ def test_task_template(in_tuple):
         container=task.Container(
             "my_image", ["this", "is", "a", "cmd"], ["this", "is", "an", "arg"], resources, {"a": "b"}, {"d": "e"},
         ),
+        config={"a": "b"},
     )
     assert obj.id.resource_type == identifier.ResourceType.TASK
     assert obj.id.project == "project"
@@ -109,6 +110,31 @@ def test_task_template(in_tuple):
     assert obj.custom == {"a": 1, "b": {"c": 2, "d": 3}}
     assert obj.container.image == "my_image"
     assert obj.container.resources == resources
+    assert text_format.MessageToString(obj.to_flyte_idl()) == text_format.MessageToString(
+        task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
+    )
+    assert obj.config == {"a": "b"}
+
+
+@pytest.mark.parametrize("sec_ctx", parameterizers.LIST_OF_SECURITY_CONTEXT)
+def test_task_template_security_context(sec_ctx):
+    obj = task.TaskTemplate(
+        identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
+        "python",
+        parameterizers.LIST_OF_TASK_METADATA[0],
+        parameterizers.LIST_OF_INTERFACES[0],
+        {"a": 1, "b": {"c": 2, "d": 3}},
+        container=task.Container(
+            "my_image",
+            ["this", "is", "a", "cmd"],
+            ["this", "is", "an", "arg"],
+            parameterizers.LIST_OF_RESOURCES[0],
+            {"a": "b"},
+            {"d": "e"},
+        ),
+        security_context=sec_ctx,
+    )
+    assert obj.security_context == sec_ctx
     assert text_format.MessageToString(obj.to_flyte_idl()) == text_format.MessageToString(
         task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
     )

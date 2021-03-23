@@ -16,6 +16,7 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
+from flytekit.models import security as _sec
 from flytekit.models.core import identifier as _identifier
 from flytekit.plugins import flyteidl as _lazy_flyteidl
 from flytekit.sdk.spark_types import SparkType as _spark_type
@@ -291,7 +292,18 @@ class TaskMetadata(_common.FlyteIdlEntity):
 
 
 class TaskTemplate(_common.FlyteIdlEntity):
-    def __init__(self, id, type, metadata, interface, custom, container=None, task_type_version=0):
+    def __init__(
+        self,
+        id,
+        type,
+        metadata,
+        interface,
+        custom,
+        container=None,
+        task_type_version=0,
+        security_context=None,
+        config=None,
+    ):
         """
         A task template represents the full set of information necessary to perform a unit of work in the Flyte system.
         It contains the metadata about what inputs and outputs are consumed or produced.  It also contains the metadata
@@ -308,6 +320,10 @@ class TaskTemplate(_common.FlyteIdlEntity):
             a Container might be specified with the necessary command line arguments.
         :param int task_type_version: Specific version of this task type used by plugins to potentially modify
             execution behavior or serialization.
+        :param dict[str, str] config: For plugin tasks this represents additional configuration information to be used
+            in tandem with the custom.
+        :param dict[str, str] config: For plugin tasks this represents additional configuration information to be used
+            in tandem with the custom.
         """
         self._id = id
         self._type = type
@@ -316,6 +332,8 @@ class TaskTemplate(_common.FlyteIdlEntity):
         self._custom = custom
         self._container = container
         self._task_type_version = task_type_version
+        self._config = config
+        self._security_context = security_context
 
     @property
     def id(self):
@@ -370,11 +388,23 @@ class TaskTemplate(_common.FlyteIdlEntity):
         """
         return self._container
 
+    @property
+    def config(self):
+        """
+        Arbitrary dictionary containing metadata for parsing and handling custom plugins.
+        :rtype: dict[Text, T]
+        """
+        return self._config
+
+    @property
+    def security_context(self):
+        return self._security_context
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.TaskTemplate
         """
-        return _core_task.TaskTemplate(
+        task_template = _core_task.TaskTemplate(
             id=self.id.to_flyte_idl(),
             type=self.type,
             metadata=self.metadata.to_flyte_idl(),
@@ -382,7 +412,10 @@ class TaskTemplate(_common.FlyteIdlEntity):
             custom=_json_format.Parse(_json.dumps(self.custom), _struct.Struct()) if self.custom else None,
             container=self.container.to_flyte_idl() if self.container else None,
             task_type_version=self.task_type_version,
+            security_context=self.security_context.to_flyte_idl() if self.security_context else None,
+            config={k: v for k, v in self.config.items()} if self.config is not None else None,
         )
+        return task_template
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -398,6 +431,10 @@ class TaskTemplate(_common.FlyteIdlEntity):
             custom=_json_format.MessageToDict(pb2_object.custom) if pb2_object else None,
             container=Container.from_flyte_idl(pb2_object.container) if pb2_object.HasField("container") else None,
             task_type_version=pb2_object.task_type_version,
+            security_context=_sec.SecurityContext.from_flyte_idl(pb2_object.security_context)
+            if pb2_object.security_context
+            else None,
+            config={k: v for k, v in pb2_object.config.items()} if pb2_object.config is not None else None,
         )
 
 

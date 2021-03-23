@@ -29,6 +29,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.interface import Variable
+from flytekit.models.security import SecurityContext
 
 
 def kwtypes(**kwargs) -> Dict[str, Type]:
@@ -123,6 +124,7 @@ class Task(object):
         interface: Optional[_interface_models.TypedInterface] = None,
         metadata: Optional[TaskMetadata] = None,
         task_type_version=0,
+        security_ctx: Optional[SecurityContext] = None,
         **kwargs,
     ):
         self._task_type = task_type
@@ -130,6 +132,7 @@ class Task(object):
         self._interface = interface
         self._metadata = metadata if metadata else TaskMetadata()
         self._task_type_version = task_type_version
+        self._security_ctx = security_ctx
 
         FlyteEntities.entities.append(self)
 
@@ -156,6 +159,10 @@ class Task(object):
     @property
     def task_type_version(self) -> int:
         return self._task_type_version
+
+    @property
+    def security_context(self) -> SecurityContext:
+        return self._security_ctx
 
     def get_type_for_input_var(self, k: str, v: Any) -> type:
         """
@@ -266,6 +273,9 @@ class Task(object):
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return None
 
+    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+        return None
+
     @abstractmethod
     def dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap,
@@ -308,16 +318,21 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         name: str,
         task_config: T,
         interface: Optional[Interface] = None,
-        environment=None,
-        task_type_version=0,
+        environment: Optional[Dict[str, str]] = None,
         **kwargs,
     ):
+        """
+        Args:
+            task_type: a string that defines a unique task-type for every new extension. If a backend plugin is required
+                       then this has to be done in-concert with the backend plugin identifier
+            name: A unique name for the task instantiation. This is unique for every instance of task.
+            task_config: Configuration for the task. This is used to configure the specific plugin that handles this task
+            interface: A python native typed interface ``(inputs) -> outputs`` that declares the signature of the task
+            environment: Any environment variables that should be supplied during the execution of the task. Supplied as
+                         a dictionary of key/value pairs
+        """
         super().__init__(
-            task_type=task_type,
-            name=name,
-            interface=transform_interface_to_typed_interface(interface),
-            task_type_version=task_type_version,
-            **kwargs,
+            task_type=task_type, name=name, interface=transform_interface_to_typed_interface(interface), **kwargs,
         )
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}

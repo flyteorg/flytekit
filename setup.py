@@ -35,7 +35,7 @@ extras_require = {
     "all": spark3 + all_but_spark,
 }
 
-__version__ = "develop"
+__version__ = "0.0.0+develop"
 
 setup(
     name="flytekit",
@@ -57,7 +57,7 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl>=0.18.14,<1.0.0",
+        "flyteidl>=0.18.24,<1.0.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=2.0.0,<4.0.0",

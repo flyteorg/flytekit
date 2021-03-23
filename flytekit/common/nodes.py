@@ -414,7 +414,7 @@ class SdkNodeExecution(
         """
         if not self.is_complete:
             raise _user_exceptions.FlyteAssertion(
-                "Please what until the node execution has completed before requesting error information."
+                "Please wait until the node execution has completed before requesting error information."
             )
         return self.closure.error
 
