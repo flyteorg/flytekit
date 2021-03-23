@@ -1,16 +1,14 @@
 [tool.black]
 line-length = 120
-exclude = '''
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | _build
-    | build
-    | dist
-  )/
-)
-'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+
+[tool.pytest.ini_options]
+norecursedirs = ["common", "workflows", "spark"]
+log_cli = true
+log_cli_level = 20
+
+[tool.coverage.run]
+branch = true
