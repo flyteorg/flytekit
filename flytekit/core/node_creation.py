@@ -9,14 +9,14 @@ from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteC
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.node import Node
 from flytekit.core.promise import VoidPromise
-from flytekit.core.workflow import Workflow
+from flytekit.core.workflow import PythonFunctionWorkflow
 from flytekit.loggers import logger
 
 # This file exists instead of moving to node.py because it needs Task/Workflow/LaunchPlan and those depend on Node
 
 
 def create_node(
-    entity: Union[PythonTask, LaunchPlan, Workflow], *args, **kwargs
+    entity: Union[PythonTask, LaunchPlan, PythonFunctionWorkflow], *args, **kwargs
 ) -> Union[Node, VoidPromise, Type[collections.namedtuple]]:
     """
     This is the function you want to call if you need to specify dependencies between tasks that don't consume and/or
@@ -71,7 +71,11 @@ def create_node(
             f"Aborting execution as detected {len(args)} positional args {args}"
         )
 
-    if not isinstance(entity, PythonTask) and not isinstance(entity, Workflow) and not isinstance(entity, LaunchPlan):
+    if (
+        not isinstance(entity, PythonTask)
+        and not isinstance(entity, PythonFunctionWorkflow)
+        and not isinstance(entity, LaunchPlan)
+    ):
         raise AssertionError("Should be but it's not")
 
     # This function is only called from inside workflows and dynamic tasks.
@@ -86,6 +90,16 @@ def create_node(
         # VoidPromise, Promise, or our custom namedtuple of Promises.
         node = ctx.compilation_state.nodes[-1]
 
+        # In addition to storing the outputs on the object itself, we also want to set them in a map. When used by
+        # the imperative workflow patterns, users will probably find themselves doing things like
+        #   n = create_node(...)  # then
+        #   output_name = "o0"
+        #   n.outputs[output_name]  # rather than
+        #   n.o0
+        # That is, they'll likely have the name of the output stored as a string variable, and dicts provide cleaner
+        # access than getattr
+        node._outputs = {}
+
         # If a VoidPromise, just return the node.
         if isinstance(outputs, VoidPromise):
             return node
@@ -96,14 +110,27 @@ def create_node(
                 for output_name in entity.python_interface.output_names:
                     attr = getattr(outputs, output_name)
                     if attr is None:
-                        raise Exception(f"Output {output_name} in outputs when calling {entity.name} is empty {attr}.")
+                        raise _user_exceptions.FlyteAssertion(
+                            f"Output {output_name} in outputs when calling {entity.name} is empty {attr}."
+                        )
+                    if hasattr(node, output_name):
+                        raise _user_exceptions.FlyteAssertion(
+                            f"Node {node} already has attribute {output_name}, change the name of output."
+                        )
                     setattr(node, output_name, attr)
+                    node.outputs[output_name] = attr
             else:
                 output_names = entity.python_interface.output_names
                 if len(output_names) != 1:
-                    raise Exception(f"Output of length 1 expected but {len(output_names)} found")
+                    raise _user_exceptions.FlyteAssertion(f"Output of length 1 expected but {len(output_names)} found")
+
+                if hasattr(node, output_names[0]):
+                    raise _user_exceptions.FlyteAssertion(
+                        f"Node {node} already has attribute {output_names[0]}, change the name of output."
+                    )
 
                 setattr(node, output_names[0], outputs)  # This should be a singular Promise
+                node.outputs[output_names[0]] = outputs
 
         return node
 

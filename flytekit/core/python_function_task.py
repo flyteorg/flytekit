@@ -8,7 +8,12 @@ from flytekit.core.context_manager import ExecutionState, FlyteContext, Serializ
 from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask, TaskResolverMixin, default_task_resolver
 from flytekit.core.tracker import isnested, istestfunction
-from flytekit.core.workflow import Workflow, WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults
+from flytekit.core.workflow import (
+    PythonFunctionWorkflow,
+    WorkflowFailurePolicy,
+    WorkflowMetadata,
+    WorkflowMetadataDefaults,
+)
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
@@ -169,7 +174,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             workflow_metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
             defaults = WorkflowMetadataDefaults(interruptible=False)
 
-            self._wf = Workflow(task_function, metadata=workflow_metadata, default_metadata=defaults)
+            self._wf = PythonFunctionWorkflow(task_function, metadata=workflow_metadata, default_metadata=defaults)
             self._wf.compile(**kwargs)
 
             wf = self._wf

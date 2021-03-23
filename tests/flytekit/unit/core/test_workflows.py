@@ -103,10 +103,22 @@ def test_unexpected_outputs():
     with pytest.raises(FlyteValueException):
         no_outputs_wf()
 
+    # Should raise an exception because it doesn't return something when it should
+    with pytest.raises(AssertionError):
+
+        @workflow
+        def one_output_wf() -> int:  # noqa
+            t1(a=3)
+
+
+def test_wf_no_output():
+    @task
+    def t1(a: int) -> int:
+        a = a + 5
+        return a
+
     @workflow
-    def one_output_wf() -> int:  # noqa
+    def no_outputs_wf():
         t1(a=3)
 
-    # Should raise an exception because it doesn't return something when it should
-    with pytest.raises(FlyteValueException):
-        one_output_wf()
+    assert no_outputs_wf() is None

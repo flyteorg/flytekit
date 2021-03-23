@@ -84,10 +84,13 @@ class TaskMetadata(object):
         """
         Converts to _task_model.TaskMetadata
         """
+        from flytekit import __version__
+
         return _task_model.TaskMetadata(
             discoverable=self.cache,
-            # TODO Fix the version circular dependency before beta
-            runtime=_task_model.RuntimeMetadata(_task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, "0.16.0", "python"),
+            runtime=_task_model.RuntimeMetadata(
+                _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"
+            ),
             timeout=self.timeout,
             retries=self.retry_strategy,
             interruptible=self.interruptable,

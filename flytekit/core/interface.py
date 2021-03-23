@@ -147,7 +147,7 @@ class Interface(object):
         if not extra_outputs:
             return self
         new_outputs = copy.copy(self._outputs)
-        for k, v in extra_outputs:
+        for k, v in extra_outputs.items():
             if k in new_outputs:
                 raise ValueError(f"Output {k} cannot be added as it already exists in the interface")
             new_outputs[k] = v

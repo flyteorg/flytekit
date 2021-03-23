@@ -19,11 +19,11 @@ class LaunchPlan(object):
     CACHE = {}
 
     @staticmethod
-    def get_default_launch_plan(ctx: FlyteContext, workflow: _annotated_workflow.Workflow) -> LaunchPlan:
+    def get_default_launch_plan(ctx: FlyteContext, workflow: _annotated_workflow.WorkflowBase) -> LaunchPlan:
         if workflow.name in LaunchPlan.CACHE:
             return LaunchPlan.CACHE[workflow.name]
 
-        parameter_map = transform_inputs_to_parameters(ctx, workflow._native_interface)
+        parameter_map = transform_inputs_to_parameters(ctx, workflow.python_interface)
 
         lp = LaunchPlan(
             name=workflow.name,
@@ -39,7 +39,7 @@ class LaunchPlan(object):
     def create(
         cls,
         name: str,
-        workflow: _annotated_workflow.Workflow,
+        workflow: _annotated_workflow.WorkflowBase,
         default_inputs: Dict[str, Any] = None,
         fixed_inputs: Dict[str, Any] = None,
         schedule: _schedule_model.Schedule = None,
@@ -51,13 +51,13 @@ class LaunchPlan(object):
         fixed_inputs = fixed_inputs or {}
         # Default inputs come from two places, the original signature of the workflow function, and the default_inputs
         # argument to this function. We'll take the latter as having higher precedence.
-        wf_signature_parameters = transform_inputs_to_parameters(ctx, workflow._native_interface)
+        wf_signature_parameters = transform_inputs_to_parameters(ctx, workflow.python_interface)
 
         # Construct a new Interface object with just the default inputs given to get Parameters, maybe there's an
         # easier way to do this, think about it later.
         temp_inputs = {}
         for k, v in default_inputs.items():
-            temp_inputs[k] = (workflow._native_interface.inputs[k], v)
+            temp_inputs[k] = (workflow.python_interface.inputs[k], v)
         temp_interface = Interface(inputs=temp_inputs, outputs={})
         temp_signature = transform_inputs_to_parameters(ctx, temp_interface)
         wf_signature_parameters._parameters.update(temp_signature.parameters)
@@ -68,7 +68,7 @@ class LaunchPlan(object):
             ctx,
             incoming_values=fixed_inputs,
             flyte_interface_types=workflow.interface.inputs,
-            native_types=workflow._native_interface.inputs,
+            native_types=workflow.python_interface.inputs,
         )
         fixed_lm = _literal_models.LiteralMap(literals=fixed_literals)
 
@@ -97,7 +97,7 @@ class LaunchPlan(object):
     def __init__(
         self,
         name: str,
-        workflow: _annotated_workflow.Workflow,
+        workflow: _annotated_workflow.WorkflowBase,
         parameters: _interface_models.ParameterMap,
         fixed_inputs: _literal_models.LiteralMap,
         schedule: _schedule_model.Schedule = None,
@@ -144,7 +144,7 @@ class LaunchPlan(object):
         return self._fixed_inputs
 
     @property
-    def workflow(self) -> _annotated_workflow.Workflow:
+    def workflow(self) -> _annotated_workflow.PythonFunctionWorkflow:
         return self._workflow
 
     @property
@@ -183,7 +183,7 @@ class LaunchPlan(object):
         if ctx.compilation_state is not None:
             inputs = self.saved_inputs
             inputs.update(kwargs)
-            return create_and_link_node(ctx, entity=self, interface=self.workflow._native_interface, **inputs)
+            return create_and_link_node(ctx, entity=self, interface=self.workflow.python_interface, **inputs)
         else:
             # Calling a launch plan should just forward the call to the workflow, nothing more. But let's add in the
             # saved inputs.
