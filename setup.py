@@ -57,7 +57,7 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl>=0.18.17,<1.0.0",
+        "flyteidl>=0.18.24,<1.0.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=2.0.0,<4.0.0",

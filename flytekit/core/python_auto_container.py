@@ -12,6 +12,7 @@ from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracker import TrackedInstance
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
+from flytekit.models.security import Secret, SecurityContext
 
 T = TypeVar("T")
 
@@ -43,6 +44,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         limits: Optional[Resources] = None,
         environment: Optional[Dict[str, str]] = None,
         task_resolver: Optional[TaskResolverMixin] = None,
+        secret_requests: Optional[List[Secret]] = None,
         **kwargs,
     ):
         """
@@ -55,9 +57,27 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         :param environment: Environment variables you want the task to have when run.
         :param task_resolver: Custom resolver - will pick up the default resolver if empty, or the resolver set
           in the compilation context if one is set.
+        :param List[Secret] secret_requests: Secrets that are requested by this container execution. These secrets will
+                                           be mounted based on the configuration in the Secret and available through
+                                           the SecretManager using the name of the secret as the group
+                                           Ideally the secret keys should also be semi-descriptive.
+                                           The key values will be available from runtime, if the backend is configured
+                       to provide secrets and if secrets are available in the configured secrets store.
+                       Possible options for secret stores are
+                        - `Vault <https://www.vaultproject.io/>`,
+                        - `Confidant <https://lyft.github.io/confidant/>`,
+                        - `Kube secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`
+                        - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`_
+                        etc
         """
+        sec_ctx = None
+        if secret_requests:
+            for s in secret_requests:
+                if not isinstance(s, Secret):
+                    raise AssertionError(f"Secret {s} should be of type flytekit.Secret, received {type(s)}")
+            sec_ctx = SecurityContext(secrets=secret_requests)
         super().__init__(
-            task_type=task_type, name=name, task_config=task_config, **kwargs,
+            task_type=task_type, name=name, task_config=task_config, security_ctx=sec_ctx, **kwargs,
         )
         self._container_image = container_image
         # TODO(katrogan): Implement resource overrides

@@ -28,7 +28,7 @@ flake8-black==0.2.1
     # via -r dev-requirements.in
 flake8-isort==4.0.0
     # via -r dev-requirements.in
-flake8==3.8.4
+flake8==3.9.0
     # via
     #   -r dev-requirements.in
     #   flake8-black
@@ -63,9 +63,9 @@ py==1.10.0
     # via
     #   -c requirements.txt
     #   pytest
-pycodestyle==2.6.0
+pycodestyle==2.7.0
     # via flake8
-pyflakes==2.2.0
+pyflakes==2.3.0
     # via flake8
 pyparsing==2.4.7
     # via
@@ -73,7 +73,7 @@ pyparsing==2.4.7
     #   packaging
 pytest==6.2.2
     # via -r dev-requirements.in
-regex==2020.11.13
+regex==2021.3.17
     # via
     #   -c requirements.txt
     #   black

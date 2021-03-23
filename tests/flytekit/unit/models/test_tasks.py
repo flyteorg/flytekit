@@ -116,6 +116,30 @@ def test_task_template(in_tuple):
     assert obj.config == {"a": "b"}
 
 
+@pytest.mark.parametrize("sec_ctx", parameterizers.LIST_OF_SECURITY_CONTEXT)
+def test_task_template_security_context(sec_ctx):
+    obj = task.TaskTemplate(
+        identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
+        "python",
+        parameterizers.LIST_OF_TASK_METADATA[0],
+        parameterizers.LIST_OF_INTERFACES[0],
+        {"a": 1, "b": {"c": 2, "d": 3}},
+        container=task.Container(
+            "my_image",
+            ["this", "is", "a", "cmd"],
+            ["this", "is", "an", "arg"],
+            parameterizers.LIST_OF_RESOURCES[0],
+            {"a": "b"},
+            {"d": "e"},
+        ),
+        security_context=sec_ctx,
+    )
+    assert obj.security_context == sec_ctx
+    assert text_format.MessageToString(obj.to_flyte_idl()) == text_format.MessageToString(
+        task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
+    )
+
+
 @pytest.mark.parametrize("task_closure", parameterizers.LIST_OF_TASK_CLOSURES)
 def test_task(task_closure):
     obj = task.Task(
