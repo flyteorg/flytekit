@@ -401,6 +401,8 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 
 
 @_pass_through.command("pyflyte-map-execute")
+@_click.option("--task-module", required=False)
+@_click.option("--task-name", required=False)
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
