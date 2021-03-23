@@ -10,7 +10,7 @@ FLYTE_SECRETS_ENV_PREFIX variable
 """
 
 SECRETS_DEFAULT_DIR = _common_config.FlyteStringConfigurationEntry(
-    "secrets", "default_dir", default=os.path.join("etc", "secrets")
+    "secrets", "default_dir", default=os.path.join(os.sep, "etc", "secrets")
 )
 """
 This is the default directory that will be used to find secrets as individual files under. This can be overriden using
