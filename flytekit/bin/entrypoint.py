@@ -401,8 +401,6 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 
 
 @_pass_through.command("pyflyte-map-execute")
-@_click.option("--task-module", required=False)
-@_click.option("--task-name", required=False)
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
@@ -413,8 +411,6 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
     "resolver-args", type=_click.UNPROCESSED, nargs=-1,
 )
 def map_execute_task_cmd(
-    task_module,
-    task_name,
     inputs,
     output_prefix,
     raw_output_data_prefix,
@@ -426,8 +422,6 @@ def map_execute_task_cmd(
     _click.echo(_utils.get_version_message())
 
     _execute_map_task(
-        task_module,
-        task_name,
         inputs,
         output_prefix,
         raw_output_data_prefix,
