@@ -411,24 +411,12 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
     "resolver-args", type=_click.UNPROCESSED, nargs=-1,
 )
 def map_execute_task_cmd(
-    inputs,
-    output_prefix,
-    raw_output_data_prefix,
-    max_concurrency,
-    test,
-    resolver,
-    resolver_args,
+    inputs, output_prefix, raw_output_data_prefix, max_concurrency, test, resolver, resolver_args,
 ):
     _click.echo(_utils.get_version_message())
 
     _execute_map_task(
-        inputs,
-        output_prefix,
-        raw_output_data_prefix,
-        max_concurrency,
-        test,
-        resolver,
-        resolver_args,
+        inputs, output_prefix, raw_output_data_prefix, max_concurrency, test, resolver, resolver_args,
     )
 
 
