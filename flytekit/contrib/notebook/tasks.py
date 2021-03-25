@@ -5,7 +5,6 @@ import json as _json
 import os as _os
 import sys as _sys
 
-import papermill as _pm
 import six as _six
 from google.protobuf import json_format as _json_format
 from google.protobuf import text_format as _text_format
@@ -26,6 +25,7 @@ from flytekit.engines import loader as _engine_loader
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_models
+from flytekit.plugins import papermill as _pm
 from flytekit.sdk.spark_types import SparkType as _spark_type
 from flytekit.sdk.types import Types as _Types
 
