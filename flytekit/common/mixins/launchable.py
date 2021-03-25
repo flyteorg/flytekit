@@ -13,6 +13,7 @@ class LaunchableEntity(object, metaclass=_abc.ABCMeta):
         notification_overrides=None,
         label_overrides=None,
         annotation_overrides=None,
+        auth_role=None,
     ):
         """
         Creates a remote execution from the entity and returns the execution identifier.
@@ -29,6 +30,7 @@ class LaunchableEntity(object, metaclass=_abc.ABCMeta):
             notifications.
         :param flytekit.models.common.Labels label_overrides:
         :param flytekit.models.common.Annotations annotation_overrides:
+        :param flytekit.models.common.AuthRole auth_role:
         :rtype: T
 
         """
@@ -40,6 +42,7 @@ class LaunchableEntity(object, metaclass=_abc.ABCMeta):
             notification_overrides=notification_overrides,
             label_overrides=label_overrides,
             annotation_overrides=annotation_overrides,
+            auth_role=auth_role,
         )
 
     @_deprecated(reason="Use launch instead", version="0.9.0")
@@ -80,6 +83,7 @@ class LaunchableEntity(object, metaclass=_abc.ABCMeta):
         notification_overrides=None,
         label_overrides=None,
         annotation_overrides=None,
+        auth_role=None,
     ):
         """
         Executes the entity and returns the execution identifier.  This version of execution is meant for when
@@ -95,6 +99,7 @@ class LaunchableEntity(object, metaclass=_abc.ABCMeta):
             notifications.
         :param flytekit.models.common.Labels label_overrides:
         :param flytekit.models.common.Annotations annotation_overrides:
+        :param flytekit.models.common.AuthRole auth_role:
         :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier:
         """
         pass
