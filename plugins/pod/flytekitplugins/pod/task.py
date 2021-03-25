@@ -1,6 +1,7 @@
 from typing import Any, Callable, Dict, Tuple, Union
 
 from flyteidl.core import tasks_pb2 as _core_task
+from kubernetes.client import ApiClient
 from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements
 
 from flytekit import FlyteContext, PythonFunctionTask
@@ -76,7 +77,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
 
         self.task_config._pod_spec.containers = final_containers
 
-        return self.task_config.pod_spec.to_dict()
+        return ApiClient().sanitize_for_serialization(self.task_config.pod_spec)
 
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
         return {_PRIMARY_CONTAINER_NAME_FIELD: self.task_config.primary_container_name}
