@@ -15,6 +15,9 @@ from flytekit.models.core import types as _core_types
 
 
 class Blob(_literal_models.Blob, metaclass=_sdk_bases.ExtendedSdkType):
+    def to_python_std(self):
+        return self.remote_path
+
     def __init__(self, remote_path, mode="rb", format=None):
         """
         :param Text remote_path: Path to location where the Blob should be synced to.
