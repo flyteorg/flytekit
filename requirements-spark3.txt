@@ -31,9 +31,9 @@ black==19.10b0
     #   papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.32
+boto3==1.17.36
     # via sagemaker-training
-botocore==1.20.32
+botocore==1.20.36
     # via
     #   boto3
     #   s3transfer
@@ -52,7 +52,7 @@ click==7.1.2
     #   flytekit
     #   hmsclient
     #   papermill
-croniter==1.0.8
+croniter==1.0.10
     # via flytekit
 cryptography==3.4.6
     # via paramiko
@@ -74,10 +74,8 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.18.24
+flyteidl==0.18.26
     # via flytekit
-future==0.18.2
-    # via croniter
 gevent==21.1.2
     # via sagemaker-training
 greenlet==1.0.0
@@ -123,7 +121,7 @@ jupyterlab-pygments==0.1.2
     # via nbconvert
 k8s-proto==0.0.3
     # via flytekit
-keyring==23.0.0
+keyring==23.0.1
     # via flytekit
 markupsafe==1.1.1
     # via jinja2
@@ -138,9 +136,7 @@ mistune==0.8.4
 mypy-extensions==0.4.3
     # via typing-inspect
 natsort==7.1.1
-    # via
-    #   croniter
-    #   flytekit
+    # via flytekit
 nbclient==0.5.3
     # via
     #   nbconvert
@@ -181,7 +177,7 @@ pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
     # via ipython
-prompt-toolkit==3.0.17
+prompt-toolkit==3.0.18
     # via ipython
 protobuf==3.15.6
     # via
@@ -252,7 +248,7 @@ sagemaker-training==3.7.3
     # via flytekit
 scantree==0.0.1
     # via dirhash
-scipy==1.6.1
+scipy==1.6.2
     # via sagemaker-training
 six==1.15.0
     # via
@@ -329,7 +325,7 @@ zipp==3.4.1
     # via importlib-metadata
 zope.event==4.5.0
     # via gevent
-zope.interface==5.2.0
+zope.interface==5.3.0
     # via gevent
 
 # The following packages are considered to be unsafe in a requirements file:

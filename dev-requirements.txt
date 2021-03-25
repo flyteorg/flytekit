@@ -35,7 +35,7 @@ flake8==3.9.0
     #   flake8-isort
 iniconfig==1.1.1
     # via pytest
-isort==5.7.0
+isort==5.8.0
     # via
     #   -r dev-requirements.in
     #   flake8-isort
@@ -65,7 +65,7 @@ py==1.10.0
     #   pytest
 pycodestyle==2.7.0
     # via flake8
-pyflakes==2.3.0
+pyflakes==2.3.1
     # via flake8
 pyparsing==2.4.7
     # via

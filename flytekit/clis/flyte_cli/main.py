@@ -644,11 +644,13 @@ def get_task(urn, host, insecure):
 @_project_option
 @_domain_option
 @_optional_name_option
+@_assumable_iam_role_option
+@_kubernetes_service_acct_option
 @_host_option
 @_insecure_option
 @_urn_option
 @_click.argument("task_args", nargs=-1, type=_click.UNPROCESSED)
-def launch_task(project, domain, name, host, insecure, urn, task_args):
+def launch_task(project, domain, name, assumable_iam_role, kubernetes_service_account, host, insecure, urn, task_args):
     """
     Kick off a single task execution. Note that the {project, domain, name} specified in the command line
     will be for the execution.  The project/domain for the task are specified in the urn.
@@ -664,6 +666,15 @@ def launch_task(project, domain, name, host, insecure, urn, task_args):
     """
     _welcome_message()
 
+    if assumable_iam_role and kubernetes_service_account:
+        _click.UsageError("Currently you cannot specify both an assumable_iam_role and kubernetes_service_account")
+    if assumable_iam_role:
+        auth_role = _AuthRole(assumable_iam_role=assumable_iam_role)
+    elif kubernetes_service_account:
+        auth_role = _AuthRole(kubernetes_service_account=kubernetes_service_account)
+    else:
+        auth_role = None
+
     with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
         task_id = _identifier.Identifier.from_python_std(urn)
         task = _tasks_common.SdkTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
@@ -678,7 +689,7 @@ def launch_task(project, domain, name, host, insecure, urn, task_args):
         # TODO: Implement notification overrides
         # TODO: Implement label overrides
         # TODO: Implement annotation overrides
-        execution = task.launch(project, domain, inputs=inputs, name=name)
+        execution = task.launch(project, domain, inputs=inputs, name=name, auth_role=auth_role)
         _click.secho("Launched execution: {}".format(_tt(execution.id)), fg="blue")
         _click.echo("")
 

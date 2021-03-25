@@ -349,6 +349,7 @@ class SdkTask(
         notification_overrides=None,
         label_overrides=None,
         annotation_overrides=None,
+        auth_role=None,
     ):
         """
         Launches a single task execution and returns the execution identifier.
@@ -362,6 +363,7 @@ class SdkTask(
             notifications.
         :param flytekit.models.common.Labels label_overrides:
         :param flytekit.models.common.Annotations annotation_overrides:
+        :param flytekit.models.common.AuthRole auth_role:
         :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
         """
         disable_all = notification_overrides == []
@@ -371,17 +373,21 @@ class SdkTask(
             notification_overrides = _admin_execution_models.NotificationList(notification_overrides or [])
             disable_all = None
 
-        assumable_iam_role = _auth_config.ASSUMABLE_IAM_ROLE.get()
-        kubernetes_service_account = _auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
+        # Unlike regular workflow executions, single task executions must always specify an auth role, since there isn't
+        # any existing launch plan with a bound auth role to fall back on.
+        if auth_role is None:
+            assumable_iam_role = _auth_config.ASSUMABLE_IAM_ROLE.get()
+            kubernetes_service_account = _auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
 
-        if not (assumable_iam_role or kubernetes_service_account):
-            _logging.warning(
-                "Using deprecated `role` from config. " "Please update your config to use `assumable_iam_role` instead"
+            if not (assumable_iam_role or kubernetes_service_account):
+                _logging.warning(
+                    "Using deprecated `role` from config. "
+                    "Please update your config to use `assumable_iam_role` instead"
+                )
+                assumable_iam_role = _sdk_config.ROLE.get()
+            auth_role = _common_model.AuthRole(
+                assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
             )
-            assumable_iam_role = _sdk_config.ROLE.get()
-        auth_role = _common_model.AuthRole(
-            assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
-        )
 
         client = _flyte_engine.get_client()
         try:
