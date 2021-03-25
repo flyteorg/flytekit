@@ -21,7 +21,7 @@ Flytekit is the core extensible library to author Flyte workflows and tasks and 
 ### Base Installation
 
 ```bash
-pip install flytekit==0.16.0b7
+pip install flytekit
 ```
 
 ### Simple getting started
