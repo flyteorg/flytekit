@@ -17,9 +17,9 @@ install-piptools:
 setup: install-piptools ## Install requirements
 	pip-sync requirements.txt dev-requirements.txt
 
-.PHONY: setup-spark3
-setup-spark3: install-piptools ## Install requirements
-	pip-sync requirements-spark3.txt dev-requirements.txt
+.PHONY: setup-spark2
+setup-spark2: install-piptools ## Install requirements
+	pip-sync requirements-spark2.txt dev-requirements.txt
 
 .PHONY: fmt
 fmt: ## Format code with black and isort
@@ -47,9 +47,9 @@ unit_test:
 	pytest tests/scripts
 	pytest plugins/tests
 
-requirements-spark3.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark3.txt
-requirements-spark3.txt: requirements-spark3.in install-piptools
-	$(call PIP_COMPILE,requirements-spark3.in)
+requirements-spark2.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark2.txt
+requirements-spark2.txt: requirements-spark2.in install-piptools
+	$(call PIP_COMPILE,requirements-spark2.in)
 
 requirements.txt: export CUSTOM_COMPILE_COMMAND := make requirements.txt
 requirements.txt: install-piptools
@@ -64,7 +64,7 @@ doc-requirements.txt: dev-requirements.txt install-piptools
 	$(call PIP_COMPILE,doc-requirements.in)
 
 .PHONY: requirements
-requirements: requirements.txt dev-requirements.txt requirements-spark3.txt doc-requirements.txt ## Compile requirements
+requirements: requirements.txt dev-requirements.txt requirements-spark2.txt doc-requirements.txt ## Compile requirements
 
 # TODO: Change this in the future to be all of flytekit
 .PHONY: coverage
@@ -80,6 +80,6 @@ update_version:
 	# it exits with exit code 1 and github actions aborts the build. 
 	grep "$(PLACEHOLDER)" "flytekit/__init__.py"
 	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "flytekit/__init__.py"
-	
+
 	grep "$(PLACEHOLDER)" "setup.py"
 	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "setup.py"

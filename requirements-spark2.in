@@ -1,2 +1,2 @@
-.[all-spark3]
+.[all-spark2.4]
 -e file:.#egg=flytekit
