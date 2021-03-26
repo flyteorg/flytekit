@@ -58,7 +58,7 @@ class TaskMetadata(object):
       retries: for retries=n; n > 0, on failures of this task, the task will be retried at-least n number of times.
       timeout: the max amount of time for which one execution of this task should be executed for. If the execution
                will be terminated if the runtime exceeds the given timeout (approximately)
-     """
+    """
 
     cache: bool = False
     cache_version: str = ""
@@ -278,7 +278,9 @@ class Task(object):
 
     @abstractmethod
     def dispatch_execute(
-        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap,
+        self,
+        ctx: FlyteContext,
+        input_literal_map: _literal_models.LiteralMap,
     ) -> _literal_models.LiteralMap:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
@@ -332,7 +334,10 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                          a dictionary of key/value pairs
         """
         super().__init__(
-            task_type=task_type, name=name, interface=transform_interface_to_typed_interface(interface), **kwargs,
+            task_type=task_type,
+            name=name,
+            interface=transform_interface_to_typed_interface(interface),
+            **kwargs,
         )
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}

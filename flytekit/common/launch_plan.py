@@ -184,7 +184,8 @@ class SdkLaunchPlan(
             )
             assumable_iam_role = _sdk_config.ROLE.get()
         return _common_models.AuthRole(
-            assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
+            assumable_iam_role=assumable_iam_role,
+            kubernetes_service_account=kubernetes_service_account,
         )
 
     @property
@@ -274,7 +275,13 @@ class SdkLaunchPlan(
         Deprecated.
         """
         return self.launch_with_literals(
-            project, domain, literal_inputs, name, notification_overrides, label_overrides, annotation_overrides,
+            project,
+            domain,
+            literal_inputs,
+            name,
+            notification_overrides,
+            label_overrides,
+            annotation_overrides,
         )
 
     @_exception_scopes.system_entry_point
@@ -425,7 +432,8 @@ class SdkRunnableLaunchPlan(_hash_mixin.HashOnReferenceMixin, SdkLaunchPlan):
         super(SdkRunnableLaunchPlan, self).__init__(
             None,
             _launch_plan_models.LaunchPlanMetadata(
-                schedule=schedule or _schedule_model.Schedule(""), notifications=notifications or [],
+                schedule=schedule or _schedule_model.Schedule(""),
+                notifications=notifications or [],
             ),
             _interface_models.ParameterMap(default_inputs),
             _type_helpers.pack_python_std_map_to_literal_map(
@@ -442,7 +450,8 @@ class SdkRunnableLaunchPlan(_hash_mixin.HashOnReferenceMixin, SdkLaunchPlan):
             raw_output_data_config or _common_models.RawOutputDataConfig(""),
         )
         self._interface = _interface.TypedInterface(
-            {k: v.var for k, v in _six.iteritems(default_inputs)}, sdk_workflow.interface.outputs,
+            {k: v.var for k, v in _six.iteritems(default_inputs)},
+            sdk_workflow.interface.outputs,
         )
         self._upstream_entities = {sdk_workflow}
         self._sdk_workflow = sdk_workflow

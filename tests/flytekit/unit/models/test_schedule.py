@@ -37,7 +37,8 @@ def test_schedule_fixed_rate():
 
 
 @_pytest.mark.parametrize(
-    "offset", [None, "P1D"],
+    "offset",
+    [None, "P1D"],
 )
 def test_schedule_cron_schedule(offset):
     cs = _schedule.Schedule.CronSchedule("days", offset)

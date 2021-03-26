@@ -96,7 +96,9 @@ class TrainingJobResourceConfig(_common.FlyteIdlEntity):
 
 class MetricDefinition(_common.FlyteIdlEntity):
     def __init__(
-        self, name: str, regex: str,
+        self,
+        name: str,
+        regex: str,
     ):
         self._name = name
         self._regex = regex
@@ -123,7 +125,10 @@ class MetricDefinition(_common.FlyteIdlEntity):
 
         :rtype: _training_job_pb2.MetricDefinition
         """
-        return _training_job_pb2.MetricDefinition(name=self.name, regex=self.regex,)
+        return _training_job_pb2.MetricDefinition(
+            name=self.name,
+            regex=self.regex,
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _training_job_pb2.MetricDefinition):
@@ -132,7 +137,10 @@ class MetricDefinition(_common.FlyteIdlEntity):
         :param pb2_object: _training_job_pb2.MetricDefinition
         :rtype: MetricDefinition
         """
-        return cls(name=pb2_object.name, regex=pb2_object.regex,)
+        return cls(
+            name=pb2_object.name,
+            regex=pb2_object.regex,
+        )
 
 
 # TODO Convert to Enum
@@ -270,7 +278,9 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
 
 class TrainingJob(_common.FlyteIdlEntity):
     def __init__(
-        self, algorithm_specification: AlgorithmSpecification, training_job_resource_config: TrainingJobResourceConfig,
+        self,
+        algorithm_specification: AlgorithmSpecification,
+        training_job_resource_config: TrainingJobResourceConfig,
     ):
         self._algorithm_specification = algorithm_specification
         self._training_job_resource_config = training_job_resource_config

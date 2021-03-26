@@ -1,6 +1,6 @@
 -c requirements.txt
 
-black==19.10b0
+black
 coverage[toml]
 flake8
 flake8-black

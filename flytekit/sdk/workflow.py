@@ -40,7 +40,10 @@ class Output(flytekit.common.local_workflow.Output):
             this value be provided as the SDK might not always be able to infer the correct type.
         """
         super(Output, self).__init__(
-            "", value, sdk_type=_type_helpers.python_std_to_sdk_type(sdk_type) if sdk_type else None, help=help,
+            "",
+            value,
+            sdk_type=_type_helpers.python_std_to_sdk_type(sdk_type) if sdk_type else None,
+            help=help,
         )
 
 

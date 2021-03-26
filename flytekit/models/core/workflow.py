@@ -197,7 +197,9 @@ class NodeMetadata(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.workflow_pb2.NodeMetadata
         """
         node_metadata = _core_workflow.NodeMetadata(
-            name=self.name, retries=self.retries.to_flyte_idl(), interruptible=self.interruptible,
+            name=self.name,
+            retries=self.retries.to_flyte_idl(),
+            interruptible=self.interruptible,
         )
         if self.timeout:
             node_metadata.timeout.FromTimedelta(self.timeout)
@@ -206,7 +208,9 @@ class NodeMetadata(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         return cls(
-            pb2_object.name, pb2_object.timeout.ToTimedelta(), _RetryStrategy.from_flyte_idl(pb2_object.retries),
+            pb2_object.name,
+            pb2_object.timeout.ToTimedelta(),
+            _RetryStrategy.from_flyte_idl(pb2_object.retries),
         )
 
 
@@ -541,7 +545,14 @@ class WorkflowMetadataDefaults(_common.FlyteIdlEntity):
 
 class WorkflowTemplate(_common.FlyteIdlEntity):
     def __init__(
-        self, id, metadata, metadata_defaults, interface, nodes, outputs, failure_node=None,
+        self,
+        id,
+        metadata,
+        metadata_defaults,
+        interface,
+        nodes,
+        outputs,
+        failure_node=None,
     ):
         """
         A workflow template encapsulates all the task, branch, and subworkflow nodes to run a statically analyzable,

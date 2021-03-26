@@ -10,7 +10,12 @@ EXAMPLE_DB = "https://cdn.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.
 
 # This task belongs to test_task_static but is intentionally here to help test tracking
 tk = SQLite3Task(
-    "test", query_template="select * from tracks", task_config=SQLite3Config(uri=EXAMPLE_DB, compressed=True,),
+    "test",
+    query_template="select * from tracks",
+    task_config=SQLite3Config(
+        uri=EXAMPLE_DB,
+        compressed=True,
+    ),
 )
 
 
@@ -27,7 +32,10 @@ def test_task_schema():
         query_template="select TrackId, Name from tracks limit {{.inputs.limit}}",
         inputs=kwtypes(limit=int),
         output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
-        task_config=SQLite3Config(uri=EXAMPLE_DB, compressed=True,),
+        task_config=SQLite3Config(
+            uri=EXAMPLE_DB,
+            compressed=True,
+        ),
     )
 
     assert sql_task.output_columns is not None
@@ -44,7 +52,10 @@ def test_workflow():
         "test",
         query_template="select * from tracks limit {{.inputs.limit}}",
         inputs=kwtypes(limit=int),
-        task_config=SQLite3Config(uri=EXAMPLE_DB, compressed=True,),
+        task_config=SQLite3Config(
+            uri=EXAMPLE_DB,
+            compressed=True,
+        ),
     )
 
     @workflow

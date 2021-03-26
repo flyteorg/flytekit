@@ -30,7 +30,12 @@ class BindingData(_literal_models.BindingData, metaclass=_sdk_bases.ExtendedSdkT
         :param flytekit.models.literals.BindingData model:
         :rtype: BindingData
         """
-        return cls(scalar=model.scalar, collection=model.collection, promise=model.promise, map=model.map,)
+        return cls(
+            scalar=model.scalar,
+            collection=model.collection,
+            promise=model.promise,
+            map=model.map,
+        )
 
     @classmethod
     def from_python_std(cls, literal_type, t_value, upstream_nodes=None):
@@ -75,7 +80,9 @@ class BindingData(_literal_models.BindingData, metaclass=_sdk_bases.ExtendedSdkT
             collection = _literal_models.BindingDataCollection(
                 [
                     BindingData.from_python_std(
-                        downstream_sdk_type.sub_type.to_flyte_literal_type(), v, upstream_nodes=upstream_nodes,
+                        downstream_sdk_type.sub_type.to_flyte_literal_type(),
+                        v,
+                        upstream_nodes=upstream_nodes,
                     )
                     for v in t_value
                 ]

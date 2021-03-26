@@ -68,11 +68,17 @@ class OAuth2Client(_common.FlyteIdlEntity):
     client_secret: str
 
     def to_flyte_idl(self) -> _sec.OAuth2Client:
-        return _sec.OAuth2Client(client_id=self.client_id, client_secret=self.client_secret,)
+        return _sec.OAuth2Client(
+            client_id=self.client_id,
+            client_secret=self.client_secret,
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _sec.OAuth2Client) -> "OAuth2Client":
-        return cls(client_id=pb2_object.client_id, client_secret=pb2_object.client_secret,)
+        return cls(
+            client_id=pb2_object.client_id,
+            client_secret=pb2_object.client_secret,
+        )
 
 
 @dataclass

@@ -147,8 +147,8 @@ class NotebookTask(PythonInstanceTask[T]):
     @staticmethod
     def extract_outputs(nb: str) -> LiteralMap:
         """
-         Parse Outputs from Notebook.
-         This looks for a cell, with the tag "outputs" to be present.
+        Parse Outputs from Notebook.
+        This looks for a cell, with the tag "outputs" to be present.
         """
         with open(nb) as json_file:
             data = json.load(json_file)
@@ -164,9 +164,9 @@ class NotebookTask(PythonInstanceTask[T]):
     @staticmethod
     def render_nb_html(from_nb: str, to: str):
         """
-            render output notebook to html
-            We are using nbconvert htmlexporter and its classic template
-            later about how to customize the exporter further.
+        render output notebook to html
+        We are using nbconvert htmlexporter and its classic template
+        later about how to customize the exporter further.
         """
         html_exporter = HTMLExporter()
         html_exporter.template_name = "classic"
@@ -213,10 +213,10 @@ class NotebookTask(PythonInstanceTask[T]):
 
 def record_outputs(**kwargs) -> str:
     """
-     Use this method to record outputs from a notebook.
-     It will convert all outputs to a Flyte understandable format. For Files, Directories, please use FlyteFile or
-     FlyteDirectory, or wrap up your paths in these decorators.
-     """
+    Use this method to record outputs from a notebook.
+    It will convert all outputs to a Flyte understandable format. For Files, Directories, please use FlyteFile or
+    FlyteDirectory, or wrap up your paths in these decorators.
+    """
     if kwargs is None:
         return ""
 

@@ -21,7 +21,11 @@ class Identifier(_core_identifier.Identifier, metaclass=_sdk_bases.ExtendedSdkTy
         :rtype: Identifier
         """
         return cls(
-            base_model.resource_type, base_model.project, base_model.domain, base_model.name, base_model.version,
+            base_model.resource_type,
+            base_model.project,
+            base_model.domain,
+            base_model.name,
+            base_model.version,
         )
 
     @classmethod
@@ -66,7 +70,11 @@ class WorkflowExecutionIdentifier(_core_identifier.WorkflowExecutionIdentifier, 
         :param flytekit.models.core.identifier.WorkflowExecutionIdentifier base_model:
         :rtype: WorkflowExecutionIdentifier
         """
-        return cls(base_model.project, base_model.domain, base_model.name,)
+        return cls(
+            base_model.project,
+            base_model.domain,
+            base_model.name,
+        )
 
     @classmethod
     def from_python_std(cls, string):
@@ -91,7 +99,11 @@ class WorkflowExecutionIdentifier(_core_identifier.WorkflowExecutionIdentifier, 
                 "The provided string could not be parsed. The first element of an execution identifier must be 'ex'.",
             )
 
-        return cls(project, domain, name,)
+        return cls(
+            project,
+            domain,
+            name,
+        )
 
     def __str__(self):
         return "ex:{}:{}:{}".format(self.project, self.domain, self.name)
@@ -136,7 +148,8 @@ class TaskExecutionIdentifier(_core_identifier.TaskExecutionIdentifier, metaclas
         return cls(
             task_id=Identifier(_core_identifier.ResourceType.TASK, tp, td, tn, tv),
             node_execution_id=_core_identifier.NodeExecutionIdentifier(
-                node_id=node_id, execution_id=_core_identifier.WorkflowExecutionIdentifier(ep, ed, en),
+                node_id=node_id,
+                execution_id=_core_identifier.WorkflowExecutionIdentifier(ep, ed, en),
             ),
             retry_attempt=int(retry),
         )

@@ -34,7 +34,8 @@ def get_sample_task():
 def test__extract_files(load_mock):
     t = get_sample_task()
     with TemporaryConfiguration(
-        "", internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
+        "",
+        internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
     ):
         task_spec = t.serialize()
 
@@ -52,7 +53,11 @@ def test__extract_files(load_mock):
 @_mock.patch("flytekit.clis.flyte_cli.main._load_proto_from_file")
 def test__extract_files_with_unspecified_resource_type(load_mock):
     id = _core_identifier.Identifier(
-        _core_identifier.ResourceType.UNSPECIFIED, "myproject", "development", "name", "v",
+        _core_identifier.ResourceType.UNSPECIFIED,
+        "myproject",
+        "development",
+        "name",
+        "v",
     )
 
     load_mock.return_value = id.to_flyte_idl()

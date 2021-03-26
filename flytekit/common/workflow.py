@@ -39,7 +39,13 @@ class SdkWorkflow(
     """
 
     def __init__(
-        self, nodes, interface, output_bindings, id, metadata, metadata_defaults,
+        self,
+        nodes,
+        interface,
+        output_bindings,
+        id,
+        metadata,
+        metadata_defaults,
     ):
         """
         :param list[flytekit.common.nodes.SdkNode] nodes:
@@ -221,7 +227,13 @@ class SdkWorkflow(
         try:
             client = _flyte_engine.get_client()
             sub_workflows = self.get_sub_workflows()
-            client.create_workflow(id_to_register, _admin_workflow_model.WorkflowSpec(self, sub_workflows,))
+            client.create_workflow(
+                id_to_register,
+                _admin_workflow_model.WorkflowSpec(
+                    self,
+                    sub_workflows,
+                ),
+            )
             self._id = id_to_register
             self._has_registered = True
             return str(id_to_register)
@@ -240,7 +252,10 @@ class SdkWorkflow(
         :rtype: flyteidl.admin.workflow_pb2.WorkflowSpec
         """
         sub_workflows = self.get_sub_workflows()
-        return _admin_workflow_model.WorkflowSpec(self, sub_workflows,).to_flyte_idl()
+        return _admin_workflow_model.WorkflowSpec(
+            self,
+            sub_workflows,
+        ).to_flyte_idl()
 
     @_exception_scopes.system_entry_point
     def validate(self):
@@ -255,13 +270,15 @@ class SdkWorkflow(
         if not (assumable_iam_role or kubernetes_service_account):
             raise _user_exceptions.FlyteValidationException("No assumable role or service account found")
         auth_role = _common_models.AuthRole(
-            assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
+            assumable_iam_role=assumable_iam_role,
+            kubernetes_service_account=kubernetes_service_account,
         )
 
         return SdkLaunchPlan(
             workflow_id=self.id,
             entity_metadata=_launch_plan_models.LaunchPlanMetadata(
-                schedule=_schedule_models.Schedule(""), notifications=[],
+                schedule=_schedule_models.Schedule(""),
+                notifications=[],
             ),
             default_inputs=_interface_models.ParameterMap({}),
             fixed_inputs=_literal_models.LiteralMap(literals={}),

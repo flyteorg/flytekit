@@ -95,7 +95,8 @@ def test_cron_schedule_schedule_validation(schedule):
 
 
 @_pytest.mark.parametrize(
-    "schedule", ["foo", "* *"],
+    "schedule",
+    ["foo", "* *"],
 )
 def test_cron_schedule_schedule_validation_invalid(schedule):
     with _pytest.raises(ValueError):
@@ -143,7 +144,9 @@ def test_schedule_with_lp():
         return c
 
     lp = LaunchPlan.create(
-        "schedule_test", quadruple, schedule=FixedRate(_datetime.timedelta(hours=12), "kickoff_input"),
+        "schedule_test",
+        quadruple,
+        schedule=FixedRate(_datetime.timedelta(hours=12), "kickoff_input"),
     )
     assert lp.schedule == _schedule_models.Schedule(
         "kickoff_input", rate=_schedule_models.Schedule.FixedRate(12, _schedule_models.Schedule.FixedRateUnit.HOUR)

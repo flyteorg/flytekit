@@ -29,7 +29,9 @@ def test_secrets_manager_get_file():
     with pytest.raises(ValueError):
         sec.get_secrets_file("", "x")
     assert sec.get_secrets_file("group", "test") == os.path.join(
-        secrets.SECRETS_DEFAULT_DIR.get(), "group", f"{secrets.SECRETS_FILE_PREFIX.get()}test",
+        secrets.SECRETS_DEFAULT_DIR.get(),
+        "group",
+        f"{secrets.SECRETS_FILE_PREFIX.get()}test",
     )
 
 

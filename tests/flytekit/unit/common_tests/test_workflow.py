@@ -137,7 +137,8 @@ def test_workflow_decorator():
         a = _local_workflow.Output("a", n1.outputs.b, sdk_type=primitives.Integer)
 
     w = _local_workflow.build_sdk_workflow_from_metaclass(
-        my_workflow, on_failure=_workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE,
+        my_workflow,
+        on_failure=_workflow_models.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE,
     )
 
     assert w.should_create_default_launch_plan is True
@@ -223,7 +224,9 @@ def test_workflow_node():
 
     wf_out = [
         _local_workflow.Output(
-            "nested_out", [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]], sdk_type=[[primitives.Integer]],
+            "nested_out",
+            [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]],
+            sdk_type=[[primitives.Integer]],
         ),
         _local_workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
     ]
@@ -299,7 +302,8 @@ def test_non_system_nodes():
         [],
         [
             _literals.Binding(
-                "a", interface.BindingData.from_python_std(_types.Types.Integer.to_flyte_literal_type(), 3),
+                "a",
+                interface.BindingData.from_python_std(_types.Types.Integer.to_flyte_literal_type(), 3),
             )
         ],
         None,
@@ -349,7 +353,9 @@ def test_workflow_serialization():
 
     wf_out = [
         _local_workflow.Output(
-            "nested_out", [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]], sdk_type=[[primitives.Integer]],
+            "nested_out",
+            [n5.outputs.b, n6.outputs.b, [n1.outputs.b, n2.outputs.b]],
+            sdk_type=[[primitives.Integer]],
         ),
         _local_workflow.Output("scalar_out", n1.outputs.b, sdk_type=primitives.Integer),
     ]
@@ -369,6 +375,9 @@ def test_workflow_disable_default_launch_plan():
         input_1 = promise.Input("input_1", primitives.Integer)
         input_2 = promise.Input("input_2", primitives.Integer, default=5, help="Not required.")
 
-    w = build_sdk_workflow_from_metaclass(MyWorkflow, disable_default_launch_plan=True,)
+    w = build_sdk_workflow_from_metaclass(
+        MyWorkflow,
+        disable_default_launch_plan=True,
+    )
 
     assert w.should_create_default_launch_plan is False

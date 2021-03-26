@@ -41,7 +41,12 @@ def test_workflow_template():
         {"b": _interface.Variable(int_type, "description2"), "c": _interface.Variable(int_type, "description3")},
     )
     wf_node = _workflow.Node(
-        id="some:node:id", metadata=nm, inputs=[], upstream_node_ids=[], output_aliases=[], task_node=task,
+        id="some:node:id",
+        metadata=nm,
+        inputs=[],
+        upstream_node_ids=[],
+        output_aliases=[],
+        task_node=task,
     )
     obj = _workflow.WorkflowTemplate(
         id=_generic_id,
@@ -111,7 +116,12 @@ def test_node_task_with_no_inputs():
     task = _workflow.TaskNode(reference_id=_generic_id)
 
     obj = _workflow.Node(
-        id="some:node:id", metadata=nm, inputs=[], upstream_node_ids=[], output_aliases=[], task_node=task,
+        id="some:node:id",
+        metadata=nm,
+        inputs=[],
+        upstream_node_ids=[],
+        output_aliases=[],
+        task_node=task,
     )
     assert obj.target == task
     assert obj.id == "some:node:id"

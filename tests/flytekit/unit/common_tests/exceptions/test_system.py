@@ -48,7 +48,9 @@ def test_flyte_entrypoint_not_loadable_exception():
 
     try:
         raise system.FlyteEntrypointNotLoadable(
-            "fake.module", task_name="secret_task", additional_msg="Shouldn't have used a fake module!",
+            "fake.module",
+            task_name="secret_task",
+            additional_msg="Shouldn't have used a fake module!",
         )
     except Exception as e:
         assert (

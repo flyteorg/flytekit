@@ -69,7 +69,10 @@ class SdkPrestoTask(_base_task.SdkTask):
         )
 
         presto_query = _presto_models.PrestoQuery(
-            routing_group=routing_group or "", catalog=catalog or "", schema=schema or "", statement=statement,
+            routing_group=routing_group or "",
+            catalog=catalog or "",
+            schema=schema or "",
+            statement=statement,
         )
 
         # Here we set the routing_group, catalog, and schema as implicit
@@ -99,7 +102,10 @@ class SdkPrestoTask(_base_task.SdkTask):
         )
 
         super(SdkPrestoTask, self).__init__(
-            _constants.SdkTaskType.PRESTO_TASK, metadata, i, _MessageToDict(presto_query.to_flyte_idl()),
+            _constants.SdkTaskType.PRESTO_TASK,
+            metadata,
+            i,
+            _MessageToDict(presto_query.to_flyte_idl()),
         )
 
         # Set user provided inputs

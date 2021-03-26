@@ -14,17 +14,14 @@ async-generator==1.10
     # via nbclient
 attrs==20.3.0
     # via
-    #   black
     #   jsonschema
     #   scantree
 backcall==0.2.0
     # via ipython
 bcrypt==3.2.0
     # via paramiko
-black==19.10b0
-    # via
-    #   flytekit
-    #   papermill
+black==20.8b1
+    # via papermill
 bleach==3.3.0
     # via nbconvert
 boto3==1.17.39
@@ -136,7 +133,9 @@ marshmallow==3.10.0
 mistune==0.8.4
     # via nbconvert
 mypy-extensions==0.4.3
-    # via typing-inspect
+    # via
+    #   black
+    #   typing-inspect
 natsort==7.1.1
     # via flytekit
 nbclient==0.5.3
@@ -304,7 +303,9 @@ traitlets==5.0.5
 typed-ast==1.4.2
     # via black
 typing-extensions==3.7.4.3
-    # via typing-inspect
+    # via
+    #   black
+    #   typing-inspect
 typing-inspect==0.6.0
     # via dataclasses-json
 urllib3==1.25.11

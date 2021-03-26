@@ -14,9 +14,16 @@ from plugins.pod.flytekitplugins.pod.task import Pod, PodFunctionTask
 
 
 def get_pod_spec():
-    a_container = V1Container(name="a container",)
+    a_container = V1Container(
+        name="a container",
+    )
     a_container.command = ["fee", "fi", "fo", "fum"]
-    a_container.volume_mounts = [V1VolumeMount(name="volume mount", mount_path="some/where",)]
+    a_container.volume_mounts = [
+        V1VolumeMount(
+            name="volume mount",
+            mount_path="some/where",
+        )
+    ]
 
     pod_spec = V1PodSpec(restart_policy="OnFailure", containers=[a_container, V1Container(name="another container")])
     return pod_spec
