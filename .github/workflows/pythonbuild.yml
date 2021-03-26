@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
+        python-version: [3.7, 3.8]
+        spark-version-suffix: ["", "-spark2"]
+        exclude:
         - python-version: 3.8
-          spark-version-suffix: "-spark3"
-        - python-version: 3.7
-          spark-version-suffix: ""
+          spark-version-suffix: "-spark2"
 
     steps:
     - uses: actions/checkout@v2
