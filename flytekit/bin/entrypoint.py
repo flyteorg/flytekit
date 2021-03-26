@@ -435,6 +435,8 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
             cmd.append("--fast")
         cmd.append(arg)
 
+    _click.echo("running {}".format(cmd))
+
     _os.system(" ".join(cmd))
 
 
