@@ -165,7 +165,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         return container_args
 
     def compile_into_workflow(
-        self, ctx: FlyteContext, task_function: Callable, **kwargs
+        self, ctx: FlyteContext, is_fast_execution: bool, task_function: Callable, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
         with ctx.new_compilation_context(prefix="dynamic"):
             # TODO: Resolve circular import
@@ -178,7 +178,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             self._wf.compile(**kwargs)
 
             wf = self._wf
-            sdk_workflow = get_serializable(OrderedDict(), ctx.serialization_settings, wf)
+            sdk_workflow = get_serializable(OrderedDict(), ctx.serialization_settings, wf, fast=is_fast_execution)
 
             # If no nodes were produced, let's just return the strict outputs
             if len(sdk_workflow.nodes) == 0:
@@ -241,4 +241,5 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 return task_function(**kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            return self.compile_into_workflow(ctx, task_function, **kwargs)
+            is_fast_execution = ctx.execution_state.additional_context.get("is_fast_execution", False)
+            return self.compile_into_workflow(ctx, is_fast_execution, task_function, **kwargs)

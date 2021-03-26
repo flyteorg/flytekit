@@ -142,7 +142,9 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
     _logging.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
 
-def _handle_annotated_task(task_def: PythonTask, inputs: str, output_prefix: str, raw_output_data_prefix: str):
+def _handle_annotated_task(
+    task_def: PythonTask, inputs: str, output_prefix: str, raw_output_data_prefix: str, is_fast_executed: bool
+):
     """
     Entrypoint for all PythonTask extensions
     """
@@ -224,7 +226,9 @@ def _handle_annotated_task(task_def: PythonTask, inputs: str, output_prefix: str
         with ctx.new_serialization_settings(serialization_settings=serialization_settings) as ctx:
             # Because execution states do not look up the context chain, it has to be made last
             with ctx.new_execution_context(
-                mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
+                mode=ExecutionState.Mode.TASK_EXECUTION,
+                execution_params=execution_parameters,
+                additional_context={"is_fast_executed": is_fast_executed},
             ) as ctx:
                 _dispatch_execute(ctx, task_def, inputs, output_prefix)
 
@@ -281,7 +285,15 @@ def _load_resolver(resolver_location: str) -> TaskResolverMixin:
 
 
 @_scopes.system_entry_point
-def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver: str, resolver_args: List[str]):
+def _execute_task(
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    test,
+    resolver: str,
+    resolver_args: List[str],
+    is_fast_executed: bool = False,
+):
     """
     This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
     native typing).
@@ -299,6 +311,7 @@ def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver:
     :param resolver: The task resolver to use. This needs to be loadable directly from importlib (and thus cannot be
       nested).
     :param resolver_args: Args that will be passed to the aforementioned resolver's load_task function
+    :param is_fast_executed: whether this task is running in fast execute mode or not (false is the default)
     :return:
     """
     if len(resolver_args) < 1:
@@ -313,7 +326,7 @@ def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver:
                 f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
             )
             return
-        _handle_annotated_task(_task_def, inputs, output_prefix, raw_output_data_prefix)
+        _handle_annotated_task(_task_def, inputs, output_prefix, raw_output_data_prefix, is_fast_executed)
 
 
 @_scopes.system_entry_point
@@ -357,6 +370,7 @@ def _pass_through():
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--test", is_flag=True)
+@_click.option("--fast", is_flag=True)
 @_click.option("--resolver", required=False)
 @_click.argument(
     "resolver-args",
@@ -364,7 +378,15 @@ def _pass_through():
     nargs=-1,
 )
 def execute_task_cmd(
-    task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args
+    task_module,
+    task_name,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    test,
+    is_fast_executed,
+    resolver,
+    resolver_args,
 ):
     _click.echo(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
@@ -382,7 +404,7 @@ def execute_task_cmd(
         _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
     else:
         _click.echo(f"Attempting to run with {resolver}...")
-        _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args)
+        _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args, is_fast_executed)
 
 
 @_pass_through.command("pyflyte-fast-execute")
@@ -405,7 +427,7 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    _os.system(" ".join(task_execute_cmd))
+    _os.system(" ".join(task_execute_cmd + ["--fast"]))
 
 
 @_pass_through.command("pyflyte-map-execute")
