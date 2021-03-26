@@ -1,6 +1,4 @@
-define PIP_COMPILE
-pip-compile $(1) --upgrade --verbose
-endef
+PIP_COMPILE = pip-compile --upgrade --verbose
 
 .SILENT: help
 .PHONY: help
@@ -49,19 +47,19 @@ unit_test:
 
 requirements-spark2.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark2.txt
 requirements-spark2.txt: requirements-spark2.in install-piptools
-	$(call PIP_COMPILE,requirements-spark2.in)
+	$(PIP_COMPILE) $<
 
 requirements.txt: export CUSTOM_COMPILE_COMMAND := make requirements.txt
-requirements.txt: install-piptools
-	$(call PIP_COMPILE,requirements.in)
+requirements.txt: requirements.in install-piptools
+	$(PIP_COMPILE) $<
 
 dev-requirements.txt: export CUSTOM_COMPILE_COMMAND := make dev-requirements.txt
-dev-requirements.txt: requirements.txt install-piptools
-	$(call PIP_COMPILE,dev-requirements.in)
+dev-requirements.txt: dev-requirements.in requirements.txt install-piptools
+	$(PIP_COMPILE) $<
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
-doc-requirements.txt: dev-requirements.txt install-piptools
-	$(call PIP_COMPILE,doc-requirements.in)
+doc-requirements.txt: doc-requirements.in install-piptools
+	$(PIP_COMPILE) $<
 
 .PHONY: requirements
 requirements: requirements.txt dev-requirements.txt requirements-spark2.txt doc-requirements.txt ## Compile requirements
