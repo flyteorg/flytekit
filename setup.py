@@ -31,7 +31,6 @@ extras_require = {
     "notebook": notebook,
     "sagemaker": sagemaker,
     "all-spark2.4": spark + all_but_spark,
-    "all-spark3": spark3 + all_but_spark,
     "all": spark3 + all_but_spark,
 }
 
