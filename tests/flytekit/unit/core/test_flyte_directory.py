@@ -13,7 +13,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Blob, Literal, LiteralMap, Scalar
+from flytekit.models.literals import LiteralMap
 from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
 
 
