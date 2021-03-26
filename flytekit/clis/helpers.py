@@ -149,7 +149,11 @@ def _hydrate_workflow_template_nodes(
 
 
 def hydrate_registration_parameters(
-    resource_type: int, project: str, domain: str, version: str, entity: Union[LaunchPlan, WorkflowSpec, TaskSpec],
+    resource_type: int,
+    project: str,
+    domain: str,
+    version: str,
+    entity: Union[LaunchPlan, WorkflowSpec, TaskSpec],
 ) -> Tuple[_identifier_pb2.Identifier, Union[LaunchPlan, WorkflowSpec, TaskSpec]]:
     """
     This is called at registration time to fill out identifier fields (e.g. project, domain, version) that are mutable.

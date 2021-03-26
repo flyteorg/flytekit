@@ -80,7 +80,10 @@ def test_single_output():
 
 
 def test_engine_file_output():
-    basic_blob_type = _core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
+    basic_blob_type = _core_types.BlobType(
+        format="",
+        dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+    )
 
     fs = FileAccessProvider(local_sandbox_dir="/tmp/flytetesting")
     with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:

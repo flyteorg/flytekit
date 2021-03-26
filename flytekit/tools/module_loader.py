@@ -139,7 +139,11 @@ def load_module_object_for_type(pkgs, t, additional_path=None):
 
 
 def iterate_registerable_entities_in_order(
-    pkgs, local_source_root=None, ignore_entities=None, include_entities=None, detect_unreferenced_entities=True,
+    pkgs,
+    local_source_root=None,
+    ignore_entities=None,
+    include_entities=None,
+    detect_unreferenced_entities=True,
 ):
     """
     This function will iterate all discovered entities in the given package list.  It will then attempt to

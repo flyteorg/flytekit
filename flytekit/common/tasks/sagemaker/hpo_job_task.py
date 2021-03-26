@@ -63,7 +63,8 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
         inputs.update(
             {
                 "hyperparameter_tuning_job_config": _interface_model.Variable(
-                    HyperparameterTuningJobConfig.to_flyte_literal_type(), "",
+                    HyperparameterTuningJobConfig.to_flyte_literal_type(),
+                    "",
                 ),
             }
         )
@@ -80,7 +81,9 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
             type=SdkTaskType.SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK,
             metadata=_task_models.TaskMetadata(
                 runtime=_task_models.RuntimeMetadata(
-                    type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, version=__version__, flavor="sagemaker",
+                    type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
+                    version=__version__,
+                    flavor="sagemaker",
                 ),
                 discoverable=cacheable,
                 timeout=timeout,
@@ -95,7 +98,8 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
                     "model": _interface_model.Variable(
                         type=_types_models.LiteralType(
                             blob=_core_types.BlobType(
-                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+                                format="",
+                                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
                             )
                         ),
                         description="",

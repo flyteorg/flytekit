@@ -61,7 +61,10 @@ def to_serializable_cases(
 
 
 def get_serializable_references(
-    entity_mapping: OrderedDict, settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool,
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    entity: FlyteLocalEntity,
+    fast: bool,
 ) -> FlyteControlPlaneEntity:
     # TODO: This entire function isn't necessary. We should just return None or raise an Exception or something.
     #   Reference entities should already exist on the Admin control plane - they should not be serialized/registered
@@ -114,7 +117,10 @@ def get_serializable_references(
 
 
 def get_serializable_task(
-    entity_mapping: OrderedDict, settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool,
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    entity: FlyteLocalEntity,
+    fast: bool,
 ) -> FlyteControlPlaneEntity:
     cp_entity = SdkTask(
         type=entity.task_type,
@@ -152,7 +158,10 @@ def get_serializable_task(
 
 
 def get_serializable_workflow(
-    entity_mapping: OrderedDict, settings: SerializationSettings, entity: WorkflowBase, fast: bool,
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    entity: WorkflowBase,
+    fast: bool,
 ) -> FlyteControlPlaneEntity:
     workflow_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.WORKFLOW, settings.project, settings.domain, entity.name, settings.version
@@ -182,13 +191,17 @@ def get_serializable_workflow(
 
 
 def get_serializable_launch_plan(
-    entity_mapping: OrderedDict, settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool,
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    entity: FlyteLocalEntity,
+    fast: bool,
 ) -> FlyteControlPlaneEntity:
     sdk_workflow = get_serializable(entity_mapping, settings, entity.workflow)
     cp_entity = SdkLaunchPlan(
         workflow_id=sdk_workflow.id,
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
-            schedule=entity.schedule, notifications=entity.notifications,
+            schedule=entity.schedule,
+            notifications=entity.notifications,
         ),
         default_inputs=entity.parameters,
         fixed_inputs=entity.fixed_inputs,
@@ -213,7 +226,10 @@ def get_serializable_launch_plan(
 
 
 def get_serializable_node(
-    entity_mapping: OrderedDict, settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool,
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    entity: FlyteLocalEntity,
+    fast: bool,
 ) -> FlyteControlPlaneEntity:
     if entity._flyte_entity is None:
         raise Exception(f"Node {entity.id} has no flyte entity")
@@ -269,7 +285,10 @@ def get_serializable_node(
 
 
 def get_serializable_branch_node(
-    entity_mapping: OrderedDict, settings: SerializationSettings, entity: FlyteLocalEntity, fast: bool,
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    entity: FlyteLocalEntity,
+    fast: bool,
 ) -> FlyteControlPlaneEntity:
     # We have to iterate through the blocks to convert the nodes from their current type to SDKNode
     # TODO this should be cleaned up instead of mutation, we probaby should just create a new object

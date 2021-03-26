@@ -165,15 +165,18 @@ class FixedRate(_ExtendedSchedule, metaclass=_sdk_bases.ExtendedSdkType):
             )
         elif int(duration.total_seconds()) % _SECONDS_TO_DAYS == 0:
             return _schedule_models.Schedule.FixedRate(
-                int(duration.total_seconds() / _SECONDS_TO_DAYS), _schedule_models.Schedule.FixedRateUnit.DAY,
+                int(duration.total_seconds() / _SECONDS_TO_DAYS),
+                _schedule_models.Schedule.FixedRateUnit.DAY,
             )
         elif int(duration.total_seconds()) % _SECONDS_TO_HOURS == 0:
             return _schedule_models.Schedule.FixedRate(
-                int(duration.total_seconds() / _SECONDS_TO_HOURS), _schedule_models.Schedule.FixedRateUnit.HOUR,
+                int(duration.total_seconds() / _SECONDS_TO_HOURS),
+                _schedule_models.Schedule.FixedRateUnit.HOUR,
             )
         else:
             return _schedule_models.Schedule.FixedRate(
-                int(duration.total_seconds() / _SECONDS_TO_MINUTES), _schedule_models.Schedule.FixedRateUnit.MINUTE,
+                int(duration.total_seconds() / _SECONDS_TO_MINUTES),
+                _schedule_models.Schedule.FixedRateUnit.MINUTE,
             )
 
     @classmethod

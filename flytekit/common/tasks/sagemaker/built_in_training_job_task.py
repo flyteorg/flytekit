@@ -41,7 +41,8 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
         """
         # Use the training job model as a measure of type checking
         self._training_job_model = _training_job_models.TrainingJob(
-            algorithm_specification=algorithm_specification, training_job_resource_config=training_job_resource_config,
+            algorithm_specification=algorithm_specification,
+            training_job_resource_config=training_job_resource_config,
         )
 
         # Setting flyte-level timeout to 0, and let SageMaker takes the StoppingCondition and terminate the training
@@ -52,7 +53,9 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
             type=SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK,
             metadata=_task_models.TaskMetadata(
                 runtime=_task_models.RuntimeMetadata(
-                    type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, version=__version__, flavor="sagemaker",
+                    type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
+                    version=__version__,
+                    flavor="sagemaker",
                 ),
                 discoverable=cacheable,
                 timeout=timeout,
@@ -64,7 +67,8 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
             interface=_interface.TypedInterface(
                 inputs={
                     "static_hyperparameters": _interface_model.Variable(
-                        type=_idl_types.LiteralType(simple=_idl_types.SimpleType.STRUCT), description="",
+                        type=_idl_types.LiteralType(simple=_idl_types.SimpleType.STRUCT),
+                        description="",
                     ),
                     "train": _interface_model.Variable(
                         type=_idl_types.LiteralType(
@@ -89,7 +93,8 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
                     "model": _interface_model.Variable(
                         type=_idl_types.LiteralType(
                             blob=_core_types.BlobType(
-                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+                                format="",
+                                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
                             )
                         ),
                         description="",

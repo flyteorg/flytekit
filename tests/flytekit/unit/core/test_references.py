@@ -117,7 +117,11 @@ def test_reference_workflow():
 
 
 def test_ref_plain_no_outputs():
-    r1 = ReferenceEntity(TaskReference("proj", "domain", "some.name", "abc"), inputs=kwtypes(a=str, b=int), outputs={},)
+    r1 = ReferenceEntity(
+        TaskReference("proj", "domain", "some.name", "abc"),
+        inputs=kwtypes(a=str, b=int),
+        outputs={},
+    )
 
     # Reference entities should always raise an exception when not mocked out.
     with pytest.raises(Exception) as e:
@@ -207,7 +211,13 @@ def test_ref_plain_two_outputs():
 )
 def test_lps(resource_type):
     ref_entity = get_reference_entity(
-        resource_type, "proj", "dom", "app.other.flyte_entity", "123", inputs=kwtypes(a=str, b=int), outputs={},
+        resource_type,
+        "proj",
+        "dom",
+        "app.other.flyte_entity",
+        "123",
+        inputs=kwtypes(a=str, b=int),
+        outputs={},
     )
 
     ctx = context_manager.FlyteContext.current_context()

@@ -73,7 +73,9 @@ class ClusterResourceAttributes(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.matchable_resource_pb2.ClusterResourceAttributes
         """
-        return _matchable_resource.ClusterResourceAttributes(attributes=self.attributes,)
+        return _matchable_resource.ClusterResourceAttributes(
+            attributes=self.attributes,
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -81,7 +83,9 @@ class ClusterResourceAttributes(_common.FlyteIdlEntity):
         :param flyteidl.admin.matchable_resource_pb2.ClusterResourceAttributes pb2_object:
         :rtype: ClusterResourceAttributes
         """
-        return cls(attributes=pb2_object.attributes,)
+        return cls(
+            attributes=pb2_object.attributes,
+        )
 
 
 class ExecutionQueueAttributes(_common.FlyteIdlEntity):
@@ -104,7 +108,9 @@ class ExecutionQueueAttributes(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.matchable_resource_pb2.ExecutionQueueAttributes
         """
-        return _matchable_resource.ExecutionQueueAttributes(tags=self.tags,)
+        return _matchable_resource.ExecutionQueueAttributes(
+            tags=self.tags,
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -112,7 +118,9 @@ class ExecutionQueueAttributes(_common.FlyteIdlEntity):
         :param flyteidl.admin.matchable_resource_pb2.ExecutionQueueAttributes pb2_object:
         :rtype: ExecutionQueueAttributes
         """
-        return cls(tags=pb2_object.tags,)
+        return cls(
+            tags=pb2_object.tags,
+        )
 
 
 class ExecutionClusterLabel(_common.FlyteIdlEntity):
@@ -135,7 +143,9 @@ class ExecutionClusterLabel(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.matchable_resource_pb2.ExecutionClusterLabel
         """
-        return _matchable_resource.ExecutionClusterLabel(value=self.value,)
+        return _matchable_resource.ExecutionClusterLabel(
+            value=self.value,
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -143,7 +153,9 @@ class ExecutionClusterLabel(_common.FlyteIdlEntity):
         :param flyteidl.admin.matchable_resource_pb2.ExecutionClusterLabel pb2_object:
         :rtype: ExecutionClusterLabel
         """
-        return cls(value=pb2_object.value,)
+        return cls(
+            value=pb2_object.value,
+        )
 
 
 class PluginOverride(_common.FlyteIdlEntity):
@@ -201,7 +213,9 @@ class PluginOverride(_common.FlyteIdlEntity):
         :rtype: flyteidl.admin.matchable_resource_pb2.PluginOverride
         """
         return _matchable_resource.PluginOverride(
-            task_type=self.task_type, plugin_id=self.plugin_id, missing_plugin_behavior=self.missing_plugin_behavior,
+            task_type=self.task_type,
+            plugin_id=self.plugin_id,
+            missing_plugin_behavior=self.missing_plugin_behavior,
         )
 
     @classmethod

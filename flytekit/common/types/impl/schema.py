@@ -352,7 +352,9 @@ class _SchemaWriter(_SchemaIO):
         try:
             filename = self._local_dir.get_named_tempfile(_os.path.join(str(self._index).zfill(6)))
             data_frame.to_parquet(
-                filename, coerce_timestamps=coerce_timestamps, allow_truncated_timestamps=allow_truncated_timestamps,
+                filename,
+                coerce_timestamps=coerce_timestamps,
+                allow_truncated_timestamps=allow_truncated_timestamps,
             )
             if self._index == len(self._chunks):
                 self._chunks.append(filename)
@@ -379,7 +381,8 @@ class _SchemaBackingMpBlob(_blob_impl.MultiPartBlob):
                     "specify a path when calling this function."
                 )
             self._directory = _utils.AutoDeletingTempDir(
-                _uuid.uuid4().hex, tmp_dir=_data_proxy.LocalWorkingDirectoryContext.get().name,
+                _uuid.uuid4().hex,
+                tmp_dir=_data_proxy.LocalWorkingDirectoryContext.get().name,
             )
             self._is_managed = True
             self._directory.__enter__()
@@ -630,7 +633,12 @@ class Schema(_literal_models.Schema, metaclass=_sdk_bases.ExtendedSdkType):
     @classmethod
     @_exception_scopes.system_entry_point
     def create_from_hive_query(
-        cls, select_query, stage_query=None, schema_to_table_name_map=None, schema_type=None, known_location=None,
+        cls,
+        select_query,
+        stage_query=None,
+        schema_to_table_name_map=None,
+        schema_type=None,
+        known_location=None,
     ):
         """
         Returns a query that can be submitted to Hive and produce the desired output.  It also returns a properly-typed
@@ -647,7 +655,9 @@ class Schema(_literal_models.Schema, metaclass=_sdk_bases.ExtendedSdkType):
         :return: Schema, Text
         """
         schema_object = cls(
-            known_location or _data_proxy.Data.get_remote_directory(), mode="wb", schema_type=schema_type,
+            known_location or _data_proxy.Data.get_remote_directory(),
+            mode="wb",
+            schema_type=schema_type,
         )
 
         if len(schema_object.type.sdk_columns) > 0:
@@ -660,13 +670,15 @@ class Schema(_literal_models.Schema, metaclass=_sdk_bases.ExtendedSdkType):
                 if sdk_type == _primitives.Float:
                     columnar_clauses.append(
                         "CAST({table_column_name} as double) {schema_name}".format(
-                            table_column_name=schema_to_table_name_map[name], schema_name=name,
+                            table_column_name=schema_to_table_name_map[name],
+                            schema_name=name,
                         )
                     )
                 else:
                     columnar_clauses.append(
                         "{table_column_name} as {schema_name}".format(
-                            table_column_name=schema_to_table_name_map[name], schema_name=name,
+                            table_column_name=schema_to_table_name_map[name],
+                            schema_name=name,
                         )
                     )
             columnar_query = ",\n\t\t".join(columnar_clauses)
@@ -844,7 +856,8 @@ class Schema(_literal_models.Schema, metaclass=_sdk_bases.ExtendedSdkType):
             for partition_name, partition_value in partitions:
                 where_clauses.append(
                     "\n\t\t{schema_name} = {value_str} AND ".format(
-                        schema_name=table_to_schema_name_map[partition_name], value_str=partition_value,
+                        schema_name=table_to_schema_name_map[partition_name],
+                        value_str=partition_value,
                     )
                 )
             where_string = "WHERE\n\t\t{where_clauses}".format(where_clauses=" AND\n\t\t".join(where_clauses))
@@ -863,7 +876,9 @@ class Schema(_literal_models.Schema, metaclass=_sdk_bases.ExtendedSdkType):
             )
 
         return _format_insert_partition_query(
-            remote_location=self.remote_location, table_name=table_name, partition_string=partition_string,
+            remote_location=self.remote_location,
+            table_name=table_name,
+            partition_string=partition_string,
         )
 
     def compare_dataframe_to_schema(self, data_frame, column_subset=None, read=False):

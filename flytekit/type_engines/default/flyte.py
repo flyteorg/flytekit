@@ -21,7 +21,8 @@ def _load_type_from_tag(tag: str) -> Type:
 
     if "." not in tag:
         raise _user_exceptions.FlyteValueException(
-            tag, "Protobuf tag must include at least one '.' to delineate package and object name.",
+            tag,
+            "Protobuf tag must include at least one '.' to delineate package and object name.",
         )
 
     module, name = tag.rsplit(".", 1)

@@ -183,7 +183,9 @@ class Boolean(_base_sdk_types.FlyteSdkValue):
         elif string_value == "0" or string_value.lower() == "false":
             return cls(False)
         raise _user_exceptions.FlyteTypeException(
-            _six.text_type, bool, additional_msg="String not castable to Boolean SDK " "type: {}".format(string_value),
+            _six.text_type,
+            bool,
+            additional_msg="String not castable to Boolean SDK " "type: {}".format(string_value),
         )
 
     @classmethod
@@ -377,7 +379,8 @@ class Datetime(_base_sdk_types.FlyteSdkValue):
             raise _user_exceptions.FlyteTypeException(type(t_value), _datetime.datetime, t_value)
         elif t_value.tzinfo is None:
             raise _user_exceptions.FlyteValueException(
-                t_value, "Datetime objects in Flyte must be timezone aware.  " "tzinfo was found to be None.",
+                t_value,
+                "Datetime objects in Flyte must be timezone aware.  " "tzinfo was found to be None.",
             )
         return cls(t_value)
 

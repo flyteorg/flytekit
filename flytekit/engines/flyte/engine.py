@@ -100,7 +100,8 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         return FlyteWorkflowExecution(wf_exec)
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def fetch_workflow_execution(self, wf_exec_id):
         """
@@ -112,7 +113,8 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         ).client.get_execution(wf_exec_id)
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def fetch_task(self, task_id):
         """
@@ -125,7 +127,8 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         ).client.get_task(task_id)
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def fetch_latest_task(self, named_task):
         """
@@ -136,12 +139,15 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
         task_list, _ = _FlyteClientManager(
             _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
         ).client.list_tasks_paginated(
-            named_task, limit=1, sort_by=_common.Sort("created_at", _common.Sort.Direction.DESCENDING),
+            named_task,
+            limit=1,
+            sort_by=_common.Sort("created_at", _common.Sort.Direction.DESCENDING),
         )
         return task_list[0] if task_list else None
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def fetch_launch_plan(self, launch_plan_id):
         """
@@ -162,7 +168,8 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
             ).client.get_active_launch_plan(named_entity_id)
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def fetch_workflow(self, workflow_id):
         """
@@ -177,7 +184,8 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
 
 class FlyteLaunchPlan(_common_engine.BaseLaunchPlanLauncher):
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def register(self, identifier):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
@@ -201,11 +209,18 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanLauncher):
         Deprecated. Use launch instead.
         """
         return self.launch(
-            project, domain, name, inputs, notification_overrides, label_overrides, annotation_overrides,
+            project,
+            domain,
+            name,
+            inputs,
+            notification_overrides,
+            label_overrides,
+            annotation_overrides,
         )
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def launch(
         self,
@@ -261,7 +276,8 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanLauncher):
         return client.get_execution(exec_id)
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def update(self, identifier, state):
         """
@@ -275,20 +291,28 @@ class FlyteLaunchPlan(_common_engine.BaseLaunchPlanLauncher):
 
 class FlyteWorkflow(_common_engine.BaseWorkflowExecutor):
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def register(self, identifier):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
         try:
             sub_workflows = self.sdk_workflow.get_sub_workflows()
-            return client.create_workflow(identifier, _workflow_model.WorkflowSpec(self.sdk_workflow, sub_workflows,),)
+            return client.create_workflow(
+                identifier,
+                _workflow_model.WorkflowSpec(
+                    self.sdk_workflow,
+                    sub_workflows,
+                ),
+            )
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             pass
 
 
 class FlyteTask(_common_engine.BaseTaskExecutor):
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def register(self, identifier):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
@@ -363,7 +387,9 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                             exc_str = _traceback.format_exc()
                             output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
                                 _error_models.ContainerError(
-                                    "SYSTEM:Unknown", exc_str, _error_models.ContainerError.Kind.RECOVERABLE,
+                                    "SYSTEM:Unknown",
+                                    exc_str,
+                                    _error_models.ContainerError.Kind.RECOVERABLE,
                                 )
                             )
                             _logging.error(exc_str)
@@ -372,11 +398,14 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                             for k, v in _six.iteritems(output_file_dict):
                                 _common_utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(temp_dir.name, k))
                             _data_proxy.Data.put_data(
-                                temp_dir.name, context["output_prefix"], is_multipart=True,
+                                temp_dir.name,
+                                context["output_prefix"],
+                                is_multipart=True,
                             )
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def launch(
         self,
@@ -420,7 +449,8 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                 )
                 assumable_iam_role = _sdk_config.ROLE.get()
             auth_role = _common_models.AuthRole(
-                assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
+                assumable_iam_role=assumable_iam_role,
+                kubernetes_service_account=kubernetes_service_account,
             )
 
         try:
@@ -452,7 +482,8 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
 
 class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def get_node_executions(self, filters=None):
         """
@@ -465,7 +496,8 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
         }
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def sync(self):
         """
@@ -475,7 +507,8 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
         self.sdk_workflow_execution._closure = client.get_execution(self.sdk_workflow_execution.id).closure
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def get_inputs(self):
         """
@@ -498,7 +531,8 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
         return _literals.LiteralMap({})
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def get_outputs(self):
         """
@@ -521,7 +555,8 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
         return _literals.LiteralMap({})
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def terminate(self, cause):
         """
@@ -534,7 +569,8 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
 
 class FlyteNodeExecution(_common_engine.BaseNodeExecution):
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def get_task_executions(self):
         """
@@ -544,7 +580,8 @@ class FlyteNodeExecution(_common_engine.BaseNodeExecution):
         return list(_iterate_task_executions(client, self.sdk_node_execution.id))
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def get_subworkflow_executions(self):
         """
@@ -553,7 +590,8 @@ class FlyteNodeExecution(_common_engine.BaseNodeExecution):
         raise NotImplementedError("Cannot retrieve sub-workflow information from a node execution yet.")
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def get_inputs(self):
         """
@@ -576,7 +614,8 @@ class FlyteNodeExecution(_common_engine.BaseNodeExecution):
         return _literals.LiteralMap({})
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def get_outputs(self):
         """
@@ -599,7 +638,8 @@ class FlyteNodeExecution(_common_engine.BaseNodeExecution):
         return _literals.LiteralMap({})
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def sync(self):
         """
@@ -611,7 +651,8 @@ class FlyteNodeExecution(_common_engine.BaseNodeExecution):
 
 class FlyteTaskExecution(_common_engine.BaseTaskExecution):
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def get_inputs(self):
         """
@@ -634,7 +675,8 @@ class FlyteTaskExecution(_common_engine.BaseTaskExecution):
         return _literals.LiteralMap({})
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def get_outputs(self):
         """
@@ -657,7 +699,8 @@ class FlyteTaskExecution(_common_engine.BaseTaskExecution):
         return _literals.LiteralMap({})
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def sync(self):
         """
@@ -667,7 +710,8 @@ class FlyteTaskExecution(_common_engine.BaseTaskExecution):
         self.sdk_task_execution._closure = client.get_task_execution(self.sdk_task_execution.id).closure
 
     @_deprecated(
-        reason="Objects should access client directly, will be removed by 1.0", version="0.13.0",
+        reason="Objects should access client directly, will be removed by 1.0",
+        version="0.13.0",
     )
     def get_child_executions(self, filters=None):
         """
@@ -678,6 +722,8 @@ class FlyteTaskExecution(_common_engine.BaseTaskExecution):
         return {
             v.id.node_id: v
             for v in _iterate_node_executions(
-                client, task_execution_identifier=self.sdk_task_execution.id, filters=filters,
+                client,
+                task_execution_identifier=self.sdk_task_execution.id,
+                filters=filters,
             )
         }

@@ -260,7 +260,11 @@ def test_serialization_images():
     os.environ["FLYTE_INTERNAL_IMAGE"] = "docker.io/default:version"
     set_flyte_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config"))
     rs = context_manager.SerializationSettings(
-        project="project", domain="domain", version="version", env=None, image_config=get_image_config(),
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=get_image_config(),
     )
     t1_ser = get_serializable(OrderedDict(), rs, t1)
     assert t1_ser.container.image == "docker.io/xyz:version"

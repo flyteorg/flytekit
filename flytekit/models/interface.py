@@ -45,7 +45,10 @@ class Variable(_common.FlyteIdlEntity):
         :param flyteidl.core.interface_pb2.Variable variable_proto:
         :rtype: Variable
         """
-        return cls(type=_types.LiteralType.from_flyte_idl(variable_proto.type), description=variable_proto.description,)
+        return cls(
+            type=_types.LiteralType.from_flyte_idl(variable_proto.type),
+            description=variable_proto.description,
+        )
 
 
 class VariableMap(_common.FlyteIdlEntity):

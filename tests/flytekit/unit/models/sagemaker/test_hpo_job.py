@@ -38,7 +38,10 @@ def test_hyperparameter_tuning_job():
         input_mode=training_job.InputMode.FILE,
         input_content_type=training_job.InputContentType.TEXT_CSV,
     )
-    tj = training_job.TrainingJob(training_job_resource_config=rc, algorithm_specification=alg,)
+    tj = training_job.TrainingJob(
+        training_job_resource_config=rc,
+        algorithm_specification=alg,
+    )
     hpo = hpo_job.HyperparameterTuningJob(max_number_of_training_jobs=10, max_parallel_training_jobs=5, training_job=tj)
 
     hpo2 = hpo_job.HyperparameterTuningJob.from_flyte_idl(hpo.to_flyte_idl())

@@ -123,7 +123,9 @@ class SdkNotebookTask(_base_tasks.SdkTask):
             _task_models.TaskMetadata(
                 discoverable,
                 _task_models.RuntimeMetadata(
-                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "notebook",
+                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
+                    __version__,
+                    "notebook",
                 ),
                 timeout,
                 _literal_models.RetryStrategy(retries),
@@ -369,7 +371,13 @@ class SdkNotebookTask(_base_tasks.SdkTask):
             storage_request, cpu_request, gpu_request, memory_request, storage_limit, cpu_limit, gpu_limit, memory_limit
         )
 
-        return _sdk_runnable.SdkRunnableContainer(command=[], args=[], resources=resources, env=environment, config={},)
+        return _sdk_runnable.SdkRunnableContainer(
+            command=[],
+            args=[],
+            resources=resources,
+            env=environment,
+            config={},
+        )
 
 
 def spark_notebook(

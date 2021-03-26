@@ -70,7 +70,10 @@ def test_training_job():
         input_mode=training_job.InputMode.FILE,
         input_content_type=training_job.InputContentType.TEXT_CSV,
     )
-    tj = training_job.TrainingJob(training_job_resource_config=rc, algorithm_specification=alg,)
+    tj = training_job.TrainingJob(
+        training_job_resource_config=rc,
+        algorithm_specification=alg,
+    )
 
     tj2 = training_job.TrainingJob.from_flyte_idl(tj.to_flyte_idl())
     # checking tj == tj2 would return false because we don't have the __eq__ magic method defined

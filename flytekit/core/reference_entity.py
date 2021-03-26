@@ -176,7 +176,12 @@ class ReferenceEntity(object):
         return create_task_output(vals, self.python_interface)
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
-        return create_and_link_node(ctx, entity=self, interface=self.python_interface, **kwargs,)
+        return create_and_link_node(
+            ctx,
+            entity=self,
+            interface=self.python_interface,
+            **kwargs,
+        )
 
     def __call__(self, *args, **kwargs):
         # When a Task is () aka __called__, there are three things we may do:

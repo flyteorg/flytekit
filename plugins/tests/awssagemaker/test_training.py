@@ -34,9 +34,13 @@ def test_builtin_training():
         name="builtin-trainer",
         task_config=SagemakerTrainingJobConfig(
             training_job_resource_config=TrainingJobResourceConfig(
-                instance_count=1, instance_type="ml-xlarge", volume_size_in_gb=1,
+                instance_count=1,
+                instance_type="ml-xlarge",
+                volume_size_in_gb=1,
             ),
-            algorithm_specification=AlgorithmSpecification(algorithm_name=AlgorithmName.XGBOOST,),
+            algorithm_specification=AlgorithmSpecification(
+                algorithm_name=AlgorithmName.XGBOOST,
+            ),
         ),
     )
 
@@ -62,8 +66,13 @@ def test_builtin_training():
 def test_custom_training():
     @task(
         task_config=SagemakerTrainingJobConfig(
-            training_job_resource_config=TrainingJobResourceConfig(instance_type="ml-xlarge", volume_size_in_gb=1,),
-            algorithm_specification=AlgorithmSpecification(algorithm_name=AlgorithmName.CUSTOM,),
+            training_job_resource_config=TrainingJobResourceConfig(
+                instance_type="ml-xlarge",
+                volume_size_in_gb=1,
+            ),
+            algorithm_specification=AlgorithmSpecification(
+                algorithm_name=AlgorithmName.CUSTOM,
+            ),
         )
     )
     def my_custom_trainer(x: int) -> int:
@@ -91,7 +100,9 @@ def test_distributed_custom_training():
                 instance_count=2,  # Indicates distributed training
                 distributed_protocol=DistributedProtocol.MPI,
             ),
-            algorithm_specification=AlgorithmSpecification(algorithm_name=AlgorithmName.CUSTOM,),
+            algorithm_specification=AlgorithmSpecification(
+                algorithm_name=AlgorithmName.CUSTOM,
+            ),
         )
     )
     def my_custom_trainer(x: int) -> int:

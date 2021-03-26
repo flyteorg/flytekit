@@ -143,7 +143,10 @@ class SdkTask(
         return _nodes.SdkNode(
             id=None,
             metadata=_workflow_model.NodeMetadata(
-                "DEADBEEF", self.metadata.timeout, self.metadata.retries, self.metadata.interruptible,
+                "DEADBEEF",
+                self.metadata.timeout,
+                self.metadata.retries,
+                self.metadata.interruptible,
             ),
             bindings=sorted(bindings, key=lambda b: b.var),
             upstream_nodes=upstream_nodes,
@@ -216,7 +219,9 @@ class SdkTask(
         named_task = _common_model.NamedEntityIdentifier(project, domain, name)
         client = _flyte_engine.get_client()
         task_list, _ = client.list_tasks_paginated(
-            named_task, limit=1, sort_by=_admin_common.Sort("created_at", _admin_common.Sort.Direction.DESCENDING),
+            named_task,
+            limit=1,
+            sort_by=_admin_common.Sort("created_at", _admin_common.Sort.Direction.DESCENDING),
         )
         admin_task = task_list[0] if task_list else None
 
@@ -386,7 +391,8 @@ class SdkTask(
                 )
                 assumable_iam_role = _sdk_config.ROLE.get()
             auth_role = _common_model.AuthRole(
-                assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account,
+                assumable_iam_role=assumable_iam_role,
+                kubernetes_service_account=kubernetes_service_account,
             )
 
         client = _flyte_engine.get_client()

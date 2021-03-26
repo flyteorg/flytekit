@@ -16,8 +16,16 @@ project_option = _click.option(
     help="Flyte project to use. You can have more than one project per repo",
 )
 domain_option = _click.option(
-    "-d", "--domain", required=True, type=str, help="This is usually development, staging, or production",
+    "-d",
+    "--domain",
+    required=True,
+    type=str,
+    help="This is usually development, staging, or production",
 )
 version_option = _click.option(
-    "-v", "--version", required=False, type=str, help="This is the version to apply globally for this context",
+    "-v",
+    "--version",
+    required=False,
+    type=str,
+    help="This is the version to apply globally for this context",
 )

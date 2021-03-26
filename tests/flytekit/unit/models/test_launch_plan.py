@@ -26,7 +26,9 @@ def test_lp_closure():
     parameter_map.to_flyte_idl()
     variable_map = interface.VariableMap({"vvv": v})
     obj = launch_plan.LaunchPlanClosure(
-        state=launch_plan.LaunchPlanState.ACTIVE, expected_inputs=parameter_map, expected_outputs=variable_map,
+        state=launch_plan.LaunchPlanState.ACTIVE,
+        expected_inputs=parameter_map,
+        expected_outputs=variable_map,
     )
     assert obj.expected_inputs == parameter_map
     assert obj.expected_outputs == variable_map

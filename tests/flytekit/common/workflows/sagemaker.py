@@ -54,7 +54,9 @@ example_hyperparams = {
 
 builtin_algorithm_training_job_task2 = SdkBuiltinAlgorithmTrainingJobTask(
     training_job_resource_config=TrainingJobResourceConfig(
-        instance_type="ml.m4.xlarge", instance_count=1, volume_size_in_gb=25,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
+        volume_size_in_gb=25,
     ),
     algorithm_specification=AlgorithmSpecification(
         input_mode=InputMode.FILE,
@@ -85,7 +87,8 @@ class SageMakerHPO(object):
         default=_HyperparameterTuningJobConfig(
             tuning_strategy=HyperparameterTuningStrategy.BAYESIAN,
             tuning_objective=HyperparameterTuningObjective(
-                objective_type=HyperparameterTuningObjectiveType.MINIMIZE, metric_name="validation:error",
+                objective_type=HyperparameterTuningObjectiveType.MINIMIZE,
+                metric_name="validation:error",
             ),
             training_job_early_stopping_type=TrainingJobEarlyStoppingType.AUTO,
         ),
@@ -105,7 +108,10 @@ class SageMakerHPO(object):
 sagemaker_hpo_lp = SageMakerHPO.create_launch_plan()
 
 with _configuration.TemporaryConfiguration(
-    _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../common/configs/local.config",),
+    _os.path.join(
+        _os.path.dirname(_os.path.realpath(__file__)),
+        "../../common/configs/local.config",
+    ),
     internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
 ):
     print("Printing WF definition")
