@@ -2,9 +2,14 @@ import os
 
 import flytekit
 from flytekit.core import context_manager
+from flytekit.core.context_manager import ExecutionState, Image, ImageConfig
+from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.task import task
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
+from flytekit.models.core.types import BlobType
+from flytekit.models.literals import LiteralMap
 from flytekit.types.file.file import FlyteFile
 
 
@@ -207,3 +212,32 @@ def test_file_handling_remote_file_handling_flyte_file():
 
         # The file name is maintained on download.
         assert str(workflow_output).endswith(os.path.split(SAMPLE_DATA)[1])
+
+
+def test_dont_convert_remotes():
+    @task
+    def t1(in1: FlyteFile):
+        print(in1)
+
+    @dynamic
+    def dyn(in1: FlyteFile):
+        t1(in1=in1)
+
+    fd = FlyteFile("s3://anything")
+
+    with context_manager.FlyteContext.current_context().new_serialization_settings(
+        serialization_settings=context_manager.SerializationSettings(
+            project="test_proj",
+            domain="test_domain",
+            version="abc",
+            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+            env={},
+        )
+    ) as ctx:
+        with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
+            lit = TypeEngine.to_literal(
+                ctx, fd, FlyteFile, BlobType("", dimensionality=BlobType.BlobDimensionality.SINGLE)
+            )
+            lm = LiteralMap(literals={"in1": lit})
+            wf = dyn.dispatch_execute(ctx, lm)
+            assert wf.nodes[0].inputs[0].binding.scalar.blob.uri == "s3://anything"

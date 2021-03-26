@@ -2,8 +2,9 @@ import os
 import pathlib
 import shutil
 
-import flytekit
 import pytest
+
+import flytekit
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState, Image, ImageConfig
 from flytekit.core.dynamic_workflow_task import dynamic
@@ -12,8 +13,9 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core.types import BlobType
+from flytekit.models.literals import Blob, Literal, LiteralMap, Scalar
 from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
-from flytekit.models.literals import Literal, LiteralMap, Scalar, Blob
+
 
 def test_engine():
     t = FlyteDirectory
@@ -137,7 +139,6 @@ def test_wf():
 
 
 def test_dont_convert_remotes():
-
     @task
     def t1(in1: FlyteDirectory):
         print(in1)
@@ -158,8 +159,9 @@ def test_dont_convert_remotes():
         )
     ) as ctx:
         with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
-            lit = TypeEngine.to_literal(ctx, fd, FlyteDirectory, BlobType("", dimensionality=BlobType.BlobDimensionality.MULTIPART))
+            lit = TypeEngine.to_literal(
+                ctx, fd, FlyteDirectory, BlobType("", dimensionality=BlobType.BlobDimensionality.MULTIPART)
+            )
             lm = LiteralMap(literals={"in1": lit})
             wf = dyn.dispatch_execute(ctx, lm)
-            print(wf)
-
+            assert wf.nodes[0].inputs[0].binding.scalar.blob.uri == "s3://anything"
