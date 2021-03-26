@@ -6,11 +6,14 @@ import pytest
 
 import flytekit
 from flytekit.core import context_manager
+from flytekit.core.context_manager import ExecutionState, Image, ImageConfig
+from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core.types import BlobType
+from flytekit.models.literals import LiteralMap
 from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
 
 
@@ -133,3 +136,32 @@ def test_wf():
 
     x = wf2()
     assert x == 5
+
+
+def test_dont_convert_remotes():
+    @task
+    def t1(in1: FlyteDirectory):
+        print(in1)
+
+    @dynamic
+    def dyn(in1: FlyteDirectory):
+        t1(in1=in1)
+
+    fd = FlyteDirectory("s3://anything")
+
+    with context_manager.FlyteContext.current_context().new_serialization_settings(
+        serialization_settings=context_manager.SerializationSettings(
+            project="test_proj",
+            domain="test_domain",
+            version="abc",
+            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+            env={},
+        )
+    ) as ctx:
+        with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
+            lit = TypeEngine.to_literal(
+                ctx, fd, FlyteDirectory, BlobType("", dimensionality=BlobType.BlobDimensionality.MULTIPART)
+            )
+            lm = LiteralMap(literals={"in1": lit})
+            wf = dyn.dispatch_execute(ctx, lm)
+            assert wf.nodes[0].inputs[0].binding.scalar.blob.uri == "s3://anything"

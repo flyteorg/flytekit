@@ -217,6 +217,11 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         if python_val is None:
             raise AssertionError("None value cannot be converted to a file.")
         if isinstance(python_val, FlyteFile):
+            # If the object has a remote source, then we just convert it back.
+            if python_val._remote_source is not None:
+                meta = BlobMetadata(type=self._blob_type(format=self.get_format(python_type)))
+                return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=python_val._remote_source)))
+
             source_path = python_val.path
             if python_val.remote_path is False:
                 # If the user specified the remote_path to be False, that means no matter what, do not upload
