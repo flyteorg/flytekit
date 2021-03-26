@@ -18,7 +18,10 @@ from flytekit.sdk import workflow as _workflow
 
 def test_default_assumable_iam_role():
     with _configuration.TemporaryConfiguration(
-        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../common/configs/local.config",)
+        _os.path.join(
+            _os.path.dirname(_os.path.realpath(__file__)),
+            "../../common/configs/local.config",
+        )
     ):
         workflow_to_test = _workflow.workflow(
             {},
@@ -45,7 +48,10 @@ def test_hard_coded_assumable_iam_role():
 
 def test_default_deprecated_role():
     with _configuration.TemporaryConfiguration(
-        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../common/configs/deprecated_local.config",)
+        _os.path.join(
+            _os.path.dirname(_os.path.realpath(__file__)),
+            "../../common/configs/deprecated_local.config",
+        )
     ):
         workflow_to_test = _workflow.workflow(
             {},
@@ -150,7 +156,11 @@ def test_schedule(schedule, cron_expression, cron_schedule):
             "default_input": _workflow.Input(_types.Types.Integer, default=5),
         },
     )
-    lp = workflow_to_test.create_launch_plan(fixed_inputs={"required_input": 5}, schedule=schedule, role="what",)
+    lp = workflow_to_test.create_launch_plan(
+        fixed_inputs={"required_input": 5},
+        schedule=schedule,
+        role="what",
+    )
     assert lp.entity_metadata.schedule.kickoff_time_input_arg is None
     assert lp.entity_metadata.schedule.cron_expression == cron_expression
     assert lp.entity_metadata.schedule.cron_schedule == cron_schedule
@@ -180,7 +190,8 @@ def test_schedule_pointing_to_datetime():
         },
     )
     lp = workflow_to_test.create_launch_plan(
-        schedule=_schedules.CronSchedule("* * ? * * *", kickoff_time_input_arg="required_input"), role="what",
+        schedule=_schedules.CronSchedule("* * ? * * *", kickoff_time_input_arg="required_input"),
+        role="what",
     )
     assert lp.entity_metadata.schedule.kickoff_time_input_arg == "required_input"
     assert lp.entity_metadata.schedule.cron_expression == "* * ? * * *"
@@ -310,10 +321,16 @@ def test_serialize():
         },
     )
     workflow_to_test.id = _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "p", "d", "n", "v")
-    lp = workflow_to_test.create_launch_plan(fixed_inputs={"required_input": 5}, role="iam_role",)
+    lp = workflow_to_test.create_launch_plan(
+        fixed_inputs={"required_input": 5},
+        role="iam_role",
+    )
 
     with _configuration.TemporaryConfiguration(
-        _os.path.join(_os.path.dirname(_os.path.realpath(__file__)), "../../common/configs/local.config",),
+        _os.path.join(
+            _os.path.dirname(_os.path.realpath(__file__)),
+            "../../common/configs/local.config",
+        ),
         internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
     ):
         s = lp.serialize()
@@ -360,9 +377,12 @@ def test_raw_data_output_prefix():
         },
     )
     lp = workflow_to_test.create_launch_plan(
-        fixed_inputs={"required_input": 5}, raw_output_data_prefix="s3://bucket-name",
+        fixed_inputs={"required_input": 5},
+        raw_output_data_prefix="s3://bucket-name",
     )
     assert lp.raw_output_data_config.output_location_prefix == "s3://bucket-name"
 
-    lp2 = workflow_to_test.create_launch_plan(fixed_inputs={"required_input": 5},)
+    lp2 = workflow_to_test.create_launch_plan(
+        fixed_inputs={"required_input": 5},
+    )
     assert lp2.raw_output_data_config.output_location_prefix == ""

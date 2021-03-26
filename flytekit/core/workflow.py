@@ -36,7 +36,11 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 
 GLOBAL_START_NODE = Node(
-    id=_common_constants.GLOBAL_INPUT_NODE_ID, metadata=None, bindings=[], upstream_nodes=[], flyte_entity=None,
+    id=_common_constants.GLOBAL_INPUT_NODE_ID,
+    metadata=None,
+    bindings=[],
+    upstream_nodes=[],
+    flyte_entity=None,
 )
 
 
@@ -347,7 +351,10 @@ class WorkflowBase(object):
 
 class ImperativeWorkflow(WorkflowBase):
     def __init__(
-        self, name: str, failure_policy: Optional[WorkflowFailurePolicy] = None, interruptible: Optional[bool] = False,
+        self,
+        name: str,
+        failure_policy: Optional[WorkflowFailurePolicy] = None,
+        interruptible: Optional[bool] = False,
     ):
         metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
@@ -625,7 +632,11 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 )
             t = self.python_interface.outputs[output_names[0]]
             b = binding_from_python_std(
-                ctx, output_names[0], self.interface.outputs[output_names[0]].type, workflow_outputs, t,
+                ctx,
+                output_names[0],
+                self.interface.outputs[output_names[0]].type,
+                workflow_outputs,
+                t,
             )
             bindings.append(b)
         elif len(output_names) > 1:
@@ -637,7 +648,13 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 if isinstance(workflow_outputs[i], ConditionalSection):
                     raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
                 t = self.python_interface.outputs[out]
-                b = binding_from_python_std(ctx, out, self.interface.outputs[out].type, workflow_outputs[i], t,)
+                b = binding_from_python_std(
+                    ctx,
+                    out,
+                    self.interface.outputs[out].type,
+                    workflow_outputs[i],
+                    t,
+                )
                 bindings.append(b)
 
         # Save all the things necessary to create an SdkWorkflow, except for the missing project and domain
@@ -712,7 +729,10 @@ class ReferenceWorkflow(ReferenceEntity, PythonFunctionWorkflow):
 
 
 def reference_workflow(
-    project: str, domain: str, name: str, version: str,
+    project: str,
+    domain: str,
+    name: str,
+    version: str,
 ) -> Callable[[Callable[..., Any]], ReferenceWorkflow]:
     """
     A reference workflow is a pointer to a workflow that already exists on your Flyte installation. This

@@ -77,7 +77,11 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
                     raise AssertionError(f"Secret {s} should be of type flytekit.Secret, received {type(s)}")
             sec_ctx = SecurityContext(secrets=secret_requests)
         super().__init__(
-            task_type=task_type, name=name, task_config=task_config, security_ctx=sec_ctx, **kwargs,
+            task_type=task_type,
+            name=name,
+            task_config=task_config,
+            security_ctx=sec_ctx,
+            **kwargs,
         )
         self._container_image = container_image
         # TODO(katrogan): Implement resource overrides

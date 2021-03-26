@@ -423,11 +423,14 @@ class TextIOTransformer(TypeTransformer[typing.TextIO]):
 
     def _blob_type(self) -> _core_types.BlobType:
         return _core_types.BlobType(
-            format=mimetypes.types_map[".txt"], dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            format=mimetypes.types_map[".txt"],
+            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
         )
 
     def get_literal_type(self, t: typing.TextIO) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(),)
+        return _type_models.LiteralType(
+            blob=self._blob_type(),
+        )
 
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.TextIO, python_type: Type[typing.TextIO], expected: LiteralType
@@ -454,11 +457,14 @@ class BinaryIOTransformer(TypeTransformer[typing.BinaryIO]):
 
     def _blob_type(self) -> _core_types.BlobType:
         return _core_types.BlobType(
-            format=mimetypes.types_map[".bin"], dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            format=mimetypes.types_map[".bin"],
+            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
         )
 
     def get_literal_type(self, t: Type[typing.BinaryIO]) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(),)
+        return _type_models.LiteralType(
+            blob=self._blob_type(),
+        )
 
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.BinaryIO, python_type: Type[typing.BinaryIO], expected: LiteralType
@@ -484,11 +490,14 @@ class PathLikeTransformer(TypeTransformer[os.PathLike]):
 
     def _blob_type(self) -> _core_types.BlobType:
         return _core_types.BlobType(
-            format=mimetypes.types_map[".bin"], dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            format=mimetypes.types_map[".bin"],
+            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
         )
 
     def get_literal_type(self, t: Type[os.PathLike]) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(),)
+        return _type_models.LiteralType(
+            blob=self._blob_type(),
+        )
 
     def to_literal(
         self, ctx: FlyteContext, python_val: os.PathLike, python_type: Type[os.PathLike], expected: LiteralType
@@ -591,7 +600,11 @@ def _register_default_type_transformers():
 
     TypeEngine.register(
         SimpleTransformer(
-            "none", None, _type_models.LiteralType(simple=_type_models.SimpleType.NONE), lambda x: None, lambda x: None,
+            "none",
+            None,
+            _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
+            lambda x: None,
+            lambda x: None,
         )
     )
     TypeEngine.register(ListTransformer())

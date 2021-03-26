@@ -58,7 +58,10 @@ def test_basics():
     sdk_task = get_serializable(OrderedDict(), serialization_settings, t1, True)
     assert "pyflyte-execute" in sdk_task.container.args
 
-    lp = LaunchPlan.create("testlp", my_wf,)
+    lp = LaunchPlan.create(
+        "testlp",
+        my_wf,
+    )
     sdk_lp = get_serializable(OrderedDict(), serialization_settings, lp)
     assert sdk_lp.id.name == "testlp"
 

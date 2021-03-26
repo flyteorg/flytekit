@@ -87,7 +87,11 @@ class HiveTask(SQLTask[HiveConfig]):
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         # timeout_sec and retry_count will become deprecated, please use timeout and retry settings on the Task
         query = HiveQuery(query=self.query_template, timeout_sec=0, retry_count=0)
-        job = QuboleHiveJob(query=query, cluster_label=self.cluster_label, tags=self.tags,)
+        job = QuboleHiveJob(
+            query=query,
+            cluster_label=self.cluster_label,
+            tags=self.tags,
+        )
         return MessageToDict(job.to_flyte_idl())
 
 
@@ -116,10 +120,10 @@ class HiveSelectTask(HiveTask):
         **kwargs,
     ):
         """
-            Args:
-                select_query: Singular query that returns a Tabular dataset
-                stage_query: optional query that should be executed before the actual ``select_query``. This can usually
-                            be used for setting memory or the an alternate execution engine like :ref:`tez<https://tez.apache.org/>`_/
+        Args:
+            select_query: Singular query that returns a Tabular dataset
+            stage_query: optional query that should be executed before the actual ``select_query``. This can usually
+                        be used for setting memory or the an alternate execution engine like :ref:`tez<https://tez.apache.org/>`_/
         """
         query_template = HiveSelectTask._HIVE_QUERY_FORMATTER.format(
             stage_query_str=stage_query or "", select_query_str=select_query.strip().strip(";")

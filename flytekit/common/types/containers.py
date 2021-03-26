@@ -58,12 +58,16 @@ class TypedListImpl(ListImpl, metaclass=TypedCollectionType):
             items = _json.loads(string_value)
         except ValueError:
             raise _user_exceptions.FlyteTypeException(
-                _six.text_type, cls, additional_msg="String not parseable to json {}".format(string_value),
+                _six.text_type,
+                cls,
+                additional_msg="String not parseable to json {}".format(string_value),
             )
 
         if type(items) != list:
             raise _user_exceptions.FlyteTypeException(
-                _six.text_type, cls, additional_msg="String is not a list {}".format(string_value),
+                _six.text_type,
+                cls,
+                additional_msg="String is not a list {}".format(string_value),
             )
 
         # Instead of recursively calling from_string(), we're changing to from_python_std() instead because json
@@ -137,7 +141,9 @@ class TypedListImpl(ListImpl, metaclass=TypedCollectionType):
         if len(self.collection.literals) > num_to_print:
             to_print.append("...")
         return "{}(len={}, [{}])".format(
-            type(self).short_class_string(), len(self.collection.literals), ", ".join(to_print),
+            type(self).short_class_string(),
+            len(self.collection.literals),
+            ", ".join(to_print),
         )
 
     def verbose_string(self):

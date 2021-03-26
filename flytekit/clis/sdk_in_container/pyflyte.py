@@ -20,7 +20,11 @@ from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
 
 @click.group("pyflyte", invoke_without_command=True)
 @click.option(
-    "-c", "--config", required=False, type=str, help="Path to config file for use within container",
+    "-c",
+    "--config",
+    required=False,
+    type=str,
+    help="Path to config file for use within container",
 )
 @click.option(
     "-k",
@@ -31,7 +35,11 @@ from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
     "option will override the option specified in the configuration file, or environment variable",
 )
 @click.option(
-    "-i", "--insecure", required=False, type=bool, help="Do not use SSL to connect to Admin",
+    "-i",
+    "--insecure",
+    required=False,
+    type=bool,
+    help="Do not use SSL to connect to Admin",
 )
 @click.pass_context
 def main(ctx, config=None, pkgs=None, insecure=None):
@@ -71,7 +79,8 @@ def update_configuration_file(config_file_path):
     configuration_file = Path(config_file_path or CONFIGURATION_PATH.get())
     if configuration_file.is_file():
         click.secho(
-            "Using configuration file at {}".format(configuration_file.absolute().as_posix()), fg="green",
+            "Using configuration file at {}".format(configuration_file.absolute().as_posix()),
+            fg="green",
         )
         set_flyte_config_file(configuration_file.as_posix())
     else:

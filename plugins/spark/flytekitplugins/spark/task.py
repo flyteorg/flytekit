@@ -70,7 +70,10 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
 
     def __init__(self, task_config: Spark, task_function: Callable, **kwargs):
         super(PysparkFunctionTask, self).__init__(
-            task_config=task_config, task_type=self._SPARK_TASK_TYPE, task_function=task_function, **kwargs,
+            task_config=task_config,
+            task_type=self._SPARK_TASK_TYPE,
+            task_function=task_function,
+            **kwargs,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:

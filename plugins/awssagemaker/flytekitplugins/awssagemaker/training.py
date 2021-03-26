@@ -49,7 +49,10 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
     OUTPUT_TYPE = TypeVar("tar.gz")
 
     def __init__(
-        self, name: str, task_config: SagemakerTrainingJobConfig, **kwargs,
+        self,
+        name: str,
+        task_config: SagemakerTrainingJobConfig,
+        **kwargs,
     ):
         """
         Args:
@@ -75,7 +78,11 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
             outputs=kwtypes(model=FlyteFile[self.OUTPUT_TYPE]),
         )
         super().__init__(
-            self._SAGEMAKER_TRAINING_JOB_TASK, name, interface=interface, task_config=task_config, **kwargs,
+            self._SAGEMAKER_TRAINING_JOB_TASK,
+            name,
+            interface=interface,
+            task_config=task_config,
+            **kwargs,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
@@ -110,7 +117,10 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
     _SAGEMAKER_CUSTOM_TRAINING_JOB_TASK = "sagemaker_custom_training_job_task"
 
     def __init__(
-        self, task_config: SagemakerTrainingJobConfig, task_function: Callable, **kwargs,
+        self,
+        task_config: SagemakerTrainingJobConfig,
+        task_function: Callable,
+        **kwargs,
     ):
         super().__init__(
             task_config=task_config,
@@ -145,7 +155,7 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
             exec_state = FlyteContext.current_context().execution_state
             if exec_state and exec_state.mode == ExecutionState.Mode.TASK_EXECUTION:
                 """
-                    This mode indicates we are actually in a remote execute environment (within sagemaker in this case)
+                This mode indicates we are actually in a remote execute environment (within sagemaker in this case)
                 """
                 dist_ctx = DistributedTrainingContext.from_env()
             else:

@@ -131,7 +131,10 @@ class Data(object):
             raise _user_exception.FlyteAssertion(
                 "Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
                 "Original exception: {error_string}".format(
-                    remote_path=remote_path, local_path=local_path, is_multipart=is_multipart, error_string=str(ex),
+                    remote_path=remote_path,
+                    local_path=local_path,
+                    is_multipart=is_multipart,
+                    error_string=str(ex),
                 )
             )
 
@@ -153,7 +156,10 @@ class Data(object):
             raise _user_exception.FlyteAssertion(
                 "Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"
                 "Original exception: {error_string}".format(
-                    remote_path=remote_path, local_path=local_path, is_multipart=is_multipart, error_string=str(ex),
+                    remote_path=remote_path,
+                    local_path=local_path,
+                    is_multipart=is_multipart,
+                    error_string=str(ex),
                 )
             )
 
@@ -342,7 +348,10 @@ class FileAccessProvider(object):
             raise _user_exception.FlyteAssertion(
                 "Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
                 "Original exception: {error_string}".format(
-                    remote_path=remote_path, local_path=local_path, is_multipart=is_multipart, error_string=str(ex),
+                    remote_path=remote_path,
+                    local_path=local_path,
+                    is_multipart=is_multipart,
+                    error_string=str(ex),
                 )
             )
 

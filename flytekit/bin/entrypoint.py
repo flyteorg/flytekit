@@ -126,7 +126,11 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
         _logging.error("!! Begin Unknown System Error Captured by Flyte !!")
         exc_str = _traceback.format_exc()
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
-            _error_models.ContainerError("SYSTEM:Unknown", exc_str, _error_models.ContainerError.Kind.RECOVERABLE,)
+            _error_models.ContainerError(
+                "SYSTEM:Unknown",
+                exc_str,
+                _error_models.ContainerError.Kind.RECOVERABLE,
+            )
         )
         _logging.error(exc_str)
         _logging.error("!! End Error Captured by Flyte !!")
@@ -185,11 +189,13 @@ def _handle_annotated_task(task_def: PythonTask, inputs: str, output_prefix: str
 
     if cloud_provider == _constants.CloudProvider.AWS:
         file_access = _data_proxy.FileAccessProvider(
-            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(), remote_proxy=_s3proxy.AwsS3Proxy(raw_output_data_prefix),
+            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
+            remote_proxy=_s3proxy.AwsS3Proxy(raw_output_data_prefix),
         )
     elif cloud_provider == _constants.CloudProvider.GCP:
         file_access = _data_proxy.FileAccessProvider(
-            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(), remote_proxy=_gcs_proxy.GCSProxy(raw_output_data_prefix),
+            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
+            remote_proxy=_gcs_proxy.GCSProxy(raw_output_data_prefix),
         )
     elif cloud_provider == _constants.CloudProvider.LOCAL:
         # A fake remote using the local disk will automatically be created
@@ -353,7 +359,9 @@ def _pass_through():
 @_click.option("--test", is_flag=True)
 @_click.option("--resolver", required=False)
 @_click.argument(
-    "resolver-args", type=_click.UNPROCESSED, nargs=-1,
+    "resolver-args",
+    type=_click.UNPROCESSED,
+    nargs=-1,
 )
 def execute_task_cmd(
     task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args
@@ -408,15 +416,29 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 @_click.option("--test", is_flag=True)
 @_click.option("--resolver", required=True)
 @_click.argument(
-    "resolver-args", type=_click.UNPROCESSED, nargs=-1,
+    "resolver-args",
+    type=_click.UNPROCESSED,
+    nargs=-1,
 )
 def map_execute_task_cmd(
-    inputs, output_prefix, raw_output_data_prefix, max_concurrency, test, resolver, resolver_args,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    max_concurrency,
+    test,
+    resolver,
+    resolver_args,
 ):
     _click.echo(_utils.get_version_message())
 
     _execute_map_task(
-        inputs, output_prefix, raw_output_data_prefix, max_concurrency, test, resolver, resolver_args,
+        inputs,
+        output_prefix,
+        raw_output_data_prefix,
+        max_concurrency,
+        test,
+        resolver,
+        resolver_args,
     )
 
 

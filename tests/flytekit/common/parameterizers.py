@@ -32,16 +32,28 @@ LIST_OF_SCALAR_LITERAL_TYPES = [
         )
     ),
     types.LiteralType(
-        blob=_core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
+        blob=_core_types.BlobType(
+            format="",
+            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+        )
     ),
     types.LiteralType(
-        blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,)
+        blob=_core_types.BlobType(
+            format="csv",
+            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+        )
     ),
     types.LiteralType(
-        blob=_core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,)
+        blob=_core_types.BlobType(
+            format="",
+            dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
+        )
     ),
     types.LiteralType(
-        blob=_core_types.BlobType(format="csv", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,)
+        blob=_core_types.BlobType(
+            format="csv",
+            dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
+        )
     ),
 ]
 
@@ -60,7 +72,8 @@ LIST_OF_ALL_LITERAL_TYPES = (
 
 LIST_OF_INTERFACES = [
     interface.TypedInterface(
-        {"a": interface.Variable(t, "description 1")}, {"b": interface.Variable(t, "description 2")},
+        {"a": interface.Variable(t, "description 1")},
+        {"b": interface.Variable(t, "description 2")},
     )
     for t in LIST_OF_ALL_LITERAL_TYPES
 ]
@@ -95,7 +108,13 @@ LIST_OF_INTERRUPTIBLE = [None, True, False]
 
 LIST_OF_TASK_METADATA = [
     task.TaskMetadata(
-        discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated,
+        discoverable,
+        runtime_metadata,
+        timeout,
+        retry_strategy,
+        interruptible,
+        discovery_version,
+        deprecated,
     )
     for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated in product(
         [True, False],
@@ -117,7 +136,12 @@ LIST_OF_TASK_TEMPLATES = [
         interfaces,
         {"a": 1, "b": [1, 2, 3], "c": "abc", "d": {"x": 1, "y": 2, "z": 3}},
         container=task.Container(
-            "my_image", ["this", "is", "a", "cmd"], ["this", "is", "an", "arg"], resources, {"a": "b"}, {"d": "e"},
+            "my_image",
+            ["this", "is", "a", "cmd"],
+            ["this", "is", "an", "arg"],
+            resources,
+            {"a": "b"},
+            {"d": "e"},
         ),
     )
     for task_metadata, interfaces, resources in product(LIST_OF_TASK_METADATA, LIST_OF_INTERFACES, LIST_OF_RESOURCES)
@@ -125,7 +149,12 @@ LIST_OF_TASK_TEMPLATES = [
 
 LIST_OF_CONTAINERS = [
     task.Container(
-        "my_image", ["this", "is", "a", "cmd"], ["this", "is", "an", "arg"], resources, {"a": "b"}, {"d": "e"},
+        "my_image",
+        ["this", "is", "a", "cmd"],
+        ["this", "is", "an", "arg"],
+        resources,
+        {"a": "b"},
+        {"d": "e"},
     )
     for resources in LIST_OF_RESOURCES
 ]
@@ -137,7 +166,10 @@ LIST_OF_SCALARS_AND_PYTHON_VALUES = [
     (literals.Scalar(primitive=literals.Primitive(float_value=500.0)), 500.0),
     (literals.Scalar(primitive=literals.Primitive(boolean=True)), True),
     (literals.Scalar(primitive=literals.Primitive(string_value="hello")), "hello"),
-    (literals.Scalar(primitive=literals.Primitive(duration=timedelta(seconds=5))), timedelta(seconds=5),),
+    (
+        literals.Scalar(primitive=literals.Primitive(duration=timedelta(seconds=5))),
+        timedelta(seconds=5),
+    ),
     (literals.Scalar(none_type=literals.Void()), None),
     (
         literals.Scalar(

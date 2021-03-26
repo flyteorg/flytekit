@@ -164,7 +164,9 @@ def test_fetch(value_type_pair):
 
         with _utils.AutoDeletingTempDir("test2") as local_dir:
             schema_obj = _schema_impl.Schema.fetch(
-                tmpdir.name, local_path=local_dir.get_named_tempfile("schema_test"), schema_type=schema_type,
+                tmpdir.name,
+                local_path=local_dir.get_named_tempfile("schema_test"),
+                schema_type=schema_type,
             )
             with schema_obj as reader:
                 for df in reader.iter_chunks():
@@ -283,7 +285,8 @@ def test_hive_queries(monkeypatch):
         ) SET LOCATION 's3://my_fixed_path/';
         """
         query = df.get_write_partition_to_hive_table_query(
-            "some_table", partitions=_collections.OrderedDict([("region", "SEA"), ("ds", "2017-01-01")]),
+            "some_table",
+            partitions=_collections.OrderedDict([("region", "SEA"), ("ds", "2017-01-01")]),
         )
         full_query = " ".join(full_query.split())
         query = " ".join(query.split())
@@ -299,7 +302,8 @@ def test_partial_column_read():
             writer.write(_pd.DataFrame.from_dict({"a": [1, 2, 3, 4], "b": [5, 6, 7, 8]}))
 
         b = _schema_impl.Schema.fetch(
-            a.uri, schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
+            a.uri,
+            schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
         )
         with b as reader:
             df = reader.read(columns=["b"])
@@ -322,7 +326,8 @@ def test_from_python_std():
             )
             assert s is not None
             n = _schema_impl.Schema.fetch(
-                s.uri, schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
+                s.uri,
+                schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
             )
             with n as reader:
                 df2 = reader.read()
@@ -338,7 +343,8 @@ def test_from_python_std():
             )
             assert s is not None
             n = _schema_impl.Schema.fetch(
-                s.uri, schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
+                s.uri,
+                schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
             )
             with n as reader:
                 actual = []
@@ -365,7 +371,8 @@ def test_from_python_std():
             )
             assert s is not None
             n = _schema_impl.Schema.fetch(
-                s.uri, schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
+                s.uri,
+                schema_type=_schema_impl.SchemaType([("a", _primitives.Integer), ("b", _primitives.Integer)]),
             )
             with n as reader:
                 df = reader.read()
@@ -474,7 +481,8 @@ def test_extra_schema_read():
             writer.write(_pd.DataFrame.from_dict({"a": [1, 2, 3, 4], "b": [5, 6, 7, 8]}))
 
         b = _schema_impl.Schema.fetch(
-            a.remote_prefix, schema_type=_schema_impl.SchemaType([("a", _primitives.Integer)]),
+            a.remote_prefix,
+            schema_type=_schema_impl.SchemaType([("a", _primitives.Integer)]),
         )
         with b as reader:
             df = reader.read(concat=True, truncate_extra_columns=False)

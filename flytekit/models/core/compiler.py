@@ -105,7 +105,8 @@ class CompiledWorkflow(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.compiler_pb2.CompiledWorkflow
         """
         return _compiler_pb2.CompiledWorkflow(
-            template=self.template.to_flyte_idl(), connections=self.connections.to_flyte_idl(),
+            template=self.template.to_flyte_idl(),
+            connections=self.connections.to_flyte_idl(),
         )
 
     @classmethod

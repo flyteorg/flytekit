@@ -25,13 +25,21 @@ def test_hpo_for_builtin():
         name="builtin-trainer",
         task_config=SagemakerTrainingJobConfig(
             training_job_resource_config=TrainingJobResourceConfig(
-                instance_count=1, instance_type="ml-xlarge", volume_size_in_gb=1,
+                instance_count=1,
+                instance_type="ml-xlarge",
+                volume_size_in_gb=1,
             ),
-            algorithm_specification=AlgorithmSpecification(algorithm_name=AlgorithmName.XGBOOST,),
+            algorithm_specification=AlgorithmSpecification(
+                algorithm_name=AlgorithmName.XGBOOST,
+            ),
         ),
     )
 
-    hpo = SagemakerHPOTask(name="test", task_config=HPOJob(10, 10, ["x"]), training_task=trainer,)
+    hpo = SagemakerHPOTask(
+        name="test",
+        task_config=HPOJob(10, 10, ["x"]),
+        training_task=trainer,
+    )
 
     assert hpo.python_interface.inputs.keys() == {
         "static_hyperparameters",
@@ -59,7 +67,8 @@ def test_hpo_for_builtin():
             hyperparameter_tuning_job_config=HyperparameterTuningJobConfig(
                 tuning_strategy=1,
                 tuning_objective=HyperparameterTuningObjective(
-                    objective_type=HyperparameterTuningObjectiveType.MINIMIZE, metric_name="x",
+                    objective_type=HyperparameterTuningObjectiveType.MINIMIZE,
+                    metric_name="x",
                 ),
                 training_job_early_stopping_type=TrainingJobEarlyStoppingType.OFF,
             ),
@@ -73,7 +82,8 @@ def test_hpoconfig_transformer():
     o = HyperparameterTuningJobConfig(
         tuning_strategy=1,
         tuning_objective=HyperparameterTuningObjective(
-            objective_type=HyperparameterTuningObjectiveType.MINIMIZE, metric_name="x",
+            objective_type=HyperparameterTuningObjectiveType.MINIMIZE,
+            metric_name="x",
         ),
         training_job_early_stopping_type=TrainingJobEarlyStoppingType.OFF,
     )
