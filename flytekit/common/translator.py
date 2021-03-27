@@ -169,7 +169,7 @@ def get_serializable_workflow(
 
     # Translate nodes
     upstream_sdk_nodes = [
-        get_serializable(entity_mapping, settings, n)
+        get_serializable(entity_mapping, settings, n, fast)
         for n in entity.nodes
         if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
     ]
