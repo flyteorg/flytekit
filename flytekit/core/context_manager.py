@@ -422,7 +422,9 @@ class FlyteContext(object):
 
         # If a wf_params object was not given, use the default (defined at the bottom of this file)
         new_ctx = FlyteContext(
-            parent=self, execution_state=exec_state, user_space_params=execution_params or default_user_space_params,
+            parent=self,
+            execution_state=exec_state,
+            user_space_params=execution_params or default_user_space_params,
         )
         FlyteContext.OBJS.append(new_ctx)
         try:

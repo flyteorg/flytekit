@@ -192,6 +192,31 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             for n in sdk_workflow.nodes:
                 self.aggregate(tasks, sub_workflows, n)
 
+            if is_fast_execution:
+                if (
+                    not ctx.execution_state
+                    or not ctx.execution_state.additional_context
+                    or not ctx.execution_state.additional_context.get("dynamic_addl_distro")
+                ):
+                    raise AssertionError(
+                        "Compilation for a dynamic workflow called in fast execution mode but no additional code distribution could be retrieved"
+                    )
+                sanitized_tasks = set()
+                for task in tasks:
+                    sanitized_args = []
+                    for arg in task.container.args:
+                        if arg == "{{ .remote_package_path }}":
+                            sanitized_args.append(ctx.execution_state.additional_context.get("dynamic_addl_distro"))
+                        elif arg == "{{ .dest_dir }}":
+                            sanitized_args.append(ctx.execution_state.additional_context.get("dynamic_dest_dir", "."))
+                        else:
+                            sanitized_args.append(arg)
+                    del task.container.args[:]
+                    task.container.args.extend(sanitized_args)
+                    sanitized_tasks.add(task)
+
+                tasks = sanitized_tasks
+
             dj_spec = _dynamic_job.DynamicJobSpec(
                 min_successes=len(sdk_workflow.nodes),
                 tasks=list(tasks),
@@ -241,5 +266,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 return task_function(**kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            is_fast_execution = ctx.execution_state.additional_context.get("is_fast_execution", False)
+            is_fast_execution = bool(
+                ctx.execution_state
+                and ctx.execution_state.additional_context
+                and ctx.execution_state.additional_context.get("dynamic_addl_distro")
+            )
             return self.compile_into_workflow(ctx, is_fast_execution, task_function, **kwargs)
