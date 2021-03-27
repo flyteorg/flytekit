@@ -347,7 +347,8 @@ def _execute_map_task(
     raw_output_data_prefix,
     max_concurrency,
     test,
-    is_fast_executed: bool,
+    dynamic_addl_distro: str,
+    dynamic_dest_dir: str,
     resolver: str,
     resolver_args: List[str],
 ):
@@ -373,7 +374,9 @@ def _execute_map_task(
             )
             return
 
-        _handle_annotated_task(map_task, inputs, output_prefix, raw_output_data_prefix, is_fast_executed)
+        _handle_annotated_task(
+            map_task, inputs, output_prefix, raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir
+        )
 
 
 @_click.group()
@@ -473,7 +476,8 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--max-concurrency", type=int, required=False)
 @_click.option("--test", is_flag=True)
-@_click.option("--fast", is_flag=True)
+@_click.option("--dynamic-addl-distro", required=False)
+@_click.option("--dynamic-dest-dir", required=False)
 @_click.option("--resolver", required=True)
 @_click.argument(
     "resolver-args",
@@ -486,7 +490,8 @@ def map_execute_task_cmd(
     raw_output_data_prefix,
     max_concurrency,
     test,
-    fast,
+    dynamic_addl_distro,
+    dynamic_dest_dir,
     resolver,
     resolver_args,
 ):
@@ -498,7 +503,8 @@ def map_execute_task_cmd(
         raw_output_data_prefix,
         max_concurrency,
         test,
-        fast,
+        dynamic_addl_distro,
+        dynamic_dest_dir,
         resolver,
         resolver_args,
     )
