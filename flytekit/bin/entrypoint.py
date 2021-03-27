@@ -459,7 +459,7 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    modified_task_exec_cmd = list(task_execute_cmd)
+
     # Insert the call to fast before the unbounded resolver args
     cmd = []
     for arg in task_execute_cmd:
