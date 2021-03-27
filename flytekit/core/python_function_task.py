@@ -178,7 +178,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             self._wf.compile(**kwargs)
 
             wf = self._wf
-            sdk_workflow = get_serializable(OrderedDict(), ctx.serialization_settings, wf, fast=is_fast_execution)
+            sdk_workflow = get_serializable(OrderedDict(), ctx.serialization_settings, wf, is_fast_execution)
 
             # If no nodes were produced, let's just return the strict outputs
             if len(sdk_workflow.nodes) == 0:

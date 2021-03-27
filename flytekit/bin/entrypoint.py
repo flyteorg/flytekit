@@ -384,7 +384,7 @@ def execute_task_cmd(
     output_prefix,
     raw_output_data_prefix,
     test,
-    is_fast_executed,
+    fast,
     resolver,
     resolver_args,
 ):
@@ -404,7 +404,7 @@ def execute_task_cmd(
         _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
     else:
         _click.echo(f"Attempting to run with {resolver}...")
-        _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args, is_fast_executed)
+        _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args, fast)
 
 
 @_pass_through.command("pyflyte-fast-execute")
