@@ -192,6 +192,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             for n in sdk_workflow.nodes:
                 self.aggregate(tasks, sub_workflows, n)
 
+            logger.warn(f"is_fast_execution? {is_fast_execution}")
             if is_fast_execution:
                 if (
                     not ctx.execution_state
@@ -201,6 +202,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                     raise AssertionError(
                         "Compilation for a dynamic workflow called in fast execution mode but no additional code distribution could be retrieved"
                     )
+                logger.warn(f"ctx.execution_state.additional_context {ctx.execution_state.additional_context}")
                 sanitized_tasks = set()
                 for task in tasks:
                     sanitized_args = []
