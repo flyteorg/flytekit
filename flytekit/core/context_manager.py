@@ -412,13 +412,17 @@ class FlyteContext(object):
         working_dir = working_dir or self.file_access.get_random_local_directory()
         engine_dir = os.path.join(working_dir, "engine_dir")
         pathlib.Path(engine_dir).mkdir(parents=True, exist_ok=True)
+        if additional_context is None:
+            additional_context = self.execution_state.additional_context
+        elif self.execution_state.additional_context is not None:
+            additional_context = {**additional_context, **self.execution_state.additional_context}
         exec_state = ExecutionState(
             mode=mode, working_dir=working_dir, engine_dir=engine_dir, additional_context=additional_context
         )
 
         # If a wf_params object was not given, use the default (defined at the bottom of this file)
         new_ctx = FlyteContext(
-            parent=self, execution_state=exec_state, user_space_params=execution_params or default_user_space_params
+            parent=self, execution_state=exec_state, user_space_params=execution_params or default_user_space_params,
         )
         FlyteContext.OBJS.append(new_ctx)
         try:
