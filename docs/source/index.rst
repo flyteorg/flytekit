@@ -12,6 +12,14 @@ API reference for specific usage details of python functions, classes, and decor
 build workflows, extend ``flytekit``.
 
 .. toctree::
+   :maxdepth: 4
+   :hidden:
+
+   Getting Started <https://docs.flyte.org/en/latest/getting_started.html>
+   Tutorials <https://flytecookbook.readthedocs.io>
+   reference/index
+
+.. toctree::
    :maxdepth: 1
    :caption: Design
 
@@ -32,17 +40,3 @@ build workflows, extend ``flytekit``.
    contributing
    tasks.extend
    types.extend
-
-
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-
-   generator
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

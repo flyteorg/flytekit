@@ -51,12 +51,15 @@ Workflows
 =========
 There is currently only one :py:class:`Workflow <flytekit.core.workflow.Workflow>` class.
 
-.. autoclass:: flytekit.core.workflow.Workflow
+.. autoclass:: flytekit.core.workflow.PythonFunctionWorkflow
    :noindex:
 
 Launch Plan
 ===========
 There is also only one :py:class:`LaunchPlan <flytekit.core.launch_plan.LaunchPlan>` class.
+
+.. autoclass:: flytekit.core.launch_plan.LaunchPlan
+   :noindex:
 
 **************
 Call Patterns
