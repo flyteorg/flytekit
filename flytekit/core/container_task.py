@@ -5,6 +5,7 @@ from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.context_manager import SerializationSettings
 from flytekit.core.interface import Interface
+from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.models import task as _task_model
 
 
@@ -31,6 +32,8 @@ class ContainerTask(PythonTask):
         metadata: Optional[TaskMetadata] = None,
         arguments: List[str] = None,
         outputs: Dict[str, Type] = None,
+        requests: Optional[Resources] = None,
+        limits: Optional[Resources] = None,
         input_data_dir: str = None,
         output_data_dir: str = None,
         metadata_format: MetadataFormat = MetadataFormat.JSON,
@@ -52,6 +55,13 @@ class ContainerTask(PythonTask):
         self._output_data_dir = output_data_dir
         self._md_format = metadata_format
         self._io_strategy = io_strategy
+        self._resources = ResourceSpec(
+            requests=requests if requests else ResourceWarning(), limits=limits if limits else Resources()
+        )
+
+    @property
+    def resources(self) -> ResourceSpec:
+        return self._resources
 
     def execute(self, **kwargs) -> Any:
         print(kwargs)
@@ -78,4 +88,8 @@ class ContainerTask(PythonTask):
                 io_strategy=self._io_strategy.value if self._io_strategy else None,
             ),
             environment=env,
+            cpu_request=self.resources.requests.cpu,
+            cpu_limit=self.resources.limits.cpu,
+            memory_request=self.resources.requests.mem,
+            memory_limit=self.resources.limits.mem,
         )
