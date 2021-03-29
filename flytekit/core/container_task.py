@@ -56,7 +56,7 @@ class ContainerTask(PythonTask):
         self._md_format = metadata_format
         self._io_strategy = io_strategy
         self._resources = ResourceSpec(
-            requests=requests if requests else ResourceWarning(), limits=limits if limits else Resources()
+            requests=requests if requests else Resources(), limits=limits if limits else Resources()
         )
 
     @property
