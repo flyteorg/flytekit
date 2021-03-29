@@ -1,7 +1,7 @@
 import typing
 from collections import OrderedDict
 
-from flytekit import ContainerTask
+from flytekit import ContainerTask, Resources
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
@@ -92,6 +92,7 @@ def test_container():
         output_data_dir="/tmp",
         command=["cat"],
         arguments=["/tmp/a"],
+        requests=Resources(mem="400Mi", cpu="1"),
     )
 
     sdk_task = get_serializable(OrderedDict(), serialization_settings, t2, fast=True)
