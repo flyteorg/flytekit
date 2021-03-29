@@ -1,4 +1,4 @@
-from flytekit.core.context_manager import CompilationState, FlyteContext, look_up_image_info
+from flytekit.core.context_manager import CompilationState, ExecutionState, FlyteContext, look_up_image_info
 
 
 class SampleTestClass(object):
@@ -42,3 +42,14 @@ def test_look_up_image_info():
     assert img.name == "x"
     assert img.tag == "latest"
     assert img.fqn == "localhost:5000/xyz"
+
+
+def test_additional_context():
+    with FlyteContext.current_context() as ctx:
+        with ctx.new_execution_context(
+            mode=ExecutionState.Mode.TASK_EXECUTION, additional_context={1: "outer", 2: "foo"}
+        ) as exec_ctx_outer:
+            with exec_ctx_outer.new_execution_context(
+                mode=ExecutionState.Mode.TASK_EXECUTION, additional_context={1: "inner", 3: "baz"}
+            ) as exec_ctx_inner:
+                assert exec_ctx_inner.execution_state.additional_context == {1: "inner", 2: "foo", 3: "baz"}

@@ -415,7 +415,7 @@ class FlyteContext(object):
         if additional_context is None:
             additional_context = self.execution_state.additional_context if self.execution_state is not None else None
         elif self.execution_state is not None and self.execution_state.additional_context is not None:
-            additional_context = {**additional_context, **self.execution_state.additional_context}
+            additional_context = {**self.execution_state.additional_context, **additional_context}
         exec_state = ExecutionState(
             mode=mode, working_dir=working_dir, engine_dir=engine_dir, additional_context=additional_context
         )
