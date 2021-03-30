@@ -87,7 +87,7 @@ importlib-metadata==3.9.1
     # via keyring
 inotify_simple==1.2.1
     # via sagemaker-training
-ipykernel==5.5.2
+ipykernel==5.5.0
     # via flytekit
 ipython-genutils==0.2.0
     # via
