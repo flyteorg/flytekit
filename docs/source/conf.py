@@ -47,6 +47,7 @@ extensions = [
     "sphinx.ext.graphviz",
     "sphinx-prompt",
     "sphinx_copybutton",
+    "sphinx_search.extension",
 ]
 
 # build the templated autosummary files
