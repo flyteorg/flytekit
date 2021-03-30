@@ -18,6 +18,7 @@ build workflows, and extend ``flytekit``.
    Getting Started <https://docs.flyte.org/en/latest/getting_started.html>
    Tutorials <https://flytecookbook.readthedocs.io>
    reference/index
+   Community <https://docs.flyte.org/en/latest/community/index.html>
 
 .. toctree::
    :maxdepth: 1
