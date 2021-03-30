@@ -1,7 +1,7 @@
 .. _design-authoring:
 
 ############################
-Flytekit Authoring Structure
+Authoring Structure
 ############################
 
 Enabling users to write tasks and workflows is the core feature of flytekit, it is why it exists. This document goes over how some of the internals work.
