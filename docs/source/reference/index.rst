@@ -9,7 +9,7 @@ API Reference
 
    Flytekit Python <self>
    Flytekit JAVA  <https://github.com/spotify/flytekit-java>
-   Flyte Core Language Specification (FlyteIDL) <https://flyte.readthedocs.io/projects/flyteidl/en/latest/>
+   FlyteIDL <https://flyte.readthedocs.io/projects/flyteidl/en/latest/>
    Flytectl <https://flytectl.readthedocs.io/en/latest/>
 
 .. toctree::
