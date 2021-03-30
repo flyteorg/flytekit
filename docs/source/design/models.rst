@@ -1,7 +1,7 @@
 .. _design-models:
 
 ######################
-Flytekit Model Files
+Model Files
 ######################
 
 ***********
