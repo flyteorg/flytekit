@@ -1,6 +1,8 @@
 .[all]
 -e file:.#egg=flytekit
 
+furo
+readthedocs-sphinx-search
 sphinx
 sphinx-gallery
 sphinx-prompt

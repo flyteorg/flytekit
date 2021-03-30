@@ -52,12 +52,11 @@ Customizing Tasks & Workflows
    TaskMetadata - Wrapper object that allows users to specify Task
    Resources - Things like CPUs/Memory, etc.
    WorkflowFailurePolicy - Customizes what happens when a workflow fails.
-   dynamic
 
 
 Dynamic and Nested Workflows
 ==============================
-Please see the :py:mod:`Dynamic <flytekit.core.dynamic_workflow_task>` module for more information as well.
+See the :py:mod:`Dynamic <flytekit.core.dynamic_workflow_task>` module for more information.
 
 .. autosummary::
    :nosignatures:
@@ -67,9 +66,9 @@ Please see the :py:mod:`Dynamic <flytekit.core.dynamic_workflow_task>` module fo
 
 Scheduling and Notifications
 ============================
-:py:mod:`Notifications Module <flytekit.core.notification>`
 
-:py:mod:`Schedules Module <flytekit.core.schedule>`
+See the :py:mod:`Notifications Module <flytekit.core.notification>` and
+:py:mod:`Schedules Module <flytekit.core.schedule>` for more information.
 
 .. autosummary::
    :nosignatures:
@@ -117,6 +116,17 @@ Secrets and SecurityContext
 
    Secret
    SecurityContext
+
+Core Modules
+=============
+
+.. autosummary::
+   :nosignatures:
+   :toctree: generated/
+
+   core.dynamic_workflow_task
+   core.notification
+   core.schedule
 
 """
 
