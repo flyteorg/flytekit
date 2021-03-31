@@ -122,7 +122,7 @@ html_static_path = ["_static"]
 html_logo = "flyte_circle_gradient_1_4x4.png"
 
 pygments_style = "tango"
-pygments_dark_style = "paraiso-dark"
+pygments_dark_style = "native"
 
 html_css_files = [
     "custom.css",
