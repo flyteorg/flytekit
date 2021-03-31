@@ -5,6 +5,7 @@ import os as _os
 import pathlib
 import random as _random
 import traceback as _traceback
+from sys import exc_info as _exc_info
 from typing import List
 
 import click as _click
@@ -113,9 +114,9 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
                     )
                 )
         except _user_exceptions.FlyteUserException as ex:
-            raise _scopes.FlyteScopedUserException from ex
+            raise _scopes.FlyteScopedUserException(*_exc_info())
         except _system_exceptions.FlyteSystemException as ex:
-            raise _scopes.FlyteScopedSystemException from ex
+            raise _scopes.FlyteScopedSystemException(*_exc_info())
     except _scopes.FlyteScopedException as e:
         _logging.error("!! Begin Error Captured by Flyte !!")
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
