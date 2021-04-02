@@ -84,7 +84,8 @@ class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
             **kwargs,
         )
 
-    image = "ghcr.io/flyteorg/flytekit-sqlite3:latest"
+    # image = "ghcr.io/flyteorg/flytekit-sqlite3:latest"
+    image = "flytekit-sqlite3:latest"
     command = []
     args = [
         "python",
