@@ -9,17 +9,17 @@ from dataclasses import dataclass
 import pandas as pd
 
 from flytekit import FlyteContext, kwtypes
-from flytekit.core.base_sql_task import SQLTask
-from flytekit.core.python_function_task import PythonInstanceTask
-from flytekit.types.schema import FlyteSchema
 from flytekit.common.tasks.raw_container import _get_container_definition
+from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, ImageConfig, SerializationSettings
+from flytekit.core.python_function_task import PythonInstanceTask
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracker import TrackedInstance
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
+from flytekit.types.schema import FlyteSchema
 
 
 def unarchive_file(local_path: str, to_dir: str):
@@ -93,18 +93,18 @@ class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
     image = "ghcr.io/flyteorg/sqlite3:latest"
     command = []
     args = [
-            "pyflyte-execute",
-            "--inputs",
-            "{{.input}}",
-            "--output-prefix",
-            "{{.outputPrefix}}",
-            "--raw-output-data-prefix",
-            "{{.rawOutputDataPrefix}}",
-            "--resolver",
-            "default_task_template_resolver",
-            "--",
-            "{{.taskTemplatePath}}"
-        ]
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--resolver",
+        "default_task_template_resolver",
+        "--",
+        "{{.taskTemplatePath}}",
+    ]
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
