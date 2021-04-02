@@ -139,7 +139,7 @@ class LaunchPlan(object):
             or auth_role is not None
         ):
             raise ValueError(
-                "When get_or_create'ing the default launch plan, no arguments other than the workflow may be specified"
+                "Only named launchplans can be created that have other properties. Drop the name if you want to create a default launchplan. Default launchplans cannot have any other associations"
             )
 
         if name is not None and name in LaunchPlan.CACHE:
