@@ -142,7 +142,7 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
     _logging.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
 
-def _handle_annotated_task(task_def: PythonTask, inputs: str, output_prefix: str, raw_output_data_prefix: str):
+def _handle_annotated_task(task_def: PythonTask, inputs: str, output_prefix: str, raw_output_data_prefix: str, task_template_path: str):
     """
     Entrypoint for all PythonTask extensions
     """
@@ -281,7 +281,7 @@ def _load_resolver(resolver_location: str) -> TaskResolverMixin:
 
 
 @_scopes.system_entry_point
-def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver: str, resolver_args: List[str]):
+def _execute_task(inputs, output_prefix, raw_output_data_prefix, task_template_path, test, resolver: str, resolver_args: List[str]):
     """
     This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
     native typing).
@@ -356,6 +356,7 @@ def _pass_through():
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--task-template-path", required=False)
 @_click.option("--test", is_flag=True)
 @_click.option("--resolver", required=False)
 @_click.argument(
@@ -364,7 +365,7 @@ def _pass_through():
     nargs=-1,
 )
 def execute_task_cmd(
-    task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args
+    task_module, task_name, inputs, output_prefix, task_template_path, raw_output_data_prefix, test, resolver, resolver_args
 ):
     _click.echo(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
