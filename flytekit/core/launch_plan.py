@@ -20,6 +20,15 @@ class LaunchPlan(object):
 
     @staticmethod
     def get_default_launch_plan(ctx: FlyteContext, workflow: _annotated_workflow.WorkflowBase) -> LaunchPlan:
+        """
+        Users should probably call the get_or_create function defined below instead. A default launch plan is the one
+        that will just pick up whatever default values are defined in the workflow function signature (if any) and
+        use the default auth information supplied during serialization, with no notifications or schedules.
+
+        :param ctx: This is not flytekit.current_context(). This is an internal context object. Users familiar with
+          flytekit should feel free to use this however.
+        :param workflow: The workflow to create a launch plan for.
+        """
         if workflow.name in LaunchPlan.CACHE:
             return LaunchPlan.CACHE[workflow.name]
 
