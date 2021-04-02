@@ -1,0 +1,7 @@
+FROM python:3.8-slim-buster
+
+RUN pip install -U https://github.com/flyteorg/flytekit/archive/39bf5defadd67c5e405ffb6e0213283f79fba7fb.zip#egg=flytekit
+
+COPY executor.py /opt
+RUN chmod 777 /opt/executor.py
+

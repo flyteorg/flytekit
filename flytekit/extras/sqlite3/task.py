@@ -55,12 +55,6 @@ class SQLite3Config(object):
     compressed: bool = False
 
 
-class QQQ(object):
-
-    image = "ghcr.io/flyteorg/sqlite3:latest"
-    command = []
-
-
 class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
     """
     Makes it possible to run client side SQLite3 queries that optionally return a FlyteSchema object
@@ -90,19 +84,18 @@ class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
             **kwargs,
         )
 
-    image = "ghcr.io/flyteorg/sqlite3:latest"
+    image = "ghcr.io/flyteorg/flytekit-sqlite3:latest"
     command = []
     args = [
-        "pyflyte-execute",
+        "python",
+        "/opt/executor.py",
         "--inputs",
         "{{.input}}",
         "--output-prefix",
         "{{.outputPrefix}}",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
-        "--resolver",
-        "default_task_template_resolver",
-        "--",
+        "--task-template-path",
         "{{.taskTemplatePath}}",
     ]
 
@@ -143,5 +136,3 @@ class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
                 df = pd.read_sql_query(self.get_query(**kwargs), con)
                 return df
 
-
-# has to work with mock/local execute
