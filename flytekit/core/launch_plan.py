@@ -93,6 +93,61 @@ class LaunchPlan(object):
         cls.CACHE[name] = lp
         return lp
 
+    @classmethod
+    def get_or_create(
+        cls,
+        workflow: _annotated_workflow.WorkflowBase,
+        name: Optional[str] = None,
+        default_inputs: Dict[str, Any] = None,
+        fixed_inputs: Dict[str, Any] = None,
+        schedule: _schedule_model.Schedule = None,
+        notifications: List[_common_models.Notification] = None,
+        auth_role: _common_models.AuthRole = None,
+    ) -> LaunchPlan:
+        """
+        This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
+        supplied, this assumes you are looking for the default launch plan for the workflow. If it is specified, it
+        will be used. If creating the default launch plan, none of the other arguments may be specified.
+
+        The resulting launch plan is also cached and if called again with the same name, the
+        cached version is returned
+
+        :param workflow: The Workflow to create a launch plan for.
+        :param name: If you supply a name, keep it mind it needs to be unique. That is, project, domain, version, and
+          this name form a primary key. If you do not supply a name, this function will assume you want the default
+          launch plan for the given workflow.
+        :param default_inputs: Default inputs, expressed as Python values.
+        :param fixed_inputs: Fixed inputs, expressed as Python values. At call time, these cannot be changed.
+        :param schedule: Optional schedule to run on.
+        :param notifications: Notifications to send.
+        :param auth_role: Add an auth role if necessary.
+        """
+        if name is None and (
+            default_inputs is not None
+            or fixed_inputs is not None
+            or schedule is not None
+            or notifications is not None
+            or auth_role is not None
+        ):
+            raise ValueError(
+                "When get_or_create'ing the default launch plan, no arguments other than the workflow may be specified"
+            )
+
+        if name is not None and name in LaunchPlan.CACHE:
+            # TODO: Add checking of the other arguments (default_inputs, fixed_inputs, etc.) to make sure they match
+            return LaunchPlan.CACHE[name]
+        elif name is None and workflow.name in LaunchPlan.CACHE:
+            return LaunchPlan.CACHE[workflow.name]
+
+        # Otherwise, handle the default launch plan case
+        if name is None:
+            ctx = FlyteContext.current_context()
+            lp = cls.get_default_launch_plan(ctx, workflow)
+        else:
+            lp = cls.create(name, workflow, default_inputs, fixed_inputs, schedule, notifications, auth_role)
+        LaunchPlan.CACHE[name or workflow.name] = lp
+        return lp
+
     # TODO: Add QoS after it's done
     def __init__(
         self,
