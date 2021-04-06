@@ -46,17 +46,22 @@ def new_spark_session(name: str, conf: typing.Dict[str, str] = None):
 
     # We run in cluster-mode in Flyte.
     # Ref https://github.com/lyft/flyteplugins/blob/master/go/tasks/v1/flytek8s/k8s_resource_adds.go#L46
+    sess_builder = _pyspark.sql.SparkSession.builder.appName(f"FlyteSpark: {name}")
     if "FLYTE_INTERNAL_EXECUTION_ID" not in os.environ and conf is not None:
         # If either of above cases is not true, then we are in local execution of this task
         # Add system spark-conf for local/notebook based execution.
-        spark_conf = set()
+        spark_conf = _pyspark.SparkConf()
         for k, v in conf.items():
-            spark_conf.add((k, v))
-        spark_conf.add(("spark.master", "local"))
-        _pyspark.SparkConf().setAll(spark_conf)
+            spark_conf.set(k, v)
+        spark_conf.set("spark.master", "local")
+        # In local execution, propagate PYTHONPATH to executors too. This makes the spark
+        # execution hermetic to the execution environment. For example, it allows running
+        # Spark applications using Bazel, without major changes.
+        if "PYTHONPATH" in os.environ:
+            spark_conf.setExecutorEnv("PYTHONPATH", os.environ["PYTHONPATH"])
+        sess_builder = sess_builder.config(conf=spark_conf)
 
-    sess = _pyspark.sql.SparkSession.builder.appName(f"FlyteSpark: {name}").getOrCreate()
-    return sess
+    return sess_builder.getOrCreate()
     # SparkSession.Stop does not work correctly, as it stops the session before all the data is written
     # sess.stop()
 
@@ -91,16 +96,21 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         import pyspark as _pyspark
 
         ctx = FlyteContext.current_context()
+        sess_builder = _pyspark.sql.SparkSession.builder.appName(f"FlyteSpark: {user_params.execution_id}")
         if not (ctx.execution_state and ctx.execution_state.Mode == ExecutionState.Mode.TASK_EXECUTION):
             # If either of above cases is not true, then we are in local execution of this task
             # Add system spark-conf for local/notebook based execution.
-            spark_conf = set()
+            spark_conf = _pyspark.SparkConf()
             for k, v in self.task_config.spark_conf.items():
-                spark_conf.add((k, v))
-            spark_conf.add(("spark.master", "local"))
-            _pyspark.SparkConf().setAll(spark_conf)
+                spark_conf.set(k, v)
+            # In local execution, propagate PYTHONPATH to executors too. This makes the spark
+            # execution hermetic to the execution environment. For example, it allows running
+            # Spark applications using Bazel, without major changes.
+            if "PYTHONPATH" in os.environ:
+                spark_conf.setExecutorEnv("PYTHONPATH", os.environ["PYTHONPATH"])
+            sess_builder = sess_builder.config(conf=spark_conf)
 
-        sess = _pyspark.sql.SparkSession.builder.appName(f"FlyteSpark: {user_params.execution_id}").getOrCreate()
+        sess = sess_builder.getOrCreate()
         return user_params.builder().add_attr("SPARK_SESSION", sess).build()
 
 

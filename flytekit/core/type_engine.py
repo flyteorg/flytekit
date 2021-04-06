@@ -137,7 +137,7 @@ class RestrictedType(TypeTransformer[T], ABC):
         super().__init__(name, t)
 
     def get_literal_type(self, t: Type[T] = None) -> LiteralType:
-        raise RestrictedTypeError(f"Transformer for type{self.python_type} is restricted currently")
+        raise RestrictedTypeError(f"Transformer for type {self.python_type} is restricted currently")
 
 
 class DataclassTransformer(TypeTransformer[object]):
