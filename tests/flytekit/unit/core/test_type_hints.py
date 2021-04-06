@@ -458,6 +458,7 @@ def test_comparison_refs():
     print_expr(((px == py) & (px < py)) | (px > py))
     print_expr(px < 5)
     print_expr(px >= 5)
+    print_expr(px != 5)
 
 
 def test_comparison_lits():
@@ -475,6 +476,8 @@ def test_comparison_lits():
     eval_expr(px < 5, False)
     eval_expr(px >= 5, True)
     eval_expr(py >= 5, True)
+    eval_expr(py != 5, True)
+    eval_expr(px != 5, False)
 
 
 def test_wf1_branches():
@@ -506,6 +509,22 @@ def test_wf1_branches():
 
     x = my_wf(a=2, b="hello ")
     assert x == (4, "It is hello")
+
+
+def test_wf1_branches_ne():
+    @task
+    def t2(a: str) -> str:
+        return a
+
+    @workflow
+    def my_wf(a: int, b: str) -> str:
+        return conditional("test1").if_(a != 5).then(t2(a=b)).else_().fail("Unable to choose branch")
+
+    with pytest.raises(ValueError):
+        my_wf(a=5, b="hello")
+
+    x = my_wf(a=6, b="hello")
+    assert x == "hello"
 
 
 def test_wf1_branches_no_else():
