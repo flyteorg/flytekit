@@ -37,6 +37,11 @@ def test_spark_task():
     assert new_p is not None
     assert new_p.has_attr("SPARK_SESSION")
 
+    assert my_spark.sess is not None
+    configs = my_spark.sess.sparkContext.getConf().getAll()
+    assert ("spark", "1") in configs
+    assert ("spark.app.name", "FlyteSpark: ex:local:local:local") in configs
+
 
 def test_new_spark_session():
     name = "SessionName"

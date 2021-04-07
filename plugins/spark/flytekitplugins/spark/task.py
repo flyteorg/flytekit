@@ -87,6 +87,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
             task_function=task_function,
             **kwargs,
         )
+        self.sess = None
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         job = _task_model.SparkJob(
@@ -117,8 +118,8 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
                 spark_conf.setExecutorEnv("PYTHONPATH", os.environ["PYTHONPATH"])
             sess_builder = sess_builder.config(conf=spark_conf)
 
-        sess = sess_builder.getOrCreate()
-        return user_params.builder().add_attr("SPARK_SESSION", sess).build()
+        self.sess = sess_builder.getOrCreate()
+        return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
 
 # Inject the Spark plugin into flytekits dynamic plugin loading system
