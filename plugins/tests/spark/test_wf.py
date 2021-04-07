@@ -1,5 +1,3 @@
-import typing
-
 import pandas
 import pyspark
 from flytekitplugins.spark.task import Spark

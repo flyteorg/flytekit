@@ -1,5 +1,4 @@
 from flytekitplugins.spark import Spark
-from flytekitplugins.spark.task import new_spark_session
 
 import flytekit
 from flytekit import task
