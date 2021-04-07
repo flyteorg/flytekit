@@ -39,8 +39,8 @@ def test_spark_task():
 
 
 def test_new_spark_session():
-    name = 'SessionName'
-    spark_conf = {'spark1': '1', 'spark2': '2'}
+    name = "SessionName"
+    spark_conf = {"spark1": "1", "spark2": "2"}
     new_sess = new_spark_session(name, spark_conf)
     assert new_sess is not None
     assert ("spark.driver.bindAddress", "127.0.0.1") in new_sess.sparkContext.getConf().getAll()
