@@ -11,7 +11,7 @@ from flytekit.types.schema import FlyteSchema
 
 def test_wf1_with_spark():
     @task(task_config=Spark())
-    def my_spark(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+    def my_spark(a: int) -> (int, str):
         session = flytekit.current_context().spark_session
         assert session.sparkContext.appName == "FlyteSpark: ex:local:local:local"
         return a + 2, "world"

@@ -3,6 +3,8 @@ from flytekitplugins.spark import Spark
 import flytekit
 from flytekit import task
 from flytekit.extend import Image, ImageConfig, SerializationSettings
+from flytekit.common.tasks.sdk_runnable import ExecutionParameters
+from flytekitplugins.spark.task import new_spark_session
 
 
 def test_spark_task():
@@ -26,3 +28,11 @@ def test_spark_task():
 
     retrieved_settings = my_spark.get_custom(settings)
     assert retrieved_settings["sparkConf"] == {"spark": "1"}
+
+    pb = ExecutionParameters.new_builder()
+    pb.working_dir = "/tmp"
+    pb.execution_id = 'ex:local:local:local'
+    p = pb.build()
+    new_p = my_spark.pre_execute(p)
+    assert new_p is not None
+    assert new_p.has_attr("SPARK_SESSION")

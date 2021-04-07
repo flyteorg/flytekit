@@ -34,6 +34,8 @@ class Spark(object):
             self.hadoop_conf = {}
 
 
+# This method does not work properly. It's a bit hard to handle multiple Spark sessions
+# as described in https://stackoverflow.com/questions/41491972/how-can-i-tear-down-a-sparksession-and-create-a-new-one-within-one-application.
 def new_spark_session(name: str, conf: typing.Dict[str, str] = None):
     """
     Optionally creates a new spark session and returns it.
@@ -85,7 +87,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         job = _task_model.SparkJob(
             spark_conf=self.task_config.spark_conf,
             hadoop_conf=self.task_config.hadoop_conf,
-            application_file="local://" + settings.entrypoint_settings.path,
+            application_file="local://" + settings.entrypoint_settings.path if settings.entrypoint_settings else "",
             executor_path=settings.python_interpreter,
             main_class="",
             spark_type=SparkType.PYTHON,
