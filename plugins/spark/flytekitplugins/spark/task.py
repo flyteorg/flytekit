@@ -53,10 +53,11 @@ def new_spark_session(name: str, conf: typing.Dict[str, str] = None):
     if "FLYTE_INTERNAL_EXECUTION_ID" not in os.environ and conf is not None:
         # If either of above cases is not true, then we are in local execution of this task
         # Add system spark-conf for local/notebook based execution.
+        sess_builder = sess_builder.master("local[*]")
         spark_conf = _pyspark.SparkConf()
         for k, v in conf.items():
             spark_conf.set(k, v)
-        spark_conf.set("spark.master", "local")
+        spark_conf.set("spark.driver.bindAddress", "127.0.0.1")
         # In local execution, propagate PYTHONPATH to executors too. This makes the spark
         # execution hermetic to the execution environment. For example, it allows running
         # Spark applications using Bazel, without major changes.
