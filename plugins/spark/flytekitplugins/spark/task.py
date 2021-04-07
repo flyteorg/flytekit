@@ -64,7 +64,10 @@ def new_spark_session(name: str, conf: typing.Dict[str, str] = None):
         if "PYTHONPATH" in os.environ:
             spark_conf.setExecutorEnv("PYTHONPATH", os.environ["PYTHONPATH"])
         sess_builder = sess_builder.config(conf=spark_conf)
-
+        
+    # If there is a global SparkSession available, get it and try to stop it.
+    _pyspark.sql.SparkSession.builder.getOrCreate().stop()
+    
     return sess_builder.getOrCreate()
     # SparkSession.Stop does not work correctly, as it stops the session before all the data is written
     # sess.stop()

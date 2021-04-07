@@ -1,4 +1,5 @@
 from flytekitplugins.spark import Spark
+from flytekitplugins.spark.task import new_spark_session
 
 import flytekit
 from flytekit import task
@@ -35,3 +36,12 @@ def test_spark_task():
     new_p = my_spark.pre_execute(p)
     assert new_p is not None
     assert new_p.has_attr("SPARK_SESSION")
+
+
+def test_new_spark_session():
+    name = 'SessionName'
+    spark_conf = {'spark1': '1', 'spark2': '2'}
+    new_sess = new_spark_session(name, spark_conf)
+    assert new_sess is not None
+    assert ("spark.driver.bindAddress", "127.0.0.1") in new_sess.sparkContext.getConf().getAll()
+    assert ("spark.master", "local[*]") in new_sess.sparkContext.getConf().getAll()
