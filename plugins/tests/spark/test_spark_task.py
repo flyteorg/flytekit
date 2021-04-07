@@ -1,10 +1,10 @@
 from flytekitplugins.spark import Spark
+from flytekitplugins.spark.task import new_spark_session
 
 import flytekit
 from flytekit import task
-from flytekit.extend import Image, ImageConfig, SerializationSettings
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekitplugins.spark.task import new_spark_session
+from flytekit.extend import Image, ImageConfig, SerializationSettings
 
 
 def test_spark_task():
@@ -31,7 +31,7 @@ def test_spark_task():
 
     pb = ExecutionParameters.new_builder()
     pb.working_dir = "/tmp"
-    pb.execution_id = 'ex:local:local:local'
+    pb.execution_id = "ex:local:local:local"
     p = pb.build()
     new_p = my_spark.pre_execute(p)
     assert new_p is not None
