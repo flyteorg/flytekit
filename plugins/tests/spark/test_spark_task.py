@@ -47,6 +47,9 @@ def test_new_spark_session():
     name = "SessionName"
     spark_conf = {"spark1": "1", "spark2": "2"}
     new_sess = new_spark_session(name, spark_conf)
+    configs = new_sess.sparkContext.getConf().getAll()
     assert new_sess is not None
-    assert ("spark.driver.bindAddress", "127.0.0.1") in new_sess.sparkContext.getConf().getAll()
-    assert ("spark.master", "local[*]") in new_sess.sparkContext.getConf().getAll()
+    assert ("spark.driver.bindAddress", "127.0.0.1") in configs
+    assert ("spark.master", "local[*]") in configs
+    assert ("spark1", "1") in configs
+    assert ("spark2", "2") in configs
