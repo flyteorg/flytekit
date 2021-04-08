@@ -66,8 +66,8 @@ class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyCon
         return c if c else None
 
     def execute(self, **kwargs) -> typing.Any:
-        engine = create_engine('sqlite://', echo=False)
-        print(f"Connecting to db {local_path}")
+        engine = create_engine(self.task_config.uri, echo=False)
+        print(f"Connecting to db {self.task_config.uri}")
         with engine.begin() as connection:
             df = pd.read_sql_query(self.get_query(**kwargs), connection)
         return df

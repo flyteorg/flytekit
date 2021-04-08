@@ -6,7 +6,7 @@ from flytekit.extras.sqlite3.task import SQLAlchemyConfig, SQLAlchemyTask
 # https://www.sqlitetutorial.net/sqlite-sample-database/
 from flytekit.types.schema import FlyteSchema
 
-EXAMPLE_DB = "pymysql+mysql://user:password@localhost/test"
+EXAMPLE_DB = "pymysql+mysql://root@localhost/test"
 
 # This task belongs to test_task_static but is intentionally here to help test tracking
 tk = SQLAlchemyTask(
