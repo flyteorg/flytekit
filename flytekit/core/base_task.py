@@ -3,7 +3,7 @@ import datetime
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, Union
-
+from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.context_manager import (
@@ -270,6 +270,12 @@ class Task(object):
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         return None
 
+    def get_target(self, settings: SerializationSettings) -> Union[None, _task_model.Container]:
+        """
+        This returns a Union with None instead of an optional because the future
+        """
+        raise NotImplementedError("Need to override this.")
+
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return None
 
@@ -486,3 +492,31 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     @property
     def environment(self) -> Dict[str, str]:
         return self._environment
+
+
+class ContainerTarget(object):
+    def __init__(self, default_image: Optional[str] = None, environment: Optional[Dict[str, str]] = None):
+        self._environment = environment
+        self._default_image = default_image
+
+    @property
+    def default_image(self) -> str:
+        return self._default_image or ""
+
+    @property
+    def environment(self) -> Optional[Dict[str, str]]:
+        return self._environment
+
+    def get_command(self, settings: SerializationSettings):
+        raise NotImplementedError("must override get_command")
+
+    def get_container(self, settings: SerializationSettings, task: PythonTask) -> _task_model.Container:
+        env = {**settings.env, **self._environment} if self._environment else settings.env
+        return _get_container_definition(
+            image=self.default_image,
+            command=[],
+            args=self.get_command(settings=settings),
+            data_loading_config=None,
+            environment=env,
+        )
+

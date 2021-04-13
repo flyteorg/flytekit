@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import os
 import shutil
@@ -11,12 +13,13 @@ import pandas as pd
 from flytekit import FlyteContext, kwtypes
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_sql_task import SQLTask
-from flytekit.core.base_task import PythonTask
+from flytekit.core.base_task import PythonTask, ContainerTarget
 from flytekit.core.context_manager import FlyteContext, ImageConfig, SerializationSettings
-from flytekit.core.python_function_task import PythonInstanceTask
+from flytekit.core.python_function_task import PythonAutoContainerTask
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracker import TrackedInstance
 from flytekit.loggers import logger
+from google.protobuf import json_format as _json_format
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
 from flytekit.types.schema import FlyteSchema
@@ -55,7 +58,43 @@ class SQLite3Config(object):
     compressed: bool = False
 
 
-class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
+class SQLite3Container(ContainerTarget):
+    # image = "ghcr.io/flyteorg/flytekit-sqlite3:latest"
+    image = "flytekit-sqlite3:latest"
+    command = []
+    args = [
+        "python",
+        "/opt/executor.py",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--task-template-path",
+        "{{.taskTemplatePath}}",
+    ]
+
+    def get_container(self, settings: SerializationSettings, task: SQLite3Task) -> _task_model.Container:
+        env = {**settings.env, **self.environment} if self.environment else settings.env
+        return _get_container_definition(
+            image=self.image,
+            command=self.command,
+            args=self.args,
+            data_loading_config=None,
+            environment=env,
+            storage_request=task.resources.requests.storage,
+            cpu_request=task.resources.requests.cpu,
+            gpu_request=task.resources.requests.gpu,
+            memory_request=task.resources.requests.mem,
+            storage_limit=task.resources.limits.storage,
+            cpu_limit=task.resources.limits.cpu,
+            gpu_limit=task.resources.limits.gpu,
+            memory_limit=task.resources.limits.mem,
+        )
+
+
+class SQLite3Task(PythonAutoContainerTask[SQLite3Config], SQLTask[SQLite3Config]):
     """
     Makes it possible to run client side SQLite3 queries that optionally return a FlyteSchema object
     """
@@ -74,6 +113,7 @@ class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
         if task_config is None or task_config.uri is None:
             raise ValueError("SQLite DB uri is required.")
         outputs = kwtypes(results=output_schema_type if output_schema_type else FlyteSchema)
+        self._container = SQLite3Container()
         super().__init__(
             name=name,
             task_config=task_config,
@@ -84,39 +124,9 @@ class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
             **kwargs,
         )
 
-    # image = "ghcr.io/flyteorg/flytekit-sqlite3:latest"
-    image = "flytekit-sqlite3:latest"
-    command = []
-    args = [
-        "python",
-        "/opt/executor.py",
-        "--inputs",
-        "{{.input}}",
-        "--output-prefix",
-        "{{.outputPrefix}}",
-        "--raw-output-data-prefix",
-        "{{.rawOutputDataPrefix}}",
-        "--task-template-path",
-        "{{.taskTemplatePath}}",
-    ]
-
-    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
-        env = {**settings.env, **self.environment} if self.environment else settings.env
-        return _get_container_definition(
-            image=self.image,
-            command=self.command,
-            args=self.args,
-            data_loading_config=None,
-            environment=env,
-            storage_request=self.resources.requests.storage,
-            cpu_request=self.resources.requests.cpu,
-            gpu_request=self.resources.requests.gpu,
-            memory_request=self.resources.requests.mem,
-            storage_limit=self.resources.limits.storage,
-            cpu_limit=self.resources.limits.cpu,
-            gpu_limit=self.resources.limits.gpu,
-            memory_limit=self.resources.limits.mem,
-        )
+    @property
+    def container(self) -> ContainerTarget:
+        return self.container
 
     @property
     def output_columns(self) -> typing.Optional[typing.List[str]]:
@@ -137,3 +147,23 @@ class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
                 df = pd.read_sql_query(self.get_query(**kwargs), con)
                 return df
 
+    def get_custom(self, settings: SerializationSettings) -> typing.Dict[str, typing.Any]:
+        return {
+            "query_template": self.query_template,
+            "inputs": "",
+            "outputs": "",
+            "uri": self.task_config.uri,
+            "compressed": self.task_config.compressed,
+        }
+
+    def get_command(self, settings: SerializationSettings):
+        return []
+
+    def get_target(self, settings: SerializationSettings) -> _task_model.Container:
+        return self.container.get_container(settings, self)
+
+    @classmethod
+    def promote_from_idl(cls, tt: _task_model.TaskTemplate) -> SQLite3Task:
+        new_custom = _json_format.MessageToDict(tt.custom)
+
+        return cls(name=tt.id.name)

@@ -97,3 +97,11 @@ def test_fdsafdsa():
     )
     srz_t = get_serializable(OrderedDict(), serialization_settings, sql_task)
     print(srz_t)
+    idl_task = srz_t.to_flyte_idl()
+    print(type(idl_task))
+
+    from flytekit.common.tasks.task import SdkTask
+    from google.protobuf import json_format as _json_format
+    new_custom = _json_format.MessageToDict(idl_task.custom)
+    print(new_custom)
+

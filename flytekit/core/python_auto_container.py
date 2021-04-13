@@ -118,6 +118,9 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
     def get_command(self, settings: SerializationSettings) -> List[str]:
         pass
 
+    def get_target(self, settings: SerializationSettings) -> _task_model.Container:
+        ...
+
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
