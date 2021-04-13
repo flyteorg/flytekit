@@ -3,6 +3,7 @@ import typing
 from flytekit.core import launch_plan
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
+from flytekit.models import literals as _literal_models
 
 
 def test_wf1_with_subwf():
@@ -76,16 +77,27 @@ def test_lp_default_handling():
         return y, v, x, u
 
     lp = launch_plan.LaunchPlan.create("test1", my_wf)
-    assert len(lp.parameters.parameters) == 0
+    assert len(lp.parameters.parameters) == 2
+    assert lp.parameters.parameters["a"].required
+    assert lp.parameters.parameters["a"].default is None
+    assert lp.parameters.parameters["b"].required
+    assert lp.parameters.parameters["b"].default is None
     assert len(lp.fixed_inputs.literals) == 0
 
     lp_with_defaults = launch_plan.LaunchPlan.create("test2", my_wf, default_inputs={"a": 3})
-    assert len(lp_with_defaults.parameters.parameters) == 1
+    assert len(lp_with_defaults.parameters.parameters) == 2
+    assert not lp_with_defaults.parameters.parameters["a"].required
+    assert lp_with_defaults.parameters.parameters["a"].default == _literal_models.Literal(
+        scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=3))
+    )
     assert len(lp_with_defaults.fixed_inputs.literals) == 0
 
     lp_with_fixed = launch_plan.LaunchPlan.create("test3", my_wf, fixed_inputs={"a": 3})
-    assert len(lp_with_fixed.parameters.parameters) == 0
+    assert len(lp_with_fixed.parameters.parameters) == 1
     assert len(lp_with_fixed.fixed_inputs.literals) == 1
+    assert lp_with_fixed.fixed_inputs.literals["a"] == _literal_models.Literal(
+        scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=3))
+    )
 
     @workflow
     def my_wf2(a: int, b: int = 42) -> (str, str, int, int):
@@ -94,7 +106,7 @@ def test_lp_default_handling():
         return y, v, x, u
 
     lp = launch_plan.LaunchPlan.create("test4", my_wf2)
-    assert len(lp.parameters.parameters) == 1
+    assert len(lp.parameters.parameters) == 2
     assert len(lp.fixed_inputs.literals) == 0
 
     lp_with_defaults = launch_plan.LaunchPlan.create("test5", my_wf2, default_inputs={"a": 3})
@@ -110,7 +122,7 @@ def test_lp_default_handling():
     assert lp_with_fixed(b=3) == ("world-5", "world-5", 5, 5)
 
     lp_with_fixed = launch_plan.LaunchPlan.create("test7", my_wf2, fixed_inputs={"b": 3})
-    assert len(lp_with_fixed.parameters.parameters) == 0
+    assert len(lp_with_fixed.parameters.parameters) == 1
     assert len(lp_with_fixed.fixed_inputs.literals) == 1
 
 
