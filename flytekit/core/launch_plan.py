@@ -174,9 +174,7 @@ class LaunchPlan(object):
         self._name = name
         self._workflow = workflow
         # Ensure fixed inputs are not in parameter map
-        parameters = {
-            k: v for k, v in parameters.parameters.items() if k not in fixed_inputs.literals and v.default is not None
-        }
+        parameters = {k: v for k, v in parameters.parameters.items() if k not in fixed_inputs.literals}
         self._parameters = _interface_models.ParameterMap(parameters=parameters)
         self._fixed_inputs = fixed_inputs
         # See create() for additional information
