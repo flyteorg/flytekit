@@ -142,7 +142,14 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
     _logging.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
 
-def _handle_annotated_task(task_def: PythonTask, inputs: str, output_prefix: str, raw_output_data_prefix: str):
+def _handle_annotated_task(
+    task_def: PythonTask,
+    inputs: str,
+    output_prefix: str,
+    raw_output_data_prefix: str,
+    dynamic_addl_distro: str = None,
+    dynamic_dest_dir: str = None,
+):
     """
     Entrypoint for all PythonTask extensions
     """
@@ -224,7 +231,9 @@ def _handle_annotated_task(task_def: PythonTask, inputs: str, output_prefix: str
         with ctx.new_serialization_settings(serialization_settings=serialization_settings) as ctx:
             # Because execution states do not look up the context chain, it has to be made last
             with ctx.new_execution_context(
-                mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
+                mode=ExecutionState.Mode.TASK_EXECUTION,
+                execution_params=execution_parameters,
+                additional_context={"dynamic_addl_distro": dynamic_addl_distro, "dynamic_dest_dir": dynamic_dest_dir},
             ) as ctx:
                 _dispatch_execute(ctx, task_def, inputs, output_prefix)
 
@@ -281,7 +290,16 @@ def _load_resolver(resolver_location: str) -> TaskResolverMixin:
 
 
 @_scopes.system_entry_point
-def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver: str, resolver_args: List[str]):
+def _execute_task(
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    test,
+    resolver: str,
+    resolver_args: List[str],
+    dynamic_addl_distro: str = None,
+    dynamic_dest_dir: str = None,
+):
     """
     This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
     native typing).
@@ -299,6 +317,10 @@ def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver:
     :param resolver: The task resolver to use. This needs to be loadable directly from importlib (and thus cannot be
       nested).
     :param resolver_args: Args that will be passed to the aforementioned resolver's load_task function
+    :param dynamic_addl_distro: In the case of parent tasks executed using the 'fast' mode this captures where the
+        compressed code archive has been uploaded.
+    :param dynamic_dest_dir: In the case of parent tasks executed using the 'fast' mode this captures where compressed
+        code archives should be installed in the flyte task container.
     :return:
     """
     if len(resolver_args) < 1:
@@ -313,12 +335,22 @@ def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver:
                 f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
             )
             return
-        _handle_annotated_task(_task_def, inputs, output_prefix, raw_output_data_prefix)
+        _handle_annotated_task(
+            _task_def, inputs, output_prefix, raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir
+        )
 
 
 @_scopes.system_entry_point
 def _execute_map_task(
-    inputs, output_prefix, raw_output_data_prefix, max_concurrency, test, resolver: str, resolver_args: List[str]
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    max_concurrency,
+    test,
+    dynamic_addl_distro: str,
+    dynamic_dest_dir: str,
+    resolver: str,
+    resolver_args: List[str],
 ):
     if len(resolver_args) < 1:
         raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
@@ -342,7 +374,9 @@ def _execute_map_task(
             )
             return
 
-        _handle_annotated_task(map_task, inputs, output_prefix, raw_output_data_prefix)
+        _handle_annotated_task(
+            map_task, inputs, output_prefix, raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir
+        )
 
 
 @_click.group()
@@ -357,6 +391,8 @@ def _pass_through():
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--test", is_flag=True)
+@_click.option("--dynamic-addl-distro", required=False)
+@_click.option("--dynamic-dest-dir", required=False)
 @_click.option("--resolver", required=False)
 @_click.argument(
     "resolver-args",
@@ -364,7 +400,16 @@ def _pass_through():
     nargs=-1,
 )
 def execute_task_cmd(
-    task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args
+    task_module,
+    task_name,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    test,
+    dynamic_addl_distro,
+    dynamic_dest_dir,
+    resolver,
+    resolver_args,
 ):
     _click.echo(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
@@ -382,7 +427,16 @@ def execute_task_cmd(
         _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
     else:
         _click.echo(f"Attempting to run with {resolver}...")
-        _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args)
+        _execute_task(
+            inputs,
+            output_prefix,
+            raw_output_data_prefix,
+            test,
+            resolver,
+            resolver_args,
+            dynamic_addl_distro,
+            dynamic_dest_dir,
+        )
 
 
 @_pass_through.command("pyflyte-fast-execute")
@@ -405,7 +459,15 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    _os.system(" ".join(task_execute_cmd))
+
+    # Insert the call to fast before the unbounded resolver args
+    cmd = []
+    for arg in task_execute_cmd:
+        if arg == "--resolver":
+            cmd.extend(["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir])
+        cmd.append(arg)
+
+    _os.system(" ".join(cmd))
 
 
 @_pass_through.command("pyflyte-map-execute")
@@ -414,6 +476,8 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--max-concurrency", type=int, required=False)
 @_click.option("--test", is_flag=True)
+@_click.option("--dynamic-addl-distro", required=False)
+@_click.option("--dynamic-dest-dir", required=False)
 @_click.option("--resolver", required=True)
 @_click.argument(
     "resolver-args",
@@ -426,6 +490,8 @@ def map_execute_task_cmd(
     raw_output_data_prefix,
     max_concurrency,
     test,
+    dynamic_addl_distro,
+    dynamic_dest_dir,
     resolver,
     resolver_args,
 ):
@@ -437,6 +503,8 @@ def map_execute_task_cmd(
         raw_output_data_prefix,
         max_concurrency,
         test,
+        dynamic_addl_distro,
+        dynamic_dest_dir,
         resolver,
         resolver_args,
     )

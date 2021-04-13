@@ -165,7 +165,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         return container_args
 
     def compile_into_workflow(
-        self, ctx: FlyteContext, task_function: Callable, **kwargs
+        self, ctx: FlyteContext, is_fast_execution: bool, task_function: Callable, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
         with ctx.new_compilation_context(prefix="dynamic"):
             # TODO: Resolve circular import
@@ -178,7 +178,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             self._wf.compile(**kwargs)
 
             wf = self._wf
-            sdk_workflow = get_serializable(OrderedDict(), ctx.serialization_settings, wf)
+            sdk_workflow = get_serializable(OrderedDict(), ctx.serialization_settings, wf, is_fast_execution)
 
             # If no nodes were produced, let's just return the strict outputs
             if len(sdk_workflow.nodes) == 0:
@@ -191,6 +191,33 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             sub_workflows = set()
             for n in sdk_workflow.nodes:
                 self.aggregate(tasks, sub_workflows, n)
+
+            if is_fast_execution:
+                if (
+                    not ctx.execution_state
+                    or not ctx.execution_state.additional_context
+                    or not ctx.execution_state.additional_context.get("dynamic_addl_distro")
+                ):
+                    raise AssertionError(
+                        "Compilation for a dynamic workflow called in fast execution mode but no additional code "
+                        "distribution could be retrieved"
+                    )
+                logger.warn(f"ctx.execution_state.additional_context {ctx.execution_state.additional_context}")
+                sanitized_tasks = set()
+                for task in tasks:
+                    sanitized_args = []
+                    for arg in task.container.args:
+                        if arg == "{{ .remote_package_path }}":
+                            sanitized_args.append(ctx.execution_state.additional_context.get("dynamic_addl_distro"))
+                        elif arg == "{{ .dest_dir }}":
+                            sanitized_args.append(ctx.execution_state.additional_context.get("dynamic_dest_dir", "."))
+                        else:
+                            sanitized_args.append(arg)
+                    del task.container.args[:]
+                    task.container.args.extend(sanitized_args)
+                    sanitized_tasks.add(task)
+
+                tasks = sanitized_tasks
 
             dj_spec = _dynamic_job.DynamicJobSpec(
                 min_successes=len(sdk_workflow.nodes),
@@ -241,4 +268,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 return task_function(**kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            return self.compile_into_workflow(ctx, task_function, **kwargs)
+            is_fast_execution = bool(
+                ctx.execution_state
+                and ctx.execution_state.additional_context
+                and ctx.execution_state.additional_context.get("dynamic_addl_distro")
+            )
+            return self.compile_into_workflow(ctx, is_fast_execution, task_function, **kwargs)
