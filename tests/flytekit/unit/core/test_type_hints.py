@@ -412,8 +412,51 @@ def test_wf1_with_dynamic():
         )
     ) as ctx:
         with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
-            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, my_subwf._task_function, a=5)
+            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, False, my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
+
+
+def test_wf1_with_fast_dynamic():
+    @task
+    def t1(a: int) -> str:
+        a = a + 2
+        return "fast-" + str(a)
+
+    @dynamic
+    def my_subwf(a: int) -> typing.List[str]:
+        s = []
+        for i in range(a):
+            s.append(t1(a=i))
+        return s
+
+    @workflow
+    def my_wf(a: int) -> typing.List[str]:
+        v = my_subwf(a=a)
+        return v
+
+    with context_manager.FlyteContext.current_context().new_serialization_settings(
+        serialization_settings=context_manager.SerializationSettings(
+            project="test_proj",
+            domain="test_domain",
+            version="abc",
+            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+            env={},
+        )
+    ) as ctx:
+        with ctx.new_execution_context(
+            mode=ExecutionState.Mode.TASK_EXECUTION,
+            additional_context={
+                "dynamic_addl_distro": "s3::/my-s3-bucket/fast/123",
+                "dynamic_dest_dir": "/User/flyte/workflows",
+            },
+        ) as ctx:
+            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, True, my_subwf._task_function, a=5)
+            assert len(dynamic_job_spec._nodes) == 5
+            assert len(dynamic_job_spec.tasks) == 1
+            args = " ".join(dynamic_job_spec.tasks[0].container.args)
+            assert args.startswith(
+                "pyflyte-fast-execute --additional-distribution s3::/my-s3-bucket/fast/123 --dest-dir /User/flyte/workflows"
+            )
 
 
 def test_list_output():
