@@ -23,6 +23,7 @@ from flytekit.core.testing import patch, task_mock
 from flytekit.core.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.interfaces.data.data_proxy import FileAccessProvider
+from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.task import Resources as _resource_models
@@ -684,11 +685,16 @@ def test_lp_serialize():
         env={},
     )
     sdk_lp = get_serializable(OrderedDict(), serialization_settings, lp)
-    assert len(sdk_lp.default_inputs.parameters) == 0
+    assert len(sdk_lp.default_inputs.parameters) == 1
+    assert sdk_lp.default_inputs.parameters["a"].required
     assert len(sdk_lp.fixed_inputs.literals) == 0
 
     sdk_lp = get_serializable(OrderedDict(), serialization_settings, lp_with_defaults)
     assert len(sdk_lp.default_inputs.parameters) == 1
+    assert not sdk_lp.default_inputs.parameters["a"].required
+    assert sdk_lp.default_inputs.parameters["a"].default == _literal_models.Literal(
+        scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=3))
+    )
     assert len(sdk_lp.fixed_inputs.literals) == 0
 
     # Adding a check to make sure oneof is respected. Tricky with booleans... if a default is specified, the
