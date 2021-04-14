@@ -3,7 +3,10 @@ import typing
 from dataclasses import dataclass
 
 import pandas as pd
+import pymysql
+from sqlalchemy import *
 from sqlalchemy import create_engine
+from typing import Any, Dict, Optional
 
 from flytekit import FlyteContext, kwtypes
 from flytekit.core.base_sql_task import SQLTask
@@ -23,9 +26,15 @@ class SQLAlchemyConfig(object):
 
     Args:
         uri: default sqlalchemy connector
+        connect_args: sqlalchemy kwarg overrides -- ex: host
+        password_secret_group: group for loading password as a secret
+        password_secret_name: name for loading passworf as a secret
     """
 
     uri: str
+    connect_args: Optional[Dict[str, Any]] = None
+    password_secret_group: Optional[str] = None
+    password_secret_name: Optional[str] = None
 
 
 class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyConfig]):
@@ -36,7 +45,7 @@ class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyCon
           referenced task type?
     """
 
-    _SQLITE_TASK_TYPE = "sqlalchemy"
+    _SQLALCHEMY_TASK_TYPE = "sqlalchemy"
 
     def __init__(
         self,
@@ -47,13 +56,18 @@ class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyCon
         output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
         **kwargs,
     ):
-        if task_config is None or task_config.uri is None:
-            raise ValueError("SQLite DB uri is required.")
         outputs = kwtypes(results=output_schema_type if output_schema_type else FlyteSchema)
+        self._uri = task_config.uri
+        self._connect_args = task_config.connect_args
+        if task_config.password_secret_name is not None and task_config.password_secret_group is not None:
+            import urllib.parse
+            secret_pwd = flytekit.current_context().secrets.get(task_config.password_secret_group, task_config.password_secret_name)
+            self._connect_args["password"] = urllib.parse.quote_plus(secret_pwd)
+
         super().__init__(
             name=name,
             task_config=task_config,
-            task_type=self._SQLITE_TASK_TYPE,
+            task_type=self._SQLALCHEMY_TASK_TYPE,
             query_template=query_template,
             inputs=inputs,
             outputs=outputs,
@@ -66,8 +80,8 @@ class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyCon
         return c if c else None
 
     def execute(self, **kwargs) -> typing.Any:
-        engine = create_engine(self.task_config.uri, echo=False)
-        print(f"Connecting to db {self.task_config.uri}")
+        engine = create_engine(self._uri, connect_args=self._connect_args, echo=False)
+        print(f"Connecting to db {self._uri}")
         with engine.begin() as connection:
             df = pd.read_sql_query(self.get_query(**kwargs), connection)
         return df
