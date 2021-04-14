@@ -9,7 +9,7 @@ IMAGE = _common_config.FlyteRequiredStringConfigurationEntry("internal", "image"
 # The default, if you want to use it, should be a file called flytekit.config, located in wherever your python
 # interpreter originates.
 CONFIGURATION_PATH = _common_config.FlyteStringConfigurationEntry(
-    "internal", "configuration_path", default="flytekit.config"
+    "internal", "configuration_path", default="flyte.config"
 )
 
 # Project, Domain and Version represent the values at registration time.
