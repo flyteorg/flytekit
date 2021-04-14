@@ -1,12 +1,13 @@
 import pandas
+import pytest
 
 from flytekit import kwtypes, task, workflow
-from flytekit.extras.sqlite3.task import SQLAlchemyConfig, SQLAlchemyTask
+from flytekit.extras.sqlalchemy.task import SQLAlchemyConfig, SQLAlchemyTask
 
 # https://www.sqlitetutorial.net/sqlite-sample-database/
 from flytekit.types.schema import FlyteSchema
 
-EXAMPLE_DB = "pymysql+mysql://root@localhost/test"
+EXAMPLE_DB = "mysql+pymysql://root@localhost/tracks"
 
 # This task belongs to test_task_static but is intentionally here to help test tracking
 tk = SQLAlchemyTask(
@@ -18,18 +19,18 @@ tk = SQLAlchemyTask(
 )
 
 @pytest.fixture(scope="function")
-def sql_server():
-    # create server at example db
-    pass
+def mysql_server(mysql):
+    mysql.query("create tables tracks (TrackId bigint, Name text)")
+    mysql.query("insert into tracks values (0, 'Sue'), (1, 'L'), (2, 'M'), (3, 'Ji'), (4, 'Po')")
 
-def test_task_static(sql_server):
+def test_task_static(mysql_server):
     assert tk.output_columns is None
 
     df = tk()
     assert df is not None
 
 
-def test_task_schema(sql_server):
+def test_task_schema(mysql_server):
     sql_task = SQLAlchemyTask(
         "test",
         query_template="select TrackId, Name from tracks limit {{.inputs.limit}}",
@@ -45,7 +46,7 @@ def test_task_schema(sql_server):
     assert df is not None
 
 
-def test_workflow(sql_server):
+def test_workflow(mysql_server):
     @task
     def my_task(df: pandas.DataFrame) -> int:
         return len(df[df.columns[0]])
