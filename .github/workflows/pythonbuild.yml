@@ -35,6 +35,7 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         make setup${{ matrix.spark-version-suffix }}
         make -C plugins install-all-dev
+        sudo bash -c 'curl -L https://github.com/dolthub/dolt/releases/latest/download/install.sh | sudo bash'
         pip freeze
     - name: Lint
       run: |
