@@ -3,10 +3,7 @@ import typing
 from dataclasses import dataclass
 
 import pandas as pd
-import pymysql
-from sqlalchemy import *
 from sqlalchemy import create_engine
-from typing import Any, Dict, Optional
 
 from flytekit import current_context, FlyteContext, kwtypes
 from flytekit.core.base_sql_task import SQLTask
@@ -32,8 +29,8 @@ class SQLAlchemyConfig(object):
     """
 
     uri: str
-    connect_args: Optional[Dict[str, Any]] = None
-    secret_connect_args: Optional[Dict[str, Dict[str, Any]]] = None
+    connect_args: typing.Optional[typing.Dict[str, typing.Any]] = None
+    secret_connect_args: typing.Optional[typing.Dict[str, typing.Dict[str, typing.Any]]] = None
 
 
 class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyConfig]):
@@ -50,8 +47,8 @@ class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyCon
         self,
         name: str,
         query_template: str,
+        task_config: SQLAlchemyConfig,
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
-        task_config: typing.Optional[SQLAlchemyConfig] = None,
         output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
         **kwargs,
     ):
