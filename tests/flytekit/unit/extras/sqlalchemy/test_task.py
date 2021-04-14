@@ -8,20 +8,21 @@ import time
 
 import doltcli as dolt
 
-from flytekit import kwtypes, task, workflow
+from flytekit import current_context, kwtypes, Secret, task, workflow
 from flytekit.extras.sqlalchemy.task import SQLAlchemyConfig, SQLAlchemyTask
 
 # https://www.sqlitetutorial.net/sqlite-sample-database/
 from flytekit.types.schema import FlyteSchema
 
-EXAMPLE_DB = "mysql+pymysql://root@localhost/tracks"
+OK_EXAMPLE_DB = "mysql+pymysql://root@localhost:3307/tracks"
+BAD_EXAMPLE_DB = "mysql+pymysql://root1@localhost/tracks"
 
 # This task belongs to test_task_static but is intentionally here to help test tracking
 tk = SQLAlchemyTask(
     "test",
     query_template="select * from tracks",
     task_config=SQLAlchemyConfig(
-        uri=EXAMPLE_DB,
+        uri=OK_EXAMPLE_DB,
     ),
 )
 
@@ -35,7 +36,7 @@ def sql_server():
         db.sql("create table tracks (TrackId bigint, Name text)")
         db.sql("insert into tracks values (0, 'Sue'), (1, 'L'), (2, 'M'), (3, 'Ji'), (4, 'Po')")
         db.sql("select dolt_commit('-am', 'Init tracks')")
-        p = Popen(args=["dolt", "sql-server", "-l", "trace"], cwd=db_path)
+        p = Popen(args=["dolt", "sql-server", "-l", "trace", "--port", "3307"], cwd=db_path)
         time.sleep(1)
         yield db
     finally:
@@ -58,7 +59,7 @@ def test_task_schema(sql_server):
         inputs=kwtypes(limit=int),
         output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
         task_config=SQLAlchemyConfig(
-            uri=EXAMPLE_DB,
+            uri=OK_EXAMPLE_DB,
         ),
     )
 
@@ -72,13 +73,22 @@ def test_workflow(sql_server):
     def my_task(df: pandas.DataFrame) -> int:
         return len(df[df.columns[0]])
 
+    os.environ[current_context().secrets.get_secrets_env_var("group", "key")] = "root"
     sql_task = SQLAlchemyTask(
         "test",
         query_template="select * from tracks limit {{.inputs.limit}}",
         inputs=kwtypes(limit=int),
         task_config=SQLAlchemyConfig(
-            uri=EXAMPLE_DB,
+            uri=BAD_EXAMPLE_DB,
+            connect_args=dict(port=3307),
+            secret_connect_args=dict(
+                user=dict(
+                    group="group",
+                    name="key",
+                ),
+            ),
         ),
+        secret_requests=[Secret("group", key="key")],
     )
 
     @workflow

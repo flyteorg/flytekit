@@ -8,7 +8,7 @@ from sqlalchemy import *
 from sqlalchemy import create_engine
 from typing import Any, Dict, Optional
 
-from flytekit import FlyteContext, kwtypes
+from flytekit import current_context, FlyteContext, kwtypes
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.python_function_task import PythonInstanceTask
 from flytekit.types.schema import FlyteSchema
@@ -30,9 +30,10 @@ class SQLAlchemyConfig(object):
         secret_connect_args: flyte secrets loaded into sqlalchemy connect args
             -- ex: {"password": {"name": SECRET_NAME, "group": SECRET_GROUP}}
     """
+
     uri: str
     connect_args: Optional[Dict[str, Any]] = None
-    secret_connect_args: Optional[Dict[str, Dict[str, Any]]]= None
+    secret_connect_args: Optional[Dict[str, Dict[str, Any]]] = None
 
 
 class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyConfig]):
@@ -60,7 +61,7 @@ class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyCon
         if task_config.secret_connect_args is not None:
             for key, secret in task_config.secret_connect_args.items():
                 if "name" in secret and "group" in secret:
-                    value = flytekit.current_context().secrets.get(secret["group"], secret["name"])
+                    value = current_context().secrets.get(secret["group"], secret["name"])
                     self._connect_args[key] = value
 
         super().__init__(
