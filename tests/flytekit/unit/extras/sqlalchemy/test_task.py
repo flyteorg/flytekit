@@ -1,17 +1,15 @@
 import os
-import pandas
-import pytest
 import shutil
-from subprocess import Popen
 import tempfile
 import time
+from subprocess import Popen
 
 import doltcli as dolt
+import pandas
+import pytest
 
-from flytekit import current_context, kwtypes, Secret, task, workflow
+from flytekit import Secret, current_context, kwtypes, task, workflow
 from flytekit.extras.sqlalchemy.task import SQLAlchemyConfig, SQLAlchemyTask
-
-# https://www.sqlitetutorial.net/sqlite-sample-database/
 from flytekit.types.schema import FlyteSchema
 
 OK_EXAMPLE_DB = "mysql+pymysql://root@localhost:3307/tracks"
@@ -25,6 +23,7 @@ tk = SQLAlchemyTask(
         uri=OK_EXAMPLE_DB,
     ),
 )
+
 
 @pytest.fixture(scope="function")
 def sql_server():
@@ -44,6 +43,7 @@ def sql_server():
             p.kill()
         if os.path.exists(d.name):
             shutil.rmtree(d.name)
+
 
 def test_task_static(sql_server):
     assert tk.output_columns is None

@@ -1,11 +1,10 @@
-import os
 import typing
 from dataclasses import dataclass
 
 import pandas as pd
 from sqlalchemy import create_engine
 
-from flytekit import current_context, FlyteContext, kwtypes
+from flytekit import current_context, kwtypes
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.python_function_task import PythonInstanceTask
 from flytekit.types.schema import FlyteSchema
@@ -55,11 +54,7 @@ class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyCon
         outputs = kwtypes(results=output_schema_type if output_schema_type else FlyteSchema)
         self._uri = task_config.uri
         self._connect_args = task_config.connect_args or {}
-        if task_config.secret_connect_args is not None:
-            for key, secret in task_config.secret_connect_args.items():
-                if "name" in secret and "group" in secret:
-                    value = current_context().secrets.get(secret["group"], secret["name"])
-                    self._connect_args[key] = value
+        self._secret_connect_args = task_config.secret_connect_args
 
         super().__init__(
             name=name,
@@ -77,6 +72,11 @@ class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyCon
         return c if c else None
 
     def execute(self, **kwargs) -> typing.Any:
+        if self._secret_connect_args is not None:
+            for key, secret in self._secret_connect_args.items():
+                if "name" in secret and "group" in secret:
+                    value = current_context().secrets.get(secret["group"], secret["name"])
+                    self._connect_args[key] = value
         engine = create_engine(self._uri, connect_args=self._connect_args, echo=False)
         print(f"Connecting to db {self._uri}")
         with engine.begin() as connection:
