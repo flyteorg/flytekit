@@ -2,6 +2,7 @@
 
 black
 coverage[toml]
+doltcli
 flake8
 flake8-black
 flake8-isort
