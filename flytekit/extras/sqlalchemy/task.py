@@ -27,14 +27,12 @@ class SQLAlchemyConfig(object):
     Args:
         uri: default sqlalchemy connector
         connect_args: sqlalchemy kwarg overrides -- ex: host
-        password_secret_group: group for loading password as a secret
-        password_secret_name: name for loading passworf as a secret
+        secret_connect_args: flyte secrets loaded into sqlalchemy connect args
+            -- ex: {"password": {"name": SECRET_NAME, "group": SECRET_GROUP}}
     """
-
     uri: str
     connect_args: Optional[Dict[str, Any]] = None
-    password_secret_group: Optional[str] = None
-    password_secret_name: Optional[str] = None
+    secret_connect_args: Optional[Dict[str, Dict[str, Any]]]= None
 
 
 class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyConfig]):
@@ -59,10 +57,10 @@ class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyCon
         outputs = kwtypes(results=output_schema_type if output_schema_type else FlyteSchema)
         self._uri = task_config.uri
         self._connect_args = task_config.connect_args
-        if task_config.password_secret_name is not None and task_config.password_secret_group is not None:
-            import urllib.parse
-            secret_pwd = flytekit.current_context().secrets.get(task_config.password_secret_group, task_config.password_secret_name)
-            self._connect_args["password"] = urllib.parse.quote_plus(secret_pwd)
+        for key, secret in task_config.secret_connect_args.items():
+            if "name" in secret and "group" in secret:
+                value = flytekit.current_context().secrets.get(secret["group"], secret["name"])
+                self._connect_args[key] = value
 
         super().__init__(
             name=name,
