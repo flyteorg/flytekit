@@ -56,11 +56,12 @@ class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyCon
     ):
         outputs = kwtypes(results=output_schema_type if output_schema_type else FlyteSchema)
         self._uri = task_config.uri
-        self._connect_args = task_config.connect_args
-        for key, secret in task_config.secret_connect_args.items():
-            if "name" in secret and "group" in secret:
-                value = flytekit.current_context().secrets.get(secret["group"], secret["name"])
-                self._connect_args[key] = value
+        self._connect_args = task_config.connect_args or {}
+        if task_config.secret_connect_args is not None:
+            for key, secret in task_config.secret_connect_args.items():
+                if "name" in secret and "group" in secret:
+                    value = flytekit.current_context().secrets.get(secret["group"], secret["name"])
+                    self._connect_args[key] = value
 
         super().__init__(
             name=name,

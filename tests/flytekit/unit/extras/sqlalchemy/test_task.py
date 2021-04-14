@@ -1,5 +1,12 @@
+import os
 import pandas
 import pytest
+import shutil
+from subprocess import Popen
+import tempfile
+import time
+
+import doltcli as dolt
 
 from flytekit import kwtypes, task, workflow
 from flytekit.extras.sqlalchemy.task import SQLAlchemyConfig, SQLAlchemyTask
@@ -19,18 +26,32 @@ tk = SQLAlchemyTask(
 )
 
 @pytest.fixture(scope="function")
-def mysql_server(mysql):
-    mysql.query("create tables tracks (TrackId bigint, Name text)")
-    mysql.query("insert into tracks values (0, 'Sue'), (1, 'L'), (2, 'M'), (3, 'Ji'), (4, 'Po')")
+def sql_server():
+    p = None
+    try:
+        d = tempfile.TemporaryDirectory()
+        db_path = os.path.join(d.name, "tracks")
+        db = dolt.Dolt.init(db_path)
+        db.sql("create table tracks (TrackId bigint, Name text)")
+        db.sql("insert into tracks values (0, 'Sue'), (1, 'L'), (2, 'M'), (3, 'Ji'), (4, 'Po')")
+        db.sql("select dolt_commit('-am', 'Init tracks')")
+        p = Popen(args=["dolt", "sql-server", "-l", "trace"], cwd=db_path)
+        time.sleep(1)
+        yield db
+    finally:
+        if p is not None:
+            p.kill()
+        if os.path.exists(d.name):
+            shutil.rmtree(d.name)
 
-def test_task_static(mysql_server):
+def test_task_static(sql_server):
     assert tk.output_columns is None
 
     df = tk()
     assert df is not None
 
 
-def test_task_schema(mysql_server):
+def test_task_schema(sql_server):
     sql_task = SQLAlchemyTask(
         "test",
         query_template="select TrackId, Name from tracks limit {{.inputs.limit}}",
@@ -46,7 +67,7 @@ def test_task_schema(mysql_server):
     assert df is not None
 
 
-def test_workflow(mysql_server):
+def test_workflow(sql_server):
     @task
     def my_task(df: pandas.DataFrame) -> int:
         return len(df[df.columns[0]])
