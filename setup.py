@@ -19,7 +19,7 @@ schema = ["numpy>=1.14.0,<2.0.0", "pandas>=0.22.0,<2.0.0", "pyarrow>2.0.0,<4.0.0
 hive_sensor = ["hmsclient>=0.0.1,<1.0.0"]
 notebook = ["papermill>=1.2.0", "nbconvert>=6.0.7", "ipykernel>=5.0.0"]
 sagemaker = ["sagemaker-training>=3.6.2,<4.0.0"]
-mysql = ["sqlalchemy>=1.4.7,pymysql>=1.0.2"]
+mysql = ["sqlalchemy>=1.4.7", "pymysql>=1.0.2"]
 
 all_but_spark = sidecar + schema + hive_sensor + notebook + sagemaker
 
