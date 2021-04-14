@@ -20,7 +20,6 @@ hive_sensor = ["hmsclient>=0.0.1,<1.0.0"]
 notebook = ["papermill>=1.2.0", "nbconvert>=6.0.7", "ipykernel>=5.0.0"]
 sagemaker = ["sagemaker-training>=3.6.2,<4.0.0"]
 mysql = ["sqlalchemy,pymysql"]
-dolt = ["doltcli>=0.1.4"]
 
 all_but_spark = sidecar + schema + hive_sensor + notebook + sagemaker
 
@@ -33,7 +32,6 @@ extras_require = {
     "notebook": notebook,
     "sagemaker": sagemaker,
     "mysql": mysql,
-    "dolt": dolt,
     "all-spark2.4": spark + all_but_spark,
     "all": spark3 + all_but_spark,
 }
@@ -85,6 +83,7 @@ setup(
         "natsort>=7.0.1",
         "dirhash>=0.2.1",
         "docker-image-py>=0.1.10",
+        "sqlalchemy>=1.4.7"
     ],
     extras_require=extras_require,
     scripts=[
