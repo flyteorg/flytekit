@@ -23,6 +23,8 @@ click==7.1.2
     #   black
 coverage[toml]==5.5
     # via -r dev-requirements.in
+doltcli==0.1.4
+    # via -r dev-requirements.in
 flake8-black==0.2.1
     # via -r dev-requirements.in
 flake8-isort==4.0.0
@@ -71,9 +73,9 @@ pyparsing==2.4.7
     # via
     #   -c requirements.txt
     #   packaging
-pytest==6.2.2
+pytest==6.2.3
     # via -r dev-requirements.in
-regex==2021.3.17
+regex==2021.4.4
     # via
     #   -c requirements.txt
     #   black
@@ -85,7 +87,7 @@ toml==0.10.2
     #   black
     #   coverage
     #   pytest
-typed-ast==1.4.2
+typed-ast==1.4.3
     # via
     #   -c requirements.txt
     #   black
