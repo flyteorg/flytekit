@@ -21,7 +21,7 @@ notebook = ["papermill>=1.2.0", "nbconvert>=6.0.7", "ipykernel>=5.0.0"]
 sagemaker = ["sagemaker-training>=3.6.2,<4.0.0"]
 mysql = ["sqlalchemy>=1.4.7", "pymysql>=1.0.2"]
 
-all_but_spark = sidecar + schema + hive_sensor + notebook + sagemaker
+all_but_spark = sidecar + schema + hive_sensor + notebook + sagemaker + mysql
 
 extras_require = {
     "spark": spark,
