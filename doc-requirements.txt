@@ -237,6 +237,8 @@ pygments==2.8.1
     #   nbconvert
     #   sphinx
     #   sphinx-prompt
+pymysql==1.0.2
+    # via flytekit
 pynacl==1.4.0
     # via paramiko
 pyparsing==2.4.7
