@@ -411,7 +411,7 @@ def execute_task_cmd_tt(
     if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
         raw_output_data_prefix = None
 
-    _click.echo(f"Attempting to run with {resolver}...")
+    _click.echo(f"Attempting to run with tt {task_template_path}")
     _execute_tt_task(execution_container_location, inputs, output_prefix, raw_output_data_prefix, task_template_path)
 
 
