@@ -4,9 +4,10 @@ from dataclasses import dataclass
 import pandas as pd
 from sqlalchemy import create_engine
 
-from flytekit import current_context, kwtypes, Secret
+from flytekit import current_context, kwtypes
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.python_function_task import PythonInstanceTask
+from flytekit.models.security import Secret
 from flytekit.types.schema import FlyteSchema
 
 
