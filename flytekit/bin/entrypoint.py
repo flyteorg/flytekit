@@ -318,7 +318,11 @@ def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver:
 
 @_scopes.system_entry_point
 def _execute_tt_task(execution_container_location, inputs, output_prefix, raw_output_data_prefix, task_template_path):
-    execution_container = _importlib.import_module(execution_container_location)
+    split_location = execution_container_location.split(".")
+    container_mod = split_location[:-1]
+    container_key = split_location[-1]
+    execution_container = _importlib.import_module(container_mod)
+    execution_container = getattr(execution_container, container_key)
     execution_container.run(inputs, output_prefix, raw_output_data_prefix, task_template_path)
 
 
