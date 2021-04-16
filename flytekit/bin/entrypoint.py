@@ -321,7 +321,7 @@ def _execute_tt_task(execution_container_location, inputs, output_prefix, raw_ou
     split_location = execution_container_location.split(".")
     container_mod = split_location[:-1]
     container_key = split_location[-1]
-    execution_container = _importlib.import_module(container_mod)
+    execution_container = _importlib.import_module(".".join(container_mod))
     execution_container = getattr(execution_container, container_key)
     execution_container.run(inputs, output_prefix, raw_output_data_prefix, task_template_path)
 
@@ -415,7 +415,7 @@ def execute_task_cmd_tt(
     if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
         raw_output_data_prefix = None
 
-    _click.echo(f"Attempting to run with tt {task_template_path}")
+    _click.echo(f"Running with inputs:{inputs} output:{output_prefix} tt:{task_template_path}")
     _execute_tt_task(execution_container_location, inputs, output_prefix, raw_output_data_prefix, task_template_path)
 
 
