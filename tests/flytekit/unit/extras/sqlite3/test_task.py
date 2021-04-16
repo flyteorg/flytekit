@@ -103,8 +103,9 @@ def test_fdsafdsa():
     print(f"Container ==============")
     print(cont)
 
-    from flytekit.common.tasks.task import SdkTask
     from google.protobuf import json_format as _json_format
+
+    from flytekit.common.tasks.task import SdkTask
+
     new_custom = _json_format.MessageToDict(idl_task.custom)
     print(new_custom)
-

@@ -321,6 +321,7 @@ def _execute_tt_task(execution_container_location, inputs, output_prefix, raw_ou
     execution_container = _importlib.import_module(execution_container_location)
     execution_container.run(inputs, output_prefix, raw_output_data_prefix, task_template_path)
 
+
 @_scopes.system_entry_point
 def _execute_map_task(
     inputs, output_prefix, raw_output_data_prefix, max_concurrency, test, resolver: str, resolver_args: List[str]
@@ -397,7 +398,13 @@ def execute_task_cmd(
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--task-template-path", required=True)
 def execute_task_cmd(
-    execution_container_location, task_module, task_name, inputs, output_prefix, raw_output_data_prefix, task_template_path
+    execution_container_location,
+    task_module,
+    task_name,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    task_template_path,
 ):
     _click.echo(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original

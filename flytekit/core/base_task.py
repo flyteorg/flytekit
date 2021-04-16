@@ -492,5 +492,3 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     @property
     def environment(self) -> Dict[str, str]:
         return self._environment
-
-

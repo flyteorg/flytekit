@@ -1,45 +1,47 @@
 from __future__ import annotations
 
-import importlib
-import re
-from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, TypeVar
-
-from flytekit.common.tasks.raw_container import _get_container_definition
-from flytekit.core.base_task import PythonTask, IgnoreOutputs
-from flytekit.core.context_manager import FlyteContext, ImageConfig, SerializationSettings
-from flytekit.core.resources import Resources, ResourceSpec
-from flytekit.core.tracker import TrackedInstance
-from flytekit.loggers import logger
-from flytekit.models import task as _task_model
-from flytekit.models.security import Secret, SecurityContext
-
 import datetime as _datetime
+import importlib
 import logging
 import os
 import pathlib
+import re
 import traceback
+from abc import ABC, abstractmethod
+from typing import Dict, List, Optional, TypeVar
 
 from flyteidl.core import literals_pb2
 
 from flytekit.common import constants
 from flytekit.common import utils as common_utils
 from flytekit.common.exceptions import scopes as _scoped_exceptions
+from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import internal as internal_config
 from flytekit.configuration import platform as platform_config
 from flytekit.configuration import sdk as sdk_config
-from flytekit.core.context_manager import ExecutionState, get_image_config
+from flytekit.core.base_task import IgnoreOutputs, PythonTask
+from flytekit.core.context_manager import (
+    ExecutionState,
+    FlyteContext,
+    ImageConfig,
+    SerializationSettings,
+    get_image_config,
+)
 from flytekit.core.promise import VoidPromise
+from flytekit.core.resources import Resources, ResourceSpec
+from flytekit.core.tracker import TrackedInstance
 from flytekit.interfaces.data import data_proxy
 from flytekit.interfaces.data.gcs import gcs_proxy
 from flytekit.interfaces.data.s3 import s3proxy
 from flytekit.interfaces.stats.taggable import get_stats
+from flytekit.loggers import logger
 from flytekit.models import dynamic_job
 from flytekit.models import literals as literal_models
+from flytekit.models import task as _task_model
 from flytekit.models.core import errors as error_models
 from flytekit.models.core import identifier as identifier_models
-
+from flytekit.models.security import Secret, SecurityContext
 
 T = TypeVar("T")
 
@@ -334,6 +336,7 @@ class ExecutionContainer(object):
     They tie together the serialization part of a task at compile (a.k.a. serialization time) with what happens
     when the task is run on a production cluster
     """
+
     def __init__(self, default_image: Optional[str] = None, environment: Optional[Dict[str, str]] = None):
         self._environment = environment
         self._default_image = default_image
@@ -362,7 +365,9 @@ class ExecutionContainer(object):
     def run(self, inputs, output_prefix, raw_output_data_prefix, task_template_path):
         raise NotImplementedError("must override run")
 
-    def handle_annotated_task(self, task_def: PythonAutoContainerTask, inputs: str, output_prefix: str, raw_output_data_prefix: str):
+    def handle_annotated_task(
+        self, task_def: PythonAutoContainerTask, inputs: str, output_prefix: str, raw_output_data_prefix: str
+    ):
         """
         Entrypoint for all PythonAutoContainerTask extensions
         """
@@ -442,11 +447,13 @@ class ExecutionContainer(object):
             with ctx.new_serialization_settings(serialization_settings=serialization_settings) as ctx:
                 # Because execution states do not look up the context chain, it has to be made last
                 with ctx.new_execution_context(
-                        mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
+                    mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
                 ) as ctx:
                     self.dispatch_execute(ctx, task_def, inputs, output_prefix)
 
-    def dispatch_execute(self, ctx: FlyteContext, task_def: PythonAutoContainerTask, inputs_path: str, output_prefix: str):
+    def dispatch_execute(
+        self, ctx: FlyteContext, task_def: PythonAutoContainerTask, inputs_path: str, output_prefix: str
+    ):
         """
         Dispatches execute to PythonTask
             Step1: Download inputs and load into a literal map

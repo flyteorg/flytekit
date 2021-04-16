@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 import argparse
-import logging
 import datetime as _datetime
+import logging
 import os as _os
 import pathlib
 import random as _random
@@ -13,7 +13,7 @@ import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2
 
-from flytekit import PythonFunctionTask
+from flytekit import PythonFunctionTask, logger
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common import utils as _utils
@@ -41,9 +41,6 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
-
-
-from flytekit import logger
 
 logger.setLevel(logging.DEBUG)
 
@@ -111,9 +108,7 @@ def setup(inputs: str, output_prefix: str, raw_output_data_prefix: str, task_tem
         raise Exception(f"Bad cloud provider {cloud_provider}")
 
     with ctx.new_file_access_context(file_access_provider=file_access) as ctx:
-        with ctx.new_execution_context(
-                mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
-        ):
+        with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters):
             return run(inputs, output_prefix, raw_output_data_prefix, task_template_path)
 
 
@@ -147,4 +142,3 @@ if __name__ == "__main__":
     )
 
     # set up the environment for execution
-

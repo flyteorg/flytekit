@@ -9,16 +9,16 @@ import typing
 from dataclasses import dataclass
 
 import pandas as pd
-from google.protobuf import json_format as _json_format
 from flyteidl.core import tasks_pb2
+from google.protobuf import json_format as _json_format
 
 from flytekit import kwtypes
 from flytekit.common import utils as common_utils
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.context_manager import FlyteContext, SerializationSettings
-from flytekit.core.python_function_task import PythonAutoContainerTask
 from flytekit.core.python_auto_container import ExecutionContainer
+from flytekit.core.python_function_task import PythonAutoContainerTask
 from flytekit.models import task as _task_model
 from flytekit.types.schema import FlyteSchema
 
