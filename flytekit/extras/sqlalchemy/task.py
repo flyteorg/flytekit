@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import pandas as pd
 from sqlalchemy import create_engine
 
-from flytekit import current_context, kwtypes
+from flytekit import current_context, kwtypes, Secret
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.python_function_task import PythonInstanceTask
 from flytekit.types.schema import FlyteSchema
@@ -29,7 +29,7 @@ class SQLAlchemyConfig(object):
 
     uri: str
     connect_args: typing.Optional[typing.Dict[str, typing.Any]] = None
-    secret_connect_args: typing.Optional[typing.Dict[str, typing.Dict[str, typing.Any]]] = None
+    secret_connect_args: typing.Optional[typing.Dict[str, Secret]] = None
 
 
 class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyConfig]):
@@ -74,9 +74,8 @@ class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyCon
     def execute(self, **kwargs) -> typing.Any:
         if self._secret_connect_args is not None:
             for key, secret in self._secret_connect_args.items():
-                if "name" in secret and "group" in secret:
-                    value = current_context().secrets.get(secret["group"], secret["name"])
-                    self._connect_args[key] = value
+                value = current_context().secrets.get(secret.group, secret.key)
+                self._connect_args[key] = value
         engine = create_engine(self._uri, connect_args=self._connect_args, echo=False)
         print(f"Connecting to db {self._uri}")
         with engine.begin() as connection:
