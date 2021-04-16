@@ -63,28 +63,31 @@ class SQLite3Container(ExecutionContainer):
     # image = "ghcr.io/flyteorg/flytekit-sqlite3:latest"
     image = "flytekit-sqlite3:latest"
     command = []
-    args = [
-        # The path to the pyflyte execute script is from the perspective of the custom task container,
-        # not the user's workflow container.
-        "/usr/local/bin/pyflyte-tt-execute",
-        "--execution-container-location",
-        f"{SQLite3Container.__module__}.{SQLite3Container.__name__}",
-        "--inputs",
-        "{{.input}}",
-        "--output-prefix",
-        "{{.outputPrefix}}",
-        "--raw-output-data-prefix",
-        "{{.rawOutputDataPrefix}}",
-        "--task-template-path",
-        "{{.taskTemplatePath}}",
-    ]
+
+    @staticmethod
+    def get_args():
+        return [
+            # The path to the pyflyte execute script is from the perspective of the custom task container,
+            # not the user's workflow container.
+            "/usr/local/bin/pyflyte-tt-execute",
+            "--execution-container-location",
+            f"{SQLite3Container.__module__}.{SQLite3Container.__name__}",
+            "--inputs",
+            "{{.input}}",
+            "--output-prefix",
+            "{{.outputPrefix}}",
+            "--raw-output-data-prefix",
+            "{{.rawOutputDataPrefix}}",
+            "--task-template-path",
+            "{{.taskTemplatePath}}",
+        ]
 
     def get_container(self, settings: SerializationSettings, task: SQLite3Task) -> _task_model.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
             image=self.image,
             command=self.command,
-            args=self.args,
+            args=self.get_args(),
             data_loading_config=None,
             environment=env,
             storage_request=task.resources.requests.storage,
