@@ -61,8 +61,7 @@ class SQLite3Container(ExecutionContainer):
         return []
 
     # image = "ghcr.io/flyteorg/flytekit-sqlite3:latest"
-    image = "flytekit-sqlite3:latest"
-    command = []
+    image = "flytekit-sqlite3:123"
 
     @staticmethod
     def get_args():
@@ -86,7 +85,7 @@ class SQLite3Container(ExecutionContainer):
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
             image=self.image,
-            command=self.command,
+            command=[],
             args=self.get_args(),
             data_loading_config=None,
             environment=env,
@@ -119,13 +118,13 @@ class SQLite3Task(PythonAutoContainerTask[SQLite3Config], SQLTask[SQLite3Config]
     _SQLITE_TASK_TYPE = "sqlite"
 
     def __init__(
-        self,
-        name: str,
-        query_template: str,
-        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
-        task_config: typing.Optional[SQLite3Config] = None,
-        output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
-        **kwargs,
+            self,
+            name: str,
+            query_template: str,
+            inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+            task_config: typing.Optional[SQLite3Config] = None,
+            output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
+            **kwargs,
     ):
         if task_config is None or task_config.uri is None:
             raise ValueError("SQLite DB uri is required.")
@@ -184,6 +183,13 @@ class SQLite3Task(PythonAutoContainerTask[SQLite3Config], SQLTask[SQLite3Config]
 
     @classmethod
     def promote_from_idl(cls, tt: _task_model.TaskTemplate) -> SQLite3Task:
-        new_custom = _json_format.MessageToDict(tt.custom)
+        custom = _json_format.MessageToDict(tt.custom)
+        print(custom)
+        qt = custom["query_template"]
 
-        return cls(name=tt.id.name)
+        return cls(name=tt.id.name, query_template=qt, inputs=kwtypes(limit=int),
+                   output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
+                   task_config=SQLite3Config(
+                       uri=custom["uri"],
+                       compressed=True,
+                   ))
