@@ -99,6 +99,9 @@ def test_fdsafdsa():
     print(srz_t)
     idl_task = srz_t.to_flyte_idl()
     print(type(idl_task))
+    cont = sql_task.get_container(serialization_settings)
+    print(f"Container ==============")
+    print(cont)
 
     from flytekit.common.tasks.task import SdkTask
     from google.protobuf import json_format as _json_format

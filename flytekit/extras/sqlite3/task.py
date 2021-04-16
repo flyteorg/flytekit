@@ -9,19 +9,17 @@ import typing
 from dataclasses import dataclass
 
 import pandas as pd
+from google.protobuf import json_format as _json_format
+from flyteidl.core import tasks_pb2
 
-from flytekit import FlyteContext, kwtypes
+from flytekit import kwtypes
+from flytekit.common import utils as common_utils
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_sql_task import SQLTask
-from flytekit.core.base_task import PythonTask, ContainerTarget
-from flytekit.core.context_manager import FlyteContext, ImageConfig, SerializationSettings
+from flytekit.core.context_manager import FlyteContext, SerializationSettings
 from flytekit.core.python_function_task import PythonAutoContainerTask
-from flytekit.core.resources import Resources, ResourceSpec
-from flytekit.core.tracker import TrackedInstance
-from flytekit.loggers import logger
-from google.protobuf import json_format as _json_format
+from flytekit.core.python_auto_container import ExecutionContainer
 from flytekit.models import task as _task_model
-from flytekit.models.security import Secret, SecurityContext
 from flytekit.types.schema import FlyteSchema
 
 
@@ -58,13 +56,19 @@ class SQLite3Config(object):
     compressed: bool = False
 
 
-class SQLite3Container(ContainerTarget):
+class SQLite3Container(ExecutionContainer):
+    def get_command(self, settings: SerializationSettings):
+        return []
+
     # image = "ghcr.io/flyteorg/flytekit-sqlite3:latest"
     image = "flytekit-sqlite3:latest"
     command = []
     args = [
-        "python",
-        "/opt/executor.py",
+        # These paths to the pyflyte execute script and the location of this class are from the perspective of
+        # the custom task container, not the user's workflow container.
+        "/usr/local/bin/pyflyte-task-template-execute",
+        "--execution-container-location",
+        "/usr/local/lib/python3.8/site-packages/flytekit/extras/sqlite3/SQLite3Container",
         "--inputs",
         "{{.input}}",
         "--output-prefix",
@@ -92,6 +96,16 @@ class SQLite3Container(ContainerTarget):
             gpu_limit=task.resources.limits.gpu,
             memory_limit=task.resources.limits.mem,
         )
+
+    def run(self, inputs, output_prefix, raw_output_data_prefix, task_template_path):
+        # Download the task template file
+        ctx = FlyteContext.current_context()
+        task_template_local_path = _os.path.join(ctx.execution_state.working_dir, "task_template.pb")
+        ctx.file_access.get_data(task_template_path, task_template_local_path)
+        task_template_model = common_utils.load_proto_from_file(tasks_pb2.TaskTemplate, task_template_local_path)
+
+        task_def = SQLite3Task.promote_from_idl(task_template_model)
+        super().handle_annotated_task(task_def, inputs, output_prefix, raw_output_data_prefix)
 
 
 class SQLite3Task(PythonAutoContainerTask[SQLite3Config], SQLTask[SQLite3Config]):
@@ -125,8 +139,8 @@ class SQLite3Task(PythonAutoContainerTask[SQLite3Config], SQLTask[SQLite3Config]
         )
 
     @property
-    def container(self) -> ContainerTarget:
-        return self.container
+    def container(self) -> ExecutionContainer:
+        return self._container
 
     @property
     def output_columns(self) -> typing.Optional[typing.List[str]]:
@@ -155,6 +169,9 @@ class SQLite3Task(PythonAutoContainerTask[SQLite3Config], SQLTask[SQLite3Config]
             "uri": self.task_config.uri,
             "compressed": self.task_config.compressed,
         }
+
+    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
+        return self.container.get_container(settings, self)
 
     def get_command(self, settings: SerializationSettings):
         return []

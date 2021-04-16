@@ -317,6 +317,11 @@ def _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver:
 
 
 @_scopes.system_entry_point
+def _execute_tt_task(execution_container_location, inputs, output_prefix, raw_output_data_prefix, task_template_path):
+    execution_container = _importlib.import_module(execution_container_location)
+    execution_container.run(inputs, output_prefix, raw_output_data_prefix, task_template_path)
+
+@_scopes.system_entry_point
 def _execute_map_task(
     inputs, output_prefix, raw_output_data_prefix, max_concurrency, test, resolver: str, resolver_args: List[str]
 ):
@@ -383,6 +388,26 @@ def execute_task_cmd(
     else:
         _click.echo(f"Attempting to run with {resolver}...")
         _execute_task(inputs, output_prefix, raw_output_data_prefix, test, resolver, resolver_args)
+
+
+@_pass_through.command("pyflyte-task-template-execute")
+@_click.option("--execution-container-location", required=True)
+@_click.option("--inputs", required=True)
+@_click.option("--output-prefix", required=True)
+@_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--task-template-path", required=True)
+def execute_task_cmd(
+    execution_container_location, task_module, task_name, inputs, output_prefix, raw_output_data_prefix, task_template_path
+):
+    _click.echo(_utils.get_version_message())
+    # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
+    # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
+    # to the original shard formatter/prefix config.
+    if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
+        raw_output_data_prefix = None
+
+    _click.echo(f"Attempting to run with {resolver}...")
+    _execute_tt_task(execution_container_location, inputs, output_prefix, raw_output_data_prefix, task_template_path)
 
 
 @_pass_through.command("pyflyte-fast-execute")
