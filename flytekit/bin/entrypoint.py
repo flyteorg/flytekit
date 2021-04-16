@@ -397,10 +397,8 @@ def execute_task_cmd(
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--task-template-path", required=True)
-def execute_task_cmd(
+def execute_task_cmd_tt(
     execution_container_location,
-    task_module,
-    task_name,
     inputs,
     output_prefix,
     raw_output_data_prefix,

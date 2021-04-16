@@ -64,11 +64,11 @@ class SQLite3Container(ExecutionContainer):
     image = "flytekit-sqlite3:latest"
     command = []
     args = [
-        # These paths to the pyflyte execute script and the location of this class are from the perspective of
-        # the custom task container, not the user's workflow container.
-        "/usr/local/bin/pyflyte-task-template-execute",
+        # The path to the pyflyte execute script is from the perspective of the custom task container,
+        # not the user's workflow container.
+        "/usr/local/bin/pyflyte-tt-execute",
         "--execution-container-location",
-        "/usr/local/lib/python3.8/site-packages/flytekit/extras/sqlite3/SQLite3Container",
+        f"{SQLite3Container.__module__}.{SQLite3Container.__name__}",
         "--inputs",
         "{{.input}}",
         "--output-prefix",
@@ -100,7 +100,7 @@ class SQLite3Container(ExecutionContainer):
     def run(self, inputs, output_prefix, raw_output_data_prefix, task_template_path):
         # Download the task template file
         ctx = FlyteContext.current_context()
-        task_template_local_path = _os.path.join(ctx.execution_state.working_dir, "task_template.pb")
+        task_template_local_path = os.path.join(ctx.execution_state.working_dir, "task_template.pb")
         ctx.file_access.get_data(task_template_path, task_template_local_path)
         task_template_model = common_utils.load_proto_from_file(tasks_pb2.TaskTemplate, task_template_local_path)
 
