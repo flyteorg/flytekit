@@ -74,6 +74,7 @@ def test_workflow(sql_server):
         return len(df[df.columns[0]])
 
     os.environ[current_context().secrets.get_secrets_env_var("group", "key")] = "root"
+    user_secret = Secret(group="group", key="key")
     sql_task = SQLAlchemyTask(
         "test",
         query_template="select * from tracks limit {{.inputs.limit}}",
@@ -82,13 +83,10 @@ def test_workflow(sql_server):
             uri=BAD_EXAMPLE_DB,
             connect_args=dict(port=3307),
             secret_connect_args=dict(
-                user=dict(
-                    group="group",
-                    name="key",
-                ),
+                user=user_secret,
             ),
         ),
-        secret_requests=[Secret("group", key="key")],
+        secret_requests=[user_secret],
     )
 
     @workflow
