@@ -365,8 +365,11 @@ class ExecutionContainer(object):
     def run(self, inputs, output_prefix, raw_output_data_prefix, task_template_path):
         raise NotImplementedError("must override run")
 
-    def handle_annotated_task(
-        self, task_def: PythonAutoContainerTask, inputs: str, output_prefix: str, raw_output_data_prefix: str
+    from contextlib import contextmanager
+
+    @contextmanager
+    def setup_exec_ctx(
+        self, raw_output_data_prefix: str
     ):
         """
         Entrypoint for all PythonAutoContainerTask extensions
@@ -449,7 +452,7 @@ class ExecutionContainer(object):
                 with ctx.new_execution_context(
                     mode=ExecutionState.Mode.TASK_EXECUTION, execution_params=execution_parameters
                 ) as ctx:
-                    self.dispatch_execute(ctx, task_def, inputs, output_prefix)
+                    yield ctx
 
     def dispatch_execute(
         self, ctx: FlyteContext, task_def: PythonAutoContainerTask, inputs_path: str, output_prefix: str

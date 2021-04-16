@@ -100,14 +100,13 @@ class SQLite3Container(ExecutionContainer):
         )
 
     def run(self, inputs, output_prefix, raw_output_data_prefix, task_template_path):
-        # Download the task template file
-        ctx = FlyteContext.current_context()
-        task_template_local_path = os.path.join(ctx.execution_state.working_dir, "task_template.pb")
-        ctx.file_access.get_data(task_template_path, task_template_local_path)
-        task_template_model = common_utils.load_proto_from_file(tasks_pb2.TaskTemplate, task_template_local_path)
+        with super().setup_exec_ctx(raw_output_data_prefix=raw_output_data_prefix) as ctx:
 
-        task_def = SQLite3Task.promote_from_idl(task_template_model)
-        super().handle_annotated_task(task_def, inputs, output_prefix, raw_output_data_prefix)
+            task_template_local_path = os.path.join(ctx.execution_state.working_dir, "task_template.pb")
+            ctx.file_access.get_data(task_template_path, task_template_local_path)
+            task_template_model = common_utils.load_proto_from_file(tasks_pb2.TaskTemplate, task_template_local_path)
+            task_def = SQLite3Task.promote_from_idl(task_template_model)
+            self.dispatch_execute(ctx, task_def, inputs, output_prefix)
 
 
 class SQLite3Task(PythonAutoContainerTask[SQLite3Config], SQLTask[SQLite3Config]):
