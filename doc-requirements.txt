@@ -39,9 +39,9 @@ black==20.8b1
     # via papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.52
+boto3==1.17.53
     # via sagemaker-training
-botocore==1.20.52
+botocore==1.20.53
     # via
     #   boto3
     #   s3transfer
@@ -88,7 +88,7 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.18.34
+flyteidl==0.18.35
     # via flytekit
 furo==2021.4.11b34
     # via -r doc-requirements.in
@@ -352,7 +352,7 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.4
     # via sphinx
-sqlalchemy==1.4.7
+sqlalchemy==1.4.8
     # via flytekit
 statsd==3.3.0
     # via flytekit
@@ -420,7 +420,7 @@ zipp==3.4.1
     # via importlib-metadata
 zope.event==4.5.0
     # via gevent
-zope.interface==5.3.0
+zope.interface==5.4.0
     # via gevent
 
 # The following packages are considered to be unsafe in a requirements file:
