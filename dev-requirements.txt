@@ -29,7 +29,7 @@ flake8-black==0.2.1
     # via -r dev-requirements.in
 flake8-isort==4.0.0
     # via -r dev-requirements.in
-flake8==3.9.0
+flake8==3.9.1
     # via
     #   -r dev-requirements.in
     #   flake8-black
