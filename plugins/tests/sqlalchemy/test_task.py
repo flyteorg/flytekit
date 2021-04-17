@@ -7,9 +7,9 @@ from subprocess import Popen
 import doltcli as dolt
 import pandas
 import pytest
+from flytekitplugins.sqlalchemy import SQLAlchemyConfig, SQLAlchemyTask
 
 from flytekit import Secret, current_context, kwtypes, task, workflow
-from flytekit.extras.sqlalchemy.task import SQLAlchemyConfig, SQLAlchemyTask
 from flytekit.types.schema import FlyteSchema
 
 OK_EXAMPLE_DB = "mysql+pymysql://root@localhost:3307/tracks"
