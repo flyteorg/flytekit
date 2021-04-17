@@ -1,1 +1,1 @@
-from .task import SQLAlchemyTask
+from .task import SQLAlchemyTask, SQLAlchemyConfig
