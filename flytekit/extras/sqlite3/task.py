@@ -106,7 +106,7 @@ class SQLite3Container(ExecutionContainer):
             ctx.file_access.get_data(task_template_path, task_template_local_path)
             task_template_model = common_utils.load_proto_from_file(tasks_pb2.TaskTemplate, task_template_local_path)
             task_def = SQLite3Task.promote_from_idl(task_template_model)
-            self.dispatch_execute(ctx, task_def, inputs, output_prefix)
+            super().dispatch_execute(ctx, task_def, inputs, output_prefix)
 
 
 class SQLite3Task(PythonAutoContainerTask[SQLite3Config], SQLTask[SQLite3Config]):
