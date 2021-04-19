@@ -107,6 +107,7 @@ class SerializationSettings(object):
         flytekit_virtualenv_root: str = None,
         python_interpreter: str = None,
         entrypoint_settings: EntrypointSettings = None,
+        fast: bool = False,
     ):
         self._project = project
         self._domain = domain
@@ -117,6 +118,7 @@ class SerializationSettings(object):
         self._flytekit_virtualenv_root = flytekit_virtualenv_root
         self._python_interpreter = python_interpreter
         self._entrypoint_settings = entrypoint_settings
+        self._fast = fast
 
     @property
     def project(self) -> str:
@@ -149,6 +151,10 @@ class SerializationSettings(object):
     @property
     def entrypoint_settings(self) -> EntrypointSettings:
         return self._entrypoint_settings
+
+    @property
+    def fast(self) -> bool:
+        return self._fast
 
     def add_instance_var(self, var: InstanceVar):
         self._instance_lookup[var.o] = var

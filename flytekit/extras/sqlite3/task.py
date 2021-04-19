@@ -56,21 +56,15 @@ class SQLite3Config(object):
     compressed: bool = False
 
 
-class SQLite3Container(ExecutionContainer):
-    def get_command(self, settings: SerializationSettings):
-        return []
-
-    # image = "ghcr.io/flyteorg/flytekit-sqlite3:latest"
-    image = "flytekit-sqlite3:123"
-
-    @staticmethod
-    def get_args():
+class TTContainer(ExecutionContainer):
+    @classmethod
+    def get_args(cls):
         return [
             # The path to the pyflyte execute script is from the perspective of the custom task container,
             # not the user's workflow container.
             "/usr/local/bin/pyflyte-tt-execute",
             "--execution-container-location",
-            f"{SQLite3Container.__module__}.{SQLite3Container.__name__}",
+            f"{cls.__module__}.{cls.__name__}",
             "--inputs",
             "{{.input}}",
             "--output-prefix",
@@ -84,7 +78,7 @@ class SQLite3Container(ExecutionContainer):
     def get_container(self, settings: SerializationSettings, task: SQLite3Task) -> _task_model.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
-            image=self.image,
+            image=self.default_image,
             command=[],
             args=self.get_args(),
             data_loading_config=None,
@@ -99,14 +93,37 @@ class SQLite3Container(ExecutionContainer):
             memory_limit=task.resources.limits.mem,
         )
 
+    def promote_from_model(self, tt: _task_model.TaskTemplate) -> PythonAutoContainerTask:
+        raise NotImplementedError
+
     def run(self, inputs, output_prefix, raw_output_data_prefix, task_template_path):
         with super().setup_exec_ctx(raw_output_data_prefix=raw_output_data_prefix) as ctx:
-
             task_template_local_path = os.path.join(ctx.execution_state.working_dir, "task_template.pb")
             ctx.file_access.get_data(task_template_path, task_template_local_path)
             task_template_model = common_utils.load_proto_from_file(tasks_pb2.TaskTemplate, task_template_local_path)
-            task_def = SQLite3Task.promote_from_idl(task_template_model)
+            task_def = self.promote_from_model(task_template_model)
             super().dispatch_execute(ctx, task_def, inputs, output_prefix)
+
+
+class SQLite3Container(TTContainer):
+    @property
+    def default_image(self) -> str:
+        return "flytekit-sqlite3:123"
+
+    def promote_from_model(self, tt: _task_model.TaskTemplate) -> SQLite3Task:
+        custom = _json_format.MessageToDict(tt.custom)
+        qt = custom["query_template"]
+
+        return SQLite3Task(
+            name=tt.id.name,
+            query_template=qt,
+            inputs=kwtypes(limit=int),
+            output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
+            task_config=SQLite3Config(
+                uri=custom["uri"],
+                compressed=True,
+            ),
+        )
 
 
 class SQLite3Task(PythonAutoContainerTask[SQLite3Config], SQLTask[SQLite3Config]):
@@ -117,13 +134,13 @@ class SQLite3Task(PythonAutoContainerTask[SQLite3Config], SQLTask[SQLite3Config]
     _SQLITE_TASK_TYPE = "sqlite"
 
     def __init__(
-            self,
-            name: str,
-            query_template: str,
-            inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
-            task_config: typing.Optional[SQLite3Config] = None,
-            output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
-            **kwargs,
+        self,
+        name: str,
+        query_template: str,
+        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        task_config: typing.Optional[SQLite3Config] = None,
+        output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
+        **kwargs,
     ):
         if task_config is None or task_config.uri is None:
             raise ValueError("SQLite DB uri is required.")
@@ -136,12 +153,9 @@ class SQLite3Task(PythonAutoContainerTask[SQLite3Config], SQLTask[SQLite3Config]
             query_template=query_template,
             inputs=inputs,
             outputs=outputs,
+            execution_container=self._container,
             **kwargs,
         )
-
-    @property
-    def container(self) -> ExecutionContainer:
-        return self._container
 
     @property
     def output_columns(self) -> typing.Optional[typing.List[str]]:
@@ -172,23 +186,10 @@ class SQLite3Task(PythonAutoContainerTask[SQLite3Config], SQLTask[SQLite3Config]
         }
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
-        return self.container.get_container(settings, self)
+        return self.execution_container.get_container(settings, self)
 
     def get_command(self, settings: SerializationSettings):
         return []
 
     def get_target(self, settings: SerializationSettings) -> _task_model.Container:
-        return self.container.get_container(settings, self)
-
-    @classmethod
-    def promote_from_idl(cls, tt: _task_model.TaskTemplate) -> SQLite3Task:
-        custom = _json_format.MessageToDict(tt.custom)
-        print(custom)
-        qt = custom["query_template"]
-
-        return cls(name=tt.id.name, query_template=qt, inputs=kwtypes(limit=int),
-                   output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
-                   task_config=SQLite3Config(
-                       uri=custom["uri"],
-                       compressed=True,
-                   ))
+        return self.execution_container.get_container(settings, self)

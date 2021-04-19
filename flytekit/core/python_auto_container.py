@@ -8,6 +8,7 @@ import pathlib
 import re
 import traceback
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from typing import Dict, List, Optional, TypeVar
 
 from flyteidl.core import literals_pb2
@@ -74,6 +75,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         environment: Optional[Dict[str, str]] = None,
         task_resolver: Optional[TaskResolverMixin] = None,
         secret_requests: Optional[List[Secret]] = None,
+        execution_container: Optional[ExecutionContainer] = None,
         **kwargs,
     ):
         """
@@ -131,6 +133,10 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         else:
             self._task_resolver = task_resolver or default_task_resolver
 
+        self._execution_container = execution_container or PyflyteExecutionContainer(
+            task_resolver=default_task_resolver
+        )
+
     @property
     def task_resolver(self) -> TaskResolverMixin:
         return self._task_resolver
@@ -143,30 +149,12 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
     def resources(self) -> ResourceSpec:
         return self._resources
 
-    @abstractmethod
-    def get_command(self, settings: SerializationSettings) -> List[str]:
-        pass
-
-    def get_target(self, settings: SerializationSettings) -> _task_model.Container:
-        ...
+    @property
+    def execution_container(self) -> ExecutionContainer:
+        return self._execution_container
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
-        env = {**settings.env, **self.environment} if self.environment else settings.env
-        return _get_container_definition(
-            image=get_registerable_container_image(self.container_image, settings.image_config),
-            command=[],
-            args=self.get_command(settings=settings),
-            data_loading_config=None,
-            environment=env,
-            storage_request=self.resources.requests.storage,
-            cpu_request=self.resources.requests.cpu,
-            gpu_request=self.resources.requests.gpu,
-            memory_request=self.resources.requests.mem,
-            storage_limit=self.resources.limits.storage,
-            cpu_limit=self.resources.limits.cpu,
-            gpu_limit=self.resources.limits.gpu,
-            memory_limit=self.resources.limits.mem,
-        )
+        return self.execution_container.get_container(settings, self)
 
 
 class TaskResolverMixin(object):
@@ -337,23 +325,16 @@ class ExecutionContainer(object):
     when the task is run on a production cluster
     """
 
-    def __init__(self, default_image: Optional[str] = None, environment: Optional[Dict[str, str]] = None):
-        self._environment = environment
-        self._default_image = default_image
-
     @property
     def default_image(self) -> str:
-        return self._default_image or ""
+        return ""
 
     @property
     def environment(self) -> Optional[Dict[str, str]]:
-        return self._environment
-
-    def get_command(self, settings: SerializationSettings):
-        raise NotImplementedError("must override get_command")
+        return {}
 
     def get_container(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> _task_model.Container:
-        env = {**settings.env, **self._environment} if self._environment else settings.env
+        env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
             image=self.default_image,
             command=[],
@@ -365,12 +346,8 @@ class ExecutionContainer(object):
     def run(self, inputs, output_prefix, raw_output_data_prefix, task_template_path):
         raise NotImplementedError("must override run")
 
-    from contextlib import contextmanager
-
     @contextmanager
-    def setup_exec_ctx(
-        self, raw_output_data_prefix: str
-    ):
+    def setup_exec_ctx(self, raw_output_data_prefix: str):
         """
         Entrypoint for all PythonAutoContainerTask extensions
         """
@@ -523,3 +500,54 @@ class ExecutionContainer(object):
 
         ctx.file_access.upload_directory(ctx.execution_state.engine_dir, output_prefix)
         logging.info(f"Engine folder written successfully to the output prefix {output_prefix}")
+
+
+class PyflyteExecutionContainer(ExecutionContainer):
+    def __init__(self, task_resolver: TaskResolverMixin):
+        self._task_resolver = task_resolver
+
+    @property
+    def task_resolver(self) -> TaskResolverMixin:
+        return self._task_resolver
+
+    @property
+    def container_image(self) -> str:
+        return ""
+
+    def get_command(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:
+        container_args = [
+            "pyflyte-execute",
+            "--inputs",
+            "{{.input}}",
+            "--output-prefix",
+            "{{.outputPrefix}}",
+            "--raw-output-data-prefix",
+            "{{.rawOutputDataPrefix}}",
+            "--resolver",
+            self.task_resolver.location,
+            "--",
+            *self.task_resolver.loader_args(settings, task),
+        ]
+
+        return container_args
+
+    def get_container(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> _task_model.Container:
+        env = {**settings.env, **self.environment} if self.environment else settings.env
+        return _get_container_definition(
+            image=get_registerable_container_image(task.container_image, settings.image_config),
+            command=[],
+            args=self.get_command(settings=settings, task=task),
+            data_loading_config=None,
+            environment=env,
+            storage_request=task.resources.requests.storage,
+            cpu_request=task.resources.requests.cpu,
+            gpu_request=task.resources.requests.gpu,
+            memory_request=task.resources.requests.mem,
+            storage_limit=task.resources.limits.storage,
+            cpu_limit=task.resources.limits.cpu,
+            gpu_limit=task.resources.limits.gpu,
+            memory_limit=task.resources.limits.mem,
+        )
+
+    def run(self, inputs, output_prefix, raw_output_data_prefix, task_template_path):
+        raise NotImplementedError("must override run")

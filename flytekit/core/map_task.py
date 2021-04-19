@@ -26,7 +26,7 @@ class MapPythonTask(PythonTask):
     """
 
     # To support multiple map tasks declared around identical python function tasks, we keep a global count of
-    # MapPythonTask instances to uniquely differentiate map task names for each declared instance.
+    # MapPythonTask instances to uniquely 1differentiate map task names for each declared instance.
     _ids = count(0)
 
     def __init__(

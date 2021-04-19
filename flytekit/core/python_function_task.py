@@ -46,23 +46,6 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
     ):
         super().__init__(name=name, task_config=task_config, task_type=task_type, task_resolver=task_resolver, **kwargs)
 
-    def get_command(self, settings: SerializationSettings) -> List[str]:
-        container_args = [
-            "pyflyte-execute",
-            "--inputs",
-            "{{.input}}",
-            "--output-prefix",
-            "{{.outputPrefix}}",
-            "--raw-output-data-prefix",
-            "{{.rawOutputDataPrefix}}",
-            "--resolver",
-            self.task_resolver.location,
-            "--",
-            *self.task_resolver.loader_args(settings, self),
-        ]
-
-        return container_args
-
 
 class PythonFunctionTask(PythonAutoContainerTask[T]):
     """
@@ -146,23 +129,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             return self._task_function(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             return self.dynamic_execute(self._task_function, **kwargs)
-
-    def get_command(self, settings: SerializationSettings) -> List[str]:
-        container_args = [
-            "pyflyte-execute",
-            "--inputs",
-            "{{.input}}",
-            "--output-prefix",
-            "{{.outputPrefix}}",
-            "--raw-output-data-prefix",
-            "{{.rawOutputDataPrefix}}",
-            "--resolver",
-            self.task_resolver.location,
-            "--",
-            *self.task_resolver.loader_args(settings, self),
-        ]
-
-        return container_args
 
     def compile_into_workflow(
         self, ctx: FlyteContext, task_function: Callable, **kwargs
