@@ -56,7 +56,7 @@ class SQLite3Config(object):
     compressed: bool = False
 
 
-class TTContainer(ExecutionContainer):
+class TaskTemplateContainer(ExecutionContainer):
     @classmethod
     def get_args(cls):
         return [
@@ -105,7 +105,7 @@ class TTContainer(ExecutionContainer):
             super().dispatch_execute(ctx, task_def, inputs, output_prefix)
 
 
-class SQLite3Container(TTContainer):
+class SQLite3Container(TaskTemplateContainer):
     @property
     def default_image(self) -> str:
         return "flytekit-sqlite3:123"
@@ -187,9 +187,6 @@ class SQLite3Task(PythonAutoContainerTask[SQLite3Config], SQLTask[SQLite3Config]
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         return self.execution_container.get_container(settings, self)
-
-    def get_command(self, settings: SerializationSettings):
-        return []
 
     def get_target(self, settings: SerializationSettings) -> _task_model.Container:
         return self.execution_container.get_container(settings, self)
