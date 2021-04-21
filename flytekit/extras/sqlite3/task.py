@@ -132,8 +132,6 @@ class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3C
     def serialize_to_template(self, settings: SerializationSettings) -> task_models.TaskTemplate:
         # This doesn't get called from translator unfortunately. Will need to move the translator to use the model
         # objects directly first.
-        custom = self.get_custom(settings)
-
         obj = task_models.TaskTemplate(
             identifier_models.Identifier(
                 identifier_models.ResourceType.TASK, settings.project, settings.domain, self.name, settings.version
@@ -141,7 +139,7 @@ class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3C
             self.task_type,
             self.metadata.to_taskmetadata_model(),
             self.interface,
-            _json_format.Parse(_json.dumps(custom), _struct.Struct()) if custom else None,
+            self.get_custom(settings),
             container=self.get_container(settings),
             config=self.get_config(settings),
         )
@@ -153,8 +151,7 @@ class SQLite3TaskExecutor(TaskTemplateExecutor[SQLite3Task]):
 
     @classmethod
     def promote_from_template(cls, tt: task_models.TaskTemplate) -> SQLite3Task:
-        custom = _json_format.MessageToDict(tt.custom)
-        qt = custom["query_template"]
+        qt = tt.custom["query_template"]
 
         return SQLite3Task(
             name=tt.id.name,
@@ -162,7 +159,7 @@ class SQLite3TaskExecutor(TaskTemplateExecutor[SQLite3Task]):
             inputs=kwtypes(limit=int),
             output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
             task_config=SQLite3Config(
-                uri=custom["uri"],
+                uri=tt.custom["uri"],
                 compressed=True,
             ),
         )

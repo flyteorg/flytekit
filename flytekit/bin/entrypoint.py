@@ -8,7 +8,7 @@ import traceback as _traceback
 from typing import List
 
 import click as _click
-from flyteidl.core import literals_pb2 as _literals_pb2
+from flyteidl.core import literals_pb2 as _literals_pb2, tasks_pb2 as _tasks_pb2
 
 from flytekit import PythonFunctionTask
 from flytekit.common import constants as _constants
@@ -38,6 +38,7 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
+from flytekit.core.python_third_party_task import TaskTemplateExecutor
 
 
 def _compute_array_job_index():
@@ -507,6 +508,149 @@ def map_execute_task_cmd(
         dynamic_dest_dir,
         resolver,
         resolver_args,
+    )
+
+
+def _handle_third_party_container_task(
+    inputs: str,
+    output_prefix: str,
+    raw_output_data_prefix: str,
+    task_executor: TaskTemplateExecutor,
+    task_template_path: str,
+):
+    """
+    Entrypoint for all PythonTask extensions
+    """
+    _click.echo("Running native-typed task")
+    cloud_provider = _platform_config.CLOUD_PROVIDER.get()
+    log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
+    _logging.getLogger().setLevel(log_level)
+
+    ctx = FlyteContext.current_context()
+
+    # Create directories
+    user_workspace_dir = ctx.file_access.local_access.get_random_directory()
+    _click.echo(f"Using user directory {user_workspace_dir}")
+    pathlib.Path(user_workspace_dir).mkdir(parents=True, exist_ok=True)
+    from flytekit import __version__ as _api_version
+
+    execution_parameters = ExecutionParameters(
+        execution_id=_identifier.WorkflowExecutionIdentifier(
+            project=_internal_config.EXECUTION_PROJECT.get(),
+            domain=_internal_config.EXECUTION_DOMAIN.get(),
+            name=_internal_config.EXECUTION_NAME.get(),
+        ),
+        execution_date=_datetime.datetime.utcnow(),
+        stats=_get_stats(
+            # Stats metric path will be:
+            # registration_project.registration_domain.app.module.task_name.user_stats
+            # and it will be tagged with execution-level values for project/domain/wf/lp
+            "{}.{}.{}.user_stats".format(
+                _internal_config.TASK_PROJECT.get() or _internal_config.PROJECT.get(),
+                _internal_config.TASK_DOMAIN.get() or _internal_config.DOMAIN.get(),
+                _internal_config.TASK_NAME.get() or _internal_config.NAME.get(),
+            ),
+            tags={
+                "exec_project": _internal_config.EXECUTION_PROJECT.get(),
+                "exec_domain": _internal_config.EXECUTION_DOMAIN.get(),
+                "exec_workflow": _internal_config.EXECUTION_WORKFLOW.get(),
+                "exec_launchplan": _internal_config.EXECUTION_LAUNCHPLAN.get(),
+                "api_version": _api_version,
+            },
+        ),
+        logging=_logging,
+        tmp_dir=user_workspace_dir,
+    )
+
+    if cloud_provider == _constants.CloudProvider.AWS:
+        file_access = _data_proxy.FileAccessProvider(
+            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
+            remote_proxy=_s3proxy.AwsS3Proxy(raw_output_data_prefix),
+        )
+    elif cloud_provider == _constants.CloudProvider.GCP:
+        file_access = _data_proxy.FileAccessProvider(
+            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
+            remote_proxy=_gcs_proxy.GCSProxy(raw_output_data_prefix),
+        )
+    elif cloud_provider == _constants.CloudProvider.LOCAL:
+        # A fake remote using the local disk will automatically be created
+        file_access = _data_proxy.FileAccessProvider(local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get())
+    else:
+        raise Exception(f"Bad cloud provider {cloud_provider}")
+
+    with ctx.new_file_access_context(file_access_provider=file_access) as ctx:
+        env = {
+            _internal_config.CONFIGURATION_PATH.env_var: _internal_config.CONFIGURATION_PATH.get(),
+            _internal_config.IMAGE.env_var: _internal_config.IMAGE.get(),
+        }
+
+        serialization_settings = SerializationSettings(
+            project=_internal_config.TASK_PROJECT.get(),
+            domain=_internal_config.TASK_DOMAIN.get(),
+            version=_internal_config.TASK_VERSION.get(),
+            image_config=get_image_config(),
+            env=env,
+        )
+
+        task_template_local_path = os.path.join(ctx.execution_state.working_dir, "task_template.pb")
+        ctx.file_access.get_data(task_template_path, task_template_local_path)
+        task_template_model = _common_utils.load_proto_from_file(_tasks_pb2.TaskTemplate, task_template_local_path)
+        task_def = task_executor.promote_from_template(task_template_model)
+
+        # The reason we need this is because of dynamic tasks. Even if we move compilation all to Admin,
+        # if a dynamic task calls some task, t1, we have to write to the DJ Spec the correct task
+        # identifier for t1.
+        with ctx.new_serialization_settings(serialization_settings=serialization_settings) as ctx:
+            # Because execution states do not look up the context chain, it has to be made last
+            with ctx.new_execution_context(
+                mode=ExecutionState.Mode.TASK_EXECUTION,
+                execution_params=execution_parameters,
+            ) as ctx:
+                _dispatch_execute(ctx, task_def, inputs, output_prefix)
+
+
+@_scopes.system_entry_point
+def _manual_execute_task(
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    task_executor,
+    task_template_path,
+):
+    # Bit of a hack, but the code is the same
+    task_executor_class = _load_resolver(task_executor)
+    with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
+        _handle_third_party_container_task(
+            inputs, output_prefix, raw_output_data_prefix, task_executor_class, task_template_path
+        )
+
+
+@_pass_through.command("pyflyte-manual-execute")
+@_click.option("--inputs", required=True)
+@_click.option("--output-prefix", required=True)
+@_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--task_executor", required=True)
+@_click.option("--task_template_path", required=False)
+def execute_task_cmd(
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    task_executor,
+    task_template_path,
+):
+    _click.echo(_utils.get_version_message())
+    # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
+    # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
+    # to the original shard formatter/prefix config.
+    if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
+        raw_output_data_prefix = None
+
+    _manual_execute_task(
+        inputs,
+        output_prefix,
+        raw_output_data_prefix,
+        task_executor,
+        task_template_path
     )
 
 
