@@ -592,11 +592,6 @@ def _handle_third_party_container_task(
             env=env,
         )
 
-        task_template_local_path = _os.path.join(ctx.execution_state.working_dir, "task_template.pb")
-        ctx.file_access.get_data(task_template_path, task_template_local_path)
-        task_template_model = _common_utils.load_proto_from_file(_tasks_pb2.TaskTemplate, task_template_local_path)
-        task_def = task_executor.promote_from_template(task_template_model)
-
         # The reason we need this is because of dynamic tasks. Even if we move compilation all to Admin,
         # if a dynamic task calls some task, t1, we have to write to the DJ Spec the correct task
         # identifier for t1.
@@ -606,6 +601,13 @@ def _handle_third_party_container_task(
                 mode=ExecutionState.Mode.TASK_EXECUTION,
                 execution_params=execution_parameters,
             ) as ctx:
+                
+                task_template_local_path = _os.path.join(ctx.execution_state.working_dir, "task_template.pb")
+                ctx.file_access.get_data(task_template_path, task_template_local_path)
+                task_template_model = _common_utils.load_proto_from_file(_tasks_pb2.TaskTemplate,
+                                                                         task_template_local_path)
+                task_def = task_executor.promote_from_template(task_template_model)
+
                 _dispatch_execute(ctx, task_def, inputs, output_prefix)
 
 
