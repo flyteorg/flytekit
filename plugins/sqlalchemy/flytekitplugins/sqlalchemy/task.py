@@ -52,7 +52,8 @@ class SQLAlchemyTask(PythonInstanceTask[SQLAlchemyConfig], SQLTask[SQLAlchemyCon
         output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
         **kwargs,
     ):
-        outputs = kwtypes(results=output_schema_type if output_schema_type else FlyteSchema)
+        output_schema = output_schema_type if output_schema_type else FlyteSchema
+        outputs = kwtypes(results=output_schema)
         self._uri = task_config.uri
         self._connect_args = task_config.connect_args or {}
         self._secret_connect_args = task_config.secret_connect_args

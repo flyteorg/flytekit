@@ -19,9 +19,8 @@ schema = ["numpy>=1.14.0,<2.0.0", "pandas>=0.22.0,<2.0.0", "pyarrow>2.0.0,<4.0.0
 hive_sensor = ["hmsclient>=0.0.1,<1.0.0"]
 notebook = ["papermill>=1.2.0", "nbconvert>=6.0.7", "ipykernel>=5.0.0"]
 sagemaker = ["sagemaker-training>=3.6.2,<4.0.0"]
-mysql = ["sqlalchemy>=1.4.7", "pymysql>=1.0.2"]
 
-all_but_spark = sidecar + schema + hive_sensor + notebook + sagemaker + mysql
+all_but_spark = sidecar + schema + hive_sensor + notebook + sagemaker
 
 extras_require = {
     "spark": spark,
@@ -31,7 +30,6 @@ extras_require = {
     "hive_sensor": hive_sensor,
     "notebook": notebook,
     "sagemaker": sagemaker,
-    "mysql": mysql,
     "all-spark2.4": spark + all_but_spark,
     "all": spark3 + all_but_spark,
 }
