@@ -43,6 +43,7 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
         self,
         name: str,
         task_config: TC,
+        container_image: str,
         executor: TaskTemplateExecutor,
         task_type="python-task",
         requests: Optional[Resources] = None,
@@ -92,6 +93,7 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
         self._environment = environment
         self._executor = executor
 
+        self._container_image = container_image
         # Because instances of these tasks rely on the task template in order to run even locally, we'll cache it
         self._task_template = None
 
@@ -111,10 +113,14 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
     def task_template(self) -> Optional[_task_model.TaskTemplate]:
         return self._task_template
 
+    @property
+    def container_image(self) -> str:
+        return self._container_image
+
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
-            image="",
+            image=self.container_image,
             command=[],
             args=self.get_command(settings=settings),
             data_loading_config=None,

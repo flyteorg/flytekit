@@ -78,6 +78,7 @@ class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3C
         super().__init__(
             name=name,
             task_config=task_config,
+            container_image="flytekit-sqlite3:123",
             executor=SQLite3TaskExecutor,
             task_type=self._SQLITE_TASK_TYPE,
             query_template=query_template,

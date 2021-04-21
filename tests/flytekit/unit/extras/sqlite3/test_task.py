@@ -94,3 +94,4 @@ def test_task_serialization():
     ]
 
     assert tt.custom["query_template"] == "select TrackId, Name from tracks limit {{.inputs.limit}}"
+    assert tt.container.image != ""
