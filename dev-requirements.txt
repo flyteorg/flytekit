@@ -23,8 +23,6 @@ click==7.1.2
     #   black
 coverage[toml]==5.5
     # via -r dev-requirements.in
-doltcli==0.1.4
-    # via -r dev-requirements.in
 flake8-black==0.2.1
     # via -r dev-requirements.in
 flake8-isort==4.0.0
