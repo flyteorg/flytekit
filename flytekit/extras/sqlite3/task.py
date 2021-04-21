@@ -92,20 +92,6 @@ class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3C
         c = self.python_interface.outputs["results"].column_names()
         return c if c else None
 
-    def execute2(self, **kwargs) -> typing.Any:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            ctx = FlyteContext.current_context()
-            file_ext = os.path.basename(self.task_config.uri)
-            local_path = os.path.join(temp_dir, file_ext)
-            ctx.file_access.download(self.task_config.uri, local_path)
-            if self.task_config.compressed:
-                local_path = unarchive_file(local_path, temp_dir)
-
-            print(f"Connecting to db {local_path}")
-            with contextlib.closing(sqlite3.connect(local_path)) as con:
-                df = pd.read_sql_query(self.get_query(**kwargs), con)
-                return df
-
     def get_custom(self, settings: SerializationSettings) -> typing.Dict[str, typing.Any]:
         return {
             "query_template": self.query_template,
