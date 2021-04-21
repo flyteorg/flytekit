@@ -63,3 +63,19 @@ def test_workflow():
         return my_task(df=sql_task(limit=limit))
 
     assert wf(limit=5) == 5
+
+
+def test_task_serialization():
+    sql_task = SQLite3Task(
+        "test",
+        query_template="select TrackId, Name from tracks limit {{.inputs.limit}}",
+        inputs=kwtypes(limit=int),
+        output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
+        task_config=SQLite3Config(
+            uri=EXAMPLE_DB,
+            compressed=True,
+        ),
+    )
+
+    tt = sql_task.serialize_to_template(sql_task.SERIALIZE_SETTINGS)
+

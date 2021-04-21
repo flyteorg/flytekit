@@ -7,10 +7,16 @@ import typing
 from dataclasses import dataclass
 
 import pandas as pd
+from google.protobuf import json_format as _json_format
+import json as _json
+from google.protobuf import struct_pb2 as _struct
 
 from flytekit import FlyteContext, kwtypes
 from flytekit.core.base_sql_task import SQLTask
-from flytekit.core.python_function_task import PythonInstanceTask
+from flytekit.core.context_manager import SerializationSettings
+from flytekit.core.python_third_party_task import PythonThirdPartyContainerTask, TaskTemplateExecutor
+from flytekit.models import task as task_models
+from flytekit.models.core import identifier as identifier_models
 from flytekit.types.schema import FlyteSchema
 
 
@@ -47,7 +53,7 @@ class SQLite3Config(object):
     compressed: bool = False
 
 
-class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
+class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3Config]):
     """
     Makes it possible to run client side SQLite3 queries that optionally return a FlyteSchema object
 
@@ -72,6 +78,7 @@ class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
         super().__init__(
             name=name,
             task_config=task_config,
+            executor=SQLite3TaskExecutor,
             task_type=self._SQLITE_TASK_TYPE,
             query_template=query_template,
             inputs=inputs,
@@ -84,7 +91,7 @@ class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
         c = self.python_interface.outputs["results"].column_names()
         return c if c else None
 
-    def execute(self, **kwargs) -> typing.Any:
+    def execute2(self, **kwargs) -> typing.Any:
         with tempfile.TemporaryDirectory() as temp_dir:
             ctx = FlyteContext.current_context()
             file_ext = os.path.basename(self.task_config.uri)
@@ -96,4 +103,81 @@ class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
             print(f"Connecting to db {local_path}")
             with contextlib.closing(sqlite3.connect(local_path)) as con:
                 df = pd.read_sql_query(self.get_query(**kwargs), con)
+                return df
+
+    def get_custom(self, settings: SerializationSettings) -> typing.Dict[str, typing.Any]:
+        return {
+            "query_template": self.query_template,
+            "inputs": "",
+            "outputs": "",
+            "uri": self.task_config.uri,
+            "compressed": self.task_config.compressed,
+        }
+
+    def get_command(self, settings: SerializationSettings) -> typing.List[str]:
+        return [
+            "pyflyte-manual-executor",
+            "--inputs",
+            "{{.input}}",
+            "--output-prefix",
+            "{{.outputPrefix}}",
+            "--raw-output-data-prefix",
+            "{{.rawOutputDataPrefix}}",
+            "--task_executor",
+            f"{SQLite3TaskExecutor.__module__}.{SQLite3TaskExecutor.__name__}",
+            "--task_template_path",
+            "{{.taskTemplatePath}}",
+        ]
+
+    def serialize_to_template(self, settings: SerializationSettings) -> task_models.TaskTemplate:
+        # This doesn't get called from translator unfortunately. Will need to move the translator to use the model
+        # objects directly first.
+        custom = self.get_custom(settings)
+
+        obj = task_models.TaskTemplate(
+            identifier_models.Identifier(
+                identifier_models.ResourceType.TASK, settings.project, settings.domain, self.name, settings.version
+            ),
+            self.task_type,
+            self.metadata.to_taskmetadata_model(),
+            self.interface,
+            _json_format.Parse(_json.dumps(custom), _struct.Struct()) if custom else None,
+            container=self.get_container(settings),
+            config=self.get_config(settings),
+        )
+        self._task_template = obj
+        return obj
+
+
+class SQLite3TaskExecutor(TaskTemplateExecutor[SQLite3Task]):
+
+    @classmethod
+    def promote_from_template(cls, tt: task_models.TaskTemplate) -> SQLite3Task:
+        custom = _json_format.MessageToDict(tt.custom)
+        qt = custom["query_template"]
+
+        return SQLite3Task(
+            name=tt.id.name,
+            query_template=qt,
+            inputs=kwtypes(limit=int),
+            output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
+            task_config=SQLite3Config(
+                uri=custom["uri"],
+                compressed=True,
+            ),
+        )
+
+    @classmethod
+    def native_execute(cls, task: SQLite3Task, **kwargs) -> typing.Any:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ctx = FlyteContext.current_context()
+            file_ext = os.path.basename(task.task_config.uri)
+            local_path = os.path.join(temp_dir, file_ext)
+            ctx.file_access.download(task.task_config.uri, local_path)
+            if task.task_config.compressed:
+                local_path = unarchive_file(local_path, temp_dir)
+
+            print(f"Connecting to db {local_path}")
+            with contextlib.closing(sqlite3.connect(local_path)) as con:
+                df = pd.read_sql_query(task.get_query(**kwargs), con)
                 return df
