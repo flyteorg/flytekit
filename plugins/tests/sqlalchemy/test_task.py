@@ -11,6 +11,14 @@ from flytekitplugins.sqlalchemy import SQLAlchemyConfig, SQLAlchemyTask
 from flytekit import kwtypes, task, workflow
 from flytekit.types.schema import FlyteSchema
 
+tk = SQLAlchemyTask(
+    "test",
+    query_template="select * from tracks",
+    task_config=SQLAlchemyConfig(
+        uri="sqlite://",
+    ),
+)
+
 
 @pytest.fixture(scope="function")
 def sql_server():
