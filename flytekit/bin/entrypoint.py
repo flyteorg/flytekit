@@ -631,7 +631,7 @@ def _manual_execute_task(
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--task_executor", required=True)
 @_click.option("--task_template_path", required=False)
-def execute_task_cmd(
+def manual_execute_task_cmd(
     inputs,
     output_prefix,
     raw_output_data_prefix,

@@ -103,7 +103,7 @@ class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3C
 
     def get_command(self, settings: SerializationSettings) -> typing.List[str]:
         return [
-            "pyflyte-manual-executor",
+            "pyflyte-manual-execute",
             "--inputs",
             "{{.input}}",
             "--output-prefix",
