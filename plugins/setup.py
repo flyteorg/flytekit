@@ -17,7 +17,10 @@ SOURCES = {
     "flytekitplugins-pandera": "pandera",
     "flytekitplugins-sqlalchemy": "sqlalchemy",
 <<<<<<< HEAD
+<<<<<<< HEAD
     "flytekitplugins-dolt": "dolt",
+=======
+>>>>>>> Sqlalchemy Task (#445)
 =======
 >>>>>>> Sqlalchemy Task (#445)
 }

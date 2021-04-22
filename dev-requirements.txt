@@ -220,6 +220,7 @@ pyparsing==2.4.7
     # via
     #   -c requirements.txt
     #   packaging
+<<<<<<< HEAD
 pyrsistent==0.17.3
     # via
     #   -c requirements.txt
@@ -254,6 +255,10 @@ pyyaml==5.4.1
     # via
     #   -c requirements.txt
     #   docker-compose
+=======
+pytest==6.2.3
+    # via -r dev-requirements.in
+>>>>>>> Sqlalchemy Task (#445)
 regex==2021.4.4
     # via
     #   -c requirements.txt
@@ -315,9 +320,12 @@ toml==0.10.2
     #   coverage
     #   pytest
 typed-ast==1.4.3
+<<<<<<< HEAD
     # via mypy
 <<<<<<< HEAD
 =======
+=======
+>>>>>>> Sqlalchemy Task (#445)
     # via
     #   -c requirements.txt
     #   black
