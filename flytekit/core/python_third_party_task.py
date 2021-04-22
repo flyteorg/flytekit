@@ -195,7 +195,9 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
         # Overriding base implementation but not doing anything. Technically this should be the task config,
         # but the IDL limitation that the value also has to be a string is very limiting.
-        # Recommend
+        # Recommend putting information you need in the config into custom instead, because when serializing
+        # the custom field, we jsonify custom and the place it into a protobuf struct. This config field
+        # just gets put into a Dict[str, str]
         return {}
 
     @property

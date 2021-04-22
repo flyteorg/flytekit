@@ -63,7 +63,7 @@ class TypeTransformer(typing.Generic[T]):
         raise NotImplementedError("Conversion to LiteralType should be implemented")
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
-        raise ValueError("This is a value error dooooofus")
+        raise ValueError("By default, transformers do not translate from Flyte types back to Python types")
 
     @abstractmethod
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
