@@ -8,7 +8,7 @@ import os
 import typing
 from abc import ABC, abstractmethod
 from typing import Type
-
+from flytekit.loggers import logger
 from dataclasses_json import DataClassJsonMixin
 from google.protobuf import json_format as _json_format
 from google.protobuf import reflection as _proto_reflection
@@ -16,7 +16,6 @@ from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
-
 from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
 from flytekit.models import interface as _interface_models
@@ -62,6 +61,9 @@ class TypeTransformer(typing.Generic[T]):
         Converts the python type to a Flyte LiteralType
         """
         raise NotImplementedError("Conversion to LiteralType should be implemented")
+
+    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+        raise ValueError("This is a value error dooooofus")
 
     @abstractmethod
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
@@ -122,6 +124,11 @@ class SimpleTransformer(TypeTransformer[T]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         return self._from_literal_transformer(lv)
+
+    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+        if literal_type.simple is not None and literal_type.simple == self._lt.simple:
+            return self.python_type
+        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
 class RestrictedTypeError(Exception):
@@ -303,6 +310,22 @@ class TypeEngine(typing.Generic[T]):
         """
         return cls._REGISTRY.keys()
 
+    @classmethod
+    def guess_python_types(cls, flyte_variable_dict: typing.Dict[str, _interface_models.Variable]) -> typing.Dict[str, type]:
+        python_types = {}
+        for k, v in flyte_variable_dict.items():
+            python_types[k] = cls.guess_python_type(v.type)
+        return python_types
+
+    @classmethod
+    def guess_python_type(cls, flyte_type: LiteralType) -> type:
+        for _, transformer in cls._REGISTRY.items():
+            try:
+                return transformer.guess_python_type(flyte_type)
+            except ValueError:
+                logger.debug(f"Skipping transformer {transformer.name} for {flyte_type}")
+        raise ValueError(f"No transformers could reverse Flyte literal type {flyte_type}")
+
 
 class ListTransformer(TypeTransformer[T]):
     """
@@ -340,6 +363,12 @@ class ListTransformer(TypeTransformer[T]):
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         st = self.get_sub_type(expected_python_type)
         return [TypeEngine.to_python_value(ctx, x, st) for x in lv.collection.literals]
+
+    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+        if literal_type.collection_type:
+            ct = TypeEngine.guess_python_type(literal_type.collection_type)
+            return typing.List[ct]
+        raise ValueError(f"List transformer cannot reverse {literal_type}")
 
 
 class DictTransformer(TypeTransformer[dict]):
@@ -412,6 +441,11 @@ class DictTransformer(TypeTransformer[dict]):
             return _json.loads(_json_format.MessageToJson(lv.scalar.generic))
         raise TypeError(f"Cannot convert from {lv} to {expected_python_type}")
 
+    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+        if literal_type.map_value_type:
+            mt = TypeEngine.guess_python_type(literal_type.map_value_type)
+            return typing.Dict[str, mt]
+        raise ValueError(f"Dictionary transformer cannot reverse {literal_type}")
 
 class TextIOTransformer(TypeTransformer[typing.TextIO]):
     """

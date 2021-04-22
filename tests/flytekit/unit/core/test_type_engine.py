@@ -197,3 +197,19 @@ def test_protos():
     l0 = Literal(scalar=Scalar(primitive=Primitive(integer=4)))
     with pytest.raises(AssertionError):
         TypeEngine.to_python_value(ctx, l0, errors_pb2.ContainerError)
+
+
+def test_fds():
+    b = model_types.LiteralType(simple=model_types.SimpleType.BOOLEAN)
+    pt = TypeEngine.guess_python_type(b)
+    assert pt is bool
+
+
+def test_schema_back_and_forth():
+    orig = FlyteSchema[kwtypes(TrackId=int, Name=str)]
+    lt = TypeEngine.to_literal_type(orig)
+    print(lt)
+    pt = TypeEngine.guess_python_type(lt)
+    print(pt)
+    lt2 = TypeEngine.to_literal_type(pt)
+    assert lt == lt2
