@@ -4,10 +4,6 @@
 #
 #    make dev-requirements.txt
 #
--e file:.#egg=flytekit
-    # via
-    #   -c requirements.txt
-    #   pytest-flyte
 appdirs==1.4.4
     # via
     #   -c requirements.txt
@@ -15,136 +11,33 @@ appdirs==1.4.4
 attrs==20.3.0
     # via
     #   -c requirements.txt
-    #   jsonschema
     #   pytest
-    #   pytest-docker
-    #   scantree
-bcrypt==3.2.0
-    # via
-    #   -c requirements.txt
-    #   paramiko
 black==20.8b1
     # via
     #   -c requirements.txt
     #   -r dev-requirements.in
     #   flake8-black
-certifi==2020.12.5
-    # via
-    #   -c requirements.txt
-    #   requests
-cffi==1.14.5
-    # via
-    #   -c requirements.txt
-    #   bcrypt
-    #   cryptography
-    #   pynacl
-chardet==4.0.0
-    # via
-    #   -c requirements.txt
-    #   requests
 click==7.1.2
     # via
     #   -c requirements.txt
     #   black
-    #   flytekit
 coverage[toml]==5.5
     # via -r dev-requirements.in
-croniter==1.0.12
-    # via
-    #   -c requirements.txt
-    #   flytekit
-cryptography==3.4.7
-    # via
-    #   -c requirements.txt
-    #   paramiko
-dataclasses-json==0.5.2
-    # via
-    #   -c requirements.txt
-    #   flytekit
-decorator==5.0.7
-    # via
-    #   -c requirements.txt
-    #   retry
-deprecated==1.2.12
-    # via
-    #   -c requirements.txt
-    #   flytekit
-dirhash==0.2.1
-    # via
-    #   -c requirements.txt
-    #   flytekit
-distro==1.5.0
-    # via docker-compose
-docker-compose==1.29.1
-    # via
-    #   pytest-docker
-    #   pytest-flyte
-docker-image-py==0.1.10
-    # via
-    #   -c requirements.txt
-    #   flytekit
-docker[ssh]==5.0.0
-    # via docker-compose
-dockerpty==0.4.1
-    # via docker-compose
-docopt==0.6.2
-    # via docker-compose
 flake8-black==0.2.1
     # via -r dev-requirements.in
 flake8-isort==4.0.0
     # via -r dev-requirements.in
-flake8==3.9.1
+flake8==3.9.0
     # via
     #   -r dev-requirements.in
     #   flake8-black
     #   flake8-isort
-flyteidl==0.18.38
-    # via
-    #   -c requirements.txt
-    #   flytekit
-grpcio==1.37.0
-    # via
-    #   -c requirements.txt
-    #   flytekit
-idna==2.10
-    # via
-    #   -c requirements.txt
-    #   requests
-importlib-metadata==4.0.1
-    # via
-    #   -c requirements.txt
-    #   keyring
 iniconfig==1.1.1
     # via pytest
 isort==5.8.0
     # via
     #   -r dev-requirements.in
     #   flake8-isort
-jinja2==2.11.3
-    # via
-    #   -c requirements.txt
-    #   pytest-flyte
-jsonschema==3.2.0
-    # via
-    #   -c requirements.txt
-    #   docker-compose
-keyring==23.0.1
-    # via
-    #   -c requirements.txt
-    #   flytekit
-markupsafe==1.1.1
-    # via
-    #   -c requirements.txt
-    #   jinja2
-marshmallow-enum==1.5.1
-    # via
-    #   -c requirements.txt
-    #   dataclasses-json
-marshmallow==3.11.1
-    # via
-    #   -c requirements.txt
-    #   dataclasses-json
-    #   marshmallow-enum
 mccabe==0.6.1
     # via flake8
 mock==4.0.3
@@ -154,162 +47,45 @@ mypy-extensions==0.4.3
     #   -c requirements.txt
     #   black
     #   mypy
-    #   typing-inspect
 mypy==0.812
     # via -r dev-requirements.in
-natsort==7.1.1
-    # via
-    #   -c requirements.txt
-    #   flytekit
-numpy==1.20.2
-    # via
-    #   -c requirements.txt
-    #   pandas
-    #   pyarrow
 packaging==20.9
     # via
     #   -c requirements.txt
     #   pytest
-pandas==1.2.4
-    # via
-    #   -c requirements.txt
-    #   flytekit
-paramiko==2.7.2
-    # via
-    #   -c requirements.txt
-    #   docker
 pathspec==0.8.1
     # via
     #   -c requirements.txt
     #   black
-    #   scantree
 pluggy==0.13.1
     # via pytest
-protobuf==3.15.8
-    # via
-    #   -c requirements.txt
-    #   flyteidl
-    #   flytekit
 py==1.10.0
     # via
     #   -c requirements.txt
     #   pytest
-    #   retry
-pyarrow==3.0.0
-    # via
-    #   -c requirements.txt
-    #   flytekit
 pycodestyle==2.7.0
     # via flake8
-pycparser==2.20
-    # via
-    #   -c requirements.txt
-    #   cffi
 pyflakes==2.3.1
     # via flake8
-pynacl==1.4.0
-    # via
-    #   -c requirements.txt
-    #   paramiko
 pyparsing==2.4.7
     # via
     #   -c requirements.txt
     #   packaging
-pyrsistent==0.17.3
-    # via
-    #   -c requirements.txt
-    #   jsonschema
-pytest-docker==0.10.1
-    # via pytest-flyte
-pytest==6.2.3
-    # via
-    #   -r dev-requirements.in
-    #   pytest-docker
-    #   pytest-flyte
-git+git://github.com/flyteorg/pytest-flyte.git#egg=pytest_flyte
+pytest==6.2.2
     # via -r dev-requirements.in
-python-dateutil==2.8.1
-    # via
-    #   -c requirements.txt
-    #   croniter
-    #   flytekit
-    #   pandas
-python-dotenv==0.17.0
-    # via docker-compose
-pytimeparse==1.1.8
-    # via
-    #   -c requirements.txt
-    #   flytekit
-pytz==2018.4
-    # via
-    #   -c requirements.txt
-    #   flytekit
-    #   pandas
-pyyaml==5.4.1
-    # via
-    #   -c requirements.txt
-    #   docker-compose
-regex==2021.4.4
+regex==2021.3.17
     # via
     #   -c requirements.txt
     #   black
-    #   docker-image-py
-requests==2.25.1
-    # via
-    #   -c requirements.txt
-    #   docker
-    #   docker-compose
-    #   flytekit
-    #   responses
-responses==0.13.2
-    # via
-    #   -c requirements.txt
-    #   flytekit
-retry==0.9.2
-    # via
-    #   -c requirements.txt
-    #   flytekit
-scantree==0.0.1
-    # via
-    #   -c requirements.txt
-    #   dirhash
-six==1.15.0
-    # via
-    #   -c requirements.txt
-    #   bcrypt
-    #   dockerpty
-    #   flytekit
-    #   grpcio
-    #   jsonschema
-    #   protobuf
-    #   pynacl
-    #   python-dateutil
-    #   responses
-    #   scantree
-    #   websocket-client
-sortedcontainers==2.3.0
-    # via
-    #   -c requirements.txt
-    #   flytekit
-statsd==3.3.0
-    # via
-    #   -c requirements.txt
-    #   flytekit
-stringcase==1.2.0
-    # via
-    #   -c requirements.txt
-    #   dataclasses-json
 testfixtures==6.17.1
     # via flake8-isort
-texttable==1.6.3
-    # via docker-compose
 toml==0.10.2
     # via
     #   -c requirements.txt
     #   black
     #   coverage
     #   pytest
-typed-ast==1.4.3
+typed-ast==1.4.2
     # via
     #   -c requirements.txt
     #   black
@@ -319,34 +95,3 @@ typing-extensions==3.7.4.3
     #   -c requirements.txt
     #   black
     #   mypy
-    #   typing-inspect
-typing-inspect==0.6.0
-    # via
-    #   -c requirements.txt
-    #   dataclasses-json
-urllib3==1.25.11
-    # via
-    #   -c requirements.txt
-    #   flytekit
-    #   requests
-    #   responses
-websocket-client==0.58.0
-    # via
-    #   docker
-    #   docker-compose
-wheel==0.36.2
-    # via
-    #   -c requirements.txt
-    #   flytekit
-wrapt==1.12.1
-    # via
-    #   -c requirements.txt
-    #   deprecated
-    #   flytekit
-zipp==3.4.1
-    # via
-    #   -c requirements.txt
-    #   importlib-metadata
-
-# The following packages are considered to be unsafe in a requirements file:
-# setuptools

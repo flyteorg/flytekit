@@ -1,6 +1,5 @@
 -c requirements.txt
 
-git+git://github.com/flyteorg/pytest-flyte.git#egg=pytest_flyte
 black
 coverage[toml]
 flake8
