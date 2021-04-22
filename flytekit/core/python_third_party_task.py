@@ -9,6 +9,7 @@ from flytekit.core.context_manager import Image, ImageConfig, SerializationSetti
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracker import TrackedInstance
 from flytekit.models import task as _task_model
+from flytekit.models.core import identifier as identifier_models
 from flytekit.models.security import Secret, SecurityContext
 
 T = TypeVar("T")
@@ -17,16 +18,7 @@ TC = TypeVar("TC")
 
 class TaskTemplateExecutor(TrackedInstance, Generic[T]):
     @classmethod
-    def execute_from_template(cls, tt: _task_model.TaskTemplate, **kwargs) -> Any:
-        task = cls.promote_from_template(tt)
-        return cls.native_execute(task, **kwargs)
-
-    @classmethod
-    def native_execute(cls, task: T, **kwargs) -> Any:
-        raise NotImplementedError
-
-    @classmethod
-    def promote_from_template(cls, tt: _task_model.TaskTemplate) -> T:
+    def execute_from_model(cls, tt: _task_model.TaskTemplate, **kwargs) -> Any:
         raise NotImplementedError
 
 
@@ -97,6 +89,16 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
         # Because instances of these tasks rely on the task template in order to run even locally, we'll cache it
         self._task_template = None
 
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+        # Overriding base implementation to raise an error, force third-party task author to implement
+        raise NotImplementedError
+
+    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+        # Overriding base implementation but not doing anything. Technically this should be the task config,
+        # but the IDL limitation that the value also has to be a string is very limiting.
+        # Recommend
+        return {}
+
     @property
     def resources(self) -> ResourceSpec:
         return self._resources
@@ -135,8 +137,25 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
             memory_limit=self.resources.limits.mem,
         )
 
-    def serialize_to_template(self, settings: SerializationSettings) -> _task_model.TaskTemplate:
-        raise NotImplementedError
+    def serialize_to_model(self, settings: SerializationSettings) -> _task_model.TaskTemplate:
+        # This doesn't get called from translator unfortunately. Will need to move the translator to use the model
+        # objects directly first.
+        # Note: This doesn't settle the issue of duplicate registrations. We'll need to figure that out somehow.
+        # TODO: After new control plane classes are in, promote the template to a FlyteTask, so that authors of
+        #  third-party tasks have a familiar thing to work with.
+        obj = _task_model.TaskTemplate(
+            identifier_models.Identifier(
+                identifier_models.ResourceType.TASK, settings.project, settings.domain, self.name, settings.version
+            ),
+            self.task_type,
+            self.metadata.to_taskmetadata_model(),
+            self.interface,
+            self.get_custom(settings),
+            container=self.get_container(settings),
+            config=self.get_config(settings),
+        )
+        self._task_template = obj
+        return obj
 
     def execute(self, **kwargs) -> Any:
         """
@@ -148,6 +167,5 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
         When overridden for unit testing using the patch operator, all these steps will be skipped and the mocked code,
         which should just take in and return Python native values, will be run.
         """
-        tt = self.task_template or self.serialize_to_template(settings=PythonThirdPartyContainerTask.SERIALIZE_SETTINGS)
-        return self.executor.execute_from_template(tt, **kwargs)
-
+        tt = self.task_template or self.serialize_to_model(settings=PythonThirdPartyContainerTask.SERIALIZE_SETTINGS)
+        return self.executor.execute_from_model(tt, **kwargs)

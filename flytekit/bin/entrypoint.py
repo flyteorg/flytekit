@@ -8,7 +8,8 @@ import traceback as _traceback
 from typing import List
 
 import click as _click
-from flyteidl.core import literals_pb2 as _literals_pb2, tasks_pb2 as _tasks_pb2
+from flyteidl.core import literals_pb2 as _literals_pb2
+from flyteidl.core import tasks_pb2 as _tasks_pb2
 
 from flytekit import PythonFunctionTask
 from flytekit.common import constants as _constants
@@ -27,6 +28,7 @@ from flytekit.core.context_manager import ExecutionState, FlyteContext, Serializ
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
 from flytekit.core.python_auto_container import TaskResolverMixin
+from flytekit.core.python_third_party_task import TaskTemplateExecutor
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -38,7 +40,6 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
-from flytekit.core.python_third_party_task import TaskTemplateExecutor
 
 
 def _compute_array_job_index():
@@ -604,8 +605,9 @@ def _handle_third_party_container_task(
 
                 task_template_local_path = _os.path.join(ctx.execution_state.working_dir, "task_template.pb")
                 ctx.file_access.get_data(task_template_path, task_template_local_path)
-                task_template_model = _common_utils.load_proto_from_file(_tasks_pb2.TaskTemplate,
-                                                                         task_template_local_path)
+                task_template_model = _common_utils.load_proto_from_file(
+                    _tasks_pb2.TaskTemplate, task_template_local_path
+                )
                 task_def = task_executor.promote_from_template(task_template_model)
 
                 _dispatch_execute(ctx, task_def, inputs, output_prefix)
@@ -647,13 +649,7 @@ def manual_execute_task_cmd(
     if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
         raw_output_data_prefix = None
 
-    _manual_execute_task(
-        inputs,
-        output_prefix,
-        raw_output_data_prefix,
-        task_executor,
-        task_template_path
-    )
+    _manual_execute_task(inputs, output_prefix, raw_output_data_prefix, task_executor, task_template_path)
 
 
 if __name__ == "__main__":

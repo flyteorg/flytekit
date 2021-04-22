@@ -77,10 +77,10 @@ def test_task_serialization():
         ),
     )
 
-    tt = sql_task.serialize_to_template(sql_task.SERIALIZE_SETTINGS)
+    tt = sql_task.serialize_to_model(sql_task.SERIALIZE_SETTINGS)
 
     assert tt.container.args == [
-        "pyflyte-manual-executor",
+        "pyflyte-manual-execute",
         "--inputs",
         "{{.input}}",
         "--output-prefix",
