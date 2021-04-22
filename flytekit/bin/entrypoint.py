@@ -129,7 +129,7 @@ def _dispatch_execute(ctx: FlyteContext, task_def: Union[PythonTask, task_models
             _logging.warning(f"IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}")
             return
         # Step 3c
-        _logging.error(f"Exception when executing task {task_def.name}, reason {str(e)}")
+        _logging.error(f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}")
         _logging.error("!! Begin Unknown System Error Captured by Flyte !!")
         exc_str = _traceback.format_exc()
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
@@ -610,9 +610,10 @@ def _handle_third_party_container_task(
 
                 task_template_local_path = _os.path.join(ctx.execution_state.working_dir, "task_template.pb")
                 ctx.file_access.get_data(task_template_path, task_template_local_path)
-                task_template_model = _common_utils.load_proto_from_file(
+                task_template_proto = _common_utils.load_proto_from_file(
                     _tasks_pb2.TaskTemplate, task_template_local_path
                 )
+                task_template_model = task_models.TaskTemplate.from_flyte_idl(task_template_proto)
                 _dispatch_execute(ctx, task_template_model, inputs, output_prefix, executor=task_executor)
 
 
