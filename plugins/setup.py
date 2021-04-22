@@ -16,7 +16,10 @@ SOURCES = {
     "flytekitplugins-kftensorflow": "kftensorflow",
     "flytekitplugins-pandera": "pandera",
     "flytekitplugins-sqlalchemy": "sqlalchemy",
+<<<<<<< HEAD
     "flytekitplugins-dolt": "dolt",
+=======
+>>>>>>> Sqlalchemy Task (#445)
 }
 
 

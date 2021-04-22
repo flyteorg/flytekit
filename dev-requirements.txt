@@ -86,7 +86,14 @@ toml==0.10.2
     #   coverage
     #   pytest
 typed-ast==1.4.3
+<<<<<<< HEAD
     # via mypy
+=======
+    # via
+    #   -c requirements.txt
+    #   black
+    #   mypy
+>>>>>>> Sqlalchemy Task (#445)
 typing-extensions==3.7.4.3
     # via
     #   -c requirements.txt
