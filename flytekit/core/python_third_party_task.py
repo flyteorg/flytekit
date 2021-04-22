@@ -47,7 +47,7 @@ class TaskTemplateExecutor(TrackedInstance, Generic[T]):
 
     @classmethod
     def dispatch_execute(
-        cls, tt: _task_model.TaskTemplate, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
+        cls, ctx: FlyteContext, tt: _task_model.TaskTemplate, input_literal_map: _literal_models.LiteralMap
     ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
         This function is copied from PythonTask.dispatch_execute. Will need to make it a mixin and refactor in the
@@ -278,4 +278,4 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
         This function overrides the default task execute behavior.
         """
         tt = self.task_template or self.serialize_to_model(settings=PythonThirdPartyContainerTask.SERIALIZE_SETTINGS)
-        return self.executor.dispatch_execute(tt, ctx, input_literal_map)
+        return self.executor.dispatch_execute(ctx, tt, input_literal_map)

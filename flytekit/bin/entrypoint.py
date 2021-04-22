@@ -5,7 +5,7 @@ import os as _os
 import pathlib
 import random as _random
 import traceback as _traceback
-from typing import List
+from typing import List, Union
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -36,7 +36,7 @@ from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
 from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import dynamic_job as _dynamic_job
-from flytekit.models import literals as _literal_models
+from flytekit.models import literals as _literal_models, task as task_models
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
@@ -75,7 +75,7 @@ def _map_job_index_to_child_index(local_input_dir, datadir, index):
     return mapping_proto.literals[index].scalar.primitive.integer
 
 
-def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str, output_prefix: str):
+def _dispatch_execute(ctx: FlyteContext, task_def: Union[PythonTask, task_models.TaskTemplate], inputs_path: str, output_prefix: str, executor=None):
     """
     Dispatches execute to PythonTask
         Step1: Download inputs and load into a literal map
@@ -93,7 +93,12 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
         input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
         # Step2
-        outputs = task_def.dispatch_execute(ctx, idl_input_literals)
+        if isinstance(task_def, PythonTask):
+            outputs = task_def.dispatch_execute(ctx, idl_input_literals)
+        elif isinstance(task_def, task_models.TaskTemplate):
+            outputs = executor.dispatch_execute(ctx, task_def, idl_input_literals)
+        else:
+            raise Exception("Task def was neither PythonTask nor TaskTemplate")
         # Step3a
         if isinstance(outputs, VoidPromise):
             _logging.getLogger().warning("Task produces no outputs")
@@ -608,9 +613,7 @@ def _handle_third_party_container_task(
                 task_template_model = _common_utils.load_proto_from_file(
                     _tasks_pb2.TaskTemplate, task_template_local_path
                 )
-                task_def = task_executor.promote_from_template(task_template_model)
-
-                _dispatch_execute(ctx, task_def, inputs, output_prefix)
+                _dispatch_execute(ctx, task_template_model, inputs, output_prefix, executor=task_executor)
 
 
 @_scopes.system_entry_point
