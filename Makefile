@@ -1,3 +1,5 @@
+export REPOSITORY=flytepropeller
+
 PIP_COMPILE = pip-compile --upgrade --verbose
 
 .SILENT: help
@@ -10,6 +12,10 @@ help:
 .PHONY: install-piptools
 install-piptools:
 	pip install -U pip-tools
+
+.PHONY: update_boilerplate
+update_boilerplate:
+	@boilerplate/update.sh
 
 .PHONY: setup
 setup: install-piptools ## Install requirements
