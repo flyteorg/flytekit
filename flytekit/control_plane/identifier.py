@@ -25,7 +25,7 @@ class Identifier(_core_identifier.Identifier):
             raise _user_exceptions.FlyteValueException(
                 urn,
                 "The provided string was not in a parseable format. The string for an identifier must be in the "
-                "format entity_type:project:domain:name:version."
+                "format entity_type:project:domain:name:version.",
             )
 
         resource_type, project, domain, name, version = segments
@@ -34,7 +34,7 @@ class Identifier(_core_identifier.Identifier):
             raise _user_exceptions.FlyteValueException(
                 resource_type,
                 "The provided string could not be parsed. The first element of an identifier must be one of: "
-                f"{list(cls._STRING_TO_TYPE_MAP.keys())}. "
+                f"{list(cls._STRING_TO_TYPE_MAP.keys())}. ",
             )
 
         return cls(cls._STRING_TO_TYPE_MAP[resource_type], project, domain, name, version)
