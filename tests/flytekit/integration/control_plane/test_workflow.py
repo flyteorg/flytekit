@@ -26,7 +26,7 @@ def flyte_workflows_register(docker_compose):
     )
 
 
-def test_client(flyteclient):
+def test_client(flyteclient, flyte_workflows_register):
     projects = flyteclient.list_projects_paginated(limit=5, token=None)
     assert len(projects) <= 5
 

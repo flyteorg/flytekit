@@ -23,27 +23,29 @@ class Identifier(_core_identifier.Identifier):
         segments = urn.split(":")
         if len(segments) != 5:
             raise _user_exceptions.FlyteValueException(
-                "The provided string was not in a parseable format. The string for an identifier must be in the format"
-                " entity_type:project:domain:name:version.  Received: {}".format(urn)
+                urn,
+                "The provided string was not in a parseable format. The string for an identifier must be in the "
+                "format entity_type:project:domain:name:version."
             )
 
         resource_type, project, domain, name, version = segments
 
         if resource_type not in cls._STRING_TO_TYPE_MAP:
             raise _user_exceptions.FlyteValueException(
-                "The provided string could not be parsed. The first element of an identifier must be one of: {}. "
-                "Received: {}".format(list(cls._STRING_TO_TYPE_MAP.keys()), resource_type)
+                resource_type,
+                "The provided string could not be parsed. The first element of an identifier must be one of: "
+                f"{list(cls._STRING_TO_TYPE_MAP.keys())}. "
             )
 
         return cls(cls._STRING_TO_TYPE_MAP[resource_type], project, domain, name, version)
 
     def __str__(self):
-        return "{}:{}:{}:{}:{}".format(
-            type(self)._TYPE_TO_STRING_MAP.get(self.resource_type, "<unknown>"),
-            self.project,
-            self.domain,
-            self.name,
-            self.version,
+        return (
+            f"{type(self)._TYPE_TO_STRING_MAP.get(self.resource_type, '<unknown>')}:"
+            f"{self.project}:"
+            f"{self.domain}:"
+            f"{self.name}:"
+            f"{self.version}"
         )
 
 
@@ -55,7 +57,7 @@ class WorkflowExecutionIdentifier(_core_identifier.WorkflowExecutionIdentifier):
         return cls(base_model.project, base_model.domain, base_model.name)
 
     @classmethod
-    def from_python_std(cls, string: str) -> "WorkflowExecutionIdentifier":
+    def from_urn(cls, string: str) -> "WorkflowExecutionIdentifier":
         """
         Parses a string in the correct format into an identifier
         """
@@ -91,7 +93,7 @@ class TaskExecutionIdentifier(_core_identifier.TaskExecutionIdentifier):
         )
 
     @classmethod
-    def from_python_std(cls, string: str) -> "TaskExecutionIdentifier":
+    def from_urn(cls, string: str) -> "TaskExecutionIdentifier":
         """
         Parses a string in the correct format into an identifier
         """

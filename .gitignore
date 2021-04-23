@@ -26,3 +26,4 @@ dist
 _build/
 docs/source/generated/
 .pytest-flyte
+htmlcov

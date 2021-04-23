@@ -8,7 +8,7 @@ from flytekit.models.core import workflow as _workflow_model
 
 
 class FlyteTaskNode(_workflow_model.TaskNode):
-    def __init__(self, flyte_task) -> "flytekit.control_plane.tasks.task.FlyteTask":
+    def __init__(self, flyte_task: "flytekit.control_plane.tasks.task.FlyteTask"):
         self._flyte_task = flyte_task
         super(FlyteTaskNode, self).__init__(None)
 
