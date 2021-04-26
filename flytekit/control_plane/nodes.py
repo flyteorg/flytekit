@@ -11,7 +11,6 @@ from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import artifact as _artifact_mixin
 from flytekit.common.mixins import hash as _hash_mixin
-from flytekit.common.nodes import OutputParameterMapper
 from flytekit.common.utils import _dnsify
 from flytekit.control_plane import component_nodes as _component_nodes
 from flytekit.control_plane import identifier as _identifier
@@ -63,16 +62,6 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             branch_node=flyte_branch,
         )
         self._upstream = upstream_nodes
-        self._executable_flyte_object = flyte_task or flyte_workflow or flyte_launch_plan
-        if parameter_mapping:
-            if not flyte_branch:
-                self._outputs = OutputParameterMapper(self._executable_flyte_object.interface.outputs, self)
-            else:
-                self._outputs = None
-
-    @property
-    def executable_flyte_object(self):
-        return self._executable_flyte_object
 
     @classmethod
     def promote_from_model(

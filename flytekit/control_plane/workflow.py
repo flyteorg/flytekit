@@ -163,21 +163,5 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         pass
 
     @_exception_scopes.system_entry_point
-    def __call__(self, *arks, **input_map):
-        if len(args) > 0:
-            raise _user_exceptions.FlyteAssertion(
-                "When adding a workflow as a node in a workflow, all inputs must be specified with kwargs only.  We "
-                "detected {} positional args.".format(len(args))
-            )
-        # TODO: need to implement creation of new bindings with new type engine
-        bindings, upstream_nodes = self.interface.create_bindings_for_inputs(input_map)
-
-        return _nodes.FlyteNode(
-            id=None,
-            metadata=_workflow_models.NodeMetadata(
-                "placeholder", _datetime.timedelta(), _literal_models.RetryStrategy(0)
-            ),
-            upstream_nodes=upstream_nodes,
-            bindings=sorted(bindings, key=lambda b: b.var),
-            sdk_workflow=self,
-        )
+    def __call__(self, *args, **input_map):
+        raise NotImplementedError

@@ -3,7 +3,6 @@ from typing import Any, List
 
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.configuration import sdk as _sdk_config
 from flytekit.control_plane import identifier as _identifier
 from flytekit.control_plane import interface as _interface
 from flytekit.control_plane import nodes as _nodes
@@ -97,27 +96,6 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
             return False
 
     @property
-    def auth_role(self) -> _common_models.AuthRole:
-        fixed_auth = super(FlyteLaunchPlan, self).auth_role
-        if fixed_auth is not None and (
-            fixed_auth.assumable_iam_role is not None or fixed_auth.kubernetes_service_account is not None
-        ):
-            return fixed_auth
-
-        assumable_iam_role = _auth_config.ASSUMABLE_IAM_ROLE.get()
-        kubernetes_service_account = _auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
-
-        if not (assumable_iam_role or kubernetes_service_account):
-            _logging.warning(
-                "Using deprecated `role` from config. Please update your config to use `assumable_iam_role` instead"
-            )
-            assumable_iam_role = _sdk_config.ROLE.get()
-        return _common_models.AuthRole(
-            assumable_iam_role=assumable_iam_role,
-            kubernetes_service_account=kubernetes_service_account,
-        )
-
-    @property
     def workflow_id(self) -> _identifier.Identifier:
         return self._workflow_id
 
@@ -137,15 +115,6 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
     @property
     def entity_type_text(self) -> str:
         return "Launch Plan"
-
-    @property
-    def raw_output_data_config(self) -> _common_models.RawOutputDataConfig:
-        raw_output_data_config = super(FlyteLaunchPlan, self).raw_output_data_config
-        if raw_output_data_config is not None and raw_output_data_config.output_location_prefix != "":
-            return raw_output_data_config
-
-        # If it was not set explicitly then let's use the value found in the configuration.
-        return _common_models.RawOutputDataConfig(_auth_config.RAW_OUTPUT_DATA_PREFIX.get())
 
     @_exception_scopes.system_entry_point
     def validate(self):
@@ -221,7 +190,7 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
 
     @_exception_scopes.system_entry_point
     def __call__(self, *args, **input_map: Any) -> _nodes.FlyteNode:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def __repr__(self) -> str:
         return f"FlyteLaunchPlan(ID: {self.id} Interface: {self.interface} WF ID: {self.workflow_id})"

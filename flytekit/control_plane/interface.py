@@ -22,7 +22,3 @@ class TypedInterface(_interface_models.TypedInterface):
         :raises: flytekit.common.exceptions.user.FlyteAssertion
         """
         return [], []
-
-    def __repr__(self):
-        # TODO
-        pass
