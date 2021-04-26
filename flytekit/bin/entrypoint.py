@@ -154,18 +154,15 @@ def _dispatch_execute(
     _logging.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
 
-def _handle_annotated_task(
-    task_def: PythonTask,
-    inputs: str,
-    output_prefix: str,
+import contextlib
+
+
+@contextlib.contextmanager
+def setup_execution(
     raw_output_data_prefix: str,
     dynamic_addl_distro: str = None,
     dynamic_dest_dir: str = None,
 ):
-    """
-    Entrypoint for all PythonTask extensions
-    """
-    _click.echo("Running native-typed task")
     cloud_provider = _platform_config.CLOUD_PROVIDER.get()
     log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
     _logging.getLogger().setLevel(log_level)
@@ -247,7 +244,20 @@ def _handle_annotated_task(
                 execution_params=execution_parameters,
                 additional_context={"dynamic_addl_distro": dynamic_addl_distro, "dynamic_dest_dir": dynamic_dest_dir},
             ) as ctx:
-                _dispatch_execute(ctx, task_def, inputs, output_prefix)
+                yield ctx
+
+
+def _handle_annotated_task(
+    ctx: FlyteContext,
+    task_def: PythonTask,
+    inputs: str,
+    output_prefix: str,
+):
+    """
+    Entrypoint for all PythonTask extensions
+    """
+    _click.echo("Running native-typed task")
+    _dispatch_execute(ctx, task_def, inputs, output_prefix)
 
 
 @_scopes.system_entry_point
@@ -338,18 +348,17 @@ def _execute_task(
     if len(resolver_args) < 1:
         raise Exception("cannot be <1")
 
-    resolver_obj = _load_resolver(resolver)
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        # Use the resolver to load the actual task object
-        _task_def = resolver_obj.load_task(loader_args=resolver_args)
-        if test:
-            _click.echo(
-                f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
-            )
-            return
-        _handle_annotated_task(
-            _task_def, inputs, output_prefix, raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir
-        )
+        with setup_execution(raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir) as ctx:
+            resolver_obj = _load_resolver(resolver)
+            # Use the resolver to load the actual task object
+            _task_def = resolver_obj.load_task(loader_args=resolver_args)
+            if test:
+                _click.echo(
+                    f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
+                )
+                return
+            _handle_annotated_task(ctx, _task_def, inputs, output_prefix)
 
 
 @_scopes.system_entry_point
@@ -367,28 +376,27 @@ def _execute_map_task(
     if len(resolver_args) < 1:
         raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
 
-    resolver_obj = _load_resolver(resolver)
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        # Use the resolver to load the actual task object
-        _task_def = resolver_obj.load_task(loader_args=resolver_args)
-        if not isinstance(_task_def, PythonFunctionTask):
-            raise Exception("Map tasks cannot be run with instance tasks.")
-        map_task = MapPythonTask(_task_def, max_concurrency)
+        with setup_execution(raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir) as ctx:
+            resolver_obj = _load_resolver(resolver)
+            # Use the resolver to load the actual task object
+            _task_def = resolver_obj.load_task(loader_args=resolver_args)
+            if not isinstance(_task_def, PythonFunctionTask):
+                raise Exception("Map tasks cannot be run with instance tasks.")
+            map_task = MapPythonTask(_task_def, max_concurrency)
 
-        task_index = _compute_array_job_index()
-        output_prefix = _os.path.join(output_prefix, str(task_index))
+            task_index = _compute_array_job_index()
+            output_prefix = _os.path.join(output_prefix, str(task_index))
 
-        if test:
-            _click.echo(
-                f"Test detected, returning. Inputs: {inputs} Computed task index: {task_index} "
-                f"New output prefix: {output_prefix} Raw output path: {raw_output_data_prefix} "
-                f"Resolver and args: {resolver} {resolver_args}"
-            )
-            return
+            if test:
+                _click.echo(
+                    f"Test detected, returning. Inputs: {inputs} Computed task index: {task_index} "
+                    f"New output prefix: {output_prefix} Raw output path: {raw_output_data_prefix} "
+                    f"Resolver and args: {resolver} {resolver_args}"
+                )
+                return
 
-        _handle_annotated_task(
-            map_task, inputs, output_prefix, raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir
-        )
+            _handle_annotated_task(ctx, map_task, inputs, output_prefix)
 
 
 @_click.group()
