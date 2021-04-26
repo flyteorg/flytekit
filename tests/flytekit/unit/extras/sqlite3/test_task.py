@@ -10,7 +10,7 @@ EXAMPLE_DB = "https://cdn.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.
 
 # This task belongs to test_task_static but is intentionally here to help test tracking
 tk = SQLite3Task(
-    "test",
+    name="test",
     query_template="select * from tracks",
     task_config=SQLite3Config(
         uri=EXAMPLE_DB,
@@ -28,7 +28,7 @@ def test_task_static():
 
 def test_task_schema():
     sql_task = SQLite3Task(
-        "test",
+        name="test",
         query_template="select TrackId, Name from tracks limit {{.inputs.limit}}",
         inputs=kwtypes(limit=int),
         output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
@@ -49,7 +49,7 @@ def test_workflow():
         return len(df[df.columns[0]])
 
     sql_task = SQLite3Task(
-        "test",
+        name="test",
         query_template="select * from tracks limit {{.inputs.limit}}",
         inputs=kwtypes(limit=int),
         task_config=SQLite3Config(
@@ -67,7 +67,7 @@ def test_workflow():
 
 def test_task_serialization():
     sql_task = SQLite3Task(
-        "test",
+        name="test",
         query_template="select TrackId, Name from tracks limit {{.inputs.limit}}",
         inputs=kwtypes(limit=int),
         output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
@@ -80,16 +80,16 @@ def test_task_serialization():
     tt = sql_task.serialize_to_model(sql_task.SERIALIZE_SETTINGS)
 
     assert tt.container.args == [
-        "pyflyte-manual-execute",
+        "pyflyte-execute",
         "--inputs",
         "{{.input}}",
         "--output-prefix",
         "{{.outputPrefix}}",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
-        "--task_executor",
-        "flytekit.extras.sqlite3.task.SQLite3TaskExecutor",
-        "--task_template_path",
+        "--resolver",
+        "flytekit.extras.sqlite3.task.sqlite3_task_resolver",
+        "--",
         "{{.taskTemplatePath}}",
     ]
 

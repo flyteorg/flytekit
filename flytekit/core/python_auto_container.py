@@ -178,27 +178,27 @@ class TaskResolverMixin(object):
         pass
 
     @abstractmethod
-    def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
+    def load_task(self, loader_args: List[str]) -> PythonTask:
         """
         Given the set of identifier keys, should return one Python Task or raise an error if not found
         """
         pass
 
     @abstractmethod
-    def loader_args(self, settings: SerializationSettings, t: PythonAutoContainerTask) -> List[str]:
+    def loader_args(self, settings: SerializationSettings, t: PythonTask) -> List[str]:
         """
         Return a list of strings that can help identify the parameter Task
         """
         pass
 
     @abstractmethod
-    def get_all_tasks(self) -> List[PythonAutoContainerTask]:
+    def get_all_tasks(self) -> List[PythonTask]:
         """
         Future proof method. Just making it easy to access all tasks (Not required today as we auto register them)
         """
         pass
 
-    def task_name(self, t: PythonAutoContainerTask) -> Optional[str]:
+    def task_name(self, t: PythonTask) -> Optional[str]:
         """
         Overridable function that can optionally return a custom name for a given task
         """

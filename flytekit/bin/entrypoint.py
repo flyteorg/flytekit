@@ -36,7 +36,8 @@ from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
 from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import dynamic_job as _dynamic_job
-from flytekit.models import literals as _literal_models, task as task_models
+from flytekit.models import literals as _literal_models
+from flytekit.models import task as task_models
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
@@ -75,7 +76,13 @@ def _map_job_index_to_child_index(local_input_dir, datadir, index):
     return mapping_proto.literals[index].scalar.primitive.integer
 
 
-def _dispatch_execute(ctx: FlyteContext, task_def: Union[PythonTask, task_models.TaskTemplate], inputs_path: str, output_prefix: str, executor=None):
+def _dispatch_execute(
+    ctx: FlyteContext,
+    task_def: Union[PythonTask, task_models.TaskTemplate],
+    inputs_path: str,
+    output_prefix: str,
+    executor=None,
+):
     """
     Dispatches execute to PythonTask
         Step1: Download inputs and load into a literal map

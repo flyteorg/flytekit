@@ -5,13 +5,19 @@ import sqlite3
 import tempfile
 import typing
 from dataclasses import dataclass
+from typing import List, Optional, Type
 
 import pandas as pd
+from flyteidl.core import tasks_pb2 as _tasks_pb2
 
 from flytekit import FlyteContext, kwtypes
+from flytekit.common import utils as _common_utils
 from flytekit.core.base_sql_task import SQLTask
+from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import SerializationSettings
-from flytekit.core.python_third_party_task import PythonThirdPartyContainerTask, TaskTemplateExecutor
+from flytekit.core.python_auto_container import TaskResolverMixin
+from flytekit.core.python_third_party_task import PythonThirdPartyContainerTask
+from flytekit.core.tracker import TrackedInstance
 from flytekit.models import task as task_models
 from flytekit.types.schema import FlyteSchema
 
@@ -49,6 +55,29 @@ class SQLite3Config(object):
     compressed: bool = False
 
 
+class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
+    def __init__(self, task_class: Type[PythonThirdPartyContainerTask]):
+        self._task_class = task_class
+        super(TaskTemplateResolver, self).__init__()
+
+    def name(self) -> str:
+        return "task template resolver"
+
+    def load_task(self, loader_args: List[str]) -> PythonTask:
+        ctx = FlyteContext.current_context()
+        task_template_local_path = os.path.join(ctx.execution_state.working_dir, "task_template.pb")
+        ctx.file_access.get_data(loader_args[0], task_template_local_path)
+        task_template_proto = _common_utils.load_proto_from_file(_tasks_pb2.TaskTemplate, task_template_local_path)
+        task_template_model = task_models.TaskTemplate.from_flyte_idl(task_template_proto)
+        return self._task_class(task_template=task_template_model)
+
+    def loader_args(self, settings: SerializationSettings, t: PythonTask) -> List[str]:
+        return ["{{.taskTemplatePath}}"]
+
+    def get_all_tasks(self) -> List[PythonTask]:
+        return []
+
+
 class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3Config]):
     """
     Makes it possible to run client side SQLite3 queries that optionally return a FlyteSchema object
@@ -61,13 +90,24 @@ class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3C
 
     def __init__(
         self,
-        name: str,
-        query_template: str,
+        task_template: Optional[task_models.TaskTemplate] = None,
+        name: Optional[str] = None,
+        query_template: Optional[str] = None,
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         task_config: typing.Optional[SQLite3Config] = None,
         output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
         **kwargs,
     ):
+        # Because in the task template case, we skip the rest of instantiation, unless we want the task template loading
+        # behavior to also be present in all parent classes. Or we can just promote_from_model
+        # self._task_type = "python-task"
+        # self._name = name
+
+        if task_template is not None:
+            self._task_template = task_template
+            print("Task template specified, skipping all other constructor logic...")
+            return
+
         if task_config is None or task_config.uri is None:
             raise ValueError("SQLite DB uri is required.")
         outputs = kwtypes(results=output_schema_type if output_schema_type else FlyteSchema)
@@ -75,7 +115,7 @@ class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3C
             name=name,
             task_config=task_config,
             container_image="flytekit-sqlite3:123",
-            executor=SQLite3TaskExecutor,
+            resolver=sqlite3_task_resolver,
             task_type=self._SQLITE_TASK_TYPE,
             query_template=query_template,
             inputs=inputs,
@@ -97,25 +137,7 @@ class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3C
             "compressed": self.task_config.compressed,
         }
 
-    def get_command(self, settings: SerializationSettings) -> typing.List[str]:
-        return [
-            "pyflyte-manual-execute",
-            "--inputs",
-            "{{.input}}",
-            "--output-prefix",
-            "{{.outputPrefix}}",
-            "--raw-output-data-prefix",
-            "{{.rawOutputDataPrefix}}",
-            "--task_executor",
-            f"{SQLite3TaskExecutor.__module__}.{SQLite3TaskExecutor.__name__}",
-            "--task_template_path",
-            "{{.taskTemplatePath}}",
-        ]
-
-
-class SQLite3TaskExecutor(TaskTemplateExecutor[SQLite3Task]):
-    @classmethod
-    def execute_from_model(cls, tt: task_models.TaskTemplate, **kwargs) -> typing.Any:
+    def execute_from_model(self, tt: task_models.TaskTemplate, **kwargs) -> typing.Any:
         with tempfile.TemporaryDirectory() as temp_dir:
             ctx = FlyteContext.current_context()
             file_ext = os.path.basename(tt.custom["uri"])
@@ -130,3 +152,6 @@ class SQLite3TaskExecutor(TaskTemplateExecutor[SQLite3Task]):
             with contextlib.closing(sqlite3.connect(local_path)) as con:
                 df = pd.read_sql_query(interpolated_query, con)
                 return df
+
+
+sqlite3_task_resolver = TaskTemplateResolver(task_class=SQLite3Task)
