@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
+from typing import Any, Dict, List, Optional, TypeVar, Union
 
 from flytekit.common.tasks.raw_container import _get_container_definition
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, Image, ImageConfig, SerializationSettings
 from flytekit.core.python_auto_container import TaskResolverMixin
 from flytekit.core.resources import Resources, ResourceSpec
-from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job

@@ -9,7 +9,6 @@ from typing import List
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
-from flyteidl.core import tasks_pb2 as _tasks_pb2
 
 from flytekit import PythonFunctionTask
 from flytekit.common import constants as _constants
@@ -28,7 +27,6 @@ from flytekit.core.context_manager import ExecutionState, FlyteContext, Serializ
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
 from flytekit.core.python_auto_container import TaskResolverMixin
-from flytekit.core.python_third_party_task import TaskTemplateExecutor
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
