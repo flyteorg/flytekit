@@ -56,6 +56,7 @@ class SQLite3Config(object):
 
 
 class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
+    # This should be hidden from the task plugin author
     def __init__(self, task_class: Type[PythonThirdPartyContainerTask]):
         self._task_class = task_class
         super(TaskTemplateResolver, self).__init__()
@@ -98,11 +99,6 @@ class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3C
         output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
         **kwargs,
     ):
-        # Because in the task template case, we skip the rest of instantiation, unless we want the task template loading
-        # behavior to also be present in all parent classes. Or we can just promote_from_model
-        # self._task_type = "python-task"
-        # self._name = name
-
         if task_template is not None:
             self._task_template = task_template
             print("Task template specified, skipping all other constructor logic...")
