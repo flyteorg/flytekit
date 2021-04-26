@@ -197,3 +197,13 @@ def test_protos():
     l0 = Literal(scalar=Scalar(primitive=Primitive(integer=4)))
     with pytest.raises(AssertionError):
         TypeEngine.to_python_value(ctx, l0, errors_pb2.ContainerError)
+
+
+def test_zero_floats():
+    ctx = FlyteContext.current_context()
+
+    l0 = Literal(scalar=Scalar(primitive=Primitive(integer=0)))
+    l1 = Literal(scalar=Scalar(primitive=Primitive(float_value=0.0)))
+
+    assert TypeEngine.to_python_value(ctx, l0, float) == 0
+    assert TypeEngine.to_python_value(ctx, l1, float) == 0
