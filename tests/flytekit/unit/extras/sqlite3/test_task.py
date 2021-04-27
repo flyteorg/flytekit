@@ -80,17 +80,18 @@ def test_task_serialization():
     tt = sql_task.serialize_to_model(sql_task.SERIALIZE_SETTINGS)
 
     assert tt.container.args == [
-        "pyflyte-manual-execute",
+        "pyflyte-execute",
         "--inputs",
         "{{.input}}",
         "--output-prefix",
         "{{.outputPrefix}}",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
-        "--task_executor",
-        "flytekit.extras.sqlite3.task.SQLite3TaskExecutor",
-        "--task_template_path",
+        "--resolver",
+        "flytekit.core.python_third_party_task.default_task_template_resolver",
+        "--",
         "{{.taskTemplatePath}}",
+        "flytekit.extras.sqlite3.task.SQLite3TaskExecutor",
     ]
 
     assert tt.custom["query_template"] == "select TrackId, Name from tracks limit {{.inputs.limit}}"

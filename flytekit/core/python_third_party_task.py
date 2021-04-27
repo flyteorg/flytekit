@@ -1,24 +1,24 @@
 from __future__ import annotations
 
-from abc import abstractmethod
+import importlib
+import os
 from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
-from flytekit.core.context_manager import (
-    BranchEvalMode,
-    ExecutionState,
-    FlyteContext,
-    FlyteEntities,
-    SerializationSettings,
-)
-from flytekit.core.type_engine import TypeEngine
-from flytekit.loggers import logger
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
+
+from flyteidl.core import tasks_pb2 as _tasks_pb2
+
+from flytekit.common import utils as common_utils
 from flytekit.common.tasks.raw_container import _get_container_definition
-from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings
+from flytekit.common.tasks.sdk_runnable import ExecutionParameters
+from flytekit.core.base_task import PythonTask, Task
+from flytekit.core.context_manager import FlyteContext, Image, ImageConfig, SerializationSettings
+from flytekit.core.python_auto_container import TaskResolverMixin
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracker import TrackedInstance
-from flytekit.models import task as _task_model, literals as _literal_models
+from flytekit.core.type_engine import TypeEngine
+from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
+from flytekit.models import literals as _literal_models
+from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as identifier_models
 from flytekit.models.security import Secret, SecurityContext
 
@@ -121,6 +121,42 @@ class TaskTemplateExecutor(TrackedInstance, Generic[T]):
             return outputs_literal_map
 
 
+class ExecutorTask(object):
+    def __init__(self, tt: _task_model.TaskTemplate, executor: TaskTemplateExecutor):
+        self._executor = executor
+        self._task_template = tt
+
+    @property
+    def task_template(self) -> _task_model.TaskTemplate:
+        return self._task_template
+
+    @property
+    def executor(self) -> TaskTemplateExecutor:
+        return self._executor
+
+    def execute(self, **kwargs) -> Any:
+        """
+        This function overrides the default task execute behavior.
+
+        Execution for third-party tasks is different from tasks that run the user workflow container.
+        1. Serialize the task out to a TaskTemplate.
+        2. Pass the template over to the Executor to run, along with the input arguments.
+        3. Executor will reconstruct the Python task class object, before running the e
+
+        When overridden for unit testing using the patch operator, all these steps will be skipped and the mocked code,
+        which should just take in and return Python native values, will be run.
+        """
+        return self.executor.execute_from_model(self.task_template, **kwargs)
+
+    def dispatch_execute(
+        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
+    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
+        """
+        This function overrides the default task execute behavior.
+        """
+        return self.executor.dispatch_execute(ctx, self.task_template, input_literal_map)
+
+
 class PythonThirdPartyContainerTask(PythonTask[TC]):
     SERIALIZE_SETTINGS = SerializationSettings(
         project="PLACEHOLDER_PROJECT",
@@ -136,6 +172,7 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
         task_config: TC,
         container_image: str,
         executor: TaskTemplateExecutor,
+        task_resolver: Optional[TaskTemplateResolver] = None,
         task_type="python-task",
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
@@ -188,6 +225,8 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
         # Because instances of these tasks rely on the task template in order to run even locally, we'll cache it
         self._task_template = None
 
+        self._task_resolver = task_resolver or default_task_template_resolver
+
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         # Overriding base implementation to raise an error, force third-party task author to implement
         raise NotImplementedError
@@ -204,13 +243,13 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
     def resources(self) -> ResourceSpec:
         return self._resources
 
-    @abstractmethod
-    def get_command(self, settings: SerializationSettings) -> List[str]:
-        pass
-
     @property
     def executor(self) -> TaskTemplateExecutor:
         return self._executor
+
+    @property
+    def task_resolver(self) -> TaskTemplateResolver:
+        return self._task_resolver
 
     @property
     def task_template(self) -> Optional[_task_model.TaskTemplate]:
@@ -219,6 +258,23 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
     @property
     def container_image(self) -> str:
         return self._container_image
+
+    def get_command(self, settings: SerializationSettings) -> List[str]:
+        container_args = [
+            "pyflyte-execute",
+            "--inputs",
+            "{{.input}}",
+            "--output-prefix",
+            "{{.outputPrefix}}",
+            "--raw-output-data-prefix",
+            "{{.rawOutputDataPrefix}}",
+            "--resolver",
+            self.task_resolver.location,
+            "--",
+            *self.task_resolver.loader_args(settings, self),
+        ]
+
+        return container_args
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
@@ -281,3 +337,42 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
         """
         tt = self.task_template or self.serialize_to_model(settings=PythonThirdPartyContainerTask.SERIALIZE_SETTINGS)
         return self.executor.dispatch_execute(ctx, tt, input_literal_map)
+
+
+def load_executor(object_location: str) -> Any:
+    """
+    Copied from entrypoint
+    """
+    class_obj = object_location.split(".")
+    class_obj_mod = class_obj[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
+    class_obj_key = class_obj[-1]  # e.g. 'default_task_class_obj'
+    class_obj_mod = importlib.import_module(".".join(class_obj_mod))
+    return getattr(class_obj_mod, class_obj_key)
+
+
+class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
+    def __init__(self):
+        super(TaskTemplateResolver, self).__init__()
+
+    def name(self) -> str:
+        return "task template resolver"
+
+    def load_task(self, loader_args: List[str]) -> Task:
+        logger.info(f"Task template loader args: {loader_args}")
+        ctx = FlyteContext.current_context()
+        task_template_local_path = os.path.join(ctx.execution_state.working_dir, "task_template.pb")
+        ctx.file_access.get_data(loader_args[0], task_template_local_path)
+        task_template_proto = common_utils.load_proto_from_file(_tasks_pb2.TaskTemplate, task_template_local_path)
+        task_template_model = _task_model.TaskTemplate.from_flyte_idl(task_template_proto)
+
+        executor = load_executor(loader_args[1])
+        return ExecutorTask(task_template_model, executor)
+
+    def loader_args(self, settings: SerializationSettings, t: PythonThirdPartyContainerTask) -> List[str]:
+        return ["{{.taskTemplatePath}}", f"{t.executor.__module__}.{t.executor.__name__}"]
+
+    def get_all_tasks(self) -> List[Task]:
+        return []
+
+
+default_task_template_resolver = TaskTemplateResolver()

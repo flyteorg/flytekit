@@ -8,7 +8,7 @@ import os
 import typing
 from abc import ABC, abstractmethod
 from typing import Type
-from flytekit.loggers import logger
+
 from dataclasses_json import DataClassJsonMixin
 from google.protobuf import json_format as _json_format
 from google.protobuf import reflection as _proto_reflection
@@ -16,8 +16,10 @@ from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
+
 from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
+from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
@@ -311,7 +313,9 @@ class TypeEngine(typing.Generic[T]):
         return cls._REGISTRY.keys()
 
     @classmethod
-    def guess_python_types(cls, flyte_variable_dict: typing.Dict[str, _interface_models.Variable]) -> typing.Dict[str, type]:
+    def guess_python_types(
+        cls, flyte_variable_dict: typing.Dict[str, _interface_models.Variable]
+    ) -> typing.Dict[str, type]:
         python_types = {}
         for k, v in flyte_variable_dict.items():
             python_types[k] = cls.guess_python_type(v.type)
@@ -446,6 +450,7 @@ class DictTransformer(TypeTransformer[dict]):
             mt = TypeEngine.guess_python_type(literal_type.map_value_type)
             return typing.Dict[str, mt]
         raise ValueError(f"Dictionary transformer cannot reverse {literal_type}")
+
 
 class TextIOTransformer(TypeTransformer[typing.TextIO]):
     """

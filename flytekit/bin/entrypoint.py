@@ -5,11 +5,10 @@ import os as _os
 import pathlib
 import random as _random
 import traceback as _traceback
-from typing import List, Union
+from typing import List
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
-from flyteidl.core import tasks_pb2 as _tasks_pb2
 
 from flytekit import PythonFunctionTask
 from flytekit.common import constants as _constants
@@ -28,7 +27,6 @@ from flytekit.core.context_manager import ExecutionState, FlyteContext, Serializ
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
 from flytekit.core.python_auto_container import TaskResolverMixin
-from flytekit.core.python_third_party_task import TaskTemplateExecutor
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -36,7 +34,8 @@ from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
 from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import dynamic_job as _dynamic_job
-from flytekit.models import literals as _literal_models, task as task_models
+from flytekit.models import literals as _literal_models
+from flytekit.models import task as task_models
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
@@ -75,7 +74,13 @@ def _map_job_index_to_child_index(local_input_dir, datadir, index):
     return mapping_proto.literals[index].scalar.primitive.integer
 
 
-def _dispatch_execute(ctx: FlyteContext, task_def: Union[PythonTask, task_models.TaskTemplate], inputs_path: str, output_prefix: str, executor=None):
+def _dispatch_execute(
+    ctx: FlyteContext,
+    task_def: PythonTask,
+    inputs_path: str,
+    output_prefix: str,
+    executor=None,
+):
     """
     Dispatches execute to PythonTask
         Step1: Download inputs and load into a literal map
@@ -92,11 +97,12 @@ def _dispatch_execute(ctx: FlyteContext, task_def: Union[PythonTask, task_models
         ctx.file_access.get_data(inputs_path, local_inputs_file)
         input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
+        from flytekit.core.python_third_party_task import ExecutorTask
         # Step2
         if isinstance(task_def, PythonTask):
             outputs = task_def.dispatch_execute(ctx, idl_input_literals)
-        elif isinstance(task_def, task_models.TaskTemplate):
-            outputs = executor.dispatch_execute(ctx, task_def, idl_input_literals)
+        elif isinstance(task_def, ExecutorTask):
+            outputs = task_def.dispatch_execute(ctx, idl_input_literals)
         else:
             raise Exception("Task def was neither PythonTask nor TaskTemplate")
         # Step3a
@@ -149,18 +155,15 @@ def _dispatch_execute(ctx: FlyteContext, task_def: Union[PythonTask, task_models
     _logging.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
 
-def _handle_annotated_task(
-    task_def: PythonTask,
-    inputs: str,
-    output_prefix: str,
+import contextlib
+
+
+@contextlib.contextmanager
+def setup_execution(
     raw_output_data_prefix: str,
     dynamic_addl_distro: str = None,
     dynamic_dest_dir: str = None,
 ):
-    """
-    Entrypoint for all PythonTask extensions
-    """
-    _click.echo("Running native-typed task")
     cloud_provider = _platform_config.CLOUD_PROVIDER.get()
     log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
     _logging.getLogger().setLevel(log_level)
@@ -242,7 +245,20 @@ def _handle_annotated_task(
                 execution_params=execution_parameters,
                 additional_context={"dynamic_addl_distro": dynamic_addl_distro, "dynamic_dest_dir": dynamic_dest_dir},
             ) as ctx:
-                _dispatch_execute(ctx, task_def, inputs, output_prefix)
+                yield ctx
+
+
+def _handle_annotated_task(
+    ctx: FlyteContext,
+    task_def: PythonTask,
+    inputs: str,
+    output_prefix: str,
+):
+    """
+    Entrypoint for all PythonTask extensions
+    """
+    _click.echo("Running native-typed task")
+    _dispatch_execute(ctx, task_def, inputs, output_prefix)
 
 
 @_scopes.system_entry_point
@@ -333,18 +349,17 @@ def _execute_task(
     if len(resolver_args) < 1:
         raise Exception("cannot be <1")
 
-    resolver_obj = _load_resolver(resolver)
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        # Use the resolver to load the actual task object
-        _task_def = resolver_obj.load_task(loader_args=resolver_args)
-        if test:
-            _click.echo(
-                f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
-            )
-            return
-        _handle_annotated_task(
-            _task_def, inputs, output_prefix, raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir
-        )
+        with setup_execution(raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir) as ctx:
+            resolver_obj = _load_resolver(resolver)
+            # Use the resolver to load the actual task object
+            _task_def = resolver_obj.load_task(loader_args=resolver_args)
+            if test:
+                _click.echo(
+                    f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
+                )
+                return
+            _handle_annotated_task(ctx, _task_def, inputs, output_prefix)
 
 
 @_scopes.system_entry_point
@@ -362,28 +377,27 @@ def _execute_map_task(
     if len(resolver_args) < 1:
         raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
 
-    resolver_obj = _load_resolver(resolver)
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        # Use the resolver to load the actual task object
-        _task_def = resolver_obj.load_task(loader_args=resolver_args)
-        if not isinstance(_task_def, PythonFunctionTask):
-            raise Exception("Map tasks cannot be run with instance tasks.")
-        map_task = MapPythonTask(_task_def, max_concurrency)
+        with setup_execution(raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir) as ctx:
+            resolver_obj = _load_resolver(resolver)
+            # Use the resolver to load the actual task object
+            _task_def = resolver_obj.load_task(loader_args=resolver_args)
+            if not isinstance(_task_def, PythonFunctionTask):
+                raise Exception("Map tasks cannot be run with instance tasks.")
+            map_task = MapPythonTask(_task_def, max_concurrency)
 
-        task_index = _compute_array_job_index()
-        output_prefix = _os.path.join(output_prefix, str(task_index))
+            task_index = _compute_array_job_index()
+            output_prefix = _os.path.join(output_prefix, str(task_index))
 
-        if test:
-            _click.echo(
-                f"Test detected, returning. Inputs: {inputs} Computed task index: {task_index} "
-                f"New output prefix: {output_prefix} Raw output path: {raw_output_data_prefix} "
-                f"Resolver and args: {resolver} {resolver_args}"
-            )
-            return
+            if test:
+                _click.echo(
+                    f"Test detected, returning. Inputs: {inputs} Computed task index: {task_index} "
+                    f"New output prefix: {output_prefix} Raw output path: {raw_output_data_prefix} "
+                    f"Resolver and args: {resolver} {resolver_args}"
+                )
+                return
 
-        _handle_annotated_task(
-            map_task, inputs, output_prefix, raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir
-        )
+            _handle_annotated_task(ctx, map_task, inputs, output_prefix)
 
 
 @_click.group()
@@ -515,145 +529,6 @@ def map_execute_task_cmd(
         resolver,
         resolver_args,
     )
-
-
-def _handle_third_party_container_task(
-    inputs: str,
-    output_prefix: str,
-    raw_output_data_prefix: str,
-    task_executor: TaskTemplateExecutor,
-    task_template_path: str,
-):
-    """
-    Entrypoint for all PythonTask extensions
-    """
-    _click.echo("Running native-typed task")
-    cloud_provider = _platform_config.CLOUD_PROVIDER.get()
-    log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
-    _logging.getLogger().setLevel(log_level)
-
-    ctx = FlyteContext.current_context()
-
-    # Create directories
-    user_workspace_dir = ctx.file_access.local_access.get_random_directory()
-    _click.echo(f"Using user directory {user_workspace_dir}")
-    pathlib.Path(user_workspace_dir).mkdir(parents=True, exist_ok=True)
-    from flytekit import __version__ as _api_version
-
-    execution_parameters = ExecutionParameters(
-        execution_id=_identifier.WorkflowExecutionIdentifier(
-            project=_internal_config.EXECUTION_PROJECT.get(),
-            domain=_internal_config.EXECUTION_DOMAIN.get(),
-            name=_internal_config.EXECUTION_NAME.get(),
-        ),
-        execution_date=_datetime.datetime.utcnow(),
-        stats=_get_stats(
-            # Stats metric path will be:
-            # registration_project.registration_domain.app.module.task_name.user_stats
-            # and it will be tagged with execution-level values for project/domain/wf/lp
-            "{}.{}.{}.user_stats".format(
-                _internal_config.TASK_PROJECT.get() or _internal_config.PROJECT.get(),
-                _internal_config.TASK_DOMAIN.get() or _internal_config.DOMAIN.get(),
-                _internal_config.TASK_NAME.get() or _internal_config.NAME.get(),
-            ),
-            tags={
-                "exec_project": _internal_config.EXECUTION_PROJECT.get(),
-                "exec_domain": _internal_config.EXECUTION_DOMAIN.get(),
-                "exec_workflow": _internal_config.EXECUTION_WORKFLOW.get(),
-                "exec_launchplan": _internal_config.EXECUTION_LAUNCHPLAN.get(),
-                "api_version": _api_version,
-            },
-        ),
-        logging=_logging,
-        tmp_dir=user_workspace_dir,
-    )
-
-    if cloud_provider == _constants.CloudProvider.AWS:
-        file_access = _data_proxy.FileAccessProvider(
-            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
-            remote_proxy=_s3proxy.AwsS3Proxy(raw_output_data_prefix),
-        )
-    elif cloud_provider == _constants.CloudProvider.GCP:
-        file_access = _data_proxy.FileAccessProvider(
-            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
-            remote_proxy=_gcs_proxy.GCSProxy(raw_output_data_prefix),
-        )
-    elif cloud_provider == _constants.CloudProvider.LOCAL:
-        # A fake remote using the local disk will automatically be created
-        file_access = _data_proxy.FileAccessProvider(local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get())
-    else:
-        raise Exception(f"Bad cloud provider {cloud_provider}")
-
-    with ctx.new_file_access_context(file_access_provider=file_access) as ctx:
-        env = {
-            _internal_config.CONFIGURATION_PATH.env_var: _internal_config.CONFIGURATION_PATH.get(),
-            _internal_config.IMAGE.env_var: _internal_config.IMAGE.get(),
-        }
-
-        serialization_settings = SerializationSettings(
-            project=_internal_config.TASK_PROJECT.get(),
-            domain=_internal_config.TASK_DOMAIN.get(),
-            version=_internal_config.TASK_VERSION.get(),
-            image_config=get_image_config(),
-            env=env,
-        )
-
-        # The reason we need this is because of dynamic tasks. Even if we move compilation all to Admin,
-        # if a dynamic task calls some task, t1, we have to write to the DJ Spec the correct task
-        # identifier for t1.
-        with ctx.new_serialization_settings(serialization_settings=serialization_settings) as ctx:
-            # Because execution states do not look up the context chain, it has to be made last
-            with ctx.new_execution_context(
-                mode=ExecutionState.Mode.TASK_EXECUTION,
-                execution_params=execution_parameters,
-            ) as ctx:
-
-                task_template_local_path = _os.path.join(ctx.execution_state.working_dir, "task_template.pb")
-                ctx.file_access.get_data(task_template_path, task_template_local_path)
-                task_template_proto = _common_utils.load_proto_from_file(
-                    _tasks_pb2.TaskTemplate, task_template_local_path
-                )
-                task_template_model = task_models.TaskTemplate.from_flyte_idl(task_template_proto)
-                _dispatch_execute(ctx, task_template_model, inputs, output_prefix, executor=task_executor)
-
-
-@_scopes.system_entry_point
-def _manual_execute_task(
-    inputs,
-    output_prefix,
-    raw_output_data_prefix,
-    task_executor,
-    task_template_path,
-):
-    # Bit of a hack, but the code is the same
-    task_executor_class = _load_resolver(task_executor)
-    with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        _handle_third_party_container_task(
-            inputs, output_prefix, raw_output_data_prefix, task_executor_class, task_template_path
-        )
-
-
-@_pass_through.command("pyflyte-manual-execute")
-@_click.option("--inputs", required=True)
-@_click.option("--output-prefix", required=True)
-@_click.option("--raw-output-data-prefix", required=False)
-@_click.option("--task_executor", required=True)
-@_click.option("--task_template_path", required=False)
-def manual_execute_task_cmd(
-    inputs,
-    output_prefix,
-    raw_output_data_prefix,
-    task_executor,
-    task_template_path,
-):
-    _click.echo(_utils.get_version_message())
-    # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
-    # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
-    # to the original shard formatter/prefix config.
-    if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
-        raw_output_data_prefix = None
-
-    _manual_execute_task(inputs, output_prefix, raw_output_data_prefix, task_executor, task_template_path)
 
 
 if __name__ == "__main__":
