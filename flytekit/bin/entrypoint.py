@@ -97,11 +97,12 @@ def _dispatch_execute(
         ctx.file_access.get_data(inputs_path, local_inputs_file)
         input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
+        from flytekit.core.python_third_party_task import ExecutorTask
         # Step2
         if isinstance(task_def, PythonTask):
             outputs = task_def.dispatch_execute(ctx, idl_input_literals)
-        elif isinstance(task_def, task_models.TaskTemplate):
-            outputs = executor.dispatch_execute(ctx, task_def, idl_input_literals)
+        elif isinstance(task_def, ExecutorTask):
+            outputs = task_def.dispatch_execute(ctx, idl_input_literals)
         else:
             raise Exception("Task def was neither PythonTask nor TaskTemplate")
         # Step3a
