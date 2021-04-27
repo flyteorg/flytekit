@@ -97,21 +97,6 @@ class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3C
             "compressed": self.task_config.compressed,
         }
 
-    def get_command(self, settings: SerializationSettings) -> typing.List[str]:
-        return [
-            "pyflyte-manual-execute",
-            "--inputs",
-            "{{.input}}",
-            "--output-prefix",
-            "{{.outputPrefix}}",
-            "--raw-output-data-prefix",
-            "{{.rawOutputDataPrefix}}",
-            "--task_executor",
-            f"{SQLite3TaskExecutor.__module__}.{SQLite3TaskExecutor.__name__}",
-            "--task_template_path",
-            "{{.taskTemplatePath}}",
-        ]
-
 
 class SQLite3TaskExecutor(TaskTemplateExecutor[SQLite3Task]):
     @classmethod
