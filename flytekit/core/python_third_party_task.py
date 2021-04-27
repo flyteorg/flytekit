@@ -366,7 +366,7 @@ class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
         task_template_model = _task_model.TaskTemplate.from_flyte_idl(task_template_proto)
 
         executor = load_executor(loader_args[1])
-        return ExecutorTask(executor, task_template_model)
+        return ExecutorTask(task_template_model, executor)
 
     def loader_args(self, settings: SerializationSettings, t: PythonThirdPartyContainerTask) -> List[str]:
         return ["{{.taskTemplatePath}}", f"{t.executor.__module__}.{t.executor.__name__}"]
