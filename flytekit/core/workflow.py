@@ -227,7 +227,7 @@ class WorkflowBase(object):
         if ctx.compilation_state is not None:
             input_kwargs = self.python_interface.default_inputs_as_kwargs
             input_kwargs.update(kwargs)
-            return create_and_link_node(ctx, entity=self, interface=self.python_interface, **input_kwargs)
+            return create_and_link_node(ctx, entity=self, node_name=self.name, interface=self.python_interface, **input_kwargs)
 
         # This condition is hit when this workflow (self) is being called as part of a parent's workflow local run.
         # The context specifying the local workflow execution has already been set.

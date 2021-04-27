@@ -633,6 +633,7 @@ class NodeOutput(type_models.OutputReference):
 def create_and_link_node(
     ctx: FlyteContext,
     entity,
+    node_name: str,
     interface: flyte_interface.Interface,
     timeout: Optional[datetime.timedelta] = None,
     retry_strategy: Optional[_literal_models.RetryStrategy] = None,

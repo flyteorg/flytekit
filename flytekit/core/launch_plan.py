@@ -245,7 +245,7 @@ class LaunchPlan(object):
         if ctx.compilation_state is not None:
             inputs = self.saved_inputs
             inputs.update(kwargs)
-            return create_and_link_node(ctx, entity=self, interface=self.workflow.python_interface, **inputs)
+            return create_and_link_node(ctx, entity=self, node_name=self._name, interface=self.workflow.python_interface, **inputs)
         else:
             # Calling a launch plan should just forward the call to the workflow, nothing more. But let's add in the
             # saved inputs.
