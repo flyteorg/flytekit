@@ -7,10 +7,10 @@ from flytekit.common.exceptions.user import FlyteAssertion
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.node_creation import create_node
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.core.dynamic_workflow_task import dynamic
 
 
 def test_normal_task():
