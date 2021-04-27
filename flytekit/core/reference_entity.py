@@ -179,7 +179,6 @@ class ReferenceEntity(object):
         return create_and_link_node(
             ctx,
             entity=self,
-            node_name=self.name,
             interface=self.python_interface,
             **kwargs,
         )

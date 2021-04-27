@@ -633,7 +633,6 @@ class NodeOutput(type_models.OutputReference):
 def create_and_link_node(
     ctx: FlyteContext,
     entity,
-    node_name: str,
     interface: flyte_interface.Interface,
     timeout: Optional[datetime.timedelta] = None,
     retry_strategy: Optional[_literal_models.RetryStrategy] = None,
@@ -688,15 +687,15 @@ def create_and_link_node(
         )
     )
 
+    node_name = f"{entity.__module__}.{entity.name}"
     node_metadata = _workflow_model.NodeMetadata(
-        f"{entity.__module__}.{entity.name}",
+        node_name,
         timeout or datetime.timedelta(),
         retry_strategy or _literal_models.RetryStrategy(0),
     )
 
     non_sdk_node = Node(
-        # TODO: Better naming, probably a derivative of the function name.
-        id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
+        id=node_name,
         metadata=node_metadata,
         bindings=sorted(bindings, key=lambda b: b.var),
         upstream_nodes=upstream_nodes,

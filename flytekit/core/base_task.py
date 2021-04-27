@@ -365,7 +365,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         return create_and_link_node(
             ctx,
             entity=self,
-            node_name=self.name,
             interface=self.python_interface,
             timeout=self.metadata.timeout,
             retry_strategy=self.metadata.retry_strategy,
