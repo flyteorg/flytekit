@@ -226,7 +226,7 @@ class WorkflowBase(object):
         # Get default agruements and override with kwargs passed in
         input_kwargs = self.python_interface.default_inputs_as_kwargs
         input_kwargs.update(kwargs)
-        
+
         # The first condition is compilation.
         if ctx.compilation_state is not None:
             return create_and_link_node(ctx, entity=self, interface=self.python_interface, **input_kwargs)

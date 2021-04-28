@@ -51,6 +51,7 @@ def test_workflow_values():
     assert sdk_wf.metadata_defaults.interruptible
     assert sdk_wf.metadata.on_failure == 1
 
+
 def test_default_values():
     @task
     def t() -> bool:
@@ -69,10 +70,10 @@ def test_default_values():
             .else_()
             .then(f())
         )
-    
-    assert wf() == True
-    assert wf(a=False) == False
-    
+
+    assert wf() is True
+    assert wf(a=False) is False
+
 
 def test_list_output_wf():
     @task
