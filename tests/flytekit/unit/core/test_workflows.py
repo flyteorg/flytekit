@@ -63,13 +63,7 @@ def test_default_values():
 
     @workflow
     def wf(a: bool = True) -> bool:
-        return (
-            conditional("bool")
-            .if_(a.is_true())
-            .then(t())
-            .else_()
-            .then(f())
-        )
+        return conditional("bool").if_(a.is_true()).then(t()).else_().then(f())
 
     assert wf() is True
     assert wf(a=False) is False
