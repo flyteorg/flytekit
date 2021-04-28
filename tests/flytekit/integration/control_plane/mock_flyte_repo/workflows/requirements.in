@@ -1,0 +1,4 @@
+flytekit>=0.17.0b0
+wheel
+matplotlib
+opencv-python

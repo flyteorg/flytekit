@@ -44,6 +44,11 @@ jobs:
     - name: Test with coverage
       run: |
         coverage run -m pytest tests/flytekit/unit tests/scripts plugins/tests
+    - name: Integration Tests with coverage
+      # https://github.com/actions/runner/issues/241#issuecomment-577360161
+      shell: 'script -q -e -c "bash {0}"'
+      run: |
+        coverage run --append -m pytest tests/flytekit/integration
     - name: Codecov
       uses: codecov/codecov-action@v1
       with:

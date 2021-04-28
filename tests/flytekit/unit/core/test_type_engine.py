@@ -247,3 +247,13 @@ def test_schema_back_and_forth():
     pt = TypeEngine.guess_python_type(lt)
     lt2 = TypeEngine.to_literal_type(pt)
     assert lt == lt2
+
+
+def test_zero_floats():
+    ctx = FlyteContext.current_context()
+
+    l0 = Literal(scalar=Scalar(primitive=Primitive(integer=0)))
+    l1 = Literal(scalar=Scalar(primitive=Primitive(float_value=0.0)))
+
+    assert TypeEngine.to_python_value(ctx, l0, float) == 0
+    assert TypeEngine.to_python_value(ctx, l1, float) == 0

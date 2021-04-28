@@ -569,9 +569,9 @@ class PathLikeTransformer(TypeTransformer[os.PathLike]):
 
 
 def _check_and_covert_float(lv: Literal) -> float:
-    if lv.scalar.primitive.float_value:
+    if lv.scalar.primitive.float_value is not None:
         return lv.scalar.primitive.float_value
-    elif lv.scalar.primitive.integer:
+    elif lv.scalar.primitive.integer is not None:
         return float(lv.scalar.primitive.integer)
     raise RuntimeError(f"Cannot convert literal {lv} to float")
 
