@@ -82,10 +82,14 @@ entrypoints==0.3
     #   nbconvert
     #   papermill
 <<<<<<< HEAD
+<<<<<<< HEAD
 flyteidl==0.18.39
 =======
 flyteidl==0.18.37
 >>>>>>> Sqlalchemy Task (#445)
+=======
+flyteidl==0.18.38
+>>>>>>> add new control plane classes (#425)
     # via flytekit
 gevent==21.1.2
     # via sagemaker-training
@@ -98,7 +102,9 @@ hmsclient==0.1.1
 idna==2.10
     # via requests
 importlib-metadata==4.0.1
-    # via keyring
+    # via
+    #   jsonschema
+    #   keyring
 inotify_simple==1.2.1
     # via sagemaker-training
 ipykernel==5.5.3
@@ -326,7 +332,14 @@ typed-ast==1.4.3
     # via black
 >>>>>>> Sqlalchemy Task (#445)
 typing-extensions==3.7.4.3
+<<<<<<< HEAD
     # via typing-inspect
+=======
+    # via
+    #   black
+    #   importlib-metadata
+    #   typing-inspect
+>>>>>>> add new control plane classes (#425)
 typing-inspect==0.6.0
     # via dataclasses-json
 urllib3==1.25.11
