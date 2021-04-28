@@ -6,6 +6,7 @@ import pytest
 from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
+from flytekit.core.condition import conditional
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
@@ -50,6 +51,28 @@ def test_workflow_values():
     assert sdk_wf.metadata_defaults.interruptible
     assert sdk_wf.metadata.on_failure == 1
 
+def test_default_values():
+    @task
+    def t() -> bool:
+        return True
+
+    @task
+    def f() -> bool:
+        return False
+
+    @workflow
+    def wf(a: bool = True) -> bool:
+        return (
+            conditional("bool")
+            .if_(a.is_true())
+            .then(t())
+            .else_()
+            .then(f())
+        )
+    
+    assert wf() == True
+    assert wf(a=False) == False
+    
 
 def test_list_output_wf():
     @task
