@@ -107,9 +107,22 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
     def resources(self) -> ResourceSpec:
         return self._resources
 
-    @abstractmethod
     def get_command(self, settings: SerializationSettings) -> List[str]:
-        pass
+        container_args = [
+            "pyflyte-execute",
+            "--inputs",
+            "{{.input}}",
+            "--output-prefix",
+            "{{.outputPrefix}}",
+            "--raw-output-data-prefix",
+            "{{.rawOutputDataPrefix}}",
+            "--resolver",
+            self.task_resolver.location,
+            "--",
+            *self.task_resolver.loader_args(settings, self),
+        ]
+
+        return container_args
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
