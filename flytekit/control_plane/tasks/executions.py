@@ -36,7 +36,7 @@ class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.Ex
             execution_data = client.get_task_execution_data(self.id)
 
             # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
-            input_map: _literal_models.LiteralMap = _literal_models.LiteralMap({})
+            input_map = _literal_models.LiteralMap({})
             if bool(execution_data.full_inputs.literals):
                 input_map = execution_data.full_inputs
             elif execution_data.inputs.bytes > 0:
@@ -72,9 +72,9 @@ class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.Ex
             execution_data = client.get_task_execution_data(self.id)
 
             # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
+            output_map = _literal_models.LiteralMap({})
             if bool(execution_data.full_outputs.literals):
                 output_map = execution_data.full_outputs
-
             elif execution_data.outputs.bytes > 0:
                 with _common_utils.AutoDeletingTempDir() as t:
                     tmp_name = _os.path.join(t.name, "outputs.pb")
@@ -82,7 +82,6 @@ class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.Ex
                     output_map = _literal_models.LiteralMap.from_flyte_idl(
                         _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
-                output_map = _literal_models.LiteralMap({})
 
             # TODO: need to convert flyte literals to python types. For now just use literals
             # self._outputs = TypeEngine.literal_map_to_kwargs(ctx=FlyteContext.current_context(), lm=output_map)
