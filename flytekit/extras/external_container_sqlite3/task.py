@@ -11,7 +11,7 @@ import pandas as pd
 from flytekit import FlyteContext, kwtypes
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.context_manager import SerializationSettings
-from flytekit.core.python_third_party_task import PythonThirdPartyContainerTask, TaskTemplateExecutor
+from flytekit.core.python_third_party_task import FlyteTaskExecutor, PythonThirdPartyContainerTask
 from flytekit.models import task as task_models
 from flytekit.types.schema import FlyteSchema
 
@@ -96,7 +96,7 @@ class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3C
         }
 
 
-class SQLite3TaskExecutor(TaskTemplateExecutor[SQLite3Task]):
+class SQLite3TaskExecutor(FlyteTaskExecutor[SQLite3Task]):
     @classmethod
     def execute_from_model(cls, tt: task_models.TaskTemplate, **kwargs) -> typing.Any:
         with tempfile.TemporaryDirectory() as temp_dir:

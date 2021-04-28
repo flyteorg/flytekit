@@ -22,6 +22,7 @@ from flytekit.configuration import TemporaryConfiguration as _TemporaryConfigura
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
+from flytekit.control_plane.tasks.task import FlyteTask
 from flytekit.core.base_task import IgnoreOutputs, PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
 from flytekit.core.map_task import MapPythonTask
@@ -34,7 +35,6 @@ from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
-from flytekit.models import task as task_models
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
@@ -96,12 +96,11 @@ def _dispatch_execute(
         ctx.file_access.get_data(inputs_path, local_inputs_file)
         input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
-        from flytekit.core.python_third_party_task import ExecutorTask
 
         # Step2
         if isinstance(task_def, PythonTask):
             outputs = task_def.dispatch_execute(ctx, idl_input_literals)
-        elif isinstance(task_def, ExecutorTask):
+        elif isinstance(task_def, FlyteTask):
             outputs = task_def.dispatch_execute(ctx, idl_input_literals)
         else:
             raise Exception("Task def was neither PythonTask nor TaskTemplate")
