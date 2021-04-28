@@ -8,7 +8,7 @@ from flyteidl.core import tasks_pb2 as _tasks_pb2
 
 from flytekit.common import utils as common_utils
 from flytekit.common.tasks.raw_container import _get_container_definition
-from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin, ExecutableTaskMixin
+from flytekit.core.base_task import ExecutableTaskMixin, PythonTask, Task, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContext, Image, ImageConfig, SerializationSettings
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.task_executor import FlyteTaskExecutor

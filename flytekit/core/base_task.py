@@ -1,6 +1,6 @@
 import collections
 import datetime
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
@@ -21,6 +21,7 @@ from flytekit.core.promise import (
     create_task_output,
     translate_inputs_to_literals,
 )
+from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
@@ -30,7 +31,6 @@ from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
-from flytekit.core.tracked_abc import FlyteTrackedABC
 
 
 def kwtypes(**kwargs) -> Dict[str, Type]:

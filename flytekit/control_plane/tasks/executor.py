@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Generic, Union, TypeVar
+from typing import Any, Generic, TypeVar, Union
 
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.context_manager import FlyteContext
@@ -10,7 +10,6 @@ from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
-
 
 T = TypeVar("T")
 
