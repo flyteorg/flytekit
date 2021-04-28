@@ -10,7 +10,9 @@ import pandas as pd
 
 from flytekit import FlyteContext, kwtypes
 from flytekit.core.base_sql_task import SQLTask
-from flytekit.core.python_function_task import PythonInstanceTask
+from flytekit.core.context_manager import SerializationSettings
+from flytekit.core.python_third_party_task import PythonThirdPartyContainerTask, TaskTemplateExecutor
+from flytekit.models import task as task_models
 from flytekit.types.schema import FlyteSchema
 
 
@@ -47,7 +49,7 @@ class SQLite3Config(object):
     compressed: bool = False
 
 
-class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
+class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3Config]):
     """
     Makes it possible to run client side SQLite3 queries that optionally return a FlyteSchema object
 
@@ -72,6 +74,8 @@ class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
         super().__init__(
             name=name,
             task_config=task_config,
+            container_image="flytekit-sqlite3:123",
+            executor=SQLite3TaskExecutor,
             task_type=self._SQLITE_TASK_TYPE,
             query_template=query_template,
             inputs=inputs,
@@ -84,16 +88,28 @@ class SQLite3Task(PythonInstanceTask[SQLite3Config], SQLTask[SQLite3Config]):
         c = self.python_interface.outputs["results"].column_names()
         return c if c else None
 
-    def execute(self, **kwargs) -> typing.Any:
+    def get_custom(self, settings: SerializationSettings) -> typing.Dict[str, typing.Any]:
+        return {
+            "query_template": self.query_template,
+            "uri": self.task_config.uri,
+            "compressed": self.task_config.compressed,
+        }
+
+
+class SQLite3TaskExecutor(TaskTemplateExecutor[SQLite3Task]):
+    @classmethod
+    def execute_from_model(cls, tt: task_models.TaskTemplate, **kwargs) -> typing.Any:
         with tempfile.TemporaryDirectory() as temp_dir:
             ctx = FlyteContext.current_context()
-            file_ext = os.path.basename(self.task_config.uri)
+            file_ext = os.path.basename(tt.custom["uri"])
             local_path = os.path.join(temp_dir, file_ext)
-            ctx.file_access.download(self.task_config.uri, local_path)
-            if self.task_config.compressed:
+            ctx.file_access.download(tt.custom["uri"], local_path)
+            if tt.custom["compressed"]:
                 local_path = unarchive_file(local_path, temp_dir)
 
             print(f"Connecting to db {local_path}")
+            interpolated_query = SQLite3Task.interpolate_query(tt.custom["query_template"], **kwargs)
+            print(f"Interpolated query {interpolated_query}")
             with contextlib.closing(sqlite3.connect(local_path)) as con:
-                df = pd.read_sql_query(self.get_query(**kwargs), con)
+                df = pd.read_sql_query(interpolated_query, con)
                 return df

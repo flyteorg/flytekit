@@ -1,6 +1,6 @@
 FROM python:3.8-slim-buster
 
-ENV FLYTE_INTERNAL_IMAGE=flytecli-sqlite3:123
+ENV FLYTE_INTERNAL_IMAGE=flytecli-sqlite3:v0.1.0
 
 RUN pip install awscli
 
