@@ -199,17 +199,51 @@ def test_protos():
         TypeEngine.to_python_value(ctx, l0, errors_pb2.ContainerError)
 
 
-def test_fds():
+def test_guessing_basic():
     b = model_types.LiteralType(simple=model_types.SimpleType.BOOLEAN)
     pt = TypeEngine.guess_python_type(b)
     assert pt is bool
+
+    lt = model_types.LiteralType(simple=model_types.SimpleType.INTEGER)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is int
+
+    lt = model_types.LiteralType(simple=model_types.SimpleType.STRING)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is str
+
+    lt = model_types.LiteralType(simple=model_types.SimpleType.DURATION)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is timedelta
+
+    lt = model_types.LiteralType(simple=model_types.SimpleType.DATETIME)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is datetime.datetime
+
+    lt = model_types.LiteralType(simple=model_types.SimpleType.FLOAT)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is float
+
+    lt = model_types.LiteralType(simple=model_types.SimpleType.NONE)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is None
+
+
+def test_guessing_containers():
+    b = model_types.LiteralType(simple=model_types.SimpleType.BOOLEAN)
+    lt = model_types.LiteralType(collection_type=b)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt == typing.List[bool]
+
+    dur = model_types.LiteralType(simple=model_types.SimpleType.DURATION)
+    lt = model_types.LiteralType(map_value_type=dur)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt == typing.Dict[str, timedelta]
 
 
 def test_schema_back_and_forth():
     orig = FlyteSchema[kwtypes(TrackId=int, Name=str)]
     lt = TypeEngine.to_literal_type(orig)
-    print(lt)
     pt = TypeEngine.guess_python_type(lt)
-    print(pt)
     lt2 = TypeEngine.to_literal_type(pt)
     assert lt == lt2
