@@ -288,15 +288,3 @@ def test_subworkflow_condition_single_named_tuple():
         return conditional("test").if_(x == 2).then(t().b).else_().then(wf1().b)
 
     assert branching(x=2) == 5
-
-
-def test_fdsfdsfa():
-    @workflow
-    def wf1(a: int, b: int) -> int:
-        return (
-            conditional("noDivByZero")
-                .if_(a > b)
-                .then(1)
-                .else_()
-                .then(2)
-        )

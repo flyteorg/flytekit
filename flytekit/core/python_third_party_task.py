@@ -9,9 +9,8 @@ from flyteidl.core import tasks_pb2 as _tasks_pb2
 from flytekit.common import utils as common_utils
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.core.base_task import PythonTask, Task
+from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContext, Image, ImageConfig, SerializationSettings
-from flytekit.core.python_auto_container import TaskResolverMixin
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine

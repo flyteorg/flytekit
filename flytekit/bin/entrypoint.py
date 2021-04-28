@@ -22,11 +22,10 @@ from flytekit.configuration import TemporaryConfiguration as _TemporaryConfigura
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
-from flytekit.core.base_task import IgnoreOutputs, PythonTask
+from flytekit.core.base_task import IgnoreOutputs, PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
-from flytekit.core.python_auto_container import TaskResolverMixin
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -98,6 +97,7 @@ def _dispatch_execute(
         input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
         from flytekit.core.python_third_party_task import ExecutorTask
+
         # Step2
         if isinstance(task_def, PythonTask):
             outputs = task_def.dispatch_execute(ctx, idl_input_literals)

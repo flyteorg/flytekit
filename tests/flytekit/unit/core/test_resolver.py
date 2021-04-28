@@ -4,9 +4,9 @@ import pytest
 
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
+from flytekit.core.base_task import TaskResolverMixin
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.context_manager import Image, ImageConfig
-from flytekit.core.python_auto_container import TaskResolverMixin
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 
