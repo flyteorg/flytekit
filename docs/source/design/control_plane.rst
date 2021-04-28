@@ -3,9 +3,9 @@
 ############################
 Control Plane Objects
 ############################
-For those who require programmatic access to the control place, certain APIs are available through "control plane classes".
+For those who require programmatic access to the control plane, certain APIs are available through "control plane classes".
 
-.. note::
+.. warning::
 
     The syntax of this section, while it will continue to work, is subject to change.
 
