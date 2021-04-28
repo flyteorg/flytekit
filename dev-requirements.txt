@@ -24,6 +24,9 @@ bcrypt==3.2.0
     #   -c requirements.txt
     #   paramiko
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> add new control plane classes (#425)
 black==20.8b1
 >>>>>>> add new control plane classes (#425)
 =======
@@ -33,6 +36,11 @@ black==21.4b2
     #   -c requirements.txt
     #   -r dev-requirements.in
     #   flake8-black
+<<<<<<< HEAD
+=======
+cached-property==1.5.2
+    # via docker-compose
+>>>>>>> add new control plane classes (#425)
 certifi==2020.12.5
     # via
     #   -c requirements.txt
@@ -62,7 +70,11 @@ cryptography==3.4.7
     # via
     #   -c requirements.txt
     #   paramiko
+<<<<<<< HEAD
 dataclasses-json==0.5.3
+=======
+dataclasses-json==0.5.2
+>>>>>>> add new control plane classes (#425)
     # via
     #   -c requirements.txt
     #   flytekit
@@ -103,7 +115,11 @@ flake8==3.9.1
     #   -r dev-requirements.in
     #   flake8-black
     #   flake8-isort
+<<<<<<< HEAD
 flyteidl==0.18.39
+=======
+flyteidl==0.18.38
+>>>>>>> add new control plane classes (#425)
     # via
     #   -c requirements.txt
     #   flytekit
@@ -118,7 +134,15 @@ idna==2.10
 importlib-metadata==4.0.1
     # via
     #   -c requirements.txt
+<<<<<<< HEAD
     #   keyring
+=======
+    #   flake8
+    #   jsonschema
+    #   keyring
+    #   pluggy
+    #   pytest
+>>>>>>> add new control plane classes (#425)
 iniconfig==1.1.1
     # via pytest
 isort==5.8.0
@@ -221,6 +245,9 @@ pyparsing==2.4.7
     #   -c requirements.txt
     #   packaging
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> add new control plane classes (#425)
 pyrsistent==0.17.3
     # via
     #   -c requirements.txt
@@ -228,6 +255,7 @@ pyrsistent==0.17.3
 pytest-docker==0.10.1
     # via pytest-flyte
 git+git://github.com/flyteorg/pytest-flyte@main#egg=pytest-flyte
+<<<<<<< HEAD
     # via -r dev-requirements.in
 pytest==6.2.3
     # via
@@ -259,6 +287,35 @@ pyyaml==5.4.1
 pytest==6.2.3
     # via -r dev-requirements.in
 >>>>>>> Sqlalchemy Task (#445)
+=======
+    # via -r dev-requirements.in
+pytest==6.2.3
+    # via
+    #   -r dev-requirements.in
+    #   pytest-docker
+    #   pytest-flyte
+python-dateutil==2.8.1
+    # via
+    #   -c requirements.txt
+    #   croniter
+    #   flytekit
+    #   pandas
+python-dotenv==0.17.0
+    # via docker-compose
+pytimeparse==1.1.8
+    # via
+    #   -c requirements.txt
+    #   flytekit
+pytz==2018.4
+    # via
+    #   -c requirements.txt
+    #   flytekit
+    #   pandas
+pyyaml==5.4.1
+    # via
+    #   -c requirements.txt
+    #   docker-compose
+>>>>>>> add new control plane classes (#425)
 regex==2021.4.4
     # via
     #   -c requirements.txt
@@ -271,7 +328,11 @@ requests==2.25.1
     #   docker-compose
     #   flytekit
     #   responses
+<<<<<<< HEAD
 responses==0.13.3
+=======
+responses==0.13.2
+>>>>>>> add new control plane classes (#425)
     # via
     #   -c requirements.txt
     #   flytekit
@@ -338,12 +399,15 @@ typing-extensions==3.7.4.3
 =======
     #   black
     #   importlib-metadata
+<<<<<<< HEAD
 >>>>>>> add new control plane classes (#425)
 =======
 typing-extensions==3.7.4.3
     # via
     #   -c requirements.txt
 >>>>>>> Fix merge
+=======
+>>>>>>> add new control plane classes (#425)
     #   mypy
     #   typing-inspect
 typing-inspect==0.6.0

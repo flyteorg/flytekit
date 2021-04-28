@@ -98,6 +98,7 @@ entrypoints==0.3
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 flyteidl==0.18.39
 =======
 flyteidl==0.18.37
@@ -111,6 +112,9 @@ flyteidl==0.18.39
 =======
 flyteidl==0.18.37
 >>>>>>> Sqlalchemy Task (#445)
+=======
+flyteidl==0.18.38
+>>>>>>> add new control plane classes (#425)
     # via flytekit
 gevent==21.1.2
     # via sagemaker-training
@@ -125,6 +129,7 @@ idna==2.10
 importlib-metadata==4.0.1
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     # via
     #   jsonschema
     #   keyring
@@ -133,6 +138,11 @@ importlib-metadata==4.0.1
 >>>>>>> Sqlalchemy Task (#445)
     # via keyring
 >>>>>>> Fix merge
+=======
+    # via
+    #   jsonschema
+    #   keyring
+>>>>>>> add new control plane classes (#425)
 inotify_simple==1.2.1
     # via sagemaker-training
 ipykernel==5.5.3
