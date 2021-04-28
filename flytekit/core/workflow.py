@@ -223,10 +223,12 @@ class WorkflowBase(object):
 
         ctx = FlyteContext.current_context()
 
+        # Get default agruements and override with kwargs passed in
+        input_kwargs = self.python_interface.default_inputs_as_kwargs
+        input_kwargs.update(kwargs)
+
         # The first condition is compilation.
         if ctx.compilation_state is not None:
-            input_kwargs = self.python_interface.default_inputs_as_kwargs
-            input_kwargs.update(kwargs)
             return create_and_link_node(ctx, entity=self, interface=self.python_interface, **input_kwargs)
 
         # This condition is hit when this workflow (self) is being called as part of a parent's workflow local run.
@@ -243,7 +245,7 @@ class WorkflowBase(object):
                 else:
                     return None
             # We are already in a local execution, just continue the execution context
-            return self._local_execute(ctx, **kwargs)
+            return self._local_execute(ctx, **input_kwargs)
 
         # Last is starting a local workflow execution
         else:
@@ -251,14 +253,14 @@ class WorkflowBase(object):
             # Even though the _local_execute call generally expects inputs to be Promises, we don't have to do the
             # conversion here in this loop. The reason is because we don't prevent users from specifying inputs
             # as direct scalars, which means there's another Promise-generating loop inside _local_execute too
-            for k, v in kwargs.items():
+            for k, v in input_kwargs.items():
                 if k not in self.interface.inputs:
                     raise ValueError(f"Received unexpected keyword argument {k}")
                 if isinstance(v, Promise):
                     raise ValueError(f"Received a promise for a workflow call, when expecting a native value for {k}")
 
             with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
-                result = self._local_execute(ctx, **kwargs)
+                result = self._local_execute(ctx, **input_kwargs)
 
             expected_outputs = len(self.python_interface.outputs)
             if expected_outputs == 0:
