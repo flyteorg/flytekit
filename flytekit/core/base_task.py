@@ -1,6 +1,6 @@
 import collections
 import datetime
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
@@ -30,6 +30,7 @@ from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
+from flytekit.core.tracked_abc import FlyteTrackedABC
 
 
 def kwtypes(**kwargs) -> Dict[str, Type]:
@@ -110,7 +111,52 @@ class IgnoreOutputs(Exception):
     pass
 
 
-class Task(object):
+class ExecutableTaskMixin(object):
+    def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
+        """
+        This is the method that will be invoked directly before executing the task method and before all the inputs
+        are converted. One particular case where this is useful is if the context is to be modified for the user process
+        to get some user space parameters. This also ensures that things like SparkSession are already correctly
+        setup before the type transformers are called
+
+        This should return either the same context of the mutated context
+        """
+        return user_params
+
+    def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
+        """
+        Post execute is called after the execution has completed, with the user_params and can be used to clean-up,
+        or alter the outputs to match the intended tasks outputs. If not overriden, then this function is a No-op
+
+        Args:
+            rval is returned value from call to execute
+            user_params: are the modified user params as created during the pre_execute step
+        """
+        return rval
+
+    @abstractmethod
+    def dispatch_execute(
+        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
+    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
+        """
+        This method translates Flyte's Type system based input values and invokes the actual call to the executor
+        This method is also invoked during runtime. It takes in a Flyte LiteralMap and returns a Flyte LiteralMap.
+        This should call execute below.
+
+        To support dynamic tasks, it can optionally return a DynamicJobSpec instead.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def execute(self, **kwargs) -> Any:
+        """
+        This function should take in Python native kwargs and return Python native values. This should be called by
+        dispatch execute.
+        """
+        raise NotImplementedError
+
+
+class Task(ExecutableTaskMixin, ABC):
     """
     The base of all Tasks in flytekit. This task is closest to the FlyteIDL TaskTemplate and captures information in
     FlyteIDL specification and does not have python native interfaces associated. For any real extension please
@@ -276,39 +322,11 @@ class Task(object):
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
         return None
 
-    @abstractmethod
-    def dispatch_execute(
-        self,
-        ctx: FlyteContext,
-        input_literal_map: _literal_models.LiteralMap,
-    ) -> _literal_models.LiteralMap:
-        """
-        This method translates Flyte's Type system based input values and invokes the actual call to the executor
-        This method is also invoked during runtime.
-        """
-        pass
-
-    @abstractmethod
-    def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
-        """
-        This is the method that will be invoked directly before executing the task method and before all the inputs
-        are converted. One particular case where this is useful is if the context is to be modified for the user process
-        to get some user space parameters. This also ensures that things like SparkSession are already correctly
-        setup before the type transformers are called
-
-        This should return either the same context of the mutated context
-        """
-        pass
-
-    @abstractmethod
-    def execute(self, **kwargs) -> Any:
-        pass
-
 
 T = TypeVar("T")
 
 
-class PythonTask(TrackedInstance, Task, Generic[T]):
+class PythonTask(TrackedInstance, Task, Generic[T], metaclass=FlyteTrackedABC):  # noqa: doesn't realize it's ABC
     """
     Base Class for all Tasks with a Python native ``Interface``. This should be directly used for task types, that do
     not have a python function to be executed. Otherwise refer to :py:class:`flytekit.PythonFunctionTask`.
@@ -343,7 +361,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._environment = environment if environment else {}
         self._task_config = task_config
 
-    # TODO lets call this interface and the other as flyte_interface?
     @property
     def python_interface(self) -> Interface:
         return self._python_interface
@@ -457,32 +474,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # After the execute has been successfully completed
             return outputs_literal_map
 
-    def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
-        """
-        This is the method that will be invoked directly before executing the task method and before all the inputs
-        are converted. One particular case where this is useful is if the context is to be modified for the user process
-        to get some user space parameters. This also ensures that things like SparkSession are already correctly
-        setup before the type transformers are called
-
-        This should return either the same context of the mutated context
-        """
-        return user_params
-
-    @abstractmethod
-    def execute(self, **kwargs) -> Any:
-        pass
-
-    def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
-        """
-        Post execute is called after the execution has completed, with the user_params and can be used to clean-up,
-        or alter the outputs to match the intended tasks outputs. If not overriden, then this function is a No-op
-
-        Args:
-            rval is returned value from call to execute
-            user_params: are the modified user params as created during the pre_execute step
-        """
-        return rval
-
     @property
     def environment(self) -> Dict[str, str]:
         return self._environment
@@ -536,7 +527,7 @@ class TaskResolverMixin(object):
         pass
 
     @abstractmethod
-    def load_task(self, loader_args: List[str]) -> Task:
+    def load_task(self, loader_args: List[str]) -> ExecutableTaskMixin:
         """
         Given the set of identifier keys, should return one Python Task or raise an error if not found
         """

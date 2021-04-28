@@ -1,4 +1,7 @@
-from flytekit.common.exceptions import scopes as _exception_scopes
+from typing import Optional, Union, Any
+
+from flytekit.core.context_manager import FlyteContext
+from flytekit.common.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.control_plane import identifier as _identifier
 from flytekit.control_plane import interface as _interfaces
@@ -7,10 +10,15 @@ from flytekit.models import common as _common_model
 from flytekit.models import task as _task_model
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import identifier as _identifier_model
+from flytekit.core.base_task import ExecutableTaskMixin
+from flytekit.core.task_executor import FlyteTaskExecutor
+from flytekit.models import literals as literal_models
+from flytekit.models import dynamic_job as dynamic_job
 
 
-class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
-    def __init__(self, id, type, metadata, interface, custom, container=None, task_type_version=0, config=None):
+class FlyteTask(ExecutableTaskMixin, _hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
+    def __init__(self, id, type, metadata, interface, custom, container=None, task_type_version=0, config=None,
+                 executor: Optional[FlyteTaskExecutor] = None):
         super(FlyteTask, self).__init__(
             id,
             type,
@@ -21,6 +29,12 @@ class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
             task_type_version=task_type_version,
             config=config,
         )
+
+        self._executor = executor
+
+    @property
+    def executor(self) -> Optional[FlyteTaskExecutor]:
+        return self._executor
 
     @property
     def interface(self) -> _interfaces.TypedInterface:
@@ -93,3 +107,23 @@ class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
         flyte_task = cls.promote_from_model(admin_task.closure.compiled_task.template)
         flyte_task._id = admin_task.id
         return flyte_task
+
+    def execute(self, **kwargs) -> Any:
+        """
+        This function directs execute to the executor instead of attempting to run itself.
+        """
+        if self.executor is None:
+            raise ValueError(f"Cannot execute without an executor")
+
+        return self.executor.execute_from_model(self, **kwargs)
+
+    def dispatch_execute(
+        self, ctx: FlyteContext, input_literal_map: literal_models.LiteralMap
+    ) -> Union[literal_models.LiteralMap, dynamic_job.DynamicJobSpec]:
+        """
+        This function directs execute to the executor instead of attempting to run itself.
+        """
+        if self.executor is None:
+            raise ValueError(f"Cannot run dispatch_execute without an executor")
+
+        return self.executor.dispatch_execute(ctx, self, input_literal_map)
