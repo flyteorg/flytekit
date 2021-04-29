@@ -25,7 +25,7 @@ T = TypeVar("T")
 TC = TypeVar("TC")
 
 
-class TaskTemplateExecutor(TrackedInstance, Generic[T]):
+class ShimTaskExecutor(TrackedInstance, Generic[T]):
     @classmethod
     def execute_from_model(cls, tt: _task_model.TaskTemplate, **kwargs) -> Any:
         raise NotImplementedError
@@ -120,8 +120,8 @@ class TaskTemplateExecutor(TrackedInstance, Generic[T]):
             return outputs_literal_map
 
 
-class ExecutorTask(object):
-    def __init__(self, tt: _task_model.TaskTemplate, executor: TaskTemplateExecutor):
+class ExecutableTemplateShimTask(object):
+    def __init__(self, tt: _task_model.TaskTemplate, executor: ShimTaskExecutor):
         self._executor = executor
         self._task_template = tt
 
@@ -130,7 +130,7 @@ class ExecutorTask(object):
         return self._task_template
 
     @property
-    def executor(self) -> TaskTemplateExecutor:
+    def executor(self) -> ShimTaskExecutor:
         return self._executor
 
     def execute(self, **kwargs) -> Any:
@@ -170,7 +170,7 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
         name: str,
         task_config: TC,
         container_image: str,
-        executor: TaskTemplateExecutor,
+        executor: ShimTaskExecutor,
         task_resolver: Optional[TaskTemplateResolver] = None,
         task_type="python-task",
         requests: Optional[Resources] = None,
@@ -243,7 +243,7 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
         return self._resources
 
     @property
-    def executor(self) -> TaskTemplateExecutor:
+    def executor(self) -> ShimTaskExecutor:
         return self._executor
 
     @property
@@ -365,7 +365,7 @@ class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
         task_template_model = _task_model.TaskTemplate.from_flyte_idl(task_template_proto)
 
         executor = load_executor(loader_args[1])
-        return ExecutorTask(task_template_model, executor)
+        return ExecutableTemplateShimTask(task_template_model, executor)
 
     def loader_args(self, settings: SerializationSettings, t: PythonThirdPartyContainerTask) -> List[str]:
         return ["{{.taskTemplatePath}}", f"{t.executor.__module__}.{t.executor.__name__}"]
