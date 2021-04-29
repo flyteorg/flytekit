@@ -12,7 +12,7 @@ attrs==20.3.0
     # via
     #   -c requirements.txt
     #   pytest
-black==20.8b1
+black==21.4b2
     # via
     #   -c requirements.txt
     #   -r dev-requirements.in
@@ -86,12 +86,8 @@ toml==0.10.2
     #   coverage
     #   pytest
 typed-ast==1.4.3
-    # via
-    #   -c requirements.txt
-    #   black
-    #   mypy
+    # via mypy
 typing-extensions==3.7.4.3
     # via
     #   -c requirements.txt
-    #   black
     #   mypy

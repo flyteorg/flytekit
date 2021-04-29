@@ -24,13 +24,13 @@ backcall==0.2.0
     # via ipython
 bcrypt==3.2.0
     # via paramiko
-black==20.8b1
+black==21.4b2
     # via papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.55
+boto3==1.17.60
     # via sagemaker-training
-botocore==1.20.55
+botocore==1.20.60
     # via
     #   boto3
     #   s3transfer
@@ -53,7 +53,7 @@ croniter==1.0.12
     # via flytekit
 cryptography==3.4.7
     # via paramiko
-dataclasses-json==0.5.2
+dataclasses-json==0.5.3
     # via flytekit
 decorator==5.0.7
     # via
@@ -71,7 +71,7 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.18.37
+flyteidl==0.18.39
     # via flytekit
 gevent==21.1.2
     # via sagemaker-training
@@ -235,19 +235,19 @@ requests==2.25.1
     #   flytekit
     #   papermill
     #   responses
-responses==0.13.2
+responses==0.13.3
     # via flytekit
 retry==0.9.2
     # via flytekit
 retrying==1.3.3
     # via sagemaker-training
-s3transfer==0.4.1
+s3transfer==0.4.2
     # via boto3
-sagemaker-training==3.9.1
+sagemaker-training==3.9.2
     # via flytekit
 scantree==0.0.1
     # via dirhash
-scipy==1.6.2
+scipy==1.6.3
     # via sagemaker-training
 six==1.15.0
     # via
@@ -296,12 +296,8 @@ traitlets==5.0.5
     #   nbclient
     #   nbconvert
     #   nbformat
-typed-ast==1.4.3
-    # via black
 typing-extensions==3.7.4.3
-    # via
-    #   black
-    #   typing-inspect
+    # via typing-inspect
 typing-inspect==0.6.0
     # via dataclasses-json
 urllib3==1.25.11
