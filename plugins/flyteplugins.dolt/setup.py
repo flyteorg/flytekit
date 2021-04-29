@@ -31,10 +31,7 @@ class PostDevelopCommand(develop):
             shlex.split("dolt config --global --add user.name 'Bojack Horseman'"),
         )
         subprocess.call(
-            shlex.split(
-                "dolt config --global --add metrics.host "
-                "eventsapi.awsdev.ld-corp.com"
-            ),
+            shlex.split("dolt config --global --add metrics.host " "eventsapi.awsdev.ld-corp.com"),
         )
         subprocess.call(shlex.split("dolt config --global --add metrics.port 443"))
 
