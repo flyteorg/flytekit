@@ -16,11 +16,13 @@ appnope==0.1.2
     # via
     #   ipykernel
     #   ipython
-<<<<<<< HEAD
 astroid==2.5.6
+<<<<<<< HEAD
 =======
 astroid==2.5.3
 >>>>>>> Sqlalchemy Task (#445)
+=======
+>>>>>>> Fix merge
     # via sphinx-autoapi
 async-generator==1.10
     # via nbclient
@@ -43,15 +45,17 @@ black==21.4b2
     # via papermill
 bleach==3.3.0
     # via nbconvert
-<<<<<<< HEAD
 boto3==1.17.60
     # via sagemaker-training
 botocore==1.20.60
+<<<<<<< HEAD
 =======
 boto3==1.17.55
     # via sagemaker-training
 botocore==1.20.55
 >>>>>>> Sqlalchemy Task (#445)
+=======
+>>>>>>> Fix merge
     # via
     #   boto3
     #   s3transfer
@@ -100,6 +104,7 @@ entrypoints==0.3
     #   papermill
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 flyteidl==0.18.39
 =======
 flyteidl==0.18.37
@@ -107,6 +112,9 @@ flyteidl==0.18.37
 =======
 flyteidl==0.18.38
 >>>>>>> add new control plane classes (#425)
+=======
+flyteidl==0.18.39
+>>>>>>> Fix merge
     # via flytekit
 furo==2021.4.11b34
     # via -r doc-requirements.in
@@ -125,9 +133,13 @@ idna==2.10
 imagesize==1.2.0
     # via sphinx
 importlib-metadata==4.0.1
+<<<<<<< HEAD
     # via
     #   jsonschema
     #   keyring
+=======
+    # via keyring
+>>>>>>> Fix merge
 inotify_simple==1.2.1
     # via sagemaker-training
 ipykernel==5.5.3
@@ -303,15 +315,17 @@ retry==0.9.2
     # via flytekit
 retrying==1.3.3
     # via sagemaker-training
-<<<<<<< HEAD
 s3transfer==0.4.2
     # via boto3
 sagemaker-training==3.9.2
+<<<<<<< HEAD
 =======
 s3transfer==0.4.1
     # via boto3
 sagemaker-training==3.9.1
 >>>>>>> Sqlalchemy Task (#445)
+=======
+>>>>>>> Fix merge
     # via flytekit
 scantree==0.0.1
     # via dirhash
@@ -340,11 +354,13 @@ sortedcontainers==2.3.0
     # via flytekit
 soupsieve==2.2.1
     # via beautifulsoup4
-<<<<<<< HEAD
 sphinx-autoapi==1.8.1
+<<<<<<< HEAD
 =======
 sphinx-autoapi==1.8.0
 >>>>>>> Sqlalchemy Task (#445)
+=======
+>>>>>>> Fix merge
     # via -r doc-requirements.in
 sphinx-code-include==1.1.1
     # via -r doc-requirements.in
@@ -410,6 +426,7 @@ traitlets==5.0.5
     #   nbconvert
     #   nbformat
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 typed-ast==1.4.3
 <<<<<<< HEAD
@@ -427,6 +444,10 @@ typing-extensions==3.7.4.3
     #   importlib-metadata
     #   typing-inspect
 >>>>>>> add new control plane classes (#425)
+=======
+typing-extensions==3.7.4.3
+    # via typing-inspect
+>>>>>>> Fix merge
 typing-inspect==0.6.0
     # via dataclasses-json
 unidecode==1.2.0
