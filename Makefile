@@ -1,4 +1,4 @@
-export REPOSITORY=flytepropeller
+export REPOSITORY=flytekit
 
 PIP_COMPILE = pip-compile --upgrade --verbose
 
