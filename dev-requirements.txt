@@ -23,20 +23,11 @@ bcrypt==3.2.0
     # via
     #   -c requirements.txt
     #   paramiko
-<<<<<<< HEAD
 black==21.4b2
-=======
-black==20.8b1
->>>>>>> master
     # via
     #   -c requirements.txt
     #   -r dev-requirements.in
     #   flake8-black
-<<<<<<< HEAD
-=======
-cached-property==1.5.2
-    # via docker-compose
->>>>>>> master
 certifi==2020.12.5
     # via
     #   -c requirements.txt
@@ -66,11 +57,7 @@ cryptography==3.4.7
     # via
     #   -c requirements.txt
     #   paramiko
-<<<<<<< HEAD
 dataclasses-json==0.5.3
-=======
-dataclasses-json==0.5.2
->>>>>>> master
     # via
     #   -c requirements.txt
     #   flytekit
@@ -111,11 +98,7 @@ flake8==3.9.1
     #   -r dev-requirements.in
     #   flake8-black
     #   flake8-isort
-<<<<<<< HEAD
 flyteidl==0.18.39
-=======
-flyteidl==0.18.38
->>>>>>> master
     # via
     #   -c requirements.txt
     #   flytekit
@@ -130,15 +113,7 @@ idna==2.10
 importlib-metadata==4.0.1
     # via
     #   -c requirements.txt
-<<<<<<< HEAD
     #   keyring
-=======
-    #   flake8
-    #   jsonschema
-    #   keyring
-    #   pluggy
-    #   pytest
->>>>>>> master
 iniconfig==1.1.1
     # via pytest
 isort==5.8.0
@@ -259,7 +234,7 @@ python-dateutil==2.8.1
     #   croniter
     #   flytekit
     #   pandas
-python-dotenv==0.17.0
+python-dotenv==0.17.1
     # via docker-compose
 pytimeparse==1.1.8
     # via
@@ -286,11 +261,7 @@ requests==2.25.1
     #   docker-compose
     #   flytekit
     #   responses
-<<<<<<< HEAD
 responses==0.13.3
-=======
-responses==0.13.2
->>>>>>> master
     # via
     #   -c requirements.txt
     #   flytekit
@@ -339,11 +310,8 @@ toml==0.10.2
     #   coverage
     #   pytest
 typed-ast==1.4.3
-<<<<<<< HEAD
     # via mypy
 typing-extensions==3.7.4.3
-=======
->>>>>>> master
     # via
     #   -c requirements.txt
     #   mypy
@@ -351,16 +319,6 @@ typing-extensions==3.7.4.3
 typing-inspect==0.6.0
     # via
     #   -c requirements.txt
-<<<<<<< HEAD
-=======
-    #   black
-    #   importlib-metadata
-    #   mypy
-    #   typing-inspect
-typing-inspect==0.6.0
-    # via
-    #   -c requirements.txt
->>>>>>> master
     #   dataclasses-json
 urllib3==1.25.11
     # via
