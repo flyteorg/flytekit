@@ -24,18 +24,18 @@ class PostDevelopCommand(develop):
         )
         subprocess.call(shlex.split(f"chmod +x {install}"))
         subprocess.call(shlex.split(f"sudo {install}"))
+
+        pref = "dolt config --global --add"
         subprocess.call(
-            shlex.split("dolt config --global --add user.email bojack@horseman.com"),
+            shlex.split(f"{pref} user.email bojack@horseman.com"),
         )
         subprocess.call(
-            shlex.split("dolt config --global --add user.name 'Bojack Horseman'"),
+            shlex.split(f"{pref} user.name 'Bojack Horseman'"),
         )
         subprocess.call(
-            shlex.split(
-                "dolt config --global --add metrics.host eventsapi.awsdev.ld-corp.com"
-            ),
+            shlex.split(f"{pref} metrics.host eventsapi.awsdev.ld-corp.com"),
         )
-        subprocess.call(shlex.split("dolt config --global --add metrics.port 443"))
+        subprocess.call(shlex.split(f"{pref} metrics.port 443"))
 
 
 setup(
