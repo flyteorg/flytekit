@@ -1,12 +1,43 @@
+import shlex
+import subprocess
+import urllib.request
+
 from setuptools import setup
+from setuptools.command.develop import develop
 
 PLUGIN_NAME = "dolt"
 
-microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
+microlib_name = f"flytekitplugins.{PLUGIN_NAME}"
 
 plugin_requires = ["flytekit>=0.16.0b0,<1.0.0", "dolt_integrations>=0.1.3"]
 
 __version__ = "0.0.0+develop"
+
+
+class PostDevelopCommand(develop):
+    """Post-installation for development mode."""
+
+    def run(self):
+        develop.run(self)
+        install, _ = urllib.request.urlretrieve(
+            "https://github.com/liquidata-inc/dolt/releases/latest/download/install.sh"
+        )
+        subprocess.call(shlex.split(f"chmod +x {install}"))
+        subprocess.call(shlex.split(f"sudo {install}"))
+        subprocess.call(
+            shlex.split("dolt config --global --add user.email bojack@horseman.com"),
+        )
+        subprocess.call(
+            shlex.split("dolt config --global --add user.name 'Bojack Horseman'"),
+        )
+        subprocess.call(
+            shlex.split(
+                "dolt config --global --add metrics.host "
+                "eventsapi.awsdev.ld-corp.com"
+            ),
+        )
+        subprocess.call(shlex.split("dolt config --global --add metrics.port 443"))
+
 
 setup(
     name=microlib_name,
@@ -17,6 +48,7 @@ setup(
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
+    cmdclass=dict(develop=PostDevelopCommand),
     license="apache2",
     python_requires=">=3.7",
     classifiers=[
