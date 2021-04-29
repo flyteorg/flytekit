@@ -84,9 +84,7 @@ hmsclient==0.1.1
 idna==2.10
     # via requests
 importlib-metadata==4.0.1
-    # via
-    #   jsonschema
-    #   keyring
+    # via keyring
 inotify_simple==1.2.1
     # via sagemaker-training
 ipykernel==5.5.3

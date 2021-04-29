@@ -17,13 +17,17 @@ attrs==20.3.0
     #   -c requirements.txt
     #   jsonschema
     #   pytest
+    #   pytest-docker
+    #   scantree
+bcrypt==3.2.0
+    # via
+    #   -c requirements.txt
+    #   paramiko
 black==21.4b2
     # via
     #   -c requirements.txt
     #   -r dev-requirements.in
     #   flake8-black
-cached-property==1.5.2
-    # via docker-compose
 certifi==2020.12.5
     # via
     #   -c requirements.txt
@@ -53,7 +57,7 @@ cryptography==3.4.7
     # via
     #   -c requirements.txt
     #   paramiko
-dataclasses-json==0.5.2
+dataclasses-json==0.5.3
     # via
     #   -c requirements.txt
     #   flytekit
@@ -94,7 +98,7 @@ flake8==3.9.1
     #   -r dev-requirements.in
     #   flake8-black
     #   flake8-isort
-flyteidl==0.18.38
+flyteidl==0.18.39
     # via
     #   -c requirements.txt
     #   flytekit
@@ -109,11 +113,7 @@ idna==2.10
 importlib-metadata==4.0.1
     # via
     #   -c requirements.txt
-    #   flake8
-    #   jsonschema
     #   keyring
-    #   pluggy
-    #   pytest
 iniconfig==1.1.1
     # via pytest
 isort==5.8.0
@@ -261,7 +261,7 @@ requests==2.25.1
     #   docker-compose
     #   flytekit
     #   responses
-responses==0.13.2
+responses==0.13.3
     # via
     #   -c requirements.txt
     #   flytekit
