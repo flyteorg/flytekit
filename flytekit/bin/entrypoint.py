@@ -96,7 +96,7 @@ def _dispatch_execute(
         ctx.file_access.get_data(inputs_path, local_inputs_file)
         input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
-        from flytekit.core.python_third_party_task import ExecutableTemplateShimTask
+        from flytekit.core.shim_task import ExecutableTemplateShimTask
 
         # Step2
         if isinstance(task_def, PythonTask):
