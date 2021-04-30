@@ -6,7 +6,6 @@ from datetime import timedelta
 import pytest
 from flyteidl.core import errors_pb2
 
-from flytekit import kwtypes
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import (
     DictTransformer,
@@ -20,7 +19,6 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.file.file import FlyteFile
-from flytekit.types.schema import FlyteSchema, SchemaFormat
 
 
 def test_type_engine():
@@ -90,12 +88,6 @@ def test_file_format_getting_python_value():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile["txt"])
     assert isinstance(pv, FlyteFile)
     assert pv.extension() == "txt"
-
-
-def test_typed_schema():
-    s = FlyteSchema[kwtypes(x=int, y=float)]
-    assert s.format() == SchemaFormat.PARQUET
-    assert s.columns() == {"x": int, "y": float}
 
 
 def test_dict_transformer():
@@ -239,14 +231,6 @@ def test_guessing_containers():
     lt = model_types.LiteralType(map_value_type=dur)
     pt = TypeEngine.guess_python_type(lt)
     assert pt == typing.Dict[str, timedelta]
-
-
-def test_schema_back_and_forth():
-    orig = FlyteSchema[kwtypes(TrackId=int, Name=str)]
-    lt = TypeEngine.to_literal_type(orig)
-    pt = TypeEngine.guess_python_type(lt)
-    lt2 = TypeEngine.to_literal_type(pt)
-    assert lt == lt2
 
 
 def test_zero_floats():
