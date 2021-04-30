@@ -37,7 +37,6 @@ test: lint ## Run tests
 	pytest tests/flytekit/unit
 	pytest tests/scripts
 	pytest plugins/tests
-	shellcheck **/*.sh
 
 .PHONY: unit_test
 unit_test:
