@@ -200,8 +200,7 @@ class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
         task_template_model = _task_model.TaskTemplate.from_flyte_idl(task_template_proto)
 
         executor_class = load_object_from_module(loader_args[1])
-        executor = executor_class()
-        return ExecutableTemplateShimTask(task_template_model, executor)
+        return ExecutableTemplateShimTask(task_template_model, executor_class)
 
     def loader_args(self, settings: SerializationSettings, t: PythonThirdPartyContainerTask) -> List[str]:
         return ["{{.taskTemplatePath}}", f"{t.executor_type.__module__}.{t.executor_type.__name__}"]
