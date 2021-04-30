@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import os
 from typing import Any, Dict, List, Optional, TypeVar, Union
 
@@ -19,11 +18,18 @@ from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as identifier_models
 from flytekit.models.security import Secret, SecurityContext
+from flytekit.tools.module_loader import load_object_from_module
 
 TC = TypeVar("TC")
 
 
 class PythonThirdPartyContainerTask(PythonTask[TC]):
+    """
+    Please take a look at the comments for ``ExecutableTemplateShimTask`` as well. This class should be subclassed
+    and a custom Executor provided as a default to this parent class constructor when building a new external-container
+    flytekit-only plugin.
+    """
+
     SERIALIZE_SETTINGS = SerializationSettings(
         project="PLACEHOLDER_PROJECT",
         domain="LOCAL",
@@ -49,12 +55,13 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
         """
         :param name: unique name for the task, usually the function's module and name.
         :param task_config: Configuration object for Task. Should be a unique type for that specific Task
+        :param container_image: This is the external container image the task should run at platform-run-time.
+        :param executor: This is an executor which will actually provide the business logic.
+        :param task_resolver: Custom resolver - if you don't make one, use the default task template resolver.
         :param task_type: String task type to be associated with this Task
         :param requests: custom resource request settings.
         :param limits: custom resource limit settings.
         :param environment: Environment variables you want the task to have when run.
-        :param task_resolver: Custom resolver - will pick up the default resolver if empty, or the resolver set
-          in the compilation context if one is set.
         :param List[Secret] secret_requests: Secrets that are requested by this container execution. These secrets will
                                            be mounted based on the configuration in the Secret and available through
                                            the SecretManager using the name of the secret as the group
@@ -182,15 +189,7 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
 
     def execute(self, **kwargs) -> Any:
         """
-        This function overrides the default task execute behavior.
-
-        Execution for third-party tasks is different from tasks that run the user workflow container.
-        1. Serialize the task out to a TaskTemplate.
-        2. Pass the template over to the Executor to run, along with the input arguments.
-        3. Executor will reconstruct the Python task class object, before running the e
-
-        When overridden for unit testing using the patch operator, all these steps will be skipped and the mocked code,
-        which should just take in and return Python native values, will be run.
+        This function overrides the default task execute behavior. Invoke the executor's ``execute_from_model`` instead
         """
         tt = self.task_template or self.serialize_to_model(settings=PythonThirdPartyContainerTask.SERIALIZE_SETTINGS)
         return self.executor.execute_from_model(tt, **kwargs)
@@ -199,21 +198,11 @@ class PythonThirdPartyContainerTask(PythonTask[TC]):
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
     ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
-        This function overrides the default task execute behavior.
+        This function overrides the default task execute behavior. Instead of calling a Python function like we
+        normally do, we have to first serialize the task into a ``TaskTemplate`` and then invoke the executor on it.
         """
         tt = self.task_template or self.serialize_to_model(settings=PythonThirdPartyContainerTask.SERIALIZE_SETTINGS)
         return self.executor.dispatch_execute(ctx, tt, input_literal_map)
-
-
-def load_executor(object_location: str) -> Any:
-    """
-    Copied from entrypoint
-    """
-    class_obj = object_location.split(".")
-    class_obj_mod = class_obj[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
-    class_obj_key = class_obj[-1]  # e.g. 'default_task_class_obj'
-    class_obj_mod = importlib.import_module(".".join(class_obj_mod))
-    return getattr(class_obj_mod, class_obj_key)
 
 
 class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
@@ -233,7 +222,7 @@ class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
         task_template_proto = common_utils.load_proto_from_file(_tasks_pb2.TaskTemplate, task_template_local_path)
         task_template_model = _task_model.TaskTemplate.from_flyte_idl(task_template_proto)
 
-        executor = load_executor(loader_args[1])
+        executor = load_object_from_module(loader_args[1])
         return ExecutableTemplateShimTask(task_template_model, executor)
 
     def loader_args(self, settings: SerializationSettings, t: PythonThirdPartyContainerTask) -> List[str]:

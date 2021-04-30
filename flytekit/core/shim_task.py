@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Union, Generic, TypeVar
+from typing import Any, Generic, TypeVar, Union
 
-from flytekit import FlyteContext, ExecutionParameters, logger
+from flytekit import ExecutionParameters, FlyteContext, logger
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
-from flytekit.models import task as _task_model, literals as _literal_models, dynamic_job as _dynamic_job
+from flytekit.models import dynamic_job as _dynamic_job
+from flytekit.models import literals as _literal_models
+from flytekit.models import task as _task_model
 
 
 class ExecutableTemplateShimTask(object):
@@ -27,6 +29,7 @@ class ExecutableTemplateShimTask(object):
        This is because when a task is serialized from Python into the ``TaskTemplate`` some information is lost because
        Flyte IDL can't keep track of every single Python type (or Java type if writing in the Java flytekit).
     """
+
     def __init__(self, tt: _task_model.TaskTemplate, executor: ShimTaskExecutor):
         self._executor = executor
         self._task_template = tt

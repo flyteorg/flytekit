@@ -37,6 +37,7 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
+from flytekit.tools.module_loader import load_object_from_module
 
 
 def _compute_array_job_index():
@@ -297,18 +298,6 @@ def _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_outp
             )
 
 
-def _load_resolver(resolver_location: str) -> TaskResolverMixin:
-    # Load the actual resolver - this cannot be a nested thing, whatever kind of resolver it is, it has to be loadable
-    # directly from importlib
-    # TODO: Handle corner cases, like where the first part is [] maybe
-    # e.g. flytekit.core.python_auto_container.default_task_resolver
-    resolver = resolver_location.split(".")
-    resolver_mod = resolver[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
-    resolver_key = resolver[-1]  # e.g. 'default_task_resolver'
-    resolver_mod = _importlib.import_module(".".join(resolver_mod))
-    return getattr(resolver_mod, resolver_key)
-
-
 @_scopes.system_entry_point
 def _execute_task(
     inputs,
@@ -348,7 +337,7 @@ def _execute_task(
 
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with setup_execution(raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir) as ctx:
-            resolver_obj = _load_resolver(resolver)
+            resolver_obj = load_object_from_module(resolver)
             # Use the resolver to load the actual task object
             _task_def = resolver_obj.load_task(loader_args=resolver_args)
             if test:
@@ -376,7 +365,7 @@ def _execute_map_task(
 
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
         with setup_execution(raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir) as ctx:
-            resolver_obj = _load_resolver(resolver)
+            resolver_obj = load_object_from_module(resolver)
             # Use the resolver to load the actual task object
             _task_def = resolver_obj.load_task(loader_args=resolver_args)
             if not isinstance(_task_def, PythonFunctionTask):
