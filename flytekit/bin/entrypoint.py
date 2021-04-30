@@ -22,7 +22,7 @@ from flytekit.configuration import TemporaryConfiguration as _TemporaryConfigura
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
-from flytekit.core.base_task import IgnoreOutputs, PythonTask, TaskResolverMixin
+from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise

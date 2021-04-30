@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import importlib
 import re
-from abc import abstractmethod
 from typing import Dict, List, Optional, TypeVar
 
 from flytekit.common.tasks.raw_container import _get_container_definition
