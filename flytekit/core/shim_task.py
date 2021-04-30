@@ -9,6 +9,24 @@ from flytekit.models import task as _task_model, literals as _literal_models, dy
 
 
 class ExecutableTemplateShimTask(object):
+    """
+    The canonical ``@task`` decorated Python function task is pretty simple to reason about. At execution time (either
+    locally or on a Flyte cluster), the function runs.
+
+    This class, along with the ``ShimTaskExecutor`` class below, represents another execution pattern. This pattern,
+    has two components:
+      * The ``TaskTemplate``, or something like it like a ``FlyteTask``.
+      * An executor, which can use information from the task template (including the ``custom`` field)
+
+    Basically at execution time (both locally and on a Flyte cluster), the task template is given to the executor,
+    which is responsible for computing and returning the results.
+
+    .. note::
+
+       The interface at execution time will have to derived from the Flyte IDL interface, which means it may be lossy.
+       This is because when a task is serialized from Python into the ``TaskTemplate`` some information is lost because
+       Flyte IDL can't keep track of every single Python type (or Java type if writing in the Java flytekit).
+    """
     def __init__(self, tt: _task_model.TaskTemplate, executor: ShimTaskExecutor):
         self._executor = executor
         self._task_template = tt
@@ -23,15 +41,7 @@ class ExecutableTemplateShimTask(object):
 
     def execute(self, **kwargs) -> Any:
         """
-        This function overrides the default task execute behavior.
-
-        Execution for third-party tasks is different from tasks that run the user workflow container.
-        1. Serialize the task out to a TaskTemplate.
-        2. Pass the template over to the Executor to run, along with the input arguments.
-        3. Executor will reconstruct the Python task class object, before running the e
-
-        When overridden for unit testing using the patch operator, all these steps will be skipped and the mocked code,
-        which should just take in and return Python native values, will be run.
+        Send things off to the executor instead of running here.
         """
         return self.executor.execute_from_model(self.task_template, **kwargs)
 
@@ -39,7 +49,7 @@ class ExecutableTemplateShimTask(object):
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
     ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
-        This function overrides the default task execute behavior.
+        Send things off to the executor instead of running here.
         """
         return self.executor.dispatch_execute(ctx, self.task_template, input_literal_map)
 
@@ -50,6 +60,15 @@ T = TypeVar("T")
 class ShimTaskExecutor(TrackedInstance, Generic[T]):
     @classmethod
     def execute_from_model(cls, tt: _task_model.TaskTemplate, **kwargs) -> Any:
+        """
+        This function must be overridden and is where all the business logic for running a task should live. Keep in
+        mind that you're only working with the ``TaskTemplate``. You won't have access to any information in the task
+        that wasn't serialized into the template.
+
+        :param tt: This is the template, the serialized form of the task.
+        :param kwargs: These are the Python native input values to the task.
+        :return: Python native output values from the task.
+        """
         raise NotImplementedError
 
     @classmethod
@@ -73,6 +92,18 @@ class ShimTaskExecutor(TrackedInstance, Generic[T]):
         """
         This function is copied from PythonTask.dispatch_execute. Will need to make it a mixin and refactor in the
         future.
+
+        Execution for third-party tasks is different from tasks that run the user workflow container.
+
+        #. A ``TaskTemplate`` is required instead of operating on ``self`` (the Python task object).
+        #. The input arguments, given as a LiteralMap, are converted to native values using a Python interface that is
+           inferred from the Flyte interface, but this process is lossy.
+        #. The template is passed over to the Executor to run, along with the input arguments.
+        #. Executor will run from the ``TaskTemplate`` and the input args, and the result will be converted back
+           to Flyte literals.
+
+        The reason that all the LiteralMap conversion logic lives here instead of the ``ExecutableTemplateShimTask``
+        is because if it were there, even local runs would require us to build an instance of that class.
         """
 
         # Invoked before the task is executed

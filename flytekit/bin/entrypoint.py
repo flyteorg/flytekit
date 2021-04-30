@@ -34,7 +34,6 @@ from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
-from flytekit.models import task as task_models
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
@@ -99,9 +98,7 @@ def _dispatch_execute(
         from flytekit.core.shim_task import ExecutableTemplateShimTask
 
         # Step2
-        if isinstance(task_def, PythonTask):
-            outputs = task_def.dispatch_execute(ctx, idl_input_literals)
-        elif isinstance(task_def, ExecutableTemplateShimTask):
+        if isinstance(task_def, PythonTask) or isinstance(task_def, ExecutableTemplateShimTask):
             outputs = task_def.dispatch_execute(ctx, idl_input_literals)
         else:
             raise Exception("Task def was neither PythonTask nor TaskTemplate")
