@@ -1,6 +1,7 @@
 import typing
 
 import pytest
+from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
 from flytekit.core import launch_plan, notification
 from flytekit.core.schedule import CronSchedule
@@ -8,7 +9,6 @@ from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.models.common import AuthRole
 from flytekit.models.core import execution as _execution_model
-from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
 
 def test_lp():
@@ -38,6 +38,7 @@ def test_lp():
     lp_with_defaults = launch_plan.LaunchPlan.create("get_or_create2", wf, default_inputs={"a": 3})
     assert lp_with_defaults.parameters.parameters["a"].default.scalar.primitive.integer == 3
 
+
 def test_lp_each_parameter():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
@@ -50,7 +51,9 @@ def test_lp_each_parameter():
         return x, y
 
     # Fixed Inputs Parameter
-    fixed_lp = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_fixed", fixed_inputs={"a": 1, "c": "4"})
+    fixed_lp = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_fixed", fixed_inputs={"a": 1, "c": "4"}
+    )
     fixed_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_fixed")
 
     with pytest.raises(AssertionError):
@@ -64,17 +67,27 @@ def test_lp_each_parameter():
     assert schedule_lp is schedule_lp1
 
     # Default Inputs Parameter
-    default_lp = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_schedule", default_inputs={"a": 9})
-    default_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_schedule", default_inputs={"a": 19})
+    default_lp = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_schedule", default_inputs={"a": 9}
+    )
+    default_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_schedule", default_inputs={"a": 19}
+    )
 
     # Validates both schedule and default inputs owing to the same launch plan
     with pytest.raises(AssertionError):
         assert default_lp is default_lp1
 
     # Notifications Parameter
-    email_notif = notification.Email(phases=[_execution_model.WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
-    notification_lp = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_notification", notifications=email_notif)
-    notification_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_notification", notifications=email_notif)
+    email_notif = notification.Email(
+        phases=[_execution_model.WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"]
+    )
+    notification_lp = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_notification", notifications=email_notif
+    )
+    notification_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_notification", notifications=email_notif
+    )
 
     assert notification_lp is notification_lp1
 
@@ -92,6 +105,7 @@ def test_lp_each_parameter():
     name_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf)
 
     assert name_lp is name_lp1
+
 
 def test_lp_all_parameters():
     @task
