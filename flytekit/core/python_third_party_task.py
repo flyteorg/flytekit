@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Optional, TypeVar, Union
+from typing import Any, Dict, List, Optional, TypeVar
 
 from flyteidl.core import tasks_pb2 as _tasks_pb2
 
@@ -13,8 +13,6 @@ from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.shim_task import ExecutableTemplateShimTask, ShimTaskExecutor
 from flytekit.core.tracker import TrackedInstance
 from flytekit.loggers import logger
-from flytekit.models import dynamic_job as _dynamic_job
-from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as identifier_models
 from flytekit.models.security import Secret, SecurityContext
