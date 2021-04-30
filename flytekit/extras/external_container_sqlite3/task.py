@@ -76,7 +76,7 @@ class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3C
             name=name,
             task_config=task_config,
             container_image="flytekit-sqlite3:123",
-            executor=SQLite3TaskExecutor,
+            executor_type=SQLite3TaskExecutor,
             task_type=self._SQLITE_TASK_TYPE,
             query_template=query_template,
             inputs=inputs,
@@ -98,8 +98,7 @@ class SQLite3Task(PythonThirdPartyContainerTask[SQLite3Config], SQLTask[SQLite3C
 
 
 class SQLite3TaskExecutor(ShimTaskExecutor[SQLite3Task]):
-    @classmethod
-    def execute_from_model(cls, tt: task_models.TaskTemplate, **kwargs) -> typing.Any:
+    def execute_from_model(self, tt: task_models.TaskTemplate, **kwargs) -> typing.Any:
         with tempfile.TemporaryDirectory() as temp_dir:
             ctx = FlyteContext.current_context()
             file_ext = os.path.basename(tt.custom["uri"])

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Generic, TypeVar, Union
+from typing import Any, Generic, Type, TypeVar, Union
 
 from flytekit import ExecutionParameters, FlyteContext, logger
 from flytekit.core.tracker import TrackedInstance
@@ -30,8 +30,9 @@ class ExecutableTemplateShimTask(object):
        Flyte IDL can't keep track of every single Python type (or Java type if writing in the Java flytekit).
     """
 
-    def __init__(self, tt: _task_model.TaskTemplate, executor: ShimTaskExecutor, *args, **kwargs):
-        self._executor = executor
+    def __init__(self, tt: _task_model.TaskTemplate, executor_type: Type[ShimTaskExecutor], *args, **kwargs):
+        self._executor_type = executor_type
+        self._executor = executor_type()
         self._task_template = tt
         super().__init__(*args, **kwargs)
 
@@ -42,6 +43,10 @@ class ExecutableTemplateShimTask(object):
     @property
     def executor(self) -> ShimTaskExecutor:
         return self._executor
+
+    @property
+    def executor_type(self) -> Type[ShimTaskExecutor]:
+        return self._executor_type
 
     def execute(self, **kwargs) -> Any:
         """
@@ -62,8 +67,7 @@ T = TypeVar("T")
 
 
 class ShimTaskExecutor(TrackedInstance, Generic[T]):
-    @classmethod
-    def execute_from_model(cls, tt: _task_model.TaskTemplate, **kwargs) -> Any:
+    def execute_from_model(self, tt: _task_model.TaskTemplate, **kwargs) -> Any:
         """
         This function must be overridden and is where all the business logic for running a task should live. Keep in
         mind that you're only working with the ``TaskTemplate``. You won't have access to any information in the task
@@ -75,23 +79,20 @@ class ShimTaskExecutor(TrackedInstance, Generic[T]):
         """
         raise NotImplementedError
 
-    @classmethod
-    def pre_execute(cls, user_params: ExecutionParameters) -> ExecutionParameters:
+    def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
         """
         This function is a stub, just here to keep dispatch_execute compatibility between this class and PythonTask.
         """
         return user_params
 
-    @classmethod
-    def post_execute(cls, user_params: ExecutionParameters, rval: Any) -> Any:
+    def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
         """
         This function is a stub, just here to keep dispatch_execute compatibility between this class and PythonTask.
         """
         return rval
 
-    @classmethod
     def dispatch_execute(
-        cls, ctx: FlyteContext, tt: _task_model.TaskTemplate, input_literal_map: _literal_models.LiteralMap
+        self, ctx: FlyteContext, tt: _task_model.TaskTemplate, input_literal_map: _literal_models.LiteralMap
     ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
         This function is copied from PythonTask.dispatch_execute. Will need to make it a mixin and refactor in the
@@ -111,7 +112,7 @@ class ShimTaskExecutor(TrackedInstance, Generic[T]):
         """
 
         # Invoked before the task is executed
-        new_user_params = cls.pre_execute(ctx.user_space_params)
+        new_user_params = self.pre_execute(ctx.user_space_params)
 
         # Create another execution context with the new user params, but let's keep the same working dir
         with ctx.new_execution_context(
@@ -126,7 +127,7 @@ class ShimTaskExecutor(TrackedInstance, Generic[T]):
 
             logger.info(f"Invoking FlyteTask executor {tt.id.name} with inputs: {native_inputs}")
             try:
-                native_outputs = cls.execute_from_model(tt, **native_inputs)
+                native_outputs = self.execute_from_model(tt, **native_inputs)
             except Exception as e:
                 logger.exception(f"Exception when executing {e}")
                 raise e
@@ -134,7 +135,7 @@ class ShimTaskExecutor(TrackedInstance, Generic[T]):
             logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
             # Lets run the post_execute method. This may result in a IgnoreOutputs Exception, which is
             # bubbled up to be handled at the callee layer.
-            native_outputs = cls.post_execute(new_user_params, native_outputs)
+            native_outputs = self.post_execute(new_user_params, native_outputs)
 
             # Short circuit the translation to literal map because what's returned may be a dj spec (or an
             # already-constructed LiteralMap if the dynamic task was a no-op), not python native values

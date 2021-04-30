@@ -79,7 +79,6 @@ def _dispatch_execute(
     task_def: PythonTask,
     inputs_path: str,
     output_prefix: str,
-    executor=None,
 ):
     """
     Dispatches execute to PythonTask

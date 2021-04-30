@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Optional, TypeVar
+from typing import Any, Dict, List, Optional, Type, TypeVar
 
 from flyteidl.core import tasks_pb2 as _tasks_pb2
 
@@ -41,7 +41,7 @@ class PythonThirdPartyContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
         name: str,
         task_config: TC,
         container_image: str,
-        executor: ShimTaskExecutor,
+        executor_type: Type[ShimTaskExecutor],
         task_resolver: Optional[TaskTemplateResolver] = None,
         task_type="python-task",
         requests: Optional[Resources] = None,
@@ -81,7 +81,7 @@ class PythonThirdPartyContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
             sec_ctx = SecurityContext(secrets=secret_requests)
         super().__init__(
             tt=None,
-            executor=executor,
+            executor_type=executor_type,
             task_type=task_type,
             name=name,
             task_config=task_config,
@@ -199,11 +199,12 @@ class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
         task_template_proto = common_utils.load_proto_from_file(_tasks_pb2.TaskTemplate, task_template_local_path)
         task_template_model = _task_model.TaskTemplate.from_flyte_idl(task_template_proto)
 
-        executor = load_object_from_module(loader_args[1])
+        executor_class = load_object_from_module(loader_args[1])
+        executor = executor_class()
         return ExecutableTemplateShimTask(task_template_model, executor)
 
     def loader_args(self, settings: SerializationSettings, t: PythonThirdPartyContainerTask) -> List[str]:
-        return ["{{.taskTemplatePath}}", f"{t.executor.__module__}.{t.executor.__name__}"]
+        return ["{{.taskTemplatePath}}", f"{t.executor_type.__module__}.{t.executor_type.__name__}"]
 
     def get_all_tasks(self) -> List[Task]:
         return []
