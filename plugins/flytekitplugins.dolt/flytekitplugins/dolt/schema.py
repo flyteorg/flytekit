@@ -54,7 +54,7 @@ class DoltTableNameTransformer(TypeTransformer[DoltTable]):
             raise AssertionError(f"Value cannot be converted to a table: {python_val}")
 
         conf = python_val.config
-        if python_val.data is not None and python_val.tablename is not None:
+        if python_val.data is not None and python_val.config.tablename is not None:
             db = dolt.Dolt(conf.db_path)
             with tempfile.NamedTemporaryFile() as f:
                 python_val.data.to_csv(f.name, index=False)
