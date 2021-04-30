@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "flytesqlalchemy"
+PLUGIN_NAME = "sqlalchemy"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
