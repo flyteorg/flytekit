@@ -288,3 +288,25 @@ def test_subworkflow_condition_single_named_tuple():
         return conditional("test").if_(x == 2).then(t().b).else_().then(wf1().b)
 
     assert branching(x=2) == 5
+
+
+def test_nested_condition():
+    @workflow
+    def multiplier_2(my_input: float) -> float:
+        return (
+            conditional("fractions")
+                .if_((my_input > 0.1) & (my_input < 1.0))
+                .then(
+                conditional("inner_fractions")
+                    .if_(my_input < 0.5)
+                    .then(double(n=my_input))
+                    .else_()
+                    .fail("Only <0.5 allowed"))
+                .elif_((my_input > 1.0) & (my_input < 10.0))
+                .then(square(n=my_input))
+                .else_()
+                .fail("The input must be between 0 and 10")
+        )
+
+    multiplier_2(my_input=0.2)
+

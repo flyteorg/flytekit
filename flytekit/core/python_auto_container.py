@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, TypeVar
 
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteContext, ImageConfig, SerializationSettings
+from flytekit.core.context_manager import ImageConfig, SerializationSettings, FlyteContextManager
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracker import TrackedInstance
 from flytekit.loggers import logger
@@ -90,7 +90,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         )
         self._environment = environment
 
-        compilation_state = FlyteContext.current_context().compilation_state
+        compilation_state = FlyteContextManager.current_context().compilation_state
         if compilation_state and compilation_state.task_resolver:
             if task_resolver:
                 logger.info(

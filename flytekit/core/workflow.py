@@ -10,7 +10,8 @@ from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import BranchEvalMode, CompilationState, ExecutionState, FlyteContext, FlyteEntities
+from flytekit.core.context_manager import BranchEvalMode, CompilationState, ExecutionState, FlyteContext, FlyteEntities, \
+    FlyteContextManager
 from flytekit.core.interface import (
     Interface,
     transform_inputs_to_parameters,
@@ -221,7 +222,7 @@ class WorkflowBase(object):
         if len(args) > 0:
             raise AssertionError("Only Keyword Arguments are supported for Workflow executions")
 
-        ctx = FlyteContext.current_context()
+        ctx = FlyteContextManager.current_context()
 
         # Get default agruements and override with kwargs passed in
         input_kwargs = self.python_interface.default_inputs_as_kwargs
@@ -259,8 +260,10 @@ class WorkflowBase(object):
                 if isinstance(v, Promise):
                     raise ValueError(f"Received a promise for a workflow call, when expecting a native value for {k}")
 
-            with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
-                result = self._local_execute(ctx, **input_kwargs)
+            b = ctx.with_execution_state(
+                ctx.new_execution_state(m=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION).build())
+            with FlyteContextManager.with_context(b.build()) as child_ctx:
+                result = self._local_execute(child_ctx, **input_kwargs)
 
             expected_outputs = len(self.python_interface.outputs)
             if expected_outputs == 0:
@@ -602,11 +605,13 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics
         a 'closure' in the traditional sense of the word.
         """
-        ctx = FlyteContext.current_context()
+        ctx = FlyteContextManager.current_context()
         self._input_parameters = transform_inputs_to_parameters(ctx, self.python_interface)
         all_nodes = []
         prefix = f"{ctx.compilation_state.prefix}-{self.short_name}-" if ctx.compilation_state is not None else None
-        with ctx.new_compilation_context(prefix=prefix, task_resolver=self) as comp_ctx:
+
+        with FlyteContextManager.with_context(
+                ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=self)).build()) as comp_ctx:
             # Construct the default input promise bindings, but then override with the provided inputs, if any
             input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
             input_kwargs.update(kwargs)

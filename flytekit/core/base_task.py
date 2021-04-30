@@ -11,7 +11,7 @@ from flytekit.core.context_manager import (
     ExecutionState,
     FlyteContext,
     FlyteEntities,
-    SerializationSettings,
+    SerializationSettings, FlyteContextManager,
 )
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.promise import (
@@ -240,7 +240,7 @@ class Task(object):
                 f"Aborting execution as detected {len(args)} positional args {args}"
             )
 
-        ctx = FlyteContext.current_context()
+        ctx = FlyteContextManager.current_context()
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
             return self.compile(ctx, *args, **kwargs)
         elif (
@@ -259,9 +259,9 @@ class Task(object):
         else:
             logger.warning("task run without context - executing raw function")
             new_user_params = self.pre_execute(ctx.user_space_params)
-            with ctx.new_execution_context(
-                mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION, execution_params=new_user_params
-            ):
+            b = ctx.new_execution_state(m=ExecutionState.Mode.LOCAL_TASK_EXECUTION)
+            b.user_space_params = new_user_params
+            with FlyteContextManager.with_context(ctx.with_execution_state(b.build())):
                 return self.execute(**kwargs)
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
@@ -390,13 +390,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
+        b = ctx.execution_state.new_builder()
+        b.execution_params = new_user_params
 
         # Create another execution context with the new user params, but let's keep the same working dir
-        with ctx.new_execution_context(
-            mode=ctx.execution_state.mode,
-            execution_params=new_user_params,
-            working_dir=ctx.execution_state.working_dir,
-        ) as exec_ctx:
+        with FlyteContextManager.with_context(ctx.with_execution_state(b.build()).build()) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
             native_inputs = TypeEngine.literal_map_to_kwargs(exec_ctx, input_literal_map, self.python_interface.inputs)
