@@ -1,3 +1,4 @@
+import contextlib
 import datetime as _datetime
 import importlib as _importlib
 import logging as _logging
@@ -151,9 +152,6 @@ def _dispatch_execute(
 
     ctx.file_access.upload_directory(ctx.execution_state.engine_dir, output_prefix)
     _logging.info(f"Engine folder written successfully to the output prefix {output_prefix}")
-
-
-import contextlib
 
 
 @contextlib.contextmanager
