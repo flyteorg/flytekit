@@ -30,9 +30,10 @@ class ExecutableTemplateShimTask(object):
        Flyte IDL can't keep track of every single Python type (or Java type if writing in the Java flytekit).
     """
 
-    def __init__(self, tt: _task_model.TaskTemplate, executor: ShimTaskExecutor):
+    def __init__(self, tt: _task_model.TaskTemplate, executor: ShimTaskExecutor, *args, **kwargs):
         self._executor = executor
         self._task_template = tt
+        super().__init__(*args, **kwargs)
 
     @property
     def task_template(self) -> _task_model.TaskTemplate:
