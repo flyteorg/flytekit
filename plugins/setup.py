@@ -40,7 +40,7 @@ def install_all_plugins(sources, develop=False):
 
 
 class DevelopCmd(develop):
-    """ Add custom steps for the develop command """
+    """Add custom steps for the develop command"""
 
     def run(self):
         install_all_plugins(SOURCES, develop=True)
@@ -48,7 +48,7 @@ class DevelopCmd(develop):
 
 
 class InstallCmd(install):
-    """ Add custom steps for the install command """
+    """Add custom steps for the install command"""
 
     def run(self):
         install_all_plugins(SOURCES, develop=False)

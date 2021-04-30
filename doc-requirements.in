@@ -1,7 +1,7 @@
 .[all]
 -e file:.#egg=flytekit
 
-furo
+git+git://github.com/flyteorg/furo@main
 readthedocs-sphinx-search
 sphinx
 sphinx-gallery
