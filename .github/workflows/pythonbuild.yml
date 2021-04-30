@@ -41,6 +41,9 @@ jobs:
         make lint
     - name: ShellCheck
       uses: ludeeus/action-shellcheck@master
+      with:
+        ignore:
+          boilerplate
     - name: Test with coverage
       run: |
         coverage run -m pytest tests/flytekit/unit tests/scripts plugins/tests

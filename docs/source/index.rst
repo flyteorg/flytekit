@@ -12,36 +12,25 @@ API reference for specific usage details of python functions, classes, and decor
 build workflows, and extend ``flytekit``.
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 1
    :hidden:
 
    Getting Started <https://docs.flyte.org/en/latest/getting_started.html>
+   User Guide <https://docs.flyte.org/en/latest/getting_started.html>
    Tutorials <https://flytecookbook.readthedocs.io>
-   reference/index
+   API Reference <https://docs.flyte.org/en/latest/reference/index.html>
    Community <https://docs.flyte.org/en/latest/community/index.html>
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: -1
    :caption: Flytekit SDK
    :hidden:
 
    Flytekit Python <self>
    design/index
-
-.. toctree::
-   :maxdepth: 1
-   :caption: APIs
-   :hidden:
-
    flytekit
    testing
    extend
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Contributing
-   :hidden:
-
-   contributing
    tasks.extend
    types.extend
+   contributing
