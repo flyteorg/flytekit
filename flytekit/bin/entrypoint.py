@@ -100,10 +100,7 @@ def _dispatch_execute(
         from flytekit.core.shim_task import ExecutableTemplateShimTask
 
         # Step2
-        if isinstance(task_def, PythonTask) or isinstance(task_def, ExecutableTemplateShimTask):
-            outputs = task_def.dispatch_execute(ctx, idl_input_literals)
-        else:
-            raise Exception("Task def was neither PythonTask nor TaskTemplate")
+        outputs = task_def.dispatch_execute(ctx, idl_input_literals)
         # Step3a
         if isinstance(outputs, VoidPromise):
             _logging.getLogger().warning("Task produces no outputs")
