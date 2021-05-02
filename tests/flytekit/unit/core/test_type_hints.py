@@ -1142,7 +1142,6 @@ def test_nested_dynamic():
     )
 
     nested_my_subwf = my_wf.get_all_tasks()[0]
-    print(nested_my_subwf)
 
     with context_manager.FlyteContext.current_context().new_serialization_settings(
         serialization_settings=settings
