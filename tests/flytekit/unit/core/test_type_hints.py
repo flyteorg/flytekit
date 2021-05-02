@@ -1104,3 +1104,49 @@ def test_secrets():
         @task(secret_requests=["test"])
         def foo() -> str:
             pass
+
+
+def test_nested_dynamic():
+    @task
+    def t1(a: int) -> str:
+        a = a + 2
+        return "world-" + str(a)
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @workflow
+    def my_wf(a: int, b: str) -> (str, typing.List[str]):
+        @dynamic
+        def my_subwf(a: int) -> typing.List[str]:
+            s = []
+            for i in range(a):
+                s.append(t1(a=i))
+            return s
+
+        x = t2(a=b, b=b)
+        v = my_subwf(a=a)
+        return x, v
+
+    v = 5
+    x = my_wf(a=v, b="hello ")
+    assert x == ("hello hello ", ["world-" + str(i) for i in range(2, v + 2)])
+
+    settings = context_manager.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+
+    nested_my_subwf = my_wf.get_all_tasks()[0]
+    print(nested_my_subwf)
+
+    with context_manager.FlyteContext.current_context().new_serialization_settings(
+        serialization_settings=settings
+    ) as ctx:
+        with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
+            dynamic_job_spec = nested_my_subwf.compile_into_workflow(ctx, False, nested_my_subwf._task_function, a=5)
+            assert len(dynamic_job_spec._nodes) == 5
