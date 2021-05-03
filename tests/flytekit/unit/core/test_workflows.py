@@ -11,6 +11,15 @@ from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
 
+default_img = Image(name="default", fqn="test", tag="tag")
+serialization_settings = context_manager.SerializationSettings(
+    project="project",
+    domain="domain",
+    version="version",
+    env=None,
+    image_config=ImageConfig(default_image=default_img, images=[default_img]),
+)
+
 
 def test_metadata_values():
     with pytest.raises(FlyteValidationException):
@@ -40,13 +49,6 @@ def test_workflow_values():
         u, v = t1(a=x)
         return y, v
 
-    serialization_settings = context_manager.SerializationSettings(
-        project="proj",
-        domain="dom",
-        version="123",
-        image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
-        env={},
-    )
     sdk_wf = get_serializable(OrderedDict(), serialization_settings, wf)
     assert sdk_wf.metadata_defaults.interruptible
     assert sdk_wf.metadata.on_failure == 1
@@ -140,3 +142,33 @@ def test_wf_no_output():
         t1(a=3)
 
     assert no_outputs_wf() is None
+
+
+def test_wf_nested_comp():
+    @task
+    def t1(a: int) -> int:
+        a = a + 5
+        return a
+
+    @workflow
+    def outer() -> (int, int):
+        # You should not do this. This is just here for testing.
+        @workflow
+        def wf2() -> int:
+            return t1(a=5)
+
+        return t1(a=3), wf2()
+
+    assert (8, 10) == outer()
+    entity_mapping = OrderedDict()
+
+    sdk_wf = get_serializable(entity_mapping, serialization_settings, outer)
+    model_wf = sdk_wf.serialize()
+    assert len(model_wf.template.interface.outputs.variables) == 2
+    assert len(model_wf.template.nodes) == 2
+    assert model_wf.template.nodes[1].workflow_node is not None
+
+    sub_wf = model_wf.sub_workflows[0]
+    assert len(sub_wf.nodes) == 1
+    assert sub_wf.nodes[0].id == "wf2-n0"
+    assert sub_wf.nodes[0].task_node.reference_id.name == "test_workflows.t1"
