@@ -11,7 +11,7 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.core import context_manager as _flyte_context
 from flytekit.core import interface as flyte_interface
 from flytekit.core import type_engine
-from flytekit.core.context_manager import FlyteContext
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine
@@ -169,9 +169,9 @@ class ComparisonExpression(object):
                 if rhs.val.scalar is None or rhs.val.scalar.primitive is None:
                     raise ValueError("Only primitive values can be used in comparison")
         if self._lhs is None:
-            self._lhs = type_engine.TypeEngine.to_literal(FlyteContext.current_context(), lhs, type(lhs), None)
+            self._lhs = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), lhs, type(lhs), None)
         if self._rhs is None:
-            self._rhs = type_engine.TypeEngine.to_literal(FlyteContext.current_context(), rhs, type(rhs), None)
+            self._rhs = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), rhs, type(rhs), None)
 
     @property
     def rhs(self) -> Union["Promise", _literal_models.Literal]:

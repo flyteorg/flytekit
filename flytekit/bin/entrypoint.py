@@ -23,7 +23,8 @@ from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
-from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
+from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config, \
+    FlyteContextManager
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
 from flytekit.core.python_auto_container import TaskResolverMixin
@@ -143,12 +144,12 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
 
 
 def _handle_annotated_task(
-    task_def: PythonTask,
-    inputs: str,
-    output_prefix: str,
-    raw_output_data_prefix: str,
-    dynamic_addl_distro: str = None,
-    dynamic_dest_dir: str = None,
+        task_def: PythonTask,
+        inputs: str,
+        output_prefix: str,
+        raw_output_data_prefix: str,
+        dynamic_addl_distro: str = None,
+        dynamic_dest_dir: str = None,
 ):
     """
     Entrypoint for all PythonTask extensions
@@ -158,7 +159,7 @@ def _handle_annotated_task(
     log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
     _logging.getLogger().setLevel(log_level)
 
-    ctx = FlyteContext.current_context()
+    ctx = FlyteContextManager.current_context()
 
     # Create directories
     user_workspace_dir = ctx.file_access.local_access.get_random_directory()
@@ -210,7 +211,7 @@ def _handle_annotated_task(
     else:
         raise Exception(f"Bad cloud provider {cloud_provider}")
 
-    with ctx.new_file_access_context(file_access_provider=file_access) as ctx:
+    with FlyteContextManager.with_context(ctx.with_file_access(file_access).build()) as ctx:
         # TODO: This is copied from serialize, which means there's a similarity here I'm not seeing.
         env = {
             _internal_config.CONFIGURATION_PATH.env_var: _internal_config.CONFIGURATION_PATH.get(),
@@ -228,13 +229,15 @@ def _handle_annotated_task(
         # The reason we need this is because of dynamic tasks. Even if we move compilation all to Admin,
         # if a dynamic task calls some task, t1, we have to write to the DJ Spec the correct task
         # identifier for t1.
-        with ctx.new_serialization_settings(serialization_settings=serialization_settings) as ctx:
+        with FlyteContextManager.with_context(ctx.with_serialization_settings(serialization_settings).build()) as ctx:
             # Because execution states do not look up the context chain, it has to be made last
-            with ctx.new_execution_context(
-                mode=ExecutionState.Mode.TASK_EXECUTION,
-                execution_params=execution_parameters,
-                additional_context={"dynamic_addl_distro": dynamic_addl_distro, "dynamic_dest_dir": dynamic_dest_dir},
-            ) as ctx:
+
+            with FlyteContextManager.with_context(ctx.with_execution_state(
+                    ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION,
+                                                          execution_params=execution_parameters,
+                                                          additional_context={
+                                                              "dynamic_addl_distro": dynamic_addl_distro,
+                                                              "dynamic_dest_dir": dynamic_dest_dir}))) as ctx:
                 _dispatch_execute(ctx, task_def, inputs, output_prefix)
 
 
@@ -291,14 +294,14 @@ def _load_resolver(resolver_location: str) -> TaskResolverMixin:
 
 @_scopes.system_entry_point
 def _execute_task(
-    inputs,
-    output_prefix,
-    raw_output_data_prefix,
-    test,
-    resolver: str,
-    resolver_args: List[str],
-    dynamic_addl_distro: str = None,
-    dynamic_dest_dir: str = None,
+        inputs,
+        output_prefix,
+        raw_output_data_prefix,
+        test,
+        resolver: str,
+        resolver_args: List[str],
+        dynamic_addl_distro: str = None,
+        dynamic_dest_dir: str = None,
 ):
     """
     This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
@@ -342,15 +345,15 @@ def _execute_task(
 
 @_scopes.system_entry_point
 def _execute_map_task(
-    inputs,
-    output_prefix,
-    raw_output_data_prefix,
-    max_concurrency,
-    test,
-    dynamic_addl_distro: str,
-    dynamic_dest_dir: str,
-    resolver: str,
-    resolver_args: List[str],
+        inputs,
+        output_prefix,
+        raw_output_data_prefix,
+        max_concurrency,
+        test,
+        dynamic_addl_distro: str,
+        dynamic_dest_dir: str,
+        resolver: str,
+        resolver_args: List[str],
 ):
     if len(resolver_args) < 1:
         raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
@@ -400,16 +403,16 @@ def _pass_through():
     nargs=-1,
 )
 def execute_task_cmd(
-    task_module,
-    task_name,
-    inputs,
-    output_prefix,
-    raw_output_data_prefix,
-    test,
-    dynamic_addl_distro,
-    dynamic_dest_dir,
-    resolver,
-    resolver_args,
+        task_module,
+        task_name,
+        inputs,
+        output_prefix,
+        raw_output_data_prefix,
+        test,
+        dynamic_addl_distro,
+        dynamic_dest_dir,
+        resolver,
+        resolver_args,
 ):
     _click.echo(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
@@ -485,15 +488,15 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
     nargs=-1,
 )
 def map_execute_task_cmd(
-    inputs,
-    output_prefix,
-    raw_output_data_prefix,
-    max_concurrency,
-    test,
-    dynamic_addl_distro,
-    dynamic_dest_dir,
-    resolver,
-    resolver_args,
+        inputs,
+        output_prefix,
+        raw_output_data_prefix,
+        max_concurrency,
+        test,
+        dynamic_addl_distro,
+        dynamic_dest_dir,
+        resolver,
+        resolver_args,
 ):
     _click.echo(_utils.get_version_message())
 
