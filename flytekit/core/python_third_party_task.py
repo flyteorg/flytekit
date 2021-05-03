@@ -201,6 +201,7 @@ class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
       executor. The strings will be ``["{{.taskTemplatePath}}", "path.to.your.executor"]``
     * Also, ``get_all_tasks`` will always return an empty list, at least for now.
     """
+
     def __init__(self):
         super(TaskTemplateResolver, self).__init__()
 

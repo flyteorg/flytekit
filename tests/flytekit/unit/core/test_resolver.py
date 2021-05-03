@@ -7,10 +7,9 @@ from flytekit.core import context_manager
 from flytekit.core.base_task import TaskResolverMixin
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.python_auto_container import default_task_resolver
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.core.python_auto_container import default_task_resolver
-
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = context_manager.SerializationSettings(
