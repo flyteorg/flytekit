@@ -4,7 +4,7 @@ from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
-from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings
+from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, FlyteContextManager
 from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask, TaskResolverMixin, default_task_resolver
 from flytekit.core.tracker import isnested, istestfunction
@@ -167,7 +167,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
     def compile_into_workflow(
         self, ctx: FlyteContext, is_fast_execution: bool, task_function: Callable, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
-        with ctx.new_compilation_context(prefix="dynamic"):
+        if not ctx.compilation_state:
+            cs = ctx.new_compilation_state("dynamic")
+        else:
+            cs = ctx.compilation_state.with_params(prefix="dynamic")
+
+        with FlyteContextManager.with_context(ctx.with_compilation_state(cs)):
             # TODO: Resolve circular import
             from flytekit.common.translator import get_serializable
 
@@ -260,10 +265,11 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         When running for real in production, the task would stop after the compilation step, and then create a file
         representing that newly generated workflow, instead of executing it.
         """
-        ctx = FlyteContext.current_context()
+        ctx = FlyteContextManager.current_context()
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            with ctx.new_execution_context(ExecutionState.Mode.TASK_EXECUTION):
+            updated_exec_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
+            with FlyteContextManager.with_context(ctx.with_execution_state(updated_exec_state)):
                 logger.info("Executing Dynamic workflow, using raw inputs")
                 return task_function(**kwargs)
 

@@ -137,7 +137,7 @@ class CompilationState(object):
             s.with_params("p", nodes=[])
         """
         return CompilationState(
-            prefix=prefix,
+            prefix=prefix if prefix else "",
             mode=mode if mode else self.mode,
             task_resolver=resolver if resolver else self.task_resolver,
             nodes=nodes if nodes else self.nodes,
@@ -149,7 +149,7 @@ class BranchEvalMode(Enum):
     BRANCH_SKIPPED = "branch skipped"
 
 
-@dataclass(init=False, frozen=True)
+@dataclass(init=False)
 class ExecutionState(object):
     class Mode(Enum):
         # This is the mode that is used when a task execution mimics the actual runtime environment.
@@ -212,10 +212,11 @@ class ExecutionState(object):
                     additional_context: Optional[Dict[Any, Any]] = None,
                     branch_eval_mode: Optional[BranchEvalMode] = None,
                     user_space_params: Optional[ExecutionParameters] = None) -> ExecutionState:
-        if additional_context:
-            additional_context = {**self.additional_context, **additional_context}
-        else:
-            additional_context = self.additional_context
+        if self.additional_context:
+            if additional_context:
+                additional_context = {**self.additional_context, **additional_context}
+            else:
+                additional_context = self.additional_context
 
         return ExecutionState(working_dir=working_dir if working_dir else self.working_dir,
                               mode=mode if mode else self.mode,
@@ -228,6 +229,7 @@ class ExecutionState(object):
 @dataclass(frozen=True)
 class FlyteContext(object):
     file_access: Optional[_data_proxy.FileAccessProvider]
+    level: int = 0
     flyte_client: Optional[friendly_client.SynchronousFlyteClient] = None
     compilation_state: Optional[CompilationState] = None
     execution_state: Optional[ExecutionState] = None
@@ -242,7 +244,8 @@ class FlyteContext(object):
 
     @dataclass
     class Builder(object):
-        file_access: Optional[_data_proxy.FileAccessProvider]
+        file_access: _data_proxy.FileAccessProvider
+        level: int = 0
         compilation_state: Optional[CompilationState] = None
         execution_state: Optional[ExecutionState] = None
         flyte_client: Optional[friendly_client.SynchronousFlyteClient] = None
@@ -251,6 +254,7 @@ class FlyteContext(object):
 
         def build(self) -> FlyteContext:
             return FlyteContext(
+                level=self.level + 1,
                 file_access=self.file_access,
                 compilation_state=self.compilation_state,
                 execution_state=self.execution_state,
@@ -260,6 +264,7 @@ class FlyteContext(object):
 
     def new_builder(self) -> Builder:
         return FlyteContext.Builder(
+            level=self.level,
             file_access=self.file_access,
             flyte_client=self.flyte_client,
             serialization_settings=self.serialization_settings,
@@ -297,12 +302,15 @@ class FlyteContext(object):
         new_ctx.compilation_state = c
         return new_ctx
 
-    def new_compilation_state(self) -> CompilationState:
+    def with_new_compilation_state(self) -> Builder:
+        return self.with_compilation_state(self.new_compilation_state())
+
+    def new_compilation_state(self, prefix: str = "") -> CompilationState:
         """
         Creates and returns a default compilation state. For most of the code this should be the entrypoint
         of compilation, otherwise the code should always uses - with_compilation_state
         """
-        return CompilationState("")
+        return CompilationState(prefix=prefix)
 
     def new_execution_state(self, working_dir: Optional[os.PathLike] = None) -> ExecutionState:
         """
@@ -312,6 +320,16 @@ class FlyteContext(object):
         if not working_dir:
             working_dir = self.file_access.get_random_local_directory()
         return ExecutionState(working_dir=working_dir)
+
+    def with_file_access(self, fa: _data_proxy.FileAccessProvider) -> Builder:
+        new_ctx = self.new_builder()
+        new_ctx.file_access = fa
+        return new_ctx
+
+    def with_serialization_settings(self, ss: SerializationSettings) -> Builder:
+        new_ctx = self.new_builder()
+        new_ctx.serialization_settings = ss
+        return new_ctx
 
 
 class FlyteContextManager(object):
@@ -332,9 +350,12 @@ class FlyteContextManager(object):
 
     @staticmethod
     @contextmanager
-    def with_context(ctx: FlyteContext) -> Generator[FlyteContext, None, FlyteContext]:
-        yield FlyteContextManager.push_context(ctx)
-        return FlyteContextManager.pop_context()
+    def with_context(b: FlyteContext.Builder) -> Generator[FlyteContext, None, FlyteContext]:
+        c = FlyteContextManager.push_context(b.build())
+        try:
+            yield c
+        finally:
+            return FlyteContextManager.pop_context()
 
 
 class FlyteContext2(object):
@@ -540,4 +561,6 @@ default_user_space_params = ExecutionParameters(
     tmp_dir=os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "user_space"),
 )
 default_context = FlyteContext(file_access=_data_proxy.default_local_file_access_provider)
-FlyteContextManager.push_context(default_context.with_execution_state(default_context.new_execution_state()).build())
+default_context = default_context.with_execution_state(
+    default_context.new_execution_state().with_params(user_space_params=default_user_space_params)).build()
+FlyteContextManager.push_context(default_context)

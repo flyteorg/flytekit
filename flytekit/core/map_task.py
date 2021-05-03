@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Type
 from flytekit.common.constants import SdkTaskType
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings
+from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.python_function_task import PythonFunctionTask
@@ -101,7 +101,7 @@ class MapPythonTask(PythonTask):
         return self._run_task
 
     def execute(self, **kwargs) -> Any:
-        ctx = FlyteContext.current_context()
+        ctx = FlyteContextManager.current_context()
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             return self._execute_map_task(ctx, **kwargs)
 
@@ -127,7 +127,7 @@ class MapPythonTask(PythonTask):
         from these individual outputs as the final output value.
         """
 
-        ctx = FlyteContext.current_context()
+        ctx = FlyteContextManager.current_context()
         if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             # In workflow execution mode we actually need to use the parent (mapper) task output interface.
             return self.interface.outputs
@@ -140,7 +140,7 @@ class MapPythonTask(PythonTask):
         according to the underlying run_task interface and the array plugin handler will actually create a collection
         from these individual outputs as the final output value.
         """
-        ctx = FlyteContext.current_context()
+        ctx = FlyteContextManager.current_context()
         if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             # In workflow execution mode we actually need to use the parent (mapper) task output interface.
             return self._python_interface.outputs[k]

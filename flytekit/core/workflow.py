@@ -260,9 +260,10 @@ class WorkflowBase(object):
                 if isinstance(v, Promise):
                     raise ValueError(f"Received a promise for a workflow call, when expecting a native value for {k}")
 
-            b = ctx.with_execution_state(
-                ctx.new_execution_state(m=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION).build())
-            with FlyteContextManager.with_context(b.build()) as child_ctx:
+            result = None
+            with FlyteContextManager.with_context(ctx.with_execution_state(
+                    ctx.new_execution_state().with_params(
+                        mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION))) as child_ctx:
                 result = self._local_execute(child_ctx, **input_kwargs)
 
             expected_outputs = len(self.python_interface.outputs)
@@ -272,9 +273,7 @@ class WorkflowBase(object):
                 else:
                     raise Exception(f"Workflow local execution expected 0 outputs but something received {result}")
 
-            if (expected_outputs > 1 and len(result) == expected_outputs) or (
-                expected_outputs == 1 and result is not None
-            ):
+            if (1 < expected_outputs == len(result)) or (result is not None and expected_outputs == 1):
                 if isinstance(result, Promise):
                     v = [v for k, v in self.python_interface.outputs.items()][0]  # get output native type
                     return TypeEngine.to_python_value(ctx, result.val, v)
@@ -608,10 +607,10 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         ctx = FlyteContextManager.current_context()
         self._input_parameters = transform_inputs_to_parameters(ctx, self.python_interface)
         all_nodes = []
-        prefix = f"{ctx.compilation_state.prefix}-{self.short_name}-" if ctx.compilation_state is not None else None
+        prefix = f"{ctx.compilation_state.prefix}-{self.short_name}-" if ctx.compilation_state is not None else ""
 
         with FlyteContextManager.with_context(
-                ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=self)).build()) as comp_ctx:
+                ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=self))) as comp_ctx:
             # Construct the default input promise bindings, but then override with the provided inputs, if any
             input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
             input_kwargs.update(kwargs)
