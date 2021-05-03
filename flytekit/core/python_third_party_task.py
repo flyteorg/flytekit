@@ -26,6 +26,19 @@ class PythonThirdPartyContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
     Please take a look at the comments for ``ExecutableTemplateShimTask`` as well. This class should be subclassed
     and a custom Executor provided as a default to this parent class constructor when building a new external-container
     flytekit-only plugin.
+
+    This class provides authors of new task types the basic scaffolding to create task-template based tasks. In order
+    to write such a task, authors need to:
+
+      * subclass the ``ShimTaskExecutor`` class  and override the ``execute_from_model`` function. This function is
+        where all the business logic should go. Keep in mind though that you, the plugin author, will not have access
+        to anything that's not serialized within the ``TaskTemplate`` which is why you'll also need to
+      * subclass this class, and override the ``get_custom`` function to include all the information the executor
+        will need to run.
+      * Also pass the executor you created as the ``executor_type`` argument of this class's constructor.
+
+    Keep in mind that the total size of the ``TaskTemplate`` still needs to be small, since these will be accessed
+    frequently by the Flyte engine.
     """
 
     SERIALIZE_SETTINGS = SerializationSettings(
@@ -184,22 +197,25 @@ class PythonThirdPartyContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
 
 class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
     """
-    This class mostly follows the TaskResolverMixin pattern but kinda doesn't as well. The key difference is that
-    a task resolver was supposed to
+    This is a special resolver that resolves the task above at execution time, using only the ``TaskTemplate``,
+    meaning it should only be used for tasks that contain all pertinent information within the template itself.
 
-    * Be able to restore the same task when ``load_task`` is called as the object that ``loader_args`` was called on.
+    This class differs from some TaskResolverMixin pattern a bit. Most of the other resolvers you'll find,
+
+    * restores the same task when ``load_task`` is called as the object that ``loader_args`` was called on.
       That is, even though at run time it's in a container on a cluster and is obviously a different Python process,
       the Python object in memory should look the same.
-    * Offer a one-to-one mapping between the list of strings returned by the ``loader_args`` function, an the task,
+    * offers a one-to-one mapping between the list of strings returned by the ``loader_args`` function, an the task,
       at least within the container.
 
-    This resolver does not conform to either of these constraints
-    * When loading a task, the task that is a loaded is always an ``ExecutableTemplateShimTask``, regardless of what
+    This resolver differs in that,
+    * when loading a task, the task that is a loaded is always an ``ExecutableTemplateShimTask``, regardless of what
       kind of task it was originally. It will only ever have what's available to it from the ``TaskTemplate``. No
       information that wasn't serialized into the template will be available.
-    * All tasks will result in the same list of strings for a given subclass of the ``ShimTaskExecutor``
+    * all tasks will result in the same list of strings for a given subclass of the ``ShimTaskExecutor``
       executor. The strings will be ``["{{.taskTemplatePath}}", "path.to.your.executor"]``
-    * Also, ``get_all_tasks`` will always return an empty list, at least for now.
+
+    Also, ``get_all_tasks`` will always return an empty list, at least for now.
     """
 
     def __init__(self):
