@@ -23,7 +23,7 @@ bcrypt==3.2.0
     # via
     #   -c requirements.txt
     #   paramiko
-black==20.8b1
+black==21.4b2
     # via
     #   -c requirements.txt
     #   -r dev-requirements.in
@@ -59,7 +59,7 @@ cryptography==3.4.7
     # via
     #   -c requirements.txt
     #   paramiko
-dataclasses-json==0.5.2
+dataclasses-json==0.5.3
     # via
     #   -c requirements.txt
     #   flytekit
@@ -100,11 +100,11 @@ flake8==3.9.1
     #   -r dev-requirements.in
     #   flake8-black
     #   flake8-isort
-flyteidl==0.18.38
+flyteidl==0.18.40
     # via
     #   -c requirements.txt
     #   flytekit
-grpcio==1.37.0
+grpcio==1.37.1
     # via
     #   -c requirements.txt
     #   flytekit
@@ -240,7 +240,7 @@ python-dateutil==2.8.1
     #   croniter
     #   flytekit
     #   pandas
-python-dotenv==0.17.0
+python-dotenv==0.17.1
     # via docker-compose
 pytimeparse==1.1.8
     # via
@@ -267,7 +267,7 @@ requests==2.25.1
     #   docker-compose
     #   flytekit
     #   responses
-responses==0.13.2
+responses==0.13.3
     # via
     #   -c requirements.txt
     #   flytekit

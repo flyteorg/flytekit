@@ -621,7 +621,7 @@ class NodeOutput(type_models.OutputReference):
 
     @property
     def node(self) -> Node:
-        """"""
+        """Return Node object."""
         return self._node
 
     def __repr__(self) -> str:

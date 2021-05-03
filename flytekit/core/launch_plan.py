@@ -143,7 +143,22 @@ class LaunchPlan(object):
             )
 
         if name is not None and name in LaunchPlan.CACHE:
-            # TODO: Add checking of the other arguments (default_inputs, fixed_inputs, etc.) to make sure they match
+            cached_outputs = vars(LaunchPlan.CACHE[name])
+
+            notifications = notifications or []
+            default_inputs = default_inputs or {}
+            fixed_inputs = fixed_inputs or {}
+
+            default_inputs.update(fixed_inputs)
+            if (
+                workflow != cached_outputs["_workflow"]
+                or schedule != cached_outputs["_schedule"]
+                or notifications != cached_outputs["_notifications"]
+                or auth_role != cached_outputs["_auth_role"]
+                or default_inputs != cached_outputs["_saved_inputs"]
+            ):
+                return AssertionError("The cached values aren't the same as the current call arguments")
+
             return LaunchPlan.CACHE[name]
         elif name is None and workflow.name in LaunchPlan.CACHE:
             return LaunchPlan.CACHE[workflow.name]
