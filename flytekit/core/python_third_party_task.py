@@ -183,6 +183,24 @@ class PythonThirdPartyContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
 
 
 class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
+    """
+    This class mostly follows the TaskResolverMixin pattern but kinda doesn't as well. The key difference is that
+    a task resolver was supposed to
+
+    * Be able to restore the same task when ``load_task`` is called as the object that ``loader_args`` was called on.
+      That is, even though at run time it's in a container on a cluster and is obviously a different Python process,
+      the Python object in memory should look the same.
+    * Offer a one-to-one mapping between the list of strings returned by the ``loader_args`` function, an the task,
+      at least within the container.
+
+    This resolver does not conform to either of these constraints
+    * When loading a task, the task that is a loaded is always an ``ExecutableTemplateShimTask``, regardless of what
+      kind of task it was originally. It will only ever have what's available to it from the ``TaskTemplate``. No
+      information that wasn't serialized into the template will be available.
+    * All tasks will result in the same list of strings for a given subclass of the ``ShimTaskExecutor``
+      executor. The strings will be ``["{{.taskTemplatePath}}", "path.to.your.executor"]``
+    * Also, ``get_all_tasks`` will always return an empty list, at least for now.
+    """
     def __init__(self):
         super(TaskTemplateResolver, self).__init__()
 
