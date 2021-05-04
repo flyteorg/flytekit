@@ -128,7 +128,9 @@ class ExecutableTemplateShimTask(object):
                 py_type = type(v)
 
                 if isinstance(v, tuple):
-                    raise AssertionError(f"Output({k}) in task{self.task_template.id.name} received a tuple {v}, instead of {py_type}")
+                    raise AssertionError(
+                        f"Output({k}) in task{self.task_template.id.name} received a tuple {v}, instead of {py_type}"
+                    )
                 try:
                     literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
                 except Exception as e:
