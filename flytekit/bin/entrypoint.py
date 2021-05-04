@@ -1,3 +1,4 @@
+import contextlib
 import datetime as _datetime
 import importlib as _importlib
 import logging as _logging
@@ -26,7 +27,6 @@ from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
-from flytekit.core.python_auto_container import TaskResolverMixin
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -38,6 +38,7 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
+from flytekit.tools.module_loader import load_object_from_module
 
 
 def _compute_array_job_index():
@@ -73,7 +74,12 @@ def _map_job_index_to_child_index(local_input_dir, datadir, index):
     return mapping_proto.literals[index].scalar.primitive.integer
 
 
-def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str, output_prefix: str):
+def _dispatch_execute(
+    ctx: FlyteContext,
+    task_def: PythonTask,
+    inputs_path: str,
+    output_prefix: str,
+):
     """
     Dispatches execute to PythonTask
         Step1: Download inputs and load into a literal map
@@ -90,6 +96,7 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
         ctx.file_access.get_data(inputs_path, local_inputs_file)
         input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
+
         # Step2
         outputs = task_def.dispatch_execute(ctx, idl_input_literals)
         # Step3a
@@ -122,7 +129,7 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
             _logging.warning(f"IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}")
             return
         # Step 3c
-        _logging.error(f"Exception when executing task {task_def.name}, reason {str(e)}")
+        _logging.error(f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}")
         _logging.error("!! Begin Unknown System Error Captured by Flyte !!")
         exc_str = _traceback.format_exc()
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
@@ -142,18 +149,12 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
     _logging.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
 
-def _handle_annotated_task(
-    task_def: PythonTask,
-    inputs: str,
-    output_prefix: str,
+@contextlib.contextmanager
+def setup_execution(
     raw_output_data_prefix: str,
     dynamic_addl_distro: str = None,
     dynamic_dest_dir: str = None,
 ):
-    """
-    Entrypoint for all PythonTask extensions
-    """
-    _click.echo("Running native-typed task")
     cloud_provider = _platform_config.CLOUD_PROVIDER.get()
     log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
     _logging.getLogger().setLevel(log_level)
@@ -235,7 +236,20 @@ def _handle_annotated_task(
                 execution_params=execution_parameters,
                 additional_context={"dynamic_addl_distro": dynamic_addl_distro, "dynamic_dest_dir": dynamic_dest_dir},
             ) as ctx:
-                _dispatch_execute(ctx, task_def, inputs, output_prefix)
+                yield ctx
+
+
+def _handle_annotated_task(
+    ctx: FlyteContext,
+    task_def: PythonTask,
+    inputs: str,
+    output_prefix: str,
+):
+    """
+    Entrypoint for all PythonTask extensions
+    """
+    _click.echo("Running native-typed task")
+    _dispatch_execute(ctx, task_def, inputs, output_prefix)
 
 
 @_scopes.system_entry_point
@@ -277,18 +291,6 @@ def _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_outp
             )
 
 
-def _load_resolver(resolver_location: str) -> TaskResolverMixin:
-    # Load the actual resolver - this cannot be a nested thing, whatever kind of resolver it is, it has to be loadable
-    # directly from importlib
-    # TODO: Handle corner cases, like where the first part is [] maybe
-    # e.g. flytekit.core.python_auto_container.default_task_resolver
-    resolver = resolver_location.split(".")
-    resolver_mod = resolver[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
-    resolver_key = resolver[-1]  # e.g. 'default_task_resolver'
-    resolver_mod = _importlib.import_module(".".join(resolver_mod))
-    return getattr(resolver_mod, resolver_key)
-
-
 @_scopes.system_entry_point
 def _execute_task(
     inputs,
@@ -326,18 +328,17 @@ def _execute_task(
     if len(resolver_args) < 1:
         raise Exception("cannot be <1")
 
-    resolver_obj = _load_resolver(resolver)
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        # Use the resolver to load the actual task object
-        _task_def = resolver_obj.load_task(loader_args=resolver_args)
-        if test:
-            _click.echo(
-                f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
-            )
-            return
-        _handle_annotated_task(
-            _task_def, inputs, output_prefix, raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir
-        )
+        with setup_execution(raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir) as ctx:
+            resolver_obj = load_object_from_module(resolver)
+            # Use the resolver to load the actual task object
+            _task_def = resolver_obj.load_task(loader_args=resolver_args)
+            if test:
+                _click.echo(
+                    f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
+                )
+                return
+            _handle_annotated_task(ctx, _task_def, inputs, output_prefix)
 
 
 @_scopes.system_entry_point
@@ -355,28 +356,27 @@ def _execute_map_task(
     if len(resolver_args) < 1:
         raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
 
-    resolver_obj = _load_resolver(resolver)
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        # Use the resolver to load the actual task object
-        _task_def = resolver_obj.load_task(loader_args=resolver_args)
-        if not isinstance(_task_def, PythonFunctionTask):
-            raise Exception("Map tasks cannot be run with instance tasks.")
-        map_task = MapPythonTask(_task_def, max_concurrency)
+        with setup_execution(raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir) as ctx:
+            resolver_obj = load_object_from_module(resolver)
+            # Use the resolver to load the actual task object
+            _task_def = resolver_obj.load_task(loader_args=resolver_args)
+            if not isinstance(_task_def, PythonFunctionTask):
+                raise Exception("Map tasks cannot be run with instance tasks.")
+            map_task = MapPythonTask(_task_def, max_concurrency)
 
-        task_index = _compute_array_job_index()
-        output_prefix = _os.path.join(output_prefix, str(task_index))
+            task_index = _compute_array_job_index()
+            output_prefix = _os.path.join(output_prefix, str(task_index))
 
-        if test:
-            _click.echo(
-                f"Test detected, returning. Inputs: {inputs} Computed task index: {task_index} "
-                f"New output prefix: {output_prefix} Raw output path: {raw_output_data_prefix} "
-                f"Resolver and args: {resolver} {resolver_args}"
-            )
-            return
+            if test:
+                _click.echo(
+                    f"Test detected, returning. Inputs: {inputs} Computed task index: {task_index} "
+                    f"New output prefix: {output_prefix} Raw output path: {raw_output_data_prefix} "
+                    f"Resolver and args: {resolver} {resolver_args}"
+                )
+                return
 
-        _handle_annotated_task(
-            map_task, inputs, output_prefix, raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir
-        )
+            _handle_annotated_task(ctx, map_task, inputs, output_prefix)
 
 
 @_click.group()

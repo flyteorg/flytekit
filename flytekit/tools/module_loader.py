@@ -3,7 +3,7 @@ import importlib
 import os
 import pkgutil
 import sys
-from typing import Iterator, List, Union
+from typing import Any, Iterator, List, Union
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.local_workflow import SdkRunnableWorkflow as _SdkRunnableWorkflow
@@ -190,3 +190,14 @@ def iterate_registerable_entities_in_order(
                 detect_unreferenced_entities=detect_unreferenced_entities,
             ):
                 yield m, k, o2
+
+
+def load_object_from_module(object_location: str) -> Any:
+    """
+    # TODO: Handle corner cases, like where the first part is [] maybe
+    """
+    class_obj = object_location.split(".")
+    class_obj_mod = class_obj[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
+    class_obj_key = class_obj[-1]  # e.g. 'default_task_class_obj'
+    class_obj_mod = importlib.import_module(".".join(class_obj_mod))
+    return getattr(class_obj_mod, class_obj_key)

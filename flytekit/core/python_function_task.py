@@ -4,9 +4,10 @@ from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
-from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings
+from flytekit.core.base_task import TaskResolverMixin
+from flytekit.core.context_manager import ExecutionState, FlyteContext
 from flytekit.core.interface import transform_signature_to_interface
-from flytekit.core.python_auto_container import PythonAutoContainerTask, TaskResolverMixin, default_task_resolver
+from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
 from flytekit.core.tracker import isnested, istestfunction
 from flytekit.core.workflow import (
     PythonFunctionWorkflow,
@@ -45,23 +46,6 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
         **kwargs,
     ):
         super().__init__(name=name, task_config=task_config, task_type=task_type, task_resolver=task_resolver, **kwargs)
-
-    def get_command(self, settings: SerializationSettings) -> List[str]:
-        container_args = [
-            "pyflyte-execute",
-            "--inputs",
-            "{{.input}}",
-            "--output-prefix",
-            "{{.outputPrefix}}",
-            "--raw-output-data-prefix",
-            "{{.rawOutputDataPrefix}}",
-            "--resolver",
-            self.task_resolver.location,
-            "--",
-            *self.task_resolver.loader_args(settings, self),
-        ]
-
-        return container_args
 
 
 class PythonFunctionTask(PythonAutoContainerTask[T]):
@@ -146,23 +130,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             return self._task_function(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             return self.dynamic_execute(self._task_function, **kwargs)
-
-    def get_command(self, settings: SerializationSettings) -> List[str]:
-        container_args = [
-            "pyflyte-execute",
-            "--inputs",
-            "{{.input}}",
-            "--output-prefix",
-            "{{.outputPrefix}}",
-            "--raw-output-data-prefix",
-            "{{.rawOutputDataPrefix}}",
-            "--resolver",
-            self.task_resolver.location,
-            "--",
-            *self.task_resolver.loader_args(settings, self),
-        ]
-
-        return container_args
 
     def compile_into_workflow(
         self, ctx: FlyteContext, is_fast_execution: bool, task_function: Callable, **kwargs
