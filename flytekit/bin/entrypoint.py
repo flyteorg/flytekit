@@ -341,6 +341,16 @@ def _execute_task(
 
 
 @_scopes.system_entry_point
+def _execute_tt_task(execution_container_location, inputs, output_prefix, raw_output_data_prefix, task_template_path):
+    split_location = execution_container_location.split(".")
+    container_mod = split_location[:-1]
+    container_key = split_location[-1]
+    execution_container = _importlib.import_module(".".join(container_mod))
+    execution_container = getattr(execution_container, container_key)
+    execution_container().run(inputs, output_prefix, raw_output_data_prefix, task_template_path)
+
+
+@_scopes.system_entry_point
 def _execute_map_task(
     inputs,
     output_prefix,
@@ -437,6 +447,30 @@ def execute_task_cmd(
             dynamic_addl_distro,
             dynamic_dest_dir,
         )
+
+
+@_pass_through.command("pyflyte-task-template-execute")
+@_click.option("--execution-container-location", required=True)
+@_click.option("--inputs", required=True)
+@_click.option("--output-prefix", required=True)
+@_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--task-template-path", required=True)
+def execute_task_cmd_tt(
+    execution_container_location,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    task_template_path,
+):
+    _click.echo(_utils.get_version_message())
+    # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
+    # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
+    # to the original shard formatter/prefix config.
+    if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
+        raw_output_data_prefix = None
+
+    _click.echo(f"Running with inputs:{inputs} output:{output_prefix} tt:{task_template_path}")
+    _execute_tt_task(execution_container_location, inputs, output_prefix, raw_output_data_prefix, task_template_path)
 
 
 @_pass_through.command("pyflyte-fast-execute")

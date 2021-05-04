@@ -270,6 +270,12 @@ class Task(object):
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         return None
 
+    def get_target(self, settings: SerializationSettings) -> Union[None, _task_model.Container]:
+        """
+        This returns a Union with None instead of an optional because the future
+        """
+        raise NotImplementedError("Need to override this.")
+
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return None
 
