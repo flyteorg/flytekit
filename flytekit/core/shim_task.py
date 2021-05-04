@@ -28,6 +28,9 @@ class ExecutableTemplateShimTask(object):
        The interface at execution time will have to derived from the Flyte IDL interface, which means it may be lossy.
        This is because when a task is serialized from Python into the ``TaskTemplate`` some information is lost because
        Flyte IDL can't keep track of every single Python type (or Java type if writing in the Java flytekit).
+
+    This class also implements the ``dispatch_execute`` and ``execute`` functions to make it look like a ``PythonTask``
+    that the ``entrypoint.py`` can execute, even though this class doesn't inherit from ``PythonTask``.
     """
 
     def __init__(self, tt: _task_model.TaskTemplate, executor_type: Type[ShimTaskExecutor], *args, **kwargs):
@@ -70,7 +73,9 @@ class ExecutableTemplateShimTask(object):
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
     ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
-        Send things off to the executor instead of running here.
+        This function is mostly copied from the base PythonTask, but differs in that we have to infer the Python
+        interface before executing. Also, we refer to ``self.task_template`` rather than just ``self`` like in task
+        classes that derive from the base ``PythonTask``.
         """
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
@@ -82,7 +87,7 @@ class ExecutableTemplateShimTask(object):
             working_dir=ctx.execution_state.working_dir,
         ) as exec_ctx:
             # Added: Have to reverse the Python interface from the task template Flyte interface
-            #  This will be moved into the FlyteTask promote logic instead
+            # See docstring for more details.
             guessed_python_input_types = TypeEngine.guess_python_types(self.task_template.interface.inputs)
             native_inputs = TypeEngine.literal_map_to_kwargs(exec_ctx, input_literal_map, guessed_python_input_types)
 
