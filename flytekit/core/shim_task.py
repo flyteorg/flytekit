@@ -28,6 +28,9 @@ class ExecutableTemplateShimTask(object):
        The interface at execution time will have to derived from the Flyte IDL interface, which means it may be lossy.
        This is because when a task is serialized from Python into the ``TaskTemplate`` some information is lost because
        Flyte IDL can't keep track of every single Python type (or Java type if writing in the Java flytekit).
+
+    This class also implements the ``dispatch_execute`` and ``execute`` functions to make it look like a ``PythonTask``
+    that the ``entrypoint.py`` can execute, even though this class doesn't inherit from ``PythonTask``.
     """
 
     def __init__(self, tt: _task_model.TaskTemplate, executor_type: Type[ShimTaskExecutor], *args, **kwargs):
@@ -54,31 +57,6 @@ class ExecutableTemplateShimTask(object):
         """
         return self.executor.execute_from_model(self.task_template, **kwargs)
 
-    def dispatch_execute(
-        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
-    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
-        """
-        Send things off to the executor instead of running here.
-        """
-        return self.executor.dispatch_execute(ctx, self.task_template, input_literal_map)
-
-
-T = TypeVar("T")
-
-
-class ShimTaskExecutor(TrackedInstance, Generic[T]):
-    def execute_from_model(self, tt: _task_model.TaskTemplate, **kwargs) -> Any:
-        """
-        This function must be overridden and is where all the business logic for running a task should live. Keep in
-        mind that you're only working with the ``TaskTemplate``. You won't have access to any information in the task
-        that wasn't serialized into the template.
-
-        :param tt: This is the template, the serialized form of the task.
-        :param kwargs: These are the Python native input values to the task.
-        :return: Python native output values from the task.
-        """
-        raise NotImplementedError
-
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
         """
         This function is a stub, just here to keep dispatch_execute compatibility between this class and PythonTask.
@@ -92,25 +70,13 @@ class ShimTaskExecutor(TrackedInstance, Generic[T]):
         return rval
 
     def dispatch_execute(
-        self, ctx: FlyteContext, tt: _task_model.TaskTemplate, input_literal_map: _literal_models.LiteralMap
+        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
     ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
-        This function is copied from PythonTask.dispatch_execute. Will need to make it a mixin and refactor in the
-        future.
-
-        Execution for customized-container tasks is different from tasks that run the user workflow container.
-
-        #. A ``TaskTemplate`` is required instead of operating on ``self`` (the Python task object).
-        #. The input arguments, given as a LiteralMap, are converted to native values using a Python interface that is
-           inferred from the Flyte interface, but this process is lossy.
-        #. The template is passed over to the Executor to run, along with the input arguments.
-        #. Executor will run from the ``TaskTemplate`` and the input args, and the result will be converted back
-           to Flyte literals.
-
-        The reason that all the LiteralMap conversion logic lives here instead of the ``ExecutableTemplateShimTask``
-        is because if it were there, even local runs would require us to build an instance of that class.
+        This function is mostly copied from the base PythonTask, but differs in that we have to infer the Python
+        interface before executing. Also, we refer to ``self.task_template`` rather than just ``self`` like in task
+        classes that derive from the base ``PythonTask``.
         """
-
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
 
@@ -121,13 +87,13 @@ class ShimTaskExecutor(TrackedInstance, Generic[T]):
             working_dir=ctx.execution_state.working_dir,
         ) as exec_ctx:
             # Added: Have to reverse the Python interface from the task template Flyte interface
-            #  This will be moved into the FlyteTask promote logic instead
-            guessed_python_input_types = TypeEngine.guess_python_types(tt.interface.inputs)
+            # See docstring for more details.
+            guessed_python_input_types = TypeEngine.guess_python_types(self.task_template.interface.inputs)
             native_inputs = TypeEngine.literal_map_to_kwargs(exec_ctx, input_literal_map, guessed_python_input_types)
 
-            logger.info(f"Invoking FlyteTask executor {tt.id.name} with inputs: {native_inputs}")
+            logger.info(f"Invoking FlyteTask executor {self.task_template.id.name} with inputs: {native_inputs}")
             try:
-                native_outputs = self.execute_from_model(tt, **native_inputs)
+                native_outputs = self.execute(**native_inputs)
             except Exception as e:
                 logger.exception(f"Exception when executing {e}")
                 raise e
@@ -144,7 +110,7 @@ class ShimTaskExecutor(TrackedInstance, Generic[T]):
             ):
                 return native_outputs
 
-            expected_output_names = list(tt.interface.outputs.keys())
+            expected_output_names = list(self.task_template.interface.outputs.keys())
             if len(expected_output_names) == 1:
                 # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
                 # length one. That convention is used for naming outputs - and single-length-NamedTuples are
@@ -163,11 +129,13 @@ class ShimTaskExecutor(TrackedInstance, Generic[T]):
             # built into the IDL that all the values of a literal map are of the same type.
             literals = {}
             for k, v in native_outputs_as_map.items():
-                literal_type = tt.interface.outputs[k].type
+                literal_type = self.task_template.interface.outputs[k].type
                 py_type = type(v)
 
                 if isinstance(v, tuple):
-                    raise AssertionError(f"Output({k}) in task{tt.id.name} received a tuple {v}, instead of {py_type}")
+                    raise AssertionError(
+                        f"Output({k}) in task{self.task_template.id.name} received a tuple {v}, instead of {py_type}"
+                    )
                 try:
                     literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
                 except Exception as e:
@@ -176,3 +144,20 @@ class ShimTaskExecutor(TrackedInstance, Generic[T]):
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed
             return outputs_literal_map
+
+
+T = TypeVar("T")
+
+
+class ShimTaskExecutor(TrackedInstance, Generic[T]):
+    def execute_from_model(self, tt: _task_model.TaskTemplate, **kwargs) -> Any:
+        """
+        This function must be overridden and is where all the business logic for running a task should live. Keep in
+        mind that you're only working with the ``TaskTemplate``. You won't have access to any information in the task
+        that wasn't serialized into the template.
+
+        :param tt: This is the template, the serialized form of the task.
+        :param kwargs: These are the Python native input values to the task.
+        :return: Python native output values from the task.
+        """
+        raise NotImplementedError
