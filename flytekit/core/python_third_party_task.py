@@ -21,7 +21,7 @@ from flytekit.tools.module_loader import load_object_from_module
 TC = TypeVar("TC")
 
 
-class PythonThirdPartyContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
+class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
     """
     Please take a look at the comments for ``ExecutableTemplateShimTask`` as well. This class should be subclassed
     and a custom Executor provided as a default to this parent class constructor when building a new external-container
@@ -46,7 +46,9 @@ class PythonThirdPartyContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
         domain="LOCAL",
         version="PLACEHOLDER_VERSION",
         env=None,
-        image_config=ImageConfig(default_image=Image(name="thirdparty", fqn="flyteorg.io/placeholder", tag="image")),
+        image_config=ImageConfig(
+            default_image=Image(name="custom_container_task", fqn="flyteorg.io/placeholder", tag="image")
+        ),
     )
 
     def __init__(
@@ -109,7 +111,7 @@ class PythonThirdPartyContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
         self._task_resolver = task_resolver or default_task_template_resolver
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        # Overriding base implementation to raise an error, force third-party task author to implement
+        # Overriding base implementation to raise an error, force task author to implement
         raise NotImplementedError
 
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
@@ -133,7 +135,7 @@ class PythonThirdPartyContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
         """
         Override the base class implementation to serialize on first call.
         """
-        return self._task_template or self.serialize_to_model(settings=PythonThirdPartyContainerTask.SERIALIZE_SETTINGS)
+        return self._task_template or self.serialize_to_model(settings=PythonCustomizedContainerTask.SERIALIZE_SETTINGS)
 
     @property
     def container_image(self) -> str:
@@ -179,7 +181,7 @@ class PythonThirdPartyContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
         # objects directly first.
         # Note: This doesn't settle the issue of duplicate registrations. We'll need to figure that out somehow.
         # TODO: After new control plane classes are in, promote the template to a FlyteTask, so that authors of
-        #  third-party tasks have a familiar thing to work with.
+        #  customized-container tasks have a familiar thing to work with.
         obj = _task_model.TaskTemplate(
             identifier_models.Identifier(
                 identifier_models.ResourceType.TASK, settings.project, settings.domain, self.name, settings.version
@@ -237,7 +239,7 @@ class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
         executor_class = load_object_from_module(loader_args[1])
         return ExecutableTemplateShimTask(task_template_model, executor_class)
 
-    def loader_args(self, settings: SerializationSettings, t: PythonThirdPartyContainerTask) -> List[str]:
+    def loader_args(self, settings: SerializationSettings, t: PythonCustomizedContainerTask) -> List[str]:
         return ["{{.taskTemplatePath}}", f"{t.executor_type.__module__}.{t.executor_type.__name__}"]
 
     def get_all_tasks(self) -> List[Task]:

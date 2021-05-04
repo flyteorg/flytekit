@@ -98,7 +98,7 @@ class ShimTaskExecutor(TrackedInstance, Generic[T]):
         This function is copied from PythonTask.dispatch_execute. Will need to make it a mixin and refactor in the
         future.
 
-        Execution for third-party tasks is different from tasks that run the user workflow container.
+        Execution for customized-container tasks is different from tasks that run the user workflow container.
 
         #. A ``TaskTemplate`` is required instead of operating on ``self`` (the Python task object).
         #. The input arguments, given as a LiteralMap, are converted to native values using a Python interface that is
