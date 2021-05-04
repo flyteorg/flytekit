@@ -47,7 +47,7 @@ def test_serialization():
     sdk_wf = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert sdk_wf.interface.outputs["o0"].type.schema is not None
     assert sdk_wf.outputs[0].var == "o0"
-    assert sdk_wf.outputs[0].binding.promise.node_id == "n0"
+    assert sdk_wf.outputs[0].binding.promise.node_id == "flytekit-demo-hive-task-hivequery1"
     assert sdk_wf.outputs[0].binding.promise.var == "results"
 
 

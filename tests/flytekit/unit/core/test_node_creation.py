@@ -48,7 +48,9 @@ def test_normal_task():
     def empty_wf():
         t2_node = create_node(t2)
         t3_node = create_node(t3)
+        t3_node_duplicate = create_node(t3)
         t3_node.runs_before(t2_node)
+        t2_node.runs_before(t3_node_duplicate)
 
     # Test that VoidPromises can handle runs_before
     empty_wf()
@@ -57,7 +59,9 @@ def test_normal_task():
     def empty_wf2():
         t2_node = create_node(t2)
         t3_node = create_node(t3)
+        t3_node_duplicate = create_node(t3)
         t3_node >> t2_node
+        t2_node >> t3_node_duplicate
 
     serialization_settings = context_manager.SerializationSettings(
         project="test_proj",
@@ -67,12 +71,18 @@ def test_normal_task():
         env={},
     )
     sdk_wf = get_serializable(OrderedDict(), serialization_settings, empty_wf)
-    assert sdk_wf.nodes[0].upstream_node_ids[0] == "n1"
-    assert sdk_wf.nodes[0].id == "n0"
+    assert sdk_wf.nodes[0].upstream_node_ids[0] == "test-node-creation-t3"
+    assert sdk_wf.nodes[0].id == "test-node-creation-t2"
+    assert sdk_wf.nodes[1].id == "test-node-creation-t3"
+    assert sdk_wf.nodes[2].upstream_node_ids[0] == "test-node-creation-t2"
+    assert sdk_wf.nodes[2].id == "test-node-creation-t3-n1"
 
     sdk_wf = get_serializable(OrderedDict(), serialization_settings, empty_wf2)
-    assert sdk_wf.nodes[0].upstream_node_ids[0] == "n1"
-    assert sdk_wf.nodes[0].id == "n0"
+    assert sdk_wf.nodes[0].upstream_node_ids[0] == "test-node-creation-t3"
+    assert sdk_wf.nodes[0].id == "test-node-creation-t2"
+    assert sdk_wf.nodes[1].id == "test-node-creation-t3"
+    assert sdk_wf.nodes[2].upstream_node_ids[0] == "test-node-creation-t2"
+    assert sdk_wf.nodes[2].id == "test-node-creation-t3-n1"
 
     with pytest.raises(FlyteAssertion):
 
