@@ -15,6 +15,7 @@ install-piptools:
 
 .PHONY: update_boilerplate
 update_boilerplate:
+	@curl https://raw.githubusercontent.com/flyteorg/boilerplate/master/boilerplate/update.sh -o boilerplate/update.sh
 	@boilerplate/update.sh
 
 .PHONY: setup
