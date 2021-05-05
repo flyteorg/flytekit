@@ -21,11 +21,11 @@ def test_sql_command():
     )
     srz_t = get_serializable(OrderedDict(), serialization_settings, not_tk)
     assert srz_t.container.args[-7:] == [
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
         "--resolver",
-        "flytekit.core.python_auto_container.default_task_resolver",
+        "flytekit.core.python_customized_container_task.default_task_template_resolver",
         "--",
-        "task-module",
-        "tests.flytekit.unit.extras.sqlite3.test_task",
-        "task-name",
-        "tk",
+        "{{.taskTemplatePath}}",
+        "flytekit.extras.sqlite3.task.SQLite3TaskExecutor",
     ]
