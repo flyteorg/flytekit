@@ -75,7 +75,8 @@ class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3C
         super().__init__(
             name=name,
             task_config=task_config,
-            container_image="flytekit-sqlite3:123",
+            # If you make changes to this task itself, you'll have to bump this image to what the release _will_ be.
+            container_image="ghcr.io/flyteorg/flytekit-py37:v0.18.1",
             executor_type=SQLite3TaskExecutor,
             task_type=self._SQLITE_TASK_TYPE,
             query_template=query_template,
