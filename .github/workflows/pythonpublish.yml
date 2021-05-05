@@ -45,3 +45,31 @@ jobs:
         run: |
           make -C plugins build_all_plugins
           make -C plugins publish_all_plugins
+      - name: Build & Push Flytekit Python3.7 Docker Image to Github Registry
+        uses: whoan/docker-build-with-cache-action@v5
+        with:
+          # https://docs.github.com/en/packages/learn-github-packages/publishing-a-package
+          username: "${{ secrets.FLYTE_BOT_USERNAME }}"
+          password: "${{ secrets.FLYTE_BOT_PAT }}"
+          image_name: ${{ github.repository_owner }}/flytekit
+          image_tag: flytekit-latest,flytekit-${{ github.sha }},flytekit-${{ github.event.ref }}
+          push_git_tag: true
+          push_image_and_stages: true
+          registry: ghcr.io
+          build_extra_args: "--compress=true --build-arg=version=${{ github.sha }}"
+          context: .
+          dockerfile: Dockerfile.py37
+      - name: Build & Push Flytekit Python3.8 Docker Image to Github Registry
+        uses: whoan/docker-build-with-cache-action@v5
+        with:
+          # https://docs.github.com/en/packages/learn-github-packages/publishing-a-package
+          username: "${{ secrets.FLYTE_BOT_USERNAME }}"
+          password: "${{ secrets.FLYTE_BOT_PAT }}"
+          image_name: ${{ github.repository_owner }}/flytekit
+          image_tag: flytekit-latest,flytekit-${{ github.sha }},flytekit-${{ github.event.ref }}
+          push_git_tag: true
+          push_image_and_stages: true
+          registry: ghcr.io
+          build_extra_args: "--compress=true --build-arg=version=${{ github.sha }}"
+          context: .
+          dockerfile: Dockerfile.py37
