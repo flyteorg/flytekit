@@ -166,21 +166,27 @@ def test_serialization_branch_compound_conditions():
 
 def test_serialization_branch_complex_2():
     @task
-    def t() -> int:
-        return 5
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        return a + 2, "world"
+
+    @task
+    def t2(a: str) -> str:
+        return a
 
     @workflow
-    def wf1() -> int:
-        return t()
-
-    @workflow
-    def branching(x: int) -> int:
-        return (conditional("test")
-                .if_(x == 2)
-                .then(wf1())
-                .else_()
-                .fail("unexpected")
-                )
+    def my_wf(a: int, b: str) -> (int, str):
+        x, y = t1(a=a)
+        d = (
+            conditional("test1")
+            .if_(x == 4)
+            .then(t2(a=b))
+            .elif_(x >= 5)
+            .then(t2(a=y))
+            .else_()
+            .fail("Unable to choose branch")
+        )
+        f = conditional("test2").if_(d == "hello ").then(t2(a="It is hello")).else_().then(t2(a="Not Hello!"))
+        return x, f
 
     default_img = Image(name="default", fqn="test", tag="tag")
     serialization_settings = context_manager.SerializationSettings(
@@ -190,21 +196,9 @@ def test_serialization_branch_complex_2():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-<<<<<<< Updated upstream
     wf = get_serializable(OrderedDict(), serialization_settings, my_wf)
-=======
-    wf = get_serializable(serialization_settings, branching)
->>>>>>> Stashed changes
     assert wf is not None
     assert wf.nodes[1].inputs[0].var == "n0.t1_int_output"
-    from google.protobuf.json_format import MessageToJson as _MessageToJson
-    from flyteidl.core.workflow_closure_pb2 import WorkflowClosure
-    wc = WorkflowClosure(
-        workflow=branching,
-        tasks=t
-    )
-
-    _MessageToJson(wf)
 
 
 def test_serialization_branch():

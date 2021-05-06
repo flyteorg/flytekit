@@ -1,18 +1,16 @@
 import base64 as _base64
 import hashlib as _hashlib
+import http.server as _BaseHTTPServer
 import os as _os
 import re as _re
+import urllib.parse as _urlparse
 import webbrowser as _webbrowser
+from http import HTTPStatus as _StatusCodes
 from multiprocessing import get_context as _mp_get_context
+from urllib.parse import urlencode as _urlencode
 
 import keyring as _keyring
 import requests as _requests
-
-from http import HTTPStatus as _StatusCodes
-import http.server as _BaseHTTPServer
-
-import urllib.parse as _urlparse
-from urllib.parse import urlencode as _urlencode
 
 _code_verifier_length = 64
 _random_seed_length = 40
@@ -86,7 +84,7 @@ class OAuthCallbackHandler(_BaseHTTPServer.BaseHTTPRequestHandler):
 
     def do_GET(self):
         url = _urlparse.urlparse(self.path)
-        if url.path.strip('/') == self.server.redirect_path.strip('/'):
+        if url.path.strip("/") == self.server.redirect_path.strip("/"):
             self.send_response(_StatusCodes.OK)
             self.end_headers()
             self.handle_login(dict(_urlparse.parse_qsl(url.query)))
@@ -139,8 +137,15 @@ class Credentials(object):
 
 
 class AuthorizationClient(object):
-    def __init__(self, auth_endpoint=None, token_endpoint=None, scopes=None, client_id=None, redirect_uri=None,
-                 client_secret=None):
+    def __init__(
+        self,
+        auth_endpoint=None,
+        token_endpoint=None,
+        scopes=None,
+        client_id=None,
+        redirect_uri=None,
+        client_secret=None,
+    ):
         self._auth_endpoint = auth_endpoint
         self._token_endpoint = token_endpoint
         self._client_id = client_id
@@ -160,7 +165,9 @@ class AuthorizationClient(object):
         self._params = {
             "client_id": client_id,  # This must match the Client ID of the OAuth application.
             "response_type": "code",  # Indicates the authorization code grant
-            "scope": ' '.join(s.strip("' ") for s in scopes).strip("[]'"),  # ensures that the /token endpoint returns an ID and refresh token
+            "scope": " ".join(s.strip("' ") for s in scopes).strip(
+                "[]'"
+            ),  # ensures that the /token endpoint returns an ID and refresh token
             # callback location where the user-agent will be directed to.
             "redirect_uri": self._redirect_uri,
             "state": state,
@@ -184,7 +191,7 @@ class AuthorizationClient(object):
 
     def start_authorization_flow(self):
         # In the absence of globally-set token values, initiate the token request flow
-        ctx = _mp_get_context('fork')
+        ctx = _mp_get_context("fork")
         q = ctx.Queue()
 
         # First prepare the callback server in the background
@@ -241,14 +248,14 @@ class AuthorizationClient(object):
             raise ValueError(f"Unexpected state parameter [{auth_code.state}] passed")
         self._params.update(
             {
-                "code": auth_code.code, "code_verifier": self._code_verifier, "grant_type": "authorization_code",
+                "code": auth_code.code,
+                "code_verifier": self._code_verifier,
+                "grant_type": "authorization_code",
             }
         )
 
         if self._client_secret:
-            self._params.update({
-                "client_secret": self._client_secret
-            })
+            self._params.update({"client_secret": self._client_secret})
 
         resp = _requests.post(
             url=self._token_endpoint,

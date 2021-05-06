@@ -18,9 +18,7 @@ FYI, to see if a given port is already in use, run `sudo lsof -i :<port>` if on 
 More details here: https://www.oauth.com/oauth2-servers/redirect-uris/.
 """
 
-SCOPES = _config_common.FlyteStringListConfigurationEntry(
-    "credentials", "scopes", default=["openid"]
-)
+SCOPES = _config_common.FlyteStringListConfigurationEntry("credentials", "scopes", default=["openid"])
 """
 This controls the list of scopes to request from the authorization server.  
 """

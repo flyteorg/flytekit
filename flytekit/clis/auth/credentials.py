@@ -3,8 +3,10 @@ import urllib.parse as _urlparse
 
 from flytekit.clis.auth.auth import AuthorizationClient as _AuthorizationClient
 from flytekit.clis.auth.discovery import DiscoveryClient as _DiscoveryClient
-from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID, REDIRECT_URI as _REDIRECT_URI, SCOPES as _SCOPES, \
-    CLIENT_CREDENTIALS_SECRET as _CLIENT_SECRET
+from flytekit.configuration.creds import CLIENT_CREDENTIALS_SECRET as _CLIENT_SECRET
+from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
+from flytekit.configuration.creds import REDIRECT_URI as _REDIRECT_URI
+from flytekit.configuration.creds import SCOPES as _SCOPES
 from flytekit.configuration.platform import HTTP_URL as _HTTP_URL
 from flytekit.configuration.platform import INSECURE as _INSECURE
 from flytekit.configuration.platform import URL as _URL
