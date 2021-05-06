@@ -8,25 +8,11 @@ from multiprocessing import Process as _Process, Queue as _Queue
 import keyring as _keyring
 import requests as _requests
 
-try:  # Python 3.5+
-    from http import HTTPStatus as _StatusCodes
-except ImportError:
-    try:  # Python 3
-        from http import client as _StatusCodes
-    except ImportError:  # Python 2
-        import httplib as _StatusCodes
-try:  # Python 3
-    import http.server as _BaseHTTPServer
-except ImportError:  # Python 2
-    import BaseHTTPServer as _BaseHTTPServer
+from http import HTTPStatus as _StatusCodes
+import http.server as _BaseHTTPServer
 
-try:  # Python 3
-    import urllib.parse as _urlparse
-    from urllib.parse import urlencode as _urlencode
-except ImportError:  # Python 2
-    from urllib import urlencode as _urlencode
-
-    import urlparse as _urlparse
+import urllib.parse as _urlparse
+from urllib.parse import urlencode as _urlencode
 
 _code_verifier_length = 64
 _random_seed_length = 40
@@ -220,6 +206,7 @@ class AuthorizationClient(object):
         scheme, netloc, path, _, _, _ = _urlparse.urlparse(self._auth_endpoint)
         query = _urlencode(self._params)
         endpoint = _urlparse.urlunparse((scheme, netloc, path, None, query, None))
+        print(f"Opening {endpoint}")
         _webbrowser.open_new_tab(endpoint)
 
     def _initialize_credentials(self, auth_token_resp):
@@ -229,26 +216,21 @@ class AuthorizationClient(object):
         {
           "access_token": "foo",
           "refresh_token": "bar",
-          "id_token": "baz",
           "token_type": "Bearer"
         }
         """
         response_body = auth_token_resp.json()
         if "access_token" not in response_body:
             raise ValueError('Expected "access_token" in response from oauth server')
-        if "id_token" not in response_body:
-            raise ValueError('Expected "id_token" in response from oauth server')
         if "refresh_token" in response_body:
             self._refresh_token = response_body["refresh_token"]
 
         access_token = response_body["access_token"]
         refresh_token = response_body["refresh_token"]
-        id_token = response_body["id_token"]
 
         _keyring.set_password(_keyring_service_name, _keyring_access_token_storage_key, access_token)
-        _keyring.set_password(_keyring_service_name, _keyring_id_token_storage_key, id_token)
         _keyring.set_password(_keyring_service_name, _keyring_refresh_token_storage_key, refresh_token)
-        self._credentials = Credentials(access_token=id_token)
+        self._credentials = Credentials(access_token=access_token)
 
     def request_access_token(self, auth_code):
         if self._state != auth_code.state:

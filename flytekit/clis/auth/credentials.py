@@ -10,7 +10,7 @@ from flytekit.configuration.platform import INSECURE as _INSECURE
 from flytekit.configuration.platform import URL as _URL
 
 # Default, well known-URI string used for fetching JSON metadata. See https://tools.ietf.org/html/rfc8414#section-3.
-discovery_endpoint_path = "./.well-known/openid-configuration"
+discovery_endpoint_path = "./.well-known/oauth-authorization-server"
 
 
 def _get_discovery_endpoint(http_config_val, platform_url_val, insecure_val):
