@@ -27,8 +27,11 @@ def _refresh_credentials_standard(flyte_client):
     :return:
     """
 
-    _credentials_access.get_client(flyte_client.url).refresh_access_token()
-    flyte_client.set_access_token(_credentials_access.get_client(flyte_client.url).credentials.access_token)
+    client = _credentials_access.get_client(flyte_client.url)
+    if client.can_refresh_token:
+        client.refresh_access_token()
+
+    flyte_client.set_access_token(client.credentials.access_token)
 
 
 def _refresh_credentials_basic(flyte_client):

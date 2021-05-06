@@ -3,14 +3,14 @@ import urllib.parse as _urlparse
 
 from flytekit.clis.auth.auth import AuthorizationClient as _AuthorizationClient
 from flytekit.clis.auth.discovery import DiscoveryClient as _DiscoveryClient
-from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
-from flytekit.configuration.creds import REDIRECT_URI as _REDIRECT_URI
+from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID, REDIRECT_URI as _REDIRECT_URI, SCOPES as _SCOPES, \
+    CLIENT_CREDENTIALS_SECRET as _CLIENT_SECRET
 from flytekit.configuration.platform import HTTP_URL as _HTTP_URL
 from flytekit.configuration.platform import INSECURE as _INSECURE
 from flytekit.configuration.platform import URL as _URL
 
 # Default, well known-URI string used for fetching JSON metadata. See https://tools.ietf.org/html/rfc8414#section-3.
-discovery_endpoint_path = "./.well-known/oauth-authorization-server"
+discovery_endpoint_path = "./.well-known/openid-configuration"
 
 
 def _get_discovery_endpoint(http_config_val, platform_url_val, insecure_val):
@@ -45,9 +45,15 @@ def get_client(flyte_client_url):
     _authorization_client = _AuthorizationClient(
         redirect_uri=_REDIRECT_URI.get(),
         client_id=_CLIENT_ID.get(),
+        scopes=_SCOPES.get(),
         auth_endpoint=authorization_endpoints.auth_endpoint,
         token_endpoint=authorization_endpoints.token_endpoint,
+        client_secret=_CLIENT_SECRET.get(),
     )
+
+    if not _authorization_client.has_valid_credentials:
+        _authorization_client.start_authorization_flow()
+
     return _authorization_client
 
 

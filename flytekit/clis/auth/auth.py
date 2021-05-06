@@ -3,8 +3,7 @@ import hashlib as _hashlib
 import os as _os
 import re as _re
 import webbrowser as _webbrowser
-from multiprocessing import Process as _Process
-from multiprocessing import Queue as _Queue
+from multiprocessing import Process as _Process, Queue as _Queue
 
 import keyring as _keyring
 import requests as _requests
@@ -39,6 +38,7 @@ _keyring_service_name = "flyteauth"
 # Identifies the key used for storing and fetching from keyring. In our case, instead of a username as the keyring docs
 # suggest, we are storing a user's oidc.
 _keyring_access_token_storage_key = "access_token"
+_keyring_id_token_storage_key = "id_token"
 _keyring_refresh_token_storage_key = "refresh_token"
 
 
@@ -100,7 +100,7 @@ class OAuthCallbackHandler(_BaseHTTPServer.BaseHTTPRequestHandler):
 
     def do_GET(self):
         url = _urlparse.urlparse(self.path)
-        if url.path == self.server.redirect_path:
+        if url.path.strip('/') == self.server.redirect_path.strip('/'):
             self.send_response(_StatusCodes.OK)
             self.end_headers()
             self.handle_login(dict(_urlparse.parse_qsl(url.query)))
@@ -136,6 +136,11 @@ class OAuthHTTPServer(_BaseHTTPServer.HTTPServer):
 
     def handle_authorization_code(self, auth_code):
         self._queue.put(auth_code)
+        self.server_close()
+
+    def handle_request(self, queue=None):
+        self._queue = queue
+        return super().handle_request()
 
 
 class Credentials(object):
@@ -148,10 +153,12 @@ class Credentials(object):
 
 
 class AuthorizationClient(object):
-    def __init__(self, auth_endpoint=None, token_endpoint=None, client_id=None, redirect_uri=None):
+    def __init__(self, auth_endpoint=None, token_endpoint=None, scopes=None, client_id=None, redirect_uri=None,
+                 client_secret=None):
         self._auth_endpoint = auth_endpoint
         self._token_endpoint = token_endpoint
         self._client_id = client_id
+        self._scopes = scopes
         self._redirect_uri = redirect_uri
         self._code_verifier = _generate_code_verifier()
         code_challenge = _create_code_challenge(self._code_verifier)
@@ -162,11 +169,12 @@ class AuthorizationClient(object):
         self._refresh_token = None
         self._headers = {"content-type": "application/x-www-form-urlencoded"}
         self._expired = False
+        self._client_secret = client_secret
 
         self._params = {
             "client_id": client_id,  # This must match the Client ID of the OAuth application.
             "response_type": "code",  # Indicates the authorization code grant
-            "scope": "openid offline_access",  # ensures that the /token endpoint returns an ID and refresh token
+            "scope": ' '.join(s.strip("' ") for s in scopes).strip("[]'"),  # ensures that the /token endpoint returns an ID and refresh token
             # callback location where the user-agent will be directed to.
             "redirect_uri": self._redirect_uri,
             "state": state,
@@ -176,30 +184,37 @@ class AuthorizationClient(object):
 
         # Prefer to use already-fetched token values when they've been set globally.
         self._refresh_token = _keyring.get_password(_keyring_service_name, _keyring_refresh_token_storage_key)
-        access_token = _keyring.get_password(_keyring_service_name, _keyring_access_token_storage_key)
-        if access_token:
-            self._credentials = Credentials(access_token=access_token)
-            return
+        id_token = _keyring.get_password(_keyring_service_name, _keyring_id_token_storage_key)
+        if id_token:
+            self._credentials = Credentials(access_token=id_token)
 
+    @property
+    def has_valid_credentials(self) -> bool:
+        return self._credentials is not None
+
+    @property
+    def can_refresh_token(self) -> bool:
+        return self._refresh_token is not None
+
+    def start_authorization_flow(self):
         # In the absence of globally-set token values, initiate the token request flow
         q = _Queue()
-        # First prepare the callback server in the background
-        server = self._create_callback_server(q)
-        server_process = _Process(target=server.handle_request)
-        server_process.start()
-
-        # Send the call to request the authorization code
+        # Send the call to request the authorization code in the background
         self._request_authorization_code()
+
+        # Prepare the callback server
+        server = self._create_callback_server()
+        server.handle_request(queue=q)
 
         # Request the access token once the auth code has been received.
         auth_code = q.get()
-        server_process.terminate()
+        # server_process.terminate()
         self.request_access_token(auth_code)
 
-    def _create_callback_server(self, q):
+    def _create_callback_server(self):
         server_url = _urlparse.urlparse(self._redirect_uri)
         server_address = (server_url.hostname, server_url.port)
-        return OAuthHTTPServer(server_address, OAuthCallbackHandler, redirect_path=server_url.path, queue=q)
+        return OAuthHTTPServer(server_address, OAuthCallbackHandler, redirect_path=server_url.path)
 
     def _request_authorization_code(self):
         scheme, netloc, path, _, _, _ = _urlparse.urlparse(self._auth_endpoint)
@@ -221,22 +236,34 @@ class AuthorizationClient(object):
         response_body = auth_token_resp.json()
         if "access_token" not in response_body:
             raise ValueError('Expected "access_token" in response from oauth server')
+        if "id_token" not in response_body:
+            raise ValueError('Expected "id_token" in response from oauth server')
         if "refresh_token" in response_body:
             self._refresh_token = response_body["refresh_token"]
 
         access_token = response_body["access_token"]
         refresh_token = response_body["refresh_token"]
+        id_token = response_body["id_token"]
 
         _keyring.set_password(_keyring_service_name, _keyring_access_token_storage_key, access_token)
+        _keyring.set_password(_keyring_service_name, _keyring_id_token_storage_key, id_token)
         _keyring.set_password(_keyring_service_name, _keyring_refresh_token_storage_key, refresh_token)
-        self._credentials = Credentials(access_token=access_token)
+        self._credentials = Credentials(access_token=id_token)
 
     def request_access_token(self, auth_code):
         if self._state != auth_code.state:
-            raise ValueError("Unexpected state parameter [{}] passed".format(auth_code.state))
+            raise ValueError(f"Unexpected state parameter [{auth_code.state}] passed")
         self._params.update(
-            {"code": auth_code.code, "code_verifier": self._code_verifier, "grant_type": "authorization_code"}
+            {
+                "code": auth_code.code, "code_verifier": self._code_verifier, "grant_type": "authorization_code",
+            }
         )
+
+        if self._client_secret:
+            self._params.update({
+                "client_secret": self._client_secret
+            })
+
         resp = _requests.post(
             url=self._token_endpoint,
             data=self._params,
