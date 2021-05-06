@@ -3,7 +3,8 @@ import hashlib as _hashlib
 import os as _os
 import re as _re
 import webbrowser as _webbrowser
-from multiprocessing import Process as _Process, Queue as _Queue
+from multiprocessing import get_context as _mp_get_context
+# from multiprocessing import set_start_method
 
 import keyring as _keyring
 import requests as _requests
@@ -13,6 +14,8 @@ import http.server as _BaseHTTPServer
 
 import urllib.parse as _urlparse
 from urllib.parse import urlencode as _urlencode
+
+# set_start_method("fork")
 
 _code_verifier_length = 64
 _random_seed_length = 40
@@ -184,13 +187,22 @@ class AuthorizationClient(object):
 
     def start_authorization_flow(self):
         # In the absence of globally-set token values, initiate the token request flow
-        q = _Queue()
+        ctx = _mp_get_context('fork')
+
+        q = ctx.Queue()
+
+        # First prepare the callback server in the background
+        server = self._create_callback_server()
+        server_process = ctx.Process(target=server.handle_request, args=(q,))
+        server_process.daemon = True
+        server_process.start()
+
         # Send the call to request the authorization code in the background
         self._request_authorization_code()
 
         # Prepare the callback server
-        server = self._create_callback_server()
-        server.handle_request(queue=q)
+        # server = self._create_callback_server()
+        # server.handle_request(queue=q)
 
         # Request the access token once the auth code has been received.
         auth_code = q.get()
