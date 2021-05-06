@@ -252,9 +252,6 @@ class AuthorizationClient(object):
             }
         )
 
-        if self._client_secret:
-            self._params.update({"client_secret": self._client_secret})
-
         resp = _requests.post(
             url=self._token_endpoint,
             data=self._params,
