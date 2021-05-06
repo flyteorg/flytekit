@@ -22,7 +22,6 @@ _keyring_service_name = "flyteauth"
 # Identifies the key used for storing and fetching from keyring. In our case, instead of a username as the keyring docs
 # suggest, we are storing a user's oidc.
 _keyring_access_token_storage_key = "access_token"
-_keyring_id_token_storage_key = "id_token"
 _keyring_refresh_token_storage_key = "refresh_token"
 
 
@@ -177,9 +176,9 @@ class AuthorizationClient(object):
 
         # Prefer to use already-fetched token values when they've been set globally.
         self._refresh_token = _keyring.get_password(_keyring_service_name, _keyring_refresh_token_storage_key)
-        id_token = _keyring.get_password(_keyring_service_name, _keyring_id_token_storage_key)
-        if id_token:
-            self._credentials = Credentials(access_token=id_token)
+        access_token = _keyring.get_password(_keyring_service_name, _keyring_access_token_storage_key)
+        if access_token:
+            self._credentials = Credentials(access_token=access_token)
 
     @property
     def has_valid_credentials(self) -> bool:
