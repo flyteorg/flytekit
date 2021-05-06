@@ -216,7 +216,6 @@ class AuthorizationClient(object):
         scheme, netloc, path, _, _, _ = _urlparse.urlparse(self._auth_endpoint)
         query = _urlencode(self._params)
         endpoint = _urlparse.urlunparse((scheme, netloc, path, None, query, None))
-        print(f"Opening {endpoint}")
         _webbrowser.open_new_tab(endpoint)
 
     def _initialize_credentials(self, auth_token_resp):
