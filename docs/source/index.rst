@@ -18,6 +18,7 @@ build workflows, and extend ``flytekit``.
    Getting Started <https://docs.flyte.org/en/latest/getting_started.html>
    User Guide <https://docs.flyte.org/en/latest/getting_started.html>
    Tutorials <https://flytecookbook.readthedocs.io>
+   Concepts <https://docs.flyte.org/en/latest/concepts/basics.html>
    API Reference <https://docs.flyte.org/en/latest/reference/index.html>
    Community <https://docs.flyte.org/en/latest/community/index.html>
 
