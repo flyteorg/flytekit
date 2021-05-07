@@ -198,7 +198,7 @@ def test_serialization_branch_complex_2():
     )
     wf = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert wf is not None
-    assert wf.nodes[1].inputs[0].var == "n0.t1_int_output"
+    assert wf.nodes[1].inputs[0].var == "test-serialization-t1.t1_int_output"
 
 
 def test_serialization_branch():

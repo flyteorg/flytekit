@@ -180,7 +180,7 @@ def test_ref_plain_two_outputs():
         assert xx.ref.node is yy.ref.node
         assert xx.var == "x"
         assert yy.var == "y"
-        assert xx.ref.node_id == "n0"
+        assert xx.ref.node_id == "some-name"
         assert len(xx.ref.node.bindings) == 2
 
     @task

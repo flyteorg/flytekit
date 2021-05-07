@@ -121,7 +121,7 @@ def test_wf1():
         return x, d
 
     assert len(my_wf._nodes) == 2
-    assert my_wf._nodes[0].id == "n0"
+    assert my_wf._nodes[0].id == "test-type-hints-t1"
     assert my_wf._nodes[1]._upstream_nodes[0] is my_wf._nodes[0]
 
     assert len(my_wf._output_bindings) == 2

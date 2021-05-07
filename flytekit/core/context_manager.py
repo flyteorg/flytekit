@@ -180,6 +180,9 @@ class CompilationState(object):
         self._branch_nodes: List[Node] = []
         self._task_resolver = task_resolver
 
+        # Count of entities as they are compiled {entity.name: count}
+        self._entity_counts: Dict[str, int] = {}
+
     @property
     def prefix(self) -> str:
         return self._prefix
@@ -195,6 +198,15 @@ class CompilationState(object):
         if self._branch:
             return self._branch_nodes
         return self._nodes
+
+    def add_entity(self, entity_name: str):
+        if entity_name in self._entity_counts:
+            self._entity_counts[entity_name] += 1
+        else:
+            self._entity_counts[entity_name] = 1
+
+    def get_entity_count(self, entity_name: str) -> int:
+        return self._entity_counts.get(entity_name, 0)
 
     def enter_conditional_section(self):
         """

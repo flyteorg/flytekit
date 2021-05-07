@@ -693,15 +693,23 @@ def create_and_link_node(
         retry_strategy or _literal_models.RetryStrategy(0),
     )
 
+    # Node ID should be the entity name, but we need to add a suffix to ensure unique node IDs
+    # when we encounter more than one such entity during compilation
+    node_id = (
+        f"{entity.name}-n{ctx.compilation_state.get_entity_count(entity.name)}"
+        if ctx.compilation_state.get_entity_count(entity.name) != 0
+        else entity.name
+    )
+
     non_sdk_node = Node(
-        # TODO: Better naming, probably a derivative of the function name.
-        id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
+        id=node_id,
         metadata=node_metadata,
         bindings=sorted(bindings, key=lambda b: b.var),
         upstream_nodes=upstream_nodes,
         flyte_entity=entity,
     )
     ctx.compilation_state.add_node(non_sdk_node)
+    ctx.compilation_state.add_entity(entity.name)
 
     if len(typed_interface.outputs) == 0:
         return VoidPromise(entity.name)
