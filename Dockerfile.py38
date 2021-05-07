@@ -1,0 +1,12 @@
+FROM python:3.8-slim-buster
+
+MAINTAINER Flyte Team <users@flyte.org>
+LABEL org.opencontainers.image.source https://github.com/flyteorg/flytekit
+
+ARG $VERSION
+
+RUN pip install awscli
+RUN pip install gsutil
+RUN pip install -U flytekit==$VERSION
+
+WORKDIR /app
