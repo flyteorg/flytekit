@@ -1,3 +1,4 @@
+import logging
 import tempfile
 import typing
 from dataclasses import dataclass
@@ -7,6 +8,7 @@ import dolt_integrations.core as dolt_int
 import doltcli as dolt
 import pandas
 from dataclasses_json import dataclass_json
+from google.protobuf.json_format import MessageToDict
 from google.protobuf.struct_pb2 import Struct
 
 from flytekit import FlyteContext
@@ -14,6 +16,8 @@ from flytekit.extend import TypeEngine, TypeTransformer
 from flytekit.models import types as _type_models
 from flytekit.models.literals import Literal, Scalar
 from flytekit.models.types import LiteralType
+
+logger = logging.getLogger("flytekitplugins.dolt")
 
 
 @dataclass_json
@@ -78,25 +82,30 @@ class DoltTableNameTransformer(TypeTransformer[DoltTable]):
         lv: Literal,
         expected_python_type: typing.Type[DoltTable],
     ) -> DoltTable:
+        df = pandas.DataFrame()
+        if not (lv and lv.scalar and lv.scalar.generic and "config" in lv.scalar.generic):
+            return lv
 
-        if not (lv and lv.scalar and lv.scalar.generic and lv.scalar.generic["config"]):
-            return pandas.DataFrame()
+        conf_dict = MessageToDict(lv.scalar.generic["config"])
 
-        conf = DoltConfig(**lv.scalar.generic["config"])
+        conf = DoltConfig(**conf_dict)
         db = dolt.Dolt(conf.db_path)
 
         with tempfile.NamedTemporaryFile() as f:
-            dolt_int.load(
-                db=db,
-                tablename=conf.tablename,
-                sql=conf.sql,
-                filename=f.name,
-                branch_conf=conf.branch_conf,
-                meta_conf=conf.meta_conf,
-                remote_conf=conf.remote_conf,
-                load_args=conf.io_args,
-            )
-            df = pandas.read_csv(f)
+            try:
+                dolt_int.load(
+                    db=db,
+                    tablename=conf.tablename,
+                    sql=conf.sql,
+                    filename=f.name,
+                    branch_conf=conf.branch_conf,
+                    meta_conf=conf.meta_conf,
+                    remote_conf=conf.remote_conf,
+                    load_args=conf.io_args,
+                )
+                df = pandas.read_csv(f)
+            except dolt.DoltException as e:
+                logger.warning(f"Error loading dolt table: {repr(e)}")
             lv.data = df
 
         return lv
