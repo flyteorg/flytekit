@@ -695,7 +695,7 @@ def workflow(
     That is, workflows should not call non-Flyte entities since they are only run once (again, this is with respect to
     the platform, local runs notwithstanding).
 
-    Please see the :std:doc:`auto_core_basic/basic_workflow` for more usage examples.
+    Please see the :std:doc:`cookbook:sphx_glr_auto_core_flyte_basics_basic_workflow.py` for more usage examples.
 
     :param _workflow_function: This argument is implicitly passed and represents the decorated function.
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
