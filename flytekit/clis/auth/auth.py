@@ -12,6 +12,8 @@ from urllib.parse import urlencode as _urlencode
 import keyring as _keyring
 import requests as _requests
 
+from flytekit.loggers import auth_logger
+
 _code_verifier_length = 64
 _random_seed_length = 40
 _utf_8 = "utf-8"
@@ -180,6 +182,9 @@ class AuthorizationClient(object):
         if access_token:
             self._credentials = Credentials(access_token=access_token)
 
+    def __repr__(self):
+        return f"AuthorizationClient({self._auth_endpoint}, {self._token_endpoint}, {self._client_id}, {self._scopes}, {self._redirect_uri})"
+
     @property
     def has_valid_credentials(self) -> bool:
         return self._credentials is not None
@@ -216,6 +221,7 @@ class AuthorizationClient(object):
         scheme, netloc, path, _, _, _ = _urlparse.urlparse(self._auth_endpoint)
         query = _urlencode(self._params)
         endpoint = _urlparse.urlunparse((scheme, netloc, path, None, query, None))
+        auth_logger.debug(f"Requesting authorization code through {endpoint}")
         _webbrowser.open_new_tab(endpoint)
 
     def _initialize_credentials(self, auth_token_resp):

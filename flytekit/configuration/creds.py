@@ -18,7 +18,7 @@ FYI, to see if a given port is already in use, run `sudo lsof -i :<port>` if on 
 More details here: https://www.oauth.com/oauth2-servers/redirect-uris/.
 """
 
-SCOPES = _config_common.FlyteStringListConfigurationEntry("credentials", "scopes", default=["openid"])
+THREE_LEGGED_SCOPES = _config_common.FlyteStringListConfigurationEntry("credentials", "scopes", default=["openid"])
 """
 This controls the list of scopes to request from the authorization server.  
 """
@@ -30,7 +30,6 @@ AUTHORIZATION_METADATA_KEY = _config_common.FlyteStringConfigurationEntry(
 The authorization metadata key used for passing access tokens in gRPC requests.
 Traditionally this value is 'authorization' however it is made configurable.
 """
-
 
 CLIENT_CREDENTIALS_SECRET = _config_common.FlyteStringConfigurationEntry("credentials", "client_secret", default=None)
 """
