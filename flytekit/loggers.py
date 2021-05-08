@@ -7,6 +7,7 @@ logger.setLevel(_logging.DEBUG)
 
 # Child loggers
 auth_logger = logger.getChild("auth")
+cli_logger = logger.getChild("cli")
 
 # create console handler and set level to debug
 ch = _logging.StreamHandler()

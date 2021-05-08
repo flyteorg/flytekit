@@ -4,8 +4,8 @@ from flytekit.clis.auth.auth import AuthorizationClient as _AuthorizationClient
 from flytekit.clis.auth.discovery import DiscoveryClient as _DiscoveryClient
 from flytekit.configuration.creds import CLIENT_CREDENTIALS_SECRET as _CLIENT_SECRET
 from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
+from flytekit.configuration.creds import OAUTH_SCOPES as _SCOPES
 from flytekit.configuration.creds import REDIRECT_URI as _REDIRECT_URI
-from flytekit.configuration.creds import THREE_LEGGED_SCOPES as _SCOPES
 from flytekit.configuration.platform import HTTP_URL as _HTTP_URL
 from flytekit.configuration.platform import INSECURE as _INSECURE
 from flytekit.configuration.platform import URL as _URL
