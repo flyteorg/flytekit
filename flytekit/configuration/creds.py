@@ -25,7 +25,7 @@ More details here: https://www.oauth.com/oauth2-servers/redirect-uris/.
 
 OAUTH_SCOPES = _config_common.FlyteStringListConfigurationEntry("credentials", "oauth_scopes", default=["openid"])
 """
-This controls the list of scopes to request from the authorization server. 
+This controls the list of scopes to request from the authorization server.
 """
 
 AUTHORIZATION_METADATA_KEY = _config_common.FlyteStringConfigurationEntry(
