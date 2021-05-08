@@ -23,8 +23,13 @@ from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
-from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config, \
-    FlyteContextManager
+from flytekit.core.context_manager import (
+    ExecutionState,
+    FlyteContext,
+    FlyteContextManager,
+    SerializationSettings,
+    get_image_config,
+)
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
 from flytekit.core.python_auto_container import TaskResolverMixin
@@ -144,12 +149,12 @@ def _dispatch_execute(ctx: FlyteContext, task_def: PythonTask, inputs_path: str,
 
 
 def _handle_annotated_task(
-        task_def: PythonTask,
-        inputs: str,
-        output_prefix: str,
-        raw_output_data_prefix: str,
-        dynamic_addl_distro: str = None,
-        dynamic_dest_dir: str = None,
+    task_def: PythonTask,
+    inputs: str,
+    output_prefix: str,
+    raw_output_data_prefix: str,
+    dynamic_addl_distro: str = None,
+    dynamic_dest_dir: str = None,
 ):
     """
     Entrypoint for all PythonTask extensions
@@ -232,12 +237,18 @@ def _handle_annotated_task(
         with FlyteContextManager.with_context(ctx.with_serialization_settings(serialization_settings).build()) as ctx:
             # Because execution states do not look up the context chain, it has to be made last
 
-            with FlyteContextManager.with_context(ctx.with_execution_state(
-                    ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION,
-                                                          execution_params=execution_parameters,
-                                                          additional_context={
-                                                              "dynamic_addl_distro": dynamic_addl_distro,
-                                                              "dynamic_dest_dir": dynamic_dest_dir}))) as ctx:
+            with FlyteContextManager.with_context(
+                ctx.with_execution_state(
+                    ctx.new_execution_state().with_params(
+                        mode=ExecutionState.Mode.TASK_EXECUTION,
+                        execution_params=execution_parameters,
+                        additional_context={
+                            "dynamic_addl_distro": dynamic_addl_distro,
+                            "dynamic_dest_dir": dynamic_dest_dir,
+                        },
+                    )
+                )
+            ) as ctx:
                 _dispatch_execute(ctx, task_def, inputs, output_prefix)
 
 
@@ -294,14 +305,14 @@ def _load_resolver(resolver_location: str) -> TaskResolverMixin:
 
 @_scopes.system_entry_point
 def _execute_task(
-        inputs,
-        output_prefix,
-        raw_output_data_prefix,
-        test,
-        resolver: str,
-        resolver_args: List[str],
-        dynamic_addl_distro: str = None,
-        dynamic_dest_dir: str = None,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    test,
+    resolver: str,
+    resolver_args: List[str],
+    dynamic_addl_distro: str = None,
+    dynamic_dest_dir: str = None,
 ):
     """
     This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
@@ -345,15 +356,15 @@ def _execute_task(
 
 @_scopes.system_entry_point
 def _execute_map_task(
-        inputs,
-        output_prefix,
-        raw_output_data_prefix,
-        max_concurrency,
-        test,
-        dynamic_addl_distro: str,
-        dynamic_dest_dir: str,
-        resolver: str,
-        resolver_args: List[str],
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    max_concurrency,
+    test,
+    dynamic_addl_distro: str,
+    dynamic_dest_dir: str,
+    resolver: str,
+    resolver_args: List[str],
 ):
     if len(resolver_args) < 1:
         raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
@@ -403,16 +414,16 @@ def _pass_through():
     nargs=-1,
 )
 def execute_task_cmd(
-        task_module,
-        task_name,
-        inputs,
-        output_prefix,
-        raw_output_data_prefix,
-        test,
-        dynamic_addl_distro,
-        dynamic_dest_dir,
-        resolver,
-        resolver_args,
+    task_module,
+    task_name,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    test,
+    dynamic_addl_distro,
+    dynamic_dest_dir,
+    resolver,
+    resolver_args,
 ):
     _click.echo(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
@@ -488,15 +499,15 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
     nargs=-1,
 )
 def map_execute_task_cmd(
-        inputs,
-        output_prefix,
-        raw_output_data_prefix,
-        max_concurrency,
-        test,
-        dynamic_addl_distro,
-        dynamic_dest_dir,
-        resolver,
-        resolver_args,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    max_concurrency,
+    test,
+    dynamic_addl_distro,
+    dynamic_dest_dir,
+    resolver,
+    resolver_args,
 ):
     _click.echo(_utils.get_version_message())
 

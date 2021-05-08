@@ -209,15 +209,12 @@ class ComparisonExpression(object):
     def __bool__(self):
         raise ValueError(
             "Cannot perform truth value testing,"
-            " This is a limitation in python. For Logical `and\\or` use `&\\|` (bitwise) instead"
+            " This is a limitation in python. For Logical `and\\or` use `&\\|` (bitwise) instead."
+            f" Expr {self}"
         )
 
     def __repr__(self):
-        s = "Comp( "
-        s += f"{self._lhs}"
-        s += f" {self._op.value} "
-        s += f"({self._rhs},{self._rhs})"
-        return s
+        return f"Comp({self._lhs} {self._op.value} {self._rhs})"
 
 
 class ConjunctionExpression(object):

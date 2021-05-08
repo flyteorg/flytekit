@@ -10,8 +10,14 @@ from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import BranchEvalMode, CompilationState, ExecutionState, FlyteContext, FlyteEntities, \
-    FlyteContextManager
+from flytekit.core.context_manager import (
+    BranchEvalMode,
+    CompilationState,
+    ExecutionState,
+    FlyteContext,
+    FlyteContextManager,
+    FlyteEntities,
+)
 from flytekit.core.interface import (
     Interface,
     transform_inputs_to_parameters,
@@ -261,9 +267,11 @@ class WorkflowBase(object):
                     raise ValueError(f"Received a promise for a workflow call, when expecting a native value for {k}")
 
             result = None
-            with FlyteContextManager.with_context(ctx.with_execution_state(
-                    ctx.new_execution_state().with_params(
-                        mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION))) as child_ctx:
+            with FlyteContextManager.with_context(
+                ctx.with_execution_state(
+                    ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
+                )
+            ) as child_ctx:
                 result = self._local_execute(child_ctx, **input_kwargs)
 
             expected_outputs = len(self.python_interface.outputs)
@@ -610,7 +618,8 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         prefix = f"{ctx.compilation_state.prefix}-{self.short_name}-" if ctx.compilation_state is not None else ""
 
         with FlyteContextManager.with_context(
-                ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=self))) as comp_ctx:
+            ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=self))
+        ) as comp_ctx:
             # Construct the default input promise bindings, but then override with the provided inputs, if any
             input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
             input_kwargs.update(kwargs)

@@ -7,7 +7,7 @@ from flytekit import task, workflow
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings
+from flytekit.core.context_manager import FlyteContextManager, Image, ImageConfig, SerializationSettings
 
 
 @task
@@ -141,11 +141,15 @@ def test_condition_unary_bool():
             result = return_true()
             return conditional("test").if_(result).then(success()).else_().then(failed())
 
+    FlyteContextManager.reset()
+
     with pytest.raises(AssertionError):
 
         @workflow
         def decompose_none() -> int:
             return conditional("test").if_(None).then(success()).else_().then(failed())
+
+    FlyteContextManager.reset()
 
     with pytest.raises(AssertionError):
 
@@ -153,6 +157,8 @@ def test_condition_unary_bool():
         def decompose_is() -> int:
             result = return_true()
             return conditional("test").if_(result is True).then(success()).else_().then(failed())
+
+    FlyteContextManager.reset()
 
     @workflow
     def decompose() -> int:
@@ -291,22 +297,22 @@ def test_subworkflow_condition_single_named_tuple():
 
 
 def test_nested_condition():
-    @workflow
-    def multiplier_2(my_input: float) -> float:
-        return (
-            conditional("fractions")
+    with pytest.raises(NotImplementedError) as e:
+
+        @workflow
+        def multiplier_2(my_input: float) -> float:
+            return (
+                conditional("fractions")
                 .if_((my_input > 0.1) & (my_input < 1.0))
                 .then(
-                conditional("inner_fractions")
+                    conditional("inner_fractions")
                     .if_(my_input < 0.5)
                     .then(double(n=my_input))
                     .else_()
-                    .fail("Only <0.5 allowed"))
+                    .fail("Only <0.5 allowed")
+                )
                 .elif_((my_input > 1.0) & (my_input < 10.0))
                 .then(square(n=my_input))
                 .else_()
                 .fail("The input must be between 0 and 10")
-        )
-
-    multiplier_2(my_input=0.2)
-
+            )

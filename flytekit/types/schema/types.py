@@ -10,7 +10,7 @@ from typing import Type
 
 import numpy as _np
 
-from flytekit.core.context_manager import FlyteContext
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import T, TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
@@ -230,12 +230,12 @@ class FlyteSchema(object):
         if (
             supported_mode == SchemaOpenMode.WRITE
             and local_path is None
-            and FlyteContext.current_context().file_access is None
+            and FlyteContextManager.current_context().file_access is None
         ):
             raise ValueError("To create a FlyteSchema in write mode, local_path is required")
 
         if local_path is None:
-            local_path = FlyteContext.current_context().file_access.get_random_local_directory()
+            local_path = FlyteContextManager.current_context().file_access.get_random_local_directory()
         self._local_path = local_path
         self._remote_path = remote_path
         self._supported_mode = supported_mode

@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Type
 from flytekit.common.constants import SdkTaskType
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, FlyteContextManager
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, SerializationSettings
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.python_function_task import PythonFunctionTask
