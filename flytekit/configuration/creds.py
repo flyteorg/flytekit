@@ -1,4 +1,9 @@
+from warnings import warn
+
 from flytekit.configuration import common as _config_common
+
+deprecated_names = ["CLIENT_CREDENTIALS_SCOPE"]
+
 
 CLIENT_ID = _config_common.FlyteStringConfigurationEntry("credentials", "client_id", default=None)
 """
@@ -18,6 +23,11 @@ FYI, to see if a given port is already in use, run `sudo lsof -i :<port>` if on 
 More details here: https://www.oauth.com/oauth2-servers/redirect-uris/.
 """
 
+OAUTH_SCOPES = _config_common.FlyteStringListConfigurationEntry("credentials", "oauth_scopes", default=["openid"])
+"""
+This controls the list of scopes to request from the authorization server.
+"""
+
 AUTHORIZATION_METADATA_KEY = _config_common.FlyteStringConfigurationEntry(
     "credentials", "authorization_metadata_key", default="authorization"
 )
@@ -26,7 +36,6 @@ The authorization metadata key used for passing access tokens in gRPC requests.
 Traditionally this value is 'authorization' however it is made configurable.
 """
 
-
 CLIENT_CREDENTIALS_SECRET = _config_common.FlyteStringConfigurationEntry("credentials", "client_secret", default=None)
 """
 Used for basic auth, which is automatically called during pyflyte. This will allow the Flyte engine to read the
@@ -34,12 +43,17 @@ password directly from the environment variable. Note that this is less secure! 
 secret as a file is impossible.
 """
 
-
-CLIENT_CREDENTIALS_SCOPE = _config_common.FlyteStringConfigurationEntry("credentials", "scope", default=None)
+_DEPRECATED_CLIENT_CREDENTIALS_SCOPE = _config_common.FlyteStringConfigurationEntry(
+    "credentials", "scope", default=None
+)
 """
 Used for basic auth, which is automatically called during pyflyte. This is the scope that will be requested. Because
 there is no user explicitly in this auth flow, certain IDPs require a custom scope for basic auth in the configuration
 of the authorization server.
+
+Deprecated - please use the OAUTH_SCOPES list variable instead. In the basic flow scenario, flytekit will expect a list
+with at least one element. The first element will be used. If list has more than one element a warning will be logged.
+Config files with both this option, and the OAUTH_SCOPES, will use this one.
 """
 
 AUTH_MODE = _config_common.FlyteStringConfigurationEntry("credentials", "auth_mode", default="standard")
@@ -51,3 +65,11 @@ The auth mode defines the behavior used to request and refresh credentials. The 
         is used to facilitate authentication.
 - None: No auth will be attempted.
 """
+
+
+# https://www.python.org/dev/peps/pep-0562/
+def __getattr__(name):
+    if name in deprecated_names:
+        warn(f"{name} is deprecated", DeprecationWarning)
+        return globals()[f"_DEPRECATED_{name}"]
+    raise AttributeError(f"module {__name__} has no attribute {name}")
