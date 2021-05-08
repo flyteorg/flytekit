@@ -53,7 +53,6 @@ def _get_basic_flow_scope() -> str:
     if scope == "openid":
         cli_logger.warning("Basic flow authentication should never use openid.")
 
-    # import ipdb; ipdb.set_trace()
     return scope
 
 

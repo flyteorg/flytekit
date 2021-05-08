@@ -25,7 +25,7 @@ More details here: https://www.oauth.com/oauth2-servers/redirect-uris/.
 
 OAUTH_SCOPES = _config_common.FlyteStringListConfigurationEntry("credentials", "oauth_scopes", default=["openid"])
 """
-This controls the list of scopes to request from the authorization server.  
+This controls the list of scopes to request from the authorization server. 
 """
 
 AUTHORIZATION_METADATA_KEY = _config_common.FlyteStringConfigurationEntry(
@@ -53,7 +53,7 @@ of the authorization server.
 
 Deprecated - please use the OAUTH_SCOPES list variable instead. In the basic flow scenario, flytekit will expect a list
 with at least one element. The first element will be used. If list has more than one element a warning will be logged.
-Config files with both this option, and the OAUTH_SCOPES 
+Config files with both this option, and the OAUTH_SCOPES, will use this one.
 """
 
 AUTH_MODE = _config_common.FlyteStringConfigurationEntry("credentials", "auth_mode", default="standard")
