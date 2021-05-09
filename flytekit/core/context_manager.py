@@ -129,11 +129,11 @@ class CompilationState(object):
         self.nodes.append(n)
 
     def with_params(
-        self,
-        prefix: str,
-        mode: Optional[int] = None,
-        resolver: Optional["TaskResolverMixin"] = None,
-        nodes: Optional[List] = None,
+            self,
+            prefix: str,
+            mode: Optional[int] = None,
+            resolver: Optional["TaskResolverMixin"] = None,
+            nodes: Optional[List] = None,
     ) -> CompilationState:
         """
         Create a new CompilationState where all the attributes are defaulted from the current CompilationState unless
@@ -146,7 +146,7 @@ class CompilationState(object):
             prefix=prefix if prefix else "",
             mode=mode if mode else self.mode,
             task_resolver=resolver if resolver else self.task_resolver,
-            nodes=nodes if nodes else self.nodes,
+            nodes=nodes if nodes else [],
         )
 
 
@@ -182,13 +182,13 @@ class ExecutionState(object):
     user_space_params: Optional[ExecutionParameters]
 
     def __init__(
-        self,
-        working_dir: os.PathLike,
-        mode: Optional[Mode] = None,
-        engine_dir: Optional[os.PathLike] = None,
-        additional_context: Optional[Dict[Any, Any]] = None,
-        branch_eval_mode: Optional[BranchEvalMode] = None,
-        user_space_params: Optional[ExecutionParameters] = None,
+            self,
+            working_dir: os.PathLike,
+            mode: Optional[Mode] = None,
+            engine_dir: Optional[os.PathLike] = None,
+            additional_context: Optional[Dict[Any, Any]] = None,
+            branch_eval_mode: Optional[BranchEvalMode] = None,
+            user_space_params: Optional[ExecutionParameters] = None,
     ):
         if not working_dir:
             raise ValueError("Working directory is needed")
@@ -215,13 +215,13 @@ class ExecutionState(object):
         object.__setattr__(self, "_branch_eval_mode", BranchEvalMode.BRANCH_SKIPPED)
 
     def with_params(
-        self,
-        working_dir: Optional[os.PathLike] = None,
-        mode: Optional[Mode] = None,
-        engine_dir: Optional[os.PathLike] = None,
-        additional_context: Optional[Dict[Any, Any]] = None,
-        branch_eval_mode: Optional[BranchEvalMode] = None,
-        user_space_params: Optional[ExecutionParameters] = None,
+            self,
+            working_dir: Optional[os.PathLike] = None,
+            mode: Optional[Mode] = None,
+            engine_dir: Optional[os.PathLike] = None,
+            additional_context: Optional[Dict[Any, Any]] = None,
+            branch_eval_mode: Optional[BranchEvalMode] = None,
+            user_space_params: Optional[ExecutionParameters] = None,
     ) -> ExecutionState:
         if self.additional_context:
             if additional_context:
@@ -385,7 +385,7 @@ class FlyteContextManager(object):
         if FlyteContextManager._DEBUG:
             t = "\t"
             print(
-                f"{t*ctx.level}Pushing context - {'compile' if ctx.compilation_state else 'execute'} {len(FlyteContextManager._OBJS)} branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
+                f"{t * ctx.level}[{len(FlyteContextManager._OBJS)}] Pushing context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
             )
         return ctx
 
@@ -395,7 +395,7 @@ class FlyteContextManager(object):
         if FlyteContextManager._DEBUG:
             t = "\t"
             print(
-                f"{t*ctx.level}Popping context - {'compile' if ctx.compilation_state else 'execute'} {len(FlyteContextManager._OBJS)} branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
+                f"{t * ctx.level}[{len(FlyteContextManager._OBJS) + 1 }] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
             )
         return ctx
 
@@ -413,26 +413,41 @@ class FlyteContextManager(object):
         return len(FlyteContextManager._OBJS)
 
     @staticmethod
-    def reset():
+    def initialize():
         """
-        This will reset to stack size 1. This is the default state of stack. It is safe to call this method
+        Re-initializes the context and erases the entire context
         """
-        while FlyteContextManager.size() > 1:
-            FlyteContextManager.pop_context()
+        # This is supplied so that tasks that rely on Flyte provided param functionality do not fail when run locally
+        default_execution_id = _identifier.WorkflowExecutionIdentifier(project="local", domain="local", name="local")
+        # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
+        # are already acquainted with
+        default_user_space_params = ExecutionParameters(
+            execution_id=str(_SdkWorkflowExecutionIdentifier.promote_from_model(default_execution_id)),
+            execution_date=_datetime.datetime.utcnow(),
+            stats=_mock_stats.MockStats(),
+            logging=_logging,
+            tmp_dir=os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "user_space"),
+        )
+        default_context = FlyteContext(file_access=_data_proxy.default_local_file_access_provider)
+        default_context = default_context.with_execution_state(
+            default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
+        ).build()
+        default_context.set_stackframe(s=FlyteContextManager.get_origin_stackframe())
+        FlyteContextManager._OBJS = [default_context]
 
 
 class FlyteContext2(object):
     OBJS = []
 
     def __init__(
-        self,
-        parent=None,
-        file_access: _data_proxy.FileAccessProvider = None,
-        compilation_state: CompilationState = None,
-        execution_state: ExecutionState = None,
-        flyte_client: friendly_client.SynchronousFlyteClient = None,
-        user_space_params: ExecutionParameters = None,
-        serialization_settings: SerializationSettings = None,
+            self,
+            parent=None,
+            file_access: _data_proxy.FileAccessProvider = None,
+            compilation_state: CompilationState = None,
+            execution_state: ExecutionState = None,
+            flyte_client: friendly_client.SynchronousFlyteClient = None,
+            user_space_params: ExecutionParameters = None,
+            serialization_settings: SerializationSettings = None,
     ):
         if parent is None and len(FlyteContext.OBJS) > 0:
             parent = FlyteContext.OBJS[-1]
@@ -465,13 +480,13 @@ class FlyteContext2(object):
 
     @contextmanager
     def new_context(
-        self,
-        file_access: _data_proxy.FileAccessProvider = None,
-        compilation_state: CompilationState = None,
-        execution_state: ExecutionState = None,
-        flyte_client: friendly_client.SynchronousFlyteClient = None,
-        user_space_params: ExecutionParameters = None,
-        serialization_settings: SerializationSettings = None,
+            self,
+            file_access: _data_proxy.FileAccessProvider = None,
+            compilation_state: CompilationState = None,
+            execution_state: ExecutionState = None,
+            flyte_client: friendly_client.SynchronousFlyteClient = None,
+            user_space_params: ExecutionParameters = None,
+            serialization_settings: SerializationSettings = None,
     ):
         new_ctx = FlyteContext(
             parent=self,
@@ -521,11 +536,11 @@ class FlyteContext2(object):
 
     @contextmanager
     def new_execution_context(
-        self,
-        mode: ExecutionState.Mode,
-        additional_context: Dict[Any, Any] = None,
-        execution_params: Optional[ExecutionParameters] = None,
-        working_dir: Optional[str] = None,
+            self,
+            mode: ExecutionState.Mode,
+            additional_context: Dict[Any, Any] = None,
+            execution_params: Optional[ExecutionParameters] = None,
+            working_dir: Optional[str] = None,
     ) -> Generator[FlyteContext, None, None]:
         # Create a working directory for the execution to use
         working_dir = working_dir or self.file_access.get_random_local_directory()
@@ -562,7 +577,7 @@ class FlyteContext2(object):
 
     @contextmanager
     def new_compilation_context(
-        self, prefix: Optional[str] = None, task_resolver: Optional["TaskResolverMixin"] = None
+            self, prefix: Optional[str] = None, task_resolver: Optional["TaskResolverMixin"] = None
     ) -> Generator[FlyteContext, None, None]:
         """
         :param prefix: See CompilationState comments
@@ -588,7 +603,7 @@ class FlyteContext2(object):
 
     @contextmanager
     def new_serialization_settings(
-        self, serialization_settings: SerializationSettings
+            self, serialization_settings: SerializationSettings
     ) -> Generator[FlyteContext, None, None]:
         new_ctx = FlyteContext(parent=self, serialization_settings=serialization_settings)
         FlyteContext.OBJS.append(new_ctx)
@@ -612,19 +627,4 @@ class FlyteEntities(object):
     entities = []
 
 
-# This is supplied so that tasks that rely on Flyte provided param functionality do not fail when run locally
-default_execution_id = _identifier.WorkflowExecutionIdentifier(project="local", domain="local", name="local")
-# Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
-# are already acquainted with
-default_user_space_params = ExecutionParameters(
-    execution_id=str(_SdkWorkflowExecutionIdentifier.promote_from_model(default_execution_id)),
-    execution_date=_datetime.datetime.utcnow(),
-    stats=_mock_stats.MockStats(),
-    logging=_logging,
-    tmp_dir=os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "user_space"),
-)
-default_context = FlyteContext(file_access=_data_proxy.default_local_file_access_provider)
-default_context = default_context.with_execution_state(
-    default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
-).build()
-FlyteContextManager.push_context(default_context)
+FlyteContextManager.initialize()

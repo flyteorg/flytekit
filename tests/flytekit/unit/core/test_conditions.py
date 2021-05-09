@@ -93,8 +93,7 @@ def test_condition_tuple_branches():
 
     @workflow
     def math_ops(a: int, b: int) -> (int, int):
-        # Flyte will only make `sum` and `sub` available as outputs because they are common between all branches
-        sum, sub = (
+        add, sub = (
             conditional("noDivByZero")
             .if_(a > b)
             .then(sum_sub(a=a, b=b))
@@ -102,7 +101,7 @@ def test_condition_tuple_branches():
             .fail("Only positive results are allowed")
         )
 
-        return sum, sub
+        return add, sub
 
     x, y = math_ops(a=3, b=2)
     assert x == 5
@@ -118,6 +117,7 @@ def test_condition_tuple_branches():
     )
 
     sdk_wf = get_serializable(OrderedDict(), serialization_settings, math_ops)
+    assert len(sdk_wf.nodes) == 1
     assert sdk_wf.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name == "test_conditions.sum_sub"
 
 
@@ -141,7 +141,7 @@ def test_condition_unary_bool():
             result = return_true()
             return conditional("test").if_(result).then(success()).else_().then(failed())
 
-    FlyteContextManager.reset()
+    FlyteContextManager.initialize()
 
     with pytest.raises(AssertionError):
 
@@ -149,7 +149,7 @@ def test_condition_unary_bool():
         def decompose_none() -> int:
             return conditional("test").if_(None).then(success()).else_().then(failed())
 
-    FlyteContextManager.reset()
+    FlyteContextManager.initialize()
 
     with pytest.raises(AssertionError):
 
@@ -158,7 +158,7 @@ def test_condition_unary_bool():
             result = return_true()
             return conditional("test").if_(result is True).then(success()).else_().then(failed())
 
-    FlyteContextManager.reset()
+    FlyteContextManager.initialize()
 
     @workflow
     def decompose() -> int:
