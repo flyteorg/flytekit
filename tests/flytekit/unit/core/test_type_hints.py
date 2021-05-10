@@ -640,8 +640,6 @@ def test_wf1_branches_no_else():
                 return x, d
 
         foo()
-    # We have to pop a bad context that was pushed because of illegal nested branch construction
-    context_manager.FlyteContextManager.initialize()
     assert context_manager.FlyteContextManager.size() == 1
 
 

@@ -7,7 +7,7 @@ from flytekit import task, workflow
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import FlyteContextManager, Image, ImageConfig, SerializationSettings
+from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings
 
 
 @task
@@ -141,15 +141,11 @@ def test_condition_unary_bool():
             result = return_true()
             return conditional("test").if_(result).then(success()).else_().then(failed())
 
-    # FlyteContextManager.initialize()
-
     with pytest.raises(AssertionError):
 
         @workflow
         def decompose_none() -> int:
             return conditional("test").if_(None).then(success()).else_().then(failed())
-
-    # FlyteContextManager.initialize()
 
     with pytest.raises(AssertionError):
 
@@ -157,8 +153,6 @@ def test_condition_unary_bool():
         def decompose_is() -> int:
             result = return_true()
             return conditional("test").if_(result is True).then(success()).else_().then(failed())
-
-    # FlyteContextManager.initialize()
 
     @workflow
     def decompose() -> int:

@@ -77,16 +77,21 @@ def test_dynamic_conditional():
             .then(merge_sort_remotely(in1=in1))
         )
 
-    with context_manager.FlyteContext.current_context().new_serialization_settings(
-        serialization_settings=context_manager.SerializationSettings(
-            project="test_proj",
-            domain="test_domain",
-            version="abc",
-            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-            env={},
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContextManager.current_context().with_serialization_settings(
+            context_manager.SerializationSettings(
+                project="test_proj",
+                domain="test_domain",
+                version="abc",
+                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                env={},
+            )
         )
     ) as ctx:
-        with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
+
+        with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
+        ) as ctx:
             dynamic_job_spec = merge_sort_remotely.compile_into_workflow(
                 ctx, False, merge_sort_remotely._task_function, in1=[2, 3, 4, 5]
             )

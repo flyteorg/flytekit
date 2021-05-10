@@ -262,7 +262,8 @@ class ExecutionState(object):
 @dataclass(frozen=True)
 class FlyteContext(object):
     """
-    Top level context for FlyteKit. maintains information that is required either to compile or execute a workflow / task
+    Top level context for FlyteKit. maintains information that is required either to compile or execute a
+    workflow / task
     """
 
     file_access: Optional[_data_proxy.FileAccessProvider]
@@ -289,6 +290,63 @@ class FlyteContext(object):
             return f"StackOrigin({f.name}, {f.lineno}, {f.filename})"
         return ""
 
+    def new_builder(self) -> Builder:
+        return FlyteContext.Builder(
+            level=self.level,
+            file_access=self.file_access,
+            flyte_client=self.flyte_client,
+            serialization_settings=self.serialization_settings,
+            compilation_state=self.compilation_state,
+            execution_state=self.execution_state,
+            in_a_condition=self.in_a_condition,
+        )
+
+    def enter_conditional_section(self) -> Builder:
+        return self.new_builder().enter_conditional_section()
+
+    def with_execution_state(self, es: ExecutionState) -> Builder:
+        return self.new_builder().with_execution_state(es)
+
+    def with_compilation_state(self, c: CompilationState) -> Builder:
+        return self.new_builder().with_compilation_state(c)
+
+    def with_new_compilation_state(self) -> Builder:
+        return self.with_compilation_state(self.new_compilation_state())
+
+    def with_file_access(self, fa: _data_proxy.FileAccessProvider) -> Builder:
+        return self.new_builder().with_file_access(fa)
+
+    def with_serialization_settings(self, ss: SerializationSettings) -> Builder:
+        return self.new_builder().with_serialization_settings(ss)
+
+    def new_compilation_state(self, prefix: str = "") -> CompilationState:
+        """
+        Creates and returns a default compilation state. For most of the code this should be the entrypoint
+        of compilation, otherwise the code should always uses - with_compilation_state
+        """
+        return CompilationState(prefix=prefix)
+
+    def new_execution_state(self, working_dir: Optional[os.PathLike] = None) -> ExecutionState:
+        """
+        Creates and returns a new default execution state. This should be used at the entrypoint of execution,
+        in all other cases it is preferable to use with_execution_state
+        """
+        if not working_dir:
+            working_dir = self.file_access.get_random_local_directory()
+        return ExecutionState(working_dir=working_dir, user_space_params=self.user_space_params)
+
+    @staticmethod
+    def current_context() -> FlyteContext:
+        """
+        This method exists only to maintain backwards compatibility. Please use FlyteContextManager.current_context()
+        If you are a user of flytekit, use
+        ```
+            import flytekit
+            flytekit.current_context()
+        ```
+        """
+        return FlyteContextManager.current_context()
+
     @dataclass
     class Builder(object):
         file_access: _data_proxy.FileAccessProvider
@@ -310,77 +368,61 @@ class FlyteContext(object):
                 in_a_condition=self.in_a_condition,
             )
 
-    def new_builder(self) -> Builder:
-        return FlyteContext.Builder(
-            level=self.level,
-            file_access=self.file_access,
-            flyte_client=self.flyte_client,
-            serialization_settings=self.serialization_settings,
-            compilation_state=self.compilation_state,
-            execution_state=self.execution_state,
-            in_a_condition=self.in_a_condition,
-        )
+        def enter_conditional_section(self) -> "Builder":
+            if self.in_a_condition:
+                raise NotImplementedError("Nested branches are not yet supported!")
 
-    def enter_conditional_section(self) -> Builder:
-        new_ctx = self.new_builder()
-        if new_ctx.in_a_condition:
-            raise NotImplementedError("Nested branches are not yet supported!")
+            if self.compilation_state:
+                prefix = self.compilation_state.prefix + "branch" if self.compilation_state.prefix else "branch"
+                self.compilation_state = self.compilation_state.with_params(prefix=prefix)
 
-        if new_ctx.compilation_state:
-            prefix = new_ctx.compilation_state.prefix + "branch" if new_ctx.compilation_state.prefix else "branch"
-            new_ctx.compilation_state = new_ctx.compilation_state.with_params(prefix=prefix)
+            if self.execution_state:
+                if self.execution_state.Mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+                    """
+                    In case of local workflow execution we should ensure a conditional section
+                    is created so that skipped branches result in tasks not being executed
+                    """
+                    self.execution_state = self.execution_state.with_params(
+                        branch_eval_mode=BranchEvalMode.BRANCH_SKIPPED
+                    )
 
-        if new_ctx.execution_state:
-            if new_ctx.execution_state.Mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-                """
-                In case of local workflow execution we should ensure a conditional section
-                is created so that skipped branches result in tasks not being executed
-                """
-                new_ctx.execution_state = new_ctx.execution_state.with_params(
-                    branch_eval_mode=BranchEvalMode.BRANCH_SKIPPED
-                )
+            self.in_a_condition = True
+            return self
 
-        new_ctx.in_a_condition = True
-        return new_ctx
+        def with_execution_state(self, es: ExecutionState) -> "Builder":
+            self.execution_state = es
+            return self
 
-    def with_execution_state(self, es: ExecutionState) -> Builder:
-        new_ctx = self.new_builder()
-        new_ctx.execution_state = es
-        return new_ctx
+        def with_compilation_state(self, c: CompilationState) -> "Builder":
+            self.compilation_state = c
+            return self
 
-    def with_compilation_state(self, c: CompilationState) -> Builder:
-        new_ctx = self.new_builder()
-        new_ctx.compilation_state = c
-        return new_ctx
+        def with_new_compilation_state(self) -> "Builder":
+            return self.with_compilation_state(self.new_compilation_state())
 
-    def with_new_compilation_state(self) -> Builder:
-        return self.with_compilation_state(self.new_compilation_state())
+        def with_file_access(self, fa: _data_proxy.FileAccessProvider) -> "Builder":
+            self.file_access = fa
+            return self
 
-    def new_compilation_state(self, prefix: str = "") -> CompilationState:
-        """
-        Creates and returns a default compilation state. For most of the code this should be the entrypoint
-        of compilation, otherwise the code should always uses - with_compilation_state
-        """
-        return CompilationState(prefix=prefix)
+        def with_serialization_settings(self, ss: SerializationSettings) -> "Builder":
+            self.serialization_settings = ss
+            return self
 
-    def new_execution_state(self, working_dir: Optional[os.PathLike] = None) -> ExecutionState:
-        """
-        Creates and returns a new default execution state. This should be used at the entrypoint of execution,
-        in all other cases it is preferable to use with_execution_state
-        """
-        if not working_dir:
-            working_dir = self.file_access.get_random_local_directory()
-        return ExecutionState(working_dir=working_dir)
+        def new_compilation_state(self, prefix: str = "") -> CompilationState:
+            """
+            Creates and returns a default compilation state. For most of the code this should be the entrypoint
+            of compilation, otherwise the code should always uses - with_compilation_state
+            """
+            return CompilationState(prefix=prefix)
 
-    def with_file_access(self, fa: _data_proxy.FileAccessProvider) -> Builder:
-        new_ctx = self.new_builder()
-        new_ctx.file_access = fa
-        return new_ctx
-
-    def with_serialization_settings(self, ss: SerializationSettings) -> Builder:
-        new_ctx = self.new_builder()
-        new_ctx.serialization_settings = ss
-        return new_ctx
+        def new_execution_state(self, working_dir: Optional[os.PathLike] = None) -> ExecutionState:
+            """
+            Creates and returns a new default execution state. This should be used at the entrypoint of execution,
+            in all other cases it is preferable to use with_execution_state
+            """
+            if not working_dir:
+                working_dir = self.file_access.get_random_local_directory()
+            return ExecutionState(working_dir=working_dir)
 
 
 class FlyteContextManager(object):
@@ -433,7 +475,7 @@ class FlyteContextManager(object):
         ctx = FlyteContextManager._OBJS.pop()
         t = "\t"
         logging.debug(
-            f"{t * ctx.level}[{len(FlyteContextManager._OBJS) + 1 }] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
+            f"{t * ctx.level}[{len(FlyteContextManager._OBJS) + 1}] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
         )
         if len(FlyteContextManager._OBJS) == 0:
             raise AssertionError(f"Illegal Context state! Popped, {ctx}")
@@ -455,7 +497,9 @@ class FlyteContextManager(object):
             # Ideally we should have made conditional like so
             # with conditional() as c
             #      c.if_().....
-            # the reason why we did not do that, was because, of the brevity and the assignment of outputs.
+            # the reason why we did not do that, was because, of the brevity and the assignment of outputs. Also, nested
+            # conditionals using the context manager syntax is not easy to follow. So we wanted to optimize for the user
+            # ergonomics
             # Also we know that top level construct like workflow and tasks always use context managers and that
             # context manager mutations are single threaded, hence we can safely cleanup leaks in this section
             # Also this is only in the error cases!
@@ -490,194 +534,12 @@ class FlyteContextManager(object):
         FlyteContextManager._OBJS = [default_context]
 
 
-class FlyteContext2(object):
-    OBJS = []
-
-    def __init__(
-        self,
-        parent=None,
-        file_access: _data_proxy.FileAccessProvider = None,
-        compilation_state: CompilationState = None,
-        execution_state: ExecutionState = None,
-        flyte_client: friendly_client.SynchronousFlyteClient = None,
-        user_space_params: ExecutionParameters = None,
-        serialization_settings: SerializationSettings = None,
-    ):
-        if parent is None and len(FlyteContext.OBJS) > 0:
-            parent = FlyteContext.OBJS[-1]
-
-        if compilation_state is not None and execution_state is not None:
-            raise Exception("Can't specify both")
-
-        self._parent: FlyteContext = parent
-        self._file_access = file_access
-        self._compilation_state = compilation_state
-        self._execution_state = execution_state
-        self._flyte_client = flyte_client
-        self._user_space_params = user_space_params
-        self._serialization_settings = serialization_settings
-
-    def __enter__(self):
-        # Should we auto-assign the parent here?
-        # Or detect if self's parent is not [-1]?
-        FlyteContext.OBJS.append(self)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        FlyteContext.OBJS.pop()
-
-    @classmethod
-    def current_context(cls) -> FlyteContext:
-        if len(cls.OBJS) == 0:
-            raise Exception("There should pretty much always be a base context object.")
-        return cls.OBJS[-1]
-
-    @contextmanager
-    def new_context(
-        self,
-        file_access: _data_proxy.FileAccessProvider = None,
-        compilation_state: CompilationState = None,
-        execution_state: ExecutionState = None,
-        flyte_client: friendly_client.SynchronousFlyteClient = None,
-        user_space_params: ExecutionParameters = None,
-        serialization_settings: SerializationSettings = None,
-    ):
-        new_ctx = FlyteContext(
-            parent=self,
-            file_access=file_access,
-            compilation_state=compilation_state,
-            execution_state=execution_state,
-            flyte_client=flyte_client,
-            user_space_params=user_space_params,
-            serialization_settings=serialization_settings,
-        )
-        FlyteContext.OBJS.append(new_ctx)
-        try:
-            yield new_ctx
-        finally:
-            FlyteContext.OBJS.pop()
-
-    @property
-    def file_access(self) -> _data_proxy.FileAccessProvider:
-        if self._file_access is not None:
-            return self._file_access
-        elif self._parent is not None:
-            return self._parent.file_access
-        else:
-            raise Exception("No file_access initialized")
-
-    @contextmanager
-    def new_file_access_context(self, file_access_provider: _data_proxy.FileAccessProvider):
-        new_ctx = FlyteContext(parent=self, file_access=file_access_provider)
-        FlyteContext.OBJS.append(new_ctx)
-        try:
-            yield new_ctx
-        finally:
-            FlyteContext.OBJS.pop()
-
-    @property
-    def user_space_params(self) -> Optional[ExecutionParameters]:
-        if self._user_space_params is not None:
-            return self._user_space_params
-        elif self._parent is not None:
-            return self._parent.user_space_params
-        else:
-            raise Exception("No user_space_params initialized")
-
-    @property
-    def execution_state(self) -> Optional[ExecutionState]:
-        return self._execution_state
-
-    @contextmanager
-    def new_execution_context(
-        self,
-        mode: ExecutionState.Mode,
-        additional_context: Dict[Any, Any] = None,
-        execution_params: Optional[ExecutionParameters] = None,
-        working_dir: Optional[str] = None,
-    ) -> Generator[FlyteContext, None, None]:
-        # Create a working directory for the execution to use
-        working_dir = working_dir or self.file_access.get_random_local_directory()
-        engine_dir = os.path.join(working_dir, "engine_dir")
-        pathlib.Path(engine_dir).mkdir(parents=True, exist_ok=True)
-        if additional_context is None:
-            additional_context = self.execution_state.additional_context if self.execution_state is not None else None
-        elif self.execution_state is not None and self.execution_state.additional_context is not None:
-            additional_context = {**self.execution_state.additional_context, **additional_context}
-        exec_state = ExecutionState(
-            mode=mode, working_dir=working_dir, engine_dir=engine_dir, additional_context=additional_context
-        )
-
-        # If a wf_params object was not given, use the default (defined at the bottom of this file)
-        new_ctx = FlyteContext(
-            parent=self,
-            execution_state=exec_state,
-            user_space_params=execution_params or default_user_space_params,
-        )
-        FlyteContext.OBJS.append(new_ctx)
-        try:
-            yield new_ctx
-        finally:
-            FlyteContext.OBJS.pop()
-
-    @property
-    def compilation_state(self) -> Optional[CompilationState]:
-        if self._compilation_state is not None:
-            return self._compilation_state
-        elif self._parent is not None:
-            return self._parent.compilation_state
-        else:
-            return None
-
-    @contextmanager
-    def new_compilation_context(
-        self, prefix: Optional[str] = None, task_resolver: Optional["TaskResolverMixin"] = None
-    ) -> Generator[FlyteContext, None, None]:
-        """
-        :param prefix: See CompilationState comments
-        :param task_resolver: resolver for tasks within this compilation context
-        """
-        new_ctx = FlyteContext(
-            parent=self, compilation_state=CompilationState(prefix=prefix or "", task_resolver=task_resolver)
-        )
-        FlyteContext.OBJS.append(new_ctx)
-        try:
-            yield new_ctx
-        finally:
-            FlyteContext.OBJS.pop()
-
-    @property
-    def serialization_settings(self) -> SerializationSettings:
-        if self._serialization_settings is not None:
-            return self._serialization_settings
-        elif self._parent is not None:
-            return self._parent.serialization_settings
-        else:
-            raise Exception("No serialization_settings initialized")
-
-    @contextmanager
-    def new_serialization_settings(
-        self, serialization_settings: SerializationSettings
-    ) -> Generator[FlyteContext, None, None]:
-        new_ctx = FlyteContext(parent=self, serialization_settings=serialization_settings)
-        FlyteContext.OBJS.append(new_ctx)
-        try:
-            yield new_ctx
-        finally:
-            FlyteContext.OBJS.pop()
-
-    @property
-    def flyte_client(self):
-        if self._flyte_client is not None:
-            return self._flyte_client
-        elif self._parent is not None:
-            return self._parent.flyte_client
-        else:
-            raise Exception("No flyte_client initialized")
-
-
-# Hack... we'll think of something better in the future
 class FlyteEntities(object):
+    """
+    This is a global Object that tracks various tasks and workflows that are declared within a VM during the
+     registration process
+    """
+
     entities = []
 
 

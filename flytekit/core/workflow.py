@@ -488,7 +488,7 @@ class ImperativeWorkflow(WorkflowBase):
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None:
             raise Exception("Can't already be compiling")
-        with ctx.new_context(compilation_state=self.compilation_state) as ctx:
+        with FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state)) as ctx:
             n = create_node(entity=entity, **kwargs)
 
             def get_input_values(input_value):
@@ -546,7 +546,7 @@ class ImperativeWorkflow(WorkflowBase):
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None:
             raise Exception("Can't already be compiling")
-        with ctx.new_context(compilation_state=self.compilation_state) as ctx:
+        with FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state)) as ctx:
             b = binding_from_python_std(
                 ctx, output_name, expected_literal_type=flyte_type, t_value=p, t_value_type=python_type
             )
