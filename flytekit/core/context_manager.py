@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as _datetime
+import logging
 import logging as _logging
 import os
 import pathlib
@@ -94,6 +95,10 @@ class InstanceVar(object):
 
 @dataclass
 class EntrypointSettings(object):
+    """
+    This object carries information about the command, path and version of the entrypoint program that will be invoked
+    to execute tasks at runtime.
+    """
     path: str = None
     command: str = None
     version: int = 0
@@ -101,6 +106,10 @@ class EntrypointSettings(object):
 
 @dataclass(frozen=True)
 class SerializationSettings(object):
+    """
+    These settings are provided while serializing a workflow and task, before registration. This is required to get
+    runtime information at serialization time, as well as some defaults.
+    """
     project: str
     domain: str
     version: str
@@ -114,6 +123,9 @@ class SerializationSettings(object):
 @dataclass(frozen=True)
 class CompilationState(object):
     """
+    Compilation state is used during the compilation of a workflow or task. It stores the nodes that were
+    created when walking through the workflow graph.
+
     :param prefix: This is because we may one day want to be able to have subworkflows inside other workflows. If
       users choose to not specify their node names, then we can end up with multiple "n0"s. This prefix allows
       us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
@@ -157,6 +169,12 @@ class BranchEvalMode(Enum):
 
 @dataclass(init=False)
 class ExecutionState(object):
+    """
+    This is the context that is active when executing a task or a local workflow. This carries the necessary state to
+    execute.
+    Some required things during execution deal with temporary directories, ExecutionParameters that are passed to the
+    user etc.
+    """
     class Mode(Enum):
         # This is the mode that is used when a task execution mimics the actual runtime environment.
         # NOTE: This is important to understand the difference between TASK_EXECUTION and LOCAL_TASK_EXECUTION
@@ -241,6 +259,9 @@ class ExecutionState(object):
 
 @dataclass(frozen=True)
 class FlyteContext(object):
+    """
+    Top level context for FlyteKit. maintains information that is required either to compile or execute a workflow / task
+    """
     file_access: Optional[_data_proxy.FileAccessProvider]
     level: int = 0
     flyte_client: Optional[friendly_client.SynchronousFlyteClient] = None
@@ -360,8 +381,23 @@ class FlyteContext(object):
 
 
 class FlyteContextManager(object):
+    """
+    FlyteContextManager manages the execution context within Flytekit. It holds global state of either compilation
+    or Execution. It is not thread-safe and can only be run as a single threaded application currently.
+    Context's within Flytekit is useful to manage compilation state and execution state. Refer to ``CompilationState``
+    and ``ExecutionState`` for for information. FlyteContextManager provides a singleton stack to manage these contexts.
+
+    Typical usage is:
+        FlyteContextManager.initialize()
+        with FlyteContextManager.with_context(o) as ctx:
+          pass
+
+        # If required - not recommended you can use
+        FlyteContextManager.push_context()
+        # but correspondingly a pop_context should be called
+        FlyteContextManager.pop_context()
+    """
     _OBJS: typing.List[FlyteContext] = []
-    _DEBUG: bool = True
 
     @staticmethod
     def get_origin_stackframe(limit=2) -> traceback.FrameSummary:
@@ -382,21 +418,19 @@ class FlyteContextManager(object):
             f = FlyteContextManager.get_origin_stackframe(limit=2)
         ctx.set_stackframe(f)
         FlyteContextManager._OBJS.append(ctx)
-        if FlyteContextManager._DEBUG:
-            t = "\t"
-            print(
-                f"{t * ctx.level}[{len(FlyteContextManager._OBJS)}] Pushing context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
-            )
+        t = "\t"
+        logging.debug(
+            f"{t * ctx.level}[{len(FlyteContextManager._OBJS)}] Pushing context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
+        )
         return ctx
 
     @staticmethod
     def pop_context() -> FlyteContext:
         ctx = FlyteContextManager._OBJS.pop()
-        if FlyteContextManager._DEBUG:
-            t = "\t"
-            print(
-                f"{t * ctx.level}[{len(FlyteContextManager._OBJS) + 1 }] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
-            )
+        t = "\t"
+        logging.debug(
+            f"{t * ctx.level}[{len(FlyteContextManager._OBJS) + 1 }] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
+        )
         return ctx
 
     @staticmethod

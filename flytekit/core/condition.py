@@ -39,6 +39,7 @@ class ConditionalSection(object):
         self._cases: typing.List[Case] = []
         self._selected_case = None
         self._last_case = False
+        self._ctx = None
         self._condition = Condition(self)
         ctx = FlyteContextManager.current_context()
         self._ctx = ctx.enter_conditional_section().build()
@@ -111,8 +112,8 @@ class ConditionalSection(object):
             """
             if self._last_case:
                 # We have completed the conditional section, lets pop off the branch context
-                FlyteContextManager.pop_context()
                 # branch_nodes = ctx.compilation_state.nodes
+                FlyteContextManager.pop_context()
                 node, promises = to_branch_node(self._name, self)
                 # Verify branch_nodes == nodes in bn
                 bindings: typing.List[Binding] = []
@@ -129,7 +130,7 @@ class ConditionalSection(object):
                     upstream_nodes=list(upstream_nodes),  # type: ignore
                     flyte_entity=node,
                 )
-                ctx.compilation_state.add_node(n)
+                FlyteContextManager.current_context().compilation_state.add_node(n)
                 return self._compute_outputs(n)
             return self._condition
 
