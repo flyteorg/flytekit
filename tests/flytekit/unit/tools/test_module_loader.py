@@ -37,3 +37,8 @@ def test_module_loading():
         assert [
             pkg.__file__ for pkg in module_loader.iterate_modules(["top.a", "top.middle.a", "top.middle.bottom.a"])
         ] == [os.path.join(lvl, "a.py") for lvl in (top_level, middle_level, bottom_level)]
+
+
+def test_load_object():
+    loader_self = module_loader.load_object_from_module(f"{module_loader.__name__}.load_object_from_module")
+    assert loader_self.__module__ == f"{module_loader.__name__}"

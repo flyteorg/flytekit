@@ -2,27 +2,19 @@ from __future__ import annotations
 
 import importlib
 import re
-from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, TypeVar
 
 from flytekit.common.tasks.raw_container import _get_container_definition
-from flytekit.core.base_task import PythonTask
+from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings
 from flytekit.core.resources import Resources, ResourceSpec
+from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
 
 T = TypeVar("T")
-
-
-class FlyteTrackedABC(type(TrackedInstance), type(ABC)):
-    """
-    This class exists because if you try to inherit from abc.ABC and TrackedInstance by itself, you'll get the
-    well-known ``TypeError: metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass
-    of the metaclasses of all its bases`` error.
-    """
 
 
 class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
@@ -114,9 +106,22 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
     def resources(self) -> ResourceSpec:
         return self._resources
 
-    @abstractmethod
     def get_command(self, settings: SerializationSettings) -> List[str]:
-        pass
+        container_args = [
+            "pyflyte-execute",
+            "--inputs",
+            "{{.input}}",
+            "--output-prefix",
+            "{{.outputPrefix}}",
+            "--raw-output-data-prefix",
+            "{{.rawOutputDataPrefix}}",
+            "--resolver",
+            self.task_resolver.location,
+            "--",
+            *self.task_resolver.loader_args(settings, self),
+        ]
+
+        return container_args
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
@@ -135,81 +140,6 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
             gpu_limit=self.resources.limits.gpu,
             memory_limit=self.resources.limits.mem,
         )
-
-
-class TaskResolverMixin(object):
-    """
-    Flytekit tasks interact with the Flyte platform very, very broadly in two steps. They need to be uploaded to Admin,
-    and then they are run by the user upon request (either as a single task execution or as part of a workflow). In any
-    case, at execution time, the container image containing the task needs to be spun up again (for container tasks at
-    least which most tasks are) at which point the container needs to know which task it's supposed to run and
-    how to rehydrate the task object.
-
-    For example, the serialization of a simple task ::
-
-        # in repo_root/workflows/example.py
-        @task
-        def t1(...) -> ...: ...
-
-    might result in a container with arguments like ::
-
-        pyflyte-execute --inputs s3://path/inputs.pb --output-prefix s3://outputs/location \
-        --raw-output-data-prefix /tmp/data \
-        --resolver flytekit.core.python_auto_container.default_task_resolver \
-        -- \
-        task-module repo_root.workflows.example task-name t1
-
-    At serialization time, the container created for the task will start out automatically with the ``pyflyte-execute``
-    bit, along with the requisite input/output args and the offloaded data prefix. Appended to that will be two things,
-
-    #. the ``location`` of the task's task resolver, followed by two dashes, followed by
-    #. the arguments provided by calling the ``loader_args`` function below.
-
-    The ``default_task_resolver`` declared below knows that ::
-
-    * When ``loader_args`` is called on a task, to look up the module the task is in, and the name of the task (the
-      key of the task in the module, either the function name, or the variable it was assigned to).
-    * When ``load_task`` is called, it interprets the first part of the command as the module to call
-    ``importlib.import_module`` on, and then looks for a key ``t1``.
-
-    This is just the default behavior. Users should feel free to implement their own resolvers.
-    """
-
-    @property
-    @abstractmethod
-    def location(self) -> str:
-        pass
-
-    @abstractmethod
-    def name(self) -> str:
-        pass
-
-    @abstractmethod
-    def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
-        """
-        Given the set of identifier keys, should return one Python Task or raise an error if not found
-        """
-        pass
-
-    @abstractmethod
-    def loader_args(self, settings: SerializationSettings, t: PythonAutoContainerTask) -> List[str]:
-        """
-        Return a list of strings that can help identify the parameter Task
-        """
-        pass
-
-    @abstractmethod
-    def get_all_tasks(self) -> List[PythonAutoContainerTask]:
-        """
-        Future proof method. Just making it easy to access all tasks (Not required today as we auto register them)
-        """
-        pass
-
-    def task_name(self, t: PythonAutoContainerTask) -> Optional[str]:
-        """
-        Overridable function that can optionally return a custom name for a given task
-        """
-        return None
 
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):

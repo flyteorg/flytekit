@@ -436,6 +436,8 @@ class FlyteContextManager(object):
         logging.debug(
             f"{t * ctx.level}[{len(FlyteContextManager._OBJS) + 1 }] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
         )
+        if len(FlyteContextManager._OBJS) == 0:
+            raise AssertionError(f"Illegal Context state! Popped, {ctx}")
         return ctx
 
     @staticmethod

@@ -641,7 +641,7 @@ def test_wf1_branches_no_else():
 
         foo()
     # We have to pop a bad context that was pushed because of illegal nested branch construction
-    context_manager.FlyteContextManager.pop_context()
+    context_manager.FlyteContextManager.initialize()
     assert context_manager.FlyteContextManager.size() == 1
 
 
@@ -764,6 +764,7 @@ def test_wf_container_task():
         arguments=["/tmp/a"],
     )
 
+    @workflow
     def wf(a: int):
         x, y = t1(a=a)
         t2(a=x, b=y)
@@ -1153,3 +1154,48 @@ def test_secrets():
         @task(secret_requests=["test"])
         def foo() -> str:
             pass
+
+
+def test_nested_dynamic():
+    @task
+    def t1(a: int) -> str:
+        a = a + 2
+        return "world-" + str(a)
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @workflow
+    def my_wf(a: int, b: str) -> (str, typing.List[str]):
+        @dynamic
+        def my_subwf(a: int) -> typing.List[str]:
+            s = []
+            for i in range(a):
+                s.append(t1(a=i))
+            return s
+
+        x = t2(a=b, b=b)
+        v = my_subwf(a=a)
+        return x, v
+
+    v = 5
+    x = my_wf(a=v, b="hello ")
+    assert x == ("hello hello ", ["world-" + str(i) for i in range(2, v + 2)])
+
+    settings = context_manager.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+
+    nested_my_subwf = my_wf.get_all_tasks()[0]
+
+    ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(settings)
+    with context_manager.FlyteContextManager.with_context(ctx) as ctx:
+        es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
+        with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(es)) as ctx:
+            dynamic_job_spec = nested_my_subwf.compile_into_workflow(ctx, False, nested_my_subwf._task_function, a=5)
+            assert len(dynamic_job_spec._nodes) == 5

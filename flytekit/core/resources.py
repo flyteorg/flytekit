@@ -12,7 +12,7 @@ class Resources(object):
     .. note::
         Storage is not currently supported on the Flyte backend.
 
-    Please see :std:doc:`cookbook:auto_core_remote_flyte/customizing_resources` for detailed examples.
+    Please see the :std:ref:`User Guide <cookbook:sphx_glr_auto_deployment_workflow_customizing_resources.py>` for detailed examples.
     Also refer to the `K8s conventions. <https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-units-in-kubernetes>`__
     """
 

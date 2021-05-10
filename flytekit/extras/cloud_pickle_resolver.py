@@ -3,8 +3,9 @@ from typing import List
 
 import cloudpickle  # intentionally not yet part of setup.py
 
+from flytekit.core.base_task import TaskResolverMixin
 from flytekit.core.context_manager import SerializationSettings
-from flytekit.core.python_auto_container import PythonAutoContainerTask, TaskResolverMixin
+from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.tracker import TrackedInstance
 
 

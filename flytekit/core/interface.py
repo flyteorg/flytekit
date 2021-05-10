@@ -318,9 +318,10 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
     if isinstance(return_annotation, Type) or isinstance(return_annotation, TypeVar):
         # isinstance / issubclass does not work for Namedtuple.
         # Options 1 and 2
-        if hasattr(return_annotation, "_field_types"):
+        bases = return_annotation.__bases__
+        if len(bases) == 1 and bases[0] == tuple and hasattr(return_annotation, "_fields"):
             logger.debug(f"Task returns named tuple {return_annotation}")
-            return return_annotation._field_types
+            return return_annotation.__annotations__
 
     if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:
         # Handle option 3

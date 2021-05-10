@@ -10,7 +10,7 @@ This package contains all of the most common abstractions you'll need to write F
 Basic Authoring
 ===============
 
-These are the essentials needed to get started writing tasks and workflows. The elements here correspond well with :std:ref:`Basic <cookbook:sphx_glr_auto_core_basic>` section of the cookbook.
+These are the essentials needed to get started writing tasks and workflows. The elements here correspond well with :std:ref:`Basic <cookbook:sphx_glr_auto_core_flyte_basics>` section of the cookbook.
 
 .. autosummary::
    :nosignatures:

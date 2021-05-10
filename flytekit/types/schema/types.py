@@ -374,5 +374,26 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             supported_mode=SchemaOpenMode.READ,
         )
 
+    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+        if not literal_type.schema:
+            raise ValueError(f"Cannot reverse {literal_type}")
+        columns = {}
+        for literal_column in literal_type.schema.columns:
+            if literal_column.type == SchemaType.SchemaColumn.SchemaColumnType.INTEGER:
+                columns[literal_column.name] = int
+            elif literal_column.type == SchemaType.SchemaColumn.SchemaColumnType.FLOAT:
+                columns[literal_column.name] = float
+            elif literal_column.type == SchemaType.SchemaColumn.SchemaColumnType.STRING:
+                columns[literal_column.name] = str
+            elif literal_column.type == SchemaType.SchemaColumn.SchemaColumnType.DATETIME:
+                columns[literal_column.name] = _datetime.datetime
+            elif literal_column.type == SchemaType.SchemaColumn.SchemaColumnType.DURATION:
+                columns[literal_column.name] = _datetime.timedelta
+            elif literal_column.type == SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN:
+                columns[literal_column.name] = bool
+            else:
+                raise ValueError(f"Unknown schema column type {literal_column}")
+        return FlyteSchema[columns]
+
 
 TypeEngine.register(FlyteSchemaTransformer())

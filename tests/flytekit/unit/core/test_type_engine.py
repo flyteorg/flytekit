@@ -6,7 +6,6 @@ from datetime import timedelta
 import pytest
 from flyteidl.core import errors_pb2
 
-from flytekit import kwtypes
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import (
     DictTransformer,
@@ -20,7 +19,6 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.file.file import FlyteFile
-from flytekit.types.schema import FlyteSchema, SchemaFormat
 
 
 def test_type_engine():
@@ -90,12 +88,6 @@ def test_file_format_getting_python_value():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile["txt"])
     assert isinstance(pv, FlyteFile)
     assert pv.extension() == "txt"
-
-
-def test_typed_schema():
-    s = FlyteSchema[kwtypes(x=int, y=float)]
-    assert s.format() == SchemaFormat.PARQUET
-    assert s.columns() == {"x": int, "y": float}
 
 
 def test_dict_transformer():
@@ -197,6 +189,48 @@ def test_protos():
     l0 = Literal(scalar=Scalar(primitive=Primitive(integer=4)))
     with pytest.raises(AssertionError):
         TypeEngine.to_python_value(ctx, l0, errors_pb2.ContainerError)
+
+
+def test_guessing_basic():
+    b = model_types.LiteralType(simple=model_types.SimpleType.BOOLEAN)
+    pt = TypeEngine.guess_python_type(b)
+    assert pt is bool
+
+    lt = model_types.LiteralType(simple=model_types.SimpleType.INTEGER)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is int
+
+    lt = model_types.LiteralType(simple=model_types.SimpleType.STRING)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is str
+
+    lt = model_types.LiteralType(simple=model_types.SimpleType.DURATION)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is timedelta
+
+    lt = model_types.LiteralType(simple=model_types.SimpleType.DATETIME)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is datetime.datetime
+
+    lt = model_types.LiteralType(simple=model_types.SimpleType.FLOAT)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is float
+
+    lt = model_types.LiteralType(simple=model_types.SimpleType.NONE)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is None
+
+
+def test_guessing_containers():
+    b = model_types.LiteralType(simple=model_types.SimpleType.BOOLEAN)
+    lt = model_types.LiteralType(collection_type=b)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt == typing.List[bool]
+
+    dur = model_types.LiteralType(simple=model_types.SimpleType.DURATION)
+    lt = model_types.LiteralType(map_value_type=dur)
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt == typing.Dict[str, timedelta]
 
 
 def test_zero_floats():

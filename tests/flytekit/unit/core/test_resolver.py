@@ -4,9 +4,10 @@ import pytest
 
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
+from flytekit.core.base_task import TaskResolverMixin
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.context_manager import Image, ImageConfig
-from flytekit.core.python_auto_container import TaskResolverMixin
+from flytekit.core.python_auto_container import default_task_resolver
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 
@@ -101,3 +102,8 @@ def test_mixin():
     x.loader_args(None, None)
     x.get_all_tasks()
     x.load_task([])
+
+
+def test_error():
+    with pytest.raises(Exception):
+        default_task_resolver.get_all_tasks()

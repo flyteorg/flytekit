@@ -372,7 +372,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
     def interface(self):
         """
         The interface definition for this task.
-        :rtype: flytekit.common.interface.TypedInterface
+        :rtype: flytekit.models.interface.TypedInterface
         """
         return self._interface
 

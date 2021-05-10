@@ -39,9 +39,9 @@ black==21.4b2
     # via papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.61
+boto3==1.17.62
     # via sagemaker-training
-botocore==1.20.61
+botocore==1.20.62
     # via
     #   boto3
     #   s3transfer
@@ -88,7 +88,7 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.18.40
+flyteidl==0.18.41
     # via flytekit
 git+git://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
@@ -107,9 +107,7 @@ idna==2.10
 imagesize==1.2.0
     # via sphinx
 importlib-metadata==4.0.1
-    # via
-    #   jsonschema
-    #   keyring
+    # via keyring
 inotify_simple==1.2.1
     # via sagemaker-training
 ipykernel==5.5.3
@@ -252,7 +250,7 @@ python-dateutil==2.8.1
     #   flytekit
     #   jupyter-client
     #   pandas
-python-slugify[unidecode]==4.0.1
+python-slugify[unidecode]==5.0.0
     # via sphinx-material
 pytimeparse==1.1.8
     # via flytekit
@@ -381,15 +379,8 @@ traitlets==5.0.5
     #   nbclient
     #   nbconvert
     #   nbformat
-typed-ast==1.4.3
-    # via
-    #   astroid
-    #   black
 typing-extensions==3.7.4.3
-    # via
-    #   black
-    #   importlib-metadata
-    #   typing-inspect
+    # via typing-inspect
 typing-inspect==0.6.0
     # via dataclasses-json
 unidecode==1.2.0
