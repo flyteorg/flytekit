@@ -158,6 +158,7 @@ def test_runs_before():
         subwf_node = create_node(my_subwf, a=a)
         t2_node = create_node(t2, a=b, b=b)
         subwf_node.runs_before(t2_node)
+        subwf_node >> t2_node
         return t2_node.o0, subwf_node.o0, subwf_node.o1
 
     my_wf(a=5, b="hello")

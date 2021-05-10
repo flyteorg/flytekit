@@ -473,6 +473,10 @@ def create_task_output(
             # TODO: If possible, add a check and raise an Exception if create_node was not called in the correct order.
             return self
 
+        def __rshift__(self, other: Any):
+            # See comment for runs_before
+            return self
+
     return Output(*promises)
 
 
