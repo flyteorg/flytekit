@@ -8,7 +8,6 @@ import pathlib
 import re
 import traceback
 import typing
-from abc import abstractmethod
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum
@@ -443,11 +442,25 @@ class FlyteContextManager(object):
     @staticmethod
     @contextmanager
     def with_context(b: FlyteContext.Builder) -> Generator[FlyteContext, None, None]:
-        c = FlyteContextManager.push_context(b.build(), FlyteContextManager.get_origin_stackframe(limit=3))
+        ctx = FlyteContextManager.push_context(b.build(), FlyteContextManager.get_origin_stackframe(limit=3))
+        l = FlyteContextManager.size()
         try:
-            yield c
+            yield ctx
         finally:
-            FlyteContextManager.pop_context()
+            # NOTE: Why? Do we have a loop here to ensure that we are popping all context upto the previously recorded
+            # length? This is because it is possible that a conditional context may have leaked. Because of the syntax
+            # of conditionals, if a conditional section fails to evaluate / compile, the context is not removed from the
+            # stack. This is because context managers cannot be used in the conditional section.
+            #   conditional().if_(...)......
+            # Ideally we should have made conditional like so
+            # with conditional() as c
+            #      c.if_().....
+            # the reason why we did not do that, was because, of the brevity and the assignment of outputs.
+            # Also we know that top level construct like workflow and tasks always use context managers and that
+            # context manager mutations are single threaded, hence we can safely cleanup leaks in this section
+            # Also this is only in the error cases!
+            while FlyteContextManager.size() >= l:
+                FlyteContextManager.pop_context()
 
     @staticmethod
     def size() -> int:

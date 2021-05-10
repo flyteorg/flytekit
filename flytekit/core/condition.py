@@ -39,25 +39,14 @@ class ConditionalSection(object):
         self._cases: typing.List[Case] = []
         self._selected_case = None
         self._last_case = False
-        self._ctx = None
         self._condition = Condition(self)
         ctx = FlyteContextManager.current_context()
-        self._ctx = ctx.enter_conditional_section().build()
         # A new conditional section has been started, so lets push the context
-        FlyteContextManager.push_context(self._ctx)
+        FlyteContextManager.push_context(ctx.enter_conditional_section().build())
 
     @property
     def name(self):
         return self._name
-
-    def __del__(self):
-        if FlyteContextManager.current_context() == self._ctx:
-            FlyteContextManager.pop_context()
-
-    # def validate(self):
-    #     ctx = FlyteContext.current_context()
-    #     if ctx.execution_state and ctx.execution_state.branch_eval_mode is not None:
-    #         raise AssertionError("Conditional section not completed!")
 
     def start_branch(self, c: Case, last_case: bool = False) -> Case:
         """
@@ -161,8 +150,6 @@ class ConditionalSection(object):
         return self._cases
 
     def if_(self, expr: bool) -> Case:
-        # ctx = FlyteContextManager.current_context()
-        # FlyteContextManager.push_context(ctx.enter_conditional_section().build())
         return self._condition._if(expr)
 
 
