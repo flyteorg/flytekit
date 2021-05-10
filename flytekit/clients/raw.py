@@ -1,4 +1,5 @@
 import time
+from typing import List
 
 import six as _six
 from flyteidl.service import admin_pb2_grpc as _admin_service
@@ -35,25 +36,20 @@ def _refresh_credentials_standard(flyte_client):
     flyte_client.set_access_token(client.credentials.access_token)
 
 
-def _get_basic_flow_scope() -> str:
+def _get_basic_flow_scopes() -> List[str]:
     """
     Merge the scope value between the old scope config option and the new list option.
 
-    :return: The scope to use for basic auth flow
+    :return: The scopes to use for basic auth flow.
     """
     deprecated_single_scope = _DEPRECATED_SCOPE.get()
     if deprecated_single_scope:
-        return deprecated_single_scope
+        return [deprecated_single_scope]
     oauth_scopes = OAUTH_SCOPES.get()
-    scope = oauth_scopes[0]  # there's a default so this is okay to do
-    if len(oauth_scopes) != 1:
-        cli_logger.warning(
-            f"When using basic flow, you should have exactly one auth scope in the list. Found {oauth_scopes}"
-        )
-    if scope == "openid":
+    if "openid" in oauth_scopes:
         cli_logger.warning("Basic flow authentication should never use openid.")
 
-    return scope
+    return oauth_scopes
 
 
 def _refresh_credentials_basic(flyte_client):
@@ -70,10 +66,10 @@ def _refresh_credentials_basic(flyte_client):
     token_endpoint = auth_endpoints.token_endpoint
     client_secret = _basic_auth.get_secret()
     cli_logger.debug(
-        "Basic authorization flow with client id {} scope {}".format(_CLIENT_ID.get(), _get_basic_flow_scope())
+        "Basic authorization flow with client id {} scope {}".format(_CLIENT_ID.get(), _get_basic_flow_scopes())
     )
     authorization_header = _basic_auth.get_basic_authorization_header(_CLIENT_ID.get(), client_secret)
-    token, expires_in = _basic_auth.get_token(token_endpoint, authorization_header, _get_basic_flow_scope())
+    token, expires_in = _basic_auth.get_token(token_endpoint, authorization_header, _get_basic_flow_scopes())
     cli_logger.info("Retrieved new token, expires in {}".format(expires_in))
     flyte_client.set_access_token(token)
 
