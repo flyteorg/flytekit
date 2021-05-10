@@ -134,3 +134,31 @@ def test_reserved_keyword():
         def my_wf(a: int) -> str:
             t1_node = create_node(t1, a=a)
             return t1_node.outputs
+
+
+def test_runs_before():
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @task()
+    def sleep_task(a: int) -> str:
+        a = a + 2
+        return "world-" + str(a)
+
+    @dynamic
+    def my_subwf(a: int) -> (typing.List[str], int):
+        s = []
+        for i in range(a):
+            s.append(sleep_task(a=i))
+        return s, 5
+
+    @workflow
+    def my_wf(a: int, b: str) -> (str, typing.List[str], int):
+        subwf_node = create_node(my_subwf, a=a)
+        t2_node = create_node(t2, a=b, b=b)
+        subwf_node.runs_before(t2_node)
+        subwf_node >> t2_node
+        return t2_node.o0, subwf_node.o0, subwf_node.o1
+
+    my_wf(a=5, b="hello")

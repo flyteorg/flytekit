@@ -2334,6 +2334,8 @@ def setup_config(host, insecure):
         f.write("\n")
         f.write("redirect_uri={}".format(data["redirect_uri"]))
         f.write("\n")
+        f.write("scopes={}".format(data["scopes"]))
+        f.write("\n")
         f.write("authorization_metadata_key={}".format(data["authorization_metadata_key"]))
         f.write("\n")
         f.write("auth_mode=standard")

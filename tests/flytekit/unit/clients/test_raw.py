@@ -5,8 +5,9 @@ import mock
 from flyteidl.admin import project_pb2 as _project_pb2
 
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
-from flytekit.clients.raw import _refresh_credentials_basic
+from flytekit.clients.raw import _get_basic_flow_scopes, _refresh_credentials_basic
 from flytekit.clis.auth.discovery import AuthorizationEndpoints as _AuthorizationEndpoints
+from flytekit.configuration import TemporaryConfiguration
 from flytekit.configuration.creds import CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET
 
 
@@ -57,3 +58,14 @@ def test_list_projects_paginated(mock_channel, mock_admin):
     project_list_request = _project_pb2.ProjectListRequest(limit=100, token="", filters=None, sort_by=None)
     client.list_projects(project_list_request)
     mock_admin.AdminServiceStub().ListProjects.assert_called_with(project_list_request, metadata=None)
+
+
+def test_scope_deprecation():
+    with TemporaryConfiguration(os.path.join(os.path.dirname(__file__), "auth_deprecation.config")):
+        assert _get_basic_flow_scopes() == ["custom_basic"]
+
+    with TemporaryConfiguration(os.path.join(os.path.dirname(__file__), "auth_deprecation2.config")):
+        assert _get_basic_flow_scopes() == ["custom_basic", "other_scope", "profile"]
+
+    with TemporaryConfiguration(os.path.join(os.path.dirname(__file__), "auth_deprecation3.config")):
+        assert _get_basic_flow_scopes() == ["custom_basic"]
