@@ -99,6 +99,7 @@ class EntrypointSettings(object):
     This object carries information about the command, path and version of the entrypoint program that will be invoked
     to execute tasks at runtime.
     """
+
     path: str = None
     command: str = None
     version: int = 0
@@ -110,6 +111,7 @@ class SerializationSettings(object):
     These settings are provided while serializing a workflow and task, before registration. This is required to get
     runtime information at serialization time, as well as some defaults.
     """
+
     project: str
     domain: str
     version: str
@@ -141,11 +143,11 @@ class CompilationState(object):
         self.nodes.append(n)
 
     def with_params(
-            self,
-            prefix: str,
-            mode: Optional[int] = None,
-            resolver: Optional["TaskResolverMixin"] = None,
-            nodes: Optional[List] = None,
+        self,
+        prefix: str,
+        mode: Optional[int] = None,
+        resolver: Optional["TaskResolverMixin"] = None,
+        nodes: Optional[List] = None,
     ) -> CompilationState:
         """
         Create a new CompilationState where all the attributes are defaulted from the current CompilationState unless
@@ -175,6 +177,7 @@ class ExecutionState(object):
     Some required things during execution deal with temporary directories, ExecutionParameters that are passed to the
     user etc.
     """
+
     class Mode(Enum):
         # This is the mode that is used when a task execution mimics the actual runtime environment.
         # NOTE: This is important to understand the difference between TASK_EXECUTION and LOCAL_TASK_EXECUTION
@@ -200,13 +203,13 @@ class ExecutionState(object):
     user_space_params: Optional[ExecutionParameters]
 
     def __init__(
-            self,
-            working_dir: os.PathLike,
-            mode: Optional[Mode] = None,
-            engine_dir: Optional[os.PathLike] = None,
-            additional_context: Optional[Dict[Any, Any]] = None,
-            branch_eval_mode: Optional[BranchEvalMode] = None,
-            user_space_params: Optional[ExecutionParameters] = None,
+        self,
+        working_dir: os.PathLike,
+        mode: Optional[Mode] = None,
+        engine_dir: Optional[os.PathLike] = None,
+        additional_context: Optional[Dict[Any, Any]] = None,
+        branch_eval_mode: Optional[BranchEvalMode] = None,
+        user_space_params: Optional[ExecutionParameters] = None,
     ):
         if not working_dir:
             raise ValueError("Working directory is needed")
@@ -233,13 +236,13 @@ class ExecutionState(object):
         object.__setattr__(self, "_branch_eval_mode", BranchEvalMode.BRANCH_SKIPPED)
 
     def with_params(
-            self,
-            working_dir: Optional[os.PathLike] = None,
-            mode: Optional[Mode] = None,
-            engine_dir: Optional[os.PathLike] = None,
-            additional_context: Optional[Dict[Any, Any]] = None,
-            branch_eval_mode: Optional[BranchEvalMode] = None,
-            user_space_params: Optional[ExecutionParameters] = None,
+        self,
+        working_dir: Optional[os.PathLike] = None,
+        mode: Optional[Mode] = None,
+        engine_dir: Optional[os.PathLike] = None,
+        additional_context: Optional[Dict[Any, Any]] = None,
+        branch_eval_mode: Optional[BranchEvalMode] = None,
+        user_space_params: Optional[ExecutionParameters] = None,
     ) -> ExecutionState:
         if self.additional_context:
             if additional_context:
@@ -262,6 +265,7 @@ class FlyteContext(object):
     """
     Top level context for FlyteKit. maintains information that is required either to compile or execute a workflow / task
     """
+
     file_access: Optional[_data_proxy.FileAccessProvider]
     level: int = 0
     flyte_client: Optional[friendly_client.SynchronousFlyteClient] = None
@@ -397,6 +401,7 @@ class FlyteContextManager(object):
         # but correspondingly a pop_context should be called
         FlyteContextManager.pop_context()
     """
+
     _OBJS: typing.List[FlyteContext] = []
 
     @staticmethod
@@ -474,14 +479,14 @@ class FlyteContext2(object):
     OBJS = []
 
     def __init__(
-            self,
-            parent=None,
-            file_access: _data_proxy.FileAccessProvider = None,
-            compilation_state: CompilationState = None,
-            execution_state: ExecutionState = None,
-            flyte_client: friendly_client.SynchronousFlyteClient = None,
-            user_space_params: ExecutionParameters = None,
-            serialization_settings: SerializationSettings = None,
+        self,
+        parent=None,
+        file_access: _data_proxy.FileAccessProvider = None,
+        compilation_state: CompilationState = None,
+        execution_state: ExecutionState = None,
+        flyte_client: friendly_client.SynchronousFlyteClient = None,
+        user_space_params: ExecutionParameters = None,
+        serialization_settings: SerializationSettings = None,
     ):
         if parent is None and len(FlyteContext.OBJS) > 0:
             parent = FlyteContext.OBJS[-1]
@@ -514,13 +519,13 @@ class FlyteContext2(object):
 
     @contextmanager
     def new_context(
-            self,
-            file_access: _data_proxy.FileAccessProvider = None,
-            compilation_state: CompilationState = None,
-            execution_state: ExecutionState = None,
-            flyte_client: friendly_client.SynchronousFlyteClient = None,
-            user_space_params: ExecutionParameters = None,
-            serialization_settings: SerializationSettings = None,
+        self,
+        file_access: _data_proxy.FileAccessProvider = None,
+        compilation_state: CompilationState = None,
+        execution_state: ExecutionState = None,
+        flyte_client: friendly_client.SynchronousFlyteClient = None,
+        user_space_params: ExecutionParameters = None,
+        serialization_settings: SerializationSettings = None,
     ):
         new_ctx = FlyteContext(
             parent=self,
@@ -570,11 +575,11 @@ class FlyteContext2(object):
 
     @contextmanager
     def new_execution_context(
-            self,
-            mode: ExecutionState.Mode,
-            additional_context: Dict[Any, Any] = None,
-            execution_params: Optional[ExecutionParameters] = None,
-            working_dir: Optional[str] = None,
+        self,
+        mode: ExecutionState.Mode,
+        additional_context: Dict[Any, Any] = None,
+        execution_params: Optional[ExecutionParameters] = None,
+        working_dir: Optional[str] = None,
     ) -> Generator[FlyteContext, None, None]:
         # Create a working directory for the execution to use
         working_dir = working_dir or self.file_access.get_random_local_directory()
@@ -611,7 +616,7 @@ class FlyteContext2(object):
 
     @contextmanager
     def new_compilation_context(
-            self, prefix: Optional[str] = None, task_resolver: Optional["TaskResolverMixin"] = None
+        self, prefix: Optional[str] = None, task_resolver: Optional["TaskResolverMixin"] = None
     ) -> Generator[FlyteContext, None, None]:
         """
         :param prefix: See CompilationState comments
@@ -637,7 +642,7 @@ class FlyteContext2(object):
 
     @contextmanager
     def new_serialization_settings(
-            self, serialization_settings: SerializationSettings
+        self, serialization_settings: SerializationSettings
     ) -> Generator[FlyteContext, None, None]:
         new_ctx = FlyteContext(parent=self, serialization_settings=serialization_settings)
         FlyteContext.OBJS.append(new_ctx)
