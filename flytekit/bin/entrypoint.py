@@ -237,12 +237,11 @@ def setup_execution(
         # identifier for t1.
         with FlyteContextManager.with_context(ctx.with_serialization_settings(serialization_settings)) as ctx:
             # Because execution states do not look up the context chain, it has to be made last
-
             with FlyteContextManager.with_context(
                 ctx.with_execution_state(
                     ctx.new_execution_state().with_params(
                         mode=ExecutionState.Mode.TASK_EXECUTION,
-                        execution_params=execution_parameters,
+                        user_space_params=execution_parameters,
                         additional_context={
                             "dynamic_addl_distro": dynamic_addl_distro,
                             "dynamic_dest_dir": dynamic_dest_dir,
