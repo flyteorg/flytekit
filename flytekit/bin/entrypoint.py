@@ -217,7 +217,7 @@ def setup_execution(
     else:
         raise Exception(f"Bad cloud provider {cloud_provider}")
 
-    with FlyteContextManager.with_context(ctx.with_file_access(file_access).build()) as ctx:
+    with FlyteContextManager.with_context(ctx.with_file_access(file_access)) as ctx:
         # TODO: This is copied from serialize, which means there's a similarity here I'm not seeing.
         env = {
             _internal_config.CONFIGURATION_PATH.env_var: _internal_config.CONFIGURATION_PATH.get(),
@@ -235,7 +235,7 @@ def setup_execution(
         # The reason we need this is because of dynamic tasks. Even if we move compilation all to Admin,
         # if a dynamic task calls some task, t1, we have to write to the DJ Spec the correct task
         # identifier for t1.
-        with FlyteContextManager.with_context(ctx.with_serialization_settings(serialization_settings).build()) as ctx:
+        with FlyteContextManager.with_context(ctx.with_serialization_settings(serialization_settings)) as ctx:
             # Because execution states do not look up the context chain, it has to be made last
 
             with FlyteContextManager.with_context(
