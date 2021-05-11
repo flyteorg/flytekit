@@ -1149,3 +1149,15 @@ def test_nested_dynamic():
         with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
             dynamic_job_spec = nested_my_subwf.compile_into_workflow(ctx, False, nested_my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
+
+
+def test_workflow_named_tuple():
+    @task
+    def t1() -> str:
+        return "Hello"
+
+    @workflow
+    def wf() -> typing.NamedTuple("OP", a=str, b=str):
+        return t1(), t1()
+
+    print(wf())
