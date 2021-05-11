@@ -316,3 +316,26 @@ def test_serialization_types():
     assert wf.interface.outputs["o0"].type.collection_type.map_value_type.simple == SimpleType.INTEGER
     ser = get_serializable(OrderedDict(), serialization_settings, squared)
     assert ser.interface.outputs["o0"].type.collection_type.map_value_type.simple == SimpleType.INTEGER
+
+
+def test_serialization_named_return():
+    @task
+    def t1() -> str:
+        return "Hello"
+
+    @workflow
+    def wf() -> typing.NamedTuple("OP", a=str, b=str):
+        return t1(), t1()
+
+    print(wf())
+    default_img = Image(name="default", fqn="test", tag="tag")
+    serialization_settings = context_manager.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+    ser_wf = get_serializable(OrderedDict(), serialization_settings, wf)
+    assert len(ser_wf.interface.outputs) == 2
+    assert list(ser_wf.interface.outputs.keys()) == ["a", "b"]
