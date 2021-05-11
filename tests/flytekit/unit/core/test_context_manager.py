@@ -1,9 +1,4 @@
-from flytekit.core.context_manager import (
-    ExecutionState,
-    FlyteContext,
-    FlyteContextManager,
-    look_up_image_info,
-)
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, look_up_image_info
 
 
 class SampleTestClass(object):

@@ -291,7 +291,7 @@ def test_subworkflow_condition_single_named_tuple():
 
 
 def test_nested_condition():
-    with pytest.raises(NotImplementedError) as e:
+    with pytest.raises(NotImplementedError):
 
         @workflow
         def multiplier_2(my_input: float) -> float:
