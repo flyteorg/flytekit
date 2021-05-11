@@ -1160,4 +1160,4 @@ def test_workflow_named_tuple():
     def wf() -> typing.NamedTuple("OP", a=str, b=str):
         return t1(), t1()
 
-    print(wf())
+    assert wf() == ("Hello", "Hello")
