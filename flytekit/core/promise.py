@@ -464,6 +464,19 @@ def create_task_output(
                     return p.ref
             return None
 
+        def runs_before(self, other: Any):
+            """
+            This function is just here to allow local workflow execution to run. See the corresponding function in
+            flytekit.core.node.Node for more information. Local workflow execution in the manual ``create_node``
+            paradigm is already determined by the order in which the nodes were created.
+            """
+            # TODO: If possible, add a check and raise an Exception if create_node was not called in the correct order.
+            return self
+
+        def __rshift__(self, other: Any):
+            # See comment for runs_before
+            return self
+
     return Output(*promises)
 
 

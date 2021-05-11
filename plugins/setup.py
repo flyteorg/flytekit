@@ -15,8 +15,8 @@ SOURCES = {
     "flytekitplugins-awssagemaker": "awssagemaker",
     "flytekitplugins-kftensorflow": "kftensorflow",
     "flytekitplugins-pandera": "pandera",
-    "flytekitplugins-sqlalchemy": "flytekit.sqlalchemy",
     "flytekitplugins-dolt": "flytekit-dolt",
+    "flytekitplugins-sqlalchemy": "flytekitplugins-sqlalchemy",
 }
 
 

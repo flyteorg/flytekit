@@ -1,5 +1,5 @@
-import logging as _logging
 import time
+from typing import List
 
 import six as _six
 from flyteidl.service import admin_pb2_grpc as _admin_service
@@ -14,9 +14,11 @@ from flytekit.clis.auth import credentials as _credentials_access
 from flytekit.clis.sdk_in_container import basic_auth as _basic_auth
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.configuration import creds as _creds_config
-from flytekit.configuration.creds import CLIENT_CREDENTIALS_SCOPE as _SCOPE
+from flytekit.configuration.creds import _DEPRECATED_CLIENT_CREDENTIALS_SCOPE as _DEPRECATED_SCOPE
 from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
+from flytekit.configuration.creds import OAUTH_SCOPES
 from flytekit.configuration.platform import AUTH as _AUTH
+from flytekit.loggers import cli_logger
 
 
 def _refresh_credentials_standard(flyte_client):
@@ -27,8 +29,27 @@ def _refresh_credentials_standard(flyte_client):
     :return:
     """
 
-    _credentials_access.get_client(flyte_client.url).refresh_access_token()
-    flyte_client.set_access_token(_credentials_access.get_client(flyte_client.url).credentials.access_token)
+    client = _credentials_access.get_client(flyte_client.url)
+    if client.can_refresh_token:
+        client.refresh_access_token()
+
+    flyte_client.set_access_token(client.credentials.access_token)
+
+
+def _get_basic_flow_scopes() -> List[str]:
+    """
+    Merge the scope value between the old scope config option and the new list option.
+
+    :return: The scopes to use for basic auth flow.
+    """
+    deprecated_single_scope = _DEPRECATED_SCOPE.get()
+    if deprecated_single_scope:
+        return [deprecated_single_scope]
+    oauth_scopes = OAUTH_SCOPES.get()
+    if "openid" in oauth_scopes:
+        cli_logger.warning("Basic flow authentication should never use openid.")
+
+    return oauth_scopes
 
 
 def _refresh_credentials_basic(flyte_client):
@@ -44,10 +65,12 @@ def _refresh_credentials_basic(flyte_client):
     auth_endpoints = _credentials_access.get_authorization_endpoints(flyte_client.url)
     token_endpoint = auth_endpoints.token_endpoint
     client_secret = _basic_auth.get_secret()
-    _logging.debug("Basic authorization flow with client id {} scope {}".format(_CLIENT_ID.get(), _SCOPE.get()))
+    cli_logger.debug(
+        "Basic authorization flow with client id {} scope {}".format(_CLIENT_ID.get(), _get_basic_flow_scopes())
+    )
     authorization_header = _basic_auth.get_basic_authorization_header(_CLIENT_ID.get(), client_secret)
-    token, expires_in = _basic_auth.get_token(token_endpoint, authorization_header, _SCOPE.get())
-    _logging.info("Retrieved new token, expires in {}".format(expires_in))
+    token, expires_in = _basic_auth.get_token(token_endpoint, authorization_header, _get_basic_flow_scopes())
+    cli_logger.info("Retrieved new token, expires in {}".format(expires_in))
     flyte_client.set_access_token(token)
 
 
@@ -96,7 +119,7 @@ def _handle_rpc_error(retry=False):
                             else:
                                 # Retry: Start with 200ms wait-time and exponentially back-off upto 1 second.
                                 wait_time = min(200 * (2 ** i), max_wait_time)
-                                _logging.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
+                                cli_logger.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
                                 time.sleep(wait_time / 1000)
             except _RpcError as e:
                 if e.code() == _GrpcStatusCode.ALREADY_EXISTS:
@@ -115,8 +138,8 @@ def _handle_invalid_create_request(fn):
             fn(self, create_request)
         except _RpcError as e:
             if e.code() == _GrpcStatusCode.INVALID_ARGUMENT:
-                _logging.error("Error creating Flyte entity because of invalid arguments. Create request: ")
-                _logging.error(_MessageToJson(create_request))
+                cli_logger.error("Error creating Flyte entity because of invalid arguments. Create request: ")
+                cli_logger.error(_MessageToJson(create_request))
 
             # In any case, re-raise since we're not truly handling the error here
             raise e
