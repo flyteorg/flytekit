@@ -22,7 +22,7 @@ def test_dynamic_conditional():
     def merge(x: typing.List[int], y: typing.List[int]) -> typing.List[int]:
         n1 = len(x)
         n2 = len(y)
-        result = list[int]()
+        result = typing.List[int]()
         i = 0
         j = 0
 
