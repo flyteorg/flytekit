@@ -37,7 +37,6 @@ error() {
 }
 
 fail() {
-  local error_code="$1"
   shift
   echo "*** INSTALLATION FAILED ***" >&2
   echo "" >&2
@@ -47,12 +46,12 @@ fail() {
 }
 
 assert_linux_or_macos() {
-  OS=`uname`
-  ARCH=`uname -m`
-  if [ "$OS" != Linux -a "$OS" != Darwin ]; then
+  OS=$(uname)
+  ARCH=$(uname -m)
+  if [ "$OS" != Linux ] && [ "$OS" != Darwin ]; then
     fail "E_UNSUPPORTED_OS" "dolt install.sh only supports macOS and Linux."
   fi
-  if [ "$ARCH" != x86_64 -a "$ARCH" != i386 -a "$ARCH" != i686 ]; then
+  if [ "$ARCH" != x86_64 ] && [ "$ARCH" != i386 ] && [ "$ARCH" != i686 ]; then
     fail "E_UNSUPPOSED_ARCH" "dolt install.sh only supports installing dolt on x86_64 or x86."
   fi
 
@@ -77,14 +76,14 @@ assert_dependencies() {
 }
 
 assert_uid_zero() {
-  uid=`id -u`
+  uid=$(id -u)
   if [ "$uid" != 0 ]; then
     fail "E_UID_NONZERO" "dolt install.sh must run as root; please try running with sudo or running\n\`curl $INSTALL_URL | sudo bash\`."
   fi
 }
 
 create_workdir() {
-  WORK_DIR=`mktemp -d -t dolt-installer.XXXXXX`
+  WORK_DIR=$(mktemp -d -t dolt-installer.XXXXXX)
   cleanup() {
     rm -rf "$WORK_DIR"
   }
@@ -99,13 +98,12 @@ install_binary_release() {
   curl -A "$CURL_USER_AGENT" -fsL "$URL" > "$FILE"
   tar zxf "$FILE"
   echo "Installing dolt, git-dolt and git-dolt-smudge to $INSTALL_PATH."
-  [ -d $INSTALL_PATH ] || install -o 0 -g 0 -d $INSTALL_PATH
-  install dolt-$PLATFORM_TUPLE/bin/{dolt,git-dolt,git-dolt-smudge} $INSTALL_PATH
+  [ -d "$INSTALL_PATH" ] || install -o 0 -g 0 -d "$INSTALL_PATH"
+  install dolt-$PLATFORM_TUPLE/bin/{dolt,git-dolt,git-dolt-smudge} "$INSTALL_PATH"
 }
 
 assert_linux_or_macos
 assert_dependencies
-#assert_uid_zero
 create_workdir
 install_binary_release
 
