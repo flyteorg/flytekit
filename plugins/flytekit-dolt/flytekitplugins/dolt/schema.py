@@ -85,7 +85,7 @@ class DoltTableNameTransformer(TypeTransformer[DoltTable]):
         expected_python_type: typing.Type[DoltTable],
     ) -> DoltTable:
         if not (lv and lv.scalar and lv.scalar.generic and "config" in lv.scalar.generic):
-            return lv
+            raise ValueError("DoltTable requires DoltConfig to load python value")
 
         conf_dict = MessageToDict(lv.scalar.generic["config"])
 

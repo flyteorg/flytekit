@@ -1,5 +1,6 @@
 import os
 import shutil
+import subprocess
 import tempfile
 import typing
 
@@ -12,8 +13,22 @@ from flytekitplugins.dolt.schema import DoltConfig, DoltTable
 from flytekit import task, workflow
 
 
+@pytest.fixture(scope="module")
+def dolt_install():
+    d = tempfile.TemporaryDirectory()
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    setup_script = os.path.join(dir_path, "..", "..", "flytekit-dolt", "scripts", "dev_setup.sh")
+    try:
+        subprocess.call(setup_script, env={"INSTALL_PATH": d.name})
+        dolt_path = os.path.join(d.name, "dolt")
+        dolt.set_dolt_path(dolt_path)
+        yield dolt_path
+    finally:
+        shutil.rmtree(d.name)
+
+
 @pytest.fixture(scope="function")
-def doltdb_path():
+def doltdb_path(dolt_install):
     d = tempfile.TemporaryDirectory()
     try:
         db_path = os.path.join(d.name, "foo")
