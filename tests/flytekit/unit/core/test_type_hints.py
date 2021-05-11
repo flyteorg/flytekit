@@ -481,7 +481,7 @@ def test_wf1_with_fast_dynamic():
                 ctx.execution_state.with_params(
                     mode=ExecutionState.Mode.TASK_EXECUTION,
                     additional_context={
-                        "dynamic_addl_distro": "s3::/my-s3-bucket/fast/123",
+                        "dynamic_addl_distro": "s3://my-s3-bucket/fast/123",
                         "dynamic_dest_dir": "/User/flyte/workflows",
                     },
                 )
@@ -492,7 +492,7 @@ def test_wf1_with_fast_dynamic():
             assert len(dynamic_job_spec.tasks) == 1
             args = " ".join(dynamic_job_spec.tasks[0].container.args)
             assert args.startswith(
-                "pyflyte-fast-execute --additional-distribution s3::/my-s3-bucket/fast/123 "
+                "pyflyte-fast-execute --additional-distribution s3://my-s3-bucket/fast/123 "
                 "--dest-dir /User/flyte/workflows"
             )
 

@@ -154,6 +154,10 @@ _comparators = {
 
 
 class ComparisonExpression(object):
+    """
+    ComparisonExpression refers to an expression of the form (lhs operator rhs), where lhs and rhs are operands
+    and operator can be any comparison expression like <, >, <=, >=, ==, !=
+    """
     def __init__(self, lhs: Union["Promise", Any], op: ComparisonOps, rhs: Union["Promise", Any]):
         self._op = op
         self._lhs = None
