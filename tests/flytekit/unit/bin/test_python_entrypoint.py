@@ -25,8 +25,8 @@ def _type_map_from_variable_map(variable_map):
 
 def test_single_step_entrypoint_in_proc():
     with _TemporaryConfiguration(
-        os.path.join(os.path.dirname(__file__), "fake.config"),
-        internal_overrides={"project": "test", "domain": "development"},
+            os.path.join(os.path.dirname(__file__), "fake.config"),
+            internal_overrides={"project": "test", "domain": "development"},
     ):
         with _utils.AutoDeletingTempDir("in") as input_dir:
             literal_map = _type_helpers.pack_python_std_map_to_literal_map(
@@ -60,8 +60,8 @@ def test_single_step_entrypoint_in_proc():
 
 def test_single_step_entrypoint_out_of_proc():
     with _TemporaryConfiguration(
-        os.path.join(os.path.dirname(__file__), "fake.config"),
-        internal_overrides={"project": "test", "domain": "development"},
+            os.path.join(os.path.dirname(__file__), "fake.config"),
+            internal_overrides={"project": "test", "domain": "development"},
     ):
         with _utils.AutoDeletingTempDir("in") as input_dir:
             literal_map = _type_helpers.pack_python_std_map_to_literal_map(
@@ -94,8 +94,8 @@ def test_single_step_entrypoint_out_of_proc():
 
 def test_arrayjob_entrypoint_in_proc():
     with _TemporaryConfiguration(
-        os.path.join(os.path.dirname(__file__), "fake.config"),
-        internal_overrides={"project": "test", "domain": "development"},
+            os.path.join(os.path.dirname(__file__), "fake.config"),
+            internal_overrides={"project": "test", "domain": "development"},
     ):
         with _utils.AutoDeletingTempDir("dir") as dir:
             literal_map = _type_helpers.pack_python_std_map_to_literal_map(
@@ -157,8 +157,8 @@ def test_backwards_compatible_replacement(mock_legacy_execute_task):
     mock_legacy_execute_task.side_effect = return_args
 
     with _TemporaryConfiguration(
-        os.path.join(os.path.dirname(__file__), "fake.config"),
-        internal_overrides={"project": "test", "domain": "development"},
+            os.path.join(os.path.dirname(__file__), "fake.config"),
+            internal_overrides={"project": "test", "domain": "development"},
     ):
         with _utils.AutoDeletingTempDir("in"):
             with _utils.AutoDeletingTempDir("out"):
@@ -182,8 +182,8 @@ def test_dispatch_execute_void(mock_write_to_file, mock_upload_dir, mock_get_dat
     mock_upload_dir.return_value = True
 
     ctx = context_manager.FlyteContext.current_context()
-    with ctx.new_execution_context(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION) as ctx:
-
+    with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION))) as ctx:
         python_task = mock.MagicMock()
         python_task.dispatch_execute.return_value = VoidPromise("testing")
 
@@ -209,7 +209,8 @@ def test_dispatch_execute_ignore(mock_write_to_file, mock_upload_dir, mock_get_d
     ctx = context_manager.FlyteContext.current_context()
 
     # IgnoreOutputs
-    with ctx.new_execution_context(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION) as ctx:
+    with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION))) as ctx:
         python_task = mock.MagicMock()
         python_task.dispatch_execute.side_effect = IgnoreOutputs()
 
@@ -230,8 +231,8 @@ def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_ge
     mock_upload_dir.return_value = True
 
     ctx = context_manager.FlyteContext.current_context()
-    with ctx.new_execution_context(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION) as ctx:
-
+    with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION))) as ctx:
         python_task = mock.MagicMock()
         python_task.dispatch_execute.side_effect = Exception("random")
 
