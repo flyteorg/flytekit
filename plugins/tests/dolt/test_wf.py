@@ -33,13 +33,10 @@ def dolt_install():
 
 
 @pytest.fixture(scope="function")
-def doltdb_path(dolt_install):
-    d = tempfile.TemporaryDirectory()
-    try:
-        db_path = os.path.join(d.name, "foo")
+def doltdb_path(tmp_path, dolt_install):
+    with tempfile.TemporaryDirectory() as d:
+        db_path = os.path.join(d, "foo")
         yield db_path
-    finally:
-        shutil.rmtree(d.name)
 
 
 @pytest.fixture(scope="function")
