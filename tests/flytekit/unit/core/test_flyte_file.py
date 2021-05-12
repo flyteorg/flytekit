@@ -63,7 +63,8 @@ def test_file_handling_local_file_gets_copied():
 
     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
     fs = FileAccessProvider(local_sandbox_dir=random_dir)
-    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs):
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)) as ctx:
         top_level_files = os.listdir(random_dir)
         assert len(top_level_files) == 2  # the mock_remote folder and the local folder
 
@@ -91,7 +92,8 @@ def test_file_handling_local_file_gets_force_no_copy():
 
     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
     fs = FileAccessProvider(local_sandbox_dir=random_dir)
-    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs):
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)) as ctx:
         top_level_files = os.listdir(random_dir)
         assert len(top_level_files) == 2  # the mock_remote folder and the local folder
 
@@ -124,7 +126,8 @@ def test_file_handling_remote_file_handling():
     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
     # Creating a new FileAccessProvider will add two folderst to the random dir
     fs = FileAccessProvider(local_sandbox_dir=random_dir)
-    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs):
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)) as ctx:
         working_dir = os.listdir(random_dir)
         assert len(working_dir) == 2  # the mock_remote folder and the local folder
 
@@ -177,7 +180,8 @@ def test_file_handling_remote_file_handling_flyte_file():
     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
     # Creating a new FileAccessProvider will add two folderst to the random dir
     fs = FileAccessProvider(local_sandbox_dir=random_dir)
-    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs):
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)) as ctx:
         working_dir = os.listdir(random_dir)
         assert len(working_dir) == 2  # the mock_remote folder and the local folder
 
@@ -225,16 +229,21 @@ def test_dont_convert_remotes():
 
     fd = FlyteFile("s3://anything")
 
-    with context_manager.FlyteContext.current_context().new_serialization_settings(
-        serialization_settings=context_manager.SerializationSettings(
-            project="test_proj",
-            domain="test_domain",
-            version="abc",
-            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-            env={},
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContextManager.current_context().with_serialization_settings(
+            context_manager.SerializationSettings(
+                project="test_proj",
+                domain="test_domain",
+                version="abc",
+                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                env={},
+            )
         )
     ) as ctx:
-        with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
+        ctx = context_manager.FlyteContextManager.current_context()
+        with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
+        ) as ctx:
             lit = TypeEngine.to_literal(
                 ctx, fd, FlyteFile, BlobType("", dimensionality=BlobType.BlobDimensionality.SINGLE)
             )

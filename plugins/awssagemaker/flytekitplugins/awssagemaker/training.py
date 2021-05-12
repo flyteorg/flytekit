@@ -7,7 +7,7 @@ from flytekitplugins.awssagemaker.distributed_training import DistributedTrainin
 from google.protobuf.json_format import MessageToDict
 
 import flytekit
-from flytekit import ExecutionParameters, FlyteContext, PythonFunctionTask, kwtypes
+from flytekit import ExecutionParameters, FlyteContextManager, PythonFunctionTask, kwtypes
 from flytekit.extend import ExecutionState, IgnoreOutputs, Interface, PythonTask, SerializationSettings, TaskPlugins
 from flytekit.models.sagemaker import training_job as _training_job_models
 from flytekit.types.directory.types import FlyteDirectory
@@ -152,7 +152,7 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
         """
         if self._is_distributed():
             logging.info("Distributed context detected!")
-            exec_state = FlyteContext.current_context().execution_state
+            exec_state = FlyteContextManager.current_context().execution_state
             if exec_state and exec_state.mode == ExecutionState.Mode.TASK_EXECUTION:
                 """
                 This mode indicates we are actually in a remote execute environment (within sagemaker in this case)

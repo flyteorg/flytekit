@@ -4,7 +4,7 @@ import datetime
 import typing
 from typing import Optional, Tuple, Union
 
-from flytekit.core.context_manager import ExecutionState, FlyteContext
+from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.node import Node
 from flytekit.core.promise import (
     ComparisonExpression,
@@ -40,18 +40,13 @@ class ConditionalSection(object):
         self._selected_case = None
         self._last_case = False
         self._condition = Condition(self)
+        ctx = FlyteContextManager.current_context()
+        # A new conditional section has been started, so lets push the context
+        FlyteContextManager.push_context(ctx.enter_conditional_section().build())
 
     @property
     def name(self):
         return self._name
-
-    # def __del__(self):
-    #     self.validate()
-    #
-    # def validate(self):
-    #     ctx = FlyteContext.current_context()
-    #     if ctx.execution_state and ctx.execution_state.branch_eval_mode is not None:
-    #         raise AssertionError("Conditional section not completed!")
 
     def start_branch(self, c: Case, last_case: bool = False) -> Case:
         """
@@ -61,7 +56,7 @@ class ConditionalSection(object):
         """
         self._last_case = last_case
         self._cases.append(c)
-        ctx = FlyteContext.current_context()
+        ctx = FlyteContextManager.current_context()
         # In case of Local workflow execution, we will actually evaluate the expression and based on the result
         # make the branch to be active using `take_branch` method
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
@@ -69,8 +64,7 @@ class ConditionalSection(object):
             # We already have a candidate case selected
             if self._selected_case is None:
                 if c.expr is None or c.expr.eval() or last_case:
-                    ctx = FlyteContext.current_context().execution_state
-                    ctx.take_branch()
+                    ctx.execution_state.take_branch()
                     self._selected_case = self._cases[-1]
         return self._cases[-1]
 
@@ -78,7 +72,7 @@ class ConditionalSection(object):
         """
         This should be invoked after every branch has been visited
         """
-        ctx = FlyteContext.current_context()
+        ctx = FlyteContextManager.current_context()
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             """
             In case of Local workflow execution, we should first mark the branch as complete, then
@@ -90,7 +84,8 @@ class ConditionalSection(object):
             # Let us mark the execution state as complete
             ctx.execution_state.branch_complete()
             if self._last_case:
-                ctx.execution_state.exit_conditional_section()
+                # We have completed the conditional section, lets pop off the branch context
+                FlyteContextManager.pop_context()
                 if self._selected_case.output_promise is None and self._selected_case.err is None:
                     raise AssertionError("Bad conditional statements, did not resolve in a promise")
                 elif self._selected_case.output_promise is not None:
@@ -105,8 +100,9 @@ class ConditionalSection(object):
             If so then return the promise, else return the condition
             """
             if self._last_case:
-                ctx.compilation_state.exit_conditional_section()
+                # We have completed the conditional section, lets pop off the branch context
                 # branch_nodes = ctx.compilation_state.nodes
+                FlyteContextManager.pop_context()
                 node, promises = to_branch_node(self._name, self)
                 # Verify branch_nodes == nodes in bn
                 bindings: typing.List[Binding] = []
@@ -123,7 +119,7 @@ class ConditionalSection(object):
                     upstream_nodes=list(upstream_nodes),  # type: ignore
                     flyte_entity=node,
                 )
-                ctx.compilation_state.add_node(n)
+                FlyteContextManager.current_context().compilation_state.add_node(n)
                 return self._compute_outputs(n)
             return self._condition
 
@@ -154,26 +150,6 @@ class ConditionalSection(object):
         return self._cases
 
     def if_(self, expr: bool) -> Case:
-        ctx = FlyteContext.current_context()
-        if ctx.execution_state:
-            if ctx.execution_state.branch_eval_mode is not None:
-                """
-                TODO implement nested branches
-                """
-                raise NotImplementedError("Nested branches are not yet supported")
-            if ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-                """
-                In case of local workflow execution we should ensure a conditional section
-                is created so that skipped branches result in tasks not being executed
-                """
-                ctx.execution_state.enter_conditional_section()
-        elif ctx.compilation_state:
-            if ctx.compilation_state.is_in_a_branch():
-                """
-                TODO implement nested branches
-                """
-                raise NotImplementedError("Nested branches are not yet supported")
-            ctx.compilation_state.enter_conditional_section()
         return self._condition._if(expr)
 
 

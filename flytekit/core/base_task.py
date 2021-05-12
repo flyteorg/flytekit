@@ -10,6 +10,7 @@ from flytekit.core.context_manager import (
     BranchEvalMode,
     ExecutionState,
     FlyteContext,
+    FlyteContextManager,
     FlyteEntities,
     SerializationSettings,
 )
@@ -240,7 +241,7 @@ class Task(object):
                 f"Aborting execution as detected {len(args)} positional args {args}"
             )
 
-        ctx = FlyteContext.current_context()
+        ctx = FlyteContextManager.current_context()
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
             return self.compile(ctx, *args, **kwargs)
         elif (
@@ -259,8 +260,12 @@ class Task(object):
         else:
             logger.warning("task run without context - executing raw function")
             new_user_params = self.pre_execute(ctx.user_space_params)
-            with ctx.new_execution_context(
-                mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION, execution_params=new_user_params
+            with FlyteContextManager.with_context(
+                ctx.with_execution_state(
+                    ctx.execution_state.with_params(
+                        mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION, user_space_params=new_user_params
+                    )
+                )
             ):
                 return self.execute(**kwargs)
 
@@ -392,10 +397,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         new_user_params = self.pre_execute(ctx.user_space_params)
 
         # Create another execution context with the new user params, but let's keep the same working dir
-        with ctx.new_execution_context(
-            mode=ctx.execution_state.mode,
-            execution_params=new_user_params,
-            working_dir=ctx.execution_state.working_dir,
+        with FlyteContextManager.with_context(
+            ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native

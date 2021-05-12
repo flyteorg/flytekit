@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, Optional
 
 from google.protobuf.json_format import MessageToDict
 
-from flytekit import FlyteContext, PythonFunctionTask
+from flytekit import FlyteContextManager, PythonFunctionTask
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.extend import ExecutionState, SerializationSettings, TaskPlugins
 from flytekit.models import task as _task_model
@@ -103,7 +103,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
         import pyspark as _pyspark
 
-        ctx = FlyteContext.current_context()
+        ctx = FlyteContextManager.current_context()
         sess_builder = _pyspark.sql.SparkSession.builder.appName(f"FlyteSpark: {user_params.execution_id}")
         if not (ctx.execution_state and ctx.execution_state.Mode == ExecutionState.Mode.TASK_EXECUTION):
             # If either of above cases is not true, then we are in local execution of this task
