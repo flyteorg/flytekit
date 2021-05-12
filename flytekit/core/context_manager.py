@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import datetime as _datetime
+import logging
 import logging as _logging
 import os
 import pathlib
 import re
+import traceback
+import typing
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, Generator, List, Optional
 
@@ -91,133 +94,73 @@ class InstanceVar(object):
 
 @dataclass
 class EntrypointSettings(object):
+    """
+    This object carries information about the command, path and version of the entrypoint program that will be invoked
+    to execute tasks at runtime.
+    """
+
     path: str = None
     command: str = None
     version: int = 0
 
 
+@dataclass(frozen=True)
 class SerializationSettings(object):
-    def __init__(
-        self,
-        project: str,
-        domain: str,
-        version: str,
-        image_config: ImageConfig,
-        env: Optional[Dict[str, str]],
-        flytekit_virtualenv_root: str = None,
-        python_interpreter: str = None,
-        entrypoint_settings: EntrypointSettings = None,
-    ):
-        self._project = project
-        self._domain = domain
-        self._version = version
-        self._image_config = image_config
-        self._env = env or {}
-        self._instance_lookup = {}
-        self._flytekit_virtualenv_root = flytekit_virtualenv_root
-        self._python_interpreter = python_interpreter
-        self._entrypoint_settings = entrypoint_settings
+    """
+    These settings are provided while serializing a workflow and task, before registration. This is required to get
+    runtime information at serialization time, as well as some defaults.
+    """
 
-    @property
-    def project(self) -> str:
-        return self._project
-
-    @property
-    def domain(self) -> str:
-        return self._domain
-
-    @property
-    def version(self) -> str:
-        return self._version
-
-    @property
-    def image_config(self) -> ImageConfig:
-        return self._image_config
-
-    @property
-    def env(self) -> Dict[str, str]:
-        return self._env
-
-    @property
-    def flytekit_virtualenv_root(self) -> str:
-        return self._flytekit_virtualenv_root
-
-    @property
-    def python_interpreter(self) -> str:
-        return self._python_interpreter
-
-    @property
-    def entrypoint_settings(self) -> EntrypointSettings:
-        return self._entrypoint_settings
-
-    def add_instance_var(self, var: InstanceVar):
-        self._instance_lookup[var.o] = var
-
-    def get_instance_var(self, o: Any) -> InstanceVar:
-        if o in self._instance_lookup:
-            return self._instance_lookup[o]
-        raise KeyError(f"Instance Variable not found for object id {o}")
+    project: str
+    domain: str
+    version: str
+    image_config: ImageConfig
+    env: Optional[Dict[str, str]] = None
+    flytekit_virtualenv_root: Optional[str] = None
+    python_interpreter: Optional[str] = None
+    entrypoint_settings: Optional[EntrypointSettings] = None
 
 
+@dataclass(frozen=True)
 class CompilationState(object):
-    def __init__(self, prefix: str, task_resolver: Optional["TaskResolverMixin"] = None):
-        """
-        :param prefix: This is because we may one day want to be able to have subworkflows inside other workflows. If
-          users choose to not specify their node names, then we can end up with multiple "n0"s. This prefix allows
-          us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
-          # TODO: Ketan to revisit this whole concept when we re-organize the new structure
-        :param task_resolver: Please see :py:class:`flytekit.extend.TaskResolverMixin`
-        """
-        from flytekit.core.node import Node
+    """
+    Compilation state is used during the compilation of a workflow or task. It stores the nodes that were
+    created when walking through the workflow graph.
 
-        self._nodes: List[Node] = []
-        self._old_prefix = ""
-        self._prefix = prefix
-        self.mode = 1  # TODO: Turn into enum in the future, or remove if only one mode.
-        # TODO Branch mode should just be a new Compilation state context. But for now we are just
-        # storing the nodes separately
-        self._branch = False
-        self._branch_nodes: List[Node] = []
-        self._task_resolver = task_resolver
+    :param prefix: This is because we may one day want to be able to have subworkflows inside other workflows. If
+      users choose to not specify their node names, then we can end up with multiple "n0"s. This prefix allows
+      us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
+    :param task_resolver: Please see :py:class:`flytekit.extend.TaskResolverMixin`
+    """
 
-    @property
-    def prefix(self) -> str:
-        return self._prefix
+    prefix: str
+    mode: int = 1
+    task_resolver: Optional["TaskResolverMixin"] = None
+    nodes: List = field(default_factory=list)
 
     def add_node(self, n: Node):
-        if self._branch:
-            self._branch_nodes.append(n)
-        else:
-            self._nodes.append(n)
+        self.nodes.append(n)
 
-    @property
-    def nodes(self):
-        if self._branch:
-            return self._branch_nodes
-        return self._nodes
-
-    def enter_conditional_section(self):
+    def with_params(
+        self,
+        prefix: str,
+        mode: Optional[int] = None,
+        resolver: Optional["TaskResolverMixin"] = None,
+        nodes: Optional[List] = None,
+    ) -> CompilationState:
         """
-        We cannot use a context manager here, so we will mimic the context manager API
-        """
-        self._branch = True
-        self._old_prefix = self._prefix
-        self._prefix = self._prefix + "branch"
+        Create a new CompilationState where all the attributes are defaulted from the current CompilationState unless
+        explicitly provided as an argument.
 
-    def exit_conditional_section(self):
+        Usage:
+            s.with_params("p", nodes=[])
         """
-        Disables that we are in a branch
-        """
-        self._branch = False
-        self._branch_nodes = []
-        self._prefix = self._old_prefix
-
-    def is_in_a_branch(self) -> bool:
-        return self._branch
-
-    @property
-    def task_resolver(self) -> "TaskResolverMixin":
-        return self._task_resolver
+        return CompilationState(
+            prefix=prefix if prefix else "",
+            mode=mode if mode else self.mode,
+            task_resolver=resolver if resolver else self.task_resolver,
+            nodes=nodes if nodes else [],
+        )
 
 
 class BranchEvalMode(Enum):
@@ -225,7 +168,15 @@ class BranchEvalMode(Enum):
     BRANCH_SKIPPED = "branch skipped"
 
 
+@dataclass(init=False)
 class ExecutionState(object):
+    """
+    This is the context that is active when executing a task or a local workflow. This carries the necessary state to
+    execute.
+    Some required things during execution deal with temporary directories, ExecutionParameters that are passed to the
+    user etc.
+    """
+
     class Mode(Enum):
         # This is the mode that is used when a task execution mimics the actual runtime environment.
         # NOTE: This is important to understand the difference between TASK_EXECUTION and LOCAL_TASK_EXECUTION
@@ -243,268 +194,353 @@ class ExecutionState(object):
         # or propeller.
         LOCAL_TASK_EXECUTION = 3
 
+    mode: Mode
+    working_dir: os.PathLike
+    engine_dir: os.PathLike
+    additional_context: Optional[Dict[Any, Any]]
+    branch_eval_mode: Optional[BranchEvalMode]
+    user_space_params: Optional[ExecutionParameters]
+
     def __init__(
-        self, mode: Mode, working_dir: os.PathLike, engine_dir: os.PathLike, additional_context: Dict[Any, Any] = None
+        self,
+        working_dir: os.PathLike,
+        mode: Optional[Mode] = None,
+        engine_dir: Optional[os.PathLike] = None,
+        additional_context: Optional[Dict[Any, Any]] = None,
+        branch_eval_mode: Optional[BranchEvalMode] = None,
+        user_space_params: Optional[ExecutionParameters] = None,
     ):
-        self._mode = mode
-        self._working_dir = working_dir
-        self._engine_dir = engine_dir
-        self._additional_context = additional_context
-        self._branch_eval_mode = None
-
-    @property
-    def working_dir(self) -> os.PathLike:
-        return self._working_dir
-
-    @property
-    def engine_dir(self) -> os.PathLike:
-        return self._engine_dir
-
-    @property
-    def additional_context(self) -> Dict[Any, Any]:
-        return self._additional_context
-
-    @property
-    def mode(self) -> Mode:
-        return self._mode
-
-    @property
-    def branch_eval_mode(self) -> Optional[BranchEvalMode]:
-        return self._branch_eval_mode
-
-    def enter_conditional_section(self):
-        """
-        We cannot use a context manager here, so we will mimic the context manager API
-        Reason we cannot use is because branch is a functional api and the context block is not well defined
-        TODO we might want to create a new node manager here, as we want to capture all nodes in this branch
-             context
-        """
-        self._branch_eval_mode = BranchEvalMode.BRANCH_SKIPPED
+        if not working_dir:
+            raise ValueError("Working directory is needed")
+        self.working_dir = working_dir
+        self.mode = mode
+        self.engine_dir = engine_dir if engine_dir else os.path.join(self.working_dir, "engine_dir")
+        pathlib.Path(self.engine_dir).mkdir(parents=True, exist_ok=True)
+        self.additional_context = additional_context
+        self.branch_eval_mode = branch_eval_mode
+        self.user_space_params = user_space_params
 
     def take_branch(self):
         """
         Indicates that we are within an if-else block and the current branch has evaluated to true.
         Useful only in local execution mode
         """
-        self._branch_eval_mode = BranchEvalMode.BRANCH_ACTIVE
+        object.__setattr__(self, "_branch_eval_mode", BranchEvalMode.BRANCH_ACTIVE)
 
     def branch_complete(self):
         """
         Indicates that we are within a conditional / ifelse block and the active branch is not done.
         Default to SKIPPED
         """
-        self._branch_eval_mode = BranchEvalMode.BRANCH_SKIPPED
+        object.__setattr__(self, "_branch_eval_mode", BranchEvalMode.BRANCH_SKIPPED)
 
-    def exit_conditional_section(self):
-        """
-        Removes any current branch logic
-        """
-        self._branch_eval_mode = None
-
-
-class FlyteContext(object):
-    OBJS = []
-
-    def __init__(
+    def with_params(
         self,
-        parent=None,
-        file_access: _data_proxy.FileAccessProvider = None,
-        compilation_state: CompilationState = None,
-        execution_state: ExecutionState = None,
-        flyte_client: friendly_client.SynchronousFlyteClient = None,
-        user_space_params: ExecutionParameters = None,
-        serialization_settings: SerializationSettings = None,
-    ):
-        if parent is None and len(FlyteContext.OBJS) > 0:
-            parent = FlyteContext.OBJS[-1]
+        working_dir: Optional[os.PathLike] = None,
+        mode: Optional[Mode] = None,
+        engine_dir: Optional[os.PathLike] = None,
+        additional_context: Optional[Dict[Any, Any]] = None,
+        branch_eval_mode: Optional[BranchEvalMode] = None,
+        user_space_params: Optional[ExecutionParameters] = None,
+    ) -> ExecutionState:
+        if self.additional_context:
+            if additional_context:
+                additional_context = {**self.additional_context, **additional_context}
+            else:
+                additional_context = self.additional_context
 
-        if compilation_state is not None and execution_state is not None:
-            raise Exception("Can't specify both")
-
-        self._parent: FlyteContext = parent
-        self._file_access = file_access
-        self._compilation_state = compilation_state
-        self._execution_state = execution_state
-        self._flyte_client = flyte_client
-        self._user_space_params = user_space_params
-        self._serialization_settings = serialization_settings
-
-    def __enter__(self):
-        # Should we auto-assign the parent here?
-        # Or detect if self's parent is not [-1]?
-        FlyteContext.OBJS.append(self)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        FlyteContext.OBJS.pop()
-
-    @classmethod
-    def current_context(cls) -> FlyteContext:
-        if len(cls.OBJS) == 0:
-            raise Exception("There should pretty much always be a base context object.")
-        return cls.OBJS[-1]
-
-    @contextmanager
-    def new_context(
-        self,
-        file_access: _data_proxy.FileAccessProvider = None,
-        compilation_state: CompilationState = None,
-        execution_state: ExecutionState = None,
-        flyte_client: friendly_client.SynchronousFlyteClient = None,
-        user_space_params: ExecutionParameters = None,
-        serialization_settings: SerializationSettings = None,
-    ):
-        new_ctx = FlyteContext(
-            parent=self,
-            file_access=file_access,
-            compilation_state=compilation_state,
-            execution_state=execution_state,
-            flyte_client=flyte_client,
-            user_space_params=user_space_params,
-            serialization_settings=serialization_settings,
+        return ExecutionState(
+            working_dir=working_dir if working_dir else self.working_dir,
+            mode=mode if mode else self.mode,
+            engine_dir=engine_dir if engine_dir else self.engine_dir,
+            additional_context=additional_context,
+            branch_eval_mode=branch_eval_mode if branch_eval_mode else self.branch_eval_mode,
+            user_space_params=user_space_params if user_space_params else self.user_space_params,
         )
-        FlyteContext.OBJS.append(new_ctx)
-        try:
-            yield new_ctx
-        finally:
-            FlyteContext.OBJS.pop()
 
-    @property
-    def file_access(self) -> _data_proxy.FileAccessProvider:
-        if self._file_access is not None:
-            return self._file_access
-        elif self._parent is not None:
-            return self._parent.file_access
-        else:
-            raise Exception("No file_access initialized")
 
-    @contextmanager
-    def new_file_access_context(self, file_access_provider: _data_proxy.FileAccessProvider):
-        new_ctx = FlyteContext(parent=self, file_access=file_access_provider)
-        FlyteContext.OBJS.append(new_ctx)
-        try:
-            yield new_ctx
-        finally:
-            FlyteContext.OBJS.pop()
+@dataclass(frozen=True)
+class FlyteContext(object):
+    """
+    Top level context for FlyteKit. maintains information that is required either to compile or execute a
+    workflow / task
+    """
+
+    file_access: Optional[_data_proxy.FileAccessProvider]
+    level: int = 0
+    flyte_client: Optional[friendly_client.SynchronousFlyteClient] = None
+    compilation_state: Optional[CompilationState] = None
+    execution_state: Optional[ExecutionState] = None
+    serialization_settings: Optional[SerializationSettings] = None
+    in_a_condition: bool = False
+    origin_stackframe: Optional[traceback.FrameSummary] = None
 
     @property
     def user_space_params(self) -> Optional[ExecutionParameters]:
-        if self._user_space_params is not None:
-            return self._user_space_params
-        elif self._parent is not None:
-            return self._parent.user_space_params
-        else:
-            raise Exception("No user_space_params initialized")
+        if self.execution_state:
+            return self.execution_state.user_space_params
+        return None
 
-    @property
-    def execution_state(self) -> Optional[ExecutionState]:
-        return self._execution_state
+    def set_stackframe(self, s: traceback.FrameSummary):
+        object.__setattr__(self, "origin_stackframe", s)
 
-    @contextmanager
-    def new_execution_context(
-        self,
-        mode: ExecutionState.Mode,
-        additional_context: Dict[Any, Any] = None,
-        execution_params: Optional[ExecutionParameters] = None,
-        working_dir: Optional[str] = None,
-    ) -> Generator[FlyteContext, None, None]:
-        # Create a working directory for the execution to use
-        working_dir = working_dir or self.file_access.get_random_local_directory()
-        engine_dir = os.path.join(working_dir, "engine_dir")
-        pathlib.Path(engine_dir).mkdir(parents=True, exist_ok=True)
-        if additional_context is None:
-            additional_context = self.execution_state.additional_context if self.execution_state is not None else None
-        elif self.execution_state is not None and self.execution_state.additional_context is not None:
-            additional_context = {**self.execution_state.additional_context, **additional_context}
-        exec_state = ExecutionState(
-            mode=mode, working_dir=working_dir, engine_dir=engine_dir, additional_context=additional_context
+    def get_origin_stackframe_repr(self) -> str:
+        if self.origin_stackframe:
+            f = self.origin_stackframe
+            return f"StackOrigin({f.name}, {f.lineno}, {f.filename})"
+        return ""
+
+    def new_builder(self) -> Builder:
+        return FlyteContext.Builder(
+            level=self.level,
+            file_access=self.file_access,
+            flyte_client=self.flyte_client,
+            serialization_settings=self.serialization_settings,
+            compilation_state=self.compilation_state,
+            execution_state=self.execution_state,
+            in_a_condition=self.in_a_condition,
         )
 
-        # If a wf_params object was not given, use the default (defined at the bottom of this file)
-        new_ctx = FlyteContext(
-            parent=self,
-            execution_state=exec_state,
-            user_space_params=execution_params or default_user_space_params,
-        )
-        FlyteContext.OBJS.append(new_ctx)
-        try:
-            yield new_ctx
-        finally:
-            FlyteContext.OBJS.pop()
+    def enter_conditional_section(self) -> Builder:
+        return self.new_builder().enter_conditional_section()
 
-    @property
-    def compilation_state(self) -> Optional[CompilationState]:
-        if self._compilation_state is not None:
-            return self._compilation_state
-        elif self._parent is not None:
-            return self._parent.compilation_state
-        else:
-            return None
+    def with_execution_state(self, es: ExecutionState) -> Builder:
+        return self.new_builder().with_execution_state(es)
 
-    @contextmanager
-    def new_compilation_context(
-        self, prefix: Optional[str] = None, task_resolver: Optional["TaskResolverMixin"] = None
-    ) -> Generator[FlyteContext, None, None]:
+    def with_compilation_state(self, c: CompilationState) -> Builder:
+        return self.new_builder().with_compilation_state(c)
+
+    def with_new_compilation_state(self) -> Builder:
+        return self.with_compilation_state(self.new_compilation_state())
+
+    def with_file_access(self, fa: _data_proxy.FileAccessProvider) -> Builder:
+        return self.new_builder().with_file_access(fa)
+
+    def with_serialization_settings(self, ss: SerializationSettings) -> Builder:
+        return self.new_builder().with_serialization_settings(ss)
+
+    def new_compilation_state(self, prefix: str = "") -> CompilationState:
         """
-        :param prefix: See CompilationState comments
-        :param task_resolver: resolver for tasks within this compilation context
+        Creates and returns a default compilation state. For most of the code this should be the entrypoint
+        of compilation, otherwise the code should always uses - with_compilation_state
         """
-        new_ctx = FlyteContext(
-            parent=self, compilation_state=CompilationState(prefix=prefix or "", task_resolver=task_resolver)
+        return CompilationState(prefix=prefix)
+
+    def new_execution_state(self, working_dir: Optional[os.PathLike] = None) -> ExecutionState:
+        """
+        Creates and returns a new default execution state. This should be used at the entrypoint of execution,
+        in all other cases it is preferable to use with_execution_state
+        """
+        if not working_dir:
+            working_dir = self.file_access.get_random_local_directory()
+        return ExecutionState(working_dir=working_dir, user_space_params=self.user_space_params)
+
+    @staticmethod
+    def current_context() -> FlyteContext:
+        """
+        This method exists only to maintain backwards compatibility. Please use FlyteContextManager.current_context()
+        If you are a user of flytekit, use
+        ```
+            import flytekit
+            flytekit.current_context()
+        ```
+        """
+        return FlyteContextManager.current_context()
+
+    @dataclass
+    class Builder(object):
+        file_access: _data_proxy.FileAccessProvider
+        level: int = 0
+        compilation_state: Optional[CompilationState] = None
+        execution_state: Optional[ExecutionState] = None
+        flyte_client: Optional[friendly_client.SynchronousFlyteClient] = None
+        serialization_settings: Optional[SerializationSettings] = None
+        in_a_condition: bool = False
+
+        def build(self) -> FlyteContext:
+            return FlyteContext(
+                level=self.level + 1,
+                file_access=self.file_access,
+                compilation_state=self.compilation_state,
+                execution_state=self.execution_state,
+                flyte_client=self.flyte_client,
+                serialization_settings=self.serialization_settings,
+                in_a_condition=self.in_a_condition,
+            )
+
+        def enter_conditional_section(self) -> "Builder":
+            if self.in_a_condition:
+                raise NotImplementedError("Nested branches are not yet supported!")
+
+            if self.compilation_state:
+                prefix = self.compilation_state.prefix + "branch" if self.compilation_state.prefix else "branch"
+                self.compilation_state = self.compilation_state.with_params(prefix=prefix)
+
+            if self.execution_state:
+                if self.execution_state.Mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+                    """
+                    In case of local workflow execution we should ensure a conditional section
+                    is created so that skipped branches result in tasks not being executed
+                    """
+                    self.execution_state = self.execution_state.with_params(
+                        branch_eval_mode=BranchEvalMode.BRANCH_SKIPPED
+                    )
+
+            self.in_a_condition = True
+            return self
+
+        def with_execution_state(self, es: ExecutionState) -> "Builder":
+            self.execution_state = es
+            return self
+
+        def with_compilation_state(self, c: CompilationState) -> "Builder":
+            self.compilation_state = c
+            return self
+
+        def with_new_compilation_state(self) -> "Builder":
+            return self.with_compilation_state(self.new_compilation_state())
+
+        def with_file_access(self, fa: _data_proxy.FileAccessProvider) -> "Builder":
+            self.file_access = fa
+            return self
+
+        def with_serialization_settings(self, ss: SerializationSettings) -> "Builder":
+            self.serialization_settings = ss
+            return self
+
+        def new_compilation_state(self, prefix: str = "") -> CompilationState:
+            """
+            Creates and returns a default compilation state. For most of the code this should be the entrypoint
+            of compilation, otherwise the code should always uses - with_compilation_state
+            """
+            return CompilationState(prefix=prefix)
+
+        def new_execution_state(self, working_dir: Optional[os.PathLike] = None) -> ExecutionState:
+            """
+            Creates and returns a new default execution state. This should be used at the entrypoint of execution,
+            in all other cases it is preferable to use with_execution_state
+            """
+            if not working_dir:
+                working_dir = self.file_access.get_random_local_directory()
+            return ExecutionState(working_dir=working_dir)
+
+
+class FlyteContextManager(object):
+    """
+    FlyteContextManager manages the execution context within Flytekit. It holds global state of either compilation
+    or Execution. It is not thread-safe and can only be run as a single threaded application currently.
+    Context's within Flytekit is useful to manage compilation state and execution state. Refer to ``CompilationState``
+    and ``ExecutionState`` for for information. FlyteContextManager provides a singleton stack to manage these contexts.
+
+    Typical usage is:
+        FlyteContextManager.initialize()
+        with FlyteContextManager.with_context(o) as ctx:
+          pass
+
+        # If required - not recommended you can use
+        FlyteContextManager.push_context()
+        # but correspondingly a pop_context should be called
+        FlyteContextManager.pop_context()
+    """
+
+    _OBJS: typing.List[FlyteContext] = []
+
+    @staticmethod
+    def get_origin_stackframe(limit=2) -> traceback.FrameSummary:
+        ss = traceback.extract_stack(limit=limit + 1)
+        if len(ss) > limit + 1:
+            return ss[limit]
+        return ss[0]
+
+    @staticmethod
+    def current_context() -> FlyteContext:
+        if FlyteContextManager._OBJS:
+            return FlyteContextManager._OBJS[-1]
+        return None
+
+    @staticmethod
+    def push_context(ctx: FlyteContext, f: Optional[traceback.FrameSummary] = None) -> FlyteContext:
+        if not f:
+            f = FlyteContextManager.get_origin_stackframe(limit=2)
+        ctx.set_stackframe(f)
+        FlyteContextManager._OBJS.append(ctx)
+        t = "\t"
+        logging.debug(
+            f"{t * ctx.level}[{len(FlyteContextManager._OBJS)}] Pushing context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
         )
-        FlyteContext.OBJS.append(new_ctx)
-        try:
-            yield new_ctx
-        finally:
-            FlyteContext.OBJS.pop()
+        return ctx
 
-    @property
-    def serialization_settings(self) -> SerializationSettings:
-        if self._serialization_settings is not None:
-            return self._serialization_settings
-        elif self._parent is not None:
-            return self._parent.serialization_settings
-        else:
-            raise Exception("No serialization_settings initialized")
+    @staticmethod
+    def pop_context() -> FlyteContext:
+        ctx = FlyteContextManager._OBJS.pop()
+        t = "\t"
+        logging.debug(
+            f"{t * ctx.level}[{len(FlyteContextManager._OBJS) + 1}] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
+        )
+        if len(FlyteContextManager._OBJS) == 0:
+            raise AssertionError(f"Illegal Context state! Popped, {ctx}")
+        return ctx
 
+    @staticmethod
     @contextmanager
-    def new_serialization_settings(
-        self, serialization_settings: SerializationSettings
-    ) -> Generator[FlyteContext, None, None]:
-        new_ctx = FlyteContext(parent=self, serialization_settings=serialization_settings)
-        FlyteContext.OBJS.append(new_ctx)
+    def with_context(b: FlyteContext.Builder) -> Generator[FlyteContext, None, None]:
+        ctx = FlyteContextManager.push_context(b.build(), FlyteContextManager.get_origin_stackframe(limit=3))
+        l = FlyteContextManager.size()
         try:
-            yield new_ctx
+            yield ctx
         finally:
-            FlyteContext.OBJS.pop()
+            # NOTE: Why? Do we have a loop here to ensure that we are popping all context upto the previously recorded
+            # length? This is because it is possible that a conditional context may have leaked. Because of the syntax
+            # of conditionals, if a conditional section fails to evaluate / compile, the context is not removed from the
+            # stack. This is because context managers cannot be used in the conditional section.
+            #   conditional().if_(...)......
+            # Ideally we should have made conditional like so
+            # with conditional() as c
+            #      c.if_().....
+            # the reason why we did not do that, was because, of the brevity and the assignment of outputs. Also, nested
+            # conditionals using the context manager syntax is not easy to follow. So we wanted to optimize for the user
+            # ergonomics
+            # Also we know that top level construct like workflow and tasks always use context managers and that
+            # context manager mutations are single threaded, hence we can safely cleanup leaks in this section
+            # Also this is only in the error cases!
+            while FlyteContextManager.size() >= l:
+                FlyteContextManager.pop_context()
 
-    @property
-    def flyte_client(self):
-        if self._flyte_client is not None:
-            return self._flyte_client
-        elif self._parent is not None:
-            return self._parent.flyte_client
-        else:
-            raise Exception("No flyte_client initialized")
+    @staticmethod
+    def size() -> int:
+        return len(FlyteContextManager._OBJS)
+
+    @staticmethod
+    def initialize():
+        """
+        Re-initializes the context and erases the entire context
+        """
+        # This is supplied so that tasks that rely on Flyte provided param functionality do not fail when run locally
+        default_execution_id = _identifier.WorkflowExecutionIdentifier(project="local", domain="local", name="local")
+        # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
+        # are already acquainted with
+        default_user_space_params = ExecutionParameters(
+            execution_id=str(_SdkWorkflowExecutionIdentifier.promote_from_model(default_execution_id)),
+            execution_date=_datetime.datetime.utcnow(),
+            stats=_mock_stats.MockStats(),
+            logging=_logging,
+            tmp_dir=os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "user_space"),
+        )
+        default_context = FlyteContext(file_access=_data_proxy.default_local_file_access_provider)
+        default_context = default_context.with_execution_state(
+            default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
+        ).build()
+        default_context.set_stackframe(s=FlyteContextManager.get_origin_stackframe())
+        FlyteContextManager._OBJS = [default_context]
 
 
-# Hack... we'll think of something better in the future
 class FlyteEntities(object):
+    """
+    This is a global Object that tracks various tasks and workflows that are declared within a VM during the
+     registration process
+    """
+
     entities = []
 
 
-# This is supplied so that tasks that rely on Flyte provided param functionality do not fail when run locally
-default_execution_id = _identifier.WorkflowExecutionIdentifier(project="local", domain="local", name="local")
-# Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
-# are already acquainted with
-default_user_space_params = ExecutionParameters(
-    execution_id=str(_SdkWorkflowExecutionIdentifier.promote_from_model(default_execution_id)),
-    execution_date=_datetime.datetime.utcnow(),
-    stats=_mock_stats.MockStats(),
-    logging=_logging,
-    tmp_dir=os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "user_space"),
-)
-default_context = FlyteContext(
-    user_space_params=default_user_space_params, file_access=_data_proxy.default_local_file_access_provider
-)
-FlyteContext.OBJS.append(default_context)
+FlyteContextManager.initialize()

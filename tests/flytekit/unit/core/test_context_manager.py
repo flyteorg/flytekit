@@ -1,4 +1,4 @@
-from flytekit.core.context_manager import CompilationState, ExecutionState, FlyteContext, look_up_image_info
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, look_up_image_info
 
 
 class SampleTestClass(object):
@@ -7,13 +7,17 @@ class SampleTestClass(object):
 
 
 def test_levels():
-    s = SampleTestClass(value=1)
-    with FlyteContext(flyte_client=s) as ctx:
-        assert ctx.flyte_client.value == 1
-        with FlyteContext(flyte_client=SampleTestClass(value=2)) as ctx:
+    ctx = FlyteContextManager.current_context()
+    b = ctx.new_builder()
+    b.flyte_client = SampleTestClass(value=1)
+    with FlyteContextManager.with_context(b) as outer:
+        assert outer.flyte_client.value == 1
+        b = outer.new_builder()
+        b.flyte_client = SampleTestClass(value=2)
+        with FlyteContextManager.with_context(b) as ctx:
             assert ctx.flyte_client.value == 2
 
-        with FlyteContext(compilation_state=CompilationState(prefix="")) as ctx:
+        with FlyteContextManager.with_context(outer.with_new_compilation_state()) as ctx:
             assert ctx.flyte_client.value == 1
 
 
@@ -45,11 +49,19 @@ def test_look_up_image_info():
 
 
 def test_additional_context():
-    with FlyteContext.current_context() as ctx:
-        with ctx.new_execution_context(
-            mode=ExecutionState.Mode.TASK_EXECUTION, additional_context={1: "outer", 2: "foo"}
-        ) as exec_ctx_outer:
-            with exec_ctx_outer.new_execution_context(
-                mode=ExecutionState.Mode.TASK_EXECUTION, additional_context={1: "inner", 3: "baz"}
-            ) as exec_ctx_inner:
-                assert exec_ctx_inner.execution_state.additional_context == {1: "inner", 2: "foo", 3: "baz"}
+    ctx = FlyteContext.current_context()
+    with FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.new_execution_state().with_params(
+                mode=ExecutionState.Mode.TASK_EXECUTION, additional_context={1: "outer", 2: "foo"}
+            )
+        )
+    ) as exec_ctx_outer:
+        with FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                exec_ctx_outer.execution_state.with_params(
+                    mode=ExecutionState.Mode.TASK_EXECUTION, additional_context={1: "inner", 3: "baz"}
+                )
+            )
+        ) as exec_ctx_inner:
+            assert exec_ctx_inner.execution_state.additional_context == {1: "inner", 2: "foo", 3: "baz"}

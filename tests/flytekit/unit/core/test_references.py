@@ -174,7 +174,7 @@ def test_ref_plain_two_outputs():
     )
 
     ctx = context_manager.FlyteContext.current_context()
-    with ctx.new_compilation_context():
+    with context_manager.FlyteContextManager.with_context(ctx.with_new_compilation_state()):
         xx, yy = r1(a="five", b=6)
         # Note - misnomer, these are not SdkNodes, they are core.Nodes
         assert xx.ref.node is yy.ref.node
@@ -225,7 +225,7 @@ def test_lps(resource_type):
         ref_entity()
     assert "You must mock this out" in f"{e}"
 
-    with ctx.new_compilation_context() as ctx:
+    with context_manager.FlyteContextManager.with_context(ctx.with_new_compilation_state()) as ctx:
         with pytest.raises(Exception) as e:
             ref_entity()
         assert "Input was not specified" in f"{e}"

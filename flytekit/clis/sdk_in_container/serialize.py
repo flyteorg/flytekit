@@ -142,9 +142,8 @@ def serialize_all(
             path=_os.path.join(flytekit_virtualenv_root, _DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC)
         ),
     )
-    with flyte_context.FlyteContext.current_context().new_serialization_settings(
-        serialization_settings=serialization_settings
-    ) as ctx:
+    ctx = flyte_context.FlyteContextManager.current_context().with_serialization_settings(serialization_settings)
+    with flyte_context.FlyteContextManager.with_context(ctx) as ctx:
         old_style_entities = []
         # This first for loop is for legacy API entities - SdkTask, SdkWorkflow, etc. The _get_entity_to_module
         # function that this iterate calls only works on legacy objects

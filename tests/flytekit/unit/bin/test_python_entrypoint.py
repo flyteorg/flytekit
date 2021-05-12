@@ -182,8 +182,11 @@ def test_dispatch_execute_void(mock_write_to_file, mock_upload_dir, mock_get_dat
     mock_upload_dir.return_value = True
 
     ctx = context_manager.FlyteContext.current_context()
-    with ctx.new_execution_context(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION) as ctx:
-
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
         python_task = mock.MagicMock()
         python_task.dispatch_execute.return_value = VoidPromise("testing")
 
@@ -209,7 +212,11 @@ def test_dispatch_execute_ignore(mock_write_to_file, mock_upload_dir, mock_get_d
     ctx = context_manager.FlyteContext.current_context()
 
     # IgnoreOutputs
-    with ctx.new_execution_context(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION) as ctx:
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
         python_task = mock.MagicMock()
         python_task.dispatch_execute.side_effect = IgnoreOutputs()
 
@@ -230,8 +237,11 @@ def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_ge
     mock_upload_dir.return_value = True
 
     ctx = context_manager.FlyteContext.current_context()
-    with ctx.new_execution_context(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION) as ctx:
-
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
         python_task = mock.MagicMock()
         python_task.dispatch_execute.side_effect = Exception("random")
 

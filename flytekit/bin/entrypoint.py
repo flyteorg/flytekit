@@ -24,7 +24,13 @@ from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
-from flytekit.core.context_manager import ExecutionState, FlyteContext, SerializationSettings, get_image_config
+from flytekit.core.context_manager import (
+    ExecutionState,
+    FlyteContext,
+    FlyteContextManager,
+    SerializationSettings,
+    get_image_config,
+)
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
 from flytekit.engines import loader as _engine_loader
@@ -159,7 +165,7 @@ def setup_execution(
     log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
     _logging.getLogger().setLevel(log_level)
 
-    ctx = FlyteContext.current_context()
+    ctx = FlyteContextManager.current_context()
 
     # Create directories
     user_workspace_dir = ctx.file_access.local_access.get_random_directory()
@@ -211,7 +217,7 @@ def setup_execution(
     else:
         raise Exception(f"Bad cloud provider {cloud_provider}")
 
-    with ctx.new_file_access_context(file_access_provider=file_access) as ctx:
+    with FlyteContextManager.with_context(ctx.with_file_access(file_access)) as ctx:
         # TODO: This is copied from serialize, which means there's a similarity here I'm not seeing.
         env = {
             _internal_config.CONFIGURATION_PATH.env_var: _internal_config.CONFIGURATION_PATH.get(),
@@ -229,12 +235,19 @@ def setup_execution(
         # The reason we need this is because of dynamic tasks. Even if we move compilation all to Admin,
         # if a dynamic task calls some task, t1, we have to write to the DJ Spec the correct task
         # identifier for t1.
-        with ctx.new_serialization_settings(serialization_settings=serialization_settings) as ctx:
+        with FlyteContextManager.with_context(ctx.with_serialization_settings(serialization_settings)) as ctx:
             # Because execution states do not look up the context chain, it has to be made last
-            with ctx.new_execution_context(
-                mode=ExecutionState.Mode.TASK_EXECUTION,
-                execution_params=execution_parameters,
-                additional_context={"dynamic_addl_distro": dynamic_addl_distro, "dynamic_dest_dir": dynamic_dest_dir},
+            with FlyteContextManager.with_context(
+                ctx.with_execution_state(
+                    ctx.new_execution_state().with_params(
+                        mode=ExecutionState.Mode.TASK_EXECUTION,
+                        user_space_params=execution_parameters,
+                        additional_context={
+                            "dynamic_addl_distro": dynamic_addl_distro,
+                            "dynamic_dest_dir": dynamic_dest_dir,
+                        },
+                    )
+                )
             ) as ctx:
                 yield ctx
 

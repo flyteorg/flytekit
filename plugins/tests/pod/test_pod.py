@@ -192,16 +192,20 @@ def test_dynamic_pod_task():
     )
     assert config["primary_container_name"] == "a container"
 
-    with context_manager.FlyteContext.current_context().new_serialization_settings(
-        serialization_settings=SerializationSettings(
-            project="test_proj",
-            domain="test_domain",
-            version="abc",
-            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-            env={},
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContext.current_context().with_serialization_settings(
+            SerializationSettings(
+                project="test_proj",
+                domain="test_domain",
+                version="abc",
+                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                env={},
+            )
         )
     ) as ctx:
-        with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
+        with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
+        ) as ctx:
             dynamic_job_spec = dynamic_pod_task.compile_into_workflow(ctx, False, dynamic_pod_task._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
 

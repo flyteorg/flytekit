@@ -93,8 +93,7 @@ def test_condition_tuple_branches():
 
     @workflow
     def math_ops(a: int, b: int) -> (int, int):
-        # Flyte will only make `sum` and `sub` available as outputs because they are common between all branches
-        sum, sub = (
+        add, sub = (
             conditional("noDivByZero")
             .if_(a > b)
             .then(sum_sub(a=a, b=b))
@@ -102,7 +101,7 @@ def test_condition_tuple_branches():
             .fail("Only positive results are allowed")
         )
 
-        return sum, sub
+        return add, sub
 
     x, y = math_ops(a=3, b=2)
     assert x == 5
@@ -118,6 +117,7 @@ def test_condition_tuple_branches():
     )
 
     sdk_wf = get_serializable(OrderedDict(), serialization_settings, math_ops)
+    assert len(sdk_wf.nodes) == 1
     assert sdk_wf.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name == "test_conditions.sum_sub"
 
 
@@ -288,3 +288,25 @@ def test_subworkflow_condition_single_named_tuple():
         return conditional("test").if_(x == 2).then(t().b).else_().then(wf1().b)
 
     assert branching(x=2) == 5
+
+
+def test_nested_condition():
+    with pytest.raises(NotImplementedError):
+
+        @workflow
+        def multiplier_2(my_input: float) -> float:
+            return (
+                conditional("fractions")
+                .if_((my_input > 0.1) & (my_input < 1.0))
+                .then(
+                    conditional("inner_fractions")
+                    .if_(my_input < 0.5)
+                    .then(double(n=my_input))
+                    .else_()
+                    .fail("Only <0.5 allowed")
+                )
+                .elif_((my_input > 1.0) & (my_input < 10.0))
+                .then(square(n=my_input))
+                .else_()
+                .fail("The input must be between 0 and 10")
+            )

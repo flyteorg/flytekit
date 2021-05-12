@@ -38,6 +38,7 @@ def test_default_wf_params_works():
         assert wf_params.execution_id == "ex:local:local:local"
 
     my_task(a=3)
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_simple_input_output():
@@ -48,6 +49,7 @@ def test_simple_input_output():
         return a + 2, "hello world"
 
     assert my_task(a=3) == (5, "hello world")
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_simple_input_no_output():
@@ -57,10 +59,12 @@ def test_simple_input_no_output():
 
     assert my_task(a=3) is None
 
-    ctx = context_manager.FlyteContext.current_context()
-    with ctx.new_compilation_context() as ctx:
+    ctx = context_manager.FlyteContextManager.current_context()
+    with context_manager.FlyteContextManager.with_context(ctx.with_new_compilation_state()) as ctx:
         outputs = my_task(a=3)
         assert isinstance(outputs, VoidPromise)
+
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_single_output():
@@ -70,14 +74,16 @@ def test_single_output():
 
     assert my_task() == "Hello world"
 
-    ctx = context_manager.FlyteContext.current_context()
-    with ctx.new_compilation_context() as ctx:
+    ctx = context_manager.FlyteContextManager.current_context()
+    with context_manager.FlyteContextManager.with_context(ctx.with_new_compilation_state()) as ctx:
         outputs = my_task()
         assert ctx.compilation_state is not None
         nodes = ctx.compilation_state.nodes
         assert len(nodes) == 1
         assert outputs.is_ready is False
         assert outputs.ref.node is nodes[0]
+
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_engine_file_output():
@@ -87,7 +93,9 @@ def test_engine_file_output():
     )
 
     fs = FileAccessProvider(local_sandbox_dir="/tmp/flytetesting")
-    with context_manager.FlyteContext.current_context().new_file_access_context(file_access_provider=fs) as ctx:
+    ctx = context_manager.FlyteContextManager.current_context()
+
+    with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)) as ctx:
         # Write some text to a file not in that directory above
         test_file_location = "/tmp/sample.txt"
         with open(test_file_location, "w") as fh:
@@ -103,6 +111,8 @@ def test_engine_file_output():
         redownloaded_local_file_location = TypeEngine.to_python_value(ctx, lit, os.PathLike)
         with open(redownloaded_local_file_location, "r") as fh:
             assert fh.readline() == "Hello World\n"
+
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1():
@@ -136,6 +146,7 @@ def test_wf1():
 
     assert t3.python_interface.output_tuple_name == "SingleNT"
     assert t3.interface.outputs["t1_int_output"] is not None
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1_run():
@@ -164,6 +175,7 @@ def test_wf1_run():
 
     x = my_wf2(a=5, b="hello ")
     assert x == (7, "hello world")
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1_with_overrides():
@@ -183,6 +195,7 @@ def test_wf1_with_overrides():
 
     x = my_wf(a=5, b="hello ")
     assert x == (7, "hello world")
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1_with_list_of_inputs():
@@ -211,6 +224,7 @@ def test_wf1_with_list_of_inputs():
 
     x = my_wf2(a=5, b="hello")
     assert x == 7
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf_output_mismatch():
@@ -231,6 +245,7 @@ def test_wf_output_mismatch():
         return (a,)
 
     my_wf3(a=10, b="hello")
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_promise_return():
@@ -250,15 +265,20 @@ def test_promise_return():
         u, v = t1(a=x)
         return y, v
 
-    ctx = context_manager.FlyteContext.current_context()
+    ctx = context_manager.FlyteContextManager.current_context()
 
-    with ctx.new_execution_context(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION) as ctx:
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
+        )
+    ) as ctx:
         a, b = mimic_sub_wf(a=3)
 
     assert isinstance(a, promise.Promise)
     assert isinstance(b, promise.Promise)
     assert a.val.scalar.value.string_value == "world-5"
     assert b.val.scalar.value.string_value == "world-7"
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1_with_sql():
@@ -282,6 +302,7 @@ def test_wf1_with_sql():
     with task_mock(sql) as mock:
         mock.return_value = pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})
         assert (my_wf().open().all() == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1_with_sql_with_patch():
@@ -309,6 +330,7 @@ def test_wf1_with_sql_with_patch():
 
     # Have to call because tests inside tests don't run
     test_user_demo_test()
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1_with_map():
@@ -328,6 +350,7 @@ def test_wf1_with_map():
 
     x = my_wf(a=[5, 6])
     assert x == 15
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1_compile_time_constant_vars():
@@ -347,6 +370,7 @@ def test_wf1_compile_time_constant_vars():
 
     x = my_wf(a=5, b="hello ")
     assert x == (7, "hello This is my way")
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1_with_constant_return():
@@ -374,6 +398,7 @@ def test_wf1_with_constant_return():
         return 10
 
     assert my_wf2(a=5, b="hello ") == 10
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1_with_dynamic():
@@ -403,18 +428,23 @@ def test_wf1_with_dynamic():
     x = my_wf(a=v, b="hello ")
     assert x == ("hello hello ", ["world-" + str(i) for i in range(2, v + 2)])
 
-    with context_manager.FlyteContext.current_context().new_serialization_settings(
-        serialization_settings=context_manager.SerializationSettings(
-            project="test_proj",
-            domain="test_domain",
-            version="abc",
-            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-            env={},
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContextManager.current_context().with_serialization_settings(
+            context_manager.SerializationSettings(
+                project="test_proj",
+                domain="test_domain",
+                version="abc",
+                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                env={},
+            )
         )
     ) as ctx:
-        with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
+        new_exc_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
+        with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)) as ctx:
             dynamic_job_spec = my_subwf.compile_into_workflow(ctx, False, my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
+
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1_with_fast_dynamic():
@@ -435,29 +465,38 @@ def test_wf1_with_fast_dynamic():
         v = my_subwf(a=a)
         return v
 
-    with context_manager.FlyteContext.current_context().new_serialization_settings(
-        serialization_settings=context_manager.SerializationSettings(
-            project="test_proj",
-            domain="test_domain",
-            version="abc",
-            image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-            env={},
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContextManager.current_context().with_serialization_settings(
+            context_manager.SerializationSettings(
+                project="test_proj",
+                domain="test_domain",
+                version="abc",
+                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                env={},
+            )
         )
     ) as ctx:
-        with ctx.new_execution_context(
-            mode=ExecutionState.Mode.TASK_EXECUTION,
-            additional_context={
-                "dynamic_addl_distro": "s3::/my-s3-bucket/fast/123",
-                "dynamic_dest_dir": "/User/flyte/workflows",
-            },
+        with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(
+                    mode=ExecutionState.Mode.TASK_EXECUTION,
+                    additional_context={
+                        "dynamic_addl_distro": "s3://my-s3-bucket/fast/123",
+                        "dynamic_dest_dir": "/User/flyte/workflows",
+                    },
+                )
+            )
         ) as ctx:
             dynamic_job_spec = my_subwf.compile_into_workflow(ctx, True, my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
             assert len(dynamic_job_spec.tasks) == 1
             args = " ".join(dynamic_job_spec.tasks[0].container.args)
             assert args.startswith(
-                "pyflyte-fast-execute --additional-distribution s3::/my-s3-bucket/fast/123 --dest-dir /User/flyte/workflows"
+                "pyflyte-fast-execute --additional-distribution s3://my-s3-bucket/fast/123 "
+                "--dest-dir /User/flyte/workflows"
             )
+
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_list_output():
@@ -556,6 +595,7 @@ def test_wf1_branches():
 
     x = my_wf(a=2, b="hello ")
     assert x == (4, "It is hello")
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1_branches_ne():
@@ -577,6 +617,7 @@ def test_wf1_branches_ne():
 
     x = my_wf(a=5, b="hello")
     assert x == "hello"
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1_branches_no_else():
@@ -599,6 +640,7 @@ def test_wf1_branches_no_else():
                 return x, d
 
         foo()
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1_branches_failing():
@@ -626,6 +668,7 @@ def test_wf1_branches_failing():
 
     with pytest.raises(ValueError):
         my_wf(a=1, b="hello ")
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_cant_use_normal_tuples():
@@ -719,6 +762,7 @@ def test_wf_container_task():
         arguments=["/tmp/a"],
     )
 
+    @workflow
     def wf(a: int):
         x, y = t1(a=a)
         t2(a=x, b=y)
@@ -1001,7 +1045,9 @@ def test_environment():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={"FOO": "foo", "BAR": "bar"},
     )
-    with context_manager.FlyteContext.current_context().new_compilation_context():
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContextManager.current_context().with_new_compilation_state()
+    ):
         sdk_task = get_serializable(OrderedDict(), serialization_settings, t1)
         assert sdk_task.container.env == {"FOO": "foofoo", "BAR": "bar", "BAZ": "baz"}
 
@@ -1029,7 +1075,9 @@ def test_resources():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    with context_manager.FlyteContext.current_context().new_compilation_context():
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContextManager.current_context().with_new_compilation_state()
+    ):
         sdk_task = get_serializable(OrderedDict(), serialization_settings, t1)
         assert sdk_task.container.resources.requests == [
             _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "1")
@@ -1143,10 +1191,10 @@ def test_nested_dynamic():
 
     nested_my_subwf = my_wf.get_all_tasks()[0]
 
-    with context_manager.FlyteContext.current_context().new_serialization_settings(
-        serialization_settings=settings
-    ) as ctx:
-        with ctx.new_execution_context(mode=ExecutionState.Mode.TASK_EXECUTION) as ctx:
+    ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(settings)
+    with context_manager.FlyteContextManager.with_context(ctx) as ctx:
+        es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
+        with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(es)) as ctx:
             dynamic_job_spec = nested_my_subwf.compile_into_workflow(ctx, False, nested_my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
 
