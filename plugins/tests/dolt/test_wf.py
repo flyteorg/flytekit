@@ -15,6 +15,11 @@ from flytekit import task, workflow
 
 @pytest.fixture(scope="module")
 def dolt_install():
+    """
+    Every pytest instance downloads the most recent `dolt` binary,
+    sets it as the dolt path in Dolt's Python package, and then deletes
+    it afterward.
+    """
     d = tempfile.TemporaryDirectory()
     dir_path = os.path.dirname(os.path.realpath(__file__))
     setup_script = os.path.join(dir_path, "..", "..", "flytekit-dolt", "scripts", "dev_setup.sh")
