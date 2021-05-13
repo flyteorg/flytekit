@@ -302,6 +302,7 @@ class FlyteContext(object):
         )
 
     def enter_conditional_section(self) -> Builder:
+        logging.debug("Creating a nested condition")
         return self.new_builder().enter_conditional_section()
 
     def with_execution_state(self, es: ExecutionState) -> Builder:
@@ -369,8 +370,8 @@ class FlyteContext(object):
             )
 
         def enter_conditional_section(self) -> "Builder":
-            if self.in_a_condition:
-                raise NotImplementedError("Nested branches are not yet supported!")
+            # if self.in_a_condition:
+                # raise NotImplementedError("Nested branches are not yet supported!")
 
             if self.compilation_state:
                 prefix = self.compilation_state.prefix + "branch" if self.compilation_state.prefix else "branch"
