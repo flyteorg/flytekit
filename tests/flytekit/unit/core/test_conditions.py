@@ -1,6 +1,7 @@
 import typing
 from collections import OrderedDict
 
+import mock
 import pytest
 
 from flytekit import task, workflow
@@ -17,6 +18,11 @@ serialization_settings = SerializationSettings(
     env=None,
     image_config=ImageConfig(default_image=default_img, images=[default_img]),
 )
+
+
+@task
+def five() -> int:
+    return 5
 
 
 @task
@@ -290,8 +296,31 @@ def test_subworkflow_condition_single_named_tuple():
     assert branching(x=2) == 5
 
 
-def test_nested_condition():
+@mock.patch.object(five, "execute")
+def test_call_counts(five_mock):
+    five_mock.return_value = 5
 
+    @workflow
+    def if_elif_else_branching(x: int) -> int:
+        return (
+            conditional("test")
+            .if_(x == 2)
+            .then(five())
+            .elif_(x == 3)
+            .then(five())
+            .elif_(x == 4)
+            .then(five())
+            .else_()
+            .then(five())
+        )
+
+    res = if_elif_else_branching(x=2)
+
+    assert res == 5
+    assert five_mock.call_count == 1
+
+
+def test_nested_condition():
     @workflow
     def multiplier_2(my_input: float) -> float:
         return (
@@ -313,7 +342,12 @@ def test_nested_condition():
     srz_wf = get_serializable(OrderedDict(), serialization_settings, multiplier_2)
     # print(srz_wf)
 
-    # x = multiplier_2(my_input=0.5)
+    with pytest.raises(ValueError):
+        multiplier_2(my_input=0.5)  # this is still getting called, should not be - 1.0 should not be printed
 
-    x = multiplier_2(my_input=0.3)
-    print(x)
+    res = multiplier_2(my_input=0.3)
+    assert res == 0.6
+
+    # failing...
+    res = multiplier_2(my_input=5)
+    assert res == 25

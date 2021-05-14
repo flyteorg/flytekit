@@ -225,14 +225,14 @@ class ExecutionState(object):
         Indicates that we are within an if-else block and the current branch has evaluated to true.
         Useful only in local execution mode
         """
-        object.__setattr__(self, "_branch_eval_mode", BranchEvalMode.BRANCH_ACTIVE)
+        object.__setattr__(self, "branch_eval_mode", BranchEvalMode.BRANCH_ACTIVE)
 
     def branch_complete(self):
         """
         Indicates that we are within a conditional / ifelse block and the active branch is not done.
         Default to SKIPPED
         """
-        object.__setattr__(self, "_branch_eval_mode", BranchEvalMode.BRANCH_SKIPPED)
+        object.__setattr__(self, "branch_eval_mode", BranchEvalMode.BRANCH_SKIPPED)
 
     def with_params(
         self,
@@ -302,7 +302,7 @@ class FlyteContext(object):
         )
 
     def enter_conditional_section(self) -> Builder:
-        logging.debug("Creating a nested condition")
+        # logging.debug("Creating a nested condition")
         return self.new_builder().enter_conditional_section()
 
     def with_execution_state(self, es: ExecutionState) -> Builder:
@@ -371,7 +371,7 @@ class FlyteContext(object):
 
         def enter_conditional_section(self) -> "Builder":
             # if self.in_a_condition:
-                # raise NotImplementedError("Nested branches are not yet supported!")
+            # raise NotImplementedError("Nested branches are not yet supported!")
 
             if self.compilation_state:
                 prefix = self.compilation_state.prefix + "branch" if self.compilation_state.prefix else "branch"
