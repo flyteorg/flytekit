@@ -378,7 +378,7 @@ class FlyteContext(object):
                 self.compilation_state = self.compilation_state.with_params(prefix=prefix)
 
             if self.execution_state:
-                if self.execution_state.Mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+                if self.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
                     """
                     In case of local workflow execution we should ensure a conditional section
                     is created so that skipped branches result in tasks not being executed
