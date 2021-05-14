@@ -101,6 +101,9 @@ class ConditionalSection(object):
             """
             if self._last_case:
                 # We have completed the conditional section, lets pop off the branch context
+                # Question: This is commented out because we don't need it? Nodes created in the conditional
+                #   compilation state are captured in the to_case_block? Always?
+                #   Is this still true of nested conditionals? Is that why propeller compiler is complaining?
                 # branch_nodes = ctx.compilation_state.nodes
                 FlyteContextManager.pop_context()
                 node, promises = to_branch_node(self._name, self)

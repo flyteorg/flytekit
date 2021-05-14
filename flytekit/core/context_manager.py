@@ -149,8 +149,8 @@ class CompilationState(object):
         nodes: Optional[List] = None,
     ) -> CompilationState:
         """
-        Create a new CompilationState where all the attributes are defaulted from the current CompilationState unless
-        explicitly provided as an argument.
+        Create a new CompilationState where the mode and task resolver are defaulted to the current object, but they
+        and all other args are taken if explicitly provided as an argument.
 
         Usage:
             s.with_params("p", nodes=[])
