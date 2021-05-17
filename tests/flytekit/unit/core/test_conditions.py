@@ -343,11 +343,13 @@ def test_nested_condition():
     # print(srz_wf)
 
     with pytest.raises(ValueError):
-        multiplier_2(my_input=0.5)  # this is still getting called, should not be - 1.0 should not be printed
+        multiplier_2(my_input=0.5)
 
     res = multiplier_2(my_input=0.3)
     assert res == 0.6
 
-    # # failing...
-    # res = multiplier_2(my_input=5)
-    # assert res == 25
+    res = multiplier_2(my_input=5)
+    assert res == 25
+
+    with pytest.raises(ValueError):
+        multiplier_2(my_input=10)

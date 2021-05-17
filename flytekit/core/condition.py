@@ -59,13 +59,20 @@ class ConditionalSection(object):
         ctx = FlyteContextManager.current_context()
         # In case of Local workflow execution, we will actually evaluate the expression and based on the result
         # make the branch to be active using `take_branch` method
+        from flytekit.core.context_manager import BranchEvalMode
+
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            # This is a short-circuit for the case when the branch was taken
-            # We already have a candidate case selected
-            if self._selected_case is None:
-                if c.expr is None or c.expr.eval() or last_case:
-                    ctx.execution_state.take_branch()
-                    self._selected_case = self._cases[-1]
+            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_IGNORED:
+                ...
+                # Do nothing here, all parts of the conditional should just be ignored in local execution because this
+                # this means we're in a nested conditional.
+            else:
+                # This is a short-circuit for the case when the branch was taken
+                # We already have a candidate case selected
+                if self._selected_case is None:
+                    if c.expr is None or c.expr.eval() or last_case:
+                        ctx.execution_state.take_branch()
+                        self._selected_case = self._cases[-1]
         return self._cases[-1]
 
     def end_branch(self) -> Union[Condition, Promise]:
@@ -81,6 +88,12 @@ class ConditionalSection(object):
             be selected (see start_branch)
             If this is not the last case, we should return the condition so that further chaining can be done
             """
+            from flytekit.core.context_manager import BranchEvalMode
+
+            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_IGNORED:
+                if self._last_case:
+                    FlyteContextManager.pop_context()
+                return self._condition
             # Let us mark the execution state as complete
             ctx.execution_state.branch_complete()
             if self._last_case:
@@ -93,9 +106,8 @@ class ConditionalSection(object):
                 raise ValueError(self._selected_case.err)
             return self._condition
         elif ctx.compilation_state:
-            ########
-            # COMPILATION MODE
             """
+            COMPILATION MODE
             In case this is not local workflow execution then, we should check if this is the last case.
             If so then return the promise, else return the condition
             """

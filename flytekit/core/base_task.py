@@ -247,7 +247,10 @@ class Task(object):
         elif (
             ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
-            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
+            if (
+                ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED
+                or ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_IGNORED
+            ):
                 if self.python_interface and self.python_interface.output_tuple_name:
                     variables = [k for k in self.python_interface.outputs.keys()]
                     output_tuple = collections.namedtuple(self.python_interface.output_tuple_name, variables)

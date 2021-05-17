@@ -164,8 +164,17 @@ class CompilationState(object):
 
 
 class BranchEvalMode(Enum):
+    """
+    This is a 4-way class, with the None value meaning that we are not within a conditional context. The other two
+    values are
+    * Active - This means that the next ``then`` should run
+    * Skipped - The next ``then`` should not run
+    * Ignored - This is only used in nested conditionals, and it means that the entire conditional should be ignored.
+    """
+
     BRANCH_ACTIVE = "branch active"
     BRANCH_SKIPPED = "branch skipped"
+    BRANCH_IGNORED = "branch ignored"
 
 
 @dataclass(init=False)
@@ -379,13 +388,17 @@ class FlyteContext(object):
 
             if self.execution_state:
                 if self.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-                    """
-                    In case of local workflow execution we should ensure a conditional section
-                    is created so that skipped branches result in tasks not being executed
-                    """
-                    self.execution_state = self.execution_state.with_params(
-                        branch_eval_mode=BranchEvalMode.BRANCH_SKIPPED
-                    )
+                    if self.in_a_condition:
+                        if self.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
+                            self.execution_state = self.execution_state.with_params(
+                                branch_eval_mode=BranchEvalMode.BRANCH_IGNORED
+                            )
+                    else:
+                        # In case of local workflow execution we should ensure a conditional section
+                        # is created so that skipped branches result in tasks not being executed
+                        self.execution_state = self.execution_state.with_params(
+                            branch_eval_mode=BranchEvalMode.BRANCH_SKIPPED
+                        )
 
             self.in_a_condition = True
             return self
