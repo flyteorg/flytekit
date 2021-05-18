@@ -191,6 +191,11 @@ def serialize_all(
         registerable_entities = list(filter(lambda x: isinstance(x, RegisterableEntity), all_entities))
         loaded_entities = old_style_entities + registerable_entities
 
+        # Preserialize registerable entities
+        #   Reference entities should be None
+        #   Non-registered things like branch nodes should be taken out by a filter in loop below
+        # Change get_serializable to get_serialized
+
         zero_padded_length = _determine_text_chars(len(loaded_entities))
         for i, entity in enumerate(loaded_entities):
             if entity.has_registered:

@@ -8,6 +8,7 @@ from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings
+from flytekit.models.admin import workflow as admin_workflow_models
 
 
 @task
@@ -195,7 +196,7 @@ def test_subworkflow_condition_serialization():
 
     @workflow
     def if_elif_else_branching(x: int) -> int:
-        return (
+        return (  # noqa
             conditional("test")
             .if_(x == 2)
             .then(wf1())
@@ -230,8 +231,8 @@ def test_subworkflow_condition_serialization():
         (if_elif_else_branching, ["test_conditions.{}".format(x) for x in ("wf1", "wf2", "wf3", "wf4")]),
         (nested_branching, ["test_conditions.{}".format(x) for x in ("ifelse_branching", "wf1", "wf2", "wf5")]),
     ]:
-        serializable_wf = get_serializable(OrderedDict(), serialization_settings, wf)
-        subworkflows = serializable_wf.get_sub_workflows()
+        wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
+        subworkflows = wf_spec.sub_workflows
 
         assert [sub_wf.id.name for sub_wf in subworkflows] == expected_subworkflows
 
