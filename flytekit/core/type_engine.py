@@ -424,12 +424,12 @@ class DictTransformer(TypeTransformer[dict]):
         return Literal(map=LiteralMap(literals=lit_map))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[dict]) -> dict:
-        if lv and lv.map and lv.map.literals:
+        if lv and lv.map and lv.map.literals is not None:
             tp = self.get_dict_types(expected_python_type)
             if tp is None or tp[0] is None:
                 raise TypeError(
                     "TypeMismatch: Cannot convert to python dictionary from Flyte Literal Dictionary as the given "
-                    "dictionary ddoes not have sub-type hints or they do not match with the originating dictionary "
+                    "dictionary does not have sub-type hints or they do not match with the originating dictionary "
                     "source. Flytekit does not currently support implicit conversions"
                 )
             if tp[0] != str:
