@@ -340,7 +340,7 @@ def test_nested_condition():
         )
 
     srz_wf = get_serializable(OrderedDict(), serialization_settings, multiplier_2)
-    # print(srz_wf)
+    print(srz_wf)
 
     with pytest.raises(ValueError):
         multiplier_2(my_input=0.5)
