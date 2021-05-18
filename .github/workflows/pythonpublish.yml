@@ -20,9 +20,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install setuptools wheel twine
       - name: Autobump version
+        id: bump
         run: |
           # from refs/tags/v1.2.3 get 1.2.3
           VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
+          echo "::set-output name=version::$VERSION"
           VERSION=$VERSION make update_version
         shell: bash
       - name: Build and publish
@@ -32,12 +34,6 @@ jobs:
         run: |
           python setup.py sdist bdist_wheel
           twine upload dist/*
-      - name: Autobump plugin version
-        run: |
-          # from refs/tags/v1.2.3 get 1.2.3
-          VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
-          VERSION=$VERSION make -C plugins update_all_versions
-        shell: bash
       - name: Build all Plugins and publish
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
@@ -52,11 +48,11 @@ jobs:
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
           image_name: ${{ github.repository_owner }}/flytekit
-          image_tag: flytekit-latest,flytekit-${{ github.sha }},flytekit-${{ github.event.ref }}
+          image_tag: flytekit-latest,flytekit-${{ github.sha }},flytekit-${{ steps.bump.outputs.version }}
           push_git_tag: true
           push_image_and_stages: true
           registry: ghcr.io
-          build_extra_args: "--compress=true --build-arg=version=${{ github.sha }}"
+          build_extra_args: "--compress=true --build-arg=VERSION=${{ steps.bump.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit-py37:${{ steps.bump.outputs.version }}"
           context: .
           dockerfile: Dockerfile.py37
       - name: Build & Push Flytekit Python3.8 Docker Image to Github Registry
@@ -66,10 +62,10 @@ jobs:
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
           image_name: ${{ github.repository_owner }}/flytekit
-          image_tag: flytekit-latest,flytekit-${{ github.sha }},flytekit-${{ github.event.ref }}
+          image_tag: flytekit-latest,flytekit-${{ github.sha }},flytekit-${{ steps.bump.outputs.version }}
           push_git_tag: true
           push_image_and_stages: true
           registry: ghcr.io
-          build_extra_args: "--compress=true --build-arg=version=${{ github.sha }}"
+          build_extra_args: "--compress=true --build-arg=VERSION=${{ steps.bump.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit-py38:${{ steps.bump.outputs.version }}"
           context: .
-          dockerfile: Dockerfile.py37
+          dockerfile: Dockerfile.py38
