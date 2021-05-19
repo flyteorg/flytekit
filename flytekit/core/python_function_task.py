@@ -153,6 +153,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
 
             wf = self._wf
             model_entities = OrderedDict()
+            # See comment on reference entity checking a bit down below in this function.
+            # This is the only circular dependency between the translator.py module and the rest of the flytekit
+            # authoring experience.
             workflow_spec: admin_workflow_models.WorkflowSpec = get_serializable(
                 model_entities, ctx.serialization_settings, wf, is_fast_execution
             )
@@ -165,16 +168,20 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                     }
                 )
 
-            # Gather underlying TaskTemplates that get referenced. Launch plans are handled by propeller. Subworkflows
-            # should already be in the workflow spec.
-            # import ipdb; ipdb.set_trace()
-            tts = [v.template for v in model_entities.values() if isinstance(v, task_models.TaskSpec)]
-            for tt in tts:
-                if tt is None:
+            # This is not great. The translator.py module is relied on here (see comment above) to get the tasks and
+            # subworkflow definitions. However we want to ensure that reference tasks and reference sub workflows are
+            # not used.
+            # TODO: Replace None with a class.
+            for value in model_entities.values():
+                if value is None:
                     raise Exception(
                         "Reference tasks are not allowed in the dynamic - a network call is necessary "
                         "in order to retrieve the structure of the reference task."
                     )
+
+            # Gather underlying TaskTemplates that get referenced. Launch plans are handled by propeller. Subworkflows
+            # should already be in the workflow spec.
+            tts = [v.template for v in model_entities.values() if isinstance(v, task_models.TaskSpec)]
 
             if is_fast_execution:
                 if (

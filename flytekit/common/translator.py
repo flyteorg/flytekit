@@ -230,6 +230,10 @@ def get_serializable_node(
 
     # Reference entities also inherit from the classes in the second if statement so address them first.
     if isinstance(entity.flyte_entity, ReferenceEntity):
+        # This is a throw away call.
+        # See the comment in compile_into_workflow in python_function_task. This is just used to place a None value
+        # in the entity_mapping.
+        get_serializable(entity_mapping, settings, entity.flyte_entity, fast)
         ref = entity.flyte_entity
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
@@ -349,7 +353,9 @@ def get_serializable(
         return entity_mapping[entity]
 
     if isinstance(entity, ReferenceEntity):
-        # cp_entity = get_serializable_references(entity_mapping, settings, entity, fast)
+        # TODO: Create a non-registerable model class comparable to TaskSpec or WorkflowSpec to replace None as a
+        #  keystone value. The purpose is only to store something so that we can check for it when compiling
+        #  dynamic tasks. See comment in compile_into_workflow.
         cp_entity = None
 
     elif isinstance(entity, PythonTask):

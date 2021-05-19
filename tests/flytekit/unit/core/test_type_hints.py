@@ -443,6 +443,7 @@ def test_wf1_with_dynamic():
         with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)) as ctx:
             dynamic_job_spec = my_subwf.compile_into_workflow(ctx, False, my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
+            assert len(dynamic_job_spec.tasks) == 1
 
     assert context_manager.FlyteContextManager.size() == 1
 

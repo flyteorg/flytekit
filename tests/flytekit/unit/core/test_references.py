@@ -7,6 +7,7 @@ from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
 from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.promise import VoidPromise
 from flytekit.core.reference import get_reference_entity
@@ -349,3 +350,41 @@ def test_lp_from_ref_wf():
     assert lp.workflow.id.project == "project"
     assert lp.workflow.id.domain == "domain"
     assert lp.workflow.id.version == "version"
+
+
+def test_ref_dynamic():
+    @reference_task(
+        project="flytesnacks",
+        domain="development",
+        name="sample.reference.task",
+        version="553018f39e519bdb2597b652639c30ce16b99c79",
+    )
+    def ref_t1(a: int) -> str:
+        ...
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @dynamic
+    def my_subwf(a: int) -> typing.List[str]:
+        s = []
+        for i in range(a):
+            s.append(ref_t1(a=i))
+        return s
+
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContextManager.current_context().with_serialization_settings(
+            context_manager.SerializationSettings(
+                project="test_proj",
+                domain="test_domain",
+                version="abc",
+                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                env={},
+            )
+        )
+    ) as ctx:
+        new_exc_state = ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)) as ctx:
+            with pytest.raises(Exception):
+                my_subwf.compile_into_workflow(ctx, False, my_subwf._task_function, a=5)
