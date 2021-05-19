@@ -122,6 +122,11 @@ def get_serializable_workflow(
     sub_wfs = []
     for n in entity.nodes:
         if isinstance(n.flyte_entity, WorkflowBase):
+            if isinstance(n.flyte_entity, ReferenceEntity):
+                raise Exception(
+                    f"Sorry, reference subworkflows do not work right now, please use the launch plan instead for the "
+                    f"subworkflow you're trying to invoke. Node: {n}"
+                )
             sub_wf_spec = get_serializable(entity_mapping, settings, n.flyte_entity, fast)
             if not isinstance(sub_wf_spec, admin_workflow_models.WorkflowSpec):
                 raise Exception(
@@ -223,6 +228,26 @@ def get_serializable_node(
         if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
     ]
 
+    # Reference entities also inherit from the classes in the second if statement so address them first.
+    if isinstance(entity.flyte_entity, ReferenceEntity):
+        ref = entity.flyte_entity
+        node_model = workflow_model.Node(
+            id=_dnsify(entity.id),
+            metadata=entity.metadata,
+            inputs=entity.bindings,
+            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            output_aliases=[],
+        )
+        if ref.reference.resource_type == _identifier_model.ResourceType.TASK:
+            node_model._task_node = workflow_model.TaskNode(reference_id=ref.id)
+        elif ref.reference.resource_type == _identifier_model.ResourceType.WORKFLOW:
+            node_model._workflow_node = workflow_model.WorkflowNode(sub_workflow_ref=ref.id)
+        elif ref.reference.resource_type == _identifier_model.ResourceType.LAUNCH_PLAN:
+            node_model._workflow_node = workflow_model.WorkflowNode(launchplan_ref=ref.id)
+        else:
+            raise Exception(f"Unexpected reference type {ref}")
+        return node_model
+
     if isinstance(entity.flyte_entity, PythonTask):
         task_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, fast)
         node_model = workflow_model.Node(
@@ -256,15 +281,6 @@ def get_serializable_node(
             output_aliases=[],
             branch_node=get_serializable(entity_mapping, settings, entity.flyte_entity),
         )
-
-        # cp_entity = SdkNode(
-        #     entity._id,
-        #     upstream_nodes=upstream_sdk_nodes,
-        #     bindings=entity._bindings,
-        #     metadata=entity._metadata,
-        #     sdk_branch=get_serializable(entity_mapping, settings, entity.flyte_entity),
-        #     parameter_mapping=False,
-        # )
 
     elif isinstance(entity.flyte_entity, LaunchPlan):
         lp_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, fast)

@@ -39,18 +39,18 @@ def test_imperative():
 
     assert wb(in1="hello") == "hello world"
 
-    srz_wf = get_serializable(OrderedDict(), serialization_settings, wb)
-    assert len(srz_wf.nodes) == 2
-    assert srz_wf.nodes[0].task_node is not None
-    assert len(srz_wf.outputs) == 1
-    assert srz_wf.outputs[0].var == "from_n0t1"
-    assert len(srz_wf.interface.inputs) == 1
-    assert len(srz_wf.interface.outputs) == 1
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, wb)
+    assert len(wf_spec.template.nodes) == 2
+    assert wf_spec.template.nodes[0].task_node is not None
+    assert len(wf_spec.template.outputs) == 1
+    assert wf_spec.template.outputs[0].var == "from_n0t1"
+    assert len(wf_spec.template.interface.inputs) == 1
+    assert len(wf_spec.template.interface.outputs) == 1
 
     # Create launch plan from wf, that can also be serialized.
     lp = LaunchPlan.create("test_wb", wb)
-    srz_lp = get_serializable(OrderedDict(), serialization_settings, lp)
-    assert srz_lp.workflow_id.name == "my.workflow"
+    lp_model = get_serializable(OrderedDict(), serialization_settings, lp)
+    assert lp_model.spec.workflow_id.name == "my.workflow"
 
 
 def test_imperative_list_bound():
@@ -116,9 +116,9 @@ def test_imperative_wf_list_input():
 
     assert wb(in1=[5, 6, 7]) == 24
 
-    srz_wf = get_serializable(OrderedDict(), serialization_settings, wb)
-    assert len(srz_wf.nodes) == 2
-    assert srz_wf.nodes[0].task_node is not None
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, wb)
+    assert len(wf_spec.template.nodes) == 2
+    assert wf_spec.template.nodes[0].task_node is not None
 
 
 def test_imperative_scalar_bindings():
@@ -132,9 +132,9 @@ def test_imperative_scalar_bindings():
 
     assert wb() == {"a": 7, "b": 11}
 
-    srz_wf = get_serializable(OrderedDict(), serialization_settings, wb)
-    assert len(srz_wf.nodes) == 1
-    assert srz_wf.nodes[0].task_node is not None
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, wb)
+    assert len(wf_spec.template.nodes) == 1
+    assert wf_spec.template.nodes[0].task_node is not None
 
 
 def test_imperative_list_bound_output():

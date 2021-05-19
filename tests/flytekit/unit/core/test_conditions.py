@@ -117,9 +117,12 @@ def test_condition_tuple_branches():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
 
-    sdk_wf = get_serializable(OrderedDict(), serialization_settings, math_ops)
-    assert len(sdk_wf.nodes) == 1
-    assert sdk_wf.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name == "test_conditions.sum_sub"
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, math_ops)
+    assert len(wf_spec.template.nodes) == 1
+    assert (
+        wf_spec.template.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name
+        == "test_conditions.sum_sub"
+    )
 
 
 def test_condition_unary_bool():

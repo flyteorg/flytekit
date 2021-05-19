@@ -49,9 +49,9 @@ def test_workflow_values():
         u, v = t1(a=x)
         return y, v
 
-    sdk_wf = get_serializable(OrderedDict(), serialization_settings, wf)
-    assert sdk_wf.metadata_defaults.interruptible
-    assert sdk_wf.metadata.on_failure == 1
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
+    assert wf_spec.template.metadata_defaults.interruptible
+    assert wf_spec.template.metadata.on_failure == 1
 
 
 def test_default_values():
@@ -162,9 +162,9 @@ def test_wf_nested_comp():
     assert (8, 10) == outer()
     entity_mapping = OrderedDict()
 
-    sdk_wf = get_serializable(entity_mapping, serialization_settings, outer)
-    model_wf = sdk_wf.serialize()
-    assert len(model_wf.template.interface.outputs.variables) == 2
+    model_wf = get_serializable(entity_mapping, serialization_settings, outer)
+
+    assert len(model_wf.template.interface.outputs) == 2
     assert len(model_wf.template.nodes) == 2
     assert model_wf.template.nodes[1].workflow_node is not None
 
