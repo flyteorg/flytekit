@@ -216,25 +216,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
 
             return dj_spec
 
-    # @staticmethod
-    # def aggregate(tasks, workflows, node) -> None:
-    #     if node.task_node is not None:
-    #         tasks.add(node.task_node.sdk_task)
-    #     if node.workflow_node is not None:
-    #         if node.workflow_node.sdk_workflow is not None:
-    #             workflows.add(node.workflow_node.sdk_workflow)
-    #             for sub_node in node.workflow_node.sdk_workflow.nodes:
-    #                 PythonFunctionTask.aggregate(tasks, workflows, sub_node)
-    #     if node.branch_node is not None:
-    #         if node.branch_node.if_else.case.then_node is not None:
-    #             PythonFunctionTask.aggregate(tasks, workflows, node.branch_node.if_else.case.then_node)
-    #         if node.branch_node.if_else.other:
-    #             for oth in node.branch_node.if_else.other:
-    #                 if oth.then_node:
-    #                     PythonFunctionTask.aggregate(tasks, workflows, oth.then_node)
-    #         if node.branch_node.if_else.else_node is not None:
-    #             PythonFunctionTask.aggregate(tasks, workflows, node.branch_node.if_else.else_node)
-
     def dynamic_execute(self, task_function: Callable, **kwargs) -> Any:
         """
         By the time this function is invoked, the _local_execute function should have unwrapped the Promises and Flyte
