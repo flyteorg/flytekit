@@ -14,7 +14,6 @@ from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions.scopes import system_entry_point
-from flytekit.common.mixins.registerable import RegisterableEntity
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.translator import get_serializable
 from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
@@ -23,6 +22,9 @@ from flytekit.core import context_manager as flyte_context
 from flytekit.core.base_task import PythonTask
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.workflow import WorkflowBase
+from flytekit.models import launch_plan as _launch_plan_models
+from flytekit.models import task as task_models
+from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
@@ -87,6 +89,18 @@ def serialize_tasks_only(pkgs, folder=None):
         if folder:
             identifier_fname = _os.path.join(folder, identifier_fname)
         _write_proto_to_file(entity._id.to_flyte_idl(), identifier_fname)
+
+
+def _should_register_with_admin(entity) -> bool:
+    """
+    This is used in the code below. The translator.py module produces lots of objects (namely nodes and BranchNodes)
+    that do not/should not be written to .pb file to send to admin. This function filters them out.
+    """
+    return entity is not None and (
+        isinstance(entity, task_models.TaskSpec)
+        or isinstance(entity, _launch_plan_models.LaunchPlan)
+        or isinstance(entity, admin_workflow_models.WorkflowSpec)
+    )
 
 
 @system_entry_point
@@ -155,6 +169,13 @@ def serialize_all(
             )
             old_style_entities.append(o)
 
+        serialized_old_style_entities = []
+        for entity in old_style_entities:
+            if entity.has_registered:
+                _logging.info(f"Skipping entity {entity.id} because already registered")
+                continue
+            serialized_old_style_entities.append(entity.serialize())
+
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
 
         mode = mode if mode else SerializationMode.DEFAULT
@@ -184,30 +205,18 @@ def serialize_all(
                     lp = LaunchPlan.get_default_launch_plan(ctx, entity)
                     get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp)
 
-        # This will pick up all the serializable entities, but we'll need to filter them because the process of
-        # serializing creates a lot of objects that don't need to be directly registered, namely SdkNodes and
-        # BranchNodes and other branching constructs
-        all_entities = list(new_api_serializable_entities.values())
-        registerable_entities = list(filter(lambda x: isinstance(x, RegisterableEntity), all_entities))
-        loaded_entities = old_style_entities + registerable_entities
+        new_api_model_values = list(new_api_serializable_entities.values())
+        new_api_model_values = list(filter(_should_register_with_admin, new_api_model_values))
 
-        # Preserialize registerable entities
-        #   Reference entities should be None
-        #   Non-registered things like branch nodes should be taken out by a filter in loop below
-        # Change get_serializable to get_serialized
-
+        loaded_entities = serialized_old_style_entities + new_api_model_values
         zero_padded_length = _determine_text_chars(len(loaded_entities))
         for i, entity in enumerate(loaded_entities):
-            if entity.has_registered:
-                _logging.info(f"Skipping entity {entity.id} because already registered")
-                continue
-            serialized = entity.serialize()
             fname_index = str(i).zfill(zero_padded_length)
             fname = "{}_{}_{}.pb".format(fname_index, entity.id.name, entity.id.resource_type)
             click.echo(f"  Writing type: {entity.id.resource_type_name()}, {entity.id.name} to\n    {fname}")
             if folder:
                 fname = _os.path.join(folder, fname)
-            _write_proto_to_file(serialized, fname)
+            _write_proto_to_file(entity, fname)
 
         click.secho(f"Successfully serialized {len(loaded_entities)} flyte objects", fg="green")
 
