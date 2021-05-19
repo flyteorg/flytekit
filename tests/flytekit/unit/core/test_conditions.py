@@ -8,7 +8,6 @@ from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings
-from flytekit.models.admin import workflow as admin_workflow_models
 
 
 @task
