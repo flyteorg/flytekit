@@ -1759,7 +1759,6 @@ def _extract_files(
         # Where 12 indicates it is the 12 file to process in order and 1 that is of resource type 1, or TASK.
         resource_type = int(proto_file[-4])
         id, entity = _extract_pair(proto_file, resource_type, project, domain, version, patches or {})
-        print(f"Extracted {proto_file} to {id} and {entity}")
         results.append((id, entity))
 
     return results
