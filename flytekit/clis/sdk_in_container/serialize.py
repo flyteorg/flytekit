@@ -29,6 +29,10 @@ from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 
+from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
+from flyteidl.admin.workflow_pb2 import WorkflowSpec as _idl_admin_WorkflowSpec
+from flyteidl.admin.task_pb2 import TaskSpec as _idl_admin_TaskSpec
+
 # Identifier fields use placeholders for registration-time substitution.
 # Additional fields, such as auth and the raw output data prefix have more complex structures
 # and can be optional so they are not serialized with placeholders.
@@ -207,12 +211,20 @@ def serialize_all(
 
         new_api_model_values = list(new_api_serializable_entities.values())
         new_api_model_values = list(filter(_should_register_with_admin, new_api_model_values))
+        new_api_model_values = [v.to_flyte_idl() for v in new_api_model_values]
 
         loaded_entities = serialized_old_style_entities + new_api_model_values
         zero_padded_length = _determine_text_chars(len(loaded_entities))
         for i, entity in enumerate(loaded_entities):
             fname_index = str(i).zfill(zero_padded_length)
-            fname = "{}_{}_{}.pb".format(fname_index, entity.id.name, entity.id.resource_type)
+            if isinstance(entity, _idl_admin_TaskSpec):
+                fname = "{}_{}_1.pb".format(fname_index, entity.template.id.name)
+            elif isinstance(entity, _idl_admin_WorkflowSpec):
+                fname = "{}_{}_2.pb".format(fname_index, entity.template.id.name)
+            elif isinstance(entity, _idl_admin_LaunchPlan):
+                fname = "{}_{}_3.pb".format(fname_index, entity.id.name)
+            else:
+                raise Exception("bad format")
             click.echo(f"  Writing type: {entity.id.resource_type_name()}, {entity.id.name} to\n    {fname}")
             if folder:
                 fname = _os.path.join(folder, fname)
