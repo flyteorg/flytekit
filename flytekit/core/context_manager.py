@@ -174,7 +174,6 @@ class BranchEvalMode(Enum):
 
     BRANCH_ACTIVE = "branch active"
     BRANCH_SKIPPED = "branch skipped"
-    BRANCH_IGNORED = "branch ignored"
 
 
 @dataclass(init=False)
@@ -390,9 +389,7 @@ class FlyteContext(object):
                 if self.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
                     if self.in_a_condition:
                         if self.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
-                            self.execution_state = self.execution_state.with_params(
-                                branch_eval_mode=BranchEvalMode.BRANCH_IGNORED
-                            )
+                            self.execution_state = self.execution_state.with_params()
                     else:
                         # In case of local workflow execution we should ensure a conditional section
                         # is created so that skipped branches result in tasks not being executed

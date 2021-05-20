@@ -33,11 +33,22 @@ class BranchNode(object):
         return self._name
 
 
-class ConditionalSection(object):
+class ConditionalSection:
+    """
+    ConditionalSection is used to denote a condition within a Workflow. This default conditional section only works
+    for Compilation mode. It is advised to derive the class and re-implement the `start_branch` and `end_branch` methods
+    to override the compilation behavior
+
+    .. note::
+
+        Conditions can only be used within a workflow context.
+
+
+    """
+
     def __init__(self, name: str):
         self._name = name
         self._cases: typing.List[Case] = []
-        self._selected_case = None
         self._last_case = False
         self._condition = Condition(self)
         ctx = FlyteContextManager.current_context()
@@ -45,8 +56,12 @@ class ConditionalSection(object):
         FlyteContextManager.push_context(ctx.enter_conditional_section().build())
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
+
+    @property
+    def cases(self) -> typing.List[Case]:
+        return self._cases
 
     def start_branch(self, c: Case, last_case: bool = False) -> Case:
         """
@@ -56,89 +71,44 @@ class ConditionalSection(object):
         """
         self._last_case = last_case
         self._cases.append(c)
-        ctx = FlyteContextManager.current_context()
-        # In case of Local workflow execution, we will actually evaluate the expression and based on the result
-        # make the branch to be active using `take_branch` method
-        from flytekit.core.context_manager import BranchEvalMode
-
-        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_IGNORED:
-                ...
-                # Do nothing here, all parts of the conditional should just be ignored in local execution because this
-                # this means we're in a nested conditional.
-            else:
-                # This is a short-circuit for the case when the branch was taken
-                # We already have a candidate case selected
-                if self._selected_case is None:
-                    if c.expr is None or c.expr.eval() or last_case:
-                        ctx.execution_state.take_branch()
-                        self._selected_case = self._cases[-1]
         return self._cases[-1]
 
     def end_branch(self) -> Union[Condition, Promise]:
         """
-        This should be invoked after every branch has been visited
+        This should be invoked after every branch has been visited.
+        In case this is not local workflow execution then, we should check if this is the last case.
+        If so then return the promise, else return the condition
         """
         ctx = FlyteContextManager.current_context()
-        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            """
-            In case of Local workflow execution, we should first mark the branch as complete, then
-            Then we first check for if this is the last case,
-            In case this is the last case, we return the output from the selected case - A case should always
-            be selected (see start_branch)
-            If this is not the last case, we should return the condition so that further chaining can be done
-            """
-            from flytekit.core.context_manager import BranchEvalMode
+        if self._last_case:
+            # We have completed the conditional section, lets pop off the branch context
+            # Question: This is commented out because we don't need it? Nodes created in the conditional
+            #   compilation state are captured in the to_case_block? Always?
+            #   Is this still true of nested conditionals? Is that why propeller compiler is complaining?
+            # branch_nodes = ctx.compilation_state.nodes
+            FlyteContextManager.pop_context()
+            node, promises = to_branch_node(self._name, self)
+            # Verify branch_nodes == nodes in bn
+            bindings: typing.List[Binding] = []
+            upstream_nodes = set()
+            for p in promises:
+                if not p.is_ready:
+                    bindings.append(Binding(var=p.var, binding=BindingData(promise=p.ref)))
+                    upstream_nodes.add(p.ref.node)
 
-            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_IGNORED:
-                if self._last_case:
-                    FlyteContextManager.pop_context()
-                return self._condition
-            # Let us mark the execution state as complete
-            ctx.execution_state.branch_complete()
-            if self._last_case:
-                # We have completed the conditional section, lets pop off the branch context
-                FlyteContextManager.pop_context()
-                if self._selected_case.output_promise is None and self._selected_case.err is None:
-                    raise AssertionError("Bad conditional statements, did not resolve in a promise")
-                elif self._selected_case.output_promise is not None:
-                    return self._selected_case.output_promise
-                raise ValueError(self._selected_case.err)
-            return self._condition
-        elif ctx.compilation_state:
-            """
-            COMPILATION MODE
-            In case this is not local workflow execution then, we should check if this is the last case.
-            If so then return the promise, else return the condition
-            """
-            if self._last_case:
-                # We have completed the conditional section, lets pop off the branch context
-                # Question: This is commented out because we don't need it? Nodes created in the conditional
-                #   compilation state are captured in the to_case_block? Always?
-                #   Is this still true of nested conditionals? Is that why propeller compiler is complaining?
-                # branch_nodes = ctx.compilation_state.nodes
-                FlyteContextManager.pop_context()
-                node, promises = to_branch_node(self._name, self)
-                # Verify branch_nodes == nodes in bn
-                bindings: typing.List[Binding] = []
-                upstream_nodes = set()
-                for p in promises:
-                    if not p.is_ready:
-                        bindings.append(Binding(var=p.var, binding=BindingData(promise=p.ref)))
-                        upstream_nodes.add(p.ref.node)
+            n = Node(
+                id=f"{ctx.compilation_state.prefix}node-{len(ctx.compilation_state.nodes)}",
+                metadata=_core_wf.NodeMetadata(self._name, timeout=datetime.timedelta(), retries=RetryStrategy(0)),
+                bindings=sorted(bindings, key=lambda b: b.var),
+                upstream_nodes=list(upstream_nodes),  # type: ignore
+                flyte_entity=node,
+            )
+            FlyteContextManager.current_context().compilation_state.add_node(n)
+            return self._compute_outputs(n)
+        return self._condition
 
-                n = Node(
-                    id=f"{ctx.compilation_state.prefix}node-{len(ctx.compilation_state.nodes)}",
-                    metadata=_core_wf.NodeMetadata(self._name, timeout=datetime.timedelta(), retries=RetryStrategy(0)),
-                    bindings=sorted(bindings, key=lambda b: b.var),
-                    upstream_nodes=list(upstream_nodes),  # type: ignore
-                    flyte_entity=node,
-                )
-                FlyteContextManager.current_context().compilation_state.add_node(n)
-                return self._compute_outputs(n)
-            return self._condition
-
-        raise AssertionError("Branches can only be invoked within a workflow context!")
+    def if_(self, expr: bool) -> Case:
+        return self._condition._if(expr)
 
     def _compute_outputs(self, n: Node) -> Union[Promise, Tuple[Promise], VoidPromise]:
         output_var_sets: typing.List[typing.Set[str]] = []
@@ -151,7 +121,7 @@ class ConditionalSection(object):
                 if isinstance(c.output_promise, tuple):
                     output_var_sets.append(set([i.var for i in c.output_promise]))
                 else:
-                    output_var_sets.append(set([c.output_promise.var]))
+                    output_var_sets.append({c.output_promise.var})
         curr = output_var_sets[0]
         if len(output_var_sets) > 1:
             for x in output_var_sets[1:]:
@@ -160,12 +130,67 @@ class ConditionalSection(object):
         # TODO: Is there a way to add the Python interface here? Currently, it's an optional arg.
         return create_task_output(promises)
 
-    @property
-    def cases(self) -> typing.List[Case]:
-        return self._cases
 
-    def if_(self, expr: bool) -> Case:
-        return self._condition._if(expr)
+class LocalExecutedConditionalSection(ConditionalSection):
+    def __init__(self, name: str):
+        self._selected_case = None
+        super().__init__(name=name)
+
+    def start_branch(self, c: Case, last_case: bool = False) -> Case:
+        """
+        At the start of an execution of every branch this method should be called.
+        :param c: -> the case that represents this branch
+        :param last_case: -> a boolean that indicates if this is the last branch in the ifelseblock
+        """
+        added_case = super().start_branch(c, last_case)
+        ctx = FlyteContextManager.current_context()
+        # This is a short-circuit for the case when the branch was taken
+        # We already have a candidate case selected
+        if self._selected_case is None:
+            if c.expr is None or c.expr.eval() or last_case:
+                ctx.execution_state.take_branch()
+                self._selected_case = added_case
+        return added_case
+
+    def end_branch(self) -> Union[Condition, Promise]:
+        """
+        This should be invoked after every branch has been visited
+        In case of Local workflow execution, we should first mark the branch as complete, then
+        Then we first check for if this is the last case,
+        In case this is the last case, we return the output from the selected case - A case should always
+        be selected (see start_branch)
+        If this is not the last case, we should return the condition so that further chaining can be done
+        """
+        ctx = FlyteContextManager.current_context()
+        # Let us mark the execution state as complete
+        ctx.execution_state.branch_complete()
+        if self._last_case:
+            # We have completed the conditional section, lets pop off the branch context
+            FlyteContextManager.pop_context()
+            if self._selected_case.output_promise is None and self._selected_case.err is None:
+                raise AssertionError("Bad conditional statements, did not resolve in a promise")
+            elif self._selected_case.output_promise is not None:
+                return self._selected_case.output_promise
+            raise ValueError(self._selected_case.err)
+        return self._condition
+
+
+class SkippedConditionalSection(ConditionalSection):
+    """
+    This ConditionalSection is used for nested conditionals, when the branch has been evaluated to false.
+    This ensures that the branch is not evaluated and thus the local tasks are not executed.
+    """
+
+    def __init__(self, name: str):
+        super().__init__(name=name)
+
+    def end_branch(self) -> Union[Condition, Promise]:
+        """
+        This should be invoked after every branch has been visited
+        """
+        if self._last_case:
+            FlyteContextManager.pop_context()
+        return self._condition
 
 
 class Case(object):
@@ -365,4 +390,17 @@ def to_branch_node(name: str, cs: ConditionalSection) -> (BranchNode, typing.Lis
 
 
 def conditional(name: str) -> ConditionalSection:
-    return ConditionalSection(name)
+    ctx = FlyteContextManager.current_context()
+
+    if ctx.compilation_state:
+        return ConditionalSection(name)
+    elif ctx.execution_state:
+        if ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            # In case of Local workflow execution, we will actually evaluate the expression and based on the result
+            # make the branch to be active using `take_branch` method
+            from flytekit.core.context_manager import BranchEvalMode
+
+            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
+                return SkippedConditionalSection(name)
+            return LocalExecutedConditionalSection(name)
+    raise AssertionError("Branches can only be invoked within a workflow context!")
