@@ -154,7 +154,7 @@ def get_serializable_workflow(
                     sub_wfs.extend(sub_wf_spec.sub_workflows)
 
     wf_id = _identifier_model.Identifier(
-        resource_type=_identifier_model.ResourceType.TASK,
+        resource_type=_identifier_model.ResourceType.WORKFLOW,
         project=settings.project,
         domain=settings.domain,
         name=entity.name,

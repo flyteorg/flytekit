@@ -8,6 +8,9 @@ from enum import Enum as _Enum
 from typing import List
 
 import click
+from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
+from flyteidl.admin.task_pb2 import TaskSpec as _idl_admin_TaskSpec
+from flyteidl.admin.workflow_pb2 import WorkflowSpec as _idl_admin_WorkflowSpec
 
 import flytekit as _flytekit
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
@@ -28,10 +31,6 @@ from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
-
-from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
-from flyteidl.admin.workflow_pb2 import WorkflowSpec as _idl_admin_WorkflowSpec
-from flyteidl.admin.task_pb2 import TaskSpec as _idl_admin_TaskSpec
 
 # Identifier fields use placeholders for registration-time substitution.
 # Additional fields, such as auth and the raw output data prefix have more complex structures

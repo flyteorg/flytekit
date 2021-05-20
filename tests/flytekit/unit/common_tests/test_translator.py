@@ -9,6 +9,7 @@ from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.task import ReferenceTask, task
 from flytekit.core.workflow import ReferenceWorkflow, workflow
+from flytekit.models.core import identifier as identifier_models
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = context_manager.SerializationSettings(
@@ -53,6 +54,7 @@ def test_basics():
     assert len(wf_spec.template.interface.inputs) == 2
     assert len(wf_spec.template.interface.outputs) == 2
     assert len(wf_spec.template.nodes) == 2
+    assert wf_spec.template.id.resource_type == identifier_models.ResourceType.WORKFLOW
 
     # Gets cached the first time around so it's not actually fast.
     task_spec = get_serializable(OrderedDict(), serialization_settings, t1, True)
