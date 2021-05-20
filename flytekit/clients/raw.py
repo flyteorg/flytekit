@@ -74,6 +74,21 @@ def _refresh_credentials_basic(flyte_client):
     flyte_client.set_access_token(token)
 
 
+def _refresh_credentials_gcp(flyte_client):
+    """
+    This function is used when the configuration value for AUTH_MODE is set to 'standard'.
+    This either fetches the existing access token or initiates the flow to request a valid access token and store it.
+    :param flyte_client: RawSynchronousFlyteClient
+    :return:
+    """
+
+    client = _credentials_access.get_client_gcp()
+    if client.can_refresh_token:
+        client.refresh_access_token()
+
+    flyte_client.set_access_token(client.credentials.access_token)
+
+
 def _refresh_credentials_noop(flyte_client):
     pass
 
@@ -83,6 +98,8 @@ def _get_refresh_handler(auth_mode):
         return _refresh_credentials_standard
     elif auth_mode == "basic":
         return _refresh_credentials_basic
+    elif auth_mode == "gcp":
+        return _refresh_credentials_gcp
     else:
         raise ValueError(
             "Invalid auth mode [{}] specified. Please update the creds config to use a valid value".format(auth_mode)

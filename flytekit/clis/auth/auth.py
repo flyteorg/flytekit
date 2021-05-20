@@ -9,8 +9,11 @@ from http import HTTPStatus as _StatusCodes
 from multiprocessing import get_context as _mp_get_context
 from urllib.parse import urlencode as _urlencode
 
+import google.auth
+import google.auth.transport.requests
 import keyring as _keyring
 import requests as _requests
+from google.oauth2 import service_account
 
 from flytekit.loggers import auth_logger
 
@@ -305,3 +308,54 @@ class AuthorizationClient(object):
         :return bool:
         """
         return self._expired
+
+
+class GcpAuthorizationClient(object):
+    def __init__(self):
+        """
+         the gcp credentials will be fetched under two conditions:
+         1. If the environment variable ``GOOGLE_APPLICATION_CREDENTIALS`` is set
+        to the path of a valid service account JSON private key file
+         2. If the `Google Cloud SDK`_ is installed and has application default
+        credentials set they are loaded and returned.
+        In case of not able to get the credentials, the google lib will raise an exception
+        """
+        self._gcp_credentials, _ = google.auth.default()
+        self._credentials = None
+
+    @property
+    def has_valid_credentials(self) -> bool:
+        return self._gcp_credentials is not None
+
+    @property
+    def can_refresh_token(self) -> bool:
+        return self._gcp_credentials is not None
+
+    def refresh_access_token(self):
+        if isinstance(self._gcp_credentials, service_account.Credentials):
+            target_audience = "https://flyte.net"
+            request = google.auth.transport.requests.Request()
+            id_token = google.oauth2.id_token.fetch_id_token(request, target_audience)
+        else:
+            """
+            The `audience` in this case could be random and we need disable audience
+            check in flyteadmin
+            """
+            auth_req = google.auth.transport.requests.Request()
+            self._gcp_credentials.refresh(auth_req)
+            id_token = self._gcp_credentials.id_token
+        self._credentials = Credentials(access_token=id_token)
+
+    @property
+    def credentials(self):
+        """
+        :return flytekit.clis.auth.auth.Credentials:
+        """
+        return self._credentials
+
+    @property
+    def expired(self):
+        """
+        :return bool:
+        """
+        return False

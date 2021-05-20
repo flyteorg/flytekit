@@ -1,6 +1,7 @@
 import urllib.parse as _urlparse
 
 from flytekit.clis.auth.auth import AuthorizationClient as _AuthorizationClient
+from flytekit.clis.auth.auth import GcpAuthorizationClient as _GcpAuthorizationClient
 from flytekit.clis.auth.discovery import DiscoveryClient as _DiscoveryClient
 from flytekit.configuration.creds import CLIENT_CREDENTIALS_SECRET as _CLIENT_SECRET
 from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
@@ -56,6 +57,18 @@ def get_client(flyte_client_url):
 
     if not _authorization_client.has_valid_credentials:
         _authorization_client.start_authorization_flow()
+
+    return _authorization_client
+
+
+def get_client_gcp():
+    global _authorization_client
+    if _authorization_client is not None and not _authorization_client.expired:
+        return _authorization_client
+
+    _authorization_client = _GcpAuthorizationClient()
+
+    auth_logger.debug(f"Created oauth client with redirect {_authorization_client}")
 
     return _authorization_client
 
