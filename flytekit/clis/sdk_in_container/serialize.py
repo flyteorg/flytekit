@@ -224,8 +224,8 @@ def serialize_all(
             elif isinstance(entity, _idl_admin_LaunchPlan):
                 fname = "{}_{}_3.pb".format(fname_index, entity.id.name)
             else:
-                raise Exception("bad format")
-            click.echo(f"  Writing type: {entity.id.resource_type_name()}, {entity.id.name} to\n    {fname}")
+                raise Exception(f"Bad format {type(entity)}")
+            click.echo(f"  Writing to file: {fname}")
             if folder:
                 fname = _os.path.join(folder, fname)
             _write_proto_to_file(entity, fname)
