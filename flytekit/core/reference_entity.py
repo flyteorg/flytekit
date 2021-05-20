@@ -205,10 +205,7 @@ class ReferenceEntity(object):
         elif (
             ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
-            if (
-                ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED
-                or ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_IGNORED
-            ):
+            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
                 return
             return self._local_execute(ctx, **kwargs)
         else:
