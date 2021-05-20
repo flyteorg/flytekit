@@ -190,7 +190,7 @@ def get_serializable_launch_plan(
         fixed_inputs=entity.fixed_inputs,
         labels=entity.labels or _common_models.Labels({}),
         annotations=entity.annotations or _common_models.Annotations({}),
-        auth_role=entity._auth_role,
+        auth_role=entity._auth_role or _common_models.AuthRole(),
         raw_output_data_config=entity.raw_output_data_config,
     )
     lp_id = _identifier_model.Identifier(
