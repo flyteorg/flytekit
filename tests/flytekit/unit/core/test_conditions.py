@@ -122,10 +122,12 @@ def test_condition_tuple_branches():
     assert x == 5
     assert y == 1
 
-    sdk_wf = get_serializable(OrderedDict(), serialization_settings, math_ops)
-    assert len(sdk_wf.nodes) == 1
-    assert sdk_wf.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name == "test_conditions.sum_sub"
-
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, math_ops)
+    assert len(wf_spec.template.nodes) == 1
+    assert (
+        wf_spec.template.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name
+        == "test_conditions.sum_sub"
+    )
 
 def test_condition_unary_bool():
     @task
@@ -201,7 +203,7 @@ def test_subworkflow_condition_serialization():
 
     @workflow
     def if_elif_else_branching(x: int) -> int:
-        return (
+        return (  # noqa
             conditional("test")
             .if_(x == 2)
             .then(wf1())
@@ -236,10 +238,12 @@ def test_subworkflow_condition_serialization():
         (if_elif_else_branching, ["test_conditions.{}".format(x) for x in ("wf1", "wf2", "wf3", "wf4")]),
         (nested_branching, ["test_conditions.{}".format(x) for x in ("ifelse_branching", "wf1", "wf2", "wf5")]),
     ]:
-        serializable_wf = get_serializable(OrderedDict(), serialization_settings, wf)
-        subworkflows = serializable_wf.get_sub_workflows()
+        wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
+        subworkflows = wf_spec.sub_workflows
 
-        assert [sub_wf.id.name for sub_wf in subworkflows] == expected_subworkflows
+        for sub_wf in subworkflows:
+            assert sub_wf.id.name in expected_subworkflows
+        assert len(subworkflows) == len(expected_subworkflows)
 
 
 def test_subworkflow_condition():

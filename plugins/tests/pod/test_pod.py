@@ -267,5 +267,5 @@ def test_pod_task_serialized():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
     serialized = get_serializable(OrderedDict(), ssettings, simple_pod_task)
-    assert serialized.task_type_version == 1
-    assert serialized.config["primary_container_name"] == "an undefined container"
+    assert serialized.template.task_type_version == 1
+    assert serialized.template.config["primary_container_name"] == "an undefined container"

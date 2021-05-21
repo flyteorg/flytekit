@@ -7,6 +7,7 @@ from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
 from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.promise import VoidPromise
 from flytekit.core.reference import get_reference_entity
@@ -40,9 +41,7 @@ def test_ref():
         env={},
     )
     ss = get_serializable(OrderedDict(), serialization_settings, ref_t1)
-    assert ss.id == ref_t1.id
-    assert ss.interface.inputs["a"] is not None
-    assert ss.interface.outputs["o0"] is not None
+    assert ss is None
 
     serialization_settings = context_manager.SerializationSettings(
         project="proj",
@@ -51,12 +50,8 @@ def test_ref():
         image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
     )
-    sdk_task = get_serializable(OrderedDict(), serialization_settings, ref_t1)
-    assert sdk_task.has_registered
-    assert sdk_task.id.project == "flytesnacks"
-    assert sdk_task.id.domain == "development"
-    assert sdk_task.id.name == "recipes.aaa.simple.join_strings"
-    assert sdk_task.id.version == "553018f39e519bdb2597b652639c30ce16b99c79"
+    task_spec = get_serializable(OrderedDict(), serialization_settings, ref_t1)
+    assert task_spec is None
 
 
 def test_ref_task_more():
@@ -206,7 +201,6 @@ def test_ref_plain_two_outputs():
     [
         _identifier_model.ResourceType.LAUNCH_PLAN,
         _identifier_model.ResourceType.TASK,
-        _identifier_model.ResourceType.WORKFLOW,
     ],
 )
 def test_lps(resource_type):
@@ -244,19 +238,58 @@ def test_lps(resource_type):
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    sdk_wf = get_serializable(OrderedDict(), serialization_settings, wf1)
-    assert len(sdk_wf.interface.inputs) == 2
-    assert len(sdk_wf.interface.outputs) == 0
-    assert len(sdk_wf.nodes) == 1
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, wf1)
+    assert len(wf_spec.template.interface.inputs) == 2
+    assert len(wf_spec.template.interface.outputs) == 0
+    assert len(wf_spec.template.nodes) == 1
     if resource_type == _identifier_model.ResourceType.LAUNCH_PLAN:
-        assert sdk_wf.nodes[0].workflow_node.launchplan_ref.project == "proj"
-        assert sdk_wf.nodes[0].workflow_node.launchplan_ref.name == "app.other.flyte_entity"
-    elif resource_type == _identifier_model.ResourceType.WORKFLOW:
-        assert sdk_wf.nodes[0].workflow_node.sub_workflow_ref.project == "proj"
-        assert sdk_wf.nodes[0].workflow_node.sub_workflow_ref.name == "app.other.flyte_entity"
+        assert wf_spec.template.nodes[0].workflow_node.launchplan_ref.project == "proj"
+        assert wf_spec.template.nodes[0].workflow_node.launchplan_ref.name == "app.other.flyte_entity"
     else:
-        assert sdk_wf.nodes[0].task_node.reference_id.project == "proj"
-        assert sdk_wf.nodes[0].task_node.reference_id.name == "app.other.flyte_entity"
+        assert wf_spec.template.nodes[0].task_node.reference_id.project == "proj"
+        assert wf_spec.template.nodes[0].task_node.reference_id.name == "app.other.flyte_entity"
+
+
+def test_ref_sub_wf():
+    ref_entity = get_reference_entity(
+        _identifier_model.ResourceType.WORKFLOW,
+        "proj",
+        "dom",
+        "app.other.sub_wf",
+        "123",
+        inputs=kwtypes(a=str, b=int),
+        outputs={},
+    )
+
+    ctx = context_manager.FlyteContext.current_context()
+    with pytest.raises(Exception) as e:
+        ref_entity()
+    assert "You must mock this out" in f"{e}"
+
+    with context_manager.FlyteContextManager.with_context(ctx.with_new_compilation_state()) as ctx:
+        with pytest.raises(Exception) as e:
+            ref_entity()
+        assert "Input was not specified" in f"{e}"
+
+        output = ref_entity(a="hello", b=3)
+        assert isinstance(output, VoidPromise)
+
+    @workflow
+    def wf1(a: str, b: int):
+        ref_entity(a=a, b=b)
+
+    serialization_settings = context_manager.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    with pytest.raises(Exception):
+        # Subworkflow as references don't work (probably ever). The reason is because we'd need to make a network call
+        # to admin to get the structure of the subworkflow and the whole point of reference entities is that there
+        # is no network call.
+        get_serializable(OrderedDict(), serialization_settings, wf1)
 
 
 def test_lp_with_output():
@@ -300,9 +333,9 @@ def test_lp_with_output():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    sdk_wf = get_serializable(OrderedDict(), serialization_settings, wf1)
-    assert sdk_wf.nodes[1].workflow_node.launchplan_ref.project == "proj"
-    assert sdk_wf.nodes[1].workflow_node.launchplan_ref.name == "app.other.flyte_entity"
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, wf1)
+    assert wf_spec.template.nodes[1].workflow_node.launchplan_ref.project == "proj"
+    assert wf_spec.template.nodes[1].workflow_node.launchplan_ref.name == "app.other.flyte_entity"
 
 
 def test_lp_from_ref_wf():
@@ -317,3 +350,41 @@ def test_lp_from_ref_wf():
     assert lp.workflow.id.project == "project"
     assert lp.workflow.id.domain == "domain"
     assert lp.workflow.id.version == "version"
+
+
+def test_ref_dynamic():
+    @reference_task(
+        project="flytesnacks",
+        domain="development",
+        name="sample.reference.task",
+        version="553018f39e519bdb2597b652639c30ce16b99c79",
+    )
+    def ref_t1(a: int) -> str:
+        ...
+
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @dynamic
+    def my_subwf(a: int) -> typing.List[str]:
+        s = []
+        for i in range(a):
+            s.append(ref_t1(a=i))
+        return s
+
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContextManager.current_context().with_serialization_settings(
+            context_manager.SerializationSettings(
+                project="test_proj",
+                domain="test_domain",
+                version="abc",
+                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                env={},
+            )
+        )
+    ) as ctx:
+        new_exc_state = ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)) as ctx:
+            with pytest.raises(Exception):
+                my_subwf.compile_into_workflow(ctx, False, my_subwf._task_function, a=5)

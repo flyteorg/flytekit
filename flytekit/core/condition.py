@@ -25,7 +25,6 @@ from flytekit.models.types import Error
 class BranchNode(object):
     def __init__(self, name: str, ifelse_block: _core_wf.IfElseBlock):
         self._name = name
-        self._registerable_entity = None
         self._ifelse_block = ifelse_block
 
     @property

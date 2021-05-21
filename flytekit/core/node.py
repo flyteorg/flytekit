@@ -67,6 +67,10 @@ class Node(object):
     def flyte_entity(self) -> Any:
         return self._flyte_entity
 
+    @property
+    def metadata(self) -> _workflow_model.NodeMetadata:
+        return self._metadata
+
     def with_overrides(self, *args, **kwargs):
         if "node_name" in kwargs:
             self._id = kwargs["node_name"]

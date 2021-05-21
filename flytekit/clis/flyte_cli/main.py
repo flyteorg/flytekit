@@ -1818,6 +1818,7 @@ def _extract_and_register(
 
     flyte_entities_list = _extract_files(project, domain, version, file_paths, patches)
     for id, flyte_entity in flyte_entities_list:
+        _click.secho(f"Registering {id}", fg="yellow")
         try:
             if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
                 client.raw.create_launch_plan(_launch_plan_pb2.LaunchPlanCreateRequest(id=id, spec=flyte_entity.spec))
@@ -1830,7 +1831,6 @@ def _extract_and_register(
                     f"Only tasks, launch plans, and workflows can be called with this function, "
                     f"resource type {id.resource_type} was passed"
                 )
-            _click.secho(f"Registered {id}", fg="green")
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             _click.secho(f"Skipping because already registered {id}", fg="cyan")
 
