@@ -129,6 +129,7 @@ def test_condition_tuple_branches():
         == "test_conditions.sum_sub"
     )
 
+
 def test_condition_unary_bool():
     @task
     def return_true() -> bool:
