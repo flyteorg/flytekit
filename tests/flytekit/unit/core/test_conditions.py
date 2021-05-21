@@ -236,7 +236,9 @@ def test_subworkflow_condition_serialization():
         wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
         subworkflows = wf_spec.sub_workflows
 
-        assert [sub_wf.id.name for sub_wf in subworkflows] == expected_subworkflows
+        for sub_wf in subworkflows:
+            assert sub_wf.id.name in expected_subworkflows
+        assert len(subworkflows) == len(expected_subworkflows)
 
 
 def test_subworkflow_condition():
