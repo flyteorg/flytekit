@@ -38,17 +38,17 @@ def test_serialization():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
         env={},
     )
-    sdk_task = get_serializable(OrderedDict(), serialization_settings, hive_task)
-    assert "{{ .rawOutputDataPrefix" in sdk_task.custom["query"]["query"]
-    assert "insert overwrite directory" in sdk_task.custom["query"]["query"]
-    assert len(sdk_task.interface.inputs) == 2
-    assert len(sdk_task.interface.outputs) == 1
+    task_spec = get_serializable(OrderedDict(), serialization_settings, hive_task)
+    assert "{{ .rawOutputDataPrefix" in task_spec.template.custom["query"]["query"]
+    assert "insert overwrite directory" in task_spec.template.custom["query"]["query"]
+    assert len(task_spec.template.interface.inputs) == 2
+    assert len(task_spec.template.interface.outputs) == 1
 
-    sdk_wf = get_serializable(OrderedDict(), serialization_settings, my_wf)
-    assert sdk_wf.interface.outputs["o0"].type.schema is not None
-    assert sdk_wf.outputs[0].var == "o0"
-    assert sdk_wf.outputs[0].binding.promise.node_id == "n0"
-    assert sdk_wf.outputs[0].binding.promise.var == "results"
+    admin_workflow_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert admin_workflow_spec.template.interface.outputs["o0"].type.schema is not None
+    assert admin_workflow_spec.template.outputs[0].var == "o0"
+    assert admin_workflow_spec.template.outputs[0].binding.promise.node_id == "n0"
+    assert admin_workflow_spec.template.outputs[0].binding.promise.var == "results"
 
 
 def test_local_exec():
@@ -110,9 +110,9 @@ def test_query_no_inputs_or_outputs():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
         env={},
     )
-    sdk_task = get_serializable(OrderedDict(), serialization_settings, hive_task)
-    assert len(sdk_task.interface.inputs) == 0
-    assert len(sdk_task.interface.outputs) == 0
+    task_spec = get_serializable(OrderedDict(), serialization_settings, hive_task)
+    assert len(task_spec.template.interface.inputs) == 0
+    assert len(task_spec.template.interface.outputs) == 0
 
     get_serializable(OrderedDict(), serialization_settings, my_wf)
 

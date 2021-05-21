@@ -9,6 +9,7 @@ from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.task import ReferenceTask, task
 from flytekit.core.workflow import ReferenceWorkflow, workflow
+from flytekit.models.core import identifier as identifier_models
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = context_manager.SerializationSettings(
@@ -22,16 +23,16 @@ serialization_settings = context_manager.SerializationSettings(
 
 def test_references():
     rlp = ReferenceLaunchPlan("media", "stg", "some.name", "cafe", inputs=kwtypes(in1=str), outputs=kwtypes())
-    sdk_lp = get_serializable(OrderedDict(), serialization_settings, rlp)
-    assert sdk_lp.has_registered
+    lp_model = get_serializable(OrderedDict(), serialization_settings, rlp)
+    assert lp_model is None
 
     rt = ReferenceTask("media", "stg", "some.name", "cafe", inputs=kwtypes(in1=str), outputs=kwtypes())
-    sdk_task = get_serializable(OrderedDict(), serialization_settings, rt)
-    assert sdk_task.has_registered
+    task_spec = get_serializable(OrderedDict(), serialization_settings, rt)
+    assert task_spec is None
 
     rw = ReferenceWorkflow("media", "stg", "some.name", "cafe", inputs=kwtypes(in1=str), outputs=kwtypes())
-    sdk_wf = get_serializable(OrderedDict(), serialization_settings, rw)
-    assert sdk_wf.has_registered
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, rw)
+    assert wf_spec is None
 
 
 def test_basics():
@@ -49,21 +50,22 @@ def test_basics():
         d = t2(a=y, b=b)
         return x, d
 
-    sdk_wf = get_serializable(OrderedDict(), serialization_settings, my_wf, False)
-    assert len(sdk_wf.interface.inputs) == 2
-    assert len(sdk_wf.interface.outputs) == 2
-    assert len(sdk_wf.nodes) == 2
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf, False)
+    assert len(wf_spec.template.interface.inputs) == 2
+    assert len(wf_spec.template.interface.outputs) == 2
+    assert len(wf_spec.template.nodes) == 2
+    assert wf_spec.template.id.resource_type == identifier_models.ResourceType.WORKFLOW
 
     # Gets cached the first time around so it's not actually fast.
-    sdk_task = get_serializable(OrderedDict(), serialization_settings, t1, True)
-    assert "pyflyte-execute" in sdk_task.container.args
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t1, True)
+    assert "pyflyte-execute" in task_spec.template.container.args
 
     lp = LaunchPlan.create(
         "testlp",
         my_wf,
     )
-    sdk_lp = get_serializable(OrderedDict(), serialization_settings, lp)
-    assert sdk_lp.id.name == "testlp"
+    lp_model = get_serializable(OrderedDict(), serialization_settings, lp)
+    assert lp_model.id.name == "testlp"
 
 
 def test_fast():
@@ -75,8 +77,8 @@ def test_fast():
     def t2(a: str, b: str) -> str:
         return b + a
 
-    sdk_task = get_serializable(OrderedDict(), serialization_settings, t1, True)
-    assert "pyflyte-fast-execute" in sdk_task.container.args
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t1, True)
+    assert "pyflyte-fast-execute" in task_spec.template.container.args
 
 
 def test_container():
@@ -95,5 +97,5 @@ def test_container():
         requests=Resources(mem="400Mi", cpu="1"),
     )
 
-    sdk_task = get_serializable(OrderedDict(), serialization_settings, t2, fast=True)
-    assert "pyflyte" not in sdk_task.container.args
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t2, fast=True)
+    assert "pyflyte" not in task_spec.template.container.args

@@ -443,6 +443,7 @@ def test_wf1_with_dynamic():
         with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)) as ctx:
             dynamic_job_spec = my_subwf.compile_into_workflow(ctx, False, my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
+            assert len(dynamic_job_spec.tasks) == 1
 
     assert context_manager.FlyteContextManager.size() == 1
 
@@ -727,22 +728,22 @@ def test_lp_serialize():
         image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
     )
-    sdk_lp = get_serializable(OrderedDict(), serialization_settings, lp)
-    assert len(sdk_lp.default_inputs.parameters) == 1
-    assert sdk_lp.default_inputs.parameters["a"].required
-    assert len(sdk_lp.fixed_inputs.literals) == 0
+    lp_model = get_serializable(OrderedDict(), serialization_settings, lp)
+    assert len(lp_model.spec.default_inputs.parameters) == 1
+    assert lp_model.spec.default_inputs.parameters["a"].required
+    assert len(lp_model.spec.fixed_inputs.literals) == 0
 
-    sdk_lp = get_serializable(OrderedDict(), serialization_settings, lp_with_defaults)
-    assert len(sdk_lp.default_inputs.parameters) == 1
-    assert not sdk_lp.default_inputs.parameters["a"].required
-    assert sdk_lp.default_inputs.parameters["a"].default == _literal_models.Literal(
+    lp_model = get_serializable(OrderedDict(), serialization_settings, lp_with_defaults)
+    assert len(lp_model.spec.default_inputs.parameters) == 1
+    assert not lp_model.spec.default_inputs.parameters["a"].required
+    assert lp_model.spec.default_inputs.parameters["a"].default == _literal_models.Literal(
         scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=3))
     )
-    assert len(sdk_lp.fixed_inputs.literals) == 0
+    assert len(lp_model.spec.fixed_inputs.literals) == 0
 
     # Adding a check to make sure oneof is respected. Tricky with booleans... if a default is specified, the
     # required field needs to be None, not False.
-    parameter_a = sdk_lp.default_inputs.parameters["a"]
+    parameter_a = lp_model.spec.default_inputs.parameters["a"]
     parameter_a = Parameter.from_flyte_idl(parameter_a.to_flyte_idl())
     assert parameter_a.default is not None
 
@@ -1048,8 +1049,8 @@ def test_environment():
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_new_compilation_state()
     ):
-        sdk_task = get_serializable(OrderedDict(), serialization_settings, t1)
-        assert sdk_task.container.env == {"FOO": "foofoo", "BAR": "bar", "BAZ": "baz"}
+        task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+        assert task_spec.template.container.env == {"FOO": "foofoo", "BAR": "bar", "BAZ": "baz"}
 
 
 def test_resources():
@@ -1078,20 +1079,20 @@ def test_resources():
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_new_compilation_state()
     ):
-        sdk_task = get_serializable(OrderedDict(), serialization_settings, t1)
-        assert sdk_task.container.resources.requests == [
+        task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+        assert task_spec.template.container.resources.requests == [
             _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "1")
         ]
-        assert sdk_task.container.resources.limits == [
+        assert task_spec.template.container.resources.limits == [
             _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "2"),
             _resource_models.ResourceEntry(_resource_models.ResourceName.MEMORY, "400M"),
         ]
 
-        sdk_task2 = get_serializable(OrderedDict(), serialization_settings, t2)
-        assert sdk_task2.container.resources.requests == [
+        task_spec2 = get_serializable(OrderedDict(), serialization_settings, t2)
+        assert task_spec2.template.container.resources.requests == [
             _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "3")
         ]
-        assert sdk_task2.container.resources.limits == []
+        assert task_spec2.template.container.resources.limits == []
 
 
 def test_wf_explicitly_returning_empty_task():
