@@ -9,18 +9,17 @@ from http import HTTPStatus as _StatusCodes
 from multiprocessing import get_context as _mp_get_context
 from urllib.parse import urlencode as _urlencode
 
-import google.auth
-import google.auth.transport.requests
+import google.auth as _google_auth
 import keyring as _keyring
 import requests as _requests
-from google.oauth2 import service_account
+from google.auth.transport import requests as _grequests
+from google.oauth2 import service_account as _service_account
 
 from flytekit.loggers import auth_logger
 
 _code_verifier_length = 64
 _random_seed_length = 40
 _utf_8 = "utf-8"
-
 
 # Identifies the service used for storing passwords in keyring
 _keyring_service_name = "flyteauth"
@@ -320,30 +319,29 @@ class GcpAuthorizationClient(object):
         credentials set they are loaded and returned.
         In case of not able to get the credentials, the google lib will raise an exception
         """
-        self._gcp_credentials, _ = google.auth.default()
+        self._gcp_credentials, _ = _google_auth.default()
         self._credentials = None
+        if isinstance(self._gcp_credentials, _service_account.Credentials):
+            target_audience = "https://flyte.net"
+            json_path = _os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+            self._gcp_credentials = _service_account.IDTokenCredentials.from_service_account_file(
+                json_path, target_audience=target_audience
+            )
 
     @property
     def has_valid_credentials(self) -> bool:
         return self._gcp_credentials is not None
 
     @property
-    def can_refresh_token(self) -> bool:
+    def can_id_token(self) -> bool:
         return self._gcp_credentials is not None
 
-    def refresh_access_token(self):
-        if isinstance(self._gcp_credentials, service_account.Credentials):
-            target_audience = "https://flyte.net"
-            request = google.auth.transport.requests.Request()
-            id_token = google.oauth2.id_token.fetch_id_token(request, target_audience)
-        else:
-            """
-            The `audience` in this case could be random and we need disable audience
-            check in flyteadmin
-            """
-            auth_req = google.auth.transport.requests.Request()
-            self._gcp_credentials.refresh(auth_req)
-            id_token = self._gcp_credentials.id_token
+    def refresh_id_token(self):
+        auth_req = _grequests.Request()
+        self._gcp_credentials.refresh(auth_req)
+
+        id_token = self._gcp_credentials.token
+
         self._credentials = Credentials(access_token=id_token)
 
     @property

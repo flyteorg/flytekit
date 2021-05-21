@@ -83,8 +83,8 @@ def _refresh_credentials_gcp(flyte_client):
     """
 
     client = _credentials_access.get_client_gcp()
-    if client.can_refresh_token:
-        client.refresh_access_token()
+    if client.can_id_token:
+        client.refresh_id_token()
 
     flyte_client.set_access_token(client.credentials.access_token)
 
