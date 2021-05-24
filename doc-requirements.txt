@@ -20,7 +20,7 @@ astroid==2.5.6
     # via sphinx-autoapi
 async-generator==1.10
     # via nbclient
-attrs==20.3.0
+attrs==21.2.0
     # via
     #   jsonschema
     #   scantree
@@ -35,13 +35,13 @@ beautifulsoup4==4.9.3
     #   furo
     #   sphinx-code-include
     #   sphinx-material
-black==21.4b2
+black==21.5b1
     # via papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.62
+boto3==1.17.78
     # via sagemaker-training
-botocore==1.20.62
+botocore==1.20.78
     # via
     #   boto3
     #   s3transfer
@@ -60,7 +60,7 @@ click==7.1.2
     #   flytekit
     #   hmsclient
     #   papermill
-croniter==1.0.12
+croniter==1.0.13
     # via flytekit
 cryptography==3.4.7
     # via
@@ -70,7 +70,7 @@ css-html-js-minify==2.5.5
     # via sphinx-material
 dataclasses-json==0.5.3
     # via flytekit
-decorator==5.0.7
+decorator==5.0.9
     # via
     #   ipython
     #   retry
@@ -88,15 +88,15 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.18.41
+flyteidl==0.18.44
     # via flytekit
 git+git://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
 gevent==21.1.2
     # via sagemaker-training
-greenlet==1.0.0
+greenlet==1.1.0
     # via gevent
-grpcio==1.37.1
+grpcio==1.38.0
     # via
     #   -r doc-requirements.in
     #   flytekit
@@ -110,17 +110,17 @@ importlib-metadata==4.0.1
     # via keyring
 inotify_simple==1.2.1
     # via sagemaker-training
-ipykernel==5.5.3
+ipykernel==5.5.5
     # via flytekit
 ipython-genutils==0.2.0
     # via
     #   nbformat
     #   traitlets
-ipython==7.22.0
+ipython==7.23.1
     # via ipykernel
 jedi==0.18.0
     # via ipython
-jinja2==2.11.3
+jinja2==3.0.1
     # via
     #   nbconvert
     #   sphinx
@@ -150,14 +150,16 @@ lazy-object-proxy==1.6.0
     # via astroid
 lxml==4.6.3
     # via sphinx-material
-markupsafe==1.1.1
+markupsafe==2.0.1
     # via jinja2
 marshmallow-enum==1.5.1
     # via dataclasses-json
-marshmallow==3.11.1
+marshmallow==3.12.1
     # via
     #   dataclasses-json
     #   marshmallow-enum
+matplotlib-inline==0.1.2
+    # via ipython
 mistune==0.8.4
     # via nbconvert
 mypy-extensions==0.4.3
@@ -179,7 +181,7 @@ nbformat==5.1.3
     #   papermill
 nest-asyncio==1.5.1
     # via nbclient
-numpy==1.20.2
+numpy==1.20.3
     # via
     #   flytekit
     #   pandas
@@ -210,7 +212,7 @@ pickleshare==0.7.5
     # via ipython
 prompt-toolkit==3.0.18
     # via ipython
-protobuf==3.15.8
+protobuf==3.17.0
     # via
     #   flyteidl
     #   flytekit
@@ -228,7 +230,7 @@ pyarrow==3.0.0
     # via flytekit
 pycparser==2.20
     # via cffi
-pygments==2.8.1
+pygments==2.9.0
     # via
     #   ipython
     #   jupyterlab-pygments
@@ -250,7 +252,7 @@ python-dateutil==2.8.1
     #   flytekit
     #   jupyter-client
     #   pandas
-python-slugify[unidecode]==5.0.0
+python-slugify[unidecode]==5.0.2
     # via sphinx-material
 pytimeparse==1.1.8
     # via flytekit
@@ -291,7 +293,7 @@ scantree==0.0.1
     # via dirhash
 scipy==1.6.3
     # via sagemaker-training
-six==1.15.0
+six==1.16.0
     # via
     #   bcrypt
     #   bleach
@@ -310,7 +312,7 @@ six==1.15.0
     #   thrift
 snowballstemmer==2.1.0
     # via sphinx
-sortedcontainers==2.3.0
+sortedcontainers==2.4.0
     # via flytekit
 soupsieve==2.2.1
     # via beautifulsoup4
@@ -319,6 +321,8 @@ sphinx-autoapi==1.8.1
 sphinx-code-include==1.1.1
     # via -r doc-requirements.in
 sphinx-copybutton==0.3.1
+    # via -r doc-requirements.in
+sphinx-fontawesome==0.0.6
     # via -r doc-requirements.in
 sphinx-gallery==0.9.0
     # via -r doc-requirements.in
@@ -333,6 +337,7 @@ sphinx==3.5.4
     #   sphinx-autoapi
     #   sphinx-code-include
     #   sphinx-copybutton
+    #   sphinx-fontawesome
     #   sphinx-gallery
     #   sphinx-material
     #   sphinx-prompt
@@ -340,13 +345,13 @@ sphinxcontrib-applehelp==1.0.2
     # via sphinx
 sphinxcontrib-devhelp==1.0.2
     # via sphinx
-sphinxcontrib-htmlhelp==1.0.3
+sphinxcontrib-htmlhelp==2.0.0
     # via sphinx
 sphinxcontrib-jsmath==1.0.1
     # via sphinx
 sphinxcontrib-qthelp==1.0.3
     # via sphinx
-sphinxcontrib-serializinghtml==1.1.4
+sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 statsd==3.3.0
     # via flytekit
@@ -354,7 +359,7 @@ stringcase==1.2.0
     # via dataclasses-json
 tenacity==7.0.0
     # via papermill
-testpath==0.4.4
+testpath==0.5.0
     # via nbconvert
 text-unidecode==1.3
     # via python-slugify
@@ -376,10 +381,11 @@ traitlets==5.0.5
     #   ipython
     #   jupyter-client
     #   jupyter-core
+    #   matplotlib-inline
     #   nbclient
     #   nbconvert
     #   nbformat
-typing-extensions==3.7.4.3
+typing-extensions==3.10.0.0
     # via typing-inspect
 typing-inspect==0.6.0
     # via dataclasses-json
@@ -397,7 +403,7 @@ wcwidth==0.2.5
     # via prompt-toolkit
 webencodings==0.5.1
     # via bleach
-werkzeug==1.0.1
+werkzeug==2.0.1
     # via sagemaker-training
 wheel==0.36.2
     # via flytekit

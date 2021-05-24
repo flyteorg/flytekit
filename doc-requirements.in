@@ -10,5 +10,6 @@ sphinx-material
 sphinx-code-include
 sphinx-autoapi
 sphinx-copybutton
+sphinx_fontawesome
 grpcio
 cryptography
