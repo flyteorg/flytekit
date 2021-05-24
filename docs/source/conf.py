@@ -15,6 +15,8 @@
 import os
 import sys
 
+import sphinx_fontawesome
+
 sys.path.insert(0, os.path.abspath("../../flytekit/"))
 sys.path.insert(0, os.path.abspath("../.."))
 
@@ -48,6 +50,7 @@ extensions = [
     "sphinx-prompt",
     "sphinx_copybutton",
     "sphinx_search.extension",
+    "sphinx_fontawesome",
 ]
 
 # build the templated autosummary files
