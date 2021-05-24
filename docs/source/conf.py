@@ -15,8 +15,6 @@
 import os
 import sys
 
-import sphinx_fontawesome
-
 sys.path.insert(0, os.path.abspath("../../flytekit/"))
 sys.path.insert(0, os.path.abspath("../.."))
 
@@ -103,6 +101,11 @@ html_theme_options = {
         "color-brand-primary": "#9D68E4",
         "color-brand-content": "#9D68E4",
     },
+    # custom flyteorg furo theme options
+    "github_repo": "flytekit",
+    "github_username": "flyteorg",
+    "github_commit": "master",
+    "docs_path": "docs/source",  # path to documentation source
 }
 
 templates_path = ["_templates"]
