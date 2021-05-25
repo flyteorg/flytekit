@@ -96,7 +96,7 @@ class ConditionalSection:
                     upstream_nodes.add(p.ref.node)
 
             n = Node(
-                id=f"{ctx.compilation_state.prefix}node-{len(ctx.compilation_state.nodes)}",
+                id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
                 metadata=_core_wf.NodeMetadata(self._name, timeout=datetime.timedelta(), retries=RetryStrategy(0)),
                 bindings=sorted(bindings, key=lambda b: b.var),
                 upstream_nodes=list(upstream_nodes),  # type: ignore

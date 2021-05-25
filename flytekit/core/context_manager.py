@@ -382,8 +382,7 @@ class FlyteContext(object):
             # raise NotImplementedError("Nested branches are not yet supported!")
 
             if self.compilation_state:
-                prefix = self.compilation_state.prefix + "branch" if self.compilation_state.prefix else "branch"
-                self.compilation_state = self.compilation_state.with_params(prefix=prefix)
+                self.compilation_state = self.compilation_state.with_params(prefix=self.compilation_state.prefix)
 
             if self.execution_state:
                 if self.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
