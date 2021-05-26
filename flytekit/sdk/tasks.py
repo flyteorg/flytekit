@@ -855,6 +855,8 @@ def sidecar_task(
     environment=None,
     pod_spec=None,
     primary_container_name=None,
+    annotations=None,
+    labels=None,
     cls=None,
 ):
     """
@@ -896,6 +898,8 @@ def sidecar_task(
         @sidecar_task(
             pod_spec=generate_pod_spec_for_task(),
             primary_container_name="primary",
+            annotations={"key": "value"},
+            labels={"key": "value"},
         )
         def a_sidecar_task(wfparams):
             while not os.path.isfile('/data/message.txt'):
@@ -980,6 +984,10 @@ def sidecar_task(
 
     :param Text primary_container_name: primary container to monitor for the duration of the task.
 
+    :param dict[Text, Text]: [optional] kubernetes annotations
+
+    :param dict[Text, Text]: [optional] kubernetes labels
+
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  A user can use this to
         inject bespoke logic into the base Flyte programming model.
@@ -1010,6 +1018,8 @@ def sidecar_task(
             environment=environment,
             pod_spec=pod_spec,
             primary_container_name=primary_container_name,
+            annotations=annotations,
+            labels=labels,
         )
 
     if _task_function:
