@@ -9,6 +9,7 @@ from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings
+from flytekit.models.core.workflow import Node
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = SerializationSettings(
@@ -345,7 +346,24 @@ def test_nested_condition():
         )
 
     srz_wf = get_serializable(OrderedDict(), serialization_settings, multiplier_2)
-    print(srz_wf)
+    assert len(srz_wf.template.nodes) == 1
+    fractions_branch = srz_wf.template.nodes[0]
+    assert isinstance(fractions_branch, Node)
+    assert fractions_branch.id == "n0"
+    assert fractions_branch.branch_node is not None
+    if_else_b = fractions_branch.branch_node.if_else
+    assert if_else_b is not None
+    assert if_else_b.case is not None
+    assert if_else_b.case.then_node is not None
+    inner_fractions_node = if_else_b.case.then_node
+    assert inner_fractions_node.id == "n0"
+    assert inner_fractions_node.branch_node.if_else.case.then_node.task_node is not None
+    assert inner_fractions_node.branch_node.if_else.case.then_node.id == "n0"
+
+    # Ensure other cases exist
+    assert len(if_else_b.other) == 1
+    assert if_else_b.other[0].then_node.task_node is not None
+    assert if_else_b.other[0].then_node.id == "n1"
 
     with pytest.raises(ValueError):
         multiplier_2(my_input=0.5)
@@ -358,3 +376,59 @@ def test_nested_condition():
 
     with pytest.raises(ValueError):
         multiplier_2(my_input=10)
+
+
+def test_nested_condition_2():
+    @workflow
+    def multiplier_2(my_input: float) -> float:
+        return (
+            conditional("fractions")
+            .if_((my_input > 0.1) & (my_input < 1.0))
+            .then(
+                conditional("inner_fractions")
+                .if_(my_input < 0.5)
+                .then(double(n=my_input))
+                .elif_((my_input > 0.5) & (my_input < 0.7))
+                .then(square(n=my_input))
+                .else_()
+                .fail("Only <0.7 allowed")
+            )
+            .elif_((my_input > 1.0) & (my_input < 10.0))
+            .then(square(n=my_input))
+            .else_()
+            .then(double(n=my_input))
+        )
+
+    srz_wf = get_serializable(OrderedDict(), serialization_settings, multiplier_2)
+    assert len(srz_wf.template.nodes) == 1
+    fractions_branch = srz_wf.template.nodes[0]
+    assert isinstance(fractions_branch, Node)
+    assert fractions_branch.id == "n0"
+    assert fractions_branch.branch_node is not None
+    if_else_b = fractions_branch.branch_node.if_else
+    assert if_else_b is not None
+    assert if_else_b.case is not None
+    assert if_else_b.case.then_node is not None
+    inner_fractions_node = if_else_b.case.then_node
+    assert inner_fractions_node.id == "n0"
+    assert inner_fractions_node.branch_node.if_else.case.then_node.task_node is not None
+    assert inner_fractions_node.branch_node.if_else.case.then_node.id == "n0"
+    assert len(inner_fractions_node.branch_node.if_else.other) == 1
+    assert inner_fractions_node.branch_node.if_else.other[0].then_node.id == "n1"
+
+    # Ensure other cases exist
+    assert len(if_else_b.other) == 1
+    assert if_else_b.other[0].then_node.task_node is not None
+    assert if_else_b.other[0].then_node.id == "n1"
+
+    with pytest.raises(ValueError):
+        multiplier_2(my_input=0.7)
+
+    res = multiplier_2(my_input=0.3)
+    assert res == 0.6
+
+    res = multiplier_2(my_input=5)
+    assert res == 25
+
+    res = multiplier_2(my_input=10)
+    assert res == 20
