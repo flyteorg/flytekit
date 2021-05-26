@@ -215,3 +215,16 @@ def test_dataloadingconfig():
 def test_ioconfig():
     io = task.IOStrategy(task.IOStrategy.DOWNLOAD_MODE_NO_DOWNLOAD, task.IOStrategy.UPLOAD_MODE_NO_UPLOAD)
     assert io == task.IOStrategy.from_flyte_idl(io.to_flyte_idl())
+
+def test_k8s_metadata():
+    obj = task.K8sObjectMetadata(labels={"label": "foo"}, annotations={"anno": "bar"})
+    assert obj.labels == {"label": "foo"}
+    assert obj.annotations == {"anno": "bar"}
+    assert obj == task.K8sObjectMetadata.from_flyte_idl(obj.to_flyte_idl())
+
+
+def test_k8s_pod():
+    obj = task.K8sPod(metadata=task.K8sObjectMetadata(labels={"label": "foo"}), pod_spec={"pod_spec": "bar"})
+    assert obj.metadata.labels == {"label": "foo"}
+    assert obj.pod_spec == {"pod_spec": "bar"}
+    assert obj == task.K8sPod.from_flyte_idl(obj.to_flyte_idl())
