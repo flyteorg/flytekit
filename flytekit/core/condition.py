@@ -42,6 +42,11 @@ class ConditionalSection:
 
         Conditions can only be used within a workflow context.
 
+    Usage:
+
+    .. code-block:: python
+
+        v =  conditional("fractions").if_((my_input > 0.1) & (my_input < 1.0)).then(...)...
 
     """
 
@@ -389,6 +394,36 @@ def to_branch_node(name: str, cs: ConditionalSection) -> (BranchNode, typing.Lis
 
 
 def conditional(name: str) -> ConditionalSection:
+    """
+    Use a conditional section to control the flow of a workflow. Conditional sections can only be used inside a workflow
+    context. Outside of a workflow they will raise an Assertion.
+
+    The ``conditional`` method returns a new conditional section, that allows to create a - ternary operator like
+     if-else clauses. The reason why it is called ternary-like is because, it returns the output of the branch result.
+     So in-effect it is a functional style condition.
+
+     Example of a condition usage. Note the nesting and the assignment to a LHS variable
+
+     .. code-block:: python
+
+         v = (
+            conditional("fractions")
+            .if_((my_input > 0.1) & (my_input < 1.0))
+            .then(
+                conditional("inner_fractions")
+                .if_(my_input < 0.5)
+                .then(double(n=my_input))
+                .elif_((my_input > 0.5) & (my_input < 0.7))
+                .then(square(n=my_input))
+                .else_()
+                .fail("Only <0.7 allowed")
+            )
+            .elif_((my_input > 1.0) & (my_input < 10.0))
+            .then(square(n=my_input))
+            .else_()
+            .then(double(n=my_input))
+        )
+    """
     ctx = FlyteContextManager.current_context()
 
     if ctx.compilation_state:
