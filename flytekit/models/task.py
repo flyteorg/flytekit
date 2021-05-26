@@ -955,7 +955,7 @@ class K8sObjectMetadata(_common.FlyteIdlEntity):
 
 
 class K8sPod(_common.FlyteIdlEntity):
-    def __init__(self, metadata: K8sObjectMetadata=None, pod_spec: typing.Dict[str, typing.Any]=None):
+    def __init__(self, metadata: K8sObjectMetadata = None, pod_spec: typing.Dict[str, typing.Any] = None):
         """
         This defines a kubernetes pod target.  It will build the pod target during task execution
         """

@@ -13,7 +13,13 @@ _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
 
 
 class Pod(object):
-    def __init__(self, pod_spec: V1PodSpec, primary_container_name: str, labels: Dict[str, str], annotations: Dict[str, str]):
+    def __init__(
+        self,
+        pod_spec: V1PodSpec,
+        primary_container_name: str,
+        labels: Dict[str, str] = None,
+        annotations: Dict[str, str] = None,
+    ):
         if not pod_spec:
             raise _user_exceptions.FlyteValidationException("A pod spec cannot be undefined")
         if not primary_container_name:
@@ -47,7 +53,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
             task_config=task_config,
             task_type="sidecar",
             task_function=task_function,
-            task_type_version=1,
+            task_type_version=2,
             **kwargs,
         )
 
@@ -67,7 +73,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
             # In the case of the primary container, we overwrite specific container attributes with the default values
             # used in an SDK runnable task.
             if container.name == self.task_config.primary_container_name:
-                sdk_default_container = self.get_container(settings)
+                sdk_default_container = super().get_container(settings)
 
                 container.image = sdk_default_container.image
                 # clear existing commands
@@ -92,12 +98,19 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
 
         self.task_config._pod_spec.containers = final_containers
 
-        return ApiClient().sanitize_for_serializbbation(self.task_config.pod_spec)
+        return ApiClient().sanitize_for_serialization(self.task_config.pod_spec)
 
     def get_k8s_pod(self, settings: SerializationSettings) -> _task_models.K8sPod:
-        return _task_models.K8sPod(pod_spec=self._serialize_pod_spec(settings), metadata=_task_models.K8sObjectMetadata(
-            labels=
-        ))
+        return _task_models.K8sPod(
+            pod_spec=self._serialize_pod_spec(settings),
+            metadata=_task_models.K8sObjectMetadata(
+                labels=self.task_config.labels,
+                annotations=self.task_config.annotations,
+            ),
+        )
+
+    def get_container(self, settings: SerializationSettings) -> _task_models.Container:
+        return None
 
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
         return {_PRIMARY_CONTAINER_NAME_FIELD: self.task_config.primary_container_name}

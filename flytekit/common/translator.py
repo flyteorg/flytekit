@@ -85,7 +85,7 @@ def get_serializable_task(
         task_type_version=entity.task_type_version,
         security_context=entity.security_context,
         config=entity.get_config(settings),
-        k8s_pod=entity.get_k8s_pod()
+        k8s_pod=entity.get_k8s_pod(settings),
     )
 
     # For fast registration, we'll need to muck with the command, but only for certain kinds of tasks. Specifically,

@@ -41,7 +41,7 @@ def test_pod_task_deserialization():
 
     default_img = Image(name="default", fqn="test", tag="tag")
 
-    custom = simple_pod_task.get_custom(
+    target = simple_pod_task.get_k8s_pod(
         SerializationSettings(
             project="project",
             domain="domain",
@@ -53,7 +53,7 @@ def test_pod_task_deserialization():
 
     # Test that custom is correctly serialized by deserializing it with the python API client
     response = MagicMock()
-    response.data = json.dumps(custom)
+    response.data = json.dumps(target.pod_spec)
     deserialized_pod_spec = ApiClient().deserialize(response, V1PodSpec)
 
     assert deserialized_pod_spec.restart_policy == "OnFailure"
@@ -106,7 +106,7 @@ def test_pod_task():
 
     default_img = Image(name="default", fqn="test", tag="tag")
 
-    custom = simple_pod_task.get_custom(
+    pod_spec = simple_pod_task.get_k8s_pod(
         SerializationSettings(
             project="project",
             domain="domain",
@@ -114,10 +114,11 @@ def test_pod_task():
             env={"FOO": "baz"},
             image_config=ImageConfig(default_image=default_img, images=[default_img]),
         )
-    )
-    assert custom["restartPolicy"] == "OnFailure"
-    assert len(custom["containers"]) == 2
-    primary_container = custom["containers"][0]
+    ).pod_spec
+
+    assert pod_spec["restartPolicy"] == "OnFailure"
+    assert len(pod_spec["containers"]) == 2
+    primary_container = pod_spec["containers"][0]
     assert primary_container["name"] == "a container"
     assert primary_container["args"] == [
         "pyflyte-execute",
@@ -142,7 +143,7 @@ def test_pod_task():
         "limits": {"gpu": "2"},
     }
     assert primary_container["env"] == [{"name": "FOO", "value": "bar"}]
-    assert custom["containers"][1]["name"] == "another container"
+    assert pod_spec["containers"][1]["name"] == "another container"
 
 
 def test_dynamic_pod_task():
@@ -164,7 +165,7 @@ def test_dynamic_pod_task():
     assert isinstance(dynamic_pod_task, PodFunctionTask)
     default_img = Image(name="default", fqn="test", tag="tag")
 
-    custom = dynamic_pod_task.get_custom(
+    pod_spec = dynamic_pod_task.get_k8s_pod(
         SerializationSettings(
             project="project",
             domain="domain",
@@ -172,9 +173,9 @@ def test_dynamic_pod_task():
             env={"FOO": "baz"},
             image_config=ImageConfig(default_image=default_img, images=[default_img]),
         )
-    )
-    assert len(custom["containers"]) == 2
-    primary_container = custom["containers"][0]
+    ).pod_spec
+    assert len(pod_spec["containers"]) == 2
+    primary_container = pod_spec["containers"][0]
     assert isinstance(dynamic_pod_task.task_config, Pod)
     assert primary_container["resources"] == {
         "requests": {"cpu": "10"},
@@ -249,7 +250,12 @@ def test_pod_task_undefined_primary():
 
 
 def test_pod_task_serialized():
-    pod = Pod(pod_spec=get_pod_spec(), primary_container_name="an undefined container")
+    pod = Pod(
+        pod_spec=get_pod_spec(),
+        primary_container_name="an undefined container",
+        labels={"label": "foo"},
+        annotations={"anno": "bar"},
+    )
 
     @task(task_config=pod, requests=Resources(cpu="10"), limits=Resources(gpu="2"), environment={"FOO": "bar"})
     def simple_pod_task(i: int):
@@ -267,5 +273,8 @@ def test_pod_task_serialized():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
     serialized = get_serializable(OrderedDict(), ssettings, simple_pod_task)
-    assert serialized.template.task_type_version == 1
+    assert serialized.template.task_type_version == 2
     assert serialized.template.config["primary_container_name"] == "an undefined container"
+    assert serialized.template.k8s_pod.metadata.labels == {"label": "foo"}
+    assert serialized.template.k8s_pod.metadata.annotations == {"anno": "bar"}
+    assert serialized.template.k8s_pod.pod_spec is not None
