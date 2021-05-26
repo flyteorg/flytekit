@@ -9,6 +9,9 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import artifact as _artifact
 from flytekit.control_plane import identifier as _core_identifier
 from flytekit.control_plane import nodes as _nodes
+from flytekit.control_plane import workflow as _workflow
+from flytekit.core.context_manager import FlyteContext
+from flytekit.core.type_engine import TypeEngine
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import execution as _execution_models
@@ -38,7 +41,7 @@ class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArt
             execution_data = client.get_execution_data(self.id)
 
             # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
-            input_map: LiteralMap = _literal_models.LiteralMap({})
+            input_map: _literal_models.LiteralMap = _literal_models.LiteralMap({})
             if bool(execution_data.full_inputs.literals):
                 input_map = execution_data.full_inputs
             elif execution_data.inputs.bytes > 0:
@@ -48,9 +51,13 @@ class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArt
                     input_map = _literal_models.LiteralMap.from_flyte_idl(
                         _common_utils.load_proto_from_file(_literals_pb2.Literalmap, tmp_name)
                     )
-            # TODO: need to convert flyte literals to python types. For now just use literals
-            # self._inputs = TypeEngine.literal_map_to_kwargs(ctx=FlyteContext.current_context(), lm=input_map)
-            self._inputs = input_map
+            lp_id = self.spec.launch_plan
+            workflow = _workflow.FlyteWorkflow.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            self._inputs = TypeEngine.literal_map_to_kwargs(
+                ctx=FlyteContext.current_context(),
+                lm=input_map,
+                python_types=TypeEngine.guess_python_types(workflow.interface.inputs),
+            )
         return self._inputs
 
     @property
@@ -71,7 +78,7 @@ class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArt
             client = _flyte_engine.get_client()
             execution_data = client.get_execution_data(self.id)
             # Outputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
-            output_map: LiteralMap = _literal_models.LiteralMap({})
+            output_map: _literal_models.LiteralMap = _literal_models.LiteralMap({})
             if bool(execution_data.full_outputs.literals):
                 output_map = execution_data.full_outputs
             elif execution_data.outputs.bytes > 0:
@@ -81,9 +88,14 @@ class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArt
                     output_map = _literal_models.LiteralMap.from_flyte_idl(
                         _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
-            # TODO: need to convert flyte literals to python types. For now just use literals
-            # self._outputs = TypeEngine.literal_map_to_kwargs(ctx=FlyteContext.current_context(), lm=output_map)
-            self._outputs = output_map
+
+            lp_id = self.spec.launch_plan
+            workflow = _workflow.FlyteWorkflow.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            self._outputs = TypeEngine.literal_map_to_kwargs(
+                ctx=FlyteContext.current_context(),
+                lm=output_map,
+                python_types=TypeEngine.guess_python_types(workflow.interface.outputs),
+            )
         return self._outputs
 
     @property
@@ -133,6 +145,9 @@ class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArt
         if not self.is_complete or self._node_executions is None:
             self._sync_closure()
             self._node_executions = self.get_node_executions()
+
+        for node_execution in self._node_executions.values():
+            node_execution.sync()
 
     def _sync_closure(self):
         if not self.is_complete:
