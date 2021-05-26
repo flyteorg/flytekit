@@ -984,9 +984,9 @@ def sidecar_task(
 
     :param Text primary_container_name: primary container to monitor for the duration of the task.
 
-    :param dict[Text, Text]: [optional] kubernetes annotations
+    :param dict[Text, Text] annotations: [optional] kubernetes annotations
 
-    :param dict[Text, Text]: [optional] kubernetes labels
+    :param dict[Text, Text] labels: [optional] kubernetes labels
 
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  A user can use this to
@@ -1049,6 +1049,8 @@ def dynamic_sidecar_task(
     environment=None,
     pod_spec=None,
     primary_container_name=None,
+    annotations=None,
+    labels=None,
     cls=None,
 ):
     """
@@ -1093,6 +1095,8 @@ def dynamic_sidecar_task(
         @dynamic_sidecar_task(
             pod_spec=generate_pod_spec_for_task(),
             primary_container_name="primary",
+            annotations={"a": "a"},
+            labels={"b": "b"},
         )
         def my_task(wf_params, out):
             out_list = []
@@ -1162,6 +1166,8 @@ def dynamic_sidecar_task(
     :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
     :param k8s.io.api.core.v1.generated_pb2.PodSpec pod_spec: PodSpec to bring up alongside task execution.
     :param Text primary_container_name: primary container to monitor for the duration of the task.
+    :param dict[Text, Text] annotations: [optional] kubernetes annotations
+    :param dict[Text, Text] labels: [optional] kubernetes labels
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  Generally, it should be a
         subclass of flytekit.common.tasks.sidecar_Task.SdkDynamicSidecarTask.  A user can use this parameter to inject bespoke
@@ -1192,6 +1198,8 @@ def dynamic_sidecar_task(
             environment=environment,
             pod_spec=pod_spec,
             primary_container_name=primary_container_name,
+            annotations=annotations,
+            labels=labels,
         )
 
     if _task_function:
