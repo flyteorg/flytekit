@@ -378,8 +378,9 @@ class FlyteContext(object):
             )
 
         def enter_conditional_section(self) -> "Builder":
-            # if self.in_a_condition:
-            # raise NotImplementedError("Nested branches are not yet supported!")
+            """
+            Used by the condition block to indicate that a new conditional section has been started.
+            """
 
             if self.compilation_state:
                 self.compilation_state = self.compilation_state.with_params(prefix=self.compilation_state.prefix)
