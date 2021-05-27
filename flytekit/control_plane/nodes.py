@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from flyteidl.core import literals_pb2 as _literals_pb2
 
+import flytekit
 from flytekit.clients.helpers import iterate_task_executions as _iterate_task_executions
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
@@ -15,7 +16,9 @@ from flytekit.common.utils import _dnsify
 from flytekit.control_plane import component_nodes as _component_nodes
 from flytekit.control_plane import identifier as _identifier
 from flytekit.control_plane.tasks import executions as _task_executions
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.promise import NodeOutput
+from flytekit.core.type_engine import TypeEngine
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import literals as _literal_models
@@ -32,7 +35,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         upstream_nodes,
         bindings,
         metadata,
-        flyte_task: "flytekit.control_plan.tasks.task.FlyteTask" = None,
+        flyte_task: "flytekit.control_plane.tasks.task.FlyteTask" = None,
         flyte_workflow: "flytekit.control_plane.workflow.FlyteWorkflow" = None,
         flyte_launch_plan=None,
         flyte_branch=None,
@@ -115,7 +118,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 return cls(
                     id=id,
                     upstream_nodes=[],  # set downstream, model doesn't contain this information
-                    bindings=models.inputs,
+                    bindings=model.inputs,
                     metadata=model.metadata,
                     flyte_launch_plan=flyte_workflow_node.flyte_launch_plan,
                 )
@@ -177,8 +180,10 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
     @property
     def inputs(self) -> Dict[str, Any]:
         """
-        Returns the inputs to the execution in the standard python format as dicatated by the type engine.
+        Returns the inputs to the execution in the standard python format as dictated by the type engine.
         """
+        from flytekit.control_plane.tasks.task import FlyteTask
+
         if self._inputs is None:
             client = _flyte_engine.get_client()
             execution_data = client.get_node_execution_data(self.id)
@@ -195,9 +200,13 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
                         _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
 
-            # TODO: need to convert flyte literals to python types. For now just use literals
-            # self._inputs = TypeEngine.literal_map_to_kwargs(ctx=FlyteContext.current_context(), lm=input_map)
-            self._inputs = input_map
+            task_id = self.task_executions[0].id.task_id
+            task = FlyteTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
+            self._inputs = TypeEngine.literal_map_to_kwargs(
+                ctx=FlyteContextManager.current_context(),
+                lm=input_map,
+                python_types=TypeEngine.guess_python_types(task.interface.inputs),
+            )
         return self._inputs
 
     @property
@@ -207,6 +216,8 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
 
         :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
         """
+        from flytekit.control_plane.tasks.task import FlyteTask
+
         if not self.is_complete:
             raise _user_exceptions.FlyteAssertion(
                 "Please wait until the node execution has completed before requesting the outputs."
@@ -229,9 +240,14 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
                     output_map = _literal_models.LiteralMap.from_flyte_idl(
                         _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
-            # TODO: need to convert flyte literals to python types. For now just use literals
-            # self._outputs = TypeEngine.literal_map_to_kwargs(ctx=FlyteContext.current_context(), lm=output_map)
-            self._outputs = output_map
+
+            task_id = self.task_executions[0].id.task_id
+            task = FlyteTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
+            self._outputs = TypeEngine.literal_map_to_kwargs(
+                ctx=FlyteContextManager.current_context(),
+                lm=output_map,
+                python_types=TypeEngine.guess_python_types(task.interface.outputs),
+            )
         return self._outputs
 
     @property
