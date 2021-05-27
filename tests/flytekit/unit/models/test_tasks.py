@@ -6,7 +6,9 @@ from flyteidl.core.tasks_pb2 import TaskMetadata
 from google.protobuf import text_format
 from k8s.io.api.core.v1 import generated_pb2
 
-from flytekit.models import literals, task
+import flytekit.models.interface as interface_models
+import flytekit.models.literals as literal_models
+from flytekit.models import literals, task, types
 from flytekit.models.core import identifier
 from tests.flytekit.common import parameterizers
 
@@ -115,6 +117,51 @@ def test_task_template(in_tuple):
     assert obj.custom == {"a": 1, "b": {"c": 2, "d": 3}}
     assert obj.container.image == "my_image"
     assert obj.container.resources == resources
+    assert text_format.MessageToString(obj.to_flyte_idl()) == text_format.MessageToString(
+        task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
+    )
+    assert obj.config == {"a": "b"}
+
+
+def test_task_template__k8s_pod_target():
+    int_type = types.LiteralType(types.SimpleType.INTEGER)
+    obj = task.TaskTemplate(
+        identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
+        "python",
+        task.TaskMetadata(
+            False,
+            task.RuntimeMetadata(1, "v", "f"),
+            timedelta(days=1),
+            literal_models.RetryStrategy(5),
+            False,
+            "1.0",
+            "deprecated",
+        ),
+        interface_models.TypedInterface(
+            # inputs
+            {"a": interface_models.Variable(int_type, "description1")},
+            # outputs
+            {
+                "b": interface_models.Variable(int_type, "description2"),
+                "c": interface_models.Variable(int_type, "description3"),
+            },
+        ),
+        {"a": 1, "b": {"c": 2, "d": 3}},
+        config={"a": "b"},
+        k8s_pod=task.K8sPod(
+            metadata=task.K8sObjectMetadata(labels={"label": "foo"}, annotations={"anno": "bar"}),
+            pod_spec={"str": "val", "int": 1},
+        ),
+    )
+    assert obj.id.resource_type == identifier.ResourceType.TASK
+    assert obj.id.project == "project"
+    assert obj.id.domain == "domain"
+    assert obj.id.name == "name"
+    assert obj.id.version == "version"
+    assert obj.type == "python"
+    assert obj.custom == {"a": 1, "b": {"c": 2, "d": 3}}
+    assert obj.k8s_pod.metadata == task.K8sObjectMetadata(labels={"label": "foo"}, annotations={"anno": "bar"})
+    assert obj.k8s_pod.pod_spec == {"str": "val", "int": 1}
     assert text_format.MessageToString(obj.to_flyte_idl()) == text_format.MessageToString(
         task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
     )
@@ -232,3 +279,17 @@ def test_dataloadingconfig():
 def test_ioconfig():
     io = task.IOStrategy(task.IOStrategy.DOWNLOAD_MODE_NO_DOWNLOAD, task.IOStrategy.UPLOAD_MODE_NO_UPLOAD)
     assert io == task.IOStrategy.from_flyte_idl(io.to_flyte_idl())
+
+
+def test_k8s_metadata():
+    obj = task.K8sObjectMetadata(labels={"label": "foo"}, annotations={"anno": "bar"})
+    assert obj.labels == {"label": "foo"}
+    assert obj.annotations == {"anno": "bar"}
+    assert obj == task.K8sObjectMetadata.from_flyte_idl(obj.to_flyte_idl())
+
+
+def test_k8s_pod():
+    obj = task.K8sPod(metadata=task.K8sObjectMetadata(labels={"label": "foo"}), pod_spec={"pod_spec": "bar"})
+    assert obj.metadata.labels == {"label": "foo"}
+    assert obj.pod_spec == {"pod_spec": "bar"}
+    assert obj == task.K8sPod.from_flyte_idl(obj.to_flyte_idl())

@@ -23,7 +23,7 @@ bcrypt==3.2.0
     # via
     #   -c requirements.txt
     #   paramiko
-black==21.4b2
+black==21.5b1
     # via
     #   -c requirements.txt
     #   -r dev-requirements.in
@@ -49,7 +49,7 @@ click==7.1.2
     #   flytekit
 coverage[toml]==5.5
     # via -r dev-requirements.in
-croniter==1.0.12
+croniter==1.0.13
     # via
     #   -c requirements.txt
     #   flytekit
@@ -61,7 +61,7 @@ dataclasses-json==0.5.3
     # via
     #   -c requirements.txt
     #   flytekit
-decorator==5.0.7
+decorator==5.0.9
     # via
     #   -c requirements.txt
     #   retry
@@ -75,7 +75,7 @@ dirhash==0.2.1
     #   flytekit
 distro==1.5.0
     # via docker-compose
-docker-compose==1.29.1
+docker-compose==1.29.2
     # via
     #   pytest-docker
     #   pytest-flyte
@@ -93,16 +93,16 @@ flake8-black==0.2.1
     # via -r dev-requirements.in
 flake8-isort==4.0.0
     # via -r dev-requirements.in
-flake8==3.9.1
+flake8==3.9.2
     # via
     #   -r dev-requirements.in
     #   flake8-black
     #   flake8-isort
-flyteidl==0.18.47
+flyteidl==0.18.49
     # via
     #   -c requirements.txt
     #   flytekit
-grpcio==1.37.1
+grpcio==1.38.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -110,7 +110,7 @@ idna==2.10
     # via
     #   -c requirements.txt
     #   requests
-importlib-metadata==4.0.1
+importlib-metadata==4.3.0
     # via
     #   -c requirements.txt
     #   keyring
@@ -120,7 +120,7 @@ isort==5.8.0
     # via
     #   -r dev-requirements.in
     #   flake8-isort
-jinja2==2.11.3
+jinja2==3.0.1
     # via
     #   -c requirements.txt
     #   pytest-flyte
@@ -132,7 +132,7 @@ keyring==23.0.1
     # via
     #   -c requirements.txt
     #   flytekit
-markupsafe==1.1.1
+markupsafe==2.0.1
     # via
     #   -c requirements.txt
     #   jinja2
@@ -140,7 +140,7 @@ marshmallow-enum==1.5.1
     # via
     #   -c requirements.txt
     #   dataclasses-json
-marshmallow==3.11.1
+marshmallow==3.12.1
     # via
     #   -c requirements.txt
     #   dataclasses-json
@@ -161,7 +161,7 @@ natsort==7.1.1
     # via
     #   -c requirements.txt
     #   flytekit
-numpy==1.20.2
+numpy==1.20.3
     # via
     #   -c requirements.txt
     #   pandas
@@ -185,7 +185,7 @@ pathspec==0.8.1
     #   scantree
 pluggy==0.13.1
     # via pytest
-protobuf==3.15.8
+protobuf==3.17.1
     # via
     #   -c requirements.txt
     #   flyteidl
@@ -223,7 +223,7 @@ pytest-docker==0.10.1
     # via pytest-flyte
 git+git://github.com/flyteorg/pytest-flyte@main#egg=pytest-flyte
     # via -r dev-requirements.in
-pytest==6.2.3
+pytest==6.2.4
     # via
     #   -r dev-requirements.in
     #   pytest-docker
@@ -273,7 +273,7 @@ scantree==0.0.1
     # via
     #   -c requirements.txt
     #   dirhash
-six==1.15.0
+six==1.16.0
     # via
     #   -c requirements.txt
     #   bcrypt
@@ -287,7 +287,7 @@ six==1.15.0
     #   responses
     #   scantree
     #   websocket-client
-sortedcontainers==2.3.0
+sortedcontainers==2.4.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -311,7 +311,7 @@ toml==0.10.2
     #   pytest
 typed-ast==1.4.3
     # via mypy
-typing-extensions==3.7.4.3
+typing-extensions==3.10.0.0
     # via
     #   -c requirements.txt
     #   mypy
@@ -326,7 +326,7 @@ urllib3==1.25.11
     #   flytekit
     #   requests
     #   responses
-websocket-client==0.58.0
+websocket-client==0.59.0
     # via
     #   docker
     #   docker-compose
