@@ -39,9 +39,9 @@ black==21.5b1
     # via papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.78
+boto3==1.17.83
     # via sagemaker-training
-botocore==1.20.78
+botocore==1.20.83
     # via
     #   boto3
     #   s3transfer
@@ -88,7 +88,7 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.18.44
+flyteidl==0.18.49
     # via flytekit
 git+git://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
@@ -106,7 +106,7 @@ idna==2.10
     # via requests
 imagesize==1.2.0
     # via sphinx
-importlib-metadata==4.0.1
+importlib-metadata==4.3.0
     # via keyring
 inotify_simple==1.2.1
     # via sagemaker-training
@@ -212,7 +212,7 @@ pickleshare==0.7.5
     # via ipython
 prompt-toolkit==3.0.18
     # via ipython
-protobuf==3.17.0
+protobuf==3.17.1
     # via
     #   flyteidl
     #   flytekit
@@ -243,7 +243,7 @@ pyparsing==2.4.7
     # via packaging
 pyrsistent==0.17.3
     # via jsonschema
-pyspark==3.1.1
+pyspark==3.1.2
     # via flytekit
 python-dateutil==2.8.1
     # via
@@ -265,7 +265,7 @@ pyyaml==5.4.1
     # via
     #   papermill
     #   sphinx-autoapi
-pyzmq==22.0.3
+pyzmq==22.1.0
     # via jupyter-client
 readthedocs-sphinx-search==0.1.0
     # via -r doc-requirements.in
@@ -373,7 +373,7 @@ tornado==6.1
     # via
     #   ipykernel
     #   jupyter-client
-tqdm==4.60.0
+tqdm==4.61.0
     # via papermill
 traitlets==5.0.5
     # via
