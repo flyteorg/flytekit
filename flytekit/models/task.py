@@ -912,7 +912,7 @@ class Container(_common.FlyteIdlEntity):
 
 
 class SidecarJob(_common.FlyteIdlEntity):
-    def __init__(self, pod_spec, primary_container_name, annotations, labels):
+    def __init__(self, pod_spec, primary_container_name, annotations=None, labels=None):
         """
         A sidecar job represents the full kubernetes pod spec and related metadata required for executing a sidecar
         task.
