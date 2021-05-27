@@ -960,8 +960,10 @@ class SidecarJob(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.tasks_pb2.SidecarJob
         """
         return _lazy_flyteidl.plugins.sidecar_pb2.SidecarJob(
-            pod_spec=self.pod_spec, primary_container_name=self.primary_container_name,
-            annotations=self.annotations, labels=self.labels,
+            pod_spec=self.pod_spec,
+            primary_container_name=self.primary_container_name,
+            annotations=self.annotations,
+            labels=self.labels,
         )
 
     @classmethod

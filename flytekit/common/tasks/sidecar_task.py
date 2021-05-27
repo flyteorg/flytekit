@@ -75,8 +75,7 @@ class SdkSidecarTask(_sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.Extende
             custom=None,
         )
 
-        self.reconcile_partial_pod_spec_and_task(pod_spec, primary_container_name,
-                                                 annotations, labels)
+        self.reconcile_partial_pod_spec_and_task(pod_spec, primary_container_name, annotations, labels)
 
     def reconcile_partial_pod_spec_and_task(self, pod_spec, primary_container_name, annotations=None, labels=None):
         """
