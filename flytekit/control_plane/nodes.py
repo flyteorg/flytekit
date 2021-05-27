@@ -16,7 +16,7 @@ from flytekit.common.utils import _dnsify
 from flytekit.control_plane import component_nodes as _component_nodes
 from flytekit.control_plane import identifier as _identifier
 from flytekit.control_plane.tasks import executions as _task_executions
-from flytekit.core.context_manager import FlyteContext
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.promise import NodeOutput
 from flytekit.core.type_engine import TypeEngine
 from flytekit.engines.flyte import engine as _flyte_engine
@@ -203,7 +203,7 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
             task_id = self.task_executions[0].id.task_id
             task = FlyteTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
             self._inputs = TypeEngine.literal_map_to_kwargs(
-                ctx=FlyteContext.current_context(),
+                ctx=FlyteContextManager.current_context(),
                 lm=input_map,
                 python_types=TypeEngine.guess_python_types(task.interface.inputs),
             )
@@ -244,7 +244,7 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
             task_id = self.task_executions[0].id.task_id
             task = FlyteTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
             self._outputs = TypeEngine.literal_map_to_kwargs(
-                ctx=FlyteContext.current_context(),
+                ctx=FlyteContextManager.current_context(),
                 lm=output_map,
                 python_types=TypeEngine.guess_python_types(task.interface.outputs),
             )

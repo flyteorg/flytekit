@@ -10,7 +10,7 @@ from flytekit.common.mixins import artifact as _artifact
 from flytekit.control_plane import identifier as _core_identifier
 from flytekit.control_plane import nodes as _nodes
 from flytekit.control_plane import workflow as _workflow
-from flytekit.core.context_manager import FlyteContext
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -54,7 +54,7 @@ class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArt
             lp_id = self.spec.launch_plan
             workflow = _workflow.FlyteWorkflow.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
             self._inputs = TypeEngine.literal_map_to_kwargs(
-                ctx=FlyteContext.current_context(),
+                ctx=FlyteContextManager.current_context(),
                 lm=input_map,
                 python_types=TypeEngine.guess_python_types(workflow.interface.inputs),
             )
@@ -92,7 +92,7 @@ class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArt
             lp_id = self.spec.launch_plan
             workflow = _workflow.FlyteWorkflow.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
             self._outputs = TypeEngine.literal_map_to_kwargs(
-                ctx=FlyteContext.current_context(),
+                ctx=FlyteContextManager.current_context(),
                 lm=output_map,
                 python_types=TypeEngine.guess_python_types(workflow.interface.outputs),
             )
