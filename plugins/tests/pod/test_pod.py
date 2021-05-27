@@ -222,7 +222,7 @@ def test_pod_task_undefined_primary():
     assert simple_pod_task.task_config == pod
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    custom = simple_pod_task.get_custom(
+    pod_spec = simple_pod_task.get_k8s_pod(
         SerializationSettings(
             project="project",
             domain="domain",
@@ -230,11 +230,11 @@ def test_pod_task_undefined_primary():
             env={"FOO": "baz"},
             image_config=ImageConfig(default_image=default_img, images=[default_img]),
         )
-    )
+    ).pod_spec
 
-    assert len(custom["containers"]) == 3
+    assert len(pod_spec["containers"]) == 3
 
-    primary_container = custom["containers"][2]
+    primary_container = pod_spec["containers"][2]
     assert primary_container["name"] == "an undefined container"
 
     config = simple_pod_task.get_config(
