@@ -1,3 +1,5 @@
+import typing
+
 import six as _six
 from flyteidl.core import interface_pb2 as _interface_pb2
 
@@ -95,23 +97,14 @@ class TypedInterface(_common.FlyteIdlEntity):
         self._outputs = outputs
 
     @property
-    def inputs(self):
-        """
-        :rtype: dict[Text, Variable]
-        """
+    def inputs(self) -> typing.Dict[str, Variable]:
         return self._inputs
 
     @property
-    def outputs(self):
-        """
-        :rtype: dict[Text, Variable]
-        """
+    def outputs(self) -> typing.Dict[str, Variable]:
         return self._outputs
 
-    def to_flyte_idl(self):
-        """
-        :rtype: flyteidl.core.interface_pb2.TypedInterface
-        """
+    def to_flyte_idl(self) -> _interface_pb2.TypedInterface:
         return _interface_pb2.TypedInterface(
             inputs=_interface_pb2.VariableMap(variables={k: v.to_flyte_idl() for k, v in _six.iteritems(self.inputs)}),
             outputs=_interface_pb2.VariableMap(
@@ -120,10 +113,9 @@ class TypedInterface(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, proto):
+    def from_flyte_idl(cls, proto: _interface_pb2.TypedInterface) -> "TypedInterface":
         """
-        :param flyteidl.core.interface_pb2.TypedInterface proto:
-        :rtype: TypedInterface
+        :param proto:
         """
         return cls(
             inputs={k: Variable.from_flyte_idl(v) for k, v in _six.iteritems(proto.inputs.variables)},

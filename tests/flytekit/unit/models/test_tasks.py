@@ -229,10 +229,27 @@ def test_sidecar_task():
     pod_spec = generated_pb2.PodSpec()
     container = generated_pb2.Container(name="containery")
     pod_spec.containers.extend([container])
-    obj = task.SidecarJob(pod_spec=pod_spec, primary_container_name="primary")
+    obj = task.SidecarJob(
+        pod_spec=pod_spec,
+        primary_container_name="primary",
+        annotations={"a1": "a1"},
+        labels={"b1": "b1"},
+    )
     assert obj.primary_container_name == "primary"
     assert len(obj.pod_spec.containers) == 1
     assert obj.pod_spec.containers[0].name == "containery"
+    assert obj.annotations["a1"] == "a1"
+    assert obj.labels["b1"] == "b1"
+
+    obj2 = task.SidecarJob.from_flyte_idl(obj.to_flyte_idl())
+    assert obj2 == obj
+
+
+def test_sidecar_task_label_annotation_not_provided():
+    pod_spec = generated_pb2.PodSpec()
+    obj = task.SidecarJob(pod_spec=pod_spec, primary_container_name="primary")
+
+    assert obj.primary_container_name == "primary"
 
     obj2 = task.SidecarJob.from_flyte_idl(obj.to_flyte_idl())
     assert obj2 == obj
