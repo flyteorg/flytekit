@@ -912,16 +912,20 @@ class Container(_common.FlyteIdlEntity):
 
 
 class SidecarJob(_common.FlyteIdlEntity):
-    def __init__(self, pod_spec, primary_container_name):
+    def __init__(self, pod_spec, primary_container_name, annotations=None, labels=None):
         """
         A sidecar job represents the full kubernetes pod spec and related metadata required for executing a sidecar
         task.
 
         :param pod_spec: k8s.io.api.core.v1.PodSpec
         :param primary_container_name: Text
+        :param dict[Text, Text] annotations:
+        :param dict[Text, Text] labels:
         """
         self._pod_spec = pod_spec
         self._primary_container_name = primary_container_name
+        self._annotations = annotations
+        self._labels = labels
 
     @property
     def pod_spec(self):
@@ -937,12 +941,29 @@ class SidecarJob(_common.FlyteIdlEntity):
         """
         return self._primary_container_name
 
+    @property
+    def annotations(self):
+        """
+        :rtype: dict[Text,Text]
+        """
+        return self._annotations
+
+    @property
+    def labels(self):
+        """
+        :rtype: dict[Text,Text]
+        """
+        return self._labels
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.SidecarJob
         """
         return _lazy_flyteidl.plugins.sidecar_pb2.SidecarJob(
-            pod_spec=self.pod_spec, primary_container_name=self.primary_container_name
+            pod_spec=self.pod_spec,
+            primary_container_name=self.primary_container_name,
+            annotations=self.annotations,
+            labels=self.labels,
         )
 
     @classmethod
@@ -954,6 +975,8 @@ class SidecarJob(_common.FlyteIdlEntity):
         return cls(
             pod_spec=pb2_object.pod_spec,
             primary_container_name=pb2_object.primary_container_name,
+            annotations=pb2_object.annotations,
+            labels=pb2_object.labels,
         )
 
 
