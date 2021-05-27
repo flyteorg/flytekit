@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import tempfile
 import typing
+from pathlib import Path
 
 import doltcli as dolt
 import pandas
@@ -20,16 +21,20 @@ def dolt_install():
     sets it as the dolt path in Dolt's Python package, and then deletes
     it afterward.
     """
-    d = tempfile.TemporaryDirectory()
+    tmp_dir = tempfile.TemporaryDirectory()
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    setup_script = os.path.join(dir_path, "..", "..", "flytekit-dolt", "scripts", "dev_setup.sh")
+    install_script = os.path.join(dir_path, "..", "..", "flytekit-dolt", "scripts", "install.sh")
+
     try:
-        subprocess.call(setup_script, env={"INSTALL_PATH": d.name})
-        dolt_path = os.path.join(d.name, "dolt")
+        dolt_path = os.path.join(tmp_dir.name, "dolt")
+        subprocess.run(install_script, env={"INSTALL_PATH": tmp_dir.name})
+        for attr, value in [("user.name", "First Last"), ("user.email", "first.last@example.com")]:
+            subprocess.run([dolt_path, "config", "--global", "--add", attr, value])
         dolt.set_dolt_path(dolt_path)
         yield dolt_path
     finally:
-        shutil.rmtree(d.name)
+        shutil.rmtree(tmp_dir.name)
+        shutil.rmtree(Path.home() / ".dolt")
 
 
 @pytest.fixture(scope="function")
