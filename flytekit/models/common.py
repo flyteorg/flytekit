@@ -455,10 +455,8 @@ class AuthRole(FlyteIdlEntity):
         :rtype: Auth
         """
         return cls(
-            assumable_iam_role=pb2_object.assumable_iam_role if pb2_object.HasField("assumable_iam_role") else None,
-            kubernetes_service_account=pb2_object.kubernetes_service_account
-            if pb2_object.HasField("kubernetes_service_account")
-            else None,
+            assumable_iam_role=pb2_object.assumable_iam_role,
+            kubernetes_service_account=pb2_object.kubernetes_service_account,
         )
 
 
