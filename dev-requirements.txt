@@ -98,7 +98,7 @@ flake8==3.9.2
     #   -r dev-requirements.in
     #   flake8-black
     #   flake8-isort
-flyteidl==0.18.49
+flyteidl==0.18.50
     # via
     #   -c requirements.txt
     #   flytekit
@@ -110,7 +110,7 @@ idna==2.10
     # via
     #   -c requirements.txt
     #   requests
-importlib-metadata==4.3.0
+importlib-metadata==4.3.1
     # via
     #   -c requirements.txt
     #   keyring

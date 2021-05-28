@@ -29,9 +29,9 @@ black==21.5b1
     # via papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.83
+boto3==1.17.84
     # via sagemaker-training
-botocore==1.20.83
+botocore==1.20.84
     # via
     #   boto3
     #   s3transfer
@@ -72,7 +72,7 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.18.49
+flyteidl==0.18.50
     # via flytekit
 gevent==21.1.2
     # via sagemaker-training
@@ -84,7 +84,7 @@ hmsclient==0.1.1
     # via flytekit
 idna==2.10
     # via requests
-importlib-metadata==4.3.0
+importlib-metadata==4.3.1
     # via keyring
 inotify_simple==1.2.1
     # via sagemaker-training
@@ -94,7 +94,7 @@ ipython-genutils==0.2.0
     # via
     #   nbformat
     #   traitlets
-ipython==7.23.1
+ipython==7.24.0
     # via ipykernel
 jedi==0.18.0
     # via ipython
