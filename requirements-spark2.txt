@@ -16,8 +16,9 @@ appnope==0.1.2
     #   ipython
 async-generator==1.10
     # via nbclient
-attrs==21.2.0
+attrs==20.3.0
     # via
+    #   -r requirements-spark2.in
     #   jsonschema
     #   scantree
 backcall==0.2.0
