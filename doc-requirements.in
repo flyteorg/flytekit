@@ -12,3 +12,4 @@ sphinx-autoapi
 sphinx-copybutton
 grpcio
 cryptography
+attrs<21
