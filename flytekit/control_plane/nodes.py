@@ -275,7 +275,9 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
 
     @classmethod
     def promote_from_model(cls, base_model: _node_execution_models.NodeExecution) -> "FlyteNodeExecution":
-        return cls(closure=base_model.closure, id=base_model.id, input_uri=base_model.input_uri)
+        return cls(
+            closure=base_model.closure, id=base_model.id, input_uri=base_model.input_uri, metadata=base_model.metadata
+        )
 
     def sync(self):
         """
