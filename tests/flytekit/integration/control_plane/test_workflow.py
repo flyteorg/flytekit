@@ -57,6 +57,10 @@ def test_launch_workflow_with_args(flyteclient, flyte_workflows_register):
     assert execution.node_executions["n0"].outputs == {"t1_int_output": 12, "c": "world"}
     assert execution.node_executions["n1"].inputs == {"a": "world", "b": "foobar"}
     assert execution.node_executions["n1"].outputs == {"o0": "foobarworld"}
+    assert execution.node_executions["n0"].task_executions[0].inputs == {"a": 10}
+    assert execution.node_executions["n0"].task_executions[0].outputs == {"t1_int_output": 12, "c": "world"}
+    assert execution.node_executions["n1"].task_executions[0].inputs == {"a": "world", "b": "foobar"}
+    assert execution.node_executions["n1"].task_executions[0].outputs == {"o0": "foobarworld"}
     assert execution.inputs["a"] == 10
     assert execution.inputs["b"] == "foobar"
     assert execution.outputs["o0"] == 12
@@ -94,4 +98,7 @@ def test_monitor_workflow(flyteclient, flyte_workflows_register):
 
     assert execution.node_executions["n0"].inputs == {}
     assert execution.node_executions["n0"].outputs["o0"] == "hello world"
+    assert execution.node_executions["n0"].task_executions[0].inputs == {}
+    assert execution.node_executions["n0"].task_executions[0].outputs["o0"] == "hello world"
+    assert execution.inputs == {}
     assert execution.outputs["o0"] == "hello world"
