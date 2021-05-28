@@ -438,7 +438,9 @@ class SdkNodeExecution(
         :param _node_execution_models.NodeExecution base_model:
         :rtype: SdkNodeExecution
         """
-        return cls(closure=base_model.closure, id=base_model.id, input_uri=base_model.input_uri)
+        return cls(
+            closure=base_model.closure, id=base_model.id, input_uri=base_model.input_uri, metadata=base_model.metadata
+        )
 
     def sync(self):
         """
