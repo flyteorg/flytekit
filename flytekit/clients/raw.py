@@ -16,8 +16,7 @@ from flytekit.clis.auth import credentials as _credentials_access
 from flytekit.clis.sdk_in_container import basic_auth as _basic_auth
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.configuration import creds as _creds_config
-from flytekit.configuration.creds import _DEPRECATED_CLIENT_CREDENTIALS_SCOPE as _DEPRECATED_SCOPE, \
-    COMMAND as _COMMAND
+from flytekit.configuration.creds import _DEPRECATED_CLIENT_CREDENTIALS_SCOPE as _DEPRECATED_SCOPE, COMMAND as _COMMAND
 from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
 from flytekit.configuration.creds import OAUTH_SCOPES
 from flytekit.configuration.platform import AUTH as _AUTH
