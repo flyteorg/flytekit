@@ -1,5 +1,4 @@
 import subprocess
-
 import time
 from typing import List
 
@@ -16,8 +15,9 @@ from flytekit.clis.auth import credentials as _credentials_access
 from flytekit.clis.sdk_in_container import basic_auth as _basic_auth
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.configuration import creds as _creds_config
-from flytekit.configuration.creds import _DEPRECATED_CLIENT_CREDENTIALS_SCOPE as _DEPRECATED_SCOPE, COMMAND as _COMMAND
+from flytekit.configuration.creds import _DEPRECATED_CLIENT_CREDENTIALS_SCOPE as _DEPRECATED_SCOPE
 from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
+from flytekit.configuration.creds import COMMAND as _COMMAND
 from flytekit.configuration.creds import OAUTH_SCOPES
 from flytekit.configuration.platform import AUTH as _AUTH
 from flytekit.loggers import cli_logger
@@ -86,15 +86,10 @@ def _refresh_credentials_from_command(flyte_client):
     """
 
     command = _COMMAND.get()
-    cli_logger.debug(
-        "Starting external process to generate id token. Command {}".format(
-            command)
-    )
+    cli_logger.debug("Starting external process to generate id token. Command {}".format(command))
     output = subprocess.run(command, capture_output=True)
     if output.stderr:
-        cli_logger.error(
-            "Command: {} had error: {}".format(command, output.stderr)
-        )
+        cli_logger.error("Command: {} had error: {}".format(command, output.stderr))
     flyte_client.set_access_token(output.stdout)
 
 
