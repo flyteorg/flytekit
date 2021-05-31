@@ -90,7 +90,7 @@ def _refresh_credentials_from_command(flyte_client):
     output = subprocess.run(command, capture_output=True)
     if output.stderr:
         cli_logger.error("Command: {} had error: {}".format(command, output.stderr))
-    flyte_client.set_access_token(output.stdout)
+    flyte_client.set_access_token(output.stdout.strip().decode('ascii'))
 
 
 def _refresh_credentials_noop(flyte_client):
