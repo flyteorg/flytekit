@@ -115,8 +115,7 @@ def _get_refresh_handler(auth_mode):
         return _refresh_credentials_from_command
     else:
         raise ValueError(
-            "Invalid auth mode [{}] specified. Please update the creds config to use a valid value".format(
-                auth_mode)
+            "Invalid auth mode [{}] specified. Please update the creds config to use a valid value".format(auth_mode)
         )
 
 
