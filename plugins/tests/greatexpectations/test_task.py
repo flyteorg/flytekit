@@ -99,7 +99,7 @@ def test_ge_validation_within_task():
 
     @task
     def my_task(csv_file: str) -> int:
-        task_object(dataset=str(csv_file))
+        task_object(dataset=csv_file)
         df = pd.read_csv(os.path.join("data", csv_file))
         return df.shape[0]
 

@@ -1,5 +1,4 @@
 import datetime
-import logging
 import typing
 from dataclasses import dataclass
 
@@ -135,7 +134,7 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
         else:
             checkpoint = SimpleCheckpoint(f"_tmp_checkpoint_{self._expectation_suite}", context, **checkpoint_config)
 
-        # uniquely identifies the run
+        # identify every run uniquely
         run_id = RunIdentifier(
             **{
                 "run_name": self._data_source + "_run",
@@ -157,10 +156,11 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
                         + "\n"
                     )
 
-            # logs column names for which the validation failed
-            logging.info(result_string)
+            # print column names for which the validation failed
+            print(f"\nCOLUMN\t\tFAILED EXPECTATION")
+            print(result_string)
 
-            # raise a GE exception when validation fails
+            # raise a GE exception
             raise ValidationError(f"Validation failed!")
 
         print(f"Validation succeeded!")
