@@ -5,6 +5,11 @@ from flytekit.configuration import common as _config_common
 deprecated_names = ["CLIENT_CREDENTIALS_SCOPE"]
 
 
+COMMAND = _config_common.FlyteStringConfigurationEntry("credentials", "command", default=None)
+"""
+This command is executed to return a token using an external process   
+"""
+
 CLIENT_ID = _config_common.FlyteStringConfigurationEntry("credentials", "client_id", default=None)
 """
 This is the public identifier for the app which handles authorization for a Flyte deployment.
