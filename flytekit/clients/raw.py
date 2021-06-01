@@ -91,7 +91,9 @@ def _refresh_credentials_from_command(flyte_client):
         output = subprocess.run(command, capture_output=True, text=True, check=True)
     except subprocess.CalledProcessError as e:
         cli_logger.error("Failed to generate token from command {}".format(command))
-        raise _user_exceptions.FlyteAuthenticationException(_six.text_type(e))
+        raise _user_exceptions.FlyteAuthenticationException(
+            "Problems refreshing token with command: " + _six.text_type(e)
+        )
     flyte_client.set_access_token(output.stdout.strip())
 
 
