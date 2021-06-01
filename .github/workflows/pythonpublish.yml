@@ -47,6 +47,11 @@ jobs:
         run: |
           make -C plugins build_all_plugins
           make -C plugins publish_all_plugins
+      # Added sleep because PYPI take some time in publish
+      - name: Sleep for 60 seconds
+        uses: jakejarvis/wait-action@master
+        with:
+          time: '60s'
       - name: Build & Push Flytekit Python3.7 Docker Image to Github Registry
         uses: whoan/docker-build-with-cache-action@v5
         with:
