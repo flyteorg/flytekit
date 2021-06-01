@@ -87,10 +87,8 @@ def _refresh_credentials_from_command(flyte_client):
 
     command = _COMMAND.get()
     cli_logger.debug("Starting external process to generate id token. Command {}".format(command))
-    output = subprocess.run(command, capture_output=True)
-    if output.stderr:
-        cli_logger.error("Command: {} had error: {}".format(command, output.stderr))
-    flyte_client.set_access_token(output.stdout.strip().decode('ascii'))
+    output = subprocess.run(command, capture_output=True, text=True, check=True)
+    flyte_client.set_access_token(output.stdout.strip())
 
 
 def _refresh_credentials_noop(flyte_client):
