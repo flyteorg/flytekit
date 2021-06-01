@@ -34,6 +34,12 @@ jobs:
         run: |
           python setup.py sdist bdist_wheel
           twine upload dist/*
+      - name: Autobump plugin version
+        run: |
+          # from refs/tags/v1.2.3 get 1.2.3
+          VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
+          VERSION=$VERSION make -C plugins update_all_versions
+        shell: bash
       - name: Build all Plugins and publish
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
