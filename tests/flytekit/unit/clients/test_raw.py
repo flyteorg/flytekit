@@ -1,11 +1,12 @@
 import json
 import os
+from subprocess import CompletedProcess
 
 import mock
 from flyteidl.admin import project_pb2 as _project_pb2
 
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
-from flytekit.clients.raw import _get_basic_flow_scopes, _refresh_credentials_basic
+from flytekit.clients.raw import _get_basic_flow_scopes, _refresh_credentials_basic, _refresh_credentials_from_command
 from flytekit.clis.auth.discovery import AuthorizationEndpoints as _AuthorizationEndpoints
 from flytekit.configuration import TemporaryConfiguration
 from flytekit.configuration.creds import CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET
@@ -40,6 +41,22 @@ def test_refresh_credentials_basic(mock_credentials_access, mock_requests):
     _refresh_credentials_basic(mock_client)
     mock_client.set_access_token.assert_called_with("abc")
     mock_credentials_access.get_authorization_endpoints.assert_called_with(mock_client.url)
+
+
+@mock.patch("flytekit.configuration.creds.COMMAND.get")
+@mock.patch("subprocess.run")
+def test_refresh_credentials_from_command(mock_call_to_external_process, mock_command_from_config):
+    command = ["command", "generating", "token"]
+    token = "token"
+
+    mock_command_from_config.return_value = command
+    mock_call_to_external_process.return_value = CompletedProcess(command, 0, stdout=token)
+    mock_client = mock.MagicMock()
+
+    _refresh_credentials_from_command(mock_client)
+
+    mock_call_to_external_process.assert_called_with(command, capture_output=True, text=True, check=True)
+    mock_client.set_access_token.assert_called_with(token)
 
 
 @mock.patch("flytekit.clients.raw._admin_service")

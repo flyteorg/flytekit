@@ -6,6 +6,7 @@
 .*.swp
 .DS_Store
 venv/
+.venv/
 venv3/
 .cache/
 build/
