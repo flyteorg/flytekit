@@ -53,6 +53,9 @@ class LaunchPlan(object):
         fixed_inputs: Dict[str, Any] = None,
         schedule: _schedule_model.Schedule = None,
         notifications: List[_common_models.Notification] = None,
+        labels: _common_models.Labels = None,
+        annotations: _common_models.Annotations = None,
+        raw_output_data_config: _common_models.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
@@ -88,6 +91,9 @@ class LaunchPlan(object):
             fixed_inputs=fixed_lm,
             schedule=schedule,
             notifications=notifications,
+            labels=labels,
+            annotations=annotations,
+            raw_output_data_config=raw_output_data_config,
             auth_role=auth_role,
         )
 
@@ -111,6 +117,9 @@ class LaunchPlan(object):
         fixed_inputs: Dict[str, Any] = None,
         schedule: _schedule_model.Schedule = None,
         notifications: List[_common_models.Notification] = None,
+        labels: _common_models.Labels = None,
+        annotations: _common_models.Annotations = None,
+        raw_output_data_config: _common_models.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
     ) -> LaunchPlan:
         """
@@ -129,6 +138,9 @@ class LaunchPlan(object):
         :param fixed_inputs: Fixed inputs, expressed as Python values. At call time, these cannot be changed.
         :param schedule: Optional schedule to run on.
         :param notifications: Notifications to send.
+        :param labels: Optional labels to attach to executions created by this launch plan.
+        :param annotations: Optional annotations to attach to executions created by this launch plan.
+        :param raw_output_data_config: Optional location of offloaded data for things like S3, etc.
         :param auth_role: Add an auth role if necessary.
         """
         if name is None and (
@@ -136,6 +148,9 @@ class LaunchPlan(object):
             or fixed_inputs is not None
             or schedule is not None
             or notifications is not None
+            or labels is not None
+            or annotations is not None
+            or raw_output_data_config is not None
             or auth_role is not None
         ):
             raise ValueError(
@@ -156,6 +171,9 @@ class LaunchPlan(object):
                 or notifications != cached_outputs["_notifications"]
                 or auth_role != cached_outputs["_auth_role"]
                 or default_inputs != cached_outputs["_saved_inputs"]
+                or labels != cached_outputs["_labels"]
+                or annotations != cached_outputs["_annotations"]
+                or raw_output_data_config != cached_outputs["_raw_output_data_config"]
             ):
                 return AssertionError("The cached values aren't the same as the current call arguments")
 
@@ -168,7 +186,18 @@ class LaunchPlan(object):
             ctx = FlyteContext.current_context()
             lp = cls.get_default_launch_plan(ctx, workflow)
         else:
-            lp = cls.create(name, workflow, default_inputs, fixed_inputs, schedule, notifications, auth_role)
+            lp = cls.create(
+                name,
+                workflow,
+                default_inputs,
+                fixed_inputs,
+                schedule,
+                notifications,
+                labels,
+                annotations,
+                raw_output_data_config,
+                auth_role,
+            )
         LaunchPlan.CACHE[name or workflow.name] = lp
         return lp
 
