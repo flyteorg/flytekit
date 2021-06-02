@@ -82,9 +82,24 @@ def test_auth_role():
     obj2 = _common.AuthRole.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
 
+    obj = _common.AuthRole(assumable_iam_role="rollie-pollie", kubernetes_service_account="service-account-name")
+    assert obj.assumable_iam_role == "rollie-pollie"
+    assert obj.kubernetes_service_account == "service-account-name"
+    obj2 = _common.AuthRole.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == obj2
+
 
 def test_raw_output_data_config():
     obj = _common.RawOutputDataConfig("s3://bucket")
     assert obj.output_location_prefix == "s3://bucket"
     obj2 = _common.RawOutputDataConfig.from_flyte_idl(obj.to_flyte_idl())
     assert obj2 == obj
+
+
+def test_auth_role_empty():
+    # This test is here to ensure we can serialize launch plans with an empty auth role.
+    # Auth roles are empty because they are filled in at registration time.
+    obj = _common.AuthRole()
+    x = obj.to_flyte_idl()
+    y = _common.AuthRole.from_flyte_idl(x)
+    assert y == obj

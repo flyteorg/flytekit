@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
 from flytekit.core.base_task import TaskResolverMixin
-from flytekit.core.context_manager import ExecutionState, FlyteContext
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
 from flytekit.core.tracker import isnested, istestfunction
@@ -18,6 +18,8 @@ from flytekit.core.workflow import (
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
+from flytekit.models import task as task_models
+from flytekit.models.admin import workflow as admin_workflow_models
 
 T = TypeVar("T")
 
@@ -134,7 +136,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
     def compile_into_workflow(
         self, ctx: FlyteContext, is_fast_execution: bool, task_function: Callable, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
-        with ctx.new_compilation_context(prefix="dynamic"):
+        if not ctx.compilation_state:
+            cs = ctx.new_compilation_state("dynamic")
+        else:
+            cs = ctx.compilation_state.with_params(prefix="dynamic")
+
+        with FlyteContextManager.with_context(ctx.with_compilation_state(cs)):
             # TODO: Resolve circular import
             from flytekit.common.translator import get_serializable
 
@@ -145,19 +152,36 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             self._wf.compile(**kwargs)
 
             wf = self._wf
-            sdk_workflow = get_serializable(OrderedDict(), ctx.serialization_settings, wf, is_fast_execution)
+            model_entities = OrderedDict()
+            # See comment on reference entity checking a bit down below in this function.
+            # This is the only circular dependency between the translator.py module and the rest of the flytekit
+            # authoring experience.
+            workflow_spec: admin_workflow_models.WorkflowSpec = get_serializable(
+                model_entities, ctx.serialization_settings, wf, is_fast_execution
+            )
 
             # If no nodes were produced, let's just return the strict outputs
-            if len(sdk_workflow.nodes) == 0:
+            if len(workflow_spec.template.nodes) == 0:
                 return _literal_models.LiteralMap(
-                    literals={binding.var: binding.binding.to_literal_model() for binding in sdk_workflow._outputs}
+                    literals={
+                        binding.var: binding.binding.to_literal_model() for binding in workflow_spec.template.outputs
+                    }
                 )
 
-            # Gather underlying tasks/workflows that get referenced. Launch plans are handled by propeller.
-            tasks = set()
-            sub_workflows = set()
-            for n in sdk_workflow.nodes:
-                self.aggregate(tasks, sub_workflows, n)
+            # This is not great. The translator.py module is relied on here (see comment above) to get the tasks and
+            # subworkflow definitions. However we want to ensure that reference tasks and reference sub workflows are
+            # not used.
+            # TODO: Replace None with a class.
+            for value in model_entities.values():
+                if value is None:
+                    raise Exception(
+                        "Reference tasks are not allowed in the dynamic - a network call is necessary "
+                        "in order to retrieve the structure of the reference task."
+                    )
+
+            # Gather underlying TaskTemplates that get referenced. Launch plans are handled by propeller. Subworkflows
+            # should already be in the workflow spec.
+            tts = [v.template for v in model_entities.values() if isinstance(v, task_models.TaskSpec)]
 
             if is_fast_execution:
                 if (
@@ -170,50 +194,27 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                         "distribution could be retrieved"
                     )
                 logger.warn(f"ctx.execution_state.additional_context {ctx.execution_state.additional_context}")
-                sanitized_tasks = set()
-                for task in tasks:
+                for task_template in tts:
                     sanitized_args = []
-                    for arg in task.container.args:
+                    for arg in task_template.container.args:
                         if arg == "{{ .remote_package_path }}":
                             sanitized_args.append(ctx.execution_state.additional_context.get("dynamic_addl_distro"))
                         elif arg == "{{ .dest_dir }}":
                             sanitized_args.append(ctx.execution_state.additional_context.get("dynamic_dest_dir", "."))
                         else:
                             sanitized_args.append(arg)
-                    del task.container.args[:]
-                    task.container.args.extend(sanitized_args)
-                    sanitized_tasks.add(task)
-
-                tasks = sanitized_tasks
+                    del task_template.container.args[:]
+                    task_template.container.args.extend(sanitized_args)
 
             dj_spec = _dynamic_job.DynamicJobSpec(
-                min_successes=len(sdk_workflow.nodes),
-                tasks=list(tasks),
-                nodes=sdk_workflow.nodes,
-                outputs=sdk_workflow._outputs,
-                subworkflows=list(sub_workflows),
+                min_successes=len(workflow_spec.template.nodes),
+                tasks=tts,
+                nodes=workflow_spec.template.nodes,
+                outputs=workflow_spec.template.outputs,
+                subworkflows=workflow_spec.sub_workflows,
             )
 
             return dj_spec
-
-    @staticmethod
-    def aggregate(tasks, workflows, node) -> None:
-        if node.task_node is not None:
-            tasks.add(node.task_node.sdk_task)
-        if node.workflow_node is not None:
-            if node.workflow_node.sdk_workflow is not None:
-                workflows.add(node.workflow_node.sdk_workflow)
-                for sub_node in node.workflow_node.sdk_workflow.nodes:
-                    PythonFunctionTask.aggregate(tasks, workflows, sub_node)
-        if node.branch_node is not None:
-            if node.branch_node.if_else.case.then_node is not None:
-                PythonFunctionTask.aggregate(tasks, workflows, node.branch_node.if_else.case.then_node)
-            if node.branch_node.if_else.other:
-                for oth in node.branch_node.if_else.other:
-                    if oth.then_node:
-                        PythonFunctionTask.aggregate(tasks, workflows, oth.then_node)
-            if node.branch_node.if_else.else_node is not None:
-                PythonFunctionTask.aggregate(tasks, workflows, node.branch_node.if_else.else_node)
 
     def dynamic_execute(self, task_function: Callable, **kwargs) -> Any:
         """
@@ -227,10 +228,11 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         When running for real in production, the task would stop after the compilation step, and then create a file
         representing that newly generated workflow, instead of executing it.
         """
-        ctx = FlyteContext.current_context()
+        ctx = FlyteContextManager.current_context()
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            with ctx.new_execution_context(ExecutionState.Mode.TASK_EXECUTION):
+            updated_exec_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
+            with FlyteContextManager.with_context(ctx.with_execution_state(updated_exec_state)):
                 logger.info("Executing Dynamic workflow, using raw inputs")
                 return task_function(**kwargs)
 

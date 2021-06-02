@@ -311,6 +311,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         task_type_version=0,
         security_context=None,
         config=None,
+        k8s_pod=None,
     ):
         """
         A task template represents the full set of information necessary to perform a unit of work in the Flyte system.
@@ -332,7 +333,10 @@ class TaskTemplate(_common.FlyteIdlEntity):
             in tandem with the custom.
         :param dict[str, str] config: For plugin tasks this represents additional configuration information to be used
             in tandem with the custom.
+        :param K8sPod k8s_pod: Alternative to the container used to execute this task.
         """
+        if container is not None and k8s_pod is not None:
+            raise ValueError("At most one of container or k8s_pod can be set")
         self._id = id
         self._type = type
         self._metadata = metadata
@@ -342,6 +346,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         self._task_type_version = task_type_version
         self._config = config
         self._security_context = security_context
+        self._k8s_pod = k8s_pod
 
     @property
     def id(self):
@@ -408,6 +413,10 @@ class TaskTemplate(_common.FlyteIdlEntity):
     def security_context(self):
         return self._security_context
 
+    @property
+    def k8s_pod(self):
+        return self._k8s_pod
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.TaskTemplate
@@ -422,6 +431,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             task_type_version=self.task_type_version,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             config={k: v for k, v in self.config.items()} if self.config is not None else None,
+            k8s_pod=self.k8s_pod.to_flyte_idl() if self.k8s_pod else None,
         )
         return task_template
 
@@ -443,6 +453,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             if pb2_object.security_context
             else None,
             config={k: v for k, v in pb2_object.config.items()} if pb2_object.config is not None else None,
+            k8s_pod=K8sPod.from_flyte_idl(pb2_object.k8s_pod) if pb2_object.HasField("k8s_pod") else None,
         )
 
 
@@ -911,17 +922,83 @@ class Container(_common.FlyteIdlEntity):
         )
 
 
+class K8sObjectMetadata(_common.FlyteIdlEntity):
+    def __init__(self, labels: typing.Dict[str, str] = None, annotations: typing.Dict[str, str] = None):
+        """
+        This defines additional metadata for building a kubernetes pod.
+        """
+        self._labels = labels
+        self._annotations = annotations
+
+    @property
+    def labels(self) -> typing.Dict[str, str]:
+        return self._labels
+
+    @property
+    def annotations(self) -> typing.Dict[str, str]:
+        return self._annotations
+
+    def to_flyte_idl(self) -> _core_task.K8sObjectMetadata:
+        return _core_task.K8sObjectMetadata(
+            labels={k: v for k, v in self.labels.items()} if self.labels is not None else None,
+            annotations={k: v for k, v in self.annotations.items()} if self.annotations is not None else None,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_task.K8sObjectMetadata):
+        return cls(
+            labels={k: v for k, v in pb2_object.labels.items()} if pb2_object.labels is not None else None,
+            annotations={k: v for k, v in pb2_object.annotations.items()}
+            if pb2_object.annotations is not None
+            else None,
+        )
+
+
+class K8sPod(_common.FlyteIdlEntity):
+    def __init__(self, metadata: K8sObjectMetadata = None, pod_spec: typing.Dict[str, typing.Any] = None):
+        """
+        This defines a kubernetes pod target.  It will build the pod target during task execution
+        """
+        self._metadata = metadata
+        self._pod_spec = pod_spec
+
+    @property
+    def metadata(self) -> K8sObjectMetadata:
+        return self._metadata
+
+    @property
+    def pod_spec(self) -> typing.Dict[str, typing.Any]:
+        return self._pod_spec
+
+    def to_flyte_idl(self) -> _core_task.K8sPod:
+        return _core_task.K8sPod(
+            metadata=self._metadata.to_flyte_idl(),
+            pod_spec=_json_format.Parse(_json.dumps(self.pod_spec), _struct.Struct()) if self.pod_spec else None,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_task.K8sPod):
+        return cls(
+            metadata=K8sObjectMetadata.from_flyte_idl(pb2_object.metadata),
+            pod_spec=_json_format.MessageToDict(pb2_object.pod_spec) if pb2_object.HasField("pod_spec") else None,
+        )
+
+
 class SidecarJob(_common.FlyteIdlEntity):
-    def __init__(self, pod_spec, primary_container_name):
+    def __init__(self, pod_spec, primary_container_name, annotations=None, labels=None):
         """
         A sidecar job represents the full kubernetes pod spec and related metadata required for executing a sidecar
         task.
 
         :param pod_spec: k8s.io.api.core.v1.PodSpec
         :param primary_container_name: Text
+        :param dict[Text, Text] annotations:
+        :param dict[Text, Text] labels:
         """
         self._pod_spec = pod_spec
         self._primary_container_name = primary_container_name
+        self._annotations = annotations
+        self._labels = labels
 
     @property
     def pod_spec(self):
@@ -937,12 +1014,29 @@ class SidecarJob(_common.FlyteIdlEntity):
         """
         return self._primary_container_name
 
+    @property
+    def annotations(self):
+        """
+        :rtype: dict[Text,Text]
+        """
+        return self._annotations
+
+    @property
+    def labels(self):
+        """
+        :rtype: dict[Text,Text]
+        """
+        return self._labels
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.SidecarJob
         """
         return _lazy_flyteidl.plugins.sidecar_pb2.SidecarJob(
-            pod_spec=self.pod_spec, primary_container_name=self.primary_container_name
+            pod_spec=self.pod_spec,
+            primary_container_name=self.primary_container_name,
+            annotations=self.annotations,
+            labels=self.labels,
         )
 
     @classmethod
@@ -954,6 +1048,8 @@ class SidecarJob(_common.FlyteIdlEntity):
         return cls(
             pod_spec=pb2_object.pod_spec,
             primary_container_name=pb2_object.primary_container_name,
+            annotations=pb2_object.annotations,
+            labels=pb2_object.labels,
         )
 
 

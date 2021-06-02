@@ -10,7 +10,7 @@ This package contains all of the most common abstractions you'll need to write F
 Basic Authoring
 ===============
 
-These are the essentials needed to get started writing tasks and workflows. The elements here correspond well with :std:ref:`Basic <cookbook:sphx_glr_auto_core_basic>` section of the cookbook.
+These are the essentials needed to get started writing tasks and workflows. The elements here correspond well with :std:ref:`Basic <cookbook:sphx_glr_auto_core_flyte_basics>` section of the cookbook.
 
 .. autosummary::
    :nosignatures:
@@ -136,7 +136,7 @@ from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
 from flytekit.core.condition import conditional
 from flytekit.core.container_task import ContainerTask
-from flytekit.core.context_manager import ExecutionParameters, FlyteContext
+from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.map_task import map_task
@@ -168,4 +168,4 @@ def current_context() -> ExecutionParameters:
     Available params are documented in :py:class:`flytekit.core.context_manager.ExecutionParams`.
     There are some special params, that should be available
     """
-    return FlyteContext.current_context().user_space_params
+    return FlyteContextManager.current_context().execution_state.user_space_params

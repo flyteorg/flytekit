@@ -145,6 +145,10 @@ def test_dict_transformer():
     pv = d.to_python_value(ctx, lit, typing.Dict)
     assert pv == {}
 
+    lit_empty = Literal(map=LiteralMap(literals={}))
+    pv_empty = d.to_python_value(ctx, lit_empty, typing.Dict[str, str])
+    assert pv_empty == {}
+
     # Literal to python
     with pytest.raises(TypeError):
         d.to_python_value(ctx, Literal(scalar=Scalar(primitive=Primitive(integer=10))), dict)

@@ -418,8 +418,6 @@ class AuthRole(FlyteIdlEntity):
         :param Text kubernetes_service_account: Provides an identity for workflow execution resources. Flyte deployment
             administrators are responsible for handling permissions as they relate to the service account.
         """
-        if assumable_iam_role and kubernetes_service_account:
-            raise ValueError("Only one of assumable_iam_role or kubernetes_service_account can be set")
         self._assumable_iam_role = assumable_iam_role
         self._kubernetes_service_account = kubernetes_service_account
 
@@ -455,10 +453,8 @@ class AuthRole(FlyteIdlEntity):
         :rtype: Auth
         """
         return cls(
-            assumable_iam_role=pb2_object.assumable_iam_role if pb2_object.HasField("assumable_iam_role") else None,
-            kubernetes_service_account=pb2_object.kubernetes_service_account
-            if pb2_object.HasField("kubernetes_service_account")
-            else None,
+            assumable_iam_role=pb2_object.assumable_iam_role,
+            kubernetes_service_account=pb2_object.kubernetes_service_account,
         )
 
 

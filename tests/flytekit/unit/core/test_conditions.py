@@ -93,8 +93,7 @@ def test_condition_tuple_branches():
 
     @workflow
     def math_ops(a: int, b: int) -> (int, int):
-        # Flyte will only make `sum` and `sub` available as outputs because they are common between all branches
-        sum, sub = (
+        add, sub = (
             conditional("noDivByZero")
             .if_(a > b)
             .then(sum_sub(a=a, b=b))
@@ -102,7 +101,7 @@ def test_condition_tuple_branches():
             .fail("Only positive results are allowed")
         )
 
-        return sum, sub
+        return add, sub
 
     x, y = math_ops(a=3, b=2)
     assert x == 5
@@ -117,8 +116,12 @@ def test_condition_tuple_branches():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
 
-    sdk_wf = get_serializable(OrderedDict(), serialization_settings, math_ops)
-    assert sdk_wf.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name == "test_conditions.sum_sub"
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, math_ops)
+    assert len(wf_spec.template.nodes) == 1
+    assert (
+        wf_spec.template.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name
+        == "test_conditions.sum_sub"
+    )
 
 
 def test_condition_unary_bool():
@@ -195,7 +198,7 @@ def test_subworkflow_condition_serialization():
 
     @workflow
     def if_elif_else_branching(x: int) -> int:
-        return (
+        return (  # noqa
             conditional("test")
             .if_(x == 2)
             .then(wf1())
@@ -230,10 +233,12 @@ def test_subworkflow_condition_serialization():
         (if_elif_else_branching, ["test_conditions.{}".format(x) for x in ("wf1", "wf2", "wf3", "wf4")]),
         (nested_branching, ["test_conditions.{}".format(x) for x in ("ifelse_branching", "wf1", "wf2", "wf5")]),
     ]:
-        serializable_wf = get_serializable(OrderedDict(), serialization_settings, wf)
-        subworkflows = serializable_wf.get_sub_workflows()
+        wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
+        subworkflows = wf_spec.sub_workflows
 
-        assert [sub_wf.id.name for sub_wf in subworkflows] == expected_subworkflows
+        for sub_wf in subworkflows:
+            assert sub_wf.id.name in expected_subworkflows
+        assert len(subworkflows) == len(expected_subworkflows)
 
 
 def test_subworkflow_condition():
@@ -288,3 +293,25 @@ def test_subworkflow_condition_single_named_tuple():
         return conditional("test").if_(x == 2).then(t().b).else_().then(wf1().b)
 
     assert branching(x=2) == 5
+
+
+def test_nested_condition():
+    with pytest.raises(NotImplementedError):
+
+        @workflow
+        def multiplier_2(my_input: float) -> float:
+            return (
+                conditional("fractions")
+                .if_((my_input > 0.1) & (my_input < 1.0))
+                .then(
+                    conditional("inner_fractions")
+                    .if_(my_input < 0.5)
+                    .then(double(n=my_input))
+                    .else_()
+                    .fail("Only <0.5 allowed")
+                )
+                .elif_((my_input > 1.0) & (my_input < 10.0))
+                .then(square(n=my_input))
+                .else_()
+                .fail("The input must be between 0 and 10")
+            )

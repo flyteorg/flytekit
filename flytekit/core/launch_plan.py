@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Type
 
 from flytekit.core import workflow as _annotated_workflow
-from flytekit.core.context_manager import FlyteContext, FlyteEntities
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.interface import Interface, transform_inputs_to_parameters
 from flytekit.core.promise import create_and_link_node, translate_inputs_to_literals
 from flytekit.core.reference_entity import LaunchPlanReference, ReferenceEntity
@@ -55,7 +55,7 @@ class LaunchPlan(object):
         notifications: List[_common_models.Notification] = None,
         auth_role: _common_models.AuthRole = None,
     ) -> LaunchPlan:
-        ctx = FlyteContext.current_context()
+        ctx = FlyteContextManager.current_context()
         default_inputs = default_inputs or {}
         fixed_inputs = fixed_inputs or {}
         # Default inputs come from two places, the original signature of the workflow function, and the default_inputs

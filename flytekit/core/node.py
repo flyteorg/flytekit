@@ -21,6 +21,8 @@ class Node(object):
         upstream_nodes: List[Node],
         flyte_entity: Any,
     ):
+        if id is None:
+            raise ValueError("Illegal construction of node, without a Node ID")
         self._id = _dnsify(id)
         self._metadata = metadata
         self._bindings = bindings
@@ -64,6 +66,10 @@ class Node(object):
     @property
     def flyte_entity(self) -> Any:
         return self._flyte_entity
+
+    @property
+    def metadata(self) -> _workflow_model.NodeMetadata:
+        return self._metadata
 
     def with_overrides(self, *args, **kwargs):
         if "node_name" in kwargs:

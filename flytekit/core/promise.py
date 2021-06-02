@@ -11,7 +11,7 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.core import context_manager as _flyte_context
 from flytekit.core import interface as flyte_interface
 from flytekit.core import type_engine
-from flytekit.core.context_manager import FlyteContext
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine
@@ -154,6 +154,11 @@ _comparators = {
 
 
 class ComparisonExpression(object):
+    """
+    ComparisonExpression refers to an expression of the form (lhs operator rhs), where lhs and rhs are operands
+    and operator can be any comparison expression like <, >, <=, >=, ==, !=
+    """
+
     def __init__(self, lhs: Union["Promise", Any], op: ComparisonOps, rhs: Union["Promise", Any]):
         self._op = op
         self._lhs = None
@@ -169,9 +174,9 @@ class ComparisonExpression(object):
                 if rhs.val.scalar is None or rhs.val.scalar.primitive is None:
                     raise ValueError("Only primitive values can be used in comparison")
         if self._lhs is None:
-            self._lhs = type_engine.TypeEngine.to_literal(FlyteContext.current_context(), lhs, type(lhs), None)
+            self._lhs = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), lhs, type(lhs), None)
         if self._rhs is None:
-            self._rhs = type_engine.TypeEngine.to_literal(FlyteContext.current_context(), rhs, type(rhs), None)
+            self._rhs = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), rhs, type(rhs), None)
 
     @property
     def rhs(self) -> Union["Promise", _literal_models.Literal]:
@@ -209,15 +214,12 @@ class ComparisonExpression(object):
     def __bool__(self):
         raise ValueError(
             "Cannot perform truth value testing,"
-            " This is a limitation in python. For Logical `and\\or` use `&\\|` (bitwise) instead"
+            " This is a limitation in python. For Logical `and\\or` use `&\\|` (bitwise) instead."
+            f" Expr {self}"
         )
 
     def __repr__(self):
-        s = "Comp( "
-        s += f"{self._lhs}"
-        s += f" {self._op.value} "
-        s += f"({self._rhs},{self._rhs})"
-        return s
+        return f"Comp({self._lhs} {self._op.value} {self._rhs})"
 
 
 class ConjunctionExpression(object):
@@ -463,6 +465,19 @@ def create_task_output(
                 if p.ref:
                     return p.ref
             return None
+
+        def runs_before(self, other: Any):
+            """
+            This function is just here to allow local workflow execution to run. See the corresponding function in
+            flytekit.core.node.Node for more information. Local workflow execution in the manual ``create_node``
+            paradigm is already determined by the order in which the nodes were created.
+            """
+            # TODO: If possible, add a check and raise an Exception if create_node was not called in the correct order.
+            return self
+
+        def __rshift__(self, other: Any):
+            # See comment for runs_before
+            return self
 
     return Output(*promises)
 

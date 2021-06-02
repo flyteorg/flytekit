@@ -42,9 +42,9 @@ def test_normal_task():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    sdk_wf = get_serializable(OrderedDict(), serialization_settings, my_wf)
-    assert len(sdk_wf.nodes) == 2
-    assert len(sdk_wf.outputs) == 2
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert len(wf_spec.template.nodes) == 2
+    assert len(wf_spec.template.outputs) == 2
 
     @task
     def t2():
@@ -76,13 +76,13 @@ def test_normal_task():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    sdk_wf = get_serializable(OrderedDict(), serialization_settings, empty_wf)
-    assert sdk_wf.nodes[0].upstream_node_ids[0] == "n1"
-    assert sdk_wf.nodes[0].id == "n0"
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, empty_wf)
+    assert wf_spec.template.nodes[0].upstream_node_ids[0] == "n1"
+    assert wf_spec.template.nodes[0].id == "n0"
 
-    sdk_wf = get_serializable(OrderedDict(), serialization_settings, empty_wf2)
-    assert sdk_wf.nodes[0].upstream_node_ids[0] == "n1"
-    assert sdk_wf.nodes[0].id == "n0"
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, empty_wf2)
+    assert wf_spec.template.nodes[0].upstream_node_ids[0] == "n1"
+    assert wf_spec.template.nodes[0].id == "n0"
 
     with pytest.raises(FlyteAssertion):
 
@@ -134,3 +134,31 @@ def test_reserved_keyword():
         def my_wf(a: int) -> str:
             t1_node = create_node(t1, a=a)
             return t1_node.outputs
+
+
+def test_runs_before():
+    @task
+    def t2(a: str, b: str) -> str:
+        return b + a
+
+    @task()
+    def sleep_task(a: int) -> str:
+        a = a + 2
+        return "world-" + str(a)
+
+    @dynamic
+    def my_subwf(a: int) -> (typing.List[str], int):
+        s = []
+        for i in range(a):
+            s.append(sleep_task(a=i))
+        return s, 5
+
+    @workflow
+    def my_wf(a: int, b: str) -> (str, typing.List[str], int):
+        subwf_node = create_node(my_subwf, a=a)
+        t2_node = create_node(t2, a=b, b=b)
+        subwf_node.runs_before(t2_node)
+        subwf_node >> t2_node
+        return t2_node.o0, subwf_node.o0, subwf_node.o1
+
+    my_wf(a=5, b="hello")

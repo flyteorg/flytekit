@@ -108,7 +108,7 @@ class ExecutionParameters(object):
         attrs: typing.Dict[str, typing.Any]
         working_dir: typing.Union[os.PathLike, _common_utils.AutoDeletingTempDir]
 
-        def __init__(self, current: ExecutionParameters = None):
+        def __init__(self, current: typing.Optional[ExecutionParameters] = None):
             self.stats = current.stats if current else None
             self.execution_date = current.execution_date if current else None
             self.working_dir = current.working_directory if current else None
