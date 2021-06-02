@@ -670,16 +670,18 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         token=None,
         filters=None,
         sort_by=None,
+        unique_parent_id: str = None,
     ):
-        """
-        TODO: Comment
+        """Get node executions associated with a given workflow execution.
+
         :param flytekit.models.core.identifier.WorkflowExecutionIdentifier workflow_execution_identifier:
         :param int limit:
         :param Text token: [Optional] If specified, this specifies where in the rows of results to skip before reading.
-        If you previously retrieved a page response with token="foo" and you want the next page,
-        specify token="foo".
+            If you previously retrieved a page response with token="foo" and you want the next page,
+            specify token="foo".
         :param list[flytekit.models.filters.Filter] filters:
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
+        :param unique_parent_id:
         :rtype: list[flytekit.models.node_execution.NodeExecution], Text
         """
         exec_list = super(SynchronousFlyteClient, self).list_node_executions_paginated(
@@ -689,6 +691,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 token=token,
                 filters=_filters.FilterList(filters or []).to_flyte_idl(),
                 sort_by=None if sort_by is None else sort_by.to_flyte_idl(),
+                unique_parent_id=unique_parent_id,
             )
         )
         return (

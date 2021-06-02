@@ -1,9 +1,16 @@
+import typing
+
+from flytekit.clients.friendly import SynchronousFlyteClient
+from flytekit.models.core.identifier import NodeExecutionIdentifier
+
+
 def iterate_node_executions(
     client,
     workflow_execution_identifier=None,
     task_execution_identifier=None,
     limit=None,
     filters=None,
+    unique_parent_id=None,
 ):
     """
     This returns a generator for node executions.
@@ -26,6 +33,7 @@ def iterate_node_executions(
                 limit=num_to_fetch,
                 token=token,
                 filters=filters,
+                unique_parent_id=unique_parent_id,
             )
         else:
             node_execs, next_token = client.list_node_executions_for_task_paginated(
