@@ -59,11 +59,11 @@ jobs:
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
           image_name: ${{ github.repository_owner }}/flytekit
-          image_tag: flytekit-latest,flytekit-${{ github.sha }},flytekit-${{ steps.bump.outputs.version }}
+          image_tag: py37-latest,py37-${{ github.sha }},py37-${{ steps.bump.outputs.version }}
           push_git_tag: true
           push_image_and_stages: true
           registry: ghcr.io
-          build_extra_args: "--compress=true --build-arg=VERSION=${{ steps.bump.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit-py37:${{ steps.bump.outputs.version }}"
+          build_extra_args: "--compress=true --build-arg=VERSION=${{ steps.bump.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py37-${{ steps.bump.outputs.version }}"
           context: .
           dockerfile: Dockerfile.py37
       - name: Build & Push Flytekit Python3.8 Docker Image to Github Registry
@@ -73,10 +73,10 @@ jobs:
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
           image_name: ${{ github.repository_owner }}/flytekit
-          image_tag: flytekit-latest,flytekit-${{ github.sha }},flytekit-${{ steps.bump.outputs.version }}
+          image_tag: py38-latest,py38-${{ github.sha }},py38-${{ steps.bump.outputs.version }}
           push_git_tag: true
           push_image_and_stages: true
           registry: ghcr.io
-          build_extra_args: "--compress=true --build-arg=VERSION=${{ steps.bump.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit-py38:${{ steps.bump.outputs.version }}"
+          build_extra_args: "--compress=true --build-arg=VERSION=${{ steps.bump.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py38-${{ steps.bump.outputs.version }}"
           context: .
           dockerfile: Dockerfile.py38
