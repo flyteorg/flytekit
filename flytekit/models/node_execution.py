@@ -84,16 +84,52 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         )
 
 
+class NodeExecutionMetaData(_common_models.FlyteIdlEntity):
+    def __init__(self, retry_group: str, is_parent_node: bool, spec_node_id: str):
+        self._retry_group = retry_group
+        self._is_parent_node = is_parent_node
+        self._spec_node_id = spec_node_id
+
+    @property
+    def retry_group(self) -> str:
+        return self._retry_group
+
+    @property
+    def is_parent_node(self) -> bool:
+        return self._is_parent_node
+
+    @property
+    def spec_node_id(self) -> str:
+        return self._spec_node_id
+
+    def to_flyte_idl(self) -> _node_execution_pb2.NodeExecutionMetaData:
+        return _node_execution_pb2.NodeExecutionMetaData(
+            retry_group=self.retry_group,
+            is_parent_node=self.is_parent_node,
+            spec_node_id=self.spec_node_id,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, p: _node_execution_pb2.NodeExecutionMetaData) -> "NodeExecutionMetaData":
+        return cls(
+            retry_group=p.retry_group,
+            is_parent_node=p.is_parent_node,
+            spec_node_id=p.spec_node_id,
+        )
+
+
 class NodeExecution(_common_models.FlyteIdlEntity):
-    def __init__(self, id, input_uri, closure):
+    def __init__(self, id, input_uri, closure, metadata):
         """
         :param flytekit.models.core.identifier.NodeExecutionIdentifier id:
         :param Text input_uri:
         :param NodeExecutionClosure closure:
+        :param NodeExecutionMetaData metadata:
         """
         self._id = id
         self._input_uri = input_uri
         self._closure = closure
+        self._metadata = metadata
 
     @property
     def id(self):
@@ -116,6 +152,10 @@ class NodeExecution(_common_models.FlyteIdlEntity):
         """
         return self._closure
 
+    @property
+    def metadata(self) -> NodeExecutionMetaData:
+        return self._metadata
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.node_execution_pb2.NodeExecution
@@ -124,6 +164,7 @@ class NodeExecution(_common_models.FlyteIdlEntity):
             id=self.id.to_flyte_idl(),
             input_uri=self.input_uri,
             closure=self.closure.to_flyte_idl(),
+            metadata=self.metadata.to_flyte_idl(),
         )
 
     @classmethod
@@ -136,4 +177,5 @@ class NodeExecution(_common_models.FlyteIdlEntity):
             id=_identifier.NodeExecutionIdentifier.from_flyte_idl(p.id),
             input_uri=p.input_uri,
             closure=NodeExecutionClosure.from_flyte_idl(p.closure),
+            metadata=NodeExecutionMetaData.from_flyte_idl(p.metadata),
         )

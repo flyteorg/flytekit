@@ -40,6 +40,8 @@ with mock.patch.object(_IMAGE, "get", return_value="docker.io/blah:abc123"):
         environment={"foo": "bar"},
         pod_spec=get_pod_spec(),
         primary_container_name="a container",
+        annotations={"a": "a"},
+        labels={"b": "b"},
     )
     def simple_sidecar_task(wf_params, in1, out1):
         pass
@@ -78,3 +80,5 @@ def test_sidecar_task():
     }
     assert pod_spec["containers"][1]["name"] == "another container"
     assert simple_sidecar_task.custom["primaryContainerName"] == "a container"
+    assert simple_sidecar_task.custom["annotations"]["a"] == "a"
+    assert simple_sidecar_task.custom["labels"]["b"] == "b"

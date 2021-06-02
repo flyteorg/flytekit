@@ -7,12 +7,19 @@ from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1Resourc
 from flytekit import FlyteContext, PythonFunctionTask
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.extend import Promise, SerializationSettings, TaskPlugins
+from flytekit.models import task as _task_models
 
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
 
 
 class Pod(object):
-    def __init__(self, pod_spec: V1PodSpec, primary_container_name: str):
+    def __init__(
+        self,
+        pod_spec: V1PodSpec,
+        primary_container_name: str,
+        labels: Dict[str, str] = None,
+        annotations: Dict[str, str] = None,
+    ):
         if not pod_spec:
             raise _user_exceptions.FlyteValidationException("A pod spec cannot be undefined")
         if not primary_container_name:
@@ -20,6 +27,8 @@ class Pod(object):
 
         self._pod_spec = pod_spec
         self._primary_container_name = primary_container_name
+        self._labels = labels
+        self._annotations = annotations
 
     @property
     def pod_spec(self) -> V1PodSpec:
@@ -29,6 +38,14 @@ class Pod(object):
     def primary_container_name(self) -> str:
         return self._primary_container_name
 
+    @property
+    def labels(self) -> Dict[str, str]:
+        return self._labels
+
+    @property
+    def annotations(self) -> Dict[str, str]:
+        return self._annotations
+
 
 class PodFunctionTask(PythonFunctionTask[Pod]):
     def __init__(self, task_config: Pod, task_function: Callable, **kwargs):
@@ -36,11 +53,11 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
             task_config=task_config,
             task_type="sidecar",
             task_function=task_function,
-            task_type_version=1,
+            task_type_version=2,
             **kwargs,
         )
 
-    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+    def _serialize_pod_spec(self, settings: SerializationSettings) -> Dict[str, Any]:
         containers = self.task_config.pod_spec.containers
         primary_exists = False
         for container in containers:
@@ -56,7 +73,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
             # In the case of the primary container, we overwrite specific container attributes with the default values
             # used in an SDK runnable task.
             if container.name == self.task_config.primary_container_name:
-                sdk_default_container = self.get_container(settings)
+                sdk_default_container = super().get_container(settings)
 
                 container.image = sdk_default_container.image
                 # clear existing commands
@@ -82,6 +99,18 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
         self.task_config._pod_spec.containers = final_containers
 
         return ApiClient().sanitize_for_serialization(self.task_config.pod_spec)
+
+    def get_k8s_pod(self, settings: SerializationSettings) -> _task_models.K8sPod:
+        return _task_models.K8sPod(
+            pod_spec=self._serialize_pod_spec(settings),
+            metadata=_task_models.K8sObjectMetadata(
+                labels=self.task_config.labels,
+                annotations=self.task_config.annotations,
+            ),
+        )
+
+    def get_container(self, settings: SerializationSettings) -> _task_models.Container:
+        return None
 
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
         return {_PRIMARY_CONTAINER_NAME_FIELD: self.task_config.primary_container_name}
