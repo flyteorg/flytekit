@@ -102,3 +102,24 @@ def test_monitor_workflow(flyteclient, flyte_workflows_register):
     assert execution.node_executions["n0"].task_executions[0].outputs["o0"] == "hello world"
     assert execution.inputs == {}
     assert execution.outputs["o0"] == "hello world"
+
+
+def test_launch_workflow_with_subworkflows(flyteclient, flyte_workflows_register):
+    execution = launch_plan.FlyteLaunchPlan.fetch(
+        PROJECT, "development", "workflows.basic.subworkflows.parent_wf", f"v{VERSION}"
+    ).launch_with_literals(
+        PROJECT,
+        "development",
+        literals.LiteralMap({"a": literals.Literal(literals.Scalar(literals.Primitive(integer=101)))}),
+    )
+    execution.wait_for_completion()
+    # check node execution inputs and outputs
+    assert execution.node_executions["n0"].inputs == {"a": 101}
+    assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}
+    assert execution.node_executions["n1"].inputs == {"a": 103}
+    assert execution.node_executions["n1"].outputs == {"o0": "world", "o1": "world"}
+
+    # check subworkflow task execution inputs and outputs
+    subworkflow_node_executions = execution.node_executions["n1"].subworkflow_node_executions
+    subworkflow_node_executions["n1-0-n0"].inputs == {"a": 103}
+    subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}

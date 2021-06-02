@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 import flytekit
-from flytekit.clients.helpers import iterate_task_executions as _iterate_task_executions
+from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common.exceptions import system as _system_exceptions
@@ -15,7 +15,7 @@ from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.utils import _dnsify
 from flytekit.control_plane import component_nodes as _component_nodes
 from flytekit.control_plane import identifier as _identifier
-from flytekit.control_plane.tasks import executions as _task_executions
+from flytekit.control_plane.tasks.executions import FlyteTaskExecution
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.promise import NodeOutput
 from flytekit.core.type_engine import TypeEngine
@@ -154,14 +154,14 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         raise NotImplementedError("Overrides are not supported in Flyte yet.")
 
     def __repr__(self) -> str:
-        return f"Node(ID: {self.id} Executable: {self._executable_flyte_object})"
+        return f"Node(ID: {self.id})"
 
 
 class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.ExecutionArtifact):
     def __init__(self, *args, **kwargs):
         super(FlyteNodeExecution, self).__init__(*args, **kwargs)
         self._task_executions = None
-        self._workflow_executions = None
+        self._subworkflow_node_executions = None
         self._inputs = None
         self._outputs = None
 
@@ -170,42 +170,42 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
         return self._task_executions or []
 
     @property
-    def workflow_executions(self) -> List["flytekit.control_plane.workflow_executions.FlyteWorkflowExecution"]:
-        return self._workflow_executions or []
+    def subworkflow_node_executions(self) -> Dict[str, "flytekit.control_plane.nodes.FlyteNodeExecution"]:
+        return (
+            {}
+            if self._subworkflow_node_executions is None
+            else {n.id.node_id: n for n in self._subworkflow_node_executions}
+        )
 
     @property
-    def executions(self) -> _artifact_mixin.ExecutionArtifact:
-        return self.task_executions or self.workflow_executions or []
+    def executions(self) -> List[_artifact_mixin.ExecutionArtifact]:
+        return self.task_executions or list(self.subworkflow_node_executions.values()) or []
 
     @property
     def inputs(self) -> Dict[str, Any]:
         """
         Returns the inputs to the execution in the standard python format as dictated by the type engine.
         """
-        from flytekit.control_plane.tasks.task import FlyteTask
-
         if self._inputs is None:
             client = _flyte_engine.get_client()
-            execution_data = client.get_node_execution_data(self.id)
+            node_execution_data = client.get_node_execution_data(self.id)
 
             # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
             input_map: _literal_models.LiteralMap = _literal_models.LiteralMap({})
-            if bool(execution_data.full_inputs.literals):
-                input_map = execution_data.full_inputs
-            elif execution_data.inputs.bytes > 0:
+            if bool(node_execution_data.full_inputs.literals):
+                input_map = node_execution_data.full_inputs
+            elif node_execution_data.inputs.bytes > 0:
                 with _common_utils.AutoDeletingTempDir() as tmp_dir:
                     tmp_name = _os.path.join(tmp_dir.name, "inputs.pb")
-                    _data_proxy.Data.get_data(execution_data.inputs.url, tmp_name)
+                    _data_proxy.Data.get_data(node_execution_data.inputs.url, tmp_name)
                     input_map = _literal_models.LiteralMap.from_flyte_idl(
                         _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
 
-            task_id = self.task_executions[0].id.task_id
-            task = FlyteTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
             self._inputs = TypeEngine.literal_map_to_kwargs(
                 ctx=FlyteContextManager.current_context(),
                 lm=input_map,
-                python_types=TypeEngine.guess_python_types(task.interface.inputs),
+                python_types=TypeEngine.guess_python_types(self.get_interface().inputs),
             )
         return self._inputs
 
@@ -216,8 +216,6 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
 
         :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
         """
-        from flytekit.control_plane.tasks.task import FlyteTask
-
         if not self.is_complete:
             raise _user_exceptions.FlyteAssertion(
                 "Please wait until the node execution has completed before requesting the outputs."
@@ -241,12 +239,10 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
                         _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
 
-            task_id = self.task_executions[0].id.task_id
-            task = FlyteTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
             self._outputs = TypeEngine.literal_map_to_kwargs(
                 ctx=FlyteContextManager.current_context(),
                 lm=output_map,
-                python_types=TypeEngine.guess_python_types(task.interface.outputs),
+                python_types=TypeEngine.guess_python_types(self.get_interface().outputs),
             )
         return self._outputs
 
@@ -275,20 +271,51 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
 
     @classmethod
     def promote_from_model(cls, base_model: _node_execution_models.NodeExecution) -> "FlyteNodeExecution":
-        return cls(closure=base_model.closure, id=base_model.id, input_uri=base_model.input_uri)
+        return cls(
+            closure=base_model.closure,
+            id=base_model.id,
+            input_uri=base_model.input_uri,
+            metadata=base_model.metadata,
+        )
+
+    def get_interface(self) -> "flytekit.control_plane.interface.TypedInterface":
+        from flytekit.control_plane.tasks.task import FlyteTask
+        from flytekit.control_plane.workflow import FlyteWorkflow
+
+        if not self.metadata.is_parent_node:
+            # if not a parent node, assume a task execution node
+            task_id = self.task_executions[0].id.task_id
+            task = FlyteTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
+            return task.interface
+
+        # otherwise assume the node is associated with a subworkflow
+        client = _flyte_engine.get_client()
+        lp_id = client.get_execution(self.id.execution_id).spec.launch_plan
+        workflow = FlyteWorkflow.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+        flyte_subworkflow_node: FlyteNode = [n for n in workflow.nodes if n.id == self.id.node_id][0]
+        return flyte_subworkflow_node.target.flyte_workflow.interface
 
     def sync(self):
         """
         Syncs the state of the underlying execution artifact with the state observed by the platform.
         """
-        if not self.is_complete or self.task_executions is not None:
+        if not self.is_complete or self._task_executions is None:
             client = _flyte_engine.get_client()
             self._closure = client.get_node_execution(self.id).closure
             self._task_executions = [
-                _task_executions.FlyteTaskExecution.promote_from_model(t)
-                for t in _iterate_task_executions(client, self.id)
+                FlyteTaskExecution.promote_from_model(t) for t in iterate_task_executions(client, self.id)
             ]
-            # TODO: sync sub-workflows as well
+
+        if self.metadata.is_parent_node and (not self.is_complete or self._subworkflow_node_executions is None):
+            self._subworkflow_node_executions = [
+                FlyteNodeExecution.promote_from_model(n)
+                for n in iterate_node_executions(
+                    client, workflow_execution_identifier=self.id.execution_id, unique_parent_id=self.id.node_id
+                )
+            ]
+
+        for execution in self.executions:
+            execution.sync()
 
     def _sync_closure(self):
         """
