@@ -7,7 +7,7 @@ deprecated_names = ["CLIENT_CREDENTIALS_SCOPE"]
 
 COMMAND = _config_common.FlyteStringListConfigurationEntry("credentials", "command", default=None)
 """
-This command is executed to return a token using an external process   
+This command is executed to return a token using an external process.
 """
 
 CLIENT_ID = _config_common.FlyteStringConfigurationEntry("credentials", "client_id", default=None)
