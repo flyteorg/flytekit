@@ -276,6 +276,9 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
         )
 
     def get_interface(self) -> "flytekit.control_plane.interface.TypedInterface":
+        """
+        Return the interface of the task or subworkflow associated with this node execution.
+        """
         from flytekit.control_plane.tasks.task import FlyteTask
         from flytekit.control_plane.workflow import FlyteWorkflow
 
