@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Generic, Type, TypeVar, Union
 
-from flytekit import ExecutionParameters, FlyteContext, logger
+from flytekit import ExecutionParameters, FlyteContext, FlyteContextManager, logger
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import dynamic_job as _dynamic_job
@@ -81,10 +81,8 @@ class ExecutableTemplateShimTask(object):
         new_user_params = self.pre_execute(ctx.user_space_params)
 
         # Create another execution context with the new user params, but let's keep the same working dir
-        with ctx.new_execution_context(
-            mode=ctx.execution_state.mode,
-            execution_params=new_user_params,
-            working_dir=ctx.execution_state.working_dir,
+        with FlyteContextManager.with_context(
+            ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))
         ) as exec_ctx:
             # Added: Have to reverse the Python interface from the task template Flyte interface
             # See docstring for more details.
