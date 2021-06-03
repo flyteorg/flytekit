@@ -299,21 +299,24 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
         """
         Syncs the state of the underlying execution artifact with the state observed by the platform.
         """
-        if not self.is_complete or self._task_executions is None:
-            client = _flyte_engine.get_client()
-            self._closure = client.get_node_execution(self.id).closure
-            self._task_executions = [
-                FlyteTaskExecution.promote_from_model(t) for t in iterate_task_executions(client, self.id)
-            ]
+        if self.metadata.is_parent_node:
+            if not self.is_complete or self._subworkflow_node_executions is None:
+                self._subworkflow_node_executions = [
+                    FlyteNodeExecution.promote_from_model(n)
+                    for n in iterate_node_executions(
+                        _flyte_engine.get_client(),
+                        workflow_execution_identifier=self.id.execution_id,
+                        unique_parent_id=self.id.node_id,
+                    )
+                ]
+        else:
+            if not self.is_complete or self._task_executions is None:
+                self._task_executions = [
+                    FlyteTaskExecution.promote_from_model(t)
+                    for t in iterate_task_executions(_flyte_engine.get_client(), self.id)
+                ]
 
-        if self.metadata.is_parent_node and (not self.is_complete or self._subworkflow_node_executions is None):
-            self._subworkflow_node_executions = [
-                FlyteNodeExecution.promote_from_model(n)
-                for n in iterate_node_executions(
-                    client, workflow_execution_identifier=self.id.execution_id, unique_parent_id=self.id.node_id
-                )
-            ]
-
+        self._sync_closure()
         for execution in self.executions:
             execution.sync()
 
