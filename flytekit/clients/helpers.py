@@ -1,9 +1,3 @@
-import typing
-
-from flytekit.clients.friendly import SynchronousFlyteClient
-from flytekit.models.core.identifier import NodeExecutionIdentifier
-
-
 def iterate_node_executions(
     client,
     workflow_execution_identifier=None,
