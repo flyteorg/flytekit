@@ -301,9 +301,11 @@ class LaunchPlan(object):
 
 class ReferenceLaunchPlan(ReferenceEntity, LaunchPlan):
     """
-    A reference launch plan serves as a pointer to a Launch Plan that already exists on your Flyte installation. This
-    object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface.
-    If at registration time the interface provided causes an issue with compilation, an error will be returned.
+    A reference launch plan serves as a pointer to a Launch Plan that already exists on
+    your Flyte installation. This object will not initiate a network call to Admin,
+    which is why the user is asked to provide the expected interface. If at
+    registration time the interface provided causes an issue with compilation, an error
+    will be returned.
     """
 
     def __init__(
