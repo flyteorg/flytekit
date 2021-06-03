@@ -5,13 +5,14 @@ import pytest
 from flytekit import kwtypes, workflow
 from flytekit.extend import Image, ImageConfig, SerializationSettings, get_serializable
 from flytekit.types.schema import FlyteSchema
-from plugins.athena.flytekitplugins.athena.task import AthenaTask
+from plugins.athena.flytekitplugins.athena.task import AthenaTask, AthenaConfig
 
 
 def test_serialization():
     athena_task = AthenaTask(
         name="flytekit.demo.athena_task.query",
         inputs=kwtypes(ds=str),
+        task_config=AthenaConfig(database="mnist"),
         query_template="""
             insert overwrite directory '{{ .rawOutputDataPrefix }}' stored as parquet
             select *
@@ -37,6 +38,7 @@ def test_serialization():
     task_spec = get_serializable(OrderedDict(), serialization_settings, athena_task)
     assert "{{ .rawOutputDataPrefix" in task_spec.template.custom["statement"]
     assert "insert overwrite directory" in task_spec.template.custom["statement"]
+    assert "mnist" == task_spec.template.custom["schema"]
     assert len(task_spec.template.interface.inputs) == 1
     assert len(task_spec.template.interface.outputs) == 1
 

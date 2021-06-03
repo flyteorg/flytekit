@@ -14,7 +14,7 @@ class AthenaConfig(object):
     AthenaConfig should be used to configure a Athena Task. Currently there are no customizable options for the config.
     """
 
-    pass
+    database: str = ""
 
 
 class AthenaTask(SQLTask[AthenaConfig]):
@@ -64,5 +64,5 @@ class AthenaTask(SQLTask[AthenaConfig]):
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         # This task is executed using the presto handler in the backend.
-        job = PrestoQuery(statement=self.query_template)
+        job = PrestoQuery(statement=self.query_template, schema=self.task_config.database)
         return MessageToDict(job.to_flyte_idl())
