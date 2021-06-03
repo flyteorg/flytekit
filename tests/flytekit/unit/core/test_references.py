@@ -365,6 +365,14 @@ def test_ref_lp_from_decorator():
     assert ref_lp1.python_interface.outputs == {"o0": int}
 
 
+def test_ref_lp_from_decorator_with_named_outputs():
+    @reference_launch_plan(project="project", domain="domain", name="name", version="version")
+    def ref_lp1(p1: str, p2: str) -> typing.NamedTuple("RefLPOutput", o1=int, o2=str):
+        ...
+
+    assert ref_lp1.python_interface.outputs == {"o1": int, "o2": str}
+
+
 def test_ref_dynamic():
     @reference_task(
         project="flytesnacks",
