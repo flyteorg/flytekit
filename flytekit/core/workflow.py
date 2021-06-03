@@ -266,7 +266,6 @@ class WorkflowBase(object):
                 if isinstance(v, Promise):
                     raise ValueError(f"Received a promise for a workflow call, when expecting a native value for {k}")
 
-            result = None
             with FlyteContextManager.with_context(
                 ctx.with_execution_state(
                     ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
