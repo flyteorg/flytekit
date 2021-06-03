@@ -11,7 +11,7 @@ from flytekit.types.schema import FlyteSchema
 @dataclass
 class AthenaConfig(object):
     """
-    AthenaConfig should be used to configure a Athena Task. Currently there are no customizable options for the config.
+    AthenaConfig should be used to configure a Athena Task.
     """
 
     database: str = ""
