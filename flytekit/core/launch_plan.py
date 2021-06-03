@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Type
+import inspect
+from typing import Any, Callable, Dict, List, Optional, Type
 
 from flytekit.core import workflow as _annotated_workflow
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities
-from flytekit.core.interface import Interface, transform_inputs_to_parameters
+from flytekit.core.interface import Interface, transform_inputs_to_parameters, transform_signature_to_interface
 from flytekit.core.promise import create_and_link_node, translate_inputs_to_literals
 from flytekit.core.reference_entity import LaunchPlanReference, ReferenceEntity
 from flytekit.models import common as _common_models
@@ -309,3 +310,22 @@ class ReferenceLaunchPlan(ReferenceEntity, LaunchPlan):
         self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
     ):
         super().__init__(LaunchPlanReference(project, domain, name, version), inputs, outputs)
+
+
+def reference_launch_plan(
+    project: str,
+    domain: str,
+    name: str,
+    version: str,
+) -> Callable[[Callable[..., Any]], ReferenceLaunchPlan]:
+    """
+    A reference launch plan is a pointer to a launch plan that already exists on your
+    Flyte installation. This object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface.
+    If at registration time the interface provided causes an issue with compilation, an error will be returned.
+    """
+
+    def wrapper(fn) -> ReferenceLaunchPlan:
+        interface = transform_signature_to_interface(inspect.signature(fn))
+        return ReferenceLaunchPlan(project, domain, name, version, interface.inputs, interface.outputs)
+
+    return wrapper

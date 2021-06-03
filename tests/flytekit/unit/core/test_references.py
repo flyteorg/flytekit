@@ -8,7 +8,7 @@ from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.dynamic_workflow_task import dynamic
-from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.launch_plan import LaunchPlan, reference_launch_plan
 from flytekit.core.promise import VoidPromise
 from flytekit.core.reference import get_reference_entity
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
@@ -350,6 +350,19 @@ def test_lp_from_ref_wf():
     assert lp.workflow.id.project == "project"
     assert lp.workflow.id.domain == "domain"
     assert lp.workflow.id.version == "version"
+
+
+def test_ref_lp_from_decorator():
+    @reference_launch_plan(project="project", domain="domain", name="name", version="version")
+    def ref_lp1(p1: str, p2: str) -> int:
+        ...
+
+    assert ref_lp1.id.name == "name"
+    assert ref_lp1.id.project == "project"
+    assert ref_lp1.id.domain == "domain"
+    assert ref_lp1.id.version == "version"
+    assert ref_lp1.python_interface.inputs == {"p1": str, "p2": str}
+    assert ref_lp1.python_interface.outputs == {"o0": int}
 
 
 def test_ref_dynamic():
