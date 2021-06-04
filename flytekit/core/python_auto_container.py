@@ -217,7 +217,7 @@ def get_registerable_container_image(img: Optional[str], cfg: ImageConfig) -> st
                 raise AssertionError(f"Only fqn and version are supported replacements, {attr} is not supported")
         return img
     if cfg.default_image is None:
-        raise ValueError(f"An image is required for PythonAutoContainer tasks")
+        raise ValueError("An image is required for PythonAutoContainer tasks")
     return f"{cfg.default_image.fqn}:{cfg.default_image.tag}"
 
 
