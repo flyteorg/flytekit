@@ -65,6 +65,13 @@ def test_container_image_conversion():
     assert get_registerable_container_image("{{.image.default}}", cfg) == "xyz.com/abc:tag1"
 
 
+def test_get_registerable_container_image_no_images():
+    cfg = ImageConfig()
+
+    with pytest.raises(ValueError):
+        assert get_registerable_container_image("", cfg) == "xyz.com/abc:tag1"
+
+
 def test_py_func_task_get_container():
     def foo(i: int):
         pass
