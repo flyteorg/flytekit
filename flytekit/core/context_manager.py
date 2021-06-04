@@ -77,7 +77,7 @@ def look_up_image_info(name: str, tag: str, optional_tag: bool = False) -> Image
         return Image(name=name, fqn=ref["name"], tag=ref["tag"])
 
 
-def get_image_config(img_name: str = None) -> ImageConfig:
+def get_image_config(img_name: Optional[str] = None) -> ImageConfig:
     image_name = img_name if img_name else internal.IMAGE.get()
     default_img = look_up_image_info("default", image_name) if image_name is not None and image_name != "" else None
     other_images = [look_up_image_info(k, tag=v, optional_tag=True) for k, v in images.get_specified_images().items()]
