@@ -279,8 +279,6 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
     """
     if not image:
         image = _internal_config.IMAGE.get()
-    if not image:
-        raise click.UsageError("Could not find image from config, please specify a value for ``--image``")
     ctx.obj[CTX_IMAGE] = image
 
     if local_source_root is None:
