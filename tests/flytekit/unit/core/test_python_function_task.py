@@ -69,7 +69,7 @@ def test_get_registerable_container_image_no_images():
     cfg = ImageConfig()
 
     with pytest.raises(ValueError):
-        assert get_registerable_container_image("", cfg) == "xyz.com/abc:tag1"
+        get_registerable_container_image("", cfg)
 
 
 def test_py_func_task_get_container():
