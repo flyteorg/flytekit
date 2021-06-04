@@ -156,10 +156,7 @@ class NodeExecution(_common_models.FlyteIdlEntity):
     def metadata(self) -> NodeExecutionMetaData:
         return self._metadata
 
-    def to_flyte_idl(self):
-        """
-        :rtype: flyteidl.admin.node_execution_pb2.NodeExecution
-        """
+    def to_flyte_idl(self) -> _node_execution_pb2.NodeExecution:
         return _node_execution_pb2.NodeExecution(
             id=self.id.to_flyte_idl(),
             input_uri=self.input_uri,
@@ -168,11 +165,7 @@ class NodeExecution(_common_models.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, p):
-        """
-        :param flyteidl.admin.node_execution_pb2.NodeExecution p:
-        :rtype: NodeExecution
-        """
+    def from_flyte_idl(cls, p: _node_execution_pb2.NodeExecution) -> "NodeExecution":
         return cls(
             id=_identifier.NodeExecutionIdentifier.from_flyte_idl(p.id),
             input_uri=p.input_uri,

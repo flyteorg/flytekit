@@ -1,3 +1,5 @@
+import typing
+
 import six as _six
 from flyteidl.admin import common_pb2 as _common_pb2
 from flyteidl.admin import execution_pb2 as _execution_pb2
@@ -19,6 +21,7 @@ from flytekit.models import launch_plan as _launch_plan
 from flytekit.models import node_execution as _node_execution
 from flytekit.models import project as _project
 from flytekit.models import task as _task
+from flytekit.models.admin import common as _admin_common
 from flytekit.models.admin import task_execution as _task_execution
 from flytekit.models.admin import workflow as _workflow
 from flytekit.models.core import identifier as _identifier
@@ -666,20 +669,22 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     def list_node_executions(
         self,
         workflow_execution_identifier,
-        limit=100,
-        token=None,
-        filters=None,
-        sort_by=None,
+        limit: int = 100,
+        token: typing.Optional[str] = None,
+        filters: typing.List[_filters.Filter] = None,
+        sort_by: _admin_common.Sort = None,
+        unique_parent_id: str = None,
     ):
-        """
-        TODO: Comment
+        """Get node executions associated with a given workflow execution.
+
         :param flytekit.models.core.identifier.WorkflowExecutionIdentifier workflow_execution_identifier:
-        :param int limit:
-        :param Text token: [Optional] If specified, this specifies where in the rows of results to skip before reading.
-        If you previously retrieved a page response with token="foo" and you want the next page,
-        specify token="foo".
+        :param limit: Limit the number of items returned in the response.
+        :param token: If specified, this specifies where in the rows of results to skip before reading.
+            If you previously retrieved a page response with token="foo" and you want the next page,
+            specify ``token="foo"``.
         :param list[flytekit.models.filters.Filter] filters:
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
+        :param unique_parent_id: If specified, returns the node executions for the ``unique_parent_id`` node id.
         :rtype: list[flytekit.models.node_execution.NodeExecution], Text
         """
         exec_list = super(SynchronousFlyteClient, self).list_node_executions_paginated(
@@ -689,6 +694,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 token=token,
                 filters=_filters.FilterList(filters or []).to_flyte_idl(),
                 sort_by=None if sort_by is None else sort_by.to_flyte_idl(),
+                unique_parent_id=unique_parent_id,
             )
         )
         return (
