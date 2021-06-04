@@ -12,7 +12,7 @@ def test_serialization():
     athena_task = AthenaTask(
         name="flytekit.demo.athena_task.query",
         inputs=kwtypes(ds=str),
-        task_config=AthenaConfig(database="mnist"),
+        task_config=AthenaConfig(database="mnist", catalog="my_catalog", workgroup="my_wg"),
         query_template="""
             insert overwrite directory '{{ .rawOutputDataPrefix }}' stored as parquet
             select *
@@ -39,6 +39,8 @@ def test_serialization():
     assert "{{ .rawOutputDataPrefix" in task_spec.template.custom["statement"]
     assert "insert overwrite directory" in task_spec.template.custom["statement"]
     assert "mnist" == task_spec.template.custom["schema"]
+    assert "my_catalog" == task_spec.template.custom["catalog"]
+    assert "my_wg" == task_spec.template.custom["routingGroup"]
     assert len(task_spec.template.interface.inputs) == 1
     assert len(task_spec.template.interface.outputs) == 1
 
