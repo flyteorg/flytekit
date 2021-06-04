@@ -290,6 +290,9 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
 
         # otherwise assume the node is associated with a subworkflow
         client = _flyte_engine.get_client()
+        # need to get the FlyteWorkflow associated with this node execution (self), so we need to fetch the parent
+        # workflow and iterate through the parent's FlyteNodes to get the the FlyteWorkflow object representing the
+        # subworkflow. This allows us to get the interface for guessing the types of the inputs/outputs.
         lp_id = client.get_execution(self.id.execution_id).spec.launch_plan
         workflow = FlyteWorkflow.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
         flyte_subworkflow_node: FlyteNode = [n for n in workflow.nodes if n.id == self.id.node_id][0]
