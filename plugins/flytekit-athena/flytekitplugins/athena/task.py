@@ -14,7 +14,12 @@ class AthenaConfig(object):
     AthenaConfig should be used to configure a Athena Task.
     """
 
-    database: str = ""
+    # The database to query against
+    database: Optional[str] = None
+    # The optional workgroup to separate query execution.
+    workgroup: Optional[str] = None
+    # The catalog to set for the given Presto query
+    catalog: Optional[str] = None
 
 
 class AthenaTask(SQLTask[AthenaConfig]):
@@ -64,5 +69,10 @@ class AthenaTask(SQLTask[AthenaConfig]):
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         # This task is executed using the presto handler in the backend.
-        job = PrestoQuery(statement=self.query_template, schema=self.task_config.database)
+        job = PrestoQuery(
+            statement=self.query_template,
+            schema=self.task_config.database,
+            routing_group=self.task_config.workgroup,
+            catalog=self.task_config.catalog,
+        )
         return MessageToDict(job.to_flyte_idl())
