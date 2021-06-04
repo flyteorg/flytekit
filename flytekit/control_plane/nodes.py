@@ -179,7 +179,7 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
 
     @property
     def executions(self) -> List[_artifact_mixin.ExecutionArtifact]:
-        return self.task_executions or list(self.subworkflow_node_executions.values()) or []
+        return self.task_executions or self._subworkflow_node_executions or []
 
     @property
     def inputs(self) -> Dict[str, Any]:
