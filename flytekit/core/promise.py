@@ -204,11 +204,9 @@ class ComparisonExpression(object):
         return _comparators[self.op](lhs, rhs)
 
     def __and__(self, other):
-        print("Comparison AND called")
         return ConjunctionExpression(lhs=self, op=ConjunctionOps.AND, rhs=other)
 
     def __or__(self, other):
-        print("Comparison OR called")
         return ConjunctionExpression(lhs=self, op=ConjunctionOps.OR, rhs=other)
 
     def __bool__(self):
