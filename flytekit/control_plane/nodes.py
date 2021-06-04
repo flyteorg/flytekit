@@ -303,7 +303,7 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
                 workflow = FlyteWorkflow.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
                 flyte_subworkflow_node: FlyteNode = [n for n in workflow.nodes if n.id == self.id.node_id][0]
                 self._interface = flyte_subworkflow_node.target.flyte_workflow.interface
-        
+
         return self._interface
 
     def sync(self):
