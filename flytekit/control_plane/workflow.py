@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 from flytekit.common import constants as _constants
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.control_plane import identifier as _identifier
 from flytekit.control_plane import interface as _interfaces
