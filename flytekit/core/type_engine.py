@@ -16,6 +16,7 @@ from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
+from marshmallow_jsonschema import JSONSchema
 
 from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
@@ -150,15 +151,63 @@ class RestrictedType(TypeTransformer[T], ABC):
 
 
 class DataclassTransformer(TypeTransformer[object]):
+    """
+    The Dataclass Transformer, provides a type transformer for arbitrary Python dataclasses, that have
+    @dataclass and @dataclass_json decorators.
+
+    The Dataclass is converted to and from json and is transported between tasks using the proto.Structpb representation
+    Also the type declaration will try to extract the JSON Schema for the object if possible and pass it with the
+    definition.
+
+    For Json Schema, we use https://github.com/fuhrysteve/marshmallow-jsonschema library.
+
+    Example
+
+    .. code-block:: python
+
+        @dataclass_json
+        @dataclass
+        class Test():
+           a: int
+           b: str
+
+        from marshmallow_jsonschema import JSONSchema
+        t = Test(a=10,b="e")
+        JSONSchema().dump(t.schema())
+
+    Output will look like
+
+    .. code-block:: json
+
+        {'$schema': 'http://json-schema.org/draft-07/schema#',
+         'definitions': {'TestSchema': {'properties': {'a': {'title': 'a',
+             'type': 'number',
+             'format': 'integer'},
+            'b': {'title': 'b', 'type': 'string'}},
+           'type': 'object',
+           'additionalProperties': False}},
+         '$ref': '#/definitions/TestSchema'}
+
+    .. note::
+
+        The schema support is experimental and is useful for auto-completing in the UI/CLI
+
+    """
+
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
+        """
+        Extracts the Literal type definition for a Dataclass and returns a type Struct.
+        If possible also extracts the JSONSchema for the dataclass.
+        """
         if not issubclass(t, DataClassJsonMixin):
             raise AssertionError(
                 f"Dataclass {t} should be decorated with @dataclass_json to be " f"serialized correctly"
             )
-        return _primitives.Generic.to_flyte_literal_type()
+        schema = JSONSchema().dump(t.schema())
+        return _primitives.Generic.to_flyte_literal_type(metadata=schema)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if not dataclasses.is_dataclass(python_val):
