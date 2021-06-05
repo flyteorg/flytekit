@@ -1,5 +1,4 @@
 import json as _json
-import typing
 
 from flyteidl.core import types_pb2 as _types_pb2
 from google.protobuf import json_format as _json_format
