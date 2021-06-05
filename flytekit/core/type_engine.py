@@ -206,7 +206,12 @@ class DataclassTransformer(TypeTransformer[object]):
             raise AssertionError(
                 f"Dataclass {t} should be decorated with @dataclass_json to be " f"serialized correctly"
             )
-        schema = JSONSchema().dump(t.schema())
+        schema = None
+        try:
+            schema = JSONSchema().dump(t.schema())
+        except Exception as e:
+            logger.warn("failed to extract schema for object %s, (will run schemaless) error: %s", str(t), e)
+
         return _primitives.Generic.to_flyte_literal_type(metadata=schema)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:

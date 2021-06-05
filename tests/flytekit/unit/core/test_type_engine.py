@@ -254,7 +254,7 @@ def test_zero_floats():
 @dataclass_json
 class InnerStruct(object):
     a: int
-    b: str
+    b: typing.Optional[str]
     c: typing.List[int]
 
 
@@ -263,6 +263,18 @@ class InnerStruct(object):
 class TestStruct(object):
     s: InnerStruct
     m: typing.Dict[str, str]
+
+
+class UnsupportedSchemaType:
+    def __init__(self):
+        self._a = "Hello"
+
+
+@dataclass_json
+@dataclass
+class UnsupportedNestedStruct(object):
+    a: int
+    s: UnsupportedSchemaType
 
 
 def test_dataclass_transformer():
@@ -274,7 +286,7 @@ def test_dataclass_transformer():
                 "additionalProperties": False,
                 "properties": {
                     "a": {"format": "integer", "title": "a", "type": "number"},
-                    "b": {"title": "b", "type": "string"},
+                    "b": {"default": None, "title": "b", "type": ["string", "null"]},
                     "c": {
                         "items": {"format": "integer", "title": "c", "type": "number"},
                         "title": "c",
@@ -307,3 +319,9 @@ def test_dataclass_transformer():
     assert t.simple == SimpleType.STRUCT
     assert t.metadata is not None
     assert t.metadata == schema
+
+    t = tf.get_literal_type(UnsupportedNestedStruct)
+    assert t is not None
+    assert t.simple is not None
+    assert t.simple == SimpleType.STRUCT
+    assert t.metadata is None
