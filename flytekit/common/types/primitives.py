@@ -1,5 +1,6 @@
 import datetime as _datetime
 import json as _json
+import typing
 
 import six as _six
 from dateutil import parser as _parser
@@ -547,11 +548,11 @@ class Generic(_base_sdk_types.FlyteSdkValue):
         return cls(_json_format.Parse(t, _struct.Struct()))
 
     @classmethod
-    def to_flyte_literal_type(cls):
+    def to_flyte_literal_type(cls, metadata: typing.Dict = None):
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return _idl_types.LiteralType(simple=_idl_types.SimpleType.STRUCT)
+        return _idl_types.LiteralType(simple=_idl_types.SimpleType.STRUCT, metadata=metadata)
 
     @classmethod
     def promote_from_model(cls, literal_model):
