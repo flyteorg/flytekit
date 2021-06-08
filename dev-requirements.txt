@@ -23,12 +23,14 @@ bcrypt==3.2.0
     # via
     #   -c requirements.txt
     #   paramiko
-black==21.5b1
+black==21.5b2
     # via
     #   -c requirements.txt
     #   -r dev-requirements.in
     #   flake8-black
-certifi==2020.12.5
+cached-property==1.5.2
+    # via docker-compose
+certifi==2021.5.30
     # via
     #   -c requirements.txt
     #   requests
@@ -57,7 +59,7 @@ cryptography==3.4.7
     # via
     #   -c requirements.txt
     #   paramiko
-dataclasses-json==0.5.3
+dataclasses-json==0.5.4
     # via
     #   -c requirements.txt
     #   flytekit
@@ -98,7 +100,7 @@ flake8==3.9.2
     #   -r dev-requirements.in
     #   flake8-black
     #   flake8-isort
-flyteidl==0.18.50
+flyteidl==0.19.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -110,10 +112,14 @@ idna==2.10
     # via
     #   -c requirements.txt
     #   requests
-importlib-metadata==4.3.1
+importlib-metadata==4.5.0
     # via
     #   -c requirements.txt
+    #   flake8
+    #   jsonschema
     #   keyring
+    #   pluggy
+    #   pytest
 iniconfig==1.1.1
     # via pytest
 isort==5.8.0
@@ -140,11 +146,16 @@ marshmallow-enum==1.5.1
     # via
     #   -c requirements.txt
     #   dataclasses-json
+marshmallow-jsonschema==0.12.0
+    # via
+    #   -c requirements.txt
+    #   flytekit
 marshmallow==3.12.1
     # via
     #   -c requirements.txt
     #   dataclasses-json
     #   marshmallow-enum
+    #   marshmallow-jsonschema
 mccabe==0.6.1
     # via flake8
 mock==4.0.3
@@ -155,7 +166,7 @@ mypy-extensions==0.4.3
     #   black
     #   mypy
     #   typing-inspect
-mypy==0.812
+mypy==0.900
     # via -r dev-requirements.in
 natsort==7.1.1
     # via
@@ -185,7 +196,7 @@ pathspec==0.8.1
     #   scantree
 pluggy==0.13.1
     # via pytest
-protobuf==3.17.1
+protobuf==3.17.3
     # via
     #   -c requirements.txt
     #   flyteidl
@@ -308,15 +319,21 @@ toml==0.10.2
     #   -c requirements.txt
     #   black
     #   coverage
+    #   mypy
     #   pytest
 typed-ast==1.4.3
-    # via mypy
+    # via
+    #   -c requirements.txt
+    #   black
+    #   mypy
 typing-extensions==3.10.0.0
     # via
     #   -c requirements.txt
+    #   black
+    #   importlib-metadata
     #   mypy
     #   typing-inspect
-typing-inspect==0.6.0
+typing-inspect==0.7.1
     # via
     #   -c requirements.txt
     #   dataclasses-json
