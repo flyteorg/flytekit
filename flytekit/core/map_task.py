@@ -15,7 +15,9 @@ from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
-from flytekit.models.task import Container
+from flytekit.models.task import Container, K8sObjectMetadata, K8sPod
+
+_K8S_POD_TARGET_TASK_TYPES = ["sidecar"]
 
 
 class MapPythonTask(PythonTask):
@@ -84,6 +86,8 @@ class MapPythonTask(PythonTask):
         return container_args
 
     def get_container(self, settings: SerializationSettings) -> Container:
+        if self._run_task.task_type in _K8S_POD_TARGET_TASK_TYPES:
+            return None
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
             image=get_registerable_container_image(None, settings.image_config),
@@ -92,6 +96,13 @@ class MapPythonTask(PythonTask):
             data_loading_config=None,
             environment=env,
         )
+
+    def get_k8s_pod(self, settings: SerializationSettings) -> K8sPod:
+        if self._run_task.task_type not in _K8S_POD_TARGET_TASK_TYPES:
+            return None
+
+        self._run_task.set_command_fn(self.get_command)
+        return self._run_task.get_k8s_pod(settings)
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return ArrayJob(parallelism=self._max_concurrency, min_success_ratio=self._min_success_ratio).to_dict()
