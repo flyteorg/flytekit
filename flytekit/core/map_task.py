@@ -15,7 +15,7 @@ from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
-from flytekit.models.task import Container, K8sObjectMetadata, K8sPod
+from flytekit.models.task import Container, K8sPod
 
 _K8S_POD_TARGET_TASK_TYPES = ["sidecar"]
 
@@ -106,6 +106,9 @@ class MapPythonTask(PythonTask):
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return ArrayJob(parallelism=self._max_concurrency, min_success_ratio=self._min_success_ratio).to_dict()
+
+    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+        return self._run_task.get_config(settings)
 
     @property
     def run_task(self) -> PythonTask:

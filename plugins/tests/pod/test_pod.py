@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 from kubernetes.client import ApiClient
 from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements, V1VolumeMount
 
-from flytekit import Resources, dynamic, task
+from flytekit import Resources, TaskMetadata, dynamic, map_task, task
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.extend import ExecutionState, Image, ImageConfig, SerializationSettings
@@ -278,3 +278,46 @@ def test_pod_task_serialized():
     assert serialized.template.k8s_pod.metadata.labels == {"label": "foo"}
     assert serialized.template.k8s_pod.metadata.annotations == {"anno": "bar"}
     assert serialized.template.k8s_pod.pod_spec is not None
+
+
+def test_map_pod_task_serialization():
+    pod = Pod(
+        pod_spec=V1PodSpec(restart_policy="OnFailure", containers=[V1Container(name="primary")]),
+        primary_container_name="primary",
+    )
+
+    @task(task_config=pod, environment={"FOO": "bar"})
+    def simple_pod_task(i: int):
+        pass
+
+    mapped_task = map_task(simple_pod_task, metadata=TaskMetadata(retries=1))
+    default_img = Image(name="default", fqn="test", tag="tag")
+    serialization_settings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={"FOO": "baz"},
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
+    # Test that target is correctly serialized with an updated command
+    pod_spec = mapped_task.get_k8s_pod(serialization_settings).pod_spec
+
+    assert len(pod_spec["containers"]) == 1
+    assert pod_spec["containers"][0]["args"] == [
+        "pyflyte-map-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "plugins.tests.pod.test_pod",
+        "task-name",
+        "simple_pod_task",
+    ]
+    assert {"primary_container_name": "primary"} == mapped_task.get_config(serialization_settings)
