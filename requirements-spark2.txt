@@ -25,17 +25,17 @@ backcall==0.2.0
     # via ipython
 bcrypt==3.2.0
     # via paramiko
-black==21.5b1
+black==21.5b2
     # via papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.84
+boto3==1.17.90
     # via sagemaker-training
-botocore==1.20.84
+botocore==1.20.90
     # via
     #   boto3
     #   s3transfer
-certifi==2020.12.5
+certifi==2021.5.30
     # via requests
 cffi==1.14.5
     # via
@@ -54,7 +54,7 @@ croniter==1.0.13
     # via flytekit
 cryptography==3.4.7
     # via paramiko
-dataclasses-json==0.5.3
+dataclasses-json==0.5.4
     # via flytekit
 decorator==5.0.9
     # via
@@ -72,7 +72,7 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.18.50
+flyteidl==0.19.0
     # via flytekit
 gevent==21.1.2
     # via sagemaker-training
@@ -84,8 +84,10 @@ hmsclient==0.1.1
     # via flytekit
 idna==2.10
     # via requests
-importlib-metadata==4.3.1
-    # via keyring
+importlib-metadata==4.5.0
+    # via
+    #   jsonschema
+    #   keyring
 inotify_simple==1.2.1
     # via sagemaker-training
 ipykernel==5.5.5
@@ -94,7 +96,7 @@ ipython-genutils==0.2.0
     # via
     #   nbformat
     #   traitlets
-ipython==7.24.0
+ipython==7.24.1
     # via ipykernel
 jedi==0.18.0
     # via ipython
@@ -125,10 +127,13 @@ markupsafe==2.0.1
     # via jinja2
 marshmallow-enum==1.5.1
     # via dataclasses-json
+marshmallow-jsonschema==0.12.0
+    # via flytekit
 marshmallow==3.12.1
     # via
     #   dataclasses-json
     #   marshmallow-enum
+    #   marshmallow-jsonschema
 matplotlib-inline==0.1.2
     # via ipython
 mistune==0.8.4
@@ -181,7 +186,7 @@ pickleshare==0.7.5
     # via ipython
 prompt-toolkit==3.0.18
     # via ipython
-protobuf==3.17.1
+protobuf==3.17.3
     # via
     #   flyteidl
     #   flytekit
@@ -300,9 +305,14 @@ traitlets==5.0.5
     #   nbclient
     #   nbconvert
     #   nbformat
+typed-ast==1.4.3
+    # via black
 typing-extensions==3.10.0.0
-    # via typing-inspect
-typing-inspect==0.6.0
+    # via
+    #   black
+    #   importlib-metadata
+    #   typing-inspect
+typing-inspect==0.7.1
     # via dataclasses-json
 urllib3==1.25.11
     # via
