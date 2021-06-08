@@ -1,4 +1,5 @@
 import datetime
+import logging
 import typing
 from dataclasses import dataclass
 
@@ -50,6 +51,8 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
     TODO: Connect Data Docs to Flyte Console.
     """
 
+    _TASK_TYPE = "greatexpectations"
+
     def __init__(
         self,
         name: str,
@@ -63,7 +66,6 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
         **kwargs,
     ) -> typing.Dict[str, str]:
 
-        _TASK_TYPE = "greatexpectations"
         self._data_source = data_source
         self._data_connector = data_connector
         self._expectation_suite = expectation_suite
@@ -74,7 +76,7 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
         super(GETask, self).__init__(
             name=name,
             task_config=task_config,
-            task_type=_TASK_TYPE,
+            task_type=self._TASK_TYPE,
             interface=Interface(inputs=inputs),
             **kwargs,
         )
@@ -85,10 +87,7 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
         if len(self.python_interface.inputs.keys()) != 1:
             raise RuntimeError(f"Expected one input argument to validate the dataset")
 
-        try:
-            dataset = kwargs[list(self.python_interface.inputs.keys())[0]]
-        except KeyError:
-            raise KeyError(f"Your kwargs key has to be {list(self.python_interface.inputs.keys())[0]}")
+        dataset = kwargs[list(self.python_interface.inputs.keys())[0]]
 
         if type(dataset) != str:
             raise RuntimeError(f"'dataset' has to have string data type")
@@ -156,11 +155,9 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
                         + "\n"
                     )
 
-            # print column names for which the validation failed
-            print(f"\nCOLUMN\t\tFAILED EXPECTATION")
-            print(result_string)
-
             # raise a GE exception
-            raise ValidationError(f"Validation failed!")
+            raise ValidationError(f"Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
-        print(f"Validation succeeded!")
+        logging.info(f"Validation succeeded!")
+
+        return final_result

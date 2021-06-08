@@ -49,7 +49,7 @@ datasources:
     execution_engine:
       class_name: SqlAlchemyExecutionEngine
       module_name: great_expectations.execution_engine
-      connection_string: sqlite:///great_expectations/movies.sqlite
+      connection_string: sqlite:///data/movies.sqlite
       create_temp_table: False
     data_connectors:
       sqlite_data_connector:

@@ -3,7 +3,6 @@ import os
 import pandas as pd
 import pytest
 from flytekitplugins.greatexpectations import BatchRequestConfig, GETask
-from great_expectations import checkpoint
 from great_expectations.exceptions import ValidationError
 
 from flytekit import kwtypes, task, workflow
@@ -19,11 +18,19 @@ def test_ge_simple_task():
     )
 
     # valid data
-    task_object.execute(dataset="yellow_tripdata_sample_2019-01.csv")
+    result = task_object.execute(dataset="yellow_tripdata_sample_2019-01.csv")
+
+    assert result["success"] is True
+    assert result["statistics"]["evaluated_expectations"] == result["statistics"]["successful_expectations"]
 
     # invalid data
     with pytest.raises(ValidationError):
-        task_object.execute(dataset="yellow_tripdata_sample_2019-02.csv")
+        invalid_result = task_object.execute(dataset="yellow_tripdata_sample_2019-02.csv")
+        assert invalid_result["success"] is False
+        assert (
+            invalid_result["statistics"]["evaluated_expectations"]
+            != invalid_result["statistics"]["successful_expectations"]
+        )
 
     assert task_object.python_interface.inputs == {"dataset": str}
 
@@ -46,6 +53,7 @@ def test_ge_batchrequest_pandas_config():
         ),
     )
 
+    # name of the asset -- can be found in great_expectations.yml file
     task_object.execute(data="my_assets")
 
 
@@ -88,7 +96,7 @@ def test_ge_runtimebatchrequest_sqlite_config():
     task_object.execute(dataset="movies.sqlite")
 
 
-def test_ge_validation_within_task():
+def test_ge_task():
     task_object = GETask(
         name="test4",
         data_source="data",
@@ -118,9 +126,25 @@ def test_ge_validation_within_task():
     invalid_wf()
 
 
-def test_ge_checkpoint_params():
+def test_ge_workflow():
     task_object = GETask(
         name="test5",
+        data_source="data",
+        inputs=kwtypes(dataset=str),
+        expectation_suite="test.demo",
+        data_connector="data_example_data_connector",
+    )
+
+    @workflow
+    def valid_wf(dataset: str = "yellow_tripdata_sample_2019-01.csv") -> None:
+        task_object(dataset=dataset)
+
+    valid_wf()
+
+
+def test_ge_checkpoint_params():
+    task_object = GETask(
+        name="test6",
         data_source="data",
         inputs=kwtypes(dataset=str),
         expectation_suite="test.demo",
