@@ -116,6 +116,9 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         """
         self._get_command_fn = get_command_fn
 
+    def reset_command_fn(self):
+        self._get_command_fn = partial(_default_command, self)
+
     def get_command(self, settings: SerializationSettings) -> List[str]:
         return self._get_command_fn(settings)
 

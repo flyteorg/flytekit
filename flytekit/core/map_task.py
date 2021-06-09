@@ -102,7 +102,9 @@ class MapPythonTask(PythonTask):
             return None
 
         self._run_task.set_command_fn(self.get_command)
-        return self._run_task.get_k8s_pod(settings)
+        k8s_pod = self._run_task.get_k8s_pod(settings)
+        self._run_task.reset_command_fn()
+        return k8s_pod
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return ArrayJob(parallelism=self._max_concurrency, min_success_ratio=self._min_success_ratio).to_dict()
