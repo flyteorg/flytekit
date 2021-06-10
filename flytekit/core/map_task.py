@@ -3,19 +3,18 @@ Flytekit map tasks specify how to run a single task across a list of inputs. Map
 a reference task as well as run-time parameters that limit execution concurrency and failure tolerations.
 """
 import os
+from contextlib import contextmanager
 from itertools import count
 from typing import Any, Dict, List, Optional, Type
 
 from flytekit.common.constants import SdkTaskType
-from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, SerializationSettings
 from flytekit.core.interface import transform_interface_to_list_interface
-from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
-from flytekit.models.task import Container
+from flytekit.models.task import Container, K8sPod
 
 
 class MapPythonTask(PythonTask):
@@ -83,18 +82,30 @@ class MapPythonTask(PythonTask):
 
         return container_args
 
+    @contextmanager
+    def prepare_target(self):
+        """
+        Alters the underlying run_task command to modify it for map task execution and then resets it after.
+        """
+        self._run_task.set_command_fn(self.get_command)
+        try:
+            yield
+        finally:
+            self._run_task.reset_command_fn()
+
     def get_container(self, settings: SerializationSettings) -> Container:
-        env = {**settings.env, **self.environment} if self.environment else settings.env
-        return _get_container_definition(
-            image=get_registerable_container_image(None, settings.image_config),
-            command=[],
-            args=self.get_command(settings=settings),
-            data_loading_config=None,
-            environment=env,
-        )
+        with self.prepare_target():
+            return self._run_task.get_container(settings)
+
+    def get_k8s_pod(self, settings: SerializationSettings) -> K8sPod:
+        with self.prepare_target():
+            return self._run_task.get_k8s_pod(settings)
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return ArrayJob(parallelism=self._max_concurrency, min_success_ratio=self._min_success_ratio).to_dict()
+
+    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+        return self._run_task.get_config(settings)
 
     @property
     def run_task(self) -> PythonTask:
