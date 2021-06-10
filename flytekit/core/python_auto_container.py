@@ -94,7 +94,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
                 self._name = self._task_resolver.task_name(self)
         else:
             self._task_resolver = task_resolver or default_task_resolver
-        self._get_command_fn = partial(_default_command, self)
+        self._get_command_fn = self.get_default_command
 
     @property
     def task_resolver(self) -> TaskResolverMixin:
@@ -108,16 +108,33 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
     def resources(self) -> ResourceSpec:
         return self._resources
 
+    def get_default_command(self, settings: SerializationSettings) -> List[str]:
+        container_args = [
+            "pyflyte-execute",
+            "--inputs",
+            "{{.input}}",
+            "--output-prefix",
+            "{{.outputPrefix}}",
+            "--raw-output-data-prefix",
+            "{{.rawOutputDataPrefix}}",
+            "--resolver",
+            self.task_resolver.location,
+            "--",
+            *self.task_resolver.loader_args(settings, self),
+        ]
+
+        return container_args
+
     def set_command_fn(self, get_command_fn: Optional[Callable[[SerializationSettings], List[str]]] = None):
         """
         By default, the task will run on the Flyte platform using the pyflyte-execute command.
         However, it can be useful to update the command with which the task is serialized for specific cases like
-        running map tasks ("pyflyte-map-execute")
+        running map tasks ("pyflyte-map-execute") or for fast-registered tasks.
         """
         self._get_command_fn = get_command_fn
 
     def reset_command_fn(self):
-        self._get_command_fn = partial(_default_command, self)
+        self._get_command_fn = self.get_default_command
 
     def get_command(self, settings: SerializationSettings) -> List[str]:
         return self._get_command_fn(settings)
@@ -139,24 +156,6 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
             gpu_limit=self.resources.limits.gpu,
             memory_limit=self.resources.limits.mem,
         )
-
-
-def _default_command(task: PythonAutoContainerTask, settings: SerializationSettings) -> List[str]:
-    container_args = [
-        "pyflyte-execute",
-        "--inputs",
-        "{{.input}}",
-        "--output-prefix",
-        "{{.outputPrefix}}",
-        "--raw-output-data-prefix",
-        "{{.rawOutputDataPrefix}}",
-        "--resolver",
-        task.task_resolver.location,
-        "--",
-        *task.task_resolver.loader_args(settings, task),
-    ]
-
-    return container_args
 
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
