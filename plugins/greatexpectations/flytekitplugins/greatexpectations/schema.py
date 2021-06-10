@@ -22,7 +22,7 @@ from flytekit.models.types import LiteralType
 
 @dataclass_json
 @dataclass
-class BatchRequestConfig(object):
+class BatchConfig(object):
     """
     Use this configuration to configure Batch Request. A BatchRequest can either be
     a simple BatchRequest or a RuntimeBatchRequest.
@@ -32,12 +32,14 @@ class BatchRequestConfig(object):
         runtime_parameters: parameters to be passed at runtime
         batch_identifiers: identifiers to identify the data batch
         batch_spec_passthrough: reader method if your file doesn't have an extension
+        limit: number of data points to fetch
     """
 
     data_connector_query: typing.Optional[typing.Dict[str, typing.Any]] = None
     runtime_parameters: typing.Optional[typing.Dict[str, str]] = None
     batch_identifiers: typing.Optional[typing.Dict[str, str]] = None
     batch_spec_passthrough: typing.Optional[typing.Dict[str, typing.Any]] = None
+    limit: typing.Optional[int] = None
 
 
 @dataclass_json
@@ -59,30 +61,8 @@ class GEConfig(object):
     expectation_suite: str
     data_connector: str
     checkpoint_params: typing.Optional[typing.Dict[str, typing.Union[str, typing.List[str]]]] = None
-    batchrequest_config: BatchRequestConfig = None
+    batchrequest_config: BatchConfig = None
     data_context: str = "./great_expectations"
-
-
-class GEType(object):
-    """
-    Use this class to send the GEConfig.
-
-    Args:
-        config: GE Plugin configuration
-
-    TODO: Connect Data Docs to Flyte Console.
-    """
-
-    config: GEConfig
-
-    def __class_getitem__(cls, config: GEConfig) -> typing.Any:
-        """
-        Magic method that allows GEType to use [] operator
-        """
-        cls.config = config
-
-        # return the GEType class
-        return GEType
 
 
 def _float_to_int(message: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:
@@ -99,9 +79,38 @@ def _float_to_int(message: typing.Dict[str, typing.Any]) -> typing.Dict[str, typ
     return message
 
 
+class GEType(object):
+    """
+    Use this class to send the GEConfig.
+
+    Args:
+        config: GE Plugin configuration
+
+    TODO: Connect Data Docs to Flyte Console.
+    """
+
+    @classmethod
+    def config(cls) -> typing.Type[GEConfig]:
+        return GEConfig(data_source="", data_connector="", expectation_suite="")
+
+    def __class_getitem__(cls, config: typing.Type[GEConfig]) -> typing.Any:
+        class _GETypeClass(GEType):
+            __origin__ = GEType
+
+            @classmethod
+            def config(cls) -> typing.Type[GEConfig]:
+                return config
+
+        return _GETypeClass
+
+
 class GETypeTransformer(TypeTransformer[GEType]):
     def __init__(self):
-        super(GETypeTransformer, self).__init__(name="GE Transformer", t=GEType)
+        super().__init__(name="GE Transformer", t=GEType)
+
+    @staticmethod
+    def get_config(t: typing.Type[GEType]) -> typing.Type[GEConfig]:
+        return t.config()
 
     def get_literal_type(self, t: Type[str]) -> LiteralType:
         return LiteralType(simple=_type_models.SimpleType.STRUCT, metadata={})
@@ -110,19 +119,19 @@ class GETypeTransformer(TypeTransformer[GEType]):
         self,
         ctx: FlyteContext,
         python_val: str,
-        python_type: Type[str],
+        python_type: Type[GEType],
         expected: LiteralType,
     ) -> Literal:
 
         if not isinstance(python_val, str):
             raise AssertionError(f"The dataset has to have string data type; given {type(python_val)}")
 
-        if not GEType.config:
+        if not GETypeTransformer.get_config(python_type):
             raise ValueError("GEConfig is required")
 
         s = Struct()
         s.update({"dataset": python_val})
-        s.update({"config": GEType.config.to_dict()})
+        s.update({"config": GETypeTransformer.get_config(python_type).to_dict()})
 
         return Literal(Scalar(generic=s))
 
@@ -130,22 +139,19 @@ class GETypeTransformer(TypeTransformer[GEType]):
         self,
         ctx: FlyteContext,
         lv: Literal,
-        expected_python_type: Type[str],
-    ) -> str:
-        """
-        Handles two scenarios:
-        * When to_literal isn't called before to_python_value
-        * When to_literal is called before to_python_value
-        """
+        expected_python_type: Type[GEType],
+    ) -> GEType:
 
         if not (lv and lv.scalar and (lv.scalar.generic or lv.scalar.primitive)):
             raise AssertionError("Can only validate a literal value")
 
-        if not ((lv.scalar.generic and "config" in lv.scalar.generic) or GEType.config):
+        if not (
+            (lv.scalar.generic and "config" in lv.scalar.generic) or GETypeTransformer.get_config(expected_python_type)
+        ):
             raise ValueError("GEConfig is required")
 
         primitive_struct = Struct()
-        primitive_struct.update(GEType.config.to_dict())
+        primitive_struct.update(GETypeTransformer.get_config(expected_python_type).to_dict())
 
         # fetch the configuration
         final_config = lv.scalar.generic["config"] if lv.scalar.generic else primitive_struct
@@ -183,6 +189,8 @@ class GETypeTransformer(TypeTransformer[GEType]):
             final_batch_request.update(
                 {
                     "data_connector_query": batchrequest_conf["data_connector_query"],
+                    "batch_spec_passthrough": batchrequest_conf["batch_spec_passthrough"],
+                    "limit": batchrequest_conf["limit"],
                 }
             )
 

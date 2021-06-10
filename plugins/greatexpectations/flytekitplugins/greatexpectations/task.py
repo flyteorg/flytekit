@@ -26,12 +26,14 @@ class BatchRequestConfig(object):
         runtime_parameters: parameters to be passed at runtime
         batch_identifiers: identifiers to identify the data batch
         batch_spec_passthrough: reader method if your file doesn't have an extension
+        limit: number of data points to fetch
     """
 
     data_connector_query: typing.Optional[typing.Dict[str, typing.Any]] = None
     runtime_parameters: typing.Optional[typing.Dict[str, str]] = None
     batch_identifiers: typing.Optional[typing.Dict[str, str]] = None
     batch_spec_passthrough: typing.Optional[typing.Dict[str, typing.Any]] = None
+    limit: typing.Optional[int] = None
 
 
 class GETask(PythonInstanceTask[BatchRequestConfig]):
@@ -113,6 +115,8 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
             final_batch_request.update(
                 {
                     "data_connector_query": self._batch_request.data_connector_query,
+                    "batch_spec_passthrough": self._batch_request.batch_spec_passthrough,
+                    "limit": self._batch_request.limit,
                 }
             )
 

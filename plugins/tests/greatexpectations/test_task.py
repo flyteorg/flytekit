@@ -48,8 +48,8 @@ def test_ge_batchrequest_pandas_config():
                     "year": "2019",
                     "month": "01",
                 },
-                "limit": 10,
-            }
+            },
+            limit=10,
         ),
     )
 
@@ -126,9 +126,42 @@ def test_ge_task():
     invalid_wf()
 
 
+def test_ge_task_multiple_args():
+    task_object_one = GETask(
+        name="test5",
+        data_source="data",
+        inputs=kwtypes(dataset=str),
+        expectation_suite="test.demo",
+        data_connector="data_example_data_connector",
+    )
+    task_object_two = GETask(
+        name="test6",
+        data_source="data",
+        inputs=kwtypes(dataset=str),
+        expectation_suite="test1.demo",
+        data_connector="data_example_data_connector",
+    )
+
+    @task
+    def get_file_name(dataset_one: str, dataset_two: str) -> (int, int):
+        task_object_one(dataset=dataset_one)
+        task_object_two(dataset=dataset_two)
+        df_one = pd.read_csv(os.path.join("data", dataset_one))
+        df_two = pd.read_csv(os.path.join("data", dataset_two))
+        return len(df_one), len(df_two)
+
+    @workflow
+    def wf(
+        dataset_one: str = "yellow_tripdata_sample_2019-01.csv", dataset_two: str = "yellow_tripdata_sample_2019-02.csv"
+    ) -> (int, int):
+        return get_file_name(dataset_one=dataset_one, dataset_two=dataset_two)
+
+    assert wf() == (10000, 10000)
+
+
 def test_ge_workflow():
     task_object = GETask(
-        name="test5",
+        name="test7",
         data_source="data",
         inputs=kwtypes(dataset=str),
         expectation_suite="test.demo",
@@ -144,7 +177,7 @@ def test_ge_workflow():
 
 def test_ge_checkpoint_params():
     task_object = GETask(
-        name="test6",
+        name="test8",
         data_source="data",
         inputs=kwtypes(dataset=str),
         expectation_suite="test.demo",

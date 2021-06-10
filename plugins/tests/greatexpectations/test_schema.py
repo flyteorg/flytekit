@@ -4,10 +4,22 @@ import tempfile
 
 import pandas as pd
 import pytest
-from flytekitplugins.greatexpectations import BatchRequestConfig, GEConfig, GEType
+from flytekitplugins.greatexpectations import BatchConfig, GEConfig, GEType
 from great_expectations.exceptions import ValidationError
 
 from flytekit import task, workflow
+
+
+def test_ge_type():
+    ge_config = GEConfig(
+        data_source="data",
+        expectation_suite="test.demo",
+        data_connector="data_example_data_connector",
+    )
+
+    s = GEType[ge_config]
+    assert s.config() == ge_config
+    assert s.config().data_source == "data"
 
 
 def test_ge_schema_task():
@@ -44,27 +56,31 @@ def test_ge_schema_task():
         invalid_wf()
 
 
-def test_ge_schema_task_noliteral():
-    ge_config = GEConfig(
+def test_ge_schema_multiple_args():
+    ge_config_one = GEConfig(
         data_source="data",
         expectation_suite="test.demo",
         data_connector="data_example_data_connector",
     )
+    ge_config_two = GEConfig(
+        data_source="data",
+        expectation_suite="test1.demo",
+        data_connector="data_example_data_connector",
+    )
 
     @task
-    def get_file_name(dataset: GEType[ge_config]) -> str:
-        df = pd.read_csv(os.path.join("data", dataset))
-        df.drop(5, axis=0, inplace=True)
-        with tempfile.NamedTemporaryFile(prefix="temp_csv") as f:
-            df.to_csv(f)
-        return f.name
+    def get_file_name(dataset_one: GEType[ge_config_one], dataset_two: GEType[ge_config_two]) -> (int, int):
+        df_one = pd.read_csv(os.path.join("data", dataset_one))
+        df_two = pd.read_csv(os.path.join("data", dataset_two))
+        return len(df_one), len(df_two)
 
     @workflow
-    def wf(dataset: str) -> str:
-        return get_file_name(dataset=dataset)
+    def wf(
+        dataset_one: str = "yellow_tripdata_sample_2019-01.csv", dataset_two: str = "yellow_tripdata_sample_2019-02.csv"
+    ) -> (int, int):
+        return get_file_name(dataset_one=dataset_one, dataset_two=dataset_two)
 
-    result = wf(dataset="yellow_tripdata_sample_2019-01.csv")
-    assert "temp_csv" in result
+    assert wf() == (10000, 10000)
 
 
 def test_ge_schema_batchrequest_pandas_config():
@@ -75,14 +91,14 @@ def test_ge_schema_batchrequest_pandas_config():
                 data_source="data",
                 expectation_suite="test.demo",
                 data_connector="my_data_connector",
-                batchrequest_config=BatchRequestConfig(
+                batchrequest_config=BatchConfig(
                     data_connector_query={
                         "batch_filter_parameters": {
                             "year": "2019",
                             "month": "01",
                         },
-                        "limit": 10,
-                    }
+                    },
+                    limit=10,
                 ),
             )
         ]
@@ -97,12 +113,11 @@ def test_ge_schema_batchrequest_pandas_config():
 
 
 def test_invalid_ge_schema_batchrequest_pandas_config():
-
     ge_config = GEConfig(
         data_source="data",
         expectation_suite="test.demo",
         data_connector="my_data_connector",
-        batchrequest_config=BatchRequestConfig(
+        batchrequest_config=BatchConfig(
             data_connector_query={
                 "batch_filter_parameters": {
                     "year": "2020",
@@ -129,7 +144,7 @@ def test_ge_schema_runtimebatchrequest_sqlite_config():
         data_source="sqlite_data",
         expectation_suite="sqlite.movies",
         data_connector="sqlite_data_connector",
-        batchrequest_config=BatchRequestConfig(
+        batchrequest_config=BatchConfig(
             runtime_parameters={"query": "SELECT * FROM movies"},
             batch_identifiers={
                 "pipeline_stage": "validation",
