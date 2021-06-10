@@ -129,7 +129,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         """
         By default, the task will run on the Flyte platform using the pyflyte-execute command.
         However, it can be useful to update the command with which the task is serialized for specific cases like
-        running map tasks ("pyflyte-map-execute") or for fast-registered tasks.
+        running map tasks ("pyflyte-map-execute") or for fast-executed tasks.
         """
         self._get_command_fn = get_command_fn
 
