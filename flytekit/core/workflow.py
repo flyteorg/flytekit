@@ -25,6 +25,7 @@ from flytekit.core.interface import (
     transform_interface_to_typed_interface,
     transform_signature_to_interface,
 )
+from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.node import Node
 from flytekit.core.promise import (
     NodeOutput,
@@ -372,6 +373,10 @@ class ImperativeWorkflow(WorkflowBase):
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
         self._compilation_state = CompilationState(prefix="")
         self._inputs = {}
+        # This unbound inputs construct is just here to help workflow authors detect issues a bit earlier. It just
+        # keeps track of workflow inputs that you've declared with add_workflow_input but haven't yet consumed. This
+        # is an error that Admin would return at compile time anyways, but this allows flytekit to raise
+        # the error earlier.
         self._unbound_inputs = set()
         super().__init__(
             name=name,
@@ -478,7 +483,7 @@ class ImperativeWorkflow(WorkflowBase):
             return get_promise(self.output_bindings[0].binding, intermediate_node_outputs)
         return tuple([get_promise(b.binding, intermediate_node_outputs) for b in self.output_bindings])
 
-    def add_entity(self, entity: PythonTask, **kwargs) -> Node:
+    def add_entity(self, entity: Union[PythonTask, LaunchPlan, WorkflowBase], **kwargs) -> Node:
         """
         Anytime you add an entity, all the inputs to the entity must be bound.
         """
@@ -556,6 +561,15 @@ class ImperativeWorkflow(WorkflowBase):
             self._output_bindings.append(b)
             self._python_interface = self._python_interface.with_outputs(extra_outputs={output_name: python_type})
             self._interface = transform_interface_to_typed_interface(self._python_interface)
+
+    def add_task(self, task: PythonTask, **kwargs) -> Node:
+        return self.add_entity(task, **kwargs)
+
+    def add_launch_plan(self, launch_plan: LaunchPlan, **kwargs) -> Node:
+        return self.add_entity(launch_plan, **kwargs)
+
+    def add_subwf(self, sub_wf: WorkflowBase, **kwargs) -> Node:
+        return self.add_entity(sub_wf, **kwargs)
 
     def ready(self) -> bool:
         """

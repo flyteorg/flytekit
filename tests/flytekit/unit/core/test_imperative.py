@@ -57,6 +57,31 @@ def test_imperative():
     lp_model = get_serializable(OrderedDict(), serialization_settings, lp)
     assert lp_model.spec.workflow_id.name == "my.workflow"
 
+    wb2 = ImperativeWorkflow(name="parent.imperative")
+    p_in1 = wb2.add_workflow_input("p_in1", str)
+    p_node0 = wb2.add_subwf(wb, in1=p_in1)
+    wb2.add_workflow_output("parent_wf_output", p_node0.from_n0t1, str)
+    wb2_spec = get_serializable(OrderedDict(), serialization_settings, wb2)
+    assert len(wb2_spec.template.nodes) == 1
+    assert len(wb2_spec.template.interface.inputs) == 1
+    assert wb2_spec.template.interface.inputs["p_in1"].type.simple is not None
+    assert len(wb2_spec.template.interface.outputs) == 1
+    assert wb2_spec.template.interface.outputs["parent_wf_output"].type.simple is not None
+    assert wb2_spec.template.nodes[0].workflow_node.sub_workflow_ref.name == "my.workflow"
+    assert len(wb2_spec.sub_workflows) == 1
+
+    wb3 = ImperativeWorkflow(name="parent.imperative")
+    p_in1 = wb3.add_workflow_input("p_in1", str)
+    p_node0 = wb3.add_launch_plan(lp, in1=p_in1)
+    wb3.add_workflow_output("parent_wf_output", p_node0.from_n0t1, str)
+    wb3_spec = get_serializable(OrderedDict(), serialization_settings, wb3)
+    assert len(wb3_spec.template.nodes) == 1
+    assert len(wb3_spec.template.interface.inputs) == 1
+    assert wb3_spec.template.interface.inputs["p_in1"].type.simple is not None
+    assert len(wb3_spec.template.interface.outputs) == 1
+    assert wb3_spec.template.interface.outputs["parent_wf_output"].type.simple is not None
+    assert wb3_spec.template.nodes[0].workflow_node.launchplan_ref.name == "test_wb"
+
 
 def test_imperative_list_bound():
     @task
@@ -278,10 +303,10 @@ def test_nonfunction_task_and_df_input():
             compressed=True,
         ),
     )
-    node_sql = wb.add_entity(sql_task)
-    node_t1 = wb.add_entity(ref_t1, dataframe=node_sql.outputs["results"], imputation_method="mean")
+    node_sql = wb.add_task(sql_task)
+    node_t1 = wb.add_task(ref_t1, dataframe=node_sql.outputs["results"], imputation_method="mean")
 
-    node_t2 = wb.add_entity(
+    node_t2 = wb.add_task(
         ref_t2,
         dataframe=node_t1.outputs["o0"],
         split_mask=24,

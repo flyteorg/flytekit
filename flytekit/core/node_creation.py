@@ -9,14 +9,14 @@ from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteC
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.node import Node
 from flytekit.core.promise import VoidPromise
-from flytekit.core.workflow import PythonFunctionWorkflow
+from flytekit.core.workflow import WorkflowBase
 from flytekit.loggers import logger
 
 # This file exists instead of moving to node.py because it needs Task/Workflow/LaunchPlan and those depend on Node
 
 
 def create_node(
-    entity: Union[PythonTask, LaunchPlan, PythonFunctionWorkflow], *args, **kwargs
+    entity: Union[PythonTask, LaunchPlan, WorkflowBase], *args, **kwargs
 ) -> Union[Node, VoidPromise, Type[collections.namedtuple]]:
     """
     This is the function you want to call if you need to specify dependencies between tasks that don't consume and/or
@@ -73,7 +73,7 @@ def create_node(
 
     if (
         not isinstance(entity, PythonTask)
-        and not isinstance(entity, PythonFunctionWorkflow)
+        and not isinstance(entity, WorkflowBase)
         and not isinstance(entity, LaunchPlan)
     ):
         raise AssertionError("Should be but it's not")
