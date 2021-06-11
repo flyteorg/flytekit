@@ -7,7 +7,7 @@ from flytekit.common.translator import get_serializable
 from flytekit.configuration import set_flyte_config_file
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import Image, ImageConfig, get_image_config
+from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings, get_image_config
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.models.types import SimpleType
@@ -323,3 +323,19 @@ def test_serialization_named_return():
     wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
     assert len(wf_spec.template.interface.outputs) == 2
     assert list(wf_spec.template.interface.outputs.keys()) == ["a", "b"]
+
+
+def test_serialization_set_command():
+    @task
+    def t1() -> str:
+        return "Hello"
+
+    def new_command_fn(settings: SerializationSettings) -> typing.List[str]:
+        return ["echo", "hello", "world"]
+
+    t1.set_command_fn(new_command_fn)
+    custom_command = t1.get_command(serialization_settings)
+    assert ["echo", "hello", "world"] == custom_command
+    t1.reset_command_fn()
+    custom_command = t1.get_command(serialization_settings)
+    assert custom_command[0] == "pyflyte-execute"

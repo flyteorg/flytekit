@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib
 import re
-from typing import Dict, List, Optional, TypeVar
+from typing import Callable, Dict, List, Optional, TypeVar
 
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
@@ -93,6 +93,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
                 self._name = self._task_resolver.task_name(self)
         else:
             self._task_resolver = task_resolver or default_task_resolver
+        self._get_command_fn = self.get_default_command
 
     @property
     def task_resolver(self) -> TaskResolverMixin:
@@ -106,7 +107,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
     def resources(self) -> ResourceSpec:
         return self._resources
 
-    def get_command(self, settings: SerializationSettings) -> List[str]:
+    def get_default_command(self, settings: SerializationSettings) -> List[str]:
         container_args = [
             "pyflyte-execute",
             "--inputs",
@@ -122,6 +123,20 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         ]
 
         return container_args
+
+    def set_command_fn(self, get_command_fn: Optional[Callable[[SerializationSettings], List[str]]] = None):
+        """
+        By default, the task will run on the Flyte platform using the pyflyte-execute command.
+        However, it can be useful to update the command with which the task is serialized for specific cases like
+        running map tasks ("pyflyte-map-execute") or for fast-executed tasks.
+        """
+        self._get_command_fn = get_command_fn
+
+    def reset_command_fn(self):
+        self._get_command_fn = self.get_default_command
+
+    def get_command(self, settings: SerializationSettings) -> List[str]:
+        return self._get_command_fn(settings)
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
