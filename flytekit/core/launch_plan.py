@@ -124,7 +124,7 @@ class LaunchPlan(object):
         annotations: _common_models.Annotations = None,
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
-        max_parallelism=None,
+        max_parallelism: int =None,
     ) -> LaunchPlan:
         """
         This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
@@ -146,7 +146,7 @@ class LaunchPlan(object):
         :param annotations: Optional annotations to attach to executions created by this launch plan.
         :param raw_output_data_config: Optional location of offloaded data for things like S3, etc.
         :param auth_role: Add an auth role if necessary.
-        :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
+        :param max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
             parallelism/concurrency of MapTasks is independent from this.
         """
@@ -224,7 +224,7 @@ class LaunchPlan(object):
         annotations: _common_models.Annotations = None,
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
-        max_parallelism=None,
+        max_parallelism: int = None,
     ):
         self._name = name
         self._workflow = workflow
