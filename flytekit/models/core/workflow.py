@@ -444,13 +444,6 @@ class WorkflowNode(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.WorkflowNode
         """
-        if self.launchplan_ref:
-            x = self.launchplan_ref
-            print(x.resource_type)
-            print(x.project)
-            print(x.domain)
-            print(x.name)
-            print(x.version)
         return _core_workflow.WorkflowNode(
             launchplan_ref=self.launchplan_ref.to_flyte_idl() if self.launchplan_ref else None,
             sub_workflow_ref=self.sub_workflow_ref.to_flyte_idl() if self.sub_workflow_ref else None,
