@@ -322,5 +322,3 @@ def test_nonfunction_task_and_df_input():
 
     assert len(wf_spec.template.interface.outputs) == 1
     assert wf_spec.template.interface.outputs["output_from_t3"].type.schema is not None
-
-    print(wf_spec.template)
