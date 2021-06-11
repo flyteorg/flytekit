@@ -505,7 +505,9 @@ class ImperativeWorkflow(WorkflowBase):
                 else:
                     return [input_value]
 
-            # Every time an entity is added, mark it as used.
+            # Every time an entity is added, mark it as used. The above function though will gather all the input
+            # values but we're only interested in the ones that are Promises so let's filter for those.
+            # There's probably a way to clean this up, maybe key off of the name instead of value?
             all_input_values = get_input_values(kwargs)
             for input_value in filter(lambda x: isinstance(x, Promise), all_input_values):
                 if input_value in self._unbound_inputs:
