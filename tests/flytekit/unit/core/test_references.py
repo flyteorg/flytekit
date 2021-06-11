@@ -8,7 +8,7 @@ from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.dynamic_workflow_task import dynamic
-from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan, reference_launch_plan
+from flytekit.core.launch_plan import LaunchPlan, reference_launch_plan
 from flytekit.core.promise import VoidPromise
 from flytekit.core.reference import get_reference_entity
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
