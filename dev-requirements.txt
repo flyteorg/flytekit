@@ -23,13 +23,11 @@ bcrypt==3.2.0
     # via
     #   -c requirements.txt
     #   paramiko
-black==21.5b2
+black==21.6b0
     # via
     #   -c requirements.txt
     #   -r dev-requirements.in
     #   flake8-black
-cached-property==1.5.2
-    # via docker-compose
 certifi==2021.5.30
     # via
     #   -c requirements.txt
@@ -100,7 +98,7 @@ flake8==3.9.2
     #   -r dev-requirements.in
     #   flake8-black
     #   flake8-isort
-flyteidl==0.19.0
+flyteidl==0.19.2
     # via
     #   -c requirements.txt
     #   flytekit
@@ -115,11 +113,7 @@ idna==2.10
 importlib-metadata==4.5.0
     # via
     #   -c requirements.txt
-    #   flake8
-    #   jsonschema
     #   keyring
-    #   pluggy
-    #   pytest
 iniconfig==1.1.1
     # via pytest
 isort==5.8.0
@@ -166,7 +160,7 @@ mypy-extensions==0.4.3
     #   black
     #   mypy
     #   typing-inspect
-mypy==0.900
+mypy==0.902
     # via -r dev-requirements.in
 natsort==7.1.1
     # via
@@ -321,16 +315,9 @@ toml==0.10.2
     #   coverage
     #   mypy
     #   pytest
-typed-ast==1.4.3
-    # via
-    #   -c requirements.txt
-    #   black
-    #   mypy
 typing-extensions==3.10.0.0
     # via
     #   -c requirements.txt
-    #   black
-    #   importlib-metadata
     #   mypy
     #   typing-inspect
 typing-inspect==0.7.1

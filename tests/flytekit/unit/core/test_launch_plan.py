@@ -142,6 +142,20 @@ def test_lp_each_parameter():
     )
     assert raw_output_data_config_lp1 is raw_output_data_config_lp2
 
+    # Max parallelism
+    max_parallelism = 100
+    max_parallelism_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_max_parallelism",
+        max_parallelism=max_parallelism,
+    )
+    max_parallelism_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_max_parallelism",
+        max_parallelism=max_parallelism,
+    )
+    assert max_parallelism_lp1 is max_parallelism_lp2
+
     # Default LaunchPlan
     name_lp = launch_plan.LaunchPlan.get_or_create(workflow=wf)
     name_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf)
