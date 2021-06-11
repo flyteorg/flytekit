@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import List, Optional, Union
+from typing import Callable, List, Optional, Union
 
 from flytekit.common import constants as _common_constants
 from flytekit.common.utils import _dnsify
@@ -62,6 +62,25 @@ def to_serializable_cases(
     return ret_cases
 
 
+def _fast_serialize_command_fn(
+    settings: SerializationSettings, task: PythonAutoContainerTask
+) -> Callable[[SerializationSettings], List[str]]:
+    default_command = task.get_default_command(settings)
+
+    def fn(settings: SerializationSettings) -> List[str]:
+        return [
+            "pyflyte-fast-execute",
+            "--additional-distribution",
+            "{{ .remote_package_path }}",
+            "--dest-dir",
+            "{{ .dest_dir }}",
+            "--",
+            *default_command,
+        ]
+
+    return fn
+
+
 def get_serializable_task(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
@@ -75,6 +94,11 @@ def get_serializable_task(
         entity.name,
         settings.version,
     )
+    if fast and isinstance(entity, PythonAutoContainerTask):
+        # For fast registration, we'll need to muck with the command, but only for certain kinds of tasks. Specifically,
+        # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
+        # parent class
+        entity.set_command_fn(_fast_serialize_command_fn(settings, entity))
     tt = task_models.TaskTemplate(
         id=task_id,
         type=entity.task_type,
@@ -87,22 +111,8 @@ def get_serializable_task(
         config=entity.get_config(settings),
         k8s_pod=entity.get_k8s_pod(settings),
     )
-
-    # For fast registration, we'll need to muck with the command, but only for certain kinds of tasks. Specifically,
-    # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
-    # parent class
     if fast and isinstance(entity, PythonAutoContainerTask):
-        args = [
-            "pyflyte-fast-execute",
-            "--additional-distribution",
-            "{{ .remote_package_path }}",
-            "--dest-dir",
-            "{{ .dest_dir }}",
-            "--",
-        ] + tt.container.args[:]
-
-        del tt.container.args[:]
-        tt.container.args.extend(args)
+        entity.reset_command_fn()
 
     return task_models.TaskSpec(template=tt)
 

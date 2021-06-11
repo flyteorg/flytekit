@@ -321,3 +321,47 @@ def test_map_pod_task_serialization():
         "simple_pod_task",
     ]
     assert {"primary_container_name": "primary"} == mapped_task.get_config(serialization_settings)
+
+
+def test_fast_pod_task_serialization():
+    pod = Pod(
+        pod_spec=V1PodSpec(restart_policy="OnFailure", containers=[V1Container(name="primary")]),
+        primary_container_name="primary",
+    )
+
+    @task(task_config=pod, environment={"FOO": "bar"})
+    def simple_pod_task(i: int):
+        pass
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    serialization_settings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={"FOO": "baz"},
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+    serialized = get_serializable(OrderedDict(), serialization_settings, simple_pod_task, fast=True)
+
+    assert serialized.template.k8s_pod.pod_spec["containers"][0]["args"] == [
+        "pyflyte-fast-execute",
+        "--additional-distribution",
+        "{{ .remote_package_path }}",
+        "--dest-dir",
+        "{{ .dest_dir }}",
+        "--",
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "plugins.tests.pod.test_pod",
+        "task-name",
+        "simple_pod_task",
+    ]
