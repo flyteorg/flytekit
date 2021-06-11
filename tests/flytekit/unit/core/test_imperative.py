@@ -233,3 +233,73 @@ def test_codecov():
 
     with pytest.raises(ValueError):
         wb(in2="hello")
+
+
+def test_asureiowqc():
+    import typing
+
+    import pandas as pd
+
+    from flytekit import Workflow, kwtypes, reference_task
+    from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
+    from flytekit.types.file import FlyteFile
+    from flytekit.types.schema import FlyteSchema
+
+    @reference_task(
+        project="flytesnacks",
+        domain="development",
+        name="ref_t1",
+        version="fast56d8ce2e373baf011f4d3532e45f0a9b",
+    )
+    def ref_t1(
+        dataframe: pd.DataFrame,
+        imputation_method: str = "median",
+    ) -> pd.DataFrame:
+        ...
+
+    @reference_task(
+        project="flytesnacks",
+        domain="development",
+        name="ref_t2",
+        version="aedbd6fe44051c171fd966c280c5c3036f658831",
+    )
+    def ref_t2(
+        dataframe: pd.DataFrame,
+        split_mask: int,
+        num_features: int,
+    ) -> pd.DataFrame:
+        ...
+
+    wb = Workflow(name="core.feature_engineering.workflow.fe_wf")
+    wb.add_workflow_input("sqlite_archive", FlyteFile[typing.TypeVar("sqlite")])
+    sql_task = SQLite3Task(
+        name="dummy.sqlite.task",
+        query_template="select * from data",
+        inputs=kwtypes(),
+        output_schema_type=FlyteSchema,
+        task_config=SQLite3Config(
+            uri="https://sample/data",
+            compressed=True,
+        ),
+    )
+    node_sql = wb.add_entity(sql_task)
+    node_t1 = wb.add_entity(ref_t1, dataframe=node_sql.outputs["results"], imputation_method="mean")
+
+    node_t2 = wb.add_entity(
+        ref_t2,
+        dataframe=node_t1.outputs["o0"],
+        split_mask=24,
+        num_features=15,
+    )
+    wb.add_workflow_output("output_from_t3", node_t2.outputs["o0"], python_type=pd.DataFrame)
+
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, wb)
+    assert len(wf_spec.template.nodes) == 3
+
+    assert len(wf_spec.template.interface.inputs) == 1
+    assert wf_spec.template.interface.inputs["sqlite_archive"].type.blob is not None
+
+    assert len(wf_spec.template.interface.outputs) == 1
+    assert wf_spec.template.interface.outputs["output_from_t3"].type.schema is not None
+
+    print(wf_spec.template)

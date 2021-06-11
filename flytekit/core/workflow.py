@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
+from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
 from flytekit.core.context_manager import (
@@ -477,7 +478,7 @@ class ImperativeWorkflow(WorkflowBase):
             return get_promise(self.output_bindings[0].binding, intermediate_node_outputs)
         return tuple([get_promise(b.binding, intermediate_node_outputs) for b in self.output_bindings])
 
-    def add_entity(self, entity: PythonAutoContainerTask, **kwargs) -> Node:
+    def add_entity(self, entity: PythonTask, **kwargs) -> Node:
         """
         Anytime you add an entity, all the inputs to the entity must be bound.
         """
@@ -505,7 +506,8 @@ class ImperativeWorkflow(WorkflowBase):
                     return [input_value]
 
             # Every time an entity is added, mark it as used.
-            for input_value in get_input_values(kwargs):
+            all_input_values = get_input_values(kwargs)
+            for input_value in filter(lambda x: isinstance(x, Promise), all_input_values):
                 if input_value in self._unbound_inputs:
                     self._unbound_inputs.remove(input_value)
             return n
