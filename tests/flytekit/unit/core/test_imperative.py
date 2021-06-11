@@ -240,7 +240,7 @@ def test_codecov():
         wb(in2="hello")
 
 
-def test_asureiowqc():
+def test_nonfunction_task_and_df_input():
     @reference_task(
         project="flytesnacks",
         domain="development",
