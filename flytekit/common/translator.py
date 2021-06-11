@@ -75,7 +75,8 @@ def _fast_serialize_command_fn(
             "--dest-dir",
             "{{ .dest_dir }}",
             "--",
-        ] + default_command
+            *default_command,
+        ]
 
     return fn
 
