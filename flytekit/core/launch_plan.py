@@ -58,6 +58,7 @@ class LaunchPlan(object):
         annotations: _common_models.Annotations = None,
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
+        max_parallelism: int = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
         default_inputs = default_inputs or {}
@@ -96,6 +97,7 @@ class LaunchPlan(object):
             annotations=annotations,
             raw_output_data_config=raw_output_data_config,
             auth_role=auth_role,
+            max_parallelism=max_parallelism,
         )
 
         # This is just a convenience - we'll need the fixed inputs LiteralMap for when serializing the Launch Plan out
@@ -122,6 +124,7 @@ class LaunchPlan(object):
         annotations: _common_models.Annotations = None,
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
+        max_parallelism=None,
     ) -> LaunchPlan:
         """
         This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
@@ -143,6 +146,9 @@ class LaunchPlan(object):
         :param annotations: Optional annotations to attach to executions created by this launch plan.
         :param raw_output_data_config: Optional location of offloaded data for things like S3, etc.
         :param auth_role: Add an auth role if necessary.
+        :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
+            workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
+            parallelism/concurrency of MapTasks is independent from this.
         """
         if name is None and (
             default_inputs is not None
@@ -153,6 +159,7 @@ class LaunchPlan(object):
             or annotations is not None
             or raw_output_data_config is not None
             or auth_role is not None
+            or max_parallelism is not None
         ):
             raise ValueError(
                 "Only named launchplans can be created that have other properties. Drop the name if you want to create a default launchplan. Default launchplans cannot have any other associations"
@@ -175,6 +182,7 @@ class LaunchPlan(object):
                 or labels != cached_outputs["_labels"]
                 or annotations != cached_outputs["_annotations"]
                 or raw_output_data_config != cached_outputs["_raw_output_data_config"]
+                or max_parallelism != cached_outputs["_max_parallelism"]
             ):
                 return AssertionError("The cached values aren't the same as the current call arguments")
 
@@ -198,6 +206,7 @@ class LaunchPlan(object):
                 annotations,
                 raw_output_data_config,
                 auth_role,
+                max_parallelism,
             )
         LaunchPlan.CACHE[name or workflow.name] = lp
         return lp
@@ -215,6 +224,7 @@ class LaunchPlan(object):
         annotations: _common_models.Annotations = None,
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
+        max_parallelism=None,
     ):
         self._name = name
         self._workflow = workflow
@@ -231,6 +241,7 @@ class LaunchPlan(object):
         self._annotations = annotations
         self._raw_output_data_config = raw_output_data_config
         self._auth_role = auth_role
+        self._max_parallelism = max_parallelism
 
         FlyteEntities.entities.append(self)
 
@@ -281,6 +292,10 @@ class LaunchPlan(object):
     @property
     def raw_output_data_config(self) -> Optional[_common_models.RawOutputDataConfig]:
         return self._raw_output_data_config
+
+    @property
+    def max_parallelism(self) -> int:
+        return self._max_parallelism
 
     def __call__(self, *args, **kwargs):
         if len(args) > 0:
