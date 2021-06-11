@@ -1,8 +1,10 @@
 import typing
 from collections import OrderedDict
 
+import pandas as pd
 import pytest
 
+from flytekit import Workflow, kwtypes, reference_task
 from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
@@ -10,7 +12,10 @@ from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
 from flytekit.core.workflow import ImperativeWorkflow, get_promise, workflow
+from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.models import literals as literal_models
+from flytekit.types.file import FlyteFile
+from flytekit.types.schema import FlyteSchema
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = context_manager.SerializationSettings(
@@ -236,15 +241,6 @@ def test_codecov():
 
 
 def test_asureiowqc():
-    import typing
-
-    import pandas as pd
-
-    from flytekit import Workflow, kwtypes, reference_task
-    from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
-    from flytekit.types.file import FlyteFile
-    from flytekit.types.schema import FlyteSchema
-
     @reference_task(
         project="flytesnacks",
         domain="development",
