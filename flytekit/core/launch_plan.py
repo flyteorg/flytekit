@@ -124,7 +124,7 @@ class LaunchPlan(object):
         annotations: _common_models.Annotations = None,
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
-        max_parallelism: int =None,
+        max_parallelism: int = None,
     ) -> LaunchPlan:
         """
         This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
