@@ -65,6 +65,7 @@ class SdkLaunchPlan(
             annotations=model.annotations,
             auth_role=model.auth_role,
             raw_output_data_config=model.raw_output_data_config,
+            max_parallelism=model.max_parallelism,
         )
 
     @_exception_scopes.system_entry_point
