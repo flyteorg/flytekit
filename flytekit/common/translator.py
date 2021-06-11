@@ -203,6 +203,7 @@ def get_serializable_launch_plan(
         annotations=entity.annotations or _common_models.Annotations({}),
         auth_role=entity._auth_role or _common_models.AuthRole(),
         raw_output_data_config=entity.raw_output_data_config or _common_models.RawOutputDataConfig(""),
+        max_parallelism=entity.max_parallelism,
     )
     lp_id = _identifier_model.Identifier(
         resource_type=_identifier_model.ResourceType.LAUNCH_PLAN,

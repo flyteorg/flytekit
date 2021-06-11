@@ -42,6 +42,7 @@ def test_execution_spec(literal_value_pair):
                 )
             ]
         ),
+        max_parallelism=100,
     )
     assert obj.launch_plan.resource_type == _identifier.ResourceType.LAUNCH_PLAN
     assert obj.launch_plan.domain == "domain"
@@ -58,6 +59,7 @@ def test_execution_spec(literal_value_pair):
         "c",
     ]
     assert obj.disable_all is None
+    assert obj.max_parallelism == 100
 
     obj2 = _execution.ExecutionSpec.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -76,6 +78,7 @@ def test_execution_spec(literal_value_pair):
         "c",
     ]
     assert obj2.disable_all is None
+    assert obj2.max_parallelism == 100
 
     obj = _execution.ExecutionSpec(
         _identifier.Identifier(_identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version"),
