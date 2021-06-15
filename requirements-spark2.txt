@@ -29,9 +29,9 @@ black==21.6b0
     # via papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.92
+boto3==1.17.94
     # via sagemaker-training
-botocore==1.20.92
+botocore==1.20.94
     # via
     #   boto3
     #   s3transfer
@@ -222,6 +222,8 @@ python-dateutil==2.8.1
     #   flytekit
     #   jupyter-client
     #   pandas
+python-json-logger==2.0.1
+    # via flytekit
 pytimeparse==1.1.8
     # via flytekit
 pytz==2018.4
@@ -291,7 +293,7 @@ tornado==6.1
     # via
     #   ipykernel
     #   jupyter-client
-tqdm==4.61.0
+tqdm==4.61.1
     # via papermill
 traitlets==5.0.5
     # via
