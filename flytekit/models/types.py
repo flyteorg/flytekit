@@ -106,6 +106,7 @@ class LiteralType(_common.FlyteIdlEntity):
         collection_type=None,
         map_value_type=None,
         blob=None,
+        enum_type=None,
         metadata=None,
     ):
         """
@@ -116,6 +117,7 @@ class LiteralType(_common.FlyteIdlEntity):
         :param LiteralType map_value_type: For map objects, this is the type of the value.  The key must always be a
             string.
         :param flytekit.models.core.types.BlobType blob: For blob objects, this describes the type.
+        :param flytekit.models.core.types.EnumType enum_type: For enum objects, describes an enum
         :param dict[Text, T] metadata: Additional data describing the type
         """
         self._simple = simple
@@ -123,46 +125,38 @@ class LiteralType(_common.FlyteIdlEntity):
         self._collection_type = collection_type
         self._map_value_type = map_value_type
         self._blob = blob
+        self._enum_type = enum_type
         self._metadata = metadata
 
     @property
-    def simple(self):
-        """
-        Enum type from SimpleType
-        :rtype: int
-        """
+    def simple(self) -> SimpleType:
         return self._simple
 
     @property
-    def schema(self):
-        """
-        Type definition for a dataframe-like object.
-        :rtype: SchemaType
-        """
+    def schema(self) -> SchemaType:
         return self._schema
 
     @property
-    def collection_type(self):
+    def collection_type(self) -> "LiteralType":
         """
-        Enum type from SimpleType or SchemaType
-        :rtype: LiteralType
+        The collection value type
         """
         return self._collection_type
 
     @property
-    def map_value_type(self):
+    def map_value_type(self) -> "LiteralType":
         """
-        Enum type from SimpleType
-        :rtype: LiteralType
+        The Value for a dictionary. Key is always string
         """
         return self._map_value_type
 
     @property
-    def blob(self):
-        """
-        :rtype: flytekit.models.core.types.BlobType
-        """
+    def blob(self) -> _core_types.BlobType:
         return self._blob
+
+    @property
+    def enum_type(self) -> _core_types.EnumType:
+        return self._enum_type
 
     @property
     def metadata(self):
@@ -185,6 +179,7 @@ class LiteralType(_common.FlyteIdlEntity):
             collection_type=self.collection_type.to_flyte_idl() if self.collection_type is not None else None,
             map_value_type=self.map_value_type.to_flyte_idl() if self.map_value_type is not None else None,
             blob=self.blob.to_flyte_idl() if self.blob is not None else None,
+            enum_type=self.enum_type.to_flyte_idl() if self.enum_type else None,
             metadata=metadata,
         )
         return t
@@ -207,6 +202,7 @@ class LiteralType(_common.FlyteIdlEntity):
             collection_type=collection_type,
             map_value_type=map_value_type,
             blob=_core_types.BlobType.from_flyte_idl(proto.blob) if proto.HasField("blob") else None,
+            enum_type=_core_types.EnumType.from_flyte_idl(proto.enum_type) if proto.HasField("enum_type") else None,
             metadata=_json_format.MessageToDict(proto.metadata) or None,
         )
 
