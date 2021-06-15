@@ -224,7 +224,7 @@ pyrsistent==0.17.3
     # via
     #   -c requirements.txt
     #   jsonschema
-pytest-docker==0.10.1
+pytest-docker==0.10.3
     # via pytest-flyte
 git+git://github.com/flyteorg/pytest-flyte@main#egg=pytest-flyte
     # via -r dev-requirements.in
@@ -241,6 +241,10 @@ python-dateutil==2.8.1
     #   pandas
 python-dotenv==0.17.1
     # via docker-compose
+python-json-logger==2.0.1
+    # via
+    #   -c requirements.txt
+    #   flytekit
 pytimeparse==1.1.8
     # via
     #   -c requirements.txt
