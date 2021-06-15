@@ -2,8 +2,6 @@ import os
 import typing
 from collections import OrderedDict
 
-import pytest
-
 from flytekit import ContainerTask, kwtypes
 from flytekit.common.translator import get_serializable
 from flytekit.configuration import set_flyte_config_file
@@ -81,12 +79,12 @@ def test_serialization_branch_complex():
         x, y = t1(a=a)
         d = (
             conditional("test1")
-            .if_(x == 4)
-            .then(t2(a=b))
-            .elif_(x >= 5)
-            .then(t2(a=y))
-            .else_()
-            .fail("Unable to choose branch")
+                .if_(x == 4)
+                .then(t2(a=b))
+                .elif_(x >= 5)
+                .then(t2(a=y))
+                .else_()
+                .fail("Unable to choose branch")
         )
         f = conditional("test2").if_(d == "hello ").then(t2(a="It is hello")).else_().then(t2(a="Not Hello!"))
         return x, f
@@ -128,12 +126,12 @@ def test_serialization_branch_compound_conditions():
     def my_wf(a: int) -> int:
         d = (
             conditional("test1")
-            .if_((a == 4) | (a == 3))
-            .then(t1(a=a))
-            .elif_(a < 6)
-            .then(t1(a=a))
-            .else_()
-            .fail("Unable to choose branch")
+                .if_((a == 4) | (a == 3))
+                .then(t1(a=a))
+                .elif_(a < 6)
+                .then(t1(a=a))
+                .else_()
+                .fail("Unable to choose branch")
         )
         return d
 
@@ -165,12 +163,12 @@ def test_serialization_branch_complex_2():
         x, y = t1(a=a)
         d = (
             conditional("test1")
-            .if_(x == 4)
-            .then(t2(a=b))
-            .elif_(x >= 5)
-            .then(t2(a=y))
-            .else_()
-            .fail("Unable to choose branch")
+                .if_(x == 4)
+                .then(t2(a=b))
+                .elif_(x >= 5)
+                .then(t2(a=y))
+                .else_()
+                .fail("Unable to choose branch")
         )
         f = conditional("test2").if_(d == "hello ").then(t2(a="It is hello")).else_().then(t2(a="Not Hello!"))
         return x, f
@@ -370,51 +368,13 @@ def test_serialization_nested_subwf():
 
 def test_serialization_named_outputs_single():
     @task
-    def t1() -> typing.NamedTuple("OP", a=str):
+    def t1() -> str:
         return "Hello"
 
     @workflow
     def wf() -> typing.NamedTuple("OP", a=str):
-        return t1().a
+        return t1()
 
     wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
     assert len(wf_spec.template.interface.outputs) == 1
     assert list(wf_spec.template.interface.outputs.keys()) == ["a"]
-    a = wf()
-    assert a.a == "Hello"
-
-
-def test_named_outputs_nested():
-    nm = typing.NamedTuple("OP", greet=str)
-
-    @task
-    def say_hello() -> nm:
-        return nm("hello world")
-
-    wf_outputs = typing.NamedTuple("OP2", greet1=str, greet2=str)
-
-    @workflow
-    def my_wf() -> wf_outputs:
-        # Note only Namedtuples can be created like this
-        return wf_outputs(say_hello().greet, say_hello().greet)
-
-    x, y = my_wf()
-    assert x == "hello world"
-    assert y == "hello world"
-
-
-def test_named_outputs_nested_fail():
-    nm = typing.NamedTuple("OP", greet=str)
-
-    @task
-    def say_hello() -> nm:
-        return nm("hello world")
-
-    wf_outputs = typing.NamedTuple("OP2", greet1=str, greet2=str)
-
-    with pytest.raises(AssertionError):
-        # this should fail because say_hello returns a tuple, but we do not de-reference it
-        @workflow
-        def my_wf() -> wf_outputs:
-            # Note only Namedtuples can be created like this
-            return wf_outputs(say_hello(), say_hello())
