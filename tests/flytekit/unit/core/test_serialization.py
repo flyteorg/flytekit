@@ -312,14 +312,6 @@ def test_serialization_named_return():
     def wf() -> typing.NamedTuple("OP", a=str, b=str):
         return t1(), t1()
 
-    default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
-        project="project",
-        domain="domain",
-        version="version",
-        env=None,
-        image_config=ImageConfig(default_image=default_img, images=[default_img]),
-    )
     wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
     assert len(wf_spec.template.interface.outputs) == 2
     assert list(wf_spec.template.interface.outputs.keys()) == ["a", "b"]
@@ -339,3 +331,50 @@ def test_serialization_set_command():
     t1.reset_command_fn()
     custom_command = t1.get_command(serialization_settings)
     assert custom_command[0] == "pyflyte-execute"
+
+
+def test_serialization_nested_subwf():
+    @task
+    def t1(a: int) -> int:
+        return a + 2
+
+    @workflow
+    def leaf_subwf(a: int = 42) -> (int, int):
+        x = t1(a=a)
+        u = t1(a=x)
+        return x, u
+
+    @workflow
+    def middle_subwf() -> (int, int):
+        s1, s2 = leaf_subwf(a=50)
+        return s2, s2
+
+    @workflow
+    def parent_wf() -> (int, int, int, int):
+        m1, m2 = middle_subwf()
+        l1, l2 = leaf_subwf()
+        return m1, m2, l1, l2
+
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, parent_wf)
+    assert wf_spec is not None
+    assert len(wf_spec.sub_workflows) == 2
+    subwf = {v.id.name: v for v in wf_spec.sub_workflows}
+    assert subwf.keys() == {"test_serialization.leaf_subwf", "test_serialization.middle_subwf"}
+    midwf = subwf["test_serialization.middle_subwf"]
+    assert len(midwf.nodes) == 1
+    assert midwf.nodes[0].workflow_node is not None
+    assert midwf.nodes[0].workflow_node.sub_workflow_ref.name == "test_serialization.leaf_subwf"
+
+
+def test_serialization_named_outputs_single():
+    @task
+    def t1() -> str:
+        return "Hello"
+
+    @workflow
+    def wf() -> typing.NamedTuple("OP", a=str):
+        return t1()
+
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
+    assert len(wf_spec.template.interface.outputs) == 1
+    assert list(wf_spec.template.interface.outputs.keys()) == ["a"]
