@@ -1,5 +1,7 @@
 import datetime
 import logging
+import os
+import shutil
 import typing
 from dataclasses import dataclass
 
@@ -10,7 +12,10 @@ from great_expectations.core.util import convert_to_json_serializable
 from great_expectations.exceptions import ValidationError
 
 from flytekit import PythonInstanceTask
+from flytekit.core.context_manager import FlyteContext
 from flytekit.extend import Interface
+from flytekit.types.file.file import FlyteFile
+from flytekit.types.schema import FlyteSchema
 
 T = typing.TypeVar("T")
 
@@ -46,6 +51,7 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
         expectation_suite: suite which consists of the data expectations
         data_connector: connector to identify data batches
         inputs: inputs to pass to the execute() method
+        local_file_path: dataset file path useful for FlyteFile and FlyteSchema
         checkpoint_params: optional SimpleCheckpoint parameters
         task_config: batchrequest config
         data_context: directory in which GE's configuration resides
@@ -62,6 +68,7 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
         expectation_suite: str,
         data_connector: str,
         inputs: typing.Dict[str, typing.Type],
+        local_file_path: str = None,
         checkpoint_params: typing.Optional[typing.Dict[str, typing.Union[str, typing.List[str]]]] = None,
         task_config: BatchRequestConfig = None,
         data_context: str = "./great_expectations",
@@ -73,6 +80,13 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
         self._expectation_suite = expectation_suite
         self._batch_request = task_config
         self._data_context = data_context
+        """
+        local_file_path is a must in two scenrios:
+        * When using FlyteSchema
+        * When using FlyteFile for remote paths 
+        This is because base directory which has the dataset file 'must' be given in GE's config file
+        """
+        self._local_file_path = local_file_path
         self._checkpoint_params = checkpoint_params
 
         super(GETask, self).__init__(
@@ -91,9 +105,63 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
 
         dataset = kwargs[list(self.python_interface.inputs.keys())[0]]
 
-        if type(dataset) != str:
-            raise RuntimeError(f"'dataset' has to have string data type")
+        datatype = list(self.python_interface.inputs.values())[0]
 
+        if not issubclass(datatype, (FlyteFile, FlyteSchema, str)):
+            raise RuntimeError("'dataset' has to have FlyteFile/FlyteSchema/str datatype")
+
+        # FlyteFile
+        if issubclass(datatype, FlyteFile):
+
+            # str
+            # if the file is remote, download the file into local_file_path
+            if issubclass(type(dataset), str):
+                if FlyteContext.current_context().file_access.is_remote(dataset):
+                    if not self._local_file_path:
+                        raise ValueError("local_file_path is missing!")
+
+                    if os.path.isdir(self._local_file_path):
+                        local_path = os.path.join(self._local_file_path, os.path.basename(dataset))
+                    else:
+                        local_path = self._local_file_path
+
+                    FlyteContext.current_context().file_access.get_data(
+                        remote_path=dataset,
+                        local_path=local_path,
+                    )
+
+            # _SpecificFormatClass
+            # if the file is remote, copy the downloaded file to the user specified local_file_path
+            else:
+                if dataset.remote_source:
+                    if not self._local_file_path:
+                        raise ValueError("local_file_path is missing!")
+                    shutil.copy(dataset, self._local_file_path)
+
+            dataset = os.path.basename(dataset)
+
+        # FlyteSchema
+        # convert schema to parquet file
+        if issubclass(datatype, FlyteSchema):
+            if not self._local_file_path:
+                raise ValueError("local_file_path is missing!")
+
+            schema = FlyteSchema(
+                local_path=self._local_file_path,
+            )
+
+            # FlyteSchema
+            if type(dataset) is FlyteSchema:
+                # copy parquet file to user-given directory
+                shutil.copytree(dataset.remote_path, self._local_file_path, dirs_exist_ok=True)
+
+            # DataFrame (Pandas, Spark, etc.)
+            else:
+                writer = schema.open(type(dataset))
+                writer.write(dataset)
+            dataset = os.path.basename(self._local_file_path)
+
+        # minimalistic batch request
         final_batch_request = {
             "data_asset_name": dataset,
             "datasource_name": self._data_source,

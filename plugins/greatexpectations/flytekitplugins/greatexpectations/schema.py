@@ -1,13 +1,13 @@
 import datetime
 import logging
+import os
+import shutil
 import typing
 from dataclasses import dataclass
 from typing import Type
 
 import great_expectations as ge
 from dataclasses_json import dataclass_json
-from google.protobuf.json_format import MessageToDict
-from google.protobuf.struct_pb2 import Struct
 from great_expectations.checkpoint import SimpleCheckpoint
 from great_expectations.core.run_identifier import RunIdentifier
 from great_expectations.core.util import convert_to_json_serializable
@@ -16,8 +16,10 @@ from great_expectations.exceptions import ValidationError
 from flytekit import FlyteContext
 from flytekit.extend import TypeEngine, TypeTransformer
 from flytekit.models import types as _type_models
-from flytekit.models.literals import Literal, Scalar
+from flytekit.models.literals import Literal, Primitive, Scalar
 from flytekit.models.types import LiteralType
+from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
+from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer, SchemaOpenMode
 
 
 @dataclass_json
@@ -52,6 +54,7 @@ class GEConfig(object):
         data_source: tell where your data lives and how to get it
         expectation_suite: suite which consists of the data expectations
         data_connector: connector to identify data batches
+        local_file_path: dataset file path useful for FlyteFile and FlyteSchema
         checkpoint_params: optional SimpleCheckpoint parameters
         batchrequest_config: batchrequest config
         data_context: directory in which GE's configuration resides
@@ -60,23 +63,16 @@ class GEConfig(object):
     data_source: str
     expectation_suite: str
     data_connector: str
+    """
+    local_file_path is a must in two scenrios:
+    * When using FlyteSchema
+    * When using FlyteFile for remote paths 
+    This is because base directory which has the dataset file 'must' be given in GE's config file
+    """
+    local_file_path: str = (None,)
     checkpoint_params: typing.Optional[typing.Dict[str, typing.Union[str, typing.List[str]]]] = None
     batchrequest_config: BatchConfig = None
     data_context: str = "./great_expectations"
-
-
-def _float_to_int(message: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:
-    """
-    Convert floats to integers after 'Protobuf Struct' is converted to JSON
-    JSON automatically converts ints to floats which isn't desirable for GE
-    """
-    for key, value in message.items():
-        if isinstance(value, float):
-            if value.is_integer():
-                message[key] = int(value)
-        elif isinstance(value, dict):
-            _float_to_int(value)
-    return message
 
 
 class GEType(object):
@@ -90,15 +86,18 @@ class GEType(object):
     """
 
     @classmethod
-    def config(cls) -> typing.Type[GEConfig]:
-        return GEConfig(data_source="", data_connector="", expectation_suite="")
+    def config(cls) -> typing.Tuple[typing.Type, typing.Type[GEConfig]]:
+        return (str, GEConfig(data_source="", data_connector="", expectation_suite=""))
 
-    def __class_getitem__(cls, config: typing.Type[GEConfig]) -> typing.Any:
+    def __class_getitem__(cls, config: typing.Tuple[typing.Type, typing.Type[GEConfig]]) -> typing.Any:
+        if not (isinstance(config, tuple) or len(config) != 2):
+            raise AssertionError("GEType must have both datatype and GEConfig")
+
         class _GETypeClass(GEType):
             __origin__ = GEType
 
             @classmethod
-            def config(cls) -> typing.Type[GEConfig]:
+            def config(cls) -> typing.Tuple[typing.Type, typing.Type[GEConfig]]:
                 return config
 
         return _GETypeClass
@@ -109,7 +108,7 @@ class GETypeTransformer(TypeTransformer[GEType]):
         super().__init__(name="GE Transformer", t=GEType)
 
     @staticmethod
-    def get_config(t: typing.Type[GEType]) -> typing.Type[GEConfig]:
+    def get_config(t: typing.Type[GEType]) -> typing.Tuple[typing.Type, typing.Type[GEConfig]]:
         return t.config()
 
     def get_literal_type(self, t: Type[str]) -> LiteralType:
@@ -118,22 +117,18 @@ class GETypeTransformer(TypeTransformer[GEType]):
     def to_literal(
         self,
         ctx: FlyteContext,
-        python_val: str,
+        python_val: typing.Union[FlyteFile, FlyteSchema, str],
         python_type: Type[GEType],
         expected: LiteralType,
     ) -> Literal:
+        datatype = GETypeTransformer.get_config(python_type)[0]
 
-        if not isinstance(python_val, str):
-            raise AssertionError(f"The dataset has to have string data type; given {type(python_val)}")
+        if issubclass(datatype, FlyteSchema):
+            return FlyteSchemaTransformer().to_literal(ctx, python_val, FlyteSchema, expected)
+        elif issubclass(datatype, FlyteFile):
+            return FlyteFilePathTransformer().to_literal(ctx, python_val, FlyteFile, expected)
 
-        if not GETypeTransformer.get_config(python_type):
-            raise ValueError("GEConfig is required")
-
-        s = Struct()
-        s.update({"dataset": python_val})
-        s.update({"config": GETypeTransformer.get_config(python_type).to_dict()})
-
-        return Literal(Scalar(generic=s))
+        return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val)))
 
     def to_python_value(
         self,
@@ -141,26 +136,72 @@ class GETypeTransformer(TypeTransformer[GEType]):
         lv: Literal,
         expected_python_type: Type[GEType],
     ) -> GEType:
-
-        if not (lv and lv.scalar and (lv.scalar.generic or lv.scalar.primitive)):
+        if not (lv and lv.scalar and (lv.scalar.primitive or lv.scalar.schema or lv.scalar.blob)):
             raise AssertionError("Can only validate a literal value")
 
-        if not (
-            (lv.scalar.generic and "config" in lv.scalar.generic) or GETypeTransformer.get_config(expected_python_type)
-        ):
-            raise ValueError("GEConfig is required")
-
-        primitive_struct = Struct()
-        primitive_struct.update(GETypeTransformer.get_config(expected_python_type).to_dict())
-
         # fetch the configuration
-        final_config = lv.scalar.generic["config"] if lv.scalar.generic else primitive_struct
-        conf_dict = MessageToDict(final_config)
-
-        # convert floats to ints
-        _float_to_int(conf_dict)
+        conf_dict = GETypeTransformer.get_config(expected_python_type)[1].to_dict()
 
         ge_conf = GEConfig(**conf_dict)
+
+        # file path for FlyteSchema and FlyteFile
+        temp_dataset = ""
+
+        # return value
+        return_dataset = ""
+
+        # FlyteSchema
+        if lv.scalar.schema:
+            if not ge_conf.local_file_path:
+                raise ValueError("local_file_path is missing!")
+
+            # copy parquet file to user-given directory
+            shutil.copytree(lv.scalar.schema.uri, ge_conf.local_file_path, dirs_exist_ok=True)
+
+            temp_dataset = os.path.basename(ge_conf.local_file_path)
+
+            def downloader(x, y):
+                ctx.file_access.download_directory(x, y)
+
+            return_dataset = (
+                FlyteSchema(
+                    local_path=ctx.file_access.get_random_local_directory(),
+                    remote_path=lv.scalar.schema.uri,
+                    downloader=downloader,
+                    supported_mode=SchemaOpenMode.READ,
+                )
+                .open()
+                .all()
+            )
+
+        # FlyteFile
+        if lv.scalar.blob:
+            uri = lv.scalar.blob.uri
+
+            # check if the file is remote
+            if ctx.file_access.is_remote(uri):
+                if not ge_conf.local_file_path:
+                    raise ValueError("local_file_path is missing!")
+
+                if os.path.isdir(ge_conf.local_file_path):
+                    local_path = os.path.join(ge_conf.local_file_path, os.path.basename(uri))
+                else:
+                    local_path = ge_conf.local_file_path
+
+                # download the file into local_file_path
+                FlyteContext.current_context().file_access.get_data(
+                    remote_path=uri,
+                    local_path=local_path,
+                )
+
+            temp_dataset = os.path.basename(uri)
+
+            return_dataset = FlyteFile(uri)
+
+        if lv.scalar.primitive:
+            dataset = return_dataset = lv.scalar.primitive.string_value
+        else:
+            dataset = temp_dataset
 
         batchrequest_conf = ge_conf.batchrequest_config
 
@@ -169,7 +210,7 @@ class GETypeTransformer(TypeTransformer[GEType]):
 
         # minimalistic batch request
         final_batch_request = {
-            "data_asset_name": lv.scalar.generic["dataset"] if lv.scalar.generic else lv.scalar.primitive.string_value,
+            "data_asset_name": dataset,
             "datasource_name": ge_conf.data_source,
             "data_connector_name": ge_conf.data_connector,
         }
@@ -241,7 +282,7 @@ class GETypeTransformer(TypeTransformer[GEType]):
 
         logging.info(f"Validation succeeded!")
 
-        return lv.scalar.generic["dataset"] if lv.scalar.generic else lv.scalar.primitive.string_value
+        return return_dataset
 
 
 TypeEngine.register(GETypeTransformer())

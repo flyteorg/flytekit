@@ -29,6 +29,14 @@ datasources:
             - data_asset_name
           pattern: (.*)
         module_name: great_expectations.datasource.data_connector
+      data_flytetype_data_connector:
+        base_directory: /tmp
+        class_name: InferredAssetFilesystemDataConnector
+        default_regex:
+          group_names:
+            - data_asset_name
+          pattern: (.*)
+        module_name: great_expectations.datasource.data_connector
       my_data_connector:
         base_directory: ../data
         class_name: ConfiguredAssetFilesystemDataConnector
