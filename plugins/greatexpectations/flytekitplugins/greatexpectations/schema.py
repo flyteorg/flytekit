@@ -189,7 +189,7 @@ class GETypeTransformer(TypeTransformer[GEType]):
                     local_path = ge_conf.local_file_path
 
                 # download the file into local_file_path
-                FlyteContext.current_context().file_access.get_data(
+                ctx.file_access.get_data(
                     remote_path=uri,
                     local_path=local_path,
                 )
