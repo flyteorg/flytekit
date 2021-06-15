@@ -3,12 +3,13 @@ import os
 import typing
 from dataclasses import dataclass
 from datetime import timedelta
+from enum import Enum
 
 import pytest
 from dataclasses_json import dataclass_json
 from flyteidl.core import errors_pb2
 
-from flytekit.core.context_manager import FlyteContext
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import (
     DataclassTransformer,
     DictTransformer,
@@ -325,3 +326,48 @@ def test_dataclass_transformer():
     assert t.simple is not None
     assert t.simple == SimpleType.STRUCT
     assert t.metadata is None
+
+
+# Enums should have string values
+class Color(Enum):
+    RED = "red"
+    GREEN = "green"
+    BLUE = "blue"
+
+
+# Enums with integer values are not supported
+class UnsupportedEnumValues(Enum):
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+
+def test_enum_type():
+    t = TypeEngine.to_literal_type(Color)
+    assert t is not None
+    assert t.enum_type is not None
+    assert t.enum_type.values
+    assert t.enum_type.values == [c.value for c in Color]
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, Color.RED, Color, TypeEngine.to_literal_type(Color))
+    assert lv
+    assert lv.scalar
+    assert lv.scalar.primitive.string_value == "red"
+
+    v = TypeEngine.to_python_value(ctx, lv, Color)
+    assert v
+    assert v == Color.RED
+
+    v = TypeEngine.to_python_value(ctx, lv, str)
+    assert v
+    assert v == "red"
+
+    with pytest.raises(ValueError):
+        TypeEngine.to_python_value(ctx, Literal(scalar=Scalar(primitive=Primitive(string_value=str(Color.RED)))), Color)
+
+    with pytest.raises(ValueError):
+        TypeEngine.to_python_value(ctx, Literal(scalar=Scalar(primitive=Primitive(string_value="bad"))), Color)
+
+    with pytest.raises(AssertionError):
+        TypeEngine.to_literal_type(UnsupportedEnumValues)

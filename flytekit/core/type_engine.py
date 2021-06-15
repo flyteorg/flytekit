@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime as _datetime
+import enum
 import json as _json
 import mimetypes
 import os
@@ -300,12 +301,39 @@ class TypeEngine(typing.Generic[T]):
 
     @classmethod
     def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
+        """
+        The TypeEngine hierarchy for flyteKit. This method looksup and selects the type transformer. The algorithm is
+        as follows
+
+          d = dictionary of registered transformers, where is a python `type`
+          v = lookup type
+        Step 1:
+            find a transformer that matches v exactly
+
+        Step 2:
+            find a transformer that matches the generic type of v. e.g List[int], Dict[str, int] etc
+
+        Step 3:
+            if v is of type data class, use the dataclass transformer
+
+        Step 4:
+            Walk the inheritance hierarchy of v and  find a transformer that matches the first base class.
+            This is potentially non-deterministic - will depend on the registration pattern.
+
+            TODO lets make this deterministic by using an ordered dict
+
+        """
+        # Step 1
         if python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
+
+        # Step 2
         if hasattr(python_type, "__origin__"):
             if python_type.__origin__ in cls._REGISTRY:
                 return cls._REGISTRY[python_type.__origin__]
             raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
+
+        # Step 3
         if dataclasses.is_dataclass(python_type):
             return cls._DATACLASS_TRANSFORMER
 
@@ -622,6 +650,27 @@ class PathLikeTransformer(TypeTransformer[os.PathLike]):
         return local_destination_path
 
 
+class EnumTransformer(TypeTransformer[enum.Enum]):
+    """
+    Enables converting a python type enum.Enum to LiteralType.EnumType
+    """
+
+    def __init__(self):
+        super().__init__(name="DefaultEnumTransformer", t=enum.Enum)
+
+    def get_literal_type(self, t: Type[T]) -> LiteralType:
+        values = [v.value for v in t]
+        if not isinstance(values[0], str):
+            raise AssertionError("Only EnumTypes with value of string are supported")
+        return LiteralType(enum_type=_core_types.EnumType(values=values))
+
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val.value)))
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        return expected_python_type(lv.scalar.primitive.string_value)
+
+
 def _check_and_covert_float(lv: Literal) -> float:
     if lv.scalar.primitive.float_value is not None:
         return lv.scalar.primitive.float_value
@@ -705,6 +754,7 @@ def _register_default_type_transformers():
     TypeEngine.register(TextIOTransformer())
     TypeEngine.register(PathLikeTransformer())
     TypeEngine.register(BinaryIOTransformer())
+    TypeEngine.register(EnumTransformer())
 
     # inner type is. Also unsupported are typing's Tuples. Even though you can look inside them, Flyte's type system
     # doesn't support these currently.
