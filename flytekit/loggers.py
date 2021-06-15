@@ -1,5 +1,6 @@
 import logging as _logging
 import os as _os
+from pythonjsonlogger import jsonlogger
 
 logger = _logging.getLogger("flytekit")
 # Always set the root logger to debug until we can add more user based controls
@@ -23,7 +24,7 @@ else:
     ch.setLevel(_logging.DEBUG)
 
 # create formatter
-formatter = _logging.Formatter("%(asctime)s-%(name)s-%(levelname)s$ %(message)s")
+formatter = jsonlogger.JsonFormatter(fmt="%(asctime)s %(name)s %(levelname)s %(message)s")
 
 # add formatter to ch
 ch.setFormatter(formatter)
