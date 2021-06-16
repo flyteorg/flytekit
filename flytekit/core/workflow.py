@@ -33,6 +33,7 @@ from flytekit.core.promise import (
     VoidPromise,
     binding_from_python_std,
     create_and_link_node,
+    create_native_named_tuple,
     create_task_output,
     translate_inputs_to_literals,
 )
@@ -283,18 +284,7 @@ class WorkflowBase(object):
                     raise Exception(f"Workflow local execution expected 0 outputs but something received {result}")
 
             if (1 < expected_outputs == len(result)) or (result is not None and expected_outputs == 1):
-                if isinstance(result, Promise):
-                    v = [v for k, v in self.python_interface.outputs.items()][0]  # get output native type
-                    return TypeEngine.to_python_value(ctx, result.val, v)
-                else:
-                    for prom in result:
-                        if not isinstance(prom, Promise):
-                            raise Exception("should be promises")
-                        native_list = [
-                            TypeEngine.to_python_value(ctx, promise.val, self.python_interface.outputs[promise.var])
-                            for promise in result
-                        ]
-                        return tuple(native_list)
+                return create_native_named_tuple(ctx, result, self.python_interface)
 
             raise ValueError("expected outputs and actual outputs do not match")
 
