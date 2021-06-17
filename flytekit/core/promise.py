@@ -228,6 +228,14 @@ class ComparisonExpression(object):
 
 
 class ConjunctionExpression(object):
+    """
+    A Conjunction Expression is an expression of the form either (A and B) or (A or B).
+    where A, B are two expressions (comparsion or conjunctions) and (and, or) are logical truth operators.
+
+    A conjunctionExpression evaluates to True or False depending on the logical operator and the truth values of
+    each of the expressions A & B
+    """
+
     def __init__(
         self,
         lhs: Union[ComparisonExpression, "ConjunctionExpression"],
@@ -420,7 +428,7 @@ class Promise(object):
 
 def create_native_named_tuple(
     ctx: FlyteContext, promises: Union[Promise, typing.List[Promise]], entity_interface: Interface
-):
+) -> Optional[Tuple]:
     """
     Creates and returns a Named tuple with all variables that match the expected named outputs. this makes
     it possible to run things locally and expect a more native behavior, i.e. address elements of a named tuple
@@ -435,6 +443,9 @@ def create_native_named_tuple(
     if isinstance(promises, Promise):
         v = [v for k, v in entity_interface.outputs.items()][0]  # get output native type
         return TypeEngine.to_python_value(ctx, promises.val, v)
+
+    if len(promises) == 0:
+        return None
 
     named_tuple_name = "DefaultNamedTupleOutput"
     if entity_interface.output_tuple_name:
