@@ -109,6 +109,27 @@ def test_sub_wf_single_named_tuple():
     assert x == (7,)
 
 
+def test_sub_wf_multi_named_tuple():
+    nt = typing.NamedTuple("Multi", named1=int, named2=int)
+
+    @task
+    def t1(a: int) -> nt:
+        a = a + 2
+        return nt(a, a)
+
+    @workflow
+    def subwf(a: int) -> nt:
+        return t1(a=a)
+
+    @workflow
+    def wf(b: int) -> nt:
+        out = subwf(a=b)
+        return t1(a=out.named1)
+
+    x = wf(b=3)
+    assert x == (7, 7)
+
+
 def test_unexpected_outputs():
     @task
     def t1(a: int) -> int:

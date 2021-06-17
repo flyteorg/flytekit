@@ -240,11 +240,12 @@ def test_wf_output_mismatch():
         def my_wf2(a: int, b: str) -> int:
             return a, b
 
-    @workflow
-    def my_wf3(a: int, b: str) -> int:
-        return (a,)
+    with pytest.raises(AssertionError):
 
-    my_wf3(a=10, b="hello")
+        @workflow
+        def my_wf3(a: int, b: str) -> int:
+            return (a,)
+
     assert context_manager.FlyteContextManager.size() == 1
 
 
