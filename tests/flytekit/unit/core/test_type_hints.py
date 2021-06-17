@@ -246,7 +246,6 @@ def test_wf_output_mismatch():
         def my_wf3(a: int, b: str) -> int:
             return (a,)
 
-    # my_wf3(a=10, b="hello")
     assert context_manager.FlyteContextManager.size() == 1
 
 
