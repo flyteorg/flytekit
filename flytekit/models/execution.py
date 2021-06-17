@@ -79,6 +79,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         labels=None,
         annotations=None,
         auth_role=None,
+        max_parallelism=None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -88,6 +89,9 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         :param flytekit.models.common.Labels labels: Labels to apply to the execution.
         :param flytekit.models.common.Annotations annotations: Annotations to apply to the execution
         :param flytekit.models.common.AuthRole auth_role: The authorization method with which to execute the workflow.
+        :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
+            workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
+            parallelism/concurrency of MapTasks is independent from this.
 
         """
         self._launch_plan = launch_plan
@@ -97,6 +101,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._labels = labels or _common_models.Labels({})
         self._annotations = annotations or _common_models.Annotations({})
         self._auth_role = auth_role or _common_models.AuthRole()
+        self._max_parallelism = max_parallelism
 
     @property
     def launch_plan(self):
@@ -148,6 +153,10 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         """
         return self._auth_role
 
+    @property
+    def max_parallelism(self) -> int:
+        return self._max_parallelism
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionSpec
@@ -160,6 +169,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             labels=self.labels.to_flyte_idl(),
             annotations=self.annotations.to_flyte_idl(),
             auth_role=self._auth_role.to_flyte_idl() if self.auth_role else None,
+            max_parallelism=self.max_parallelism,
         )
 
     @classmethod
@@ -176,6 +186,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             labels=_common_models.Labels.from_flyte_idl(p.labels),
             annotations=_common_models.Annotations.from_flyte_idl(p.annotations),
             auth_role=_common_models.AuthRole.from_flyte_idl(p.auth_role),
+            max_parallelism=p.max_parallelism,
         )
 
 

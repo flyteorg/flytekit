@@ -96,3 +96,4 @@ def test_dynamic_conditional():
                 ctx, False, merge_sort_remotely._task_function, in1=[2, 3, 4, 5]
             )
             assert len(dynamic_job_spec.tasks) == 5
+            assert len(dynamic_job_spec.subworkflows) == 1

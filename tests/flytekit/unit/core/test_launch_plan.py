@@ -1,14 +1,27 @@
 import typing
+from collections import OrderedDict
 
 import pytest
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
-from flytekit.core import launch_plan, notification
+from flytekit.common.translator import get_serializable
+from flytekit.core import context_manager, launch_plan, notification
+from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.schedule import CronSchedule
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.models.common import AuthRole
+from flytekit.models.common import Annotations, AuthRole, Labels, RawOutputDataConfig
 from flytekit.models.core import execution as _execution_model
+from flytekit.models.core import identifier as identifier_models
+
+default_img = Image(name="default", fqn="test", tag="tag")
+serialization_settings = context_manager.SerializationSettings(
+    project="project",
+    domain="domain",
+    version="version",
+    env=None,
+    image_config=ImageConfig(default_image=default_img, images=[default_img]),
+)
 
 
 def test_lp():
@@ -100,6 +113,49 @@ def test_lp_each_parameter():
     with pytest.raises(AssertionError):
         assert auth_lp is auth_lp1
 
+    # Labels parameters
+    labels_model1 = Labels({"label": "foo"})
+    labels_model2 = Labels({"label": "foo"})
+    labels_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_labels", labels=labels_model1)
+    labels_lp2 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_labels", labels=labels_model2)
+    assert labels_lp1 is labels_lp2
+
+    # Annotations parameters
+    annotations_model1 = Annotations({"anno": "bar"})
+    annotations_model2 = Annotations({"anno": "bar"})
+    annotations_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_annotations", annotations=annotations_model1
+    )
+    annotations_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_annotations", annotations=annotations_model2
+    )
+    assert annotations_lp1 is annotations_lp2
+
+    # Raw output prefix parameters
+    raw_output_data_config1 = RawOutputDataConfig("s3://foo/output")
+    raw_output_data_config2 = RawOutputDataConfig("s3://foo/output")
+    raw_output_data_config_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_raw_output_prefix", raw_output_data_config=raw_output_data_config1
+    )
+    raw_output_data_config_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_raw_output_prefix", raw_output_data_config=raw_output_data_config2
+    )
+    assert raw_output_data_config_lp1 is raw_output_data_config_lp2
+
+    # Max parallelism
+    max_parallelism = 100
+    max_parallelism_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_max_parallelism",
+        max_parallelism=max_parallelism,
+    )
+    max_parallelism_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_max_parallelism",
+        max_parallelism=max_parallelism,
+    )
+    assert max_parallelism_lp1 is max_parallelism_lp2
+
     # Default LaunchPlan
     name_lp = launch_plan.LaunchPlan.get_or_create(workflow=wf)
     name_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf)
@@ -129,6 +185,9 @@ def test_lp_all_parameters():
         phases=[_execution_model.WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@slack.com"]
     )
     auth_role_model = AuthRole(assumable_iam_role="my:iam:role")
+    labels = Labels({"label": "foo"})
+    annotations = Annotations({"anno": "bar"})
+    raw_output_data_config = RawOutputDataConfig("s3://foo/output")
 
     lp = launch_plan.LaunchPlan.get_or_create(
         workflow=wf,
@@ -138,6 +197,9 @@ def test_lp_all_parameters():
         schedule=obj,
         notifications=slack_notif,
         auth_role=auth_role_model,
+        labels=labels,
+        annotations=annotations,
+        raw_output_data_config=raw_output_data_config,
     )
     lp2 = launch_plan.LaunchPlan.get_or_create(
         workflow=wf,
@@ -147,6 +209,9 @@ def test_lp_all_parameters():
         schedule=obj,
         notifications=slack_notif,
         auth_role=auth_role_model,
+        labels=labels,
+        annotations=annotations,
+        raw_output_data_config=raw_output_data_config,
     )
 
     assert lp is lp2
@@ -160,7 +225,37 @@ def test_lp_all_parameters():
         schedule=obj1,
         notifications=slack_notif,
         auth_role=auth_role_model,
+        labels=labels,
+        annotations=annotations,
+        raw_output_data_config=raw_output_data_config,
     )
 
     with pytest.raises(AssertionError):
         assert lp is lp3
+
+
+def test_lp_nodes():
+    @task
+    def t1(a: int) -> int:
+        return a + 2
+
+    @workflow
+    def my_sub_wf(a: int) -> int:
+        return t1(a=a)
+
+    lp = launch_plan.LaunchPlan.get_or_create(my_sub_wf, "my_sub_wf_lp1")
+
+    @workflow
+    def my_wf(a: int) -> (int, int):
+        t = t1(a=a)
+        w = lp(a=a)
+        return t, w
+
+    all_entities = OrderedDict()
+    wf_spec = get_serializable(all_entities, serialization_settings, my_wf)
+    assert wf_spec.template.nodes[1].workflow_node is not None
+    assert (
+        wf_spec.template.nodes[1].workflow_node.launchplan_ref.resource_type
+        == identifier_models.ResourceType.LAUNCH_PLAN
+    )
+    assert wf_spec.template.nodes[1].workflow_node.launchplan_ref.name == "my_sub_wf_lp1"

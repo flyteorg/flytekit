@@ -42,7 +42,7 @@ class Image(object):
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class ImageConfig(object):
-    default_image: Image
+    default_image: Image = None
     images: List[Image] = None
 
     def find_image(self, name) -> Optional[Image]:
@@ -77,9 +77,9 @@ def look_up_image_info(name: str, tag: str, optional_tag: bool = False) -> Image
         return Image(name=name, fqn=ref["name"], tag=ref["tag"])
 
 
-def get_image_config(img_name: str = None) -> ImageConfig:
+def get_image_config(img_name: Optional[str] = None) -> ImageConfig:
     image_name = img_name if img_name else internal.IMAGE.get()
-    default_img = look_up_image_info("default", image_name)
+    default_img = look_up_image_info("default", image_name) if image_name is not None and image_name != "" else None
     other_images = [look_up_image_info(k, tag=v, optional_tag=True) for k, v in images.get_specified_images().items()]
     other_images.append(default_img)
     return ImageConfig(default_image=default_img, images=other_images)
@@ -149,8 +149,8 @@ class CompilationState(object):
         nodes: Optional[List] = None,
     ) -> CompilationState:
         """
-        Create a new CompilationState where all the attributes are defaulted from the current CompilationState unless
-        explicitly provided as an argument.
+        Create a new CompilationState where the mode and task resolver are defaulted to the current object, but they
+        and all other args are taken if explicitly provided as an argument.
 
         Usage:
             s.with_params("p", nodes=[])
@@ -164,6 +164,14 @@ class CompilationState(object):
 
 
 class BranchEvalMode(Enum):
+    """
+    This is a 4-way class, with the None value meaning that we are not within a conditional context. The other two
+    values are
+    * Active - This means that the next ``then`` should run
+    * Skipped - The next ``then`` should not run
+    * Ignored - This is only used in nested conditionals, and it means that the entire conditional should be ignored.
+    """
+
     BRANCH_ACTIVE = "branch active"
     BRANCH_SKIPPED = "branch skipped"
 
@@ -225,14 +233,14 @@ class ExecutionState(object):
         Indicates that we are within an if-else block and the current branch has evaluated to true.
         Useful only in local execution mode
         """
-        object.__setattr__(self, "_branch_eval_mode", BranchEvalMode.BRANCH_ACTIVE)
+        object.__setattr__(self, "branch_eval_mode", BranchEvalMode.BRANCH_ACTIVE)
 
     def branch_complete(self):
         """
         Indicates that we are within a conditional / ifelse block and the active branch is not done.
         Default to SKIPPED
         """
-        object.__setattr__(self, "_branch_eval_mode", BranchEvalMode.BRANCH_SKIPPED)
+        object.__setattr__(self, "branch_eval_mode", BranchEvalMode.BRANCH_SKIPPED)
 
     def with_params(
         self,
@@ -302,6 +310,7 @@ class FlyteContext(object):
         )
 
     def enter_conditional_section(self) -> Builder:
+        # logging.debug("Creating a nested condition")
         return self.new_builder().enter_conditional_section()
 
     def with_execution_state(self, es: ExecutionState) -> Builder:
@@ -369,22 +378,24 @@ class FlyteContext(object):
             )
 
         def enter_conditional_section(self) -> "Builder":
-            if self.in_a_condition:
-                raise NotImplementedError("Nested branches are not yet supported!")
+            """
+            Used by the condition block to indicate that a new conditional section has been started.
+            """
 
             if self.compilation_state:
-                prefix = self.compilation_state.prefix + "branch" if self.compilation_state.prefix else "branch"
-                self.compilation_state = self.compilation_state.with_params(prefix=prefix)
+                self.compilation_state = self.compilation_state.with_params(prefix=self.compilation_state.prefix)
 
             if self.execution_state:
-                if self.execution_state.Mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-                    """
-                    In case of local workflow execution we should ensure a conditional section
-                    is created so that skipped branches result in tasks not being executed
-                    """
-                    self.execution_state = self.execution_state.with_params(
-                        branch_eval_mode=BranchEvalMode.BRANCH_SKIPPED
-                    )
+                if self.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+                    if self.in_a_condition:
+                        if self.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
+                            self.execution_state = self.execution_state.with_params()
+                    else:
+                        # In case of local workflow execution we should ensure a conditional section
+                        # is created so that skipped branches result in tasks not being executed
+                        self.execution_state = self.execution_state.with_params(
+                            branch_eval_mode=BranchEvalMode.BRANCH_SKIPPED
+                        )
 
             self.in_a_condition = True
             return self

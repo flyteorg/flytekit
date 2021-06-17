@@ -38,11 +38,15 @@ class SdkSidecarTask(_sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.Extende
         environment,
         pod_spec=None,
         primary_container_name=None,
+        annotations=None,
+        labels=None,
     ):
         """
         :param _sdk_runnable.SdkRunnableTask sdk_runnable_task:
         :param generated_pb2.PodSpec pod_spec:
         :param Text primary_container_name:
+        :param dict[Text, Text] annotations:
+        :param dict[Text, Text] labels:
         :raises: flytekit.common.exceptions.user.FlyteValidationException
         """
         if not pod_spec:
@@ -71,14 +75,16 @@ class SdkSidecarTask(_sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.Extende
             custom=None,
         )
 
-        self.reconcile_partial_pod_spec_and_task(pod_spec, primary_container_name)
+        self.reconcile_partial_pod_spec_and_task(pod_spec, primary_container_name, annotations, labels)
 
-    def reconcile_partial_pod_spec_and_task(self, pod_spec, primary_container_name):
+    def reconcile_partial_pod_spec_and_task(self, pod_spec, primary_container_name, annotations=None, labels=None):
         """
         Assigns the custom field as a the reconciled primary container and pod spec defintion.
         :param _sdk_runnable.SdkRunnableTask sdk_runnable_task:
         :param generated_pb2.PodSpec pod_spec:
         :param Text primary_container_name:
+        :param dict[Text, Text] annotations:
+        :param dict[Text, Text] labels:
         :rtype: SdkSidecarTask
         """
 
@@ -134,6 +140,8 @@ class SdkSidecarTask(_sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.Extende
         sidecar_job_plugin = _task_models.SidecarJob(
             pod_spec=pod_spec,
             primary_container_name=primary_container_name,
+            annotations=annotations,
+            labels=labels,
         ).to_flyte_idl()
 
         self.assign_custom_and_return(_MessageToDict(sidecar_job_plugin))
@@ -174,6 +182,8 @@ class SdkDynamicSidecarTask(
         environment,
         pod_spec=None,
         primary_container_name=None,
+        annotations=None,
+        labels=None,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -197,6 +207,8 @@ class SdkDynamicSidecarTask(
         :param dict[Text, Text] environment:
         :param generated_pb2.PodSpec pod_spec:
         :param Text primary_container_name:
+        :param dict[Text, Text] annotations:
+        :param dict[Text, Text] labels:
         :raises: flytekit.common.exceptions.user.FlyteValidationException
         """
 
@@ -221,6 +233,8 @@ class SdkDynamicSidecarTask(
             environment,
             pod_spec=pod_spec,
             primary_container_name=primary_container_name,
+            annotations=annotations,
+            labels=labels,
         )
 
         _sdk_dynamic.SdkDynamicTaskMixin.__init__(self, allowed_failure_ratio, max_concurrency)

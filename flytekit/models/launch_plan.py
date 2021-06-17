@@ -67,8 +67,6 @@ class Auth(_common.FlyteIdlEntity):
         :param Text kubernetes_service_account: Provides an identity for workflow execution resources. Flyte deployment
             administrators are responsible for handling permissions as they relate to the service account.
         """
-        if assumable_iam_role and kubernetes_service_account:
-            raise ValueError("Only one of assumable_iam_role or kubernetes_service_account can be set")
         self._assumable_iam_role = assumable_iam_role
         self._kubernetes_service_account = kubernetes_service_account
 
@@ -104,10 +102,8 @@ class Auth(_common.FlyteIdlEntity):
         :rtype: Auth
         """
         return cls(
-            assumable_iam_role=pb2_object.assumable_iam_role if pb2_object.HasField("assumable_iam_role") else None,
-            kubernetes_service_account=pb2_object.kubernetes_service_account
-            if pb2_object.HasField("kubernetes_service_account")
-            else None,
+            assumable_iam_role=pb2_object.assumable_iam_role,
+            kubernetes_service_account=pb2_object.kubernetes_service_account,
         )
 
 
@@ -122,6 +118,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         annotations,
         auth_role,
         raw_output_data_config,
+        max_parallelism=None,
     ):
         """
         The spec for a Launch Plan.
@@ -137,6 +134,9 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         :param flytekit.models.common.Auth auth_role: The auth method with which to execute the workflow.
         :param flytekit.models.common.RawOutputDataConfig raw_output_data_config: Value for where to store offloaded
             data like Blobs and Schemas.
+        :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
+            workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
+            parallelism/concurrency of MapTasks is independent from this.
         """
         self._workflow_id = workflow_id
         self._entity_metadata = entity_metadata
@@ -146,6 +146,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         self._annotations = annotations
         self._auth_role = auth_role
         self._raw_output_data_config = raw_output_data_config
+        self._max_parallelism = max_parallelism
 
     @property
     def workflow_id(self):
@@ -210,6 +211,10 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         """
         return self._raw_output_data_config
 
+    @property
+    def max_parallelism(self) -> int:
+        return self._max_parallelism
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
@@ -223,6 +228,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             annotations=self.annotations.to_flyte_idl(),
             auth_role=self.auth_role.to_flyte_idl(),
             raw_output_data_config=self.raw_output_data_config.to_flyte_idl(),
+            max_parallelism=self.max_parallelism,
         )
 
     @classmethod
@@ -251,6 +257,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             annotations=_common.Annotations.from_flyte_idl(pb2.annotations),
             auth_role=auth_role,
             raw_output_data_config=_common.RawOutputDataConfig.from_flyte_idl(pb2.raw_output_data_config),
+            max_parallelism=pb2.max_parallelism,
         )
 
 

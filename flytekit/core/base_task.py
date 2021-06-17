@@ -275,6 +275,9 @@ class Task(object):
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         return None
 
+    def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:
+        return None
+
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return None
 

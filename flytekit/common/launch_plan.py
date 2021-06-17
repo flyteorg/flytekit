@@ -65,6 +65,7 @@ class SdkLaunchPlan(
             annotations=model.annotations,
             auth_role=model.auth_role,
             raw_output_data_config=model.raw_output_data_config,
+            max_parallelism=model.max_parallelism,
         )
 
     @_exception_scopes.system_entry_point
@@ -178,7 +179,7 @@ class SdkLaunchPlan(
         assumable_iam_role = _auth_config.ASSUMABLE_IAM_ROLE.get()
         kubernetes_service_account = _auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
 
-        if not (assumable_iam_role or kubernetes_service_account):
+        if not assumable_iam_role and _sdk_config.ROLE.get() is not None:
             _logging.warning(
                 "Using deprecated `role` from config. Please update your config to use `assumable_iam_role` instead"
             )

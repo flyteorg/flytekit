@@ -4,6 +4,7 @@ def iterate_node_executions(
     task_execution_identifier=None,
     limit=None,
     filters=None,
+    unique_parent_id=None,
 ):
     """
     This returns a generator for node executions.
@@ -26,6 +27,7 @@ def iterate_node_executions(
                 limit=num_to_fetch,
                 token=token,
                 filters=filters,
+                unique_parent_id=unique_parent_id,
             )
         else:
             node_execs, next_token = client.list_node_executions_for_task_paginated(

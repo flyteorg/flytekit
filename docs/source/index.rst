@@ -15,12 +15,12 @@ build workflows, and extend ``flytekit``.
    :maxdepth: 1
    :hidden:
 
-   Getting Started <https://docs.flyte.org/en/latest/getting_started.html>
-   User Guide <https://docs.flyte.org/en/latest/getting_started.html>
-   Tutorials <https://flytecookbook.readthedocs.io>
-   Concepts <https://docs.flyte.org/en/latest/concepts/basics.html>
-   API Reference <https://docs.flyte.org/en/latest/reference/index.html>
-   Community <https://docs.flyte.org/en/latest/community/index.html>
+   |plane| Getting Started <https://docs.flyte.org/en/latest/getting_started.html>
+   |book-reader| User Guide <https://docs.flyte.org/projects/cookbook/en/latest/index.html>
+   |chalkboard| Tutorials <https://docs.flyte.org/projects/cookbook/en/latest/tutorials.html>
+   |project-diagram| Concepts <https://docs.flyte.org/en/latest/concepts/basics.html>
+   |book| API Reference <https://docs.flyte.org/en/latest/reference/index.html>
+   |hands-helping| Community <https://docs.flyte.org/en/latest/community/index.html>
 
 .. toctree::
    :maxdepth: -1

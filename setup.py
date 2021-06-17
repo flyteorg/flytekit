@@ -56,7 +56,7 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl>=0.18.26,<1.0.0",
+        "flyteidl>=0.19.2,<1.0.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=2.0.0,<4.0.0",
@@ -66,6 +66,7 @@ setup(
         "python-dateutil<=2.8.1,>=2.1",
         "grpcio>=1.3.0,<2.0",
         "protobuf>=3.6.1,<4",
+        "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",
         "pytz>=2017.2,<2018.5",
         "keyring>=18.0.1",
@@ -78,6 +79,7 @@ setup(
         "wrapt>=1.0.0,<2.0.0",
         "retry==0.9.2",
         "dataclasses-json>=0.5.2",
+        "marshmallow-jsonschema>=0.12.0",
         "natsort>=7.0.1",
         "dirhash>=0.2.1",
         "docker-image-py>=0.1.10",

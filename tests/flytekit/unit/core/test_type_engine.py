@@ -1,13 +1,17 @@
 import datetime
 import os
 import typing
+from dataclasses import dataclass
 from datetime import timedelta
+from enum import Enum
 
 import pytest
+from dataclasses_json import dataclass_json
 from flyteidl.core import errors_pb2
 
-from flytekit.core.context_manager import FlyteContext
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import (
+    DataclassTransformer,
     DictTransformer,
     ListTransformer,
     PathLikeTransformer,
@@ -245,3 +249,125 @@ def test_zero_floats():
 
     assert TypeEngine.to_python_value(ctx, l0, float) == 0
     assert TypeEngine.to_python_value(ctx, l1, float) == 0
+
+
+@dataclass
+@dataclass_json
+class InnerStruct(object):
+    a: int
+    b: typing.Optional[str]
+    c: typing.List[int]
+
+
+@dataclass_json
+@dataclass
+class TestStruct(object):
+    s: InnerStruct
+    m: typing.Dict[str, str]
+
+
+class UnsupportedSchemaType:
+    def __init__(self):
+        self._a = "Hello"
+
+
+@dataclass_json
+@dataclass
+class UnsupportedNestedStruct(object):
+    a: int
+    s: UnsupportedSchemaType
+
+
+def test_dataclass_transformer():
+    schema = {
+        "$ref": "#/definitions/TeststructSchema",
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+            "InnerstructSchema": {
+                "additionalProperties": False,
+                "properties": {
+                    "a": {"format": "integer", "title": "a", "type": "number"},
+                    "b": {"default": None, "title": "b", "type": ["string", "null"]},
+                    "c": {
+                        "items": {"format": "integer", "title": "c", "type": "number"},
+                        "title": "c",
+                        "type": "array",
+                    },
+                },
+                "type": "object",
+            },
+            "TeststructSchema": {
+                "additionalProperties": False,
+                "properties": {
+                    "m": {"additionalProperties": {"title": "m", "type": "string"}, "title": "m", "type": "object"},
+                    "s": {"$ref": "#/definitions/InnerstructSchema", "field_many": False, "type": "object"},
+                },
+                "type": "object",
+            },
+        },
+    }
+    tf = DataclassTransformer()
+    t = tf.get_literal_type(TestStruct)
+    assert t is not None
+    assert t.simple is not None
+    assert t.simple == SimpleType.STRUCT
+    assert t.metadata is not None
+    assert t.metadata == schema
+
+    t = TypeEngine.to_literal_type(TestStruct)
+    assert t is not None
+    assert t.simple is not None
+    assert t.simple == SimpleType.STRUCT
+    assert t.metadata is not None
+    assert t.metadata == schema
+
+    t = tf.get_literal_type(UnsupportedNestedStruct)
+    assert t is not None
+    assert t.simple is not None
+    assert t.simple == SimpleType.STRUCT
+    assert t.metadata is None
+
+
+# Enums should have string values
+class Color(Enum):
+    RED = "red"
+    GREEN = "green"
+    BLUE = "blue"
+
+
+# Enums with integer values are not supported
+class UnsupportedEnumValues(Enum):
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+
+def test_enum_type():
+    t = TypeEngine.to_literal_type(Color)
+    assert t is not None
+    assert t.enum_type is not None
+    assert t.enum_type.values
+    assert t.enum_type.values == [c.value for c in Color]
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, Color.RED, Color, TypeEngine.to_literal_type(Color))
+    assert lv
+    assert lv.scalar
+    assert lv.scalar.primitive.string_value == "red"
+
+    v = TypeEngine.to_python_value(ctx, lv, Color)
+    assert v
+    assert v == Color.RED
+
+    v = TypeEngine.to_python_value(ctx, lv, str)
+    assert v
+    assert v == "red"
+
+    with pytest.raises(ValueError):
+        TypeEngine.to_python_value(ctx, Literal(scalar=Scalar(primitive=Primitive(string_value=str(Color.RED)))), Color)
+
+    with pytest.raises(ValueError):
+        TypeEngine.to_python_value(ctx, Literal(scalar=Scalar(primitive=Primitive(string_value="bad"))), Color)
+
+    with pytest.raises(AssertionError):
+        TypeEngine.to_literal_type(UnsupportedEnumValues)

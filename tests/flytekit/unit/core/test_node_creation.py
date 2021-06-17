@@ -42,9 +42,9 @@ def test_normal_task():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    sdk_wf = get_serializable(OrderedDict(), serialization_settings, my_wf)
-    assert len(sdk_wf.nodes) == 2
-    assert len(sdk_wf.outputs) == 2
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert len(wf_spec.template.nodes) == 2
+    assert len(wf_spec.template.outputs) == 2
 
     @task
     def t2():
@@ -76,13 +76,13 @@ def test_normal_task():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    sdk_wf = get_serializable(OrderedDict(), serialization_settings, empty_wf)
-    assert sdk_wf.nodes[0].upstream_node_ids[0] == "n1"
-    assert sdk_wf.nodes[0].id == "n0"
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, empty_wf)
+    assert wf_spec.template.nodes[0].upstream_node_ids[0] == "n1"
+    assert wf_spec.template.nodes[0].id == "n0"
 
-    sdk_wf = get_serializable(OrderedDict(), serialization_settings, empty_wf2)
-    assert sdk_wf.nodes[0].upstream_node_ids[0] == "n1"
-    assert sdk_wf.nodes[0].id == "n0"
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, empty_wf2)
+    assert wf_spec.template.nodes[0].upstream_node_ids[0] == "n1"
+    assert wf_spec.template.nodes[0].id == "n0"
 
     with pytest.raises(FlyteAssertion):
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime as _datetime
+import enum
 import json as _json
 import mimetypes
 import os
@@ -16,6 +17,7 @@ from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
+from marshmallow_jsonschema import JSONSchema
 
 from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
@@ -150,15 +152,68 @@ class RestrictedType(TypeTransformer[T], ABC):
 
 
 class DataclassTransformer(TypeTransformer[object]):
+    """
+    The Dataclass Transformer, provides a type transformer for arbitrary Python dataclasses, that have
+    @dataclass and @dataclass_json decorators.
+
+    The Dataclass is converted to and from json and is transported between tasks using the proto.Structpb representation
+    Also the type declaration will try to extract the JSON Schema for the object if possible and pass it with the
+    definition.
+
+    For Json Schema, we use https://github.com/fuhrysteve/marshmallow-jsonschema library.
+
+    Example
+
+    .. code-block:: python
+
+        @dataclass_json
+        @dataclass
+        class Test():
+           a: int
+           b: str
+
+        from marshmallow_jsonschema import JSONSchema
+        t = Test(a=10,b="e")
+        JSONSchema().dump(t.schema())
+
+    Output will look like
+
+    .. code-block:: json
+
+        {'$schema': 'http://json-schema.org/draft-07/schema#',
+         'definitions': {'TestSchema': {'properties': {'a': {'title': 'a',
+             'type': 'number',
+             'format': 'integer'},
+            'b': {'title': 'b', 'type': 'string'}},
+           'type': 'object',
+           'additionalProperties': False}},
+         '$ref': '#/definitions/TestSchema'}
+
+    .. note::
+
+        The schema support is experimental and is useful for auto-completing in the UI/CLI
+
+    """
+
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
+        """
+        Extracts the Literal type definition for a Dataclass and returns a type Struct.
+        If possible also extracts the JSONSchema for the dataclass.
+        """
         if not issubclass(t, DataClassJsonMixin):
             raise AssertionError(
                 f"Dataclass {t} should be decorated with @dataclass_json to be " f"serialized correctly"
             )
-        return _primitives.Generic.to_flyte_literal_type()
+        schema = None
+        try:
+            schema = JSONSchema().dump(t.schema())
+        except Exception as e:
+            logger.warn("failed to extract schema for object %s, (will run schemaless) error: %s", str(t), e)
+
+        return _primitives.Generic.to_flyte_literal_type(metadata=schema)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if not dataclasses.is_dataclass(python_val):
@@ -246,12 +301,39 @@ class TypeEngine(typing.Generic[T]):
 
     @classmethod
     def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
+        """
+        The TypeEngine hierarchy for flyteKit. This method looksup and selects the type transformer. The algorithm is
+        as follows
+
+          d = dictionary of registered transformers, where is a python `type`
+          v = lookup type
+        Step 1:
+            find a transformer that matches v exactly
+
+        Step 2:
+            find a transformer that matches the generic type of v. e.g List[int], Dict[str, int] etc
+
+        Step 3:
+            if v is of type data class, use the dataclass transformer
+
+        Step 4:
+            Walk the inheritance hierarchy of v and  find a transformer that matches the first base class.
+            This is potentially non-deterministic - will depend on the registration pattern.
+
+            TODO lets make this deterministic by using an ordered dict
+
+        """
+        # Step 1
         if python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
+
+        # Step 2
         if hasattr(python_type, "__origin__"):
             if python_type.__origin__ in cls._REGISTRY:
                 return cls._REGISTRY[python_type.__origin__]
             raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
+
+        # Step 3
         if dataclasses.is_dataclass(python_type):
             return cls._DATACLASS_TRANSFORMER
 
@@ -568,6 +650,27 @@ class PathLikeTransformer(TypeTransformer[os.PathLike]):
         return local_destination_path
 
 
+class EnumTransformer(TypeTransformer[enum.Enum]):
+    """
+    Enables converting a python type enum.Enum to LiteralType.EnumType
+    """
+
+    def __init__(self):
+        super().__init__(name="DefaultEnumTransformer", t=enum.Enum)
+
+    def get_literal_type(self, t: Type[T]) -> LiteralType:
+        values = [v.value for v in t]
+        if not isinstance(values[0], str):
+            raise AssertionError("Only EnumTypes with value of string are supported")
+        return LiteralType(enum_type=_core_types.EnumType(values=values))
+
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val.value)))
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        return expected_python_type(lv.scalar.primitive.string_value)
+
+
 def _check_and_covert_float(lv: Literal) -> float:
     if lv.scalar.primitive.float_value is not None:
         return lv.scalar.primitive.float_value
@@ -651,6 +754,7 @@ def _register_default_type_transformers():
     TypeEngine.register(TextIOTransformer())
     TypeEngine.register(PathLikeTransformer())
     TypeEngine.register(BinaryIOTransformer())
+    TypeEngine.register(EnumTransformer())
 
     # inner type is. Also unsupported are typing's Tuples. Even though you can look inside them, Flyte's type system
     # doesn't support these currently.

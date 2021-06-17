@@ -36,7 +36,7 @@ def test_launch_workflow(flyteclient, flyte_workflows_register):
         PROJECT, "development", "workflows.basic.hello_world.my_wf", f"v{VERSION}"
     ).launch_with_literals(PROJECT, "development", literals.LiteralMap({}))
     execution.wait_for_completion()
-    assert execution.outputs.literals["o0"].scalar.primitive.string_value == "hello world"
+    assert execution.outputs["o0"] == "hello world"
 
 
 def test_launch_workflow_with_args(flyteclient, flyte_workflows_register):
@@ -53,8 +53,18 @@ def test_launch_workflow_with_args(flyteclient, flyte_workflows_register):
         ),
     )
     execution.wait_for_completion()
-    assert execution.outputs.literals["o0"].scalar.primitive.integer == 12
-    assert execution.outputs.literals["o1"].scalar.primitive.string_value == "foobarworld"
+    assert execution.node_executions["n0"].inputs == {"a": 10}
+    assert execution.node_executions["n0"].outputs == {"t1_int_output": 12, "c": "world"}
+    assert execution.node_executions["n1"].inputs == {"a": "world", "b": "foobar"}
+    assert execution.node_executions["n1"].outputs == {"o0": "foobarworld"}
+    assert execution.node_executions["n0"].task_executions[0].inputs == {"a": 10}
+    assert execution.node_executions["n0"].task_executions[0].outputs == {"t1_int_output": 12, "c": "world"}
+    assert execution.node_executions["n1"].task_executions[0].inputs == {"a": "world", "b": "foobar"}
+    assert execution.node_executions["n1"].task_executions[0].outputs == {"o0": "foobarworld"}
+    assert execution.inputs["a"] == 10
+    assert execution.inputs["b"] == "foobar"
+    assert execution.outputs["o0"] == 12
+    assert execution.outputs["o1"] == "foobarworld"
 
 
 def test_monitor_workflow(flyteclient, flyte_workflows_register):
@@ -86,5 +96,30 @@ def test_monitor_workflow(flyteclient, flyte_workflows_register):
     for key in execution.node_executions:
         assert execution.node_executions[key].closure.phase == 3
 
-    assert execution.node_executions["n0"].outputs.literals["o0"].scalar.primitive.string_value == "hello world"
-    assert execution.outputs.literals["o0"].scalar.primitive.string_value == "hello world"
+    assert execution.node_executions["n0"].inputs == {}
+    assert execution.node_executions["n0"].outputs["o0"] == "hello world"
+    assert execution.node_executions["n0"].task_executions[0].inputs == {}
+    assert execution.node_executions["n0"].task_executions[0].outputs["o0"] == "hello world"
+    assert execution.inputs == {}
+    assert execution.outputs["o0"] == "hello world"
+
+
+def test_launch_workflow_with_subworkflows(flyteclient, flyte_workflows_register):
+    execution = launch_plan.FlyteLaunchPlan.fetch(
+        PROJECT, "development", "workflows.basic.subworkflows.parent_wf", f"v{VERSION}"
+    ).launch_with_literals(
+        PROJECT,
+        "development",
+        literals.LiteralMap({"a": literals.Literal(literals.Scalar(literals.Primitive(integer=101)))}),
+    )
+    execution.wait_for_completion()
+    # check node execution inputs and outputs
+    assert execution.node_executions["n0"].inputs == {"a": 101}
+    assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}
+    assert execution.node_executions["n1"].inputs == {"a": 103}
+    assert execution.node_executions["n1"].outputs == {"o0": "world", "o1": "world"}
+
+    # check subworkflow task execution inputs and outputs
+    subworkflow_node_executions = execution.node_executions["n1"].subworkflow_node_executions
+    subworkflow_node_executions["n1-0-n0"].inputs == {"a": 103}
+    subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}

@@ -39,11 +39,11 @@ def test_serialization():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    serialized = get_serializable(OrderedDict(), serialization_settings, maptask)
+    task_spec = get_serializable(OrderedDict(), serialization_settings, maptask)
 
-    assert serialized.type == "container_array"
-    assert serialized.task_type_version == 1
-    assert serialized.container.args == [
+    assert task_spec.template.type == "container_array"
+    assert task_spec.template.task_type_version == 1
+    assert task_spec.template.container.args == [
         "pyflyte-map-execute",
         "--inputs",
         "{{.input}}",
@@ -86,13 +86,13 @@ def test_serialization_workflow_def():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
     serialized_control_plane_entities = OrderedDict()
-    wf1_serialized = get_serializable(serialized_control_plane_entities, serialization_settings, w1)
-    assert wf1_serialized is not None
-    assert len(wf1_serialized.nodes) == 1
+    wf1_spec = get_serializable(serialized_control_plane_entities, serialization_settings, w1)
+    assert wf1_spec.template is not None
+    assert len(wf1_spec.template.nodes) == 1
 
-    wf2_serialized = get_serializable(serialized_control_plane_entities, serialization_settings, w2)
-    assert wf2_serialized is not None
-    assert len(wf2_serialized.nodes) == 1
+    wf2_spec = get_serializable(serialized_control_plane_entities, serialization_settings, w2)
+    assert wf2_spec.template is not None
+    assert len(wf2_spec.template.nodes) == 1
 
     flyte_entities = list(serialized_control_plane_entities.keys())
 

@@ -731,15 +731,7 @@ def launch_task(project, domain, name, assumable_iam_role, kubernetes_service_ac
     Users should use the get-task command to ascertain the names of inputs to use.
     """
     _welcome_message()
-
-    if assumable_iam_role and kubernetes_service_account:
-        _click.UsageError("Currently you cannot specify both an assumable_iam_role and kubernetes_service_account")
-    if assumable_iam_role:
-        auth_role = _AuthRole(assumable_iam_role=assumable_iam_role)
-    elif kubernetes_service_account:
-        auth_role = _AuthRole(kubernetes_service_account=kubernetes_service_account)
-    else:
-        auth_role = None
+    auth_role = _AuthRole(assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account)
 
     with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
         task_id = _identifier.Identifier.from_python_std(urn)
@@ -1773,22 +1765,19 @@ def _get_patch_launch_plan_fn(
         the flyte config and/or a custom output_location_prefix.
         """
         # entity is of type flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
-        if assumable_iam_role and kubernetes_service_account:
-            _click.UsageError("Currently you cannot specify both an assumable_iam_role and kubernetes_service_account")
-        if assumable_iam_role:
-            entity.spec.auth_role.CopyFrom(_AuthRole(assumable_iam_role=assumable_iam_role).to_flyte_idl())
-        elif kubernetes_service_account:
-            entity.spec.auth_role.CopyFrom(
-                _AuthRole(kubernetes_service_account=kubernetes_service_account).to_flyte_idl()
-            )
-        elif _auth_config.ASSUMABLE_IAM_ROLE.get() is not None:
-            entity.spec.auth_role.CopyFrom(
-                _AuthRole(assumable_iam_role=_auth_config.ASSUMABLE_IAM_ROLE.get()).to_flyte_idl()
-            )
-        elif _auth_config.KUBERNETES_SERVICE_ACCOUNT.get() is not None:
-            entity.spec.auth_role.CopyFrom(
-                _AuthRole(kubernetes_service_account=_auth_config.KUBERNETES_SERVICE_ACCOUNT.get()).to_flyte_idl()
-            )
+        auth_assumable_iam_role = (
+            assumable_iam_role if assumable_iam_role is not None else _auth_config.ASSUMABLE_IAM_ROLE.get()
+        )
+        auth_k8s_service_account = (
+            kubernetes_service_account
+            if kubernetes_service_account is not None
+            else _auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
+        )
+        entity.spec.auth_role.CopyFrom(
+            _AuthRole(
+                assumable_iam_role=auth_assumable_iam_role, kubernetes_service_account=auth_k8s_service_account
+            ).to_flyte_idl(),
+        )
 
         if output_location_prefix is not None:
             entity.spec.raw_output_data_config.CopyFrom(
@@ -1818,6 +1807,7 @@ def _extract_and_register(
 
     flyte_entities_list = _extract_files(project, domain, version, file_paths, patches)
     for id, flyte_entity in flyte_entities_list:
+        _click.secho(f"Registering {id}", fg="yellow")
         try:
             if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
                 client.raw.create_launch_plan(_launch_plan_pb2.LaunchPlanCreateRequest(id=id, spec=flyte_entity.spec))
@@ -1830,7 +1820,6 @@ def _extract_and_register(
                     f"Only tasks, launch plans, and workflows can be called with this function, "
                     f"resource type {id.resource_type} was passed"
                 )
-            _click.secho(f"Registered {id}", fg="green")
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             _click.secho(f"Skipping because already registered {id}", fg="cyan")
 
