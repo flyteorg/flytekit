@@ -650,10 +650,16 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         # iterate through the list here, instead we should let the binding creation unwrap it and make a binding
         # collection/map out of it.
         if len(output_names) == 1:
-            if isinstance(workflow_outputs, tuple) and len(workflow_outputs) != 1:
-                raise AssertionError(
-                    f"The Workflow specification indicates only one return value, received {len(workflow_outputs)}"
-                )
+            if isinstance(workflow_outputs, tuple):
+                if len(workflow_outputs) != 1:
+                    raise AssertionError(
+                        f"The Workflow specification indicates only one return value, received {len(workflow_outputs)}"
+                    )
+                if self.python_interface.output_tuple_name is None:
+                    raise AssertionError(
+                        "Outputs specification for Workflow does not define a tuple, but return value is a tuple"
+                    )
+                workflow_outputs = workflow_outputs[0]
             t = self.python_interface.outputs[output_names[0]]
             b = binding_from_python_std(
                 ctx,
