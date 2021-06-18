@@ -83,7 +83,7 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
         """
         local_file_path is a must in two scenrios:
         * When using FlyteSchema
-        * When using FlyteFile for remote paths 
+        * When using FlyteFile for remote paths
         This is because base directory which has the dataset file 'must' be given in GE's config file
         """
         self._local_file_path = local_file_path
@@ -101,7 +101,7 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
         context = ge.data_context.DataContext(self._data_context)
 
         if len(self.python_interface.inputs.keys()) != 1:
-            raise RuntimeError(f"Expected one input argument to validate the dataset")
+            raise RuntimeError("Expected one input argument to validate the dataset")
 
         dataset = kwargs[list(self.python_interface.inputs.keys())[0]]
 
@@ -228,8 +228,8 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
                     )
 
             # raise a GE exception
-            raise ValidationError(f"Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
+            raise ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
-        logging.info(f"Validation succeeded!")
+        logging.info("Validation succeeded!")
 
         return final_result

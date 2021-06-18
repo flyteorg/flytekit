@@ -66,7 +66,7 @@ class GEConfig(object):
     """
     local_file_path is a must in two scenrios:
     * When using FlyteSchema
-    * When using FlyteFile for remote paths 
+    * When using FlyteFile for remote paths
     This is because base directory which has the dataset file 'must' be given in GE's config file
     """
     local_file_path: str = (None,)
@@ -278,9 +278,9 @@ class GETypeTransformer(TypeTransformer[GEType]):
                     )
 
             # raise a GE exception
-            raise ValidationError(f"Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
+            raise ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
-        logging.info(f"Validation succeeded!")
+        logging.info("Validation succeeded!")
 
         return return_dataset
 
