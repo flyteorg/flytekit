@@ -98,7 +98,7 @@ def test_ge_schema_batchrequest_pandas_config():
                     data_connector_query={
                         "batch_filter_parameters": {
                             "year": "2019",
-                            "month": "01",
+                            "month": "01",  # noqa: F722
                         },
                     },
                     limit=10,
@@ -204,7 +204,7 @@ def test_ge_schema_flyteschema():
                 expectation_suite="test.demo",
                 data_connector="data_flytetype_data_connector",
                 batchrequest_config=BatchConfig(limit=10),
-                local_file_path="/tmp/test3.parquet",
+                local_file_path="/tmp/test3.parquet",  # noqa: F722
             ),
         ]
     ) -> int:
@@ -229,7 +229,7 @@ def test_ge_schema_flyteschema_literal():
                 expectation_suite="test.demo",
                 data_connector="data_flytetype_data_connector",
                 batchrequest_config=BatchConfig(limit=10),
-                local_file_path="/tmp/test3.parquet",
+                local_file_path="/tmp/test3.parquet",  # noqa: F722
             ),
         ]
     ) -> int:
