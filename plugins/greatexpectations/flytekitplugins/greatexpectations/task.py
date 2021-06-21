@@ -147,10 +147,6 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
             if not self._local_file_path:
                 raise ValueError("local_file_path is missing!")
 
-            schema = FlyteSchema(
-                local_path=self._local_file_path,
-            )
-
             # FlyteSchema
             if type(dataset) is FlyteSchema:
                 # copy parquet file to user-given directory
@@ -158,6 +154,12 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
 
             # DataFrame (Pandas, Spark, etc.)
             else:
+                if not os.path.exists(self._local_file_path):
+                    os.makedirs(self._local_file_path, exist_ok=True)
+
+                schema = FlyteSchema(
+                    local_path=self._local_file_path,
+                )
                 writer = schema.open(type(dataset))
                 writer.write(dataset)
             dataset = os.path.basename(self._local_file_path)
