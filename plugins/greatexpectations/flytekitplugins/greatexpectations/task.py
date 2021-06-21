@@ -4,6 +4,7 @@ import os
 import shutil
 import typing
 from dataclasses import dataclass
+from distutils import dir_util
 
 import great_expectations as ge
 from great_expectations.checkpoint import SimpleCheckpoint
@@ -153,7 +154,7 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
             # FlyteSchema
             if type(dataset) is FlyteSchema:
                 # copy parquet file to user-given directory
-                shutil.copytree(dataset.remote_path, self._local_file_path, dirs_exist_ok=True)
+                dir_util.copy_tree(dataset.remote_path, self._local_file_path)
 
             # DataFrame (Pandas, Spark, etc.)
             else:
