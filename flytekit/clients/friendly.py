@@ -30,12 +30,7 @@ from flytekit.models.core import identifier as _identifier
 class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     """
     This is a low-level client that users can use to make direct gRPC service calls to the control plane. See the
-    :std:doc:`service spec <idl:protos/docs/service/index>`. This is more user-friendly interface than the
-    :py:class:`raw client <flytekit.clients.raw.RawSynchronousFlyteClient>` so users should try to use this class
-    first. Create a client by ::
-
-        SynchronousFlyteClient("your.domain:port", insecure=True)  # insecure should be True if Admin doesn't have SSL
-
+    :std:doc:`service spec <idl:protos/docs/service/index>`
     """
 
     @property
@@ -545,7 +540,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
             super(SynchronousFlyteClient, self)
-            .create_execution(
+                .create_execution(
                 _execution_pb2.ExecutionCreateRequest(
                     project=project,
                     domain=domain,
@@ -554,7 +549,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                     inputs=inputs.to_flyte_idl(),
                 )
             )
-            .id
+                .id
         )
 
     def get_execution(self, id):
@@ -642,8 +637,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
             super(SynchronousFlyteClient, self)
-            .relaunch_execution(_execution_pb2.ExecutionRelaunchRequest(id=id.to_flyte_idl(), name=name))
-            .id
+                .relaunch_execution(_execution_pb2.ExecutionRelaunchRequest(id=id.to_flyte_idl(), name=name))
+                .id
         )
 
     ####################################################################################################################
@@ -677,13 +672,13 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
 
     def list_node_executions(
-        self,
-        workflow_execution_identifier,
-        limit: int = 100,
-        token: typing.Optional[str] = None,
-        filters: typing.List[_filters.Filter] = None,
-        sort_by: _admin_common.Sort = None,
-        unique_parent_id: str = None,
+            self,
+            workflow_execution_identifier,
+            limit: int = 100,
+            token: typing.Optional[str] = None,
+            filters: typing.List[_filters.Filter] = None,
+            sort_by: _admin_common.Sort = None,
+            unique_parent_id: str = None,
     ):
         """Get node executions associated with a given workflow execution.
 
@@ -713,12 +708,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
 
     def list_node_executions_for_task_paginated(
-        self,
-        task_execution_identifier,
-        limit=100,
-        token=None,
-        filters=None,
-        sort_by=None,
+            self,
+            task_execution_identifier,
+            limit=100,
+            token=None,
+            filters=None,
+            sort_by=None,
     ):
         """
         This returns nodes spawned by a specific task execution.  This is generally from things like dynamic tasks.
@@ -776,12 +771,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
 
     def list_task_executions_paginated(
-        self,
-        node_execution_identifier,
-        limit=100,
-        token=None,
-        filters=None,
-        sort_by=None,
+            self,
+            node_execution_identifier,
+            limit=100,
+            token=None,
+            filters=None,
+            sort_by=None,
     ):
         """
         :param flytekit.models.core.identifier.NodeExecutionIdentifier node_execution_identifier:
