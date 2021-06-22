@@ -10,6 +10,12 @@ from flytekit.models import task as _task_model
 
 
 class ContainerTask(PythonTask):
+    """
+    This is an intermediate class that represents Flyte Tasks that run a container at execution time. This is the vast
+    majority of tasks - the typical ``@task`` decorated tasks for instance all run a container. An example of
+    something that doesn't run a container would be something like the Athena SQL task.
+    """
+
     class MetadataFormat(Enum):
         JSON = _task_model.DataLoadingConfig.LITERALMAP_FORMAT_JSON
         YAML = _task_model.DataLoadingConfig.LITERALMAP_FORMAT_YAML
