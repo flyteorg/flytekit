@@ -118,7 +118,7 @@ templates_path = ["_templates"]
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
+html_static_path = []
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -189,6 +189,7 @@ texinfo_documents = [
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "flytectl": ("https://flytectl.readthedocs.io/en/latest/", None),
+    "idl": ("https://flyteidl.readthedocs.io/en/latest/", None),
     # "flytectl": ("/Users/yourusername/go/src/github.com/flyteorg/flytectl/docs/build/html", None),
     "cookbook": ("https://flytecookbook.readthedocs.io/en/latest/", None),
     "flyte": ("https://flyte.readthedocs.io/en/latest/", None),

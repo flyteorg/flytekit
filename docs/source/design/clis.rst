@@ -14,6 +14,12 @@ The client code is located in ``flytekit/clients`` and there are two.
 * Similar to the :ref:`design-models` files, but a bit more complex, the ``raw`` one is basically a wrapper around the Protobuf generated code, with some handling for authentication in place, and acts as a mechanism for autocompletion and comments.
 * The ``friendly`` client uses the ``raw`` client, adds handling of things like pagination, and is structurally more aligned with the functionality and call pattern of the CLI itself.
 
+.. autoclass:: flytekit.clients.friendly.SynchronousFlyteClient
+   :noindex:
+
+.. autoclass:: flytekit.clients.raw.RawSynchronousFlyteClient
+   :noindex:
+
 ***********************
 Command Line Interfaces
 ***********************

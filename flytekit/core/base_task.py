@@ -522,12 +522,12 @@ class TaskResolverMixin(object):
     #. the ``location`` of the task's task resolver, followed by two dashes, followed by
     #. the arguments provided by calling the ``loader_args`` function below.
 
-    The ``default_task_resolver`` declared below knows that ::
+    The ``default_task_resolver`` declared below knows that
 
     * When ``loader_args`` is called on a task, to look up the module the task is in, and the name of the task (the
       key of the task in the module, either the function name, or the variable it was assigned to).
     * When ``load_task`` is called, it interprets the first part of the command as the module to call
-    ``importlib.import_module`` on, and then looks for a key ``t1``.
+      ``importlib.import_module`` on, and then looks for a key ``t1``.
 
     This is just the default behavior. Users should feel free to implement their own resolvers.
     """

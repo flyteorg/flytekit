@@ -41,7 +41,7 @@ Please see the documentation on each of the classes for details.
 .. autoclass:: flytekit.core.base_task.PythonTask
    :noindex:
 
-.. autoclass:: flytekit.core.python_function_task.PythonAutoContainerTask
+.. autoclass:: flytekit.core.python_auto_container.PythonAutoContainerTask
    :noindex:
 
 .. autoclass:: flytekit.core.python_function_task.PythonFunctionTask
