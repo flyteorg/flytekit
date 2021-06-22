@@ -49,10 +49,14 @@ Please see the documentation on each of the classes for details.
 
 Workflows
 =========
-There is currently only one :py:class:`Workflow <flytekit.core.workflow.Workflow>` class.
+There are two workflow classes, which both inherit from the :py:class:`WorkflowBase <flytekit.core.workflow.WorkflowBase>` class.
 
 .. autoclass:: flytekit.core.workflow.PythonFunctionWorkflow
    :noindex:
+
+.. autoclass:: flytekit.core.workflow.ImperativeWorkflow
+   :noindex:
+
 
 Launch Plan
 ===========

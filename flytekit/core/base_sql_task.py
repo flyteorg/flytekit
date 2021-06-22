@@ -25,6 +25,10 @@ class SQLTask(PythonTask[T]):
         outputs: Dict[str, Type] = None,
         **kwargs,
     ):
+        """
+        This SQLTask should mostly just be used as a base class for other SQL task types and should not be used
+        directly. See :py:class:`flytekit.extras.sqlite3.task.SQLite3Task`
+        """
         super().__init__(
             task_type=task_type,
             name=name,
