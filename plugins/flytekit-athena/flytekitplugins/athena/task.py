@@ -40,15 +40,17 @@ class AthenaTask(SQLTask[AthenaConfig]):
         **kwargs,
     ):
         """
-        Args:
-            name: Name of this task, should be unique in the project
-            config: Type AthenaConfig object
-            inputs: Name and type of inputs specified as an ordered dictionary
-            query_template: The actual query to run. We use Flyte's Golang templating format for Query templating.
-                            Refer to the templating documentation
-            output_schema_type: If some data is produced by this query, then you can specify the output schema type
-            **kwargs: All other args required by Parent type - SQLTask
+        To be used to query Athena databases.
+
+        :param name: Name of this task, should be unique in the project
+        :param query_template: The actual query to run. We use Flyte's Golang templating format for Query templating.
+          Refer to the templating documentation
+        :param task_config: AthenaConfig object
+        :param inputs: Name and type of inputs specified as an ordered dictionary
+        :param output_schema_type: If some data is produced by this query, then you can specify the output schema type
+        :param kwargs: All other args required by Parent type - SQLTask
         """
+
         outputs = None
         if output_schema_type is not None:
             outputs = {
