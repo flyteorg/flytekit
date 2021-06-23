@@ -722,10 +722,19 @@ def workflow(
     That is, workflows should not call non-Flyte entities since they are only run once (again, this is with respect to
     the platform, local runs notwithstanding).
 
-    Example:
+    The most basic example would look like
 
-    .. literalinclude:: ../../../tests/flytekit/unit/core/test_workflows.py
-       :pyobject: my_wf_example
+    .. code-block:: python
+
+        @workflow
+        def my_wf(x: int, y: typing.Dict[str, str]) -> str:
+            a = t1(x=x)
+            ...
+
+    Again, users should keep in mind that even though the body of the function looks like regular Python, it is
+    actually not. When flytekit scans the workflow function, the objects being passed around between the tasks are not
+    your typical Python values. So even though you may have a task ``t1() -> int``, when ``a = t1()`` is called, ``a``
+    will not be an integer so if you try to ``range(a)`` you'll get an error.
 
     Please see the :std:doc:`cookbook <cookbook:auto/core/flyte_basics/basic_workflow>` for more usage examples.
 
