@@ -83,15 +83,16 @@ def test_ref_task_more():
         assert wf1(in1=["hello", "world"]) == "hello"
 
 
+@reference_workflow(project="proj", domain="developement", name="wf_name", version="abc")
+def ref_wf1(a: int) -> (str, str):
+    ...
+
+
 def test_reference_workflow():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         a = a + 2
         return a, "world-" + str(a)
-
-    @reference_workflow(project="proj", domain="developement", name="wf_name", version="abc")
-    def ref_wf1(a: int) -> (str, str):
-        ...
 
     @workflow
     def my_wf(a: int, b: str) -> (int, str, str):
