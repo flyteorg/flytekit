@@ -18,16 +18,22 @@ from flytekit.core.workflow import reference_workflow, workflow
 from flytekit.models.core import identifier as _identifier_model
 
 
-def test_ref():
-    @reference_task(
-        project="flytesnacks",
-        domain="development",
-        name="recipes.aaa.simple.join_strings",
-        version="553018f39e519bdb2597b652639c30ce16b99c79",
-    )
-    def ref_t1(a: typing.List[str]) -> str:
-        ...
+@reference_task(
+    project="flytesnacks",
+    domain="development",
+    name="recipes.aaa.simple.join_strings",
+    version="553018f39e519bdb2597b652639c30ce16b99c79",
+)
+def ref_t1(a: typing.List[str]) -> str:
+    """
+    The empty function acts as a convenient skeleton to make it intuitive to call/reference this task from workflows.
+    The interface of the task must match that of the remote task. Otherwise, remote compilation of the workflow will
+    fail.
+    """
+    ...
 
+
+def test_ref():
     assert ref_t1.id.project == "flytesnacks"
     assert ref_t1.id.domain == "development"
     assert ref_t1.id.name == "recipes.aaa.simple.join_strings"
@@ -395,15 +401,15 @@ def test_ref_dynamic():
         return s
 
     with context_manager.FlyteContextManager.with_context(
-        context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
-                project="test_proj",
-                domain="test_domain",
-                version="abc",
-                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-                env={},
+            context_manager.FlyteContextManager.current_context().with_serialization_settings(
+                context_manager.SerializationSettings(
+                    project="test_proj",
+                    domain="test_domain",
+                    version="abc",
+                    image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                    env={},
+                )
             )
-        )
     ) as ctx:
         new_exc_state = ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
         with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)) as ctx:

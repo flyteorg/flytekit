@@ -146,7 +146,6 @@ def test_unexpected_outputs():
 
     # Should raise an exception because it doesn't return something when it should
     with pytest.raises(AssertionError):
-
         @workflow
         def one_output_wf() -> int:  # noqa
             t1(a=3)
@@ -193,3 +192,58 @@ def test_wf_nested_comp():
     assert len(sub_wf.nodes) == 1
     assert sub_wf.nodes[0].id == "wf2-n0"
     assert sub_wf.nodes[0].task_node.reference_id.name == "test_workflows.t1"
+
+
+@task
+def add_5(a: int) -> int:
+    a = a + 5
+    return a
+
+
+@workflow
+def simple_wf() -> int:
+    return add_5(a=1)
+
+
+@workflow
+def my_wf_example(a: int) -> (int, int):
+    """
+    Workflows can have inputs and return outputs of simple or complex types.
+    """
+
+    x = add_5(a=a)
+
+    # You can use outputs of a previous task as inputs to other nodes.
+    z = add_5(a=x)
+
+    # You can call other workflows from within this workflow
+    d = simple_wf()
+
+    # You can add conditions that can run on primitive types and execute different branches
+    e = (
+        conditional("bool")
+            .if_(a == 5)
+            .then(add_5(a=d))
+            .else_()
+            .then(add_5(a=z))
+    )
+
+    # Outputs of the workflow have to be outputs returned by prior nodes.
+    # No outputs and single or multiple outputs are supported
+    return x, e
+
+
+def test_all_node_types():
+    assert my_wf_example(a=1) == (6, 16)
+    entity_mapping = OrderedDict()
+
+    model_wf = get_serializable(entity_mapping, serialization_settings, my_wf_example)
+
+    assert len(model_wf.template.interface.outputs) == 2
+    assert len(model_wf.template.nodes) == 4
+    assert model_wf.template.nodes[2].workflow_node is not None
+
+    sub_wf = model_wf.sub_workflows[0]
+    assert len(sub_wf.nodes) == 1
+    assert sub_wf.nodes[0].id == "n0"
+    assert sub_wf.nodes[0].task_node.reference_id.name == "test_workflows.add_5"

@@ -725,27 +725,10 @@ def workflow(
 
     Example:
 
-    .. code-block:: python
-
-        @workflow
-        def my_wf(a: int, b: str) -> (int, str):
-            # t1 and t2 are :std:ref:`tasks`
-            x, y = t1(a=a)
-
-            # You can use outputs of a previous task as inputs to other nodes.
-            z = t2(a=y, b=b)
-
-            # You can call other workflows from within this workflow
-            d = my_other_wf(a=z)
-
-            # Outputs of the workflow have to be outputs returned by prior nodes.
-            return x, d
+    .. literalinclude:: ../../../tests/flytekit/unit/core/test_workflows.py
+       :pyobject: my_wf_example
 
     Please see :std:ref:`cookbook:sphx_glr_auto_core_flyte_basics_basic_workflow.py` for more usage examples.
-
-    .. remoteliteralinclude:: https://docs.flyte.org/projects/cookbook/en/latest/_downloads/392f4bd3a6fe2851d68f7a8a9d444be0/basic_workflow.py
-       :language: python
-       :lines: 35-41
 
     :param _workflow_function: This argument is implicitly passed and represents the decorated function.
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
