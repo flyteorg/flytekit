@@ -59,20 +59,20 @@ class TaskPlugins(object):
 
 
 def task(
-        _task_function: Optional[Callable] = None,
-        task_config: Optional[Any] = None,
-        cache: bool = False,
-        cache_version: str = "",
-        retries: int = 0,
-        interruptable: bool = False,
-        deprecated: str = "",
-        timeout: Union[_datetime.timedelta, int] = 0,
-        container_image: Optional[str] = None,
-        environment: Optional[Dict[str, str]] = None,
-        requests: Optional[Resources] = None,
-        limits: Optional[Resources] = None,
-        secret_requests: Optional[List[Secret]] = None,
-        execution_mode: Optional[PythonFunctionTask.ExecutionBehavior] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
+    _task_function: Optional[Callable] = None,
+    task_config: Optional[Any] = None,
+    cache: bool = False,
+    cache_version: str = "",
+    retries: int = 0,
+    interruptable: bool = False,
+    deprecated: str = "",
+    timeout: Union[_datetime.timedelta, int] = 0,
+    container_image: Optional[str] = None,
+    environment: Optional[Dict[str, str]] = None,
+    requests: Optional[Resources] = None,
+    limits: Optional[Resources] = None,
+    secret_requests: Optional[List[Secret]] = None,
+    execution_mode: Optional[PythonFunctionTask.ExecutionBehavior] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
 ) -> Union[Callable, PythonFunctionTask]:
     """
     This is the core decorator to use for any task type in flytekit.
@@ -190,7 +190,7 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
     """
 
     def __init__(
-            self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
+        self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
     ):
         super().__init__(TaskReference(project, domain, name, version), inputs, outputs)
 
@@ -199,10 +199,10 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
 
 
 def reference_task(
-        project: str,
-        domain: str,
-        name: str,
-        version: str,
+    project: str,
+    domain: str,
+    name: str,
+    version: str,
 ) -> Callable[[Callable[..., Any]], ReferenceTask]:
     """
     A reference task is a pointer to a task that already exists on your Flyte installation. This

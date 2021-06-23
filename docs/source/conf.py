@@ -48,7 +48,6 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_search.extension",
     "sphinx_fontawesome",
-    "sphinxext.remoteliteralinclude",
 ]
 
 # build the templated autosummary files

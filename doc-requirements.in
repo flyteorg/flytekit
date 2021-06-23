@@ -13,4 +13,3 @@ sphinx-copybutton
 sphinx_fontawesome
 grpcio
 cryptography
-sphinxext-remoteliteralinclude

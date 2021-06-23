@@ -313,7 +313,6 @@ six==1.16.0
     #   sagemaker-training
     #   scantree
     #   sphinx-code-include
-    #   sphinxext-remoteliteralinclude
     #   tenacity
     #   thrift
 snowballstemmer==2.1.0
@@ -333,7 +332,6 @@ sphinx==3.5.4
     #   sphinx-gallery
     #   sphinx-material
     #   sphinx-prompt
-    #   sphinxext-remoteliteralinclude
 sphinx-autoapi==1.8.1
     # via -r doc-requirements.in
 sphinx-code-include==1.1.1
@@ -360,8 +358,6 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
-sphinxext-remoteliteralinclude==0.2.0
-    # via -r doc-requirements.in
 statsd==3.3.0
     # via flytekit
 stringcase==1.2.0
