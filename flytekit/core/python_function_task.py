@@ -46,6 +46,9 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
         task_resolver: Optional[TaskResolverMixin] = None,
         **kwargs,
     ):
+        """
+        Please see class level documentation.
+        """
         super().__init__(name=name, task_config=task_config, task_type=task_type, task_resolver=task_resolver, **kwargs)
 
 

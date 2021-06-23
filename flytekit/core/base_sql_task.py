@@ -9,7 +9,11 @@ T = TypeVar("T")
 
 class SQLTask(PythonTask[T]):
     """
-    Base task types for all SQL tasks
+    Base task types for all SQL tasks. See :py:class:`flytekit.extras.sqlite3.task.SQLite3Task` for an example of
+    how to use it as a base class and :py:class:`flytekitplugins.athena.task.AthenaTask` for another example.
+
+    .. autoclass:: flytekit.extras.sqlite3.task.SQLite3Task
+       :noindex:
     """
 
     _INPUT_REGEX = re.compile(r"({{\s*.inputs.(\w+)\s*}})", re.IGNORECASE)

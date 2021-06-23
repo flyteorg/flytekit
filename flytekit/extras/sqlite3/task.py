@@ -52,10 +52,11 @@ class SQLite3Config(object):
 
 class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3Config]):
     """
-    Makes it possible to run client side SQLite3 queries that optionally return a FlyteSchema object
+    Makes it possible to run client side SQLite3 queries that optionally return a FlyteSchema object.
 
-    TODO: How should we use pre-built containers for running portable tasks like this. Should this always be a
-          referenced task type?
+    .. note::
+       This is a pre-built container task. That is, your user container will not be used at task execution time.
+       Instead the image defined in this task definition will be used instead.
     """
 
     _SQLITE_TASK_TYPE = "sqlite"

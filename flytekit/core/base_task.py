@@ -35,7 +35,7 @@ from flytekit.models.security import SecurityContext
 
 def kwtypes(**kwargs) -> Dict[str, Type]:
     """
-    Converts the keyword arguments to typed dictionary
+    Converts the keyword arguments to typed dictionary.
     """
     d = collections.OrderedDict()
     for k, v in kwargs.items():
