@@ -580,7 +580,6 @@ class TaskResolverMixin(object):
     def resolution_behavior(self) -> ResolutionBehavior:
         return self._resolution_behavior
 
-    # a setter function
     @resolution_behavior.setter
     def resolution_behavior(self, resolution_behavior: ResolutionBehavior):
         self._resolution_behavior = resolution_behavior
