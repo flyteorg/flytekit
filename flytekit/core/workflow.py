@@ -723,21 +723,29 @@ def workflow(
     That is, workflows should not call non-Flyte entities since they are only run once (again, this is with respect to
     the platform, local runs notwithstanding).
 
-    The most basic example would look like
+    Example:
 
     .. code-block:: python
 
         @workflow
-        def my_wf(x: int, y: typing.Dict[str, str]) -> str:
-            a = t1(x=x)
-            ...
+        def my_wf(a: int, b: str) -> (int, str):
+            # t1 and t2 are :std:ref:`tasks`
+            x, y = t1(a=a)
 
-    Again, users should keep in mind that even though the body of the function looks like regular Python, it is
-    actually not. When flytekit scans the workflow function, the objects being passed around between the tasks are not
-    your typical Python values. So even though you may have a task ``t1() -> int``, when ``a = t1()`` is called, ``a``
-    will not be an integer so if you try to ``range(a)`` you'll get an error.
+            # You can use outputs of a previous task as inputs to other nodes.
+            z = t2(a=y, b=b)
 
-    Please see the :std:doc:`user guide <cookbook:auto/core/flyte_basics/basic_workflow>` for more usage examples.
+            # You can call other workflows from within this workflow
+            d = my_other_wf(a=z)
+
+            # Outputs of the workflow have to be outputs returned by prior nodes.
+            return x, d
+
+    Please see :std:ref:`cookbook:sphx_glr_auto_core_flyte_basics_basic_workflow.py` for more usage examples.
+
+    .. remoteliteralinclude:: https://docs.flyte.org/projects/cookbook/en/latest/_downloads/392f4bd3a6fe2851d68f7a8a9d444be0/basic_workflow.py
+       :language: python
+       :lines: 35-41
 
     :param _workflow_function: This argument is implicitly passed and represents the decorated function.
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
