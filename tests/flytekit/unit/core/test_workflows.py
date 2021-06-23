@@ -146,6 +146,7 @@ def test_unexpected_outputs():
 
     # Should raise an exception because it doesn't return something when it should
     with pytest.raises(AssertionError):
+
         @workflow
         def one_output_wf() -> int:  # noqa
             t1(a=3)
@@ -220,13 +221,7 @@ def my_wf_example(a: int) -> (int, int):
     d = simple_wf()
 
     # You can add conditions that can run on primitive types and execute different branches
-    e = (
-        conditional("bool")
-            .if_(a == 5)
-            .then(add_5(a=d))
-            .else_()
-            .then(add_5(a=z))
-    )
+    e = conditional("bool").if_(a == 5).then(add_5(a=d)).else_().then(add_5(a=z))
 
     # Outputs of the workflow have to be outputs returned by prior nodes.
     # No outputs and single or multiple outputs are supported

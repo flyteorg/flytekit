@@ -199,10 +199,10 @@ class SkippedConditionalSection(ConditionalSection):
 
 class Case(object):
     def __init__(
-            self,
-            cs: ConditionalSection,
-            expr: Optional[Union[ComparisonExpression, ConjunctionExpression]],
-            stmt: str = "elif",
+        self,
+        cs: ConditionalSection,
+        expr: Optional[Union[ComparisonExpression, ConjunctionExpression]],
+        stmt: str = "elif",
     ):
         self._cs = cs
         if expr is not None:
@@ -315,7 +315,7 @@ def merge_promises(*args: Promise) -> typing.List[Promise]:
 
 
 def transform_to_conj_expr(
-        expr: ConjunctionExpression,
+    expr: ConjunctionExpression,
 ) -> Tuple[_core_cond.ConjunctionExpression, typing.List[Promise]]:
     left, left_promises = transform_to_boolexpr(expr.lhs)
     right, right_promises = transform_to_boolexpr(expr.rhs)
@@ -345,7 +345,7 @@ def transform_to_comp_expr(expr: ComparisonExpression) -> (_core_cond.Comparison
 
 
 def transform_to_boolexpr(
-        expr: Union[ComparisonExpression, ConjunctionExpression]
+    expr: Union[ComparisonExpression, ConjunctionExpression]
 ) -> (_core_cond.BooleanExpression, typing.List[Promise]):
     if isinstance(expr, ConjunctionExpression):
         cexpr, promises = transform_to_conj_expr(expr)
