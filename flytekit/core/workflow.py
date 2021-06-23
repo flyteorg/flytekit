@@ -67,8 +67,8 @@ class WorkflowMetadata(object):
 
     def __post_init__(self):
         if (
-                self.on_failure != WorkflowFailurePolicy.FAIL_IMMEDIATELY
-                and self.on_failure != WorkflowFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
+            self.on_failure != WorkflowFailurePolicy.FAIL_IMMEDIATELY
+            and self.on_failure != WorkflowFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
         ):
             raise FlyteValidationException(f"Failure policy {self.on_failure} not acceptable")
 
@@ -142,7 +142,7 @@ def get_promise(binding_data: _literal_models.BindingData, outputs_cache: Dict[N
 
 
 def get_promise_map(
-        bindings: List[_literal_models.Binding], outputs_cache: Dict[Node, Dict[str, Promise]]
+    bindings: List[_literal_models.Binding], outputs_cache: Dict[Node, Dict[str, Promise]]
 ) -> Dict[str, Promise]:
     """
     Local execution of imperatively defined workflows is done node by node. This function will fill in the node's
@@ -159,12 +159,12 @@ def get_promise_map(
 
 class WorkflowBase(object):
     def __init__(
-            self,
-            name: str,
-            workflow_metadata: WorkflowMetadata,
-            workflow_metadata_defaults: WorkflowMetadataDefaults,
-            python_interface: Interface,
-            **kwargs,
+        self,
+        name: str,
+        workflow_metadata: WorkflowMetadata,
+        workflow_metadata_defaults: WorkflowMetadataDefaults,
+        python_interface: Interface,
+        **kwargs,
     ):
         self._name = name
         self._workflow_metadata = workflow_metadata
@@ -244,7 +244,7 @@ class WorkflowBase(object):
         # This condition is hit when this workflow (self) is being called as part of a parent's workflow local run.
         # The context specifying the local workflow execution has already been set.
         elif (
-                ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
             if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
                 if self.python_interface and self.python_interface.output_tuple_name:
@@ -270,9 +270,9 @@ class WorkflowBase(object):
                     raise ValueError(f"Received a promise for a workflow call, when expecting a native value for {k}")
 
             with FlyteContextManager.with_context(
-                    ctx.with_execution_state(
-                        ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
-                    )
+                ctx.with_execution_state(
+                    ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
+                )
             ) as child_ctx:
                 result = self._local_execute(child_ctx, **input_kwargs)
 
@@ -354,10 +354,10 @@ class WorkflowBase(object):
 
 class ImperativeWorkflow(WorkflowBase):
     def __init__(
-            self,
-            name: str,
-            failure_policy: Optional[WorkflowFailurePolicy] = None,
-            interruptible: Optional[bool] = False,
+        self,
+        name: str,
+        failure_policy: Optional[WorkflowFailurePolicy] = None,
+        interruptible: Optional[bool] = False,
     ):
         metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
@@ -522,8 +522,7 @@ class ImperativeWorkflow(WorkflowBase):
         return self._inputs[input_name]
 
     def add_workflow_output(
-            self, output_name: str, p: Union[Promise, List[Promise], Dict[str, Promise]],
-            python_type: Optional[Type] = None
+        self, output_name: str, p: Union[Promise, List[Promise], Dict[str, Promise]], python_type: Optional[Type] = None
     ):
         """
         Add an output with the given name from the given node output.
@@ -588,10 +587,10 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
     """
 
     def __init__(
-            self,
-            workflow_function: Callable,
-            metadata: Optional[WorkflowMetadata],
-            default_metadata: Optional[WorkflowMetadataDefaults],
+        self,
+        workflow_function: Callable,
+        metadata: Optional[WorkflowMetadata],
+        default_metadata: Optional[WorkflowMetadataDefaults],
     ):
         name = f"{workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
@@ -626,7 +625,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         prefix = f"{ctx.compilation_state.prefix}-{self.short_name}-" if ctx.compilation_state is not None else ""
 
         with FlyteContextManager.with_context(
-                ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=self))
+            ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=self))
         ) as comp_ctx:
             # Construct the default input promise bindings, but then override with the provided inputs, if any
             input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
@@ -707,9 +706,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
 
 def workflow(
-        _workflow_function=None,
-        failure_policy: Optional[WorkflowFailurePolicy] = None,
-        interruptible: Optional[bool] = False,
+    _workflow_function=None,
+    failure_policy: Optional[WorkflowFailurePolicy] = None,
+    interruptible: Optional[bool] = False,
 ):
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
@@ -760,16 +759,16 @@ class ReferenceWorkflow(ReferenceEntity, PythonFunctionWorkflow):
     """
 
     def __init__(
-            self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
+        self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
     ):
         super().__init__(WorkflowReference(project, domain, name, version), inputs, outputs)
 
 
 def reference_workflow(
-        project: str,
-        domain: str,
-        name: str,
-        version: str,
+    project: str,
+    domain: str,
+    name: str,
+    version: str,
 ) -> Callable[[Callable[..., Any]], ReferenceWorkflow]:
     """
     A reference workflow is a pointer to a workflow that already exists on your Flyte installation. This

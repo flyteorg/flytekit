@@ -401,15 +401,15 @@ def test_ref_dynamic():
         return s
 
     with context_manager.FlyteContextManager.with_context(
-            context_manager.FlyteContextManager.current_context().with_serialization_settings(
-                context_manager.SerializationSettings(
-                    project="test_proj",
-                    domain="test_domain",
-                    version="abc",
-                    image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-                    env={},
-                )
+        context_manager.FlyteContextManager.current_context().with_serialization_settings(
+            context_manager.SerializationSettings(
+                project="test_proj",
+                domain="test_domain",
+                version="abc",
+                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                env={},
             )
+        )
     ) as ctx:
         new_exc_state = ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
         with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)) as ctx:
