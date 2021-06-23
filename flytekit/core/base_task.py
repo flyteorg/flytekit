@@ -2,6 +2,7 @@ import collections
 import datetime
 from abc import abstractmethod
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
 from flytekit.common.exceptions import user as _user_exceptions
@@ -532,6 +533,13 @@ class TaskResolverMixin(object):
     This is just the default behavior. Users should feel free to implement their own resolvers.
     """
 
+    class ResolutionBehavior(Enum):
+        DEFAULT = 1
+        MAP = 2
+
+    def __init__(self):
+        self._resolution_behavior = self.ResolutionBehavior.DEFAULT
+
     @property
     @abstractmethod
     def location(self) -> str:
@@ -567,3 +575,12 @@ class TaskResolverMixin(object):
         Overridable function that can optionally return a custom name for a given task
         """
         return None
+
+    @property
+    def resolution_behavior(self) -> ResolutionBehavior:
+        return self._resolution_behavior
+
+    # a setter function
+    @resolution_behavior.setter
+    def resolution_behavior(self, resolution_behavior: ResolutionBehavior):
+        self._resolution_behavior = resolution_behavior

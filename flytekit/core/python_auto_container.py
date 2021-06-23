@@ -83,7 +83,11 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         self._environment = environment
 
         compilation_state = FlyteContextManager.current_context().compilation_state
-        if compilation_state and compilation_state.task_resolver:
+        if (
+            compilation_state
+            and compilation_state.task_resolver
+            and (task_resolver is None or task_resolver.resolution_behavior != TaskResolverMixin.ResolutionBehavior.MAP)
+        ):
             if task_resolver:
                 logger.info(
                     f"Not using the passed in task resolver {task_resolver} because one found in compilation context"

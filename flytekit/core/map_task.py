@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Type
 
 from flytekit import SecurityContext
 from flytekit.common.constants import SdkTaskType
-from flytekit.core.base_task import PythonTask
+from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, SerializationSettings
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask
@@ -60,6 +60,8 @@ class MapPythonTask(PythonTask):
         # The run task in this case refers to a doctored copy of the user-provided task with map-task kwargs.
         # At registration time, the doctored task settings (e.g. environment, resources, etc) from the map task
         # declaration are used, rather than underlying run_task settings.
+        task_resolver = python_function_task.task_resolver
+        task_resolver.resolution_behavior = TaskResolverMixin.ResolutionBehavior.MAP
         self._run_task = type(python_function_task)(
             python_function_task.task_config,
             python_function_task.task_function,
