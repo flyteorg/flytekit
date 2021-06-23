@@ -3,13 +3,14 @@ from collections import OrderedDict
 
 import pytest
 
-from flytekit import LaunchPlan, map_task
+from flytekit import LaunchPlan, Resources, Secret, SecurityContext, map_task
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow
+from flytekit.models.task import Resources as ResourceModels
 
 
 @task
@@ -139,3 +140,46 @@ def test_inputs_outputs_length():
 
     with pytest.raises(ValueError):
         _ = map_task(many_inputs)
+
+
+def test_task_config():
+    @task(
+        requests=Resources(cpu="1", mem="100"),
+        limits=Resources(cpu="5", mem="500"),
+        container_image="docker.io/org/myimage:latest",
+        environment={"A": "A", "B": "B", "C": "C"},
+        secret_requests=[Secret("my_group", "my_key")],
+    )
+    def simple_task(a: int) -> str:
+        return str(a)
+
+    maptask = map_task(
+        simple_task,
+        requests=Resources(cpu="2", mem="200"),
+        limits=Resources(cpu="4", mem="400"),
+        container_image="docker.io/org/myimage:abc",
+        metadata=TaskMetadata(retries=3),
+        environment={"A": "1", "B": "2", "C": "3"},
+        secret_requests=[Secret("my_group", "my_other_key")],
+    )
+    default_img = Image(name="default", fqn="test", tag="tag")
+    serialization_settings = context_manager.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={},
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+    task_spec = get_serializable(OrderedDict(), serialization_settings, maptask)
+    assert task_spec.template.container.resources.requests == [
+        ResourceModels.ResourceEntry(ResourceModels.ResourceName.CPU, "2"),
+        ResourceModels.ResourceEntry(ResourceModels.ResourceName.MEMORY, "200"),
+    ]
+    assert task_spec.template.container.resources.limits == [
+        ResourceModels.ResourceEntry(ResourceModels.ResourceName.CPU, "4"),
+        ResourceModels.ResourceEntry(ResourceModels.ResourceName.MEMORY, "400"),
+    ]
+    assert task_spec.template.container.image == "docker.io/org/myimage:abc"
+    assert task_spec.template.metadata.retries.retries == 3
+    assert task_spec.template.container.env == {"A": "1", "B": "2", "C": "3"}
+    assert task_spec.template.security_context == SecurityContext(secrets=[Secret("my_group", "my_other_key")])

@@ -3,10 +3,10 @@ Flytekit map tasks specify how to run a single task across a list of inputs. Map
 a reference task as well as run-time parameters that limit execution concurrency and failure tolerations.
 """
 import os
-from contextlib import contextmanager
 from itertools import count
 from typing import Any, Dict, List, Optional, Type
 
+from flytekit import SecurityContext
 from flytekit.common.constants import SdkTaskType
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, SerializationSettings
@@ -56,6 +56,18 @@ class MapPythonTask(PythonTask):
         self._max_concurrency = concurrency
         self._min_success_ratio = min_success_ratio
         self._array_task_interface = python_function_task.python_interface
+
+        # The run task in this case refers to a doctored copy of the user-provided task with map-task kwargs.
+        # At registration time, the doctored task settings (e.g. environment, resources, etc) from the map task
+        # declaration are used, rather than underlying run_task settings.
+        self._run_task = type(python_function_task)(
+            python_function_task.task_config,
+            python_function_task.task_function,
+            task_resolver=python_function_task.task_resolver,
+            **kwargs,
+        )
+        self._run_task.set_command_fn(self.get_command)
+
         super().__init__(
             name=name,
             interface=collection_interface,
@@ -82,30 +94,21 @@ class MapPythonTask(PythonTask):
 
         return container_args
 
-    @contextmanager
-    def prepare_target(self):
-        """
-        Alters the underlying run_task command to modify it for map task execution and then resets it after.
-        """
-        self._run_task.set_command_fn(self.get_command)
-        try:
-            yield
-        finally:
-            self._run_task.reset_command_fn()
-
     def get_container(self, settings: SerializationSettings) -> Container:
-        with self.prepare_target():
-            return self._run_task.get_container(settings)
+        return self._run_task.get_container(settings)
 
     def get_k8s_pod(self, settings: SerializationSettings) -> K8sPod:
-        with self.prepare_target():
-            return self._run_task.get_k8s_pod(settings)
+        return self._run_task.get_k8s_pod(settings)
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return ArrayJob(parallelism=self._max_concurrency, min_success_ratio=self._min_success_ratio).to_dict()
 
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
         return self._run_task.get_config(settings)
+
+    @property
+    def security_context(self) -> SecurityContext:
+        return self._run_task.security_context
 
     @property
     def run_task(self) -> PythonTask:
