@@ -27,7 +27,6 @@ author = "Flyte"
 # The full version, including alpha/beta/rc tags
 release = "0.16.0b9"
 
-
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -49,6 +48,7 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_search.extension",
     "sphinx_fontawesome",
+    "sphinxext.remoteliteralinclude",
 ]
 
 # build the templated autosummary files
@@ -82,7 +82,6 @@ language = None
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
 exclude_patterns = []
-
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -134,12 +133,10 @@ html_context = {
     "home_page": "https://docs.flyte.org",
 }
 
-
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = "flytekitdoc"
-
 
 # -- Options for LaTeX output ------------------------------------------------
 
@@ -165,13 +162,11 @@ latex_documents = [
     (master_doc, "flytekit.tex", "Flytekit Documentation", "Flyte", "manual"),
 ]
 
-
 # -- Options for manual page output ------------------------------------------
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [(master_doc, "flytekit", "Flytekit Documentation", [author], 1)]
-
 
 # -- Options for Texinfo output ----------------------------------------------
 
@@ -189,7 +184,6 @@ texinfo_documents = [
         "Miscellaneous",
     ),
 ]
-
 
 # -- Extension configuration -------------------------------------------------
 # intersphinx configuration
