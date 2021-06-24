@@ -178,7 +178,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     @property
     def remote_source(self) -> str:
         """
-        If this is an input to a task, and the original path is s3://something, flytekit will download the
+        If this is an input to a task, and the original path is ``s3://something``, flytekit will download the
         file for the user. In case the user wants access to the original path, it will be here.
         """
         return self._remote_source
