@@ -736,7 +736,7 @@ def workflow(
     your typical Python values. So even though you may have a task ``t1() -> int``, when ``a = t1()`` is called, ``a``
     will not be an integer so if you try to ``range(a)`` you'll get an error.
 
-    Please see the :std:doc:`cookbook <cookbook:auto/core/flyte_basics/basic_workflow>` for more usage examples.
+    Please see the :std:doc:`user guide <cookbook:auto/core/flyte_basics/basic_workflow>` for more usage examples.
 
     :param _workflow_function: This argument is implicitly passed and represents the decorated function.
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
