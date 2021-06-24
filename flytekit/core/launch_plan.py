@@ -90,18 +90,18 @@ class LaunchPlan(object):
 
     @classmethod
     def create(
-        cls,
-        name: str,
-        workflow: _annotated_workflow.WorkflowBase,
-        default_inputs: Dict[str, Any] = None,
-        fixed_inputs: Dict[str, Any] = None,
-        schedule: _schedule_model.Schedule = None,
-        notifications: List[_common_models.Notification] = None,
-        labels: _common_models.Labels = None,
-        annotations: _common_models.Annotations = None,
-        raw_output_data_config: _common_models.RawOutputDataConfig = None,
-        auth_role: _common_models.AuthRole = None,
-        max_parallelism: int = None,
+            cls,
+            name: str,
+            workflow: _annotated_workflow.WorkflowBase,
+            default_inputs: Dict[str, Any] = None,
+            fixed_inputs: Dict[str, Any] = None,
+            schedule: _schedule_model.Schedule = None,
+            notifications: List[_common_models.Notification] = None,
+            labels: _common_models.Labels = None,
+            annotations: _common_models.Annotations = None,
+            raw_output_data_config: _common_models.RawOutputDataConfig = None,
+            auth_role: _common_models.AuthRole = None,
+            max_parallelism: int = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
         default_inputs = default_inputs or {}
@@ -156,18 +156,18 @@ class LaunchPlan(object):
 
     @classmethod
     def get_or_create(
-        cls,
-        workflow: _annotated_workflow.WorkflowBase,
-        name: Optional[str] = None,
-        default_inputs: Dict[str, Any] = None,
-        fixed_inputs: Dict[str, Any] = None,
-        schedule: _schedule_model.Schedule = None,
-        notifications: List[_common_models.Notification] = None,
-        labels: _common_models.Labels = None,
-        annotations: _common_models.Annotations = None,
-        raw_output_data_config: _common_models.RawOutputDataConfig = None,
-        auth_role: _common_models.AuthRole = None,
-        max_parallelism: int = None,
+            cls,
+            workflow: _annotated_workflow.WorkflowBase,
+            name: Optional[str] = None,
+            default_inputs: Dict[str, Any] = None,
+            fixed_inputs: Dict[str, Any] = None,
+            schedule: _schedule_model.Schedule = None,
+            notifications: List[_common_models.Notification] = None,
+            labels: _common_models.Labels = None,
+            annotations: _common_models.Annotations = None,
+            raw_output_data_config: _common_models.RawOutputDataConfig = None,
+            auth_role: _common_models.AuthRole = None,
+            max_parallelism: int = None,
     ) -> LaunchPlan:
         """
         This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
@@ -194,15 +194,15 @@ class LaunchPlan(object):
             parallelism/concurrency of MapTasks is independent from this.
         """
         if name is None and (
-            default_inputs is not None
-            or fixed_inputs is not None
-            or schedule is not None
-            or notifications is not None
-            or labels is not None
-            or annotations is not None
-            or raw_output_data_config is not None
-            or auth_role is not None
-            or max_parallelism is not None
+                default_inputs is not None
+                or fixed_inputs is not None
+                or schedule is not None
+                or notifications is not None
+                or labels is not None
+                or annotations is not None
+                or raw_output_data_config is not None
+                or auth_role is not None
+                or max_parallelism is not None
         ):
             raise ValueError(
                 "Only named launchplans can be created that have other properties. Drop the name if you want to create a default launchplan. Default launchplans cannot have any other associations"
@@ -217,15 +217,15 @@ class LaunchPlan(object):
 
             default_inputs.update(fixed_inputs)
             if (
-                workflow != cached_outputs["_workflow"]
-                or schedule != cached_outputs["_schedule"]
-                or notifications != cached_outputs["_notifications"]
-                or auth_role != cached_outputs["_auth_role"]
-                or default_inputs != cached_outputs["_saved_inputs"]
-                or labels != cached_outputs["_labels"]
-                or annotations != cached_outputs["_annotations"]
-                or raw_output_data_config != cached_outputs["_raw_output_data_config"]
-                or max_parallelism != cached_outputs["_max_parallelism"]
+                    workflow != cached_outputs["_workflow"]
+                    or schedule != cached_outputs["_schedule"]
+                    or notifications != cached_outputs["_notifications"]
+                    or auth_role != cached_outputs["_auth_role"]
+                    or default_inputs != cached_outputs["_saved_inputs"]
+                    or labels != cached_outputs["_labels"]
+                    or annotations != cached_outputs["_annotations"]
+                    or raw_output_data_config != cached_outputs["_raw_output_data_config"]
+                    or max_parallelism != cached_outputs["_max_parallelism"]
             ):
                 return AssertionError("The cached values aren't the same as the current call arguments")
 
@@ -256,18 +256,18 @@ class LaunchPlan(object):
 
     # TODO: Add QoS after it's done
     def __init__(
-        self,
-        name: str,
-        workflow: _annotated_workflow.WorkflowBase,
-        parameters: _interface_models.ParameterMap,
-        fixed_inputs: _literal_models.LiteralMap,
-        schedule: _schedule_model.Schedule = None,
-        notifications: List[_common_models.Notification] = None,
-        labels: _common_models.Labels = None,
-        annotations: _common_models.Annotations = None,
-        raw_output_data_config: _common_models.RawOutputDataConfig = None,
-        auth_role: _common_models.AuthRole = None,
-        max_parallelism: int = None,
+            self,
+            name: str,
+            workflow: _annotated_workflow.WorkflowBase,
+            parameters: _interface_models.ParameterMap,
+            fixed_inputs: _literal_models.LiteralMap,
+            schedule: _schedule_model.Schedule = None,
+            notifications: List[_common_models.Notification] = None,
+            labels: _common_models.Labels = None,
+            annotations: _common_models.Annotations = None,
+            raw_output_data_config: _common_models.RawOutputDataConfig = None,
+            auth_role: _common_models.AuthRole = None,
+            max_parallelism: int = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -365,16 +365,16 @@ class ReferenceLaunchPlan(ReferenceEntity, LaunchPlan):
     """
 
     def __init__(
-        self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
+            self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
     ):
         super().__init__(LaunchPlanReference(project, domain, name, version), inputs, outputs)
 
 
 def reference_launch_plan(
-    project: str,
-    domain: str,
-    name: str,
-    version: str,
+        project: str,
+        domain: str,
+        name: str,
+        version: str,
 ) -> Callable[[Callable[..., Any]], ReferenceLaunchPlan]:
     """
     A reference launch plan is a pointer to a launch plan that already exists on your Flyte installation. This
