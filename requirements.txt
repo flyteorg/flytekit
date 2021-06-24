@@ -77,9 +77,7 @@ flyteidl==0.19.4
 gevent==21.1.2
     # via sagemaker-training
 greenlet==1.1.0
-    # via
-    #   gevent
-    #   sqlalchemy
+    # via gevent
 grpcio==1.38.1
     # via flytekit
 hmsclient==0.1.1
@@ -277,8 +275,6 @@ six==1.16.0
     #   thrift
 sortedcontainers==2.4.0
     # via flytekit
-sqlalchemy==1.4.19
-    # via -r requirements.in
 statsd==3.3.0
     # via flytekit
 stringcase==1.2.0
