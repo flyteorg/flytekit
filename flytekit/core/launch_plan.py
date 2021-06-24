@@ -15,6 +15,48 @@ from flytekit.models import schedule as _schedule_model
 
 
 class LaunchPlan(object):
+    """
+    Launch Plans are one of the core constructs of Flyte. Please take a look at the discussion in the
+    :std:ref:`core concepts <flyte:divedeep-launchplans>` if you are unfamiliar with them.
+
+    Every workflow is registered with a default launch plan, which is just a launch plan with none of the additional
+    attributes set - no default values, fixed values, schedules, etc. Assuming you have the following workflow
+
+    .. code-block:: python
+
+        @workflow
+        def wf(a: int, c: str) -> str:
+            ...
+
+    Create the default launch plan with
+
+    .. code-block:: python
+
+        LaunchPlan.get_or_create(workflow=my_wf)
+
+    If you specify additional parameters, you'll also have to give the launch plan a unique name. Default and
+    fixed inputs can be expressed as Python native values like so
+
+    .. code-block:: python
+
+        lp = launch_plan.LaunchPlan.get_or_create(
+            workflow=wf,
+            name="unique_name",
+            default_inputs={"a": 3},
+            fixed_inputs={"c": "4"}
+        )
+
+    Additionally, a launch plan can be configured to run on a schedule and emit notifications.
+
+
+    To configure the remaining parameters, you'll need to import the relevant object
+
+    .. code-block:: python
+
+        from flytekit.models.common import Annotations, AuthRole, Labels, RawOutputDataConfig
+
+
+    """
     # The reason we cache is simply because users may get the default launch plan twice for a single Workflow. We
     # don't want to create two defaults, could be confusing.
     CACHE = {}
