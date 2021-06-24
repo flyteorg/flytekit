@@ -724,12 +724,10 @@ def workflow(
 
     The most basic example would look like
 
-    .. code-block:: python
+    Example:
 
-        @workflow
-        def my_wf(x: int, y: typing.Dict[str, str]) -> str:
-            a = t1(x=x)
-            ...
+    .. literalinclude:: ../../../tests/flytekit/unit/core/test_workflows.py
+       :pyobject: my_wf_example
 
     Again, users should keep in mind that even though the body of the function looks like regular Python, it is
     actually not. When flytekit scans the workflow function, the objects being passed around between the tasks are not
