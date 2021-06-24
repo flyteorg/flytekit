@@ -15,10 +15,8 @@ The client code is located in ``flytekit/clients`` and there are two.
 * The ``friendly`` client uses the ``raw`` client, adds handling of things like pagination, and is structurally more aligned with the functionality and call pattern of the CLI itself.
 
 .. autoclass:: flytekit.clients.friendly.SynchronousFlyteClient
-   :noindex:
 
 .. autoclass:: flytekit.clients.raw.RawSynchronousFlyteClient
-   :noindex:
 
 ***********************
 Command Line Interfaces

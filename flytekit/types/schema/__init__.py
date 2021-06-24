@@ -1,5 +1,5 @@
 """
-Flytekit Schema Type (:mod:`flytekit.types.schema`)
+Flytekit Schema Type
 ==========================================================
 .. currentmodule:: flytekit.types.schema
 

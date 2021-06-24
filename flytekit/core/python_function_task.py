@@ -1,3 +1,19 @@
+"""
+=========================================
+:mod:`flytekit.core.python_function_task`
+=========================================
+
+.. currentmodule:: flytekit.core.python_function_task
+
+.. autosummary::
+   :toctree: generated/
+
+   PythonFunctionTask
+   PythonInstanceTask
+
+"""
+
+
 import inspect
 from abc import ABC
 from collections import OrderedDict

@@ -1,5 +1,5 @@
 """
-Flytekit Directory Type (:mod:`flytekit.types.directory`)
+Flytekit Directory Type
 ==========================================================
 .. currentmodule:: flytekit.types.directory
 

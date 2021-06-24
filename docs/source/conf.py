@@ -194,3 +194,17 @@ intersphinx_mapping = {
     "cookbook": ("https://flytecookbook.readthedocs.io/en/latest/", None),
     "flyte": ("https://flyte.readthedocs.io/en/latest/", None),
 }
+
+inheritance_graph_attrs = {
+    "resolution": 300.0,
+}
+
+inheritance_node_attrs = {
+    "bgcolor": "aliceblue",
+}
+
+inheritance_edge_attrs = {
+    "color": "darkgray",
+}
+
+autoclass_content = "both"
