@@ -270,8 +270,14 @@ class ExecutionState(object):
 @dataclass(frozen=True)
 class FlyteContext(object):
     """
-    Top level context for FlyteKit. maintains information that is required either to compile or execute a
-    workflow / task
+    This is an internal-facing context object, that most users will not have to deal with. It's essentially a globally
+    available grab bag of settings and objects that allows flytekit to do things like convert complex types, run and
+    compile workflows, serialize Flyte entities, etc.
+
+    Even though this object as a ``current_context`` function on it, it should not be called directly. Please use the
+    :py:class:`flytekit.FlyteContextManager` object instead.
+
+    Please do not confuse this object with the :py:class:`flytekit.ExecutionParameters` object.
     """
 
     file_access: Optional[_data_proxy.FileAccessProvider]
@@ -443,7 +449,10 @@ class FlyteContextManager(object):
     Context's within Flytekit is useful to manage compilation state and execution state. Refer to ``CompilationState``
     and ``ExecutionState`` for for information. FlyteContextManager provides a singleton stack to manage these contexts.
 
-    Typical usage is:
+    Typical usage is
+
+    .. code-block:: python
+
         FlyteContextManager.initialize()
         with FlyteContextManager.with_context(o) as ctx:
           pass
