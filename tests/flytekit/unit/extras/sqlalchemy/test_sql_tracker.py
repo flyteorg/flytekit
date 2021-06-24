@@ -3,7 +3,7 @@ from collections import OrderedDict
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
-from plugins.tests.sqlalchemy.test_task import tk as not_tk
+from tests.flytekit.unit.extras.sqlalchemy.test_task import tk as not_tk
 
 
 def test_sql_lhs():
@@ -20,12 +20,10 @@ def test_sql_command():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
     srz_t = get_serializable(OrderedDict(), serialization_settings, not_tk)
-    assert srz_t.template.container.args[-7:] == [
+    assert srz_t.template.container.args[-5:] == [
         "--resolver",
-        "flytekit.core.python_auto_container.default_task_resolver",
+        "flytekit.core.python_customized_container_task.default_task_template_resolver",
         "--",
-        "task-module",
-        "plugins.tests.sqlalchemy.test_task",
-        "task-name",
-        "tk",
+        "{{.taskTemplatePath}}",
+        "flytekit.extras.sqlalchemy.task.SQLAlchemyTaskExecutor",
     ]
