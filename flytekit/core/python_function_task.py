@@ -38,6 +38,7 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
         x(a=5) # depending on the interface of the defined task
 
     """
+
     def __init__(
         self,
         name: str,
