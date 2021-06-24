@@ -722,8 +722,6 @@ def workflow(
     That is, workflows should not call non-Flyte entities since they are only run once (again, this is with respect to
     the platform, local runs notwithstanding).
 
-    The most basic example would look like
-
     Example:
 
     .. literalinclude:: ../../../tests/flytekit/unit/core/test_workflows.py
