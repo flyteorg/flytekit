@@ -35,7 +35,11 @@ from flytekit.models.security import SecurityContext
 
 def kwtypes(**kwargs) -> Dict[str, Type]:
     """
-    Converts the keyword arguments to typed dictionary.
+    This is a small helper function to convert the keyword arguments to an OrderedDict of types.
+
+    .. code-block:: python
+
+        kwtypes(a=int, b=str)
     """
     d = collections.OrderedDict()
     for k, v in kwargs.items():
@@ -46,7 +50,9 @@ def kwtypes(**kwargs) -> Dict[str, Type]:
 @dataclass
 class TaskMetadata(object):
     """
-    Create Metadata to be associated with this Task
+    Metadata for a Task. Things like retries and whether or not caching is turned on, and cache version are in here.
+
+    See the :std:ref:`IDL <idl:protos/docs/core/core:taskmetadata>` for the protobuf definition.
 
     Args:
       cache: Boolean that indicates if caching should be enabled
