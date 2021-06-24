@@ -6,9 +6,9 @@ import tempfile
 
 import pandas
 import pytest
-from flytekit.extras.sqlalchemy.task import SQLAlchemyConfig, SQLAlchemyTask
 
 from flytekit import kwtypes, task, workflow
+from flytekit.extras.sqlalchemy.task import SQLAlchemyConfig, SQLAlchemyTask
 from flytekit.types.schema import FlyteSchema
 
 tk = SQLAlchemyTask(
