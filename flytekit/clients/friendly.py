@@ -37,6 +37,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         SynchronousFlyteClient("your.domain:port", insecure=True)  # insecure should be True if Admin doesn't have SSL
 
     """
+
     @property
     def raw(self):
         """
