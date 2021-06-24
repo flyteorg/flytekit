@@ -57,6 +57,7 @@ class LaunchPlan(object):
 
 
     """
+
     # The reason we cache is simply because users may get the default launch plan twice for a single Workflow. We
     # don't want to create two defaults, could be confusing.
     CACHE = {}

@@ -1,3 +1,22 @@
+"""
+==============================
+:mod:`flytekit.core.base_task`
+==============================
+
+.. currentmodule:: flytekit.core.base_task
+
+.. autosummary::
+   :toctree: generated/
+
+   kwtypes
+   PythonTask
+   Task
+   TaskMetadata
+   TaskResolverMixin
+   IgnoreOutputs
+
+"""
+
 import collections
 import datetime
 from abc import abstractmethod
