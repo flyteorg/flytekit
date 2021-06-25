@@ -33,7 +33,7 @@ class Node(object):
         self._flyte_entity = flyte_entity
         self._aliases: _workflow_model.Alias = None
         self._outputs = None
-        self._resources: typing.Optional[Resources] = None
+        self._resources: typing.Optional[_resources_model] = None
 
     def runs_before(self, other: Node):
         """
