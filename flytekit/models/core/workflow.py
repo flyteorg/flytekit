@@ -1,3 +1,5 @@
+import typing
+
 from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit.models import common as _common
@@ -372,7 +374,7 @@ class Node(_common.FlyteIdlEntity):
 
 
 class TaskNodeOverrides(_common.FlyteIdlEntity):
-    def __init__(self, resources: Resources = None):
+    def __init__(self, resources: typing.Optional[Resources] = None):
         self._resources = resources
 
     @property
@@ -393,7 +395,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
 
 
 class TaskNode(_common.FlyteIdlEntity):
-    def __init__(self, reference_id, overrides: TaskNodeOverrides = None):
+    def __init__(self, reference_id, overrides: typing.Optional[TaskNodeOverrides] = None):
         """
         Refers to the task that the Node is to execute.
         NB: This is currently a oneof in protobuf, but there's only one option currently.  This code should be updated

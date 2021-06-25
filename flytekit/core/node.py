@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import typing
 from typing import Any, List
 
 from flytekit.common.utils import _dnsify
@@ -32,7 +33,7 @@ class Node(object):
         self._flyte_entity = flyte_entity
         self._aliases: _workflow_model.Alias = None
         self._outputs = None
-        self._resources: Resources = None
+        self._resources: typing.Optional[Resources] = None
 
     def runs_before(self, other: Node):
         """
@@ -91,7 +92,9 @@ class Node(object):
         return self
 
 
-def _convert_resource_overrides(resources: Resources, resource_name: str) -> [_resources_model.ResourceEntry]:
+def _convert_resource_overrides(
+    resources: typing.Optional[Resources], resource_name: str
+) -> [_resources_model.ResourceEntry]:
     if resources is None:
         return None
     if not isinstance(resources, Resources):
