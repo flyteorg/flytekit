@@ -35,21 +35,20 @@ class LaunchPlan(object):
         LaunchPlan.get_or_create(workflow=my_wf)
 
     If you specify additional parameters, you'll also have to give the launch plan a unique name. Default and
-    fixed inputs can be expressed as Python native values like so
+    fixed inputs can be expressed as Python native values like so:
 
-    .. code-block:: python
-
-        lp = launch_plan.LaunchPlan.get_or_create(
-            workflow=wf,
-            name="unique_name",
-            default_inputs={"a": 3},
-            fixed_inputs={"c": "4"}
-        )
+    .. literalinclude:: ../../../tests/flytekit/unit/core/test_launch_plan.py
+       :start-after: # fixed_and_default_start
+       :end-before: # fixed_and_default_end
+       :language: python
+       :dedent: 4
 
     Additionally, a launch plan can be configured to run on a schedule and emit notifications.
 
 
-    To configure the remaining parameters, you'll need to import the relevant object
+    Please see the relevant Schedule and Notification objects as well.
+
+    To configure the remaining parameters, you'll need to import the relevant model objects as well.
 
     .. code-block:: python
 
@@ -227,7 +226,7 @@ class LaunchPlan(object):
                     or raw_output_data_config != cached_outputs["_raw_output_data_config"]
                     or max_parallelism != cached_outputs["_max_parallelism"]
             ):
-                return AssertionError("The cached values aren't the same as the current call arguments")
+                raise AssertionError("The cached values aren't the same as the current call arguments")
 
             return LaunchPlan.CACHE[name]
         elif name is None and workflow.name in LaunchPlan.CACHE:
