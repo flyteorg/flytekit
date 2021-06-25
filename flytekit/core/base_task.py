@@ -144,14 +144,14 @@ class Task(object):
     """
 
     def __init__(
-            self,
-            task_type: str,
-            name: str,
-            interface: Optional[_interface_models.TypedInterface] = None,
-            metadata: Optional[TaskMetadata] = None,
-            task_type_version=0,
-            security_ctx: Optional[SecurityContext] = None,
-            **kwargs,
+        self,
+        task_type: str,
+        name: str,
+        interface: Optional[_interface_models.TypedInterface] = None,
+        metadata: Optional[TaskMetadata] = None,
+        task_type_version=0,
+        security_ctx: Optional[SecurityContext] = None,
+        **kwargs,
     ):
         self._task_type = task_type
         self._name = name
@@ -270,7 +270,7 @@ class Task(object):
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
             return self.compile(ctx, *args, **kwargs)
         elif (
-                ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
             if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
                 if self.python_interface and self.python_interface.output_tuple_name:
@@ -286,11 +286,11 @@ class Task(object):
             logger.warning("task run without context - executing raw function")
             new_user_params = self.pre_execute(ctx.user_space_params)
             with FlyteContextManager.with_context(
-                    ctx.with_execution_state(
-                        ctx.execution_state.with_params(
-                            mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION, user_space_params=new_user_params
-                        )
+                ctx.with_execution_state(
+                    ctx.execution_state.with_params(
+                        mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION, user_space_params=new_user_params
                     )
+                )
             ):
                 return self.execute(**kwargs)
 
@@ -311,9 +311,9 @@ class Task(object):
 
     @abstractmethod
     def dispatch_execute(
-            self,
-            ctx: FlyteContext,
-            input_literal_map: _literal_models.LiteralMap,
+        self,
+        ctx: FlyteContext,
+        input_literal_map: _literal_models.LiteralMap,
     ) -> _literal_models.LiteralMap:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
@@ -348,13 +348,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     """
 
     def __init__(
-            self,
-            task_type: str,
-            name: str,
-            task_config: T,
-            interface: Optional[Interface] = None,
-            environment: Optional[Dict[str, str]] = None,
-            **kwargs,
+        self,
+        task_type: str,
+        name: str,
+        task_config: T,
+        interface: Optional[Interface] = None,
+        environment: Optional[Dict[str, str]] = None,
+        **kwargs,
     ):
         """
         Args:
@@ -409,7 +409,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         return self.interface.outputs
 
     def dispatch_execute(
-            self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
+        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
     ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
@@ -426,7 +426,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
-                ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))
+            ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
@@ -449,7 +449,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # Short circuit the translation to literal map because what's returned may be a dj spec (or an
             # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
             if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
-                    native_outputs, _dynamic_job.DynamicJobSpec
+                native_outputs, _dynamic_job.DynamicJobSpec
             ):
                 return native_outputs
 

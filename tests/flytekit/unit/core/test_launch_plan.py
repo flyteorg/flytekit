@@ -47,18 +47,27 @@ def test_lp_documentation():
     email_notif = notification.Email(
         phases=[_execution_model.WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"]
     )
-    launch_plan.LaunchPlan.get_or_create(workflow=wf, name="your_lp_name_2", schedule=sched,
-                                         notifications=[email_notif])
+    launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="your_lp_name_2", schedule=sched, notifications=[email_notif]
+    )
     # schedule_end
 
     # auth_role_start
     auth_role_model = AuthRole(assumable_iam_role="my:iam:role")
-    launch_plan.LaunchPlan.get_or_create(workflow=wf, name="your_lp_name_3", )
+    launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="your_lp_name_3",
+    )
 
     labels_model = Labels({"label": "foo"})
     annotations_model = Annotations({"annotate": "bar"})
-    launch_plan.LaunchPlan.get_or_create(workflow=wf, name="your_lp_name_4", auth_role=auth_role_model,
-                                         labels=labels_model, annotations=annotations_model)
+    launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="your_lp_name_4",
+        auth_role=auth_role_model,
+        labels=labels_model,
+        annotations=annotations_model,
+    )
 
     raw_output_data_config = RawOutputDataConfig("s3://foo/output")
     launch_plan.LaunchPlan.get_or_create(
@@ -330,7 +339,7 @@ def test_lp_nodes():
     wf_spec = get_serializable(all_entities, serialization_settings, my_wf)
     assert wf_spec.template.nodes[1].workflow_node is not None
     assert (
-            wf_spec.template.nodes[1].workflow_node.launchplan_ref.resource_type
-            == identifier_models.ResourceType.LAUNCH_PLAN
+        wf_spec.template.nodes[1].workflow_node.launchplan_ref.resource_type
+        == identifier_models.ResourceType.LAUNCH_PLAN
     )
     assert wf_spec.template.nodes[1].workflow_node.launchplan_ref.name == "my_sub_wf_lp1"
