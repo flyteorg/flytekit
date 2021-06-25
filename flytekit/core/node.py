@@ -85,13 +85,15 @@ class Node(object):
             for k, v in alias_dict.items():
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
         if "requests" in kwargs or "limits" in kwargs:
-            requests = _convert_resource_overrides(kwargs.get("requests", Resources()), "requests")
-            limits = _convert_resource_overrides(kwargs.get("limits", Resources()), "limits")
+            requests = _convert_resource_overrides(kwargs["requests"], "requests")
+            limits = _convert_resource_overrides(kwargs["limits"], "limits")
             self._resources = _resources_model(requests=requests, limits=limits)
         return self
 
 
 def _convert_resource_overrides(resources: Resources, resource_name: str) -> [_resources_model.ResourceEntry]:
+    if resources is None:
+        return None
     if not isinstance(resources, Resources):
         raise AssertionError(f"{resource_name} should be specified as flytekit.Resources")
     resource_entries = []

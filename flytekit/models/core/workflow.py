@@ -386,7 +386,10 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
-        return cls(resources=Resources.from_flyte_idl(pb2_object.resources))
+        resources = Resources.from_flyte_idl(pb2_object.resources)
+        if bool(resources.requests) or bool(resources.limits):
+            return cls(resources=resources)
+        return cls(resources=None)
 
 
 class TaskNode(_common.FlyteIdlEntity):
@@ -418,11 +421,10 @@ class TaskNode(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.TaskNode
         """
-        task_node = _core_workflow.TaskNode(
+        return _core_workflow.TaskNode(
             reference_id=self.reference_id.to_flyte_idl(),
+            overrides=self.overrides.to_flyte_idl() if self.overrides is not None else None,
         )
-        if self.overrides is not None:
-            task_node.overrides = self.overrides.to_flyte_idl()
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -430,9 +432,12 @@ class TaskNode(_common.FlyteIdlEntity):
         :param flyteidl.core.workflow_pb2.TaskNode pb2_object:
         :rtype: TaskNode
         """
+        overrides = TaskNodeOverrides.from_flyte_idl(pb2_object.overrides)
+        if overrides.resources is None:
+            overrides = None
         return cls(
             reference_id=_identifier.Identifier.from_flyte_idl(pb2_object.reference_id),
-            overrides=TaskNodeOverrides.from_flyte_idl(pb2_object.overrides),
+            overrides=overrides,
         )
 
 
