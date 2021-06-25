@@ -6,6 +6,7 @@ from flytekit.models import types as _types
 from flytekit.models.core import condition as _condition
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow
+from flytekit.models.task import Resources
 
 _generic_id = _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "project", "domain", "name", "version")
 
@@ -225,3 +226,35 @@ def test_branch_node():
     bn2 = _workflow.BranchNode.from_flyte_idl(bn.to_flyte_idl())
     assert bn == bn2
     assert bn.if_else.case.then_node == obj
+
+
+def test_task_node_overrides():
+    overrides = _workflow.TaskNodeOverrides(
+        Resources(
+            requests=[Resources.ResourceEntry(Resources.ResourceName.CPU, "1")],
+            limits=[Resources.ResourceEntry(Resources.ResourceName.CPU, "2")],
+        )
+    )
+    assert overrides.resources.requests == [Resources.ResourceEntry(Resources.ResourceName.CPU, "1")]
+    assert overrides.resources.limits == [Resources.ResourceEntry(Resources.ResourceName.CPU, "2")]
+
+    obj = _workflow.TaskNodeOverrides.from_flyte_idl(overrides.to_flyte_idl())
+    assert overrides == obj
+
+
+def test_task_node_with_overrides():
+    task_node = _workflow.TaskNode(
+        reference_id=_generic_id,
+        overrides=_workflow.TaskNodeOverrides(
+            Resources(
+                requests=[Resources.ResourceEntry(Resources.ResourceName.CPU, "1")],
+                limits=[Resources.ResourceEntry(Resources.ResourceName.CPU, "2")],
+            )
+        ),
+    )
+
+    assert task_node.overrides.resources.requests == [Resources.ResourceEntry(Resources.ResourceName.CPU, "1")]
+    assert task_node.overrides.resources.limits == [Resources.ResourceEntry(Resources.ResourceName.CPU, "2")]
+
+    obj = _workflow.TaskNode.from_flyte_idl(task_node.to_flyte_idl())
+    assert task_node == obj
