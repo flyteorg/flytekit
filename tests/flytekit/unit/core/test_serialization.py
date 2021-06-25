@@ -81,12 +81,12 @@ def test_serialization_branch_complex():
         x, y = t1(a=a)
         d = (
             conditional("test1")
-                .if_(x == 4)
-                .then(t2(a=b))
-                .elif_(x >= 5)
-                .then(t2(a=y))
-                .else_()
-                .fail("Unable to choose branch")
+            .if_(x == 4)
+            .then(t2(a=b))
+            .elif_(x >= 5)
+            .then(t2(a=y))
+            .else_()
+            .fail("Unable to choose branch")
         )
         f = conditional("test2").if_(d == "hello ").then(t2(a="It is hello")).else_().then(t2(a="Not Hello!"))
         return x, f
@@ -128,12 +128,12 @@ def test_serialization_branch_compound_conditions():
     def my_wf(a: int) -> int:
         d = (
             conditional("test1")
-                .if_((a == 4) | (a == 3))
-                .then(t1(a=a))
-                .elif_(a < 6)
-                .then(t1(a=a))
-                .else_()
-                .fail("Unable to choose branch")
+            .if_((a == 4) | (a == 3))
+            .then(t1(a=a))
+            .elif_(a < 6)
+            .then(t1(a=a))
+            .else_()
+            .fail("Unable to choose branch")
         )
         return d
 
@@ -165,12 +165,12 @@ def test_serialization_branch_complex_2():
         x, y = t1(a=a)
         d = (
             conditional("test1")
-                .if_(x == 4)
-                .then(t2(a=b))
-                .elif_(x >= 5)
-                .then(t2(a=y))
-                .else_()
-                .fail("Unable to choose branch")
+            .if_(x == 4)
+            .then(t2(a=b))
+            .elif_(x >= 5)
+            .then(t2(a=y))
+            .else_()
+            .fail("Unable to choose branch")
         )
         f = conditional("test2").if_(d == "hello ").then(t2(a="It is hello")).else_().then(t2(a="Not Hello!"))
         return x, f
