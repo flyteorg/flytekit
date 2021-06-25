@@ -69,7 +69,7 @@ class Resources(_common.FlyteIdlEntity):
             """
             return cls(name=pb2_object.name, value=pb2_object.value)
 
-    def __init__(self, requests=None, limits=None):
+    def __init__(self, requests, limits):
         """
         :param list[Resources.ResourceEntry] requests: The desired resources for execution.  This is given on a best
             effort basis.
@@ -100,8 +100,8 @@ class Resources(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.tasks_pb2.Resources
         """
         return _core_task.Resources(
-            requests=[r.to_flyte_idl() for r in self.requests] if self.requests is not None else None,
-            limits=[r.to_flyte_idl() for r in self.limits] if self.limits is not None else None,
+            requests=[r.to_flyte_idl() for r in self.requests],
+            limits=[r.to_flyte_idl() for r in self.limits],
         )
 
     @classmethod
@@ -110,26 +110,9 @@ class Resources(_common.FlyteIdlEntity):
         :param flyteidl.core.tasks_pb2.Resources.ResourceEntry pb2_object:
         :rtype: Resources
         """
-        print(f"len requests { len(pb2_object.requests)}")
-        requests = (
-            [Resources.ResourceEntry.from_flyte_idl(r) for r in pb2_object.requests]
-            if pb2_object.requests and len(pb2_object.requests) > 0
-            else None
-        )
-
-        limits = (
-            [Resources.ResourceEntry.from_flyte_idl(r) for r in pb2_object.limits]
-            if pb2_object.limits and len(pb2_object.limits) > 0
-            else None
-        )
-        print(f"thing {cls(requests=requests, limits=limits)}")
         return cls(
-            requests=[Resources.ResourceEntry.from_flyte_idl(r) for r in pb2_object.requests]
-            if pb2_object.requests and len(pb2_object.requests) > 0
-            else None,
-            limits=[Resources.ResourceEntry.from_flyte_idl(l) for l in pb2_object.limits]
-            if pb2_object.limits and len(pb2_object.limits) > 0
-            else None,
+            requests=[Resources.ResourceEntry.from_flyte_idl(r) for r in pb2_object.requests],
+            limits=[Resources.ResourceEntry.from_flyte_idl(l) for l in pb2_object.limits],
         )
 
 
