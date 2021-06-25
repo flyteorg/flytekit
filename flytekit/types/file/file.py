@@ -109,7 +109,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
       ``FlyteFilePath("/tmp/blah", remote_path=False)``
 
     * However, we have a shorthand.
-      "file:///tmp/blah" is treated as "remote" and is by default not copied.
+      "file:///tmp/local_file" is treated as "remote" and is by default not copied.
     """
 
     @classmethod
