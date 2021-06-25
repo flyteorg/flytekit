@@ -3,8 +3,10 @@ from __future__ import annotations
 from typing import Any, List
 
 from flytekit.common.utils import _dnsify
+from flytekit.core.resources import Resources
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.models.task import Resources as _resources_model
 
 
 class Node(object):
@@ -30,6 +32,7 @@ class Node(object):
         self._flyte_entity = flyte_entity
         self._aliases: _workflow_model.Alias = None
         self._outputs = None
+        self._resources: Resources = None
 
     def runs_before(self, other: Node):
         """
@@ -81,4 +84,29 @@ class Node(object):
             self._aliases = []
             for k, v in alias_dict.items():
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
+        if "requests" in kwargs or "limits" in kwargs:
+            requests = _convert_resource_overrides(kwargs.get("requests", Resources()), "requests")
+            limits = _convert_resource_overrides(kwargs.get("limits", Resources()), "limits")
+            self._resources = _resources_model(requests=requests, limits=limits)
         return self
+
+
+def _convert_resource_overrides(resources: Resources, resource_name: str) -> [_resources_model.ResourceEntry]:
+    if not isinstance(resources, Resources):
+        raise AssertionError(f"{resource_name} should be specified as flytekit.Resources")
+    resource_entries = []
+    if resources.cpu is not None:
+        resource_entries.append(_resources_model.ResourceEntry(_resources_model.ResourceName.CPU, resources.cpu))
+
+    if resources.mem is not None:
+        resource_entries.append(_resources_model.ResourceEntry(_resources_model.ResourceName.MEMORY, resources.mem))
+
+    if resources.gpu is not None:
+        resource_entries.append(_resources_model.ResourceEntry(_resources_model.ResourceName.GPU, resources.gpu))
+
+    if resources.storage is not None:
+        resource_entries.append(
+            _resources_model.ResourceEntry(_resources_model.ResourceName.STORAGE, resources.storage)
+        )
+
+    return resource_entries
