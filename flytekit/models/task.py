@@ -69,11 +69,7 @@ class Resources(_common.FlyteIdlEntity):
             """
             return cls(name=pb2_object.name, value=pb2_object.value)
 
-    def __init__(
-        self,
-        requests: typing.Optional[typing.List[ResourceEntry]] = None,
-        limits: typing.Optional[typing.List[ResourceEntry]] = None,
-    ):
+    def __init__(self, requests, limits):
         """
         :param list[Resources.ResourceEntry] requests: The desired resources for execution.  This is given on a best
             effort basis.
