@@ -39,9 +39,9 @@ black==21.6b0
     # via papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.99
+boto3==1.17.100
     # via sagemaker-training
-botocore==1.20.99
+botocore==1.20.100
     # via
     #   boto3
     #   s3transfer
@@ -60,7 +60,7 @@ click==7.1.2
     #   flytekit
     #   hmsclient
     #   papermill
-croniter==1.0.13
+croniter==1.0.15
     # via flytekit
 cryptography==3.4.7
     # via
@@ -88,7 +88,7 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.19.3
+flyteidl==0.19.5
     # via flytekit
 git+git://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
@@ -112,7 +112,7 @@ inotify_simple==1.2.1
     # via sagemaker-training
 ipykernel==5.5.5
     # via flytekit
-ipython==7.24.1
+ipython==7.25.0
     # via ipykernel
 ipython-genutils==0.2.0
     # via
