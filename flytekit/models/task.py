@@ -104,8 +104,8 @@ class Resources(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.tasks_pb2.Resources
         """
         return _core_task.Resources(
-            requests=[r.to_flyte_idl() for r in self.requests] if self.requests is not None else None,
-            limits=[r.to_flyte_idl() for r in self.limits] if self.limits is not None else None,
+            requests=[r.to_flyte_idl() for r in self.requests],
+            limits=[r.to_flyte_idl() for r in self.limits],
         )
 
     @classmethod
