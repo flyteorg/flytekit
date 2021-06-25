@@ -47,7 +47,8 @@ def test_lp_documentation():
     email_notif = notification.Email(
         phases=[_execution_model.WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"]
     )
-    launch_plan.LaunchPlan.get_or_create(workflow=wf, name="your_lp_name_2", schedule=sched, notifications=[email_notif])
+    launch_plan.LaunchPlan.get_or_create(workflow=wf, name="your_lp_name_2", schedule=sched,
+                                         notifications=[email_notif])
     # schedule_end
 
     # auth_role_start
@@ -56,7 +57,8 @@ def test_lp_documentation():
 
     labels_model = Labels({"label": "foo"})
     annotations_model = Annotations({"annotate": "bar"})
-    launch_plan.LaunchPlan.get_or_create(workflow=wf, name="your_lp_name_4", auth_role=auth_role_model, labels=labels_model, annotations=annotations_model)
+    launch_plan.LaunchPlan.get_or_create(workflow=wf, name="your_lp_name_4", auth_role=auth_role_model,
+                                         labels=labels_model, annotations=annotations_model)
 
     raw_output_data_config = RawOutputDataConfig("s3://foo/output")
     launch_plan.LaunchPlan.get_or_create(
@@ -142,6 +144,49 @@ def test_lp_each_parameter():
     launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_auth", auth_role=auth_role_model1)
     with pytest.raises(AssertionError):
         launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_auth", auth_role=auth_role_model2)
+
+    # Labels parameters
+    labels_model1 = Labels({"label": "foo"})
+    labels_model2 = Labels({"label": "foo"})
+    labels_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_labels", labels=labels_model1)
+    labels_lp2 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_labels", labels=labels_model2)
+    assert labels_lp1 is labels_lp2
+
+    # Annotations parameters
+    annotations_model1 = Annotations({"anno": "bar"})
+    annotations_model2 = Annotations({"anno": "bar"})
+    annotations_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_annotations", annotations=annotations_model1
+    )
+    annotations_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_annotations", annotations=annotations_model2
+    )
+    assert annotations_lp1 is annotations_lp2
+
+    # Raw output prefix parameters
+    raw_output_data_config1 = RawOutputDataConfig("s3://foo/output")
+    raw_output_data_config2 = RawOutputDataConfig("s3://foo/output")
+    raw_output_data_config_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_raw_output_prefix", raw_output_data_config=raw_output_data_config1
+    )
+    raw_output_data_config_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_raw_output_prefix", raw_output_data_config=raw_output_data_config2
+    )
+    assert raw_output_data_config_lp1 is raw_output_data_config_lp2
+
+    # Max parallelism
+    max_parallelism = 100
+    max_parallelism_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_max_parallelism",
+        max_parallelism=max_parallelism,
+    )
+    max_parallelism_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_max_parallelism",
+        max_parallelism=max_parallelism,
+    )
+    assert max_parallelism_lp1 is max_parallelism_lp2
 
     # Labels parameters
     labels_model1 = Labels({"label": "foo"})
@@ -285,7 +330,7 @@ def test_lp_nodes():
     wf_spec = get_serializable(all_entities, serialization_settings, my_wf)
     assert wf_spec.template.nodes[1].workflow_node is not None
     assert (
-        wf_spec.template.nodes[1].workflow_node.launchplan_ref.resource_type
-        == identifier_models.ResourceType.LAUNCH_PLAN
+            wf_spec.template.nodes[1].workflow_node.launchplan_ref.resource_type
+            == identifier_models.ResourceType.LAUNCH_PLAN
     )
     assert wf_spec.template.nodes[1].workflow_node.launchplan_ref.name == "my_sub_wf_lp1"

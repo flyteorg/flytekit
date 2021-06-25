@@ -39,9 +39,15 @@ black==21.6b0
     # via papermill
 bleach==3.3.0
     # via nbconvert
+<<<<<<< HEAD
 boto3==1.17.99
     # via sagemaker-training
 botocore==1.20.99
+=======
+boto3==1.17.94
+    # via sagemaker-training
+botocore==1.20.94
+>>>>>>> 7667a154402d7c02e25006bd6cce926917382a1e
     # via
     #   boto3
     #   s3transfer
@@ -88,7 +94,11 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
+<<<<<<< HEAD
 flyteidl==0.19.3
+=======
+flyteidl==0.19.2
+>>>>>>> 7667a154402d7c02e25006bd6cce926917382a1e
     # via flytekit
 git+git://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
@@ -118,6 +128,11 @@ ipython-genutils==0.2.0
     # via
     #   nbformat
     #   traitlets
+<<<<<<< HEAD
+=======
+ipython==7.24.1
+    # via ipykernel
+>>>>>>> 7667a154402d7c02e25006bd6cce926917382a1e
 jedi==0.18.0
     # via ipython
 jinja2==3.0.1
@@ -152,15 +167,25 @@ lxml==4.6.3
     # via sphinx-material
 markupsafe==2.0.1
     # via jinja2
+<<<<<<< HEAD
+=======
+marshmallow-enum==1.5.1
+    # via dataclasses-json
+marshmallow-jsonschema==0.12.0
+    # via flytekit
+>>>>>>> 7667a154402d7c02e25006bd6cce926917382a1e
 marshmallow==3.12.1
     # via
     #   dataclasses-json
     #   marshmallow-enum
     #   marshmallow-jsonschema
+<<<<<<< HEAD
 marshmallow-enum==1.5.1
     # via dataclasses-json
 marshmallow-jsonschema==0.12.0
     # via flytekit
+=======
+>>>>>>> 7667a154402d7c02e25006bd6cce926917382a1e
 matplotlib-inline==0.1.2
     # via ipython
 mistune==0.8.4

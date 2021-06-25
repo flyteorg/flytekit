@@ -31,13 +31,13 @@ class AthenaTask(SQLTask[AthenaConfig]):
     _TASK_TYPE = "presto"
 
     def __init__(
-        self,
-        name: str,
-        query_template: str,
-        task_config: Optional[AthenaConfig] = None,
-        inputs: Optional[Dict[str, Type]] = None,
-        output_schema_type: Optional[Type[FlyteSchema]] = None,
-        **kwargs,
+            self,
+            name: str,
+            query_template: str,
+            task_config: Optional[AthenaConfig] = None,
+            inputs: Optional[Dict[str, Type]] = None,
+            output_schema_type: Optional[Type[FlyteSchema]] = None,
+            **kwargs,
     ):
         """
         To be used to query Athena databases.
