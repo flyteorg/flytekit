@@ -114,20 +114,9 @@ class Resources(_common.FlyteIdlEntity):
         :param flyteidl.core.tasks_pb2.Resources.ResourceEntry pb2_object:
         :rtype: Resources
         """
-        requests = (
-            [Resources.ResourceEntry.from_flyte_idl(r) for r in pb2_object.requests]
-            if pb2_object.requests and len(pb2_object.requests) > 0
-            else None
-        )
-
-        limits = (
-            [Resources.ResourceEntry.from_flyte_idl(r) for r in pb2_object.limits]
-            if pb2_object.limits and len(pb2_object.limits) > 0
-            else None
-        )
         return cls(
-            requests=requests,
-            limits=limits,
+            requests=[Resources.ResourceEntry.from_flyte_idl(r) for r in pb2_object.requests],
+            limits=[Resources.ResourceEntry.from_flyte_idl(l) for l in pb2_object.limits],
         )
 
 

@@ -96,7 +96,7 @@ def _convert_resource_overrides(
     resources: typing.Optional[Resources], resource_name: str
 ) -> [_resources_model.ResourceEntry]:
     if resources is None:
-        return None
+        return []
     if not isinstance(resources, Resources):
         raise AssertionError(f"{resource_name} should be specified as flytekit.Resources")
     resource_entries = []
