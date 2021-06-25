@@ -381,7 +381,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self):
         return _core_workflow.TaskNodeOverrides(
-            resources=self.resources.to_flyte_idl(),
+            resources=self.resources.to_flyte_idl() if self.resources is not None else None,
         )
 
     @classmethod
@@ -418,9 +418,11 @@ class TaskNode(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.TaskNode
         """
-        return _core_workflow.TaskNode(
-            reference_id=self.reference_id.to_flyte_idl(), overrides=self.overrides.to_flyte_idl()
+        task_node = _core_workflow.TaskNode(
+            reference_id=self.reference_id.to_flyte_idl(),
         )
+        if self.overrides is not None:
+            task_node.overrides = self.overrides.to_flyte_idl()
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
