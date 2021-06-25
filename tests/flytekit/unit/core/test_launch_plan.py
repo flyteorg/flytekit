@@ -42,17 +42,25 @@ def test_lp_documentation():
     )
     # fixed_and_default_end
 
+    # schedule_start
+    sched = CronSchedule("* * ? * * *", kickoff_time_input_arg="abc")
+    email_notif = notification.Email(
+        phases=[_execution_model.WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"]
+    )
+    launch_plan.LaunchPlan.get_or_create(workflow=wf, name="your_lp_name_2", schedule=sched, notifications=[email_notif])
+    # schedule_end
+
     # auth_role_start
     auth_role_model = AuthRole(assumable_iam_role="my:iam:role")
-    launch_plan.LaunchPlan.get_or_create(workflow=wf, name="your_lp_name_2", )
+    launch_plan.LaunchPlan.get_or_create(workflow=wf, name="your_lp_name_3", )
 
     labels_model = Labels({"label": "foo"})
     annotations_model = Annotations({"annotate": "bar"})
-    launch_plan.LaunchPlan.get_or_create(workflow=wf, name="your_lp_name_3", auth_role=auth_role_model, labels=labels_model, annotations=annotations_model)
+    launch_plan.LaunchPlan.get_or_create(workflow=wf, name="your_lp_name_4", auth_role=auth_role_model, labels=labels_model, annotations=annotations_model)
 
     raw_output_data_config = RawOutputDataConfig("s3://foo/output")
     launch_plan.LaunchPlan.get_or_create(
-        workflow=wf, name="your_lp_name_4", raw_output_data_config=raw_output_data_config
+        workflow=wf, name="your_lp_name_5", raw_output_data_config=raw_output_data_config
     )
     # auth_role_end
 
@@ -120,10 +128,10 @@ def test_lp_each_parameter():
         phases=[_execution_model.WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"]
     )
     notification_lp = launch_plan.LaunchPlan.get_or_create(
-        workflow=wf, name="get_or_create_notification", notifications=email_notif
+        workflow=wf, name="get_or_create_notification", notifications=[email_notif]
     )
     notification_lp1 = launch_plan.LaunchPlan.get_or_create(
-        workflow=wf, name="get_or_create_notification", notifications=email_notif
+        workflow=wf, name="get_or_create_notification", notifications=[email_notif]
     )
 
     assert notification_lp is notification_lp1

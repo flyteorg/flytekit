@@ -50,10 +50,23 @@ class LaunchPlan(object):
 
     To configure the remaining parameters, you'll need to import the relevant model objects as well.
 
+    .. literalinclude:: ../../../tests/flytekit/unit/core/test_launch_plan.py
+       :start-after: # schedule_start
+       :end-before: # schedule_end
+       :language: python
+       :dedent: 4
+
     .. code-block:: python
 
         from flytekit.models.common import Annotations, AuthRole, Labels, RawOutputDataConfig
 
+    Then use as follows
+
+    .. literalinclude:: ../../../tests/flytekit/unit/core/test_launch_plan.py
+       :start-after: # auth_role_start
+       :end-before: # auth_role_end
+       :language: python
+       :dedent: 4
 
     """
 
