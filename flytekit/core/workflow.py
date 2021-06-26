@@ -218,6 +218,12 @@ class WorkflowBase(object):
             f"Output bindings: {self._output_bindings} && "
         )
 
+    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
+        return _workflow_model.NodeMetadata(
+            name=f"{self.__module__}.{self.name}",
+            interruptible=self.workflow_metadata_defaults.interruptible,
+        )
+
     def __call__(self, *args, **kwargs):
         """
         The call pattern for Workflows is close to, but not exactly, the call pattern for Tasks. For local execution,
@@ -239,7 +245,7 @@ class WorkflowBase(object):
 
         # The first condition is compilation.
         if ctx.compilation_state is not None:
-            return create_and_link_node(ctx, entity=self, interface=self.python_interface, **input_kwargs)
+            return create_and_link_node(ctx, entity=self, **input_kwargs)
 
         # This condition is hit when this workflow (self) is being called as part of a parent's workflow local run.
         # The context specifying the local workflow execution has already been set.

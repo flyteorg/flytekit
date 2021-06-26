@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import collections
-import datetime
 import typing
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
+
+from typing_extensions import Protocol
 
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
@@ -704,13 +705,22 @@ class NodeOutput(type_models.OutputReference):
         return s
 
 
-# TODO we should accept TaskMetadata here and then extract whatever fields we want into NodeMetadata
+class SupportsNodeCreation(Protocol):
+    @property
+    def name(self) -> str:
+        ...
+
+    @property
+    def python_interface(self) -> flyte_interface.Interface:
+        ...
+
+    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
+        ...
+
+
 def create_and_link_node(
     ctx: FlyteContext,
-    entity,
-    interface: flyte_interface.Interface,
-    timeout: Optional[datetime.timedelta] = None,
-    retry_strategy: Optional[_literal_models.RetryStrategy] = None,
+    entity: SupportsNodeCreation,
     **kwargs,
 ):
     """
@@ -722,7 +732,10 @@ def create_and_link_node(
     used_inputs = set()
     bindings = []
 
+    interface = entity.python_interface
     typed_interface = flyte_interface.transform_interface_to_typed_interface(interface)
+    # Mypy needs some extra help to believe that `typed_interface` will not be `None`
+    assert typed_interface is not None
 
     for k in sorted(interface.inputs):
         var = typed_interface.inputs[k]
@@ -762,16 +775,10 @@ def create_and_link_node(
         )
     )
 
-    node_metadata = _workflow_model.NodeMetadata(
-        f"{entity.__module__}.{entity.name}",
-        timeout or datetime.timedelta(),
-        retry_strategy or _literal_models.RetryStrategy(0),
-    )
-
     non_sdk_node = Node(
         # TODO: Better naming, probably a derivative of the function name.
         id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
-        metadata=node_metadata,
+        metadata=entity.construct_node_metadata(),
         bindings=sorted(bindings, key=lambda b: b.var),
         upstream_nodes=upstream_nodes,
         flyte_entity=entity,
