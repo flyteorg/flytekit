@@ -64,7 +64,7 @@ def task(
     cache: bool = False,
     cache_version: str = "",
     retries: int = 0,
-    interruptible: bool = False,
+    interruptible: Optional[bool] = None,
     deprecated: str = "",
     timeout: Union[_datetime.timedelta, int] = 0,
     container_image: Optional[str] = None,

@@ -88,11 +88,12 @@ class WorkflowMetadataDefaults(object):
     WorkflowMetadata represents metadata about the workflow itself.
     """
 
-    interruptible: bool
+    interruptible: Optional[bool] = None
 
     def __post_init__(self):
-        if self.interruptible is not True and self.interruptible is not False:
-            raise FlyteValidationException(f"Interruptible must be boolean, {self.interruptible} invalid")
+        # TODO: Get mypy working so we don't have to worry about these checks
+        if self.interruptible is not None and type(self.interruptible) is not bool:
+            raise FlyteValidationException(f"Interruptible must be None or boolean, {self.interruptible} invalid")
 
     def to_flyte_model(self):
         return _workflow_model.WorkflowMetadataDefaults(interruptible=self.interruptible)
@@ -363,7 +364,7 @@ class ImperativeWorkflow(WorkflowBase):
         self,
         name: str,
         failure_policy: Optional[WorkflowFailurePolicy] = None,
-        interruptible: Optional[bool] = False,
+        interruptible: Optional[bool] = None,
     ):
         metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
@@ -714,7 +715,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
 def workflow(
     _workflow_function=None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
-    interruptible: Optional[bool] = False,
+    interruptible: Optional[bool] = None,
 ):
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG

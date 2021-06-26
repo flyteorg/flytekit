@@ -155,14 +155,14 @@ class BranchNode(_common.FlyteIdlEntity):
 
 
 class NodeMetadata(_common.FlyteIdlEntity):
-    def __init__(self, name, timeout=None, retries=None, interruptible=False):
+    def __init__(self, name, timeout=None, retries=None, interruptible=None):
         """
         Defines extra information about the Node.
 
         :param Text name: Friendly name for the Node.
         :param datetime.timedelta timeout: [Optional] Overall timeout for a task.
         :param flytekit.models.literals.RetryStrategy retries: [Optional] Number of retries per task.
-        :param bool interruptible: Can be safely interrupted during execution.
+        :param bool interruptible: [Optional] Can be safely interrupted during execution.
         """
         self._name = name
         self._timeout = timeout if timeout is not None else datetime.timedelta()

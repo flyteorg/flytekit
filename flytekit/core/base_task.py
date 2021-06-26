@@ -64,7 +64,7 @@ class TaskMetadata(object):
 
     cache: bool = False
     cache_version: str = ""
-    interruptible: bool = False
+    interruptible: Optional[bool] = None
     deprecated: str = ""
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
