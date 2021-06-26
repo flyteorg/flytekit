@@ -146,7 +146,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             from flytekit.common.translator import get_serializable
 
             workflow_metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
-            defaults = WorkflowMetadataDefaults(interruptible=False)
+            defaults = WorkflowMetadataDefaults(interruptible=self.metadata.interruptible)
 
             self._wf = PythonFunctionWorkflow(task_function, metadata=workflow_metadata, default_metadata=defaults)
             self._wf.compile(**kwargs)

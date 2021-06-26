@@ -64,7 +64,7 @@ def task(
     cache: bool = False,
     cache_version: str = "",
     retries: int = 0,
-    interruptable: bool = False,
+    interruptible: Optional[bool] = None,
     deprecated: str = "",
     timeout: Union[_datetime.timedelta, int] = 0,
     container_image: Optional[str] = None,
@@ -111,7 +111,7 @@ def task(
            but you can always manually update this field as well to force a cache miss. You should also manually bump
            this version if the function body/business logic has changed, but the signature hasn't.
     :param retries: Number of times to retry this task during a workflow execution.
-    :param interruptable: Boolean that indicates that this task can be interrupted and/or scheduled on nodes
+    :param interruptible: Boolean that indicates that this task can be interrupted and/or scheduled on nodes
                           with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
                           at the cost of performance penalties due to potential interruptions. Requires additional
                           Flyte platform level configuration.
@@ -157,7 +157,7 @@ def task(
             cache=cache,
             cache_version=cache_version,
             retries=retries,
-            interruptable=interruptable,
+            interruptible=interruptible,
             deprecated=deprecated,
             timeout=timeout,
         )
