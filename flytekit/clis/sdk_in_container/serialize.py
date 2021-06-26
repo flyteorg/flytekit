@@ -187,12 +187,6 @@ def serialize_all(
         # TODO: Clean up the copy() - it's here because we call get_default_launch_plan, which may create a LaunchPlan
         #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
         for entity in flyte_context.FlyteEntities.entities.copy():
-            # TODO: Add a reachable check. Since these entities are always added by the constructor, weird things can
-            #  happen. If someone creates a workflow inside a workflow, we don't actually want the inner workflow to be
-            #  registered. Or do we? Certainly, we don't want inner tasks to be registered because we don't know how
-            #  to reach them, but perhaps workflows should be okay to take into account generated workflows.
-            #  Also a user may import dir_b.workflows from dir_a.workflows but workflow packages might only
-            #  specify dir_a
             if isinstance(entity, PythonTask) or isinstance(entity, WorkflowBase) or isinstance(entity, LaunchPlan):
                 if isinstance(entity, PythonTask):
                     if mode == SerializationMode.DEFAULT:
