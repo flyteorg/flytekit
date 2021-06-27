@@ -50,17 +50,17 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         :param task_resolver: Custom resolver - will pick up the default resolver if empty, or the resolver set
           in the compilation context if one is set.
         :param List[Secret] secret_requests: Secrets that are requested by this container execution. These secrets will
-                                           be mounted based on the configuration in the Secret and available through
-                                           the SecretManager using the name of the secret as the group
-                                           Ideally the secret keys should also be semi-descriptive.
-                                           The key values will be available from runtime, if the backend is configured
-                       to provide secrets and if secrets are available in the configured secrets store.
-                       Possible options for secret stores are
-                        - `Vault <https://www.vaultproject.io/>`,
-                        - `Confidant <https://lyft.github.io/confidant/>`,
-                        - `Kube secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`
-                        - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`_
-                        etc
+           be mounted based on the configuration in the Secret and available through
+           the SecretManager using the name of the secret as the group
+           Ideally the secret keys should also be semi-descriptive.
+           The key values will be available from runtime, if the backend is configured
+           to provide secrets and if secrets are available in the configured secrets store.
+           Possible options for secret stores are
+
+           - `Vault <https://www.vaultproject.io/>`__
+           - `Confidant <https://lyft.github.io/confidant/>`__
+           - `Kube secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`__
+           - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`__
         """
         sec_ctx = None
         if secret_requests:

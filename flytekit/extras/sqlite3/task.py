@@ -37,13 +37,14 @@ class SQLite3Config(object):
     Use this configuration to configure if sqlite3 files that should be loaded by the task. The file itself is
     considered as a database and hence is treated like a configuration
     The path to a static sqlite3 compatible database file can be
-      - within the container
-      - or from a publicly downloadable source
+
+    -  within the container
+    - or from a publicly downloadable source
 
     Args:
         uri: default FlyteFile that will be downloaded on execute
         compressed: Boolean that indicates if the given file is a compressed archive. Supported file types are
-                        [zip, tar, gztar, bztar, xztar]
+                    [zip, tar, gztar, bztar, xztar]
     """
 
     uri: str
@@ -52,11 +53,21 @@ class SQLite3Config(object):
 
 class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3Config]):
     """
-    Makes it possible to run client side SQLite3 queries that optionally return a FlyteSchema object.
+    Run client side SQLite3 queries that optionally return a FlyteSchema object.
 
     .. note::
+
        This is a pre-built container task. That is, your user container will not be used at task execution time.
        Instead the image defined in this task definition will be used instead.
+
+    .. literalinclude:: ../../../tests/flytekit/unit/extras/sqlite3/test_task.py
+       :start-after: # sqlite3_start
+       :end-before: # sqlite3_end
+       :language: python
+       :dedent: 4
+
+    See the :std:ref:`cookbook <extend_sql_sqlite3>` for additional usage examples and
+    the base class :py:class:`flytekit.extend.PythonCustomizedContainerTask` as well.
     """
 
     _SQLITE_TASK_TYPE = "sqlite"

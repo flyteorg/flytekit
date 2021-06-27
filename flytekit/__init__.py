@@ -23,6 +23,7 @@ These are the essentials needed to get started writing tasks and workflows. The 
    current_context
    ExecutionParameters
    FlyteContext
+   map_task
 
 
 Running Locally

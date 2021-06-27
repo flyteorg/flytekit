@@ -206,16 +206,11 @@ def map_task(task_function: PythonFunctionTask, concurrency: int = None, min_suc
 
     Usage:
 
-    .. code-block:: python
-
-        @task
-        def my_mappable_task(a: int) -> str:
-            return str(a)
-
-        @workflows
-        def my_wf(x: typing.List[int]) -> typing.List[str]:
-             return flytekit.map(my_mappable_task, metadata=TaskMetadata(retries=1), requests=Resources(cpu="10M"),
-                                 concurrency=10, min_success_ratio=0.75)(a=x)
+    .. literalinclude:: ../../../tests/flytekit/unit/core/test_map_task.py
+       :start-after: # test_map_task_start
+       :end-before: # test_map_task_end
+       :language: python
+       :dedent: 4
 
     At run time, the underlying map task will be run for every value in the input collection. Task-specific attributes
     such as :py:class:`flytekit.TaskMetadata` and :py:class:`flytekit.Resources` are applied to individual instances

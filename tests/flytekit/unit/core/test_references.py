@@ -18,6 +18,25 @@ from flytekit.core.workflow import reference_workflow, workflow
 from flytekit.models.core import identifier as _identifier_model
 
 
+# This is used for docs
+def test_ref_docs():
+    # docs_ref_start
+    ref_entity = get_reference_entity(
+        _identifier_model.ResourceType.WORKFLOW,
+        "project",
+        "dev",
+        "my.other.workflow",
+        "abc123",
+        inputs=kwtypes(a=str, b=int),
+        outputs={},
+    )
+    # docs_ref_end
+
+    with pytest.raises(Exception) as e:
+        ref_entity()
+    assert "You must mock this out" in f"{e}"
+
+
 @reference_task(
     project="flytesnacks",
     domain="development",
