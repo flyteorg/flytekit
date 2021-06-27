@@ -22,7 +22,9 @@ from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
 def validate_package(ctx, param, values):
     for val in values:
         if "/" in val or "-" in val or "\\" in val:
-            raise click.BadParameter(f"Illegal package value {val} for parameter: {param}. Expected for the form [a.b.c]")
+            raise click.BadParameter(
+                f"Illegal package value {val} for parameter: {param}. Expected for the form [a.b.c]"
+            )
     return values
 
 
