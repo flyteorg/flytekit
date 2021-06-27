@@ -60,7 +60,7 @@ click==7.1.2
     #   flytekit
     #   hmsclient
     #   papermill
-croniter==1.0.15
+croniter==1.0.13
     # via flytekit
 cryptography==3.4.7
     # via
@@ -112,7 +112,7 @@ inotify_simple==1.2.1
     # via sagemaker-training
 ipykernel==5.5.5
     # via flytekit
-ipython==7.25.0
+ipython==7.24.1
     # via ipykernel
 ipython-genutils==0.2.0
     # via
