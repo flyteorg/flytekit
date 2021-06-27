@@ -36,7 +36,7 @@ def test_task_schema():
         inputs=kwtypes(limit=int),
         output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
         task_config=SQLite3Config(
-            uri=EXAMPLE_DB,
+            uri=DB_LOCATION,
             compressed=True,
         ),
     )
