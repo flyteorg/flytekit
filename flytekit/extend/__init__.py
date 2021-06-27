@@ -26,7 +26,9 @@ This package contains things that are useful when extending Flytekit.
    T
    TypeEngine
    TypeTransformer
-
+   PythonCustomizedContainerTask
+   ExecutableTemplateShimTask
+   ShimTaskExecutor
 """
 
 from flytekit.common.translator import get_serializable
@@ -37,5 +39,7 @@ from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.context_manager import ExecutionState, Image, ImageConfig, SerializationSettings
 from flytekit.core.interface import Interface
 from flytekit.core.promise import Promise
+from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
+from flytekit.core.shim_task import ExecutableTemplateShimTask, ShimTaskExecutor
 from flytekit.core.task import TaskPlugins
 from flytekit.core.type_engine import DictTransformer, T, TypeEngine, TypeTransformer

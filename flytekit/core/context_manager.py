@@ -353,12 +353,11 @@ class FlyteContext(object):
     @staticmethod
     def current_context() -> FlyteContext:
         """
-        This method exists only to maintain backwards compatibility. Please use FlyteContextManager.current_context()
-        If you are a user of flytekit, use
-        ```
-            import flytekit
-            flytekit.current_context()
-        ```
+        This method exists only to maintain backwards compatibility. Please use
+        ``FlyteContextManager.current_context()`` instead.
+
+        Users of flytekit should be wary not to confuse the object returned from this function
+        with :py:func:`flytekit.current_context`
         """
         return FlyteContextManager.current_context()
 
