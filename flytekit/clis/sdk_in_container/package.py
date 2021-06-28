@@ -12,6 +12,7 @@ from flytekit import LaunchPlan
 from flytekit.clis.sdk_in_container import constants, serialize
 from flytekit.clis.sdk_in_container.serialize import SerializationMode
 from flytekit.common import translator
+from flytekit.configuration import internal
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import Image, ImageConfig, look_up_image_info
@@ -186,7 +187,7 @@ def package(ctx, image_config, source, output, force, fast, python_interpreter):
         domain=serialize._DOMAIN_PLACEHOLDER,
         version=serialize._VERSION_PLACEHOLDER,
         image_config=image_config,
-        env=None,
+        env={internal.IMAGE.env_var: image_config.default_image.full},  # TODO this env variable should be deprecated
         flytekit_virtualenv_root=venv_root,
         python_interpreter=python_interpreter,
         entrypoint_settings=context_manager.EntrypointSettings(
@@ -215,9 +216,8 @@ def package(ctx, image_config, source, output, force, fast, python_interpreter):
             with tempfile.TemporaryDirectory() as output_tmpdir:
                 persist_registrable_entities(registrable_entities, output_tmpdir)
 
-                with tarfile.open(output, "w:gz") as f:
-                    for fname in os.listdir(output_tmpdir):
-                        f.addfile(tarfile.TarInfo(fname), open(os.path.join(output_tmpdir, fname)))
+                with tarfile.open(output, "w:gz") as tar:
+                    tar.add(output_tmpdir, arcname=".")
 
             click.secho(f"Successfully packaged {len(registrable_entities)} flyte objects into {output}", fg="green")
         else:
