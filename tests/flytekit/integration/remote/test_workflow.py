@@ -6,8 +6,8 @@ import time
 import pytest
 
 from flytekit.common.exceptions.user import FlyteAssertion
-from flytekit.control_plane import launch_plan
 from flytekit.models import literals
+from flytekit.remote import launch_plan
 
 PROJECT = "flytesnacks"
 VERSION = os.getpid()
