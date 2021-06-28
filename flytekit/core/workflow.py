@@ -88,12 +88,12 @@ class WorkflowMetadataDefaults(object):
     WorkflowMetadata represents metadata about the workflow itself.
     """
 
-    interruptible: Optional[bool] = None
+    interruptible: bool
 
     def __post_init__(self):
         # TODO: Get mypy working so we don't have to worry about these checks
-        if self.interruptible is not None and type(self.interruptible) is not bool:
-            raise FlyteValidationException(f"Interruptible must be None or boolean, {self.interruptible} invalid")
+        if self.interruptible is not True and self.interruptible is not False:
+            raise FlyteValidationException(f"Interruptible must be boolean, {self.interruptible} invalid")
 
     def to_flyte_model(self):
         return _workflow_model.WorkflowMetadataDefaults(interruptible=self.interruptible)
