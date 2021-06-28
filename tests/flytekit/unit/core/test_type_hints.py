@@ -14,7 +14,7 @@ from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import ExecutionState, Image, ImageConfig
+from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise, VoidPromise
 from flytekit.core.resources import Resources
@@ -442,7 +442,7 @@ def test_wf1_with_dynamic():
     ) as ctx:
         new_exc_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
         with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)) as ctx:
-            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, False, my_subwf._task_function, a=5)
+            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
             assert len(dynamic_job_spec.tasks) == 1
 
@@ -475,6 +475,7 @@ def test_wf1_with_fast_dynamic():
                 version="abc",
                 image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
                 env={},
+                fast_serialization_settings=FastSerializationSettings(enabled=True),
             )
         )
     ) as ctx:
@@ -489,7 +490,7 @@ def test_wf1_with_fast_dynamic():
                 )
             )
         ) as ctx:
-            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, True, my_subwf._task_function, a=5)
+            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
             assert len(dynamic_job_spec.tasks) == 1
             args = " ".join(dynamic_job_spec.tasks[0].container.args)
@@ -1193,7 +1194,7 @@ def test_nested_dynamic():
     with context_manager.FlyteContextManager.with_context(ctx) as ctx:
         es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
         with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(es)) as ctx:
-            dynamic_job_spec = nested_my_subwf.compile_into_workflow(ctx, False, nested_my_subwf._task_function, a=5)
+            dynamic_job_spec = nested_my_subwf.compile_into_workflow(ctx, nested_my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
 
 
