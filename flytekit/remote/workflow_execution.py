@@ -7,9 +7,6 @@ from flytekit.clients.helpers import iterate_node_executions as _iterate_node_ex
 from flytekit.common import utils as _common_utils
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import artifact as _artifact
-from flytekit.control_plane import identifier as _core_identifier
-from flytekit.control_plane import nodes as _nodes
-from flytekit.control_plane import workflow as _workflow
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.engines.flyte import engine as _flyte_engine
@@ -18,6 +15,9 @@ from flytekit.models import execution as _execution_models
 from flytekit.models import filters as _filter_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import execution as _core_execution_models
+from flytekit.remote import identifier as _core_identifier
+from flytekit.remote import nodes as _nodes
+from flytekit.remote import workflow as _workflow
 
 
 class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArtifact):

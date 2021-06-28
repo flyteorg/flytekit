@@ -3,10 +3,6 @@ from typing import Any, List
 
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.control_plane import identifier as _identifier
-from flytekit.control_plane import interface as _interface
-from flytekit.control_plane import nodes as _nodes
-from flytekit.control_plane import workflow_execution as _workflow_execution
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import common as _common_models
 from flytekit.models import execution as _execution_models
@@ -14,6 +10,10 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import identifier as _identifier_model
+from flytekit.remote import identifier as _identifier
+from flytekit.remote import interface as _interface
+from flytekit.remote import nodes as _nodes
+from flytekit.remote import workflow_execution as _workflow_execution
 
 
 class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
@@ -53,7 +53,7 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
         :param name:
         :param version:
         """
-        from flytekit.control_plane import workflow as _workflow
+        from flytekit.remote import workflow as _workflow
 
         launch_plan_id = _identifier.Identifier(
             _identifier_model.ResourceType.LAUNCH_PLAN, project, domain, name, version

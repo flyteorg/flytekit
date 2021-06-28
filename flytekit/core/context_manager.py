@@ -126,6 +126,16 @@ class EntrypointSettings(object):
     version: int = 0
 
 
+@dataclass
+class FastSerializationSettings(object):
+    """
+    This object hold information about settings necessary to serialize an object so that it can be fast-registered.
+    """
+
+    enabled: bool = False
+    destination_dir: str = None
+
+
 @dataclass(frozen=True)
 class SerializationSettings(object):
     """
@@ -155,6 +165,52 @@ class SerializationSettings(object):
     flytekit_virtualenv_root: Optional[str] = None
     python_interpreter: Optional[str] = None
     entrypoint_settings: Optional[EntrypointSettings] = None
+    fast_serialization_settings: Optional[FastSerializationSettings] = None
+
+    @dataclass
+    class Builder(object):
+        project: str
+        domain: str
+        version: str
+        image_config: ImageConfig
+        env: Optional[Dict[str, str]] = None
+        flytekit_virtualenv_root: Optional[str] = None
+        python_interpreter: Optional[str] = None
+        entrypoint_settings: Optional[EntrypointSettings] = None
+        fast_serialization_settings: Optional[FastSerializationSettings] = None
+
+        def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> "Builder":
+            self.fast_serialization_settings = fss
+            return self
+
+        def build(self) -> SerializationSettings:
+            return SerializationSettings(
+                project=self.project,
+                domain=self.domain,
+                version=self.version,
+                image_config=self.image_config,
+                env=self.env,
+                flytekit_virtualenv_root=self.flytekit_virtualenv_root,
+                python_interpreter=self.python_interpreter,
+                entrypoint_settings=self.entrypoint_settings,
+                fast_serialization_settings=self.fast_serialization_settings,
+            )
+
+    def new_builder(self) -> Builder:
+        return SerializationSettings.Builder(
+            project=self.project,
+            domain=self.domain,
+            version=self.version,
+            image_config=self.image_config,
+            env=self.env,
+            flytekit_virtualenv_root=self.flytekit_virtualenv_root,
+            python_interpreter=self.python_interpreter,
+            entrypoint_settings=self.entrypoint_settings,
+            fast_serialization_settings=self.fast_serialization_settings,
+        )
+
+    def should_fast_serialize(self) -> bool:
+        return self.fast_serialization_settings is not None and self.fast_serialization_settings.enabled
 
 
 @dataclass(frozen=True)

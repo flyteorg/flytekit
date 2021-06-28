@@ -12,6 +12,7 @@ from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
+from flytekit.models.core import workflow as _workflow_model
 
 
 class LaunchPlan(object):
@@ -352,6 +353,9 @@ class LaunchPlan(object):
     def max_parallelism(self) -> int:
         return self._max_parallelism
 
+    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
+        return self.workflow.construct_node_metadata()
+
     def __call__(self, *args, **kwargs):
         if len(args) > 0:
             raise AssertionError("Only Keyword Arguments are supported for launch plan executions")
@@ -360,7 +364,7 @@ class LaunchPlan(object):
         if ctx.compilation_state is not None:
             inputs = self.saved_inputs
             inputs.update(kwargs)
-            return create_and_link_node(ctx, entity=self, interface=self.workflow.python_interface, **inputs)
+            return create_and_link_node(ctx, entity=self, **inputs)
         else:
             # Calling a launch plan should just forward the call to the workflow, nothing more. But let's add in the
             # saved inputs.

@@ -9,6 +9,7 @@ from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1Resourc
 from flytekit import Resources, TaskMetadata, dynamic, map_task, task
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
+from flytekit.core.context_manager import FastSerializationSettings
 from flytekit.extend import ExecutionState, Image, ImageConfig, SerializationSettings
 from plugins.pod.flytekitplugins.pod.task import Pod, PodFunctionTask
 
@@ -207,7 +208,7 @@ def test_dynamic_pod_task():
         with context_manager.FlyteContextManager.with_context(
             ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
         ) as ctx:
-            dynamic_job_spec = dynamic_pod_task.compile_into_workflow(ctx, False, dynamic_pod_task._task_function, a=5)
+            dynamic_job_spec = dynamic_pod_task.compile_into_workflow(ctx, dynamic_pod_task._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
 
 
@@ -340,8 +341,9 @@ def test_fast_pod_task_serialization():
         version="version",
         env={"FOO": "baz"},
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        fast_serialization_settings=FastSerializationSettings(enabled=True),
     )
-    serialized = get_serializable(OrderedDict(), serialization_settings, simple_pod_task, fast=True)
+    serialized = get_serializable(OrderedDict(), serialization_settings, simple_pod_task)
 
     assert serialized.template.k8s_pod.pod_spec["containers"][0]["args"] == [
         "pyflyte-fast-execute",

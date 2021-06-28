@@ -1,9 +1,9 @@
 from mock import MagicMock as _MagicMock
 from mock import patch as _patch
 
-from flytekit.control_plane import workflow as _workflow
 from flytekit.models.admin import workflow as _workflow_models
 from flytekit.models.core import identifier as _identifier
+from flytekit.remote import workflow as _workflow
 
 
 @_patch("flytekit.engines.flyte.engine._FlyteClientManager")
