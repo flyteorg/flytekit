@@ -64,7 +64,8 @@ class ImageConfig(object):
 
     Attributes:
         default_image (str): The default image to be used as a container for task serialization.
-        images (List[Image]): Optional, additional images which can be used as task containers.
+        images (List[Image]): Optional, additional images which can be used in task container definitions.
+        images (List[Image]): Optional, additional images which can be used in task container definitions.
     """
 
     default_image: Image = None
@@ -111,13 +112,6 @@ def get_image_config(img_name: Optional[str] = None) -> ImageConfig:
     other_images = [look_up_image_info(k, tag=v, optional_tag=True) for k, v in images.get_specified_images().items()]
     other_images.append(default_img)
     return ImageConfig(default_image=default_img, images=other_images)
-
-
-@dataclass
-class InstanceVar(object):
-    module: str
-    name: str
-    o: Any
 
 
 @dataclass
