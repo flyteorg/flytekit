@@ -31,21 +31,49 @@ _DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC = "bin/entrypoint.py"
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class Image(object):
+    """
+    Image is a structured wrapper for task container images used in object serialization.
+
+    Attributes:
+        name (str): A user-provided name to identify this image.
+        fqn (str): Fully qualified image name. This consists of
+            #. a registry location
+            #. a username
+            #. a repository name
+            For example: `hostname/username/reponame`
+        tag (str): Optional tag used to specify which version of an image to pull
+    """
+
     name: str
     fqn: str
     tag: str
 
     @property
-    def full(self):
+    def full(self) -> str:
+        """ "
+        Return the full image name with tag.
+        """
         return f"{self.fqn}:{self.tag}"
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class ImageConfig(object):
+    """
+    ImageConfig holds available images which can be used at registration time. A default image can be specified
+    along with optional additional images. Each image in the config must have a unique name.
+
+    Attributes:
+        default_image (str): The default image to be used as a container for task serialization.
+        images (List[Image]): Optional, additional images which can be used as task containers.
+    """
+
     default_image: Image = None
     images: List[Image] = None
 
     def find_image(self, name) -> Optional[Image]:
+        """
+        Return an image, by name, if it exists.
+        """
         for i in self.images:
             if i.name == name:
                 return i
@@ -109,6 +137,20 @@ class SerializationSettings(object):
     """
     These settings are provided while serializing a workflow and task, before registration. This is required to get
     runtime information at serialization time, as well as some defaults.
+
+    Attributes:
+        project (str): The project (if any) with which to register entities under.
+        domain (str): The domain (if any) with which to register entities under.
+        version (str): The version (if any) with which to register entities under.
+        image_config (ImageConfig): The image config used to define task container images.
+        env (Optional[Dict[str, str]]): Environment variables injected into task container definitions.
+        flytekit_virtualenv_root (Optional[str]):  During out of container serialize the absolute path of the flytekit
+            virtualenv at serialization time won't match the in-container value at execution time. This optional value
+            is used to provide the in-container virtualenv path
+        python_interpreter (Optional[str]): The python executable to use. This is used for spark tasks in out of
+            container execution.
+        entrypoint_settings (Optional[EntrypointSettings]): Information about the command, path and version of the
+            entrypoint program.
     """
 
     project: str
@@ -127,10 +169,13 @@ class CompilationState(object):
     Compilation state is used during the compilation of a workflow or task. It stores the nodes that were
     created when walking through the workflow graph.
 
-    :param prefix: This is because we may one day want to be able to have subworkflows inside other workflows. If
-      users choose to not specify their node names, then we can end up with multiple "n0"s. This prefix allows
-      us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
-    :param task_resolver: Please see :py:class:`flytekit.extend.TaskResolverMixin`
+    Attributes:
+        prefix (str): This is because we may one day want to be able to have subworkflows inside other workflows. If
+            users choose to not specify their node names, then we can end up with multiple "n0"s. This prefix allows
+            us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
+        mode (int): refer to :py:class:`flytekit.extend.ExecutionState.Mode`
+        task_resolver (Optional["TaskResolverMixin"]): Please see :py:class:`flytekit.extend.TaskResolverMixin`
+        nodes (Optional[List]): Stores currently compiled nodes so far.
     """
 
     prefix: str
@@ -165,11 +210,10 @@ class CompilationState(object):
 
 class BranchEvalMode(Enum):
     """
-    This is a 4-way class, with the None value meaning that we are not within a conditional context. The other two
+    This is a 3-way class, with the None value meaning that we are not within a conditional context. The other two
     values are
     * Active - This means that the next ``then`` should run
     * Skipped - The next ``then`` should not run
-    * Ignored - This is only used in nested conditionals, and it means that the entire conditional should be ignored.
     """
 
     BRANCH_ACTIVE = "branch active"
@@ -183,6 +227,17 @@ class ExecutionState(object):
     execute.
     Some required things during execution deal with temporary directories, ExecutionParameters that are passed to the
     user etc.
+
+    Attributes:
+        mode (ExecutionState.Mode): Defines the context in which the task is executed (local, hosted, etc).
+        working_dir (os.PathLike): Specifies the remote, external directory where inputs, outputs and other protobufs
+            are uploaded
+        engine_dir (os.PathLike):
+        additional_context Optional[Dict[Any, Any]]: Free form dictionary used to store additional values, for example
+            those used for dynamic, fast registration.
+        branch_eval_mode Optional[BranchEvalMode]: Used to determine whether a branch node should execute.
+        user_space_params Optional[ExecutionParameters]: Provides run-time, user-centric context such as a statsd
+            handler, a logging handler, the current execution id and a working directory.
     """
 
     class Mode(Enum):
