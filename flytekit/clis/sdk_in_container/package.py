@@ -10,12 +10,11 @@ from flyteidl.admin import launch_plan_pb2, task_pb2, workflow_pb2
 
 from flytekit import LaunchPlan
 from flytekit.clis.sdk_in_container import constants, serialize
-from flytekit.clis.sdk_in_container.serialize import SerializationMode
 from flytekit.common import translator
 from flytekit.configuration import internal
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import Image, ImageConfig, look_up_image_info
+from flytekit.core.context_manager import ImageConfig, look_up_image_info
 from flytekit.core.workflow import WorkflowBase
 from flytekit.tools import fast_registration, module_loader
 
@@ -55,7 +54,7 @@ def validate_image(ctx: typing.Any, param: str, values: tuple) -> ImageConfig:
     return ImageConfig(default_image, images)
 
 
-def get_registrable_entities(ctx: context_manager.FlyteContext, mode: SerializationMode) -> typing.List:
+def get_registrable_entities(ctx: context_manager.FlyteContext) -> typing.List:
     """
     Returns all entities that can be serialized and should be sent over to Flyte backend. This will filter any local entities
     """
@@ -64,17 +63,7 @@ def get_registrable_entities(ctx: context_manager.FlyteContext, mode: Serializat
     #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
     for entity in context_manager.FlyteEntities.entities.copy():
         if isinstance(entity, PythonTask) or isinstance(entity, WorkflowBase) or isinstance(entity, LaunchPlan):
-            if isinstance(entity, PythonTask):
-                if mode == SerializationMode.DEFAULT:
-                    translator.get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
-                elif mode == SerializationMode.FAST:
-                    translator.get_serializable(
-                        new_api_serializable_entities, ctx.serialization_settings, entity, fast=True
-                    )
-                else:
-                    raise AssertionError(f"Unrecognized serialization mode: {mode}")
-            else:
-                translator.get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
+            translator.get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
 
             if isinstance(entity, WorkflowBase):
                 lp = LaunchPlan.get_default_launch_plan(ctx, entity)
@@ -133,7 +122,7 @@ def persist_registrable_entities(entities: typing.List, folder: str):
     required=False,
     type=click.Path(exists=True, file_okay=False, readable=True, resolve_path=True, allow_dash=True),
     default=".",
-    help="filesystem path and name of the package.",
+    help="local filesystem path to the root of the package.",
 )
 @click.option(
     "-o",
@@ -168,8 +157,16 @@ def persist_registrable_entities(entities: typing.List, folder: str):
     help="Use this to override the default location of the in-container python interpreter that will be used by "
     "Flyte to load your program. This is usually where you install flytekit within the container.",
 )
+@click.option(
+    "-d",
+    "--in-container-source-path",
+    required=False,
+    type=str,
+    default="/root",
+    help="Filesystem path to where the code is copied into within the Dockerfile. look for `COPY . /root` like command.",
+)
 @click.pass_context
-def package(ctx, image_config, source, output, force, fast, python_interpreter):
+def package(ctx, image_config, source, output, force, fast, in_container_source_path, python_interpreter):
     """
     This command produces a Flyte backend registrable package of all entities in Flyte.
     For tasks, one pb file is produced for each task, representing one TaskTemplate object.
@@ -186,6 +183,10 @@ def package(ctx, image_config, source, output, force, fast, python_interpreter):
         project=serialize._PROJECT_PLACEHOLDER,
         domain=serialize._DOMAIN_PLACEHOLDER,
         version=serialize._VERSION_PLACEHOLDER,
+        fast_serialization_settings=context_manager.FastSerializationSettings(
+            enabled=fast,
+            destination_dir=in_container_source_path,
+        ),
         image_config=image_config,
         env={internal.IMAGE.env_var: image_config.default_image.full},  # TODO this env variable should be deprecated
         flytekit_virtualenv_root=venv_root,
@@ -202,20 +203,18 @@ def package(ctx, image_config, source, output, force, fast, python_interpreter):
 
     ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(serialization_settings)
     with context_manager.FlyteContextManager.with_context(ctx) as ctx:
-        # Decide serialization mode. Fast mode allows, patching existing containers
-        mode = SerializationMode.FAST if fast else SerializationMode.DEFAULT
-
         # Scan all modules. the act of loading populates the global singleton that contains all objects
         with module_loader.add_sys_path(source):
             click.secho(f"Loading packages {pkgs} under source root {source}", fg="yellow")
             module_loader.just_load_modules(pkgs=pkgs)
 
-        registrable_entities = get_registrable_entities(ctx, mode)
+        registrable_entities = get_registrable_entities(ctx)
 
         if registrable_entities:
             with tempfile.TemporaryDirectory() as output_tmpdir:
                 persist_registrable_entities(registrable_entities, output_tmpdir)
 
+                # If Fast serialization is enabled, then an archive is also created and packaged
                 if fast:
                     digest = fast_registration.compute_digest(source)
                     archive_fname = os.path.join(output_tmpdir, f"{digest}.tar.gz")
