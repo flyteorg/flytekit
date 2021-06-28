@@ -29,6 +29,7 @@ from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
+from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
 
@@ -51,7 +52,7 @@ class TaskMetadata(object):
     Args:
       cache: Boolean that indicates if caching should be enabled
       cache_version: Version string to be used for the cached value
-      interruptable: Boolean that indicates that this task can be interrupted and/or scheduled on nodes
+      interruptible: Boolean that indicates that this task can be interrupted and/or scheduled on nodes
                      with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
                      at the cost of performance penalties due to potential interruptions
       deprecated: A string that can be used to provide a warning message for deprecated task. Absence / empty str
@@ -63,7 +64,7 @@ class TaskMetadata(object):
 
     cache: bool = False
     cache_version: str = ""
-    interruptable: bool = False
+    interruptible: Optional[bool] = None
     deprecated: str = ""
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
@@ -94,7 +95,7 @@ class TaskMetadata(object):
             ),
             timeout=self.timeout,
             retries=self.retry_strategy,
-            interruptible=self.interruptable,
+            interruptible=self.interruptible,
             discovery_version=self.cache_version,
             deprecated_error_message=self.deprecated,
         )
@@ -369,15 +370,16 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     def get_input_types(self) -> Optional[Dict[str, type]]:
         return self._python_interface.inputs
 
-    def compile(self, ctx: FlyteContext, *args, **kwargs):
-        return create_and_link_node(
-            ctx,
-            entity=self,
-            interface=self.python_interface,
+    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
+        return _workflow_model.NodeMetadata(
+            name=f"{self.__module__}.{self.name}",
             timeout=self.metadata.timeout,
-            retry_strategy=self.metadata.retry_strategy,
-            **kwargs,
+            retries=self.metadata.retry_strategy,
+            interruptible=self.metadata.interruptible,
         )
+
+    def compile(self, ctx: FlyteContext, *args, **kwargs):
+        return create_and_link_node(ctx, entity=self, **kwargs)
 
     @property
     def _outputs_interface(self) -> Dict[Any, Variable]:
