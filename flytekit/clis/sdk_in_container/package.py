@@ -3,19 +3,13 @@ import sys
 import tarfile
 import tempfile
 import typing
-from collections import OrderedDict
 
 import click
-from flyteidl.admin import launch_plan_pb2, task_pb2, workflow_pb2
 
-from flytekit import LaunchPlan
 from flytekit.clis.sdk_in_container import constants, serialize
-from flytekit.common import translator
 from flytekit.configuration import internal
 from flytekit.core import context_manager
-from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ImageConfig, look_up_image_info
-from flytekit.core.workflow import WorkflowBase
 from flytekit.tools import fast_registration, module_loader
 
 _DEFAULT_IMAGE_NAME = "default"
@@ -33,18 +27,14 @@ def validate_image(ctx: typing.Any, param: str, values: tuple) -> ImageConfig:
     images = []
     for v in values:
         if "=" in v:
-            vals = v.split("=")
-            if len(vals) > 2:
-                raise click.BadParameter(f"Bad value received [{v}] for param {param}, more than 1 `=` is not allowed")
-            name = vals[0]
-            tag = vals[1]
-            img = look_up_image_info(name, tag, False)
+            splits = v.split("=", maxsplit=1)
+            img = look_up_image_info(name=splits[0], tag=splits[1], optional_tag=False)
         else:
             img = look_up_image_info(_DEFAULT_IMAGE_NAME, v, False)
 
         if default_image and img.name == _DEFAULT_IMAGE_NAME:
             raise click.BadParameter(
-                f"Only one default image can be specified. Received multiple {default_image}&{img}"
+                f"Only one default image can be specified. Received multiple {default_image} & {img} for {param}"
             )
         if img.name == _DEFAULT_IMAGE_NAME:
             default_image = img
@@ -52,53 +42,6 @@ def validate_image(ctx: typing.Any, param: str, values: tuple) -> ImageConfig:
             images.append(img)
 
     return ImageConfig(default_image, images)
-
-
-def get_registrable_entities(ctx: context_manager.FlyteContext) -> typing.List:
-    """
-    Returns all entities that can be serialized and should be sent over to Flyte backend. This will filter any local entities
-    """
-    new_api_serializable_entities = OrderedDict()
-    # TODO: Clean up the copy() - it's here because we call get_default_launch_plan, which may create a LaunchPlan
-    #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
-    for entity in context_manager.FlyteEntities.entities.copy():
-        if isinstance(entity, PythonTask) or isinstance(entity, WorkflowBase) or isinstance(entity, LaunchPlan):
-            translator.get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
-
-            if isinstance(entity, WorkflowBase):
-                lp = LaunchPlan.get_default_launch_plan(ctx, entity)
-                translator.get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp)
-
-    new_api_model_values = list(new_api_serializable_entities.values())
-    entities_to_be_serialized = list(filter(serialize._should_register_with_admin, new_api_model_values))
-    return [v.to_flyte_idl() for v in entities_to_be_serialized]
-
-
-def persist_registrable_entities(entities: typing.List, folder: str):
-    """
-    For protobuf serializable list of entities, writes a file with the name if the entity and
-    enumeration order to the specified folder
-    """
-    zero_padded_length = serialize._determine_text_chars(len(entities))
-    for i, entity in enumerate(entities):
-        name = ""
-        fname_index = str(i).zfill(zero_padded_length)
-        if isinstance(entity, task_pb2.TaskSpec):
-            name = entity.template.id.name
-            fname = "{}_{}_1.pb".format(fname_index, entity.template.id.name)
-        elif isinstance(entity, workflow_pb2.WorkflowSpec):
-            name = entity.template.id.name
-            fname = "{}_{}_2.pb".format(fname_index, entity.template.id.name)
-        elif isinstance(entity, launch_plan_pb2.LaunchPlan):
-            name = entity.id.name
-            fname = "{}_{}_3.pb".format(fname_index, entity.id.name)
-        else:
-            click.secho(f"Entity is incorrect formatted {entity} - type {type(entity)}", fg="red")
-            sys.exit(-1)
-        click.secho(f"  Packaging {name} -> {fname}", dim=True)
-        fname = os.path.join(folder, fname)
-        with open(fname, "wb") as writer:
-            writer.write(entity.SerializeToString())
 
 
 @click.command("package")
@@ -208,11 +151,11 @@ def package(ctx, image_config, source, output, force, fast, in_container_source_
             click.secho(f"Loading packages {pkgs} under source root {source}", fg="yellow")
             module_loader.just_load_modules(pkgs=pkgs)
 
-        registrable_entities = get_registrable_entities(ctx)
+        registrable_entities = serialize.get_registrable_entities(ctx)
 
         if registrable_entities:
             with tempfile.TemporaryDirectory() as output_tmpdir:
-                persist_registrable_entities(registrable_entities, output_tmpdir)
+                serialize.persist_registrable_entities(registrable_entities, output_tmpdir)
 
                 # If Fast serialization is enabled, then an archive is also created and packaged
                 if fast:

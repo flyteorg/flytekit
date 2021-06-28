@@ -6,7 +6,7 @@ from flyteidl.admin.task_pb2 import TaskSpec
 from flyteidl.admin.workflow_pb2 import WorkflowSpec
 
 import flytekit
-from flytekit.clis.sdk_in_container import package, pyflyte
+from flytekit.clis.sdk_in_container import package, pyflyte, serialize
 from flytekit.core import context_manager
 
 
@@ -72,7 +72,7 @@ def test_get_registrable_entities():
         )
     )
     context_manager.FlyteEntities.entities = [foo, wf, "str"]
-    entities = package.get_registrable_entities(ctx)
+    entities = serialize.get_registrable_entities(ctx)
     assert entities
     assert len(entities) == 3
 
