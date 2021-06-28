@@ -64,7 +64,7 @@ def task(
     cache: bool = False,
     cache_version: str = "",
     retries: int = 0,
-    interruptable: bool = False,
+    interruptible: Optional[bool] = None,
     deprecated: str = "",
     timeout: Union[_datetime.timedelta, int] = 0,
     container_image: Optional[str] = None,
@@ -111,10 +111,16 @@ def task(
            but you can always manually update this field as well to force a cache miss. You should also manually bump
            this version if the function body/business logic has changed, but the signature hasn't.
     :param retries: Number of times to retry this task during a workflow execution.
-    :param interruptable: Boolean that indicates that this task can be interrupted and/or scheduled on nodes
+    :param interruptible: [Optional] Boolean that indicates that this task can be interrupted and/or scheduled on nodes
                           with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
                           at the cost of performance penalties due to potential interruptions. Requires additional
-                          Flyte platform level configuration.
+                          Flyte platform level configuration. If no value is provided, the task will inherit this
+                          attribute from its workflow, as follows:
+                          No values set for interruptible at the task or workflow level - task is not interruptible
+                          Task has interruptible=True, but workflow has no value set - task is interruptible
+                          Workflow has interruptible=True, but task has no value set - task is interruptible
+                          Workflow has interruptible=False, but task has interruptible=True - task is interruptible
+                          Workflow has interruptible=True, but task has interruptible=False - task is not interruptible
     :param deprecated: A string that can be used to provide a warning message for deprecated task. Absence / empty str
                        indicates that the task is active and not deprecated
     :param timeout: the max amount of time for which one execution of this task should be executed for. The execution
@@ -157,7 +163,7 @@ def task(
             cache=cache,
             cache_version=cache_version,
             retries=retries,
-            interruptable=interruptable,
+            interruptible=interruptible,
             deprecated=deprecated,
             timeout=timeout,
         )

@@ -91,6 +91,7 @@ class WorkflowMetadataDefaults(object):
     interruptible: bool
 
     def __post_init__(self):
+        # TODO: Get mypy working so we don't have to worry about these checks
         if self.interruptible is not True and self.interruptible is not False:
             raise FlyteValidationException(f"Interruptible must be boolean, {self.interruptible} invalid")
 
@@ -218,6 +219,12 @@ class WorkflowBase(object):
             f"Output bindings: {self._output_bindings} && "
         )
 
+    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
+        return _workflow_model.NodeMetadata(
+            name=f"{self.__module__}.{self.name}",
+            interruptible=self.workflow_metadata_defaults.interruptible,
+        )
+
     def __call__(self, *args, **kwargs):
         """
         The call pattern for Workflows is close to, but not exactly, the call pattern for Tasks. For local execution,
@@ -239,7 +246,7 @@ class WorkflowBase(object):
 
         # The first condition is compilation.
         if ctx.compilation_state is not None:
-            return create_and_link_node(ctx, entity=self, interface=self.python_interface, **input_kwargs)
+            return create_and_link_node(ctx, entity=self, **input_kwargs)
 
         # This condition is hit when this workflow (self) is being called as part of a parent's workflow local run.
         # The context specifying the local workflow execution has already been set.
@@ -357,7 +364,7 @@ class ImperativeWorkflow(WorkflowBase):
         self,
         name: str,
         failure_policy: Optional[WorkflowFailurePolicy] = None,
-        interruptible: Optional[bool] = False,
+        interruptible: bool = False,
     ):
         metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
@@ -708,7 +715,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
 def workflow(
     _workflow_function=None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
-    interruptible: Optional[bool] = False,
+    interruptible: bool = False,
 ):
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
