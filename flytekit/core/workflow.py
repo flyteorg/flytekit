@@ -375,6 +375,7 @@ class ImperativeWorkflow(WorkflowBase):
 
     This workflow would be identical on the backed to the
     """
+
     def __init__(
         self,
         name: str,

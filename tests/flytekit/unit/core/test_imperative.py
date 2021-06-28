@@ -7,10 +7,10 @@ import pytest
 from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
+from flytekit.core.base_task import kwtypes
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.launch_plan import LaunchPlan
-from flytekit.core.task import task, reference_task
-from flytekit.core.base_task import kwtypes
+from flytekit.core.task import reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow, get_promise, workflow
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.models import literals as literal_models
@@ -40,6 +40,7 @@ def test_imperative():
     @task
     def t2():
         print("side effect")
+
     # docs_tasks_end
 
     # docs_start
