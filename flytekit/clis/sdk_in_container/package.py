@@ -115,7 +115,7 @@ def package(ctx, image_config, source, output, force, fast, in_container_source_
     For tasks, one pb file is produced for each task, representing one TaskTemplate object.
     For workflows, one pb file is produced for each workflow, representing a WorkflowClosure object.  The closure
         object contains the WorkflowTemplate, along with the relevant tasks for that workflow.
-        This serialization step will set the URN of the tasks to the fully qualified name of the task function.
+        This serialization step will set the name of the tasks to the fully qualified name of the task function.
     """
     if os.path.exists(output) and not force:
         raise click.BadParameter(click.style(f"Output file {output} already exists, specify -f to override.", fg="red"))

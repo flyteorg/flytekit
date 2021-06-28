@@ -50,7 +50,7 @@ def validate_package(ctx, param, values):
     "--insecure",
     required=False,
     type=bool,
-    help="Disable SSL to connect to Flyte backend.",
+    help="Disable SSL when connecting to Flyte backend.",
 )
 @click.pass_context
 def main(ctx, config=None, pkgs=None, insecure=None):
