@@ -17,7 +17,7 @@ from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import Image, ImageConfig, look_up_image_info
 from flytekit.core.workflow import WorkflowBase
-from flytekit.tools import module_loader
+from flytekit.tools import fast_registration, module_loader
 
 _DEFAULT_IMAGE_NAME = "default"
 _DEFAULT_RUNTIME_PYTHON_INTERPRETER = "/opt/venv/bin/python3"
@@ -216,8 +216,16 @@ def package(ctx, image_config, source, output, force, fast, python_interpreter):
             with tempfile.TemporaryDirectory() as output_tmpdir:
                 persist_registrable_entities(registrable_entities, output_tmpdir)
 
+                if fast:
+                    digest = fast_registration.compute_digest(source)
+                    archive_fname = os.path.join(output_tmpdir, f"{digest}.tar.gz")
+                    click.secho(f"Fast mode enabled: compressed archive {archive_fname}", dim=True)
+                    # Write using gzip
+                    with tarfile.open(archive_fname, "w:gz") as tar:
+                        tar.add(source, arcname="", filter=fast_registration.filter_tar_file_fn)
+
                 with tarfile.open(output, "w:gz") as tar:
-                    tar.add(output_tmpdir, arcname=".")
+                    tar.add(output_tmpdir, arcname="")
 
             click.secho(f"Successfully packaged {len(registrable_entities)} flyte objects into {output}", fg="green")
         else:
