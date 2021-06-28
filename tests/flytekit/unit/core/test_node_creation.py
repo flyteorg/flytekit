@@ -3,6 +3,7 @@ from collections import OrderedDict
 
 import pytest
 
+from flytekit import Resources, map_task
 from flytekit.common.exceptions.user import FlyteAssertion
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
@@ -11,6 +12,7 @@ from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.node_creation import create_node
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
+from flytekit.models.task import Resources as _resources_models
 
 
 def test_normal_task():
@@ -162,3 +164,37 @@ def test_runs_before():
         return t2_node.o0, subwf_node.o0, subwf_node.o1
 
     my_wf(a=5, b="hello")
+
+
+def test_resource_overrides():
+    @task
+    def t1(a: str) -> str:
+        return f"*~*~*~{a}*~*~*~"
+
+    @workflow
+    def my_wf(a: typing.List[str]) -> typing.List[str]:
+        mappy = map_task(t1)
+        map_node = create_node(mappy, a=a).with_overrides(
+            requests=Resources(cpu="1", mem="100"), limits=Resources(cpu="2", mem="200")
+        )
+        return map_node.o0
+
+    serialization_settings = context_manager.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert len(wf_spec.template.nodes) == 1
+    assert wf_spec.template.nodes[0].task_node.overrides is not None
+    assert wf_spec.template.nodes[0].task_node.overrides.resources.requests == [
+        _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "1"),
+        _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "100"),
+    ]
+
+    assert wf_spec.template.nodes[0].task_node.overrides.resources.limits == [
+        _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "2"),
+        _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "200"),
+    ]

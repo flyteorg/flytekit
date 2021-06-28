@@ -21,6 +21,7 @@ from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
+from flytekit.models.core.workflow import TaskNodeOverrides
 
 FlyteLocalEntity = Union[
     PythonTask,
@@ -272,7 +273,9 @@ def get_serializable_node(
             inputs=entity.bindings,
             upstream_node_ids=[n.id for n in upstream_sdk_nodes],
             output_aliases=[],
-            task_node=workflow_model.TaskNode(reference_id=task_spec.template.id),
+            task_node=workflow_model.TaskNode(
+                reference_id=task_spec.template.id, overrides=TaskNodeOverrides(resources=entity._resources)
+            ),
         )
         if entity._aliases:
             node_model._output_aliases = entity._aliases
