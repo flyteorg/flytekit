@@ -102,6 +102,10 @@ flyteidl==0.19.5
     # via
     #   -c requirements.txt
     #   flytekit
+greenlet==1.1.0
+    # via
+    #   -c requirements.txt
+    #   sqlalchemy
 grpcio==1.38.1
     # via
     #   -c requirements.txt
@@ -300,6 +304,10 @@ sortedcontainers==2.4.0
     # via
     #   -c requirements.txt
     #   flytekit
+sqlalchemy==1.4.19
+    # via
+    #   -c requirements.txt
+    #   -r dev-requirements.in
 statsd==3.3.0
     # via
     #   -c requirements.txt

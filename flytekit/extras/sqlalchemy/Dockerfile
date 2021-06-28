@@ -1,18 +1,27 @@
 FROM python:3.8-slim-buster
 
-MAINTAINER Flyte Team <users@flyte.org>
-LABEL org.opencontainers.image.source https://github.com/flyteorg/flytekit
+WORKDIR /app
+ENV VENV /opt/venv
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
+ENV PYTHONPATH /app
 
 RUN pip install awscli
 RUN pip install gsutil
 
-ARG VERSION
-ARG DOCKER_IMAGE
+# Virtual environment
+RUN python3.8 -m venv ${VENV}
+RUN ${VENV}/bin/pip install wheel
 
-RUN pip install -U flytekit==0.19.1
+COPY sqlalchemy/requirements.txt /app
+RUN ${VENV}/bin/pip install -r /app/requirements.txt
 
-WORKDIR /app
+# Copy the actual code
+COPY sqlalchemy/ /app/sqlalchemy/
 
-RUN pip install sqlalchemy
+# Copy over the helper script that the SDK relies on
+RUN cp ${VENV}/bin/flytekit_venv /usr/local/bin/
+RUN chmod a+x /usr/local/bin/flytekit_venv
 
-ENV FLYTE_INTERNAL_IMAGE "$DOCKER_IMAGE"
+# Enable the virtualenv for this image. Note this relies on the VENV variable we've set in this image.
+ENTRYPOINT ["/usr/local/bin/flytekit_venv"]
