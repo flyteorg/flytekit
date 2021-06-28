@@ -68,13 +68,17 @@ def _fast_serialize_command_fn(
 ) -> Callable[[SerializationSettings], List[str]]:
     default_command = task.get_default_command(settings)
 
+    dest_dir = settings.fast_serialization_settings.destination_dir
+    if dest_dir is None or dest_dir == "":
+        dest_dir = "{{ .dest_dir }}"
+
     def fn(settings: SerializationSettings) -> List[str]:
         return [
             "pyflyte-fast-execute",
             "--additional-distribution",
             "{{ .remote_package_path }}",
             "--dest-dir",
-            "{{ .dest_dir }}",
+            dest_dir,
             "--",
             *default_command,
         ]
@@ -86,7 +90,6 @@ def get_serializable_task(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: FlyteLocalEntity,
-    fast: bool,
 ) -> task_models.TaskSpec:
     task_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.TASK,
@@ -95,7 +98,10 @@ def get_serializable_task(
         entity.name,
         settings.version,
     )
-    if fast and isinstance(entity, PythonAutoContainerTask):
+    should_fast_serialize = (
+        settings.fast_serialization_settings is not None and settings.fast_serialization_settings.enabled
+    )
+    if should_fast_serialize and isinstance(entity, PythonAutoContainerTask):
         # For fast registration, we'll need to muck with the command, but only for certain kinds of tasks. Specifically,
         # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
         # parent class
@@ -112,7 +118,7 @@ def get_serializable_task(
         config=entity.get_config(settings),
         k8s_pod=entity.get_k8s_pod(settings),
     )
-    if fast and isinstance(entity, PythonAutoContainerTask):
+    if should_fast_serialize and isinstance(entity, PythonAutoContainerTask):
         entity.reset_command_fn()
 
     return task_models.TaskSpec(template=tt)
@@ -122,11 +128,10 @@ def get_serializable_workflow(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: WorkflowBase,
-    fast: bool,
 ) -> admin_workflow_models.WorkflowSpec:
     # Get node models
     upstream_node_models = [
-        get_serializable(entity_mapping, settings, n, fast)
+        get_serializable(entity_mapping, settings, n)
         for n in entity.nodes
         if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
     ]
@@ -188,7 +193,6 @@ def get_serializable_launch_plan(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: LaunchPlan,
-    fast: bool,
 ) -> _launch_plan_models.LaunchPlan:
     wf_spec = get_serializable(entity_mapping, settings, entity.workflow)
 
@@ -230,7 +234,6 @@ def get_serializable_node(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: Node,
-    fast: bool,
 ) -> workflow_model.Node:
     if entity.flyte_entity is None:
         raise Exception(f"Node {entity.id} has no flyte entity")
@@ -246,7 +249,7 @@ def get_serializable_node(
         # This is a throw away call.
         # See the comment in compile_into_workflow in python_function_task. This is just used to place a None value
         # in the entity_mapping.
-        get_serializable(entity_mapping, settings, entity.flyte_entity, fast)
+        get_serializable(entity_mapping, settings, entity.flyte_entity)
         ref = entity.flyte_entity
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
@@ -322,7 +325,6 @@ def get_serializable_branch_node(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: FlyteLocalEntity,
-    fast: bool,
 ) -> BranchNodeModel:
     # We have to iterate through the blocks to convert the nodes from the internal Node type to the Node model type.
     # This was done to avoid having to create our own IfElseBlock object (i.e. condition.py just uses the model
@@ -345,7 +347,6 @@ def get_serializable(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: FlyteLocalEntity,
-    fast: Optional[bool] = False,
 ) -> FlyteControlPlaneEntity:
     """
     The flytekit authoring code produces objects representing Flyte entities (tasks, workflows, etc.). In order to
@@ -374,19 +375,19 @@ def get_serializable(
         cp_entity = None
 
     elif isinstance(entity, PythonTask):
-        cp_entity = get_serializable_task(entity_mapping, settings, entity, fast)
+        cp_entity = get_serializable_task(entity_mapping, settings, entity)
 
     elif isinstance(entity, WorkflowBase):
-        cp_entity = get_serializable_workflow(entity_mapping, settings, entity, fast)
+        cp_entity = get_serializable_workflow(entity_mapping, settings, entity)
 
     elif isinstance(entity, Node):
-        cp_entity = get_serializable_node(entity_mapping, settings, entity, fast)
+        cp_entity = get_serializable_node(entity_mapping, settings, entity)
 
     elif isinstance(entity, LaunchPlan):
-        cp_entity = get_serializable_launch_plan(entity_mapping, settings, entity, fast)
+        cp_entity = get_serializable_launch_plan(entity_mapping, settings, entity)
 
     elif isinstance(entity, BranchNode):
-        cp_entity = get_serializable_branch_node(entity_mapping, settings, entity, fast)
+        cp_entity = get_serializable_branch_node(entity_mapping, settings, entity)
     else:
         raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")
 

@@ -104,6 +104,16 @@ class EntrypointSettings(object):
     version: int = 0
 
 
+@dataclass
+class FastSerializationSettings(object):
+    """
+    This object hold information about settings necessary to serialize an object so that it can be fast-registered.
+    """
+
+    enabled: bool = False
+    destination_dir: str = False
+
+
 @dataclass(frozen=True)
 class SerializationSettings(object):
     """
@@ -119,6 +129,7 @@ class SerializationSettings(object):
     flytekit_virtualenv_root: Optional[str] = None
     python_interpreter: Optional[str] = None
     entrypoint_settings: Optional[EntrypointSettings] = None
+    fast_serialization_settings: Optional[FastSerializationSettings] = None
 
 
 @dataclass(frozen=True)
