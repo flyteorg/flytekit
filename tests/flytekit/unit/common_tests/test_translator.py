@@ -5,7 +5,7 @@ from flytekit import ContainerTask, Resources
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
-from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.context_manager import FastSerializationSettings, Image, ImageConfig
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.task import ReferenceTask, task
 from flytekit.core.workflow import ReferenceWorkflow, workflow
@@ -50,14 +50,17 @@ def test_basics():
         d = t2(a=y, b=b)
         return x, d
 
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf, False)
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.interface.inputs) == 2
     assert len(wf_spec.template.interface.outputs) == 2
     assert len(wf_spec.template.nodes) == 2
     assert wf_spec.template.id.resource_type == identifier_models.ResourceType.WORKFLOW
 
     # Gets cached the first time around so it's not actually fast.
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t1, True)
+    ssettings = serialization_settings.new_builder().with_fast_serialization_settings(
+        FastSerializationSettings(enabled=True)
+    )
+    task_spec = get_serializable(OrderedDict(), ssettings, t1)
     assert "pyflyte-execute" in task_spec.template.container.args
 
     lp = LaunchPlan.create(
@@ -77,7 +80,10 @@ def test_fast():
     def t2(a: str, b: str) -> str:
         return b + a
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t1, True)
+    ssettings = serialization_settings.new_builder().with_fast_serialization_settings(
+        FastSerializationSettings(enabled=True)
+    )
+    task_spec = get_serializable(OrderedDict(), ssettings, t1)
     assert "pyflyte-fast-execute" in task_spec.template.container.args
 
 
@@ -97,5 +103,8 @@ def test_container():
         requests=Resources(mem="400Mi", cpu="1"),
     )
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t2, fast=True)
+    ssettings = serialization_settings.new_builder().with_fast_serialization_settings(
+        FastSerializationSettings(enabled=True)
+    )
+    task_spec = get_serializable(OrderedDict(), ssettings, t2)
     assert "pyflyte" not in task_spec.template.container.args

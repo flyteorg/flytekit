@@ -98,10 +98,7 @@ def get_serializable_task(
         entity.name,
         settings.version,
     )
-    should_fast_serialize = (
-        settings.fast_serialization_settings is not None and settings.fast_serialization_settings.enabled
-    )
-    if should_fast_serialize and isinstance(entity, PythonAutoContainerTask):
+    if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
         # For fast registration, we'll need to muck with the command, but only for certain kinds of tasks. Specifically,
         # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
         # parent class
@@ -118,7 +115,7 @@ def get_serializable_task(
         config=entity.get_config(settings),
         k8s_pod=entity.get_k8s_pod(settings),
     )
-    if should_fast_serialize and isinstance(entity, PythonAutoContainerTask):
+    if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
         entity.reset_command_fn()
 
     return task_models.TaskSpec(template=tt)
@@ -144,7 +141,7 @@ def get_serializable_workflow(
                     f"Sorry, reference subworkflows do not work right now, please use the launch plan instead for the "
                     f"subworkflow you're trying to invoke. Node: {n}"
                 )
-            sub_wf_spec = get_serializable(entity_mapping, settings, n.flyte_entity, fast)
+            sub_wf_spec = get_serializable(entity_mapping, settings, n.flyte_entity)
             if not isinstance(sub_wf_spec, admin_workflow_models.WorkflowSpec):
                 raise Exception(
                     f"Serialized form of a workflow should be an admin.WorkflowSpec but {type(sub_wf_spec)} found instead"
@@ -166,7 +163,7 @@ def get_serializable_workflow(
             )
             for leaf_node in leaf_nodes:
                 if isinstance(leaf_node.flyte_entity, WorkflowBase):
-                    sub_wf_spec = get_serializable(entity_mapping, settings, leaf_node.flyte_entity, fast)
+                    sub_wf_spec = get_serializable(entity_mapping, settings, leaf_node.flyte_entity)
                     sub_wfs.append(sub_wf_spec.template)
                     sub_wfs.extend(sub_wf_spec.sub_workflows)
 
@@ -269,7 +266,7 @@ def get_serializable_node(
         return node_model
 
     if isinstance(entity.flyte_entity, PythonTask):
-        task_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, fast)
+        task_spec = get_serializable(entity_mapping, settings, entity.flyte_entity)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
@@ -284,7 +281,7 @@ def get_serializable_node(
             node_model._output_aliases = entity._aliases
 
     elif isinstance(entity.flyte_entity, WorkflowBase):
-        wf_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, fast)
+        wf_spec = get_serializable(entity_mapping, settings, entity.flyte_entity)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
@@ -305,7 +302,7 @@ def get_serializable_node(
         )
 
     elif isinstance(entity.flyte_entity, LaunchPlan):
-        lp_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, fast)
+        lp_spec = get_serializable(entity_mapping, settings, entity.flyte_entity)
 
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),

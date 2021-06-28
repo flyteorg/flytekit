@@ -5,7 +5,13 @@ from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
 from flytekit.core.base_task import TaskResolverMixin
-from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import (
+    ExecutionState,
+    FastSerializationSettings,
+    FlyteContext,
+    FlyteContextManager,
+    SerializationSettings,
+)
 from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
 from flytekit.core.tracker import isnested, istestfunction
@@ -134,7 +140,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             return self.dynamic_execute(self._task_function, **kwargs)
 
     def compile_into_workflow(
-        self, ctx: FlyteContext, is_fast_execution: bool, task_function: Callable, **kwargs
+        self, ctx: FlyteContext, task_function: Callable, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
         if not ctx.compilation_state:
             cs = ctx.new_compilation_state("dynamic")
@@ -157,7 +163,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             # This is the only circular dependency between the translator.py module and the rest of the flytekit
             # authoring experience.
             workflow_spec: admin_workflow_models.WorkflowSpec = get_serializable(
-                model_entities, ctx.serialization_settings, wf, is_fast_execution
+                model_entities, ctx.serialization_settings, wf
             )
 
             # If no nodes were produced, let's just return the strict outputs
@@ -183,7 +189,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             # should already be in the workflow spec.
             tts = [v.template for v in model_entities.values() if isinstance(v, task_models.TaskSpec)]
 
-            if is_fast_execution:
+            if ctx.serialization_settings.should_fast_serialize():
                 if (
                     not ctx.execution_state
                     or not ctx.execution_state.additional_context
@@ -242,4 +248,11 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 and ctx.execution_state.additional_context
                 and ctx.execution_state.additional_context.get("dynamic_addl_distro")
             )
-            return self.compile_into_workflow(ctx, is_fast_execution, task_function, **kwargs)
+            if is_fast_execution:
+                ctx = ctx.with_serialization_settings(
+                    SerializationSettings.new_builder()
+                    .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
+                    .build()
+                )
+
+            return self.compile_into_workflow(ctx, task_function, **kwargs)
