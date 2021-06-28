@@ -14,7 +14,7 @@ RUN pip install -U flytekit==$VERSION
 WORKDIR /app
 
 # Install Python dependencies
-COPY sqlalchemy/requirements.txt /app
+COPY requirements.txt /app
 RUN pip install -r /app/requirements.txt
 
 ENV FLYTE_INTERNAL_IMAGE "$DOCKER_IMAGE"
