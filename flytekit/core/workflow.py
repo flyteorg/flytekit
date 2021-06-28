@@ -353,6 +353,28 @@ class WorkflowBase(object):
 
 
 class ImperativeWorkflow(WorkflowBase):
+    """
+    An imperative workflow is a programmatic analogue to the typical ``@workflow`` function-based workflow and is
+    better suited to programmatic applications.
+
+    Assuming you have some tasks like so
+
+    .. literalinclude:: ../../../tests/flytekit/unit/core/test_imperative.py
+       :start-after: # docs_tasks_start
+       :end-before: # docs_tasks_end
+       :language: python
+       :dedent: 4
+
+    You could create a workflow imperatively like so
+
+    .. literalinclude:: ../../../tests/flytekit/unit/core/test_imperative.py
+       :start-after: # docs_start
+       :end-before: # docs_start
+       :language: python
+       :dedent: 4
+
+    This workflow would be identical on the backed to the
+    """
     def __init__(
         self,
         name: str,
