@@ -13,14 +13,11 @@ RUN pip install gsutil
 RUN python3.8 -m venv ${VENV}
 RUN ${VENV}/bin/pip install wheel
 
-COPY sqlalchemy/requirements.txt /app
+COPY requirements.txt /app
 RUN ${VENV}/bin/pip install -r /app/requirements.txt
 
-# Copy the actual code
-COPY sqlalchemy/ /app/sqlalchemy/
-
 # Copy over the helper script that the SDK relies on
-RUN cp ${VENV}/bin/flytekit_venv /usr/local/bin/
+RUN cp ${VENV}/bin/flytekit_venv /usr/local/bin
 RUN chmod a+x /usr/local/bin/flytekit_venv
 
 # Enable the virtualenv for this image. Note this relies on the VENV variable we've set in this image.
