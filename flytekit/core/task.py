@@ -214,8 +214,6 @@ def reference_task(
     .. literalinclude:: ../../../tests/flytekit/unit/core/test_references.py
        :pyobject: ref_t1
 
-
-
     """
 
     def wrapper(fn) -> ReferenceTask:
