@@ -37,7 +37,7 @@ class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.Ex
         Returns the inputs of the task execution in the standard Python format that is produced by
         the type engine.
         """
-        from flytekit.control_plane.tasks.task import FlyteTask
+        from flytekit.remote.tasks.task import FlyteTask
 
         if self._inputs is None:
             client = _flyte_engine.get_client()
@@ -73,7 +73,7 @@ class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.Ex
 
         :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
         """
-        from flytekit.control_plane.tasks.task import FlyteTask
+        from flytekit.remote.tasks.task import FlyteTask
 
         if not self.is_complete:
             raise _user_exceptions.FlyteAssertion(
@@ -121,7 +121,7 @@ class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.Ex
         return self.closure.error
 
     def get_child_executions(self, filters=None):
-        from flytekit.control_plane import nodes as _nodes
+        from flytekit.remote import nodes as _nodes
 
         if not self.is_parent:
             raise _user_exceptions.FlyteAssertion("Only task executions marked with 'is_parent' have child executions.")

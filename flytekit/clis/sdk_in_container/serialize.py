@@ -147,6 +147,12 @@ def serialize_all(
         _internal_config.IMAGE.env_var: image,
     }
 
+    if not (mode == SerializationMode.DEFAULT or mode == SerializationMode.FAST):
+        raise AssertionError(f"Unrecognized serialization mode: {mode}")
+    fast_serialization_settings = flyte_context.FastSerializationSettings(
+        enabled=mode == SerializationMode.FAST,
+        # TODO: if we want to move the destination dir as a serialization argument, we should initialize it here
+    )
     serialization_settings = flyte_context.SerializationSettings(
         project=_PROJECT_PLACEHOLDER,
         domain=_DOMAIN_PLACEHOLDER,
@@ -158,6 +164,7 @@ def serialize_all(
         entrypoint_settings=flyte_context.EntrypointSettings(
             path=_os.path.join(flytekit_virtualenv_root, _DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC)
         ),
+        fast_serialization_settings=fast_serialization_settings,
     )
     ctx = flyte_context.FlyteContextManager.current_context().with_serialization_settings(serialization_settings)
     with flyte_context.FlyteContextManager.with_context(ctx) as ctx:
@@ -188,15 +195,7 @@ def serialize_all(
         #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
         for entity in flyte_context.FlyteEntities.entities.copy():
             if isinstance(entity, PythonTask) or isinstance(entity, WorkflowBase) or isinstance(entity, LaunchPlan):
-                if isinstance(entity, PythonTask):
-                    if mode == SerializationMode.DEFAULT:
-                        get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
-                    elif mode == SerializationMode.FAST:
-                        get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity, fast=True)
-                    else:
-                        raise AssertionError(f"Unrecognized serialization mode: {mode}")
-                else:
-                    get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
+                get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
 
                 if isinstance(entity, WorkflowBase):
                     lp = LaunchPlan.get_default_launch_plan(ctx, entity)

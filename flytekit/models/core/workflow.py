@@ -1,3 +1,5 @@
+import typing
+
 from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit.models import common as _common
@@ -7,6 +9,7 @@ from flytekit.models.core import condition as _condition
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.literals import Binding as _Binding
 from flytekit.models.literals import RetryStrategy as _RetryStrategy
+from flytekit.models.task import Resources
 
 
 class IfBlock(_common.FlyteIdlEntity):
@@ -370,16 +373,39 @@ class Node(_common.FlyteIdlEntity):
         )
 
 
+class TaskNodeOverrides(_common.FlyteIdlEntity):
+    def __init__(self, resources: typing.Optional[Resources] = None):
+        self._resources = resources
+
+    @property
+    def resources(self) -> Resources:
+        return self._resources
+
+    def to_flyte_idl(self):
+        return _core_workflow.TaskNodeOverrides(
+            resources=self.resources.to_flyte_idl() if self.resources is not None else None,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        resources = Resources.from_flyte_idl(pb2_object.resources)
+        if bool(resources.requests) or bool(resources.limits):
+            return cls(resources=resources)
+        return cls(resources=None)
+
+
 class TaskNode(_common.FlyteIdlEntity):
-    def __init__(self, reference_id):
+    def __init__(self, reference_id, overrides: typing.Optional[TaskNodeOverrides] = None):
         """
         Refers to the task that the Node is to execute.
         NB: This is currently a oneof in protobuf, but there's only one option currently.  This code should be updated
             when more options are available.
 
         :param flytekit.models.core.identifier.Identifier reference_id: A globally unique identifier for the task.
+        :param flyteidl.core.workflow_pb2.TaskNodeOverrides
         """
         self._reference_id = reference_id
+        self._overrides = overrides
 
     @property
     def reference_id(self):
@@ -389,11 +415,18 @@ class TaskNode(_common.FlyteIdlEntity):
         """
         return self._reference_id
 
+    @property
+    def overrides(self) -> TaskNodeOverrides:
+        return self._overrides
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.workflow_pb2.TaskNode
         """
-        return _core_workflow.TaskNode(reference_id=self.reference_id.to_flyte_idl())
+        return _core_workflow.TaskNode(
+            reference_id=self.reference_id.to_flyte_idl(),
+            overrides=self.overrides.to_flyte_idl() if self.overrides is not None else None,
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -401,7 +434,13 @@ class TaskNode(_common.FlyteIdlEntity):
         :param flyteidl.core.workflow_pb2.TaskNode pb2_object:
         :rtype: TaskNode
         """
-        return cls(reference_id=_identifier.Identifier.from_flyte_idl(pb2_object.reference_id))
+        overrides = TaskNodeOverrides.from_flyte_idl(pb2_object.overrides)
+        if overrides.resources is None:
+            overrides = None
+        return cls(
+            reference_id=_identifier.Identifier.from_flyte_idl(pb2_object.reference_id),
+            overrides=overrides,
+        )
 
 
 class WorkflowNode(_common.FlyteIdlEntity):
