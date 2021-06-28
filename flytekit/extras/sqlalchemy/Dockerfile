@@ -9,12 +9,10 @@ RUN pip install gsutil
 ARG VERSION
 ARG DOCKER_IMAGE
 
-RUN pip install -U flytekit==$VERSION
+RUN pip install -U flytekit==0.19.1
 
 WORKDIR /app
 
-# Install Python dependencies
-COPY requirements.txt /app
-RUN pip install -r /app/requirements.txt
+RUN pip install sqlalchemy
 
 ENV FLYTE_INTERNAL_IMAGE "$DOCKER_IMAGE"
