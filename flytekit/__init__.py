@@ -10,7 +10,7 @@ This package contains all of the most common abstractions you'll need to write F
 Basic Authoring
 ===============
 
-These are the essentials needed to get started writing tasks and workflows. The elements here correspond well with :std:ref:`Basic <cookbook:sphx_glr_auto_core_flyte_basics>` section of the cookbook.
+These are the essentials needed to get started writing tasks and workflows. The elements here correspond well with :std:ref:`Basics <cookbook:sphx_glr_auto_core_flyte_basics>` section of the user guide.
 
 .. autosummary::
    :nosignatures:
@@ -25,9 +25,7 @@ These are the essentials needed to get started writing tasks and workflows. The 
    FlyteContext
    map_task
    Workflow
-
-.. autoclass:: flytekit.core.workflow.ImperativeWorkflow
-   :noindex:
+   ~core.workflow.ImperativeWorkflow
 
 Running Locally
 ------------------
