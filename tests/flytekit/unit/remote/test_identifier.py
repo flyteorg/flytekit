@@ -1,8 +1,8 @@
 import pytest
 
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.control_plane import identifier as _identifier
 from flytekit.models.core import identifier as _core_identifier
+from flytekit.remote import identifier as _identifier
 
 
 def test_identifier():

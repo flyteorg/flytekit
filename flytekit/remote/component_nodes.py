@@ -2,13 +2,13 @@ import logging as _logging
 from typing import Dict
 
 from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.control_plane import identifier as _identifier
 from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.remote import identifier as _identifier
 
 
 class FlyteTaskNode(_workflow_model.TaskNode):
-    def __init__(self, flyte_task: "flytekit.control_plane.tasks.task.FlyteTask"):
+    def __init__(self, flyte_task: "flytekit.remote.tasks.task.FlyteTask"):
         self._flyte_task = flyte_task
         super(FlyteTaskNode, self).__init__(None)
 
@@ -18,7 +18,7 @@ class FlyteTaskNode(_workflow_model.TaskNode):
         return self._flyte_task.id
 
     @property
-    def flyte_task(self) -> "flytekit.control_plane.tasks.task.FlyteTask":
+    def flyte_task(self) -> "flytekit.remote.tasks.task.FlyteTask":
         return self._flyte_task
 
     @classmethod
@@ -34,7 +34,7 @@ class FlyteTaskNode(_workflow_model.TaskNode):
         :param base_model:
         :param tasks:
         """
-        from flytekit.control_plane.tasks import task as _task
+        from flytekit.remote.tasks import task as _task
 
         if base_model.reference_id in tasks:
             task = tasks[base_model.reference_id]
@@ -57,8 +57,8 @@ class FlyteTaskNode(_workflow_model.TaskNode):
 class FlyteWorkflowNode(_workflow_model.WorkflowNode):
     def __init__(
         self,
-        flyte_workflow: "flytekit.control_plane.workflow.FlyteWorkflow" = None,
-        flyte_launch_plan: "flytekit.control_plane.launch_plan.FlyteLaunchPlan" = None,
+        flyte_workflow: "flytekit.remote.workflow.FlyteWorkflow" = None,
+        flyte_launch_plan: "flytekit.remote.launch_plan.FlyteLaunchPlan" = None,
     ):
         if flyte_workflow and flyte_launch_plan:
             raise _system_exceptions.FlyteSystemException(
@@ -88,11 +88,11 @@ class FlyteWorkflowNode(_workflow_model.WorkflowNode):
         return self._flyte_workflow.id if self._flyte_workflow else None
 
     @property
-    def flyte_launch_plan(self) -> "flytekit.control_plane.launch_plan.FlyteLaunchPlan":
+    def flyte_launch_plan(self) -> "flytekit.remote.launch_plan.FlyteLaunchPlan":
         return self._flyte_launch_plan
 
     @property
-    def flyte_workflow(self) -> "flytekit.control_plane.workflow.FlyteWorkflow":
+    def flyte_workflow(self) -> "flytekit.remote.workflow.FlyteWorkflow":
         return self._flyte_workflow
 
     @classmethod
@@ -102,8 +102,8 @@ class FlyteWorkflowNode(_workflow_model.WorkflowNode):
         sub_workflows: Dict[_identifier.Identifier, _workflow_model.WorkflowTemplate],
         tasks: Dict[_identifier.Identifier, _task_model.TaskTemplate],
     ) -> "FlyteWorkflowNode":
-        from flytekit.control_plane import launch_plan as _launch_plan
-        from flytekit.control_plane import workflow as _workflow
+        from flytekit.remote import launch_plan as _launch_plan
+        from flytekit.remote import workflow as _workflow
 
         fetch_args = (
             base_model.reference.project,
