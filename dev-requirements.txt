@@ -49,7 +49,7 @@ click==7.1.2
     #   flytekit
 coverage[toml]==5.5
     # via -r dev-requirements.in
-croniter==1.0.13
+croniter==1.0.15
     # via
     #   -c requirements.txt
     #   flytekit
@@ -98,14 +98,10 @@ flake8-black==0.2.1
     # via -r dev-requirements.in
 flake8-isort==4.0.0
     # via -r dev-requirements.in
-flyteidl==0.19.4
+flyteidl==0.19.5
     # via
     #   -c requirements.txt
     #   flytekit
-greenlet==1.1.0
-    # via
-    #   -c requirements.txt
-    #   sqlalchemy
 grpcio==1.38.1
     # via
     #   -c requirements.txt
@@ -114,7 +110,7 @@ idna==2.10
     # via
     #   -c requirements.txt
     #   requests
-importlib-metadata==4.5.0
+importlib-metadata==4.6.0
     # via
     #   -c requirements.txt
     #   keyring
@@ -304,8 +300,6 @@ sortedcontainers==2.4.0
     # via
     #   -c requirements.txt
     #   flytekit
-sqlalchemy==1.4.19
-    # via -r dev-requirements.in
 statsd==3.3.0
     # via
     #   -c requirements.txt
