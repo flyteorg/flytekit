@@ -68,7 +68,9 @@ def _fast_serialize_command_fn(
 ) -> Callable[[SerializationSettings], List[str]]:
     default_command = task.get_default_command(settings)
 
-    dest_dir = settings.fast_serialization_settings.destination_dir
+    dest_dir = (
+        settings.fast_serialization_settings.destination_dir if settings.fast_serialization_settings is not None else ""
+    )
     if dest_dir is None or dest_dir == "":
         dest_dir = "{{ .dest_dir }}"
 

@@ -57,8 +57,10 @@ def test_basics():
     assert wf_spec.template.id.resource_type == identifier_models.ResourceType.WORKFLOW
 
     # Gets cached the first time around so it's not actually fast.
-    ssettings = serialization_settings.new_builder().with_fast_serialization_settings(
-        FastSerializationSettings(enabled=True)
+    ssettings = (
+        serialization_settings.new_builder()
+        .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
+        .build()
     )
     task_spec = get_serializable(OrderedDict(), ssettings, t1)
     assert "pyflyte-execute" in task_spec.template.container.args
@@ -80,8 +82,10 @@ def test_fast():
     def t2(a: str, b: str) -> str:
         return b + a
 
-    ssettings = serialization_settings.new_builder().with_fast_serialization_settings(
-        FastSerializationSettings(enabled=True)
+    ssettings = (
+        serialization_settings.new_builder()
+        .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
+        .build()
     )
     task_spec = get_serializable(OrderedDict(), ssettings, t1)
     assert "pyflyte-fast-execute" in task_spec.template.container.args
@@ -103,8 +107,10 @@ def test_container():
         requests=Resources(mem="400Mi", cpu="1"),
     )
 
-    ssettings = serialization_settings.new_builder().with_fast_serialization_settings(
-        FastSerializationSettings(enabled=True)
+    ssettings = (
+        serialization_settings.new_builder()
+        .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
+        .build()
     )
     task_spec = get_serializable(OrderedDict(), ssettings, t2)
     assert "pyflyte" not in task_spec.template.container.args

@@ -173,9 +173,6 @@ class SerializationSettings(object):
             fast_serialization_settings=self.fast_serialization_settings,
         )
 
-    def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> Builder:
-        return self.new_builder().with_fast_serialization_settings(fss)
-
     def should_fast_serialize(self) -> bool:
         return self.fast_serialization_settings is not None and self.fast_serialization_settings.enabled
 
