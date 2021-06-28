@@ -1,9 +1,9 @@
 from mock import MagicMock as _MagicMock
 from mock import patch as _patch
 
-from flytekit.control_plane.tasks import task as _task
 from flytekit.models import task as _task_models
 from flytekit.models.core import identifier as _identifier
+from flytekit.remote.tasks import task as _task
 
 
 @_patch("flytekit.engines.flyte.engine._FlyteClientManager")
