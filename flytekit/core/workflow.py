@@ -364,7 +364,7 @@ class ImperativeWorkflow(WorkflowBase):
         self,
         name: str,
         failure_policy: Optional[WorkflowFailurePolicy] = None,
-        interruptible: Optional[bool] = None,
+        interruptible: bool = False,
     ):
         metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
@@ -715,7 +715,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
 def workflow(
     _workflow_function=None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
-    interruptible: Optional[bool] = None,
+    interruptible: bool = False,
 ):
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
