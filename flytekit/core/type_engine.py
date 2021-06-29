@@ -67,6 +67,9 @@ class TypeTransformer(typing.Generic[T]):
         raise NotImplementedError("Conversion to LiteralType should be implemented")
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+        """
+        Converts the Flyte LiteralType to a python object type.
+        """
         raise ValueError("By default, transformers do not translate from Flyte types back to Python types")
 
     @abstractmethod
@@ -348,11 +351,17 @@ class TypeEngine(typing.Generic[T]):
 
     @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:
+        """
+        Converts a python type into a flyte specific ``LiteralType``
+        """
         transformer = cls.get_transformer(python_type)
         return transformer.get_literal_type(python_type)
 
     @classmethod
     def to_literal(cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type, expected: LiteralType) -> Literal:
+        """
+        Converts a python value of a given type and expected ``LiteralType`` into a resolved ``Literal`` value.
+        """
         if python_val is None:
             raise AssertionError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
@@ -362,11 +371,17 @@ class TypeEngine(typing.Generic[T]):
 
     @classmethod
     def to_python_value(cls, ctx: FlyteContext, lv: Literal, expected_python_type: Type) -> typing.Any:
+        """
+        Converts a Literal value with an expected python type into a python value.
+        """
         transformer = cls.get_transformer(expected_python_type)
         return transformer.to_python_value(ctx, lv, expected_python_type)
 
     @classmethod
     def named_tuple_to_variable_map(cls, t: typing.NamedTuple) -> _interface_models.VariableMap:
+        """
+        Converts a python-native ``NamedTuple`` to a flyte-specific VariableMap of named literals.
+        """
         variables = {}
         for idx, (var_name, var_type) in enumerate(t._field_types.items()):
             literal_type = cls.to_literal_type(var_type)
@@ -378,7 +393,7 @@ class TypeEngine(typing.Generic[T]):
         cls, ctx: FlyteContext, lm: LiteralMap, python_types: typing.Dict[str, type]
     ) -> typing.Dict[str, typing.Any]:
         """
-        Given a literal Map (usually an input into a task - intermediate), convert to kwargs for the task
+        Given a ``LiteralMap`` (usually an input into a task - intermediate), convert to kwargs for the task
         """
         if len(lm.literals) != len(python_types):
             raise ValueError(
@@ -398,6 +413,9 @@ class TypeEngine(typing.Generic[T]):
     def guess_python_types(
         cls, flyte_variable_dict: typing.Dict[str, _interface_models.Variable]
     ) -> typing.Dict[str, type]:
+        """
+        Transforms a dictionary of flyte-specific ``Variable``s to a dictionary of regular python values.
+        """
         python_types = {}
         for k, v in flyte_variable_dict.items():
             python_types[k] = cls.guess_python_type(v.type)
@@ -405,6 +423,9 @@ class TypeEngine(typing.Generic[T]):
 
     @classmethod
     def guess_python_type(cls, flyte_type: LiteralType) -> type:
+        """
+        Transforms a flyte-specific ``LiteralType`` to a regular python value.
+        """
         for _, transformer in cls._REGISTRY.items():
             try:
                 return transformer.guess_python_type(flyte_type)
@@ -478,9 +499,15 @@ class DictTransformer(TypeTransformer[dict]):
 
     @staticmethod
     def dict_to_generic_literal(v: dict) -> Literal:
+        """
+        Creates a flyte-specific ``Literal`` value from a native python dictionary.
+        """
         return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(v), _struct.Struct())))
 
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
+        """
+        Transforms a native python dictionary to a flyte-specific ``LiteralType``
+        """
         tp = self.get_dict_types(t)
         if tp:
             if tp[0] == str:

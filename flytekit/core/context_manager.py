@@ -164,6 +164,9 @@ class SerializationSettings(object):
             container execution.
         entrypoint_settings (Optional[EntrypointSettings]): Information about the command, path and version of the
             entrypoint program.
+        fast_serialization_settings (Optional[FastSerializationSettings]): If the code is being serialized so that it
+            can be fast registered (and thus omit building a Docker image) this object contains additional parameters
+            for serialization.
     """
 
     project: str
@@ -206,6 +209,10 @@ class SerializationSettings(object):
             )
 
     def new_builder(self) -> Builder:
+        """
+        Creates a ``SerializationSettings.Builder`` that copies the existing serialization settings parameters and
+        allows for customization.
+        """
         return SerializationSettings.Builder(
             project=self.project,
             domain=self.domain,
@@ -219,6 +226,9 @@ class SerializationSettings(object):
         )
 
     def should_fast_serialize(self) -> bool:
+        """
+        Whether or not the serialization settings specify that entities should be serialized for fast registration.
+        """
         return self.fast_serialization_settings is not None and self.fast_serialization_settings.enabled
 
 
@@ -369,6 +379,9 @@ class ExecutionState(object):
         branch_eval_mode: Optional[BranchEvalMode] = None,
         user_space_params: Optional[ExecutionParameters] = None,
     ) -> ExecutionState:
+        """
+        Produces a copy of the current execution state and overrides the copy's parameters with passed parameter values.
+        """
         if self.additional_context:
             if additional_context:
                 additional_context = {**self.additional_context, **additional_context}
