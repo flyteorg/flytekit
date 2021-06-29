@@ -1,8 +1,12 @@
 """
 
-.. autoclass:: flytekit.extend::ExecutionState.Mode
+.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode
+.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode.TASK_EXECUTION
+.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode.LOCAL_TASK_EXECUTION
 
 """
+
 from __future__ import annotations
 
 import datetime as _datetime
