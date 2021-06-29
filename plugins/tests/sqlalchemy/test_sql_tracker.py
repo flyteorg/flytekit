@@ -3,7 +3,7 @@ from collections import OrderedDict
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
-from tests.flytekit.unit.extras.sqlalchemy.test_task import tk as not_tk
+from plugins.tests.sqlalchemy.test_task import tk as not_tk
 
 
 def test_sql_lhs():
@@ -25,5 +25,5 @@ def test_sql_command():
         "flytekit.core.python_customized_container_task.default_task_template_resolver",
         "--",
         "{{.taskTemplatePath}}",
-        "flytekit.extras.sqlalchemy.task.SQLAlchemyTaskExecutor",
+        "flytekitplugins.sqlalchemy.task.SQLAlchemyTaskExecutor",
     ]

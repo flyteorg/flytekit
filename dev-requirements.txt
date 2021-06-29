@@ -98,14 +98,10 @@ flake8-black==0.2.1
     # via -r dev-requirements.in
 flake8-isort==4.0.0
     # via -r dev-requirements.in
-flyteidl==0.19.5
+flyteidl==0.19.6
     # via
     #   -c requirements.txt
     #   flytekit
-greenlet==1.1.0
-    # via
-    #   -c requirements.txt
-    #   sqlalchemy
 grpcio==1.38.1
     # via
     #   -c requirements.txt
@@ -224,7 +220,7 @@ pyparsing==2.4.7
     # via
     #   -c requirements.txt
     #   packaging
-pyrsistent==0.17.3
+pyrsistent==0.18.0
     # via
     #   -c requirements.txt
     #   jsonschema
@@ -304,10 +300,6 @@ sortedcontainers==2.4.0
     # via
     #   -c requirements.txt
     #   flytekit
-sqlalchemy==1.4.19
-    # via
-    #   -c requirements.txt
-    #   -r dev-requirements.in
 statsd==3.3.0
     # via
     #   -c requirements.txt

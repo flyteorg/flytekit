@@ -29,9 +29,9 @@ black==21.6b0
     # via papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.101
+boto3==1.17.102
     # via sagemaker-training
-botocore==1.20.101
+botocore==1.20.102
     # via
     #   boto3
     #   s3transfer
@@ -72,7 +72,7 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.19.5
+flyteidl==0.19.6
     # via flytekit
 gevent==21.1.2
     # via sagemaker-training
@@ -211,7 +211,7 @@ pynacl==1.4.0
     # via paramiko
 pyparsing==2.4.7
     # via packaging
-pyrsistent==0.17.3
+pyrsistent==0.18.0
     # via jsonschema
 pyspark==2.4.8
     # via flytekit

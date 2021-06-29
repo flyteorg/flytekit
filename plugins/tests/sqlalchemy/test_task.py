@@ -8,7 +8,7 @@ import pandas
 import pytest
 
 from flytekit import kwtypes, task, workflow
-from flytekit.extras.sqlalchemy.task import SQLAlchemyConfig, SQLAlchemyTask
+from flytekitplugins.sqlalchemy import SQLAlchemyConfig, SQLAlchemyTask
 from flytekit.types.schema import FlyteSchema
 
 tk = SQLAlchemyTask(
@@ -110,7 +110,7 @@ def test_task_serialization():
         "flytekit.core.python_customized_container_task.default_task_template_resolver",
         "--",
         "{{.taskTemplatePath}}",
-        "flytekit.extras.sqlalchemy.task.SQLAlchemyTaskExecutor",
+        "flytekitplugins.sqlalchemy.task.SQLAlchemyTaskExecutor",
     ]
 
     assert tt.custom["query_template"] == "select TrackId, Name from tracks limit {{.inputs.limit}}"

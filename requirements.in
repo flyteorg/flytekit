@@ -1,4 +1,3 @@
 .[all]
 -e file:.#egg=flytekit
 attrs<21
-sqlalchemy
