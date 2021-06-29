@@ -20,7 +20,10 @@ from flytekit.remote.remote import FlyteRemote
     ],
 )
 def test_remote_fetch_entities_task_workflow_launchplan(
-    mock_url, mock_client_manager, entity_cls, resource_type,
+    mock_url,
+    mock_client_manager,
+    entity_cls,
+    resource_type,
 ):
     mock_url.get.return_value = "localhost"
     admin_entities = [

@@ -7,7 +7,7 @@ import pytest
 
 from flytekit.common.exceptions.user import FlyteAssertion
 from flytekit.models import literals
-from flytekit.remote import launch_plan
+from flytekit.remote.remote import FlyteRemote
 
 PROJECT = "flytesnacks"
 VERSION = os.getpid()
@@ -32,25 +32,29 @@ def test_client(flyteclient, flyte_workflows_register):
 
 
 def test_launch_workflow(flyteclient, flyte_workflows_register):
-    execution = launch_plan.FlyteLaunchPlan.fetch(
-        PROJECT, "development", "workflows.basic.hello_world.my_wf", f"v{VERSION}"
-    ).launch_with_literals(PROJECT, "development", literals.LiteralMap({}))
+    execution = (
+        FlyteRemote()
+        .fetch_launch_plan(PROJECT, "development", "workflows.basic.hello_world.my_wf", f"v{VERSION}")
+        .launch_with_literals(PROJECT, "development", literals.LiteralMap({}))
+    )
     execution.wait_for_completion()
     assert execution.outputs["o0"] == "hello world"
 
 
 def test_launch_workflow_with_args(flyteclient, flyte_workflows_register):
-    execution = launch_plan.FlyteLaunchPlan.fetch(
-        PROJECT, "development", "workflows.basic.basic_workflow.my_wf", f"v{VERSION}"
-    ).launch_with_literals(
-        PROJECT,
-        "development",
-        literals.LiteralMap(
-            {
-                "a": literals.Literal(literals.Scalar(literals.Primitive(integer=10))),
-                "b": literals.Literal(literals.Scalar(literals.Primitive(string_value="foobar"))),
-            }
-        ),
+    execution = (
+        FlyteRemote()
+        .fetch_launch_plan(PROJECT, "development", "workflows.basic.basic_workflow.my_wf", f"v{VERSION}")
+        .launch_with_literals(
+            PROJECT,
+            "development",
+            literals.LiteralMap(
+                {
+                    "a": literals.Literal(literals.Scalar(literals.Primitive(integer=10))),
+                    "b": literals.Literal(literals.Scalar(literals.Primitive(string_value="foobar"))),
+                }
+            ),
+        )
     )
     execution.wait_for_completion()
     assert execution.node_executions["n0"].inputs == {"a": 10}
@@ -68,9 +72,11 @@ def test_launch_workflow_with_args(flyteclient, flyte_workflows_register):
 
 
 def test_monitor_workflow(flyteclient, flyte_workflows_register):
-    execution = launch_plan.FlyteLaunchPlan.fetch(
-        PROJECT, "development", "workflows.basic.hello_world.my_wf", f"v{VERSION}"
-    ).launch_with_literals(PROJECT, "development", literals.LiteralMap({}))
+    execution = (
+        FlyteRemote()
+        .fetch_launch_plan(PROJECT, "development", "workflows.basic.hello_world.my_wf", f"v{VERSION}")
+        .launch_with_literals(PROJECT, "development", literals.LiteralMap({}))
+    )
 
     poll_interval = datetime.timedelta(seconds=1)
     time_to_give_up = datetime.datetime.utcnow() + datetime.timedelta(seconds=60)
@@ -105,12 +111,14 @@ def test_monitor_workflow(flyteclient, flyte_workflows_register):
 
 
 def test_launch_workflow_with_subworkflows(flyteclient, flyte_workflows_register):
-    execution = launch_plan.FlyteLaunchPlan.fetch(
-        PROJECT, "development", "workflows.basic.subworkflows.parent_wf", f"v{VERSION}"
-    ).launch_with_literals(
-        PROJECT,
-        "development",
-        literals.LiteralMap({"a": literals.Literal(literals.Scalar(literals.Primitive(integer=101)))}),
+    execution = (
+        FlyteRemote()
+        .fetch_launch_plan(PROJECT, "development", "workflows.basic.subworkflows.parent_wf", f"v{VERSION}")
+        .launch_with_literals(
+            PROJECT,
+            "development",
+            literals.LiteralMap({"a": literals.Literal(literals.Scalar(literals.Primitive(integer=101)))}),
+        )
     )
     execution.wait_for_completion()
     # check node execution inputs and outputs
