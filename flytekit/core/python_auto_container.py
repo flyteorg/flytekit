@@ -108,6 +108,9 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         return self._resources
 
     def get_default_command(self, settings: SerializationSettings) -> List[str]:
+        """
+        Returns the default pyflyte-execute command used to run this on hosted Flyte platforms.
+        """
         container_args = [
             "pyflyte-execute",
             "--inputs",
@@ -133,9 +136,17 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         self._get_command_fn = get_command_fn
 
     def reset_command_fn(self):
+        """
+        Resets the command which should be used in the container definition of this task to the default arguments.
+        This is useful when the command line is overriden at serialization time.
+        """
         self._get_command_fn = self.get_default_command
 
     def get_command(self, settings: SerializationSettings) -> List[str]:
+        """
+        Returns the command which should be used in the container definition for the serialized version of this task
+        registered on a hosted Flyte platform.
+        """
         return self._get_command_fn(settings)
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:

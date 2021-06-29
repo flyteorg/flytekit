@@ -414,7 +414,7 @@ class TypeEngine(typing.Generic[T]):
         cls, flyte_variable_dict: typing.Dict[str, _interface_models.Variable]
     ) -> typing.Dict[str, type]:
         """
-        Transforms a dictionary of flyte-specific ``Variable``s to a dictionary of regular python values.
+        Transforms a dictionary of flyte-specific ``Variable`` objects to a dictionary of regular python values.
         """
         python_types = {}
         for k, v in flyte_variable_dict.items():
