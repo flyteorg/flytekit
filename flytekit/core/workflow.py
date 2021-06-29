@@ -59,6 +59,7 @@ class WorkflowFailurePolicy(Enum):
     Defines the behavior for a workflow execution in the case of an observed node execution failure. By default, a
     workflow execution will immediately enter a failed state if a component node fails.
     """
+
     #: Causes the entire workflow execution to fail once a component node fails.
     FAIL_IMMEDIATELY = _workflow_model.WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
 
