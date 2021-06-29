@@ -9,8 +9,8 @@ T = TypeVar("T")
 
 class SQLTask(PythonTask[T]):
     """
-    Base task types for all SQL tasks. See :py:class:`flytekit.extras.sqlite3.task.SQLite3Task` for an example of
-    how to use it as a base class and :py:class:`flytekitplugins.athena.task.AthenaTask` for another example.
+    Base task types for all SQL tasks. See :py:class:`flytekit.extras.sqlite3.task.SQLite3Task`
+    and :py:class:`flytekitplugins.athena.task.AthenaTask` for examples of how to use it as a base class.
 
     .. autoclass:: flytekit.extras.sqlite3.task.SQLite3Task
        :noindex:

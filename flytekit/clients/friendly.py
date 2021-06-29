@@ -34,7 +34,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     :py:class:`raw client <flytekit.clients.raw.RawSynchronousFlyteClient>` so users should try to use this class
     first. Create a client by ::
 
-        SynchronousFlyteClient("your.domain:port", insecure=True)  # insecure should be True if Admin doesn't have SSL
+        SynchronousFlyteClient("your.domain:port", insecure=True)
+        # insecure should be True if your flyteadmin deployment doesn't have SSL enabled
 
     """
 
