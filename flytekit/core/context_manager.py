@@ -1,3 +1,8 @@
+"""
+
+.. autoclass:: flytekit.extend::ExecutionState.Mode
+
+"""
 from __future__ import annotations
 
 import datetime as _datetime
@@ -291,23 +296,27 @@ class ExecutionState(object):
     """
 
     class Mode(Enum):
-        # This is the mode that is used when a task execution mimics the actual runtime environment.
-        # NOTE: This is important to understand the difference between TASK_EXECUTION and LOCAL_TASK_EXECUTION
-        # LOCAL_TASK_EXECUTION, is the mode that is run purely locally and in some cases the difference between local
-        # and runtime environment may be different. For example for Dynamic tasks local_task_execution will just run it
-        # as a regular function, while task_execution will extract a runtime spec
+        """
+        Defines the possible execution modes, which in turn affects execution behavior.
+        """
+
+        #: This is the mode that is used when a task execution mimics the actual runtime environment.
+        #: NOTE: This is important to understand the difference between TASK_EXECUTION and LOCAL_TASK_EXECUTION
+        #: LOCAL_TASK_EXECUTION, is the mode that is run purely locally and in some cases the difference between local
+        #: and runtime environment may be different. For example for Dynamic tasks local_task_execution will just run it
+        #: as a regular function, while task_execution will extract a runtime spec
         TASK_EXECUTION = 1
 
-        # This represents when flytekit is locally running a workflow. The behavior of tasks differs in this case
-        # because instead of running a task's user defined function directly, it'll need to wrap the return values in
-        # NodeOutput
+        #: This represents when flytekit is locally running a workflow. The behavior of tasks differs in this case
+        #: because instead of running a task's user defined function directly, it'll need to wrap the return values in
+        #: NodeOutput
         LOCAL_WORKFLOW_EXECUTION = 2
 
-        # This is the mode that is used to to indicate a purely local task execution - i.e. running without a container
-        # or propeller.
+        #: This is the mode that is used to to indicate a purely local task execution - i.e. running without a container
+        #: or propeller.
         LOCAL_TASK_EXECUTION = 3
 
-    mode: Mode
+    mode: ExecutionState.Mode
     working_dir: os.PathLike
     engine_dir: os.PathLike
     additional_context: Optional[Dict[Any, Any]]
@@ -317,7 +326,7 @@ class ExecutionState(object):
     def __init__(
         self,
         working_dir: os.PathLike,
-        mode: Optional[Mode] = None,
+        mode: Optional[ExecutionState.Mode] = None,
         engine_dir: Optional[os.PathLike] = None,
         additional_context: Optional[Dict[Any, Any]] = None,
         branch_eval_mode: Optional[BranchEvalMode] = None,

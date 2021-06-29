@@ -55,7 +55,14 @@ GLOBAL_START_NODE = Node(
 
 
 class WorkflowFailurePolicy(Enum):
+    """
+    Defines the behavior for a workflow execution in the case of an observed node execution failure. By default, a
+    workflow execution will immediately enter a failed state if a component node fails.
+    """
+    #: Causes the entire workflow execution to fail once a component node fails.
     FAIL_IMMEDIATELY = _workflow_model.WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
+
+    #: Will proceed to run any remaining runnable nodes once a component node fails.
     FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = (
         _workflow_model.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
     )
