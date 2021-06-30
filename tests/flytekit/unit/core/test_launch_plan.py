@@ -240,6 +240,49 @@ def test_lp_each_parameter():
     )
     assert max_parallelism_lp1 is max_parallelism_lp2
 
+    # Labels parameters
+    labels_model1 = Labels({"label": "foo"})
+    labels_model2 = Labels({"label": "foo"})
+    labels_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_labels", labels=labels_model1)
+    labels_lp2 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_labels", labels=labels_model2)
+    assert labels_lp1 is labels_lp2
+
+    # Annotations parameters
+    annotations_model1 = Annotations({"anno": "bar"})
+    annotations_model2 = Annotations({"anno": "bar"})
+    annotations_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_annotations", annotations=annotations_model1
+    )
+    annotations_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_annotations", annotations=annotations_model2
+    )
+    assert annotations_lp1 is annotations_lp2
+
+    # Raw output prefix parameters
+    raw_output_data_config1 = RawOutputDataConfig("s3://foo/output")
+    raw_output_data_config2 = RawOutputDataConfig("s3://foo/output")
+    raw_output_data_config_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_raw_output_prefix", raw_output_data_config=raw_output_data_config1
+    )
+    raw_output_data_config_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_raw_output_prefix", raw_output_data_config=raw_output_data_config2
+    )
+    assert raw_output_data_config_lp1 is raw_output_data_config_lp2
+
+    # Max parallelism
+    max_parallelism = 100
+    max_parallelism_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_max_parallelism",
+        max_parallelism=max_parallelism,
+    )
+    max_parallelism_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_max_parallelism",
+        max_parallelism=max_parallelism,
+    )
+    assert max_parallelism_lp1 is max_parallelism_lp2
+
     # Default LaunchPlan
     name_lp = launch_plan.LaunchPlan.get_or_create(workflow=wf)
     name_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf)
@@ -302,7 +345,6 @@ def test_lp_all_parameters():
 
     assert lp is lp2
 
-    # Check for assertion error when a different scheduler is used
     with pytest.raises(AssertionError):
         launch_plan.LaunchPlan.get_or_create(
             workflow=wf,

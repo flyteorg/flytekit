@@ -4,6 +4,7 @@ from collections import OrderedDict
 import pandas as pd
 import pytest
 
+from flytekit import Workflow, kwtypes, reference_task
 from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager

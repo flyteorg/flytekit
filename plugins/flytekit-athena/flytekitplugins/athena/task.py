@@ -50,7 +50,6 @@ class AthenaTask(SQLTask[AthenaConfig]):
         :param output_schema_type: If some data is produced by this query, then you can specify the output schema type
         :param kwargs: All other args required by Parent type - SQLTask
         """
-
         outputs = None
         if output_schema_type is not None:
             outputs = {
