@@ -13,7 +13,7 @@ RUN pip install gsutil
 RUN python3.8 -m venv ${VENV}
 RUN ${VENV}/bin/pip install wheel
 
-COPY requirements.txt /app
+COPY sqlalchemy/requirements.txt /app
 RUN ${VENV}/bin/pip install -r /app/requirements.txt
 
 # Copy over the helper script that the SDK relies on
