@@ -108,30 +108,86 @@ class FlyteRemote(object):
             get_client().get_execution(WorkflowExecutionIdentifier(project, domain, name))
         )
 
+    ######################
+    # Serialize Entities #
+    ######################
+
+    @singledispatchmethod
+    @exception_scopes.system_entry_point
+    def _serialize(self, entity):
+        raise NotImplementedError(f"entity type {type(entity)} not recognized for serialization")
+
+    # Flyte Remote Entities
+    # ---------------------
+    @_serialize.register
+    @exception_scopes.system_entry_point
+    def _(self, entity: FlyteTask):
+        pass
+
+    @_serialize.register
+    @exception_scopes.system_entry_point
+    def _(self, entity: FlyteWorkflow):
+        pass
+
+    @_serialize.register
+    @exception_scopes.system_entry_point
+    def _(self, entity: FlyteWorkflowExecution):
+        pass
+
+    @_serialize.register
+    @exception_scopes.system_entry_point
+    def _(self, entity: FlyteLaunchPlan):
+        pass
+
+    # Flytekit Entities
+    # -----------------
+    @_serialize.register
+    @exception_scopes.system_entry_point
+    def _(self, entity: PythonFunctionTask):
+        pass
+
+    @_serialize.register
+    @exception_scopes.system_entry_point
+    def _(self, entity: PythonFunctionWorkflow):
+        pass
+
+    @_serialize.register
+    @exception_scopes.system_entry_point
+    def _(self, entity: LaunchPlan):
+        pass
+
     #####################
     # Register Entities #
     #####################
 
     @singledispatchmethod
+    @exception_scopes.system_entry_point
     def register(self, entity):
         raise NotImplementedError(f"entity type {type(entity)} not recognized for registration")
 
     # Flyte Remote Entities
     # ---------------------
 
+    # TODO: it may not make sense to register Flyte* objects since these are already assumed to be registered in the
+    # relevant backend? There might be the use case of e.g. fetching a FlyteWorkflow, modifying it somehow, and
+    # re-registering it under a new project/domain/name?
     @register.register
+    @exception_scopes.system_entry_point
     def _(self, entity: FlyteTask):
         pass
 
     @register.register
+    @exception_scopes.system_entry_point
     def _(self, entity: FlyteWorkflow):
         pass
 
     @register.register
+    @exception_scopes.system_entry_point
     def _(self, entity: FlyteWorkflowExecution):
         pass
 
     @register.register
+    @exception_scopes.system_entry_point
     def _(self, entity: FlyteLaunchPlan):
         pass
 
@@ -139,14 +195,17 @@ class FlyteRemote(object):
     # -----------------
 
     @register.register
+    @exception_scopes.system_entry_point
     def _(self, entity: PythonFunctionTask):
         pass
 
     @register.register
+    @exception_scopes.system_entry_point
     def _(self, entity: PythonFunctionWorkflow):
         pass
 
     @register.register
+    @exception_scopes.system_entry_point
     def _(self, entity: LaunchPlan):
         pass
 
@@ -155,6 +214,7 @@ class FlyteRemote(object):
     ####################
 
     @singledispatchmethod
+    @exception_scopes.system_entry_point
     def execute(self, entity):
         raise NotImplementedError(f"entity type {type(entity)} not recognized for execution")
 
@@ -162,18 +222,22 @@ class FlyteRemote(object):
     # ---------------------
 
     @execute.register
+    @exception_scopes.system_entry_point
     def _(self, entity: FlyteTask):
         pass
 
     @execute.register
+    @exception_scopes.system_entry_point
     def _(self, entity: FlyteWorkflow):
         pass
 
     @execute.register
+    @exception_scopes.system_entry_point
     def _(self, entity: FlyteWorkflowExecution):
         pass
 
     @execute.register
+    @exception_scopes.system_entry_point
     def _(self, entity: FlyteLaunchPlan):
         pass
 
@@ -181,13 +245,16 @@ class FlyteRemote(object):
     # -----------------
 
     @execute.register
+    @exception_scopes.system_entry_point
     def _(self, entity: PythonFunctionTask):
         pass
 
     @execute.register
+    @exception_scopes.system_entry_point
     def _(self, entity: PythonFunctionWorkflow):
         pass
 
     @execute.register
+    @exception_scopes.system_entry_point
     def _(self, entity: LaunchPlan):
         pass
