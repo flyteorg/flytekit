@@ -1,9 +1,13 @@
 """
 
 .. autoclass:: flytekit.core.context_manager::ExecutionState.Mode
+   :noindex:
 .. autoclass:: flytekit.core.context_manager::ExecutionState.Mode.TASK_EXECUTION
+   :noindex:
 .. autoclass:: flytekit.core.context_manager::ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+   :noindex:
 .. autoclass:: flytekit.core.context_manager::ExecutionState.Mode.LOCAL_TASK_EXECUTION
+   :noindex:
 
 """
 
@@ -73,7 +77,6 @@ class ImageConfig(object):
 
     Attributes:
         default_image (str): The default image to be used as a container for task serialization.
-        images (List[Image]): Optional, additional images which can be used in task container definitions.
         images (List[Image]): Optional, additional images which can be used in task container definitions.
     """
 

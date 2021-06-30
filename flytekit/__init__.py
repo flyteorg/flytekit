@@ -24,7 +24,6 @@ These are the essentials needed to get started writing tasks and workflows. The 
    ExecutionParameters
    FlyteContext
    map_task
-   Workflow
    ~core.workflow.ImperativeWorkflow
 
 Running Locally
