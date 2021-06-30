@@ -4,7 +4,6 @@ from collections import OrderedDict
 import pandas as pd
 import pytest
 
-from flytekit import Workflow, kwtypes, reference_task
 from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
@@ -31,7 +30,7 @@ serialization_settings = context_manager.SerializationSettings(
 # This is used for docs
 def test_imperative():
     # Re import with alias
-    from flytekit.core.workflow import ImperativeWorkflow as Workflow
+    from flytekit.core.workflow import ImperativeWorkflow as Workflow  # noqa
 
     # docs_tasks_start
     @task
