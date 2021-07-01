@@ -243,9 +243,12 @@ def transform_signature_to_interface(signature: inspect.Signature) -> Interface:
     # This is just for typing.NamedTuples - in those cases, the user can select a name to call the NamedTuple. We
     # would like to preserve that name in our custom collections.namedtuple.
     custom_name = None
-    if hasattr(signature.return_annotation, "_field_types"):
-        if hasattr(signature.return_annotation, "__name__") and signature.return_annotation.__name__ != "":
-            custom_name = signature.return_annotation.__name__
+    return_annotation = signature.return_annotation
+    if hasattr(return_annotation, "__bases__"):
+        bases = return_annotation.__bases__
+        if len(bases) == 1 and bases[0] == tuple and hasattr(return_annotation, "_fields"):
+            if hasattr(return_annotation, "__name__") and return_annotation.__name__ != "":
+                custom_name = return_annotation.__name__
 
     return Interface(inputs, outputs, output_tuple_name=custom_name)
 

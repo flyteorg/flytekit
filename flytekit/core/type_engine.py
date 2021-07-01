@@ -368,7 +368,7 @@ class TypeEngine(typing.Generic[T]):
     @classmethod
     def named_tuple_to_variable_map(cls, t: typing.NamedTuple) -> _interface_models.VariableMap:
         variables = {}
-        for idx, (var_name, var_type) in enumerate(t._field_types.items()):
+        for idx, (var_name, var_type) in enumerate(t.__annotations__.items()):
             literal_type = cls.to_literal_type(var_type)
             variables[var_name] = _interface_models.Variable(type=literal_type, description=f"{idx}")
         return _interface_models.VariableMap(variables=variables)
