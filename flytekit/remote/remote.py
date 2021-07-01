@@ -13,6 +13,7 @@ from flytekit.common.exceptions import user as user_exceptions
 from flytekit.configuration import auth as auth_config
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow
@@ -129,6 +130,8 @@ class FlyteRemote(object):
 
     def __init__(self):
         # TODO: figure out what config/metadata needs to be loaded into the FlyteRemote object at initialization
+        # - read config files, env vars
+        # - create a Synchronous/Raw client
         pass
 
     @exception_scopes.system_entry_point
@@ -225,6 +228,11 @@ class FlyteRemote(object):
     def _(self, entity: LaunchPlan):
         pass
 
+    @_serialize.register
+    @exception_scopes.system_entry_point
+    def _(self, entity: PythonCustomizedContainerTask):
+        pass
+
     #####################
     # Register Entities #
     #####################
@@ -277,6 +285,11 @@ class FlyteRemote(object):
     @register.register
     @exception_scopes.system_entry_point
     def _(self, entity: LaunchPlan):
+        pass
+
+    @register.register
+    @exception_scopes.system_entry_point
+    def _(self, entity: PythonCustomizedContainerTask):
         pass
 
     ####################
@@ -385,4 +398,9 @@ class FlyteRemote(object):
     @execute.register
     @exception_scopes.system_entry_point
     def _(self, entity: LaunchPlan):
+        pass
+
+    @execute.register
+    @exception_scopes.system_entry_point
+    def _(self, entity: PythonCustomizedContainerTask):
         pass
