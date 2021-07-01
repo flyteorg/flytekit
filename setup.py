@@ -83,6 +83,7 @@ setup(
         "natsort>=7.0.1",
         "dirhash>=0.2.1",
         "docker-image-py>=0.1.10",
+        "singledispatchmethod; python_version < '3.8.0'",
     ],
     extras_require=extras_require,
     scripts=[

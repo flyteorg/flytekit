@@ -15,9 +15,9 @@ from flytekit.models import execution as _execution_models
 from flytekit.models import filters as _filter_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import execution as _core_execution_models
+from flytekit.models.core.identifier import ResourceType
 from flytekit.remote import identifier as _core_identifier
 from flytekit.remote import nodes as _nodes
-from flytekit.remote import workflow as _workflow
 
 
 class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArtifact):
@@ -36,8 +36,11 @@ class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArt
         """
         Returns the inputs to the execution in the standard python format as dictated by the type engine.
         """
+        from flytekit.remote.remote import FlyteRemote
+
         if self._inputs is None:
             client = _flyte_engine.get_client()
+            remote = FlyteRemote()
             execution_data = client.get_execution_data(self.id)
 
             # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
@@ -52,11 +55,19 @@ class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArt
                         _common_utils.load_proto_from_file(_literals_pb2.Literalmap, tmp_name)
                     )
             lp_id = self.spec.launch_plan
-            workflow = _workflow.FlyteWorkflow.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            if self.spec.launch_plan.resource_type == ResourceType.TASK:
+                flyte_entity = remote.fetch_task(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            elif self.spec.launch_plan.resource_type in {ResourceType.WORKFLOW, ResourceType.LAUNCH_PLAN}:
+                flyte_entity = remote.fetch_workflow(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            else:
+                raise _user_exceptions.FlyteAssertion(
+                    f"Resource type {self.spec.launch_plan.resource_type} not recognized. Must be a TASK or WORKFLOW."
+                )
+
             self._inputs = TypeEngine.literal_map_to_kwargs(
                 ctx=FlyteContextManager.current_context(),
                 lm=input_map,
-                python_types=TypeEngine.guess_python_types(workflow.interface.inputs),
+                python_types=TypeEngine.guess_python_types(flyte_entity.interface.inputs),
             )
         return self._inputs
 
@@ -67,6 +78,8 @@ class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArt
 
         :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
         """
+        from flytekit.remote.remote import FlyteRemote
+
         if not self.is_complete:
             raise _user_exceptions.FlyteAssertion(
                 "Please wait until the node execution has completed before requesting the outputs."
@@ -76,6 +89,7 @@ class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArt
 
         if self._outputs is None:
             client = _flyte_engine.get_client()
+            remote = FlyteRemote()
             execution_data = client.get_execution_data(self.id)
             # Outputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
             output_map: _literal_models.LiteralMap = _literal_models.LiteralMap({})
@@ -90,11 +104,19 @@ class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArt
                     )
 
             lp_id = self.spec.launch_plan
-            workflow = _workflow.FlyteWorkflow.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            if self.spec.launch_plan.resource_type == ResourceType.TASK:
+                flyte_entity = remote.fetch_task(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            elif self.spec.launch_plan.resource_type in {ResourceType.WORKFLOW, ResourceType.LAUNCH_PLAN}:
+                flyte_entity = remote.fetch_workflow(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            else:
+                raise _user_exceptions.FlyteAssertion(
+                    f"Resource type {self.spec.launch_plan.resource_type} not recognized. Must be a TASK or WORKFLOW."
+                )
+
             self._outputs = TypeEngine.literal_map_to_kwargs(
                 ctx=FlyteContextManager.current_context(),
                 lm=output_map,
-                python_types=TypeEngine.guess_python_types(workflow.interface.outputs),
+                python_types=TypeEngine.guess_python_types(flyte_entity.interface.outputs),
             )
         return self._outputs
 
@@ -106,7 +128,7 @@ class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArt
         """
         if not self.is_complete:
             raise _user_exceptions.FlyteAssertion(
-                "Please wait until a workflow has completed before checking for an " "error."
+                "Please wait until a workflow has completed before checking for an error."
             )
         return self.closure.error
 
@@ -128,14 +150,6 @@ class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArt
             closure=base_model.closure,
             id=_core_identifier.WorkflowExecutionIdentifier.promote_from_model(base_model.id),
             spec=base_model.spec,
-        )
-
-    @classmethod
-    def fetch(cls, project: str, domain: str, name: str) -> "FlyteWorkflowExecution":
-        return cls.promote_from_model(
-            _flyte_engine.get_client().get_execution(
-                _core_identifier.WorkflowExecutionIdentifier(project=project, domain=domain, name=name)
-            )
         )
 
     def sync(self):

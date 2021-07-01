@@ -282,14 +282,14 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
         Return the interface of the task or subworkflow associated with this node execution.
         """
         if self._interface is None:
+            from flytekit.remote.remote import FlyteRemote
 
-            from flytekit.remote.tasks.task import FlyteTask
-            from flytekit.remote.workflow import FlyteWorkflow
+            remote = FlyteRemote()
 
             if not self.metadata.is_parent_node:
                 # if not a parent node, assume a task execution node
                 task_id = self.task_executions[0].id.task_id
-                task = FlyteTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
+                task = remote.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
                 self._interface = task.interface
             else:
                 # otherwise assume the node is associated with a subworkflow
@@ -300,7 +300,7 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
                 # representing the subworkflow. This allows us to get the interface for guessing the types of the
                 # inputs/outputs.
                 lp_id = client.get_execution(self.id.execution_id).spec.launch_plan
-                workflow = FlyteWorkflow.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+                workflow = remote.fetch_workflow(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
                 flyte_subworkflow_node: FlyteNode = [n for n in workflow.nodes if n.id == self.id.node_id][0]
                 self._interface = flyte_subworkflow_node.target.flyte_workflow.interface
 

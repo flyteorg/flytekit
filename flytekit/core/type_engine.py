@@ -383,7 +383,7 @@ class TypeEngine(typing.Generic[T]):
         Converts a python-native ``NamedTuple`` to a flyte-specific VariableMap of named literals.
         """
         variables = {}
-        for idx, (var_name, var_type) in enumerate(t._field_types.items()):
+        for idx, (var_name, var_type) in enumerate(t.__annotations__.items()):
             literal_type = cls.to_literal_type(var_type)
             variables[var_name] = _interface_models.Variable(type=literal_type, description=f"{idx}")
         return _interface_models.VariableMap(variables=variables)
@@ -401,6 +401,21 @@ class TypeEngine(typing.Generic[T]):
             )
 
         return {k: TypeEngine.to_python_value(ctx, lm.literals[k], v) for k, v in python_types.items()}
+
+    @classmethod
+    def dict_to_literal_map(cls, ctx: FlyteContext, d: typing.Dict[str, typing.Any]) -> LiteralMap:
+        """
+        Given a dictionary mapping string keys to python values, convert to a LiteralMap.
+        """
+        literal_map = {}
+        for k, v in d.items():
+            literal_map[k] = TypeEngine.to_literal(
+                ctx=ctx,
+                python_val=v,
+                python_type=type(v),
+                expected=TypeEngine.to_literal_type(type(v)),
+            )
+        return LiteralMap(literal_map)
 
     @classmethod
     def get_available_transformers(cls) -> typing.KeysView[Type]:

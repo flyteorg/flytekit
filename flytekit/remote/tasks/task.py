@@ -1,10 +1,5 @@
-from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
-from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models import common as _common_model
 from flytekit.models import task as _task_model
-from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.remote import identifier as _identifier
 from flytekit.remote import interface as _interfaces
@@ -51,46 +46,3 @@ class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
             t._id = _identifier.Identifier.promote_from_model(base_model.id)
 
         return t
-
-    @classmethod
-    @_exception_scopes.system_entry_point
-    def fetch(cls, project: str, domain: str, name: str, version: str) -> "FlyteTask":
-        """
-        This function uses the engine loader to call create a hydrated task from Admin.
-
-        :param project:
-        :param domain:
-        :param name:
-        :param version:
-        """
-        task_id = _identifier.Identifier(_identifier_model.ResourceType.TASK, project, domain, name, version)
-        admin_task = _flyte_engine.get_client().get_task(task_id)
-
-        flyte_task = cls.promote_from_model(admin_task.closure.compiled_task.template)
-        flyte_task._id = task_id
-        return flyte_task
-
-    @classmethod
-    @_exception_scopes.system_entry_point
-    def fetch_latest(cls, project: str, domain: str, name: str) -> "FlyteTask":
-        """
-        This function uses the engine loader to call create a latest hydrated task from Admin.
-
-        :param project:
-        :param domain:
-        :param name:
-        """
-        named_task = _common_model.NamedEntityIdentifier(project, domain, name)
-        client = _flyte_engine.get_client()
-        task_list, _ = client.list_tasks_paginated(
-            named_task,
-            limit=1,
-            sort_by=_admin_common.Sort("created_at", _admin_common.Sort.Direction.DESCENDING),
-        )
-        admin_task = task_list[0] if task_list else None
-
-        if not admin_task:
-            raise _user_exceptions.FlyteEntityNotExistException("Named task {} not found".format(named_task))
-        flyte_task = cls.promote_from_model(admin_task.closure.compiled_task.template)
-        flyte_task._id = admin_task.id
-        return flyte_task
