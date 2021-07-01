@@ -17,8 +17,9 @@ class ExecutableTemplateShimTask(object):
 
     This class, along with the ``ShimTaskExecutor`` class below, represents another execution pattern. This pattern,
     has two components:
-      * The ``TaskTemplate``, or something like it like a ``FlyteTask``.
-      * An executor, which can use information from the task template (including the ``custom`` field)
+
+    * The ``TaskTemplate``, or something like it like a ``FlyteTask``.
+    * An executor, which can use information from the task template (including the ``custom`` field)
 
     Basically at execution time (both locally and on a Flyte cluster), the task template is given to the executor,
     which is responsible for computing and returning the results.

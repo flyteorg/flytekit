@@ -360,7 +360,6 @@ def get_serializable(
       the parent entity this function is called with.
     :param settings: used to pick up project/domain/name - to be deprecated.
     :param entity: The local flyte entity to try to convert (along with its dependencies)
-    :param fast: For tasks only, fast serialization produces a different command.
     :return: The resulting control plane entity, in addition to being added to the mutable entity_mapping parameter
       is also returned.
     """

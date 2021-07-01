@@ -55,7 +55,15 @@ GLOBAL_START_NODE = Node(
 
 
 class WorkflowFailurePolicy(Enum):
+    """
+    Defines the behavior for a workflow execution in the case of an observed node execution failure. By default, a
+    workflow execution will immediately enter a failed state if a component node fails.
+    """
+
+    #: Causes the entire workflow execution to fail once a component node fails.
     FAIL_IMMEDIATELY = _workflow_model.WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
+
+    #: Will proceed to run any remaining runnable nodes once a component node fails.
     FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = (
         _workflow_model.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
     )
@@ -360,6 +368,29 @@ class WorkflowBase(object):
 
 
 class ImperativeWorkflow(WorkflowBase):
+    """
+    An imperative workflow is a programmatic analogue to the typical ``@workflow`` function-based workflow and is
+    better suited to programmatic applications.
+
+    Assuming you have some tasks like so
+
+    .. literalinclude:: ../../../tests/flytekit/unit/core/test_imperative.py
+       :start-after: # docs_tasks_start
+       :end-before: # docs_tasks_end
+       :language: python
+       :dedent: 4
+
+    You could create a workflow imperatively like so
+
+    .. literalinclude:: ../../../tests/flytekit/unit/core/test_imperative.py
+       :start-after: # docs_start
+       :end-before: # docs_start
+       :language: python
+       :dedent: 4
+
+    This workflow would be identical on the backed to the
+    """
+
     def __init__(
         self,
         name: str,
@@ -721,14 +752,25 @@ def workflow(
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
     of tasks using the data flow between tasks.
 
-    Unlike a task, the function body of a workflow is evaluated at serialization-time (aka compile-time). This is because
-    while we can determine the entire structure of a task by looking at the function's signature,
-    workflows need to run through the function itself because the body of the function is what expresses the workflow structure.
-    It's also important to note that, local execution notwithstanding, it is not evaluated again when the workflow runs on Flyte.
+    Unlike a task, the function body of a workflow is evaluated at serialization-time (aka compile-time). This is
+    because while we can determine the entire structure of a task by looking at the function's signature, workflows need
+    to run through the function itself because the body of the function is what expresses the workflow structure. It's
+    also important to note that, local execution notwithstanding, it is not evaluated again when the workflow runs on
+    Flyte.
     That is, workflows should not call non-Flyte entities since they are only run once (again, this is with respect to
     the platform, local runs notwithstanding).
 
-    Please see the :std:doc:`cookbook:sphx_glr_auto_core_flyte_basics_basic_workflow.py` for more usage examples.
+    Example:
+
+    .. literalinclude:: ../../../tests/flytekit/unit/core/test_workflows.py
+       :pyobject: my_wf_example
+
+    Again, users should keep in mind that even though the body of the function looks like regular Python, it is
+    actually not. When flytekit scans the workflow function, the objects being passed around between the tasks are not
+    your typical Python values. So even though you may have a task ``t1() -> int``, when ``a = t1()`` is called, ``a``
+    will not be an integer so if you try to ``range(a)`` you'll get an error.
+
+    Please see the :std:doc:`user guide <cookbook:auto/core/flyte_basics/basic_workflow>` for more usage examples.
 
     :param _workflow_function: This argument is implicitly passed and represents the decorated function.
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
@@ -775,6 +817,11 @@ def reference_workflow(
     A reference workflow is a pointer to a workflow that already exists on your Flyte installation. This
     object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface.
     If at registration time the interface provided causes an issue with compilation, an error will be returned.
+
+    Example:
+
+    .. literalinclude:: ../../../tests/flytekit/unit/core/test_references.py
+       :pyobject: ref_wf1
     """
 
     def wrapper(fn) -> ReferenceWorkflow:

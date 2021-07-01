@@ -23,19 +23,19 @@ TC = TypeVar("TC")
 
 class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
     """
-    Please take a look at the comments for ``ExecutableTemplateShimTask`` as well. This class should be subclassed
-    and a custom Executor provided as a default to this parent class constructor when building a new external-container
-    flytekit-only plugin.
+    Please take a look at the comments for :py:class`flytekit.extend.ExecutableTemplateShimTask` as well. This class
+    should be subclassed and a custom Executor provided as a default to this parent class constructor
+    when building a new external-container flytekit-only plugin.
 
     This class provides authors of new task types the basic scaffolding to create task-template based tasks. In order
-    to write such a task, authors need to:
+    to write such a task, authors need to
 
-      * subclass the ``ShimTaskExecutor`` class  and override the ``execute_from_model`` function. This function is
-        where all the business logic should go. Keep in mind though that you, the plugin author, will not have access
-        to anything that's not serialized within the ``TaskTemplate`` which is why you'll also need to
-      * subclass this class, and override the ``get_custom`` function to include all the information the executor
-        will need to run.
-      * Also pass the executor you created as the ``executor_type`` argument of this class's constructor.
+    * subclass the ``ShimTaskExecutor`` class  and override the ``execute_from_model`` function. This function is
+      where all the business logic should go. Keep in mind though that you, the plugin author, will not have access
+      to anything that's not serialized within the ``TaskTemplate`` which is why you'll also need to
+    * subclass this class, and override the ``get_custom`` function to include all the information the executor
+      will need to run.
+    * Also pass the executor you created as the ``executor_type`` argument of this class's constructor.
 
     Keep in mind that the total size of the ``TaskTemplate`` still needs to be small, since these will be accessed
     frequently by the Flyte engine.
@@ -76,17 +76,16 @@ class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
         :param limits: custom resource limit settings.
         :param environment: Environment variables you want the task to have when run.
         :param List[Secret] secret_requests: Secrets that are requested by this container execution. These secrets will
-                                           be mounted based on the configuration in the Secret and available through
-                                           the SecretManager using the name of the secret as the group
-                                           Ideally the secret keys should also be semi-descriptive.
-                                           The key values will be available from runtime, if the backend is configured
-                       to provide secrets and if secrets are available in the configured secrets store.
-                       Possible options for secret stores are
-                        - `Vault <https://www.vaultproject.io/>`,
-                        - `Confidant <https://lyft.github.io/confidant/>`,
-                        - `Kube secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`
-                        - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`_
-                        etc
+           be mounted based on the configuration in the Secret and available through
+           the SecretManager using the name of the secret as the group
+           Ideally the secret keys should also be semi-descriptive.
+           The key values will be available from runtime, if the backend is configured to provide secrets and
+           if secrets are available in the configured secrets store. Possible options for secret stores are
+
+           - `Vault <https://www.vaultproject.io/>`__
+           - `Confidant <https://lyft.github.io/confidant/>`__
+           - `Kube secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`__
+           - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`__
         """
         sec_ctx = None
         if secret_requests:

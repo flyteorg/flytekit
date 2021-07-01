@@ -399,12 +399,12 @@ def conditional(name: str) -> ConditionalSection:
     context. Outside of a workflow they will raise an Assertion.
 
     The ``conditional`` method returns a new conditional section, that allows to create a - ternary operator like
-     if-else clauses. The reason why it is called ternary-like is because, it returns the output of the branch result.
-     So in-effect it is a functional style condition.
+    if-else clauses. The reason why it is called ternary-like is because, it returns the output of the branch result.
+    So in-effect it is a functional style condition.
 
-     Example of a condition usage. Note the nesting and the assignment to a LHS variable
+    Example of a condition usage. Note the nesting and the assignment to a LHS variable
 
-     .. code-block:: python
+    .. code-block:: python
 
          v = (
             conditional("fractions")

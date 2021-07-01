@@ -1,3 +1,16 @@
+"""
+
+.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode
+   :noindex:
+.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode.TASK_EXECUTION
+   :noindex:
+.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+   :noindex:
+.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode.LOCAL_TASK_EXECUTION
+   :noindex:
+
+"""
+
 from __future__ import annotations
 
 import datetime as _datetime
@@ -31,21 +44,49 @@ _DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC = "bin/entrypoint.py"
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class Image(object):
+    """
+    Image is a structured wrapper for task container images used in object serialization.
+
+    Attributes:
+        name (str): A user-provided name to identify this image.
+        fqn (str): Fully qualified image name. This consists of
+            #. a registry location
+            #. a username
+            #. a repository name
+            For example: `hostname/username/reponame`
+        tag (str): Optional tag used to specify which version of an image to pull
+    """
+
     name: str
     fqn: str
     tag: str
 
     @property
-    def full(self):
+    def full(self) -> str:
+        """ "
+        Return the full image name with tag.
+        """
         return f"{self.fqn}:{self.tag}"
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class ImageConfig(object):
+    """
+    ImageConfig holds available images which can be used at registration time. A default image can be specified
+    along with optional additional images. Each image in the config must have a unique name.
+
+    Attributes:
+        default_image (str): The default image to be used as a container for task serialization.
+        images (List[Image]): Optional, additional images which can be used in task container definitions.
+    """
+
     default_image: Image = None
     images: List[Image] = None
 
     def find_image(self, name) -> Optional[Image]:
+        """
+        Return an image, by name, if it exists.
+        """
         for i in self.images:
             if i.name == name:
                 return i
@@ -86,13 +127,6 @@ def get_image_config(img_name: Optional[str] = None) -> ImageConfig:
 
 
 @dataclass
-class InstanceVar(object):
-    module: str
-    name: str
-    o: Any
-
-
-@dataclass
 class EntrypointSettings(object):
     """
     This object carries information about the command, path and version of the entrypoint program that will be invoked
@@ -119,6 +153,23 @@ class SerializationSettings(object):
     """
     These settings are provided while serializing a workflow and task, before registration. This is required to get
     runtime information at serialization time, as well as some defaults.
+
+    Attributes:
+        project (str): The project (if any) with which to register entities under.
+        domain (str): The domain (if any) with which to register entities under.
+        version (str): The version (if any) with which to register entities under.
+        image_config (ImageConfig): The image config used to define task container images.
+        env (Optional[Dict[str, str]]): Environment variables injected into task container definitions.
+        flytekit_virtualenv_root (Optional[str]):  During out of container serialize the absolute path of the flytekit
+            virtualenv at serialization time won't match the in-container value at execution time. This optional value
+            is used to provide the in-container virtualenv path
+        python_interpreter (Optional[str]): The python executable to use. This is used for spark tasks in out of
+            container execution.
+        entrypoint_settings (Optional[EntrypointSettings]): Information about the command, path and version of the
+            entrypoint program.
+        fast_serialization_settings (Optional[FastSerializationSettings]): If the code is being serialized so that it
+            can be fast registered (and thus omit building a Docker image) this object contains additional parameters
+            for serialization.
     """
 
     project: str
@@ -161,6 +212,10 @@ class SerializationSettings(object):
             )
 
     def new_builder(self) -> Builder:
+        """
+        Creates a ``SerializationSettings.Builder`` that copies the existing serialization settings parameters and
+        allows for customization.
+        """
         return SerializationSettings.Builder(
             project=self.project,
             domain=self.domain,
@@ -174,6 +229,9 @@ class SerializationSettings(object):
         )
 
     def should_fast_serialize(self) -> bool:
+        """
+        Whether or not the serialization settings specify that entities should be serialized for fast registration.
+        """
         return self.fast_serialization_settings is not None and self.fast_serialization_settings.enabled
 
 
@@ -183,10 +241,13 @@ class CompilationState(object):
     Compilation state is used during the compilation of a workflow or task. It stores the nodes that were
     created when walking through the workflow graph.
 
-    :param prefix: This is because we may one day want to be able to have subworkflows inside other workflows. If
-      users choose to not specify their node names, then we can end up with multiple "n0"s. This prefix allows
-      us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
-    :param task_resolver: Please see :py:class:`flytekit.extend.TaskResolverMixin`
+    Attributes:
+        prefix (str): This is because we may one day want to be able to have subworkflows inside other workflows. If
+            users choose to not specify their node names, then we can end up with multiple "n0"s. This prefix allows
+            us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
+        mode (int): refer to :py:class:`flytekit.extend.ExecutionState.Mode`
+        task_resolver (Optional["TaskResolverMixin"]): Please see :py:class:`flytekit.extend.TaskResolverMixin`
+        nodes (Optional[List]): Stores currently compiled nodes so far.
     """
 
     prefix: str
@@ -221,11 +282,10 @@ class CompilationState(object):
 
 class BranchEvalMode(Enum):
     """
-    This is a 4-way class, with the None value meaning that we are not within a conditional context. The other two
+    This is a 3-way class, with the None value meaning that we are not within a conditional context. The other two
     values are
     * Active - This means that the next ``then`` should run
     * Skipped - The next ``then`` should not run
-    * Ignored - This is only used in nested conditionals, and it means that the entire conditional should be ignored.
     """
 
     BRANCH_ACTIVE = "branch active"
@@ -239,26 +299,41 @@ class ExecutionState(object):
     execute.
     Some required things during execution deal with temporary directories, ExecutionParameters that are passed to the
     user etc.
+
+    Attributes:
+        mode (ExecutionState.Mode): Defines the context in which the task is executed (local, hosted, etc).
+        working_dir (os.PathLike): Specifies the remote, external directory where inputs, outputs and other protobufs
+            are uploaded
+        engine_dir (os.PathLike):
+        additional_context Optional[Dict[Any, Any]]: Free form dictionary used to store additional values, for example
+            those used for dynamic, fast registration.
+        branch_eval_mode Optional[BranchEvalMode]: Used to determine whether a branch node should execute.
+        user_space_params Optional[ExecutionParameters]: Provides run-time, user-centric context such as a statsd
+            handler, a logging handler, the current execution id and a working directory.
     """
 
     class Mode(Enum):
-        # This is the mode that is used when a task execution mimics the actual runtime environment.
-        # NOTE: This is important to understand the difference between TASK_EXECUTION and LOCAL_TASK_EXECUTION
-        # LOCAL_TASK_EXECUTION, is the mode that is run purely locally and in some cases the difference between local
-        # and runtime environment may be different. For example for Dynamic tasks local_task_execution will just run it
-        # as a regular function, while task_execution will extract a runtime spec
+        """
+        Defines the possible execution modes, which in turn affects execution behavior.
+        """
+
+        #: This is the mode that is used when a task execution mimics the actual runtime environment.
+        #: NOTE: This is important to understand the difference between TASK_EXECUTION and LOCAL_TASK_EXECUTION
+        #: LOCAL_TASK_EXECUTION, is the mode that is run purely locally and in some cases the difference between local
+        #: and runtime environment may be different. For example for Dynamic tasks local_task_execution will just run it
+        #: as a regular function, while task_execution will extract a runtime spec
         TASK_EXECUTION = 1
 
-        # This represents when flytekit is locally running a workflow. The behavior of tasks differs in this case
-        # because instead of running a task's user defined function directly, it'll need to wrap the return values in
-        # NodeOutput
+        #: This represents when flytekit is locally running a workflow. The behavior of tasks differs in this case
+        #: because instead of running a task's user defined function directly, it'll need to wrap the return values in
+        #: NodeOutput
         LOCAL_WORKFLOW_EXECUTION = 2
 
-        # This is the mode that is used to to indicate a purely local task execution - i.e. running without a container
-        # or propeller.
+        #: This is the mode that is used to to indicate a purely local task execution - i.e. running without a container
+        #: or propeller.
         LOCAL_TASK_EXECUTION = 3
 
-    mode: Mode
+    mode: ExecutionState.Mode
     working_dir: os.PathLike
     engine_dir: os.PathLike
     additional_context: Optional[Dict[Any, Any]]
@@ -268,7 +343,7 @@ class ExecutionState(object):
     def __init__(
         self,
         working_dir: os.PathLike,
-        mode: Optional[Mode] = None,
+        mode: Optional[ExecutionState.Mode] = None,
         engine_dir: Optional[os.PathLike] = None,
         additional_context: Optional[Dict[Any, Any]] = None,
         branch_eval_mode: Optional[BranchEvalMode] = None,
@@ -307,6 +382,9 @@ class ExecutionState(object):
         branch_eval_mode: Optional[BranchEvalMode] = None,
         user_space_params: Optional[ExecutionParameters] = None,
     ) -> ExecutionState:
+        """
+        Produces a copy of the current execution state and overrides the copy's parameters with passed parameter values.
+        """
         if self.additional_context:
             if additional_context:
                 additional_context = {**self.additional_context, **additional_context}
@@ -326,8 +404,14 @@ class ExecutionState(object):
 @dataclass(frozen=True)
 class FlyteContext(object):
     """
-    Top level context for FlyteKit. maintains information that is required either to compile or execute a
-    workflow / task
+    This is an internal-facing context object, that most users will not have to deal with. It's essentially a globally
+    available grab bag of settings and objects that allows flytekit to do things like convert complex types, run and
+    compile workflows, serialize Flyte entities, etc.
+
+    Even though this object as a ``current_context`` function on it, it should not be called directly. Please use the
+    :py:class:`flytekit.FlyteContextManager` object instead.
+
+    Please do not confuse this object with the :py:class:`flytekit.ExecutionParameters` object.
     """
 
     file_access: Optional[_data_proxy.FileAccessProvider]
@@ -403,12 +487,11 @@ class FlyteContext(object):
     @staticmethod
     def current_context() -> FlyteContext:
         """
-        This method exists only to maintain backwards compatibility. Please use FlyteContextManager.current_context()
-        If you are a user of flytekit, use
-        ```
-            import flytekit
-            flytekit.current_context()
-        ```
+        This method exists only to maintain backwards compatibility. Please use
+        ``FlyteContextManager.current_context()`` instead.
+
+        Users of flytekit should be wary not to confuse the object returned from this function
+        with :py:func:`flytekit.current_context`
         """
         return FlyteContextManager.current_context()
 
@@ -499,7 +582,10 @@ class FlyteContextManager(object):
     Context's within Flytekit is useful to manage compilation state and execution state. Refer to ``CompilationState``
     and ``ExecutionState`` for for information. FlyteContextManager provides a singleton stack to manage these contexts.
 
-    Typical usage is:
+    Typical usage is
+
+    .. code-block:: python
+
         FlyteContextManager.initialize()
         with FlyteContextManager.with_context(o) as ctx:
           pass

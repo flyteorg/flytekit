@@ -1,3 +1,19 @@
+"""
+=========================================
+:mod:`flytekit.core.python_function_task`
+=========================================
+
+.. currentmodule:: flytekit.core.python_function_task
+
+.. autosummary::
+   :toctree: generated/
+
+   PythonFunctionTask
+   PythonInstanceTask
+
+"""
+
+
 import inspect
 from abc import ABC
 from collections import OrderedDict
@@ -53,14 +69,17 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
         task_resolver: Optional[TaskResolverMixin] = None,
         **kwargs,
     ):
+        """
+        Please see class level documentation.
+        """
         super().__init__(name=name, task_config=task_config, task_type=task_type, task_resolver=task_resolver, **kwargs)
 
 
 class PythonFunctionTask(PythonAutoContainerTask[T]):
     """
     A Python Function task should be used as the base for all extensions that have a python function. It will
-    automatically detect interface of the python function and also, create the write execution command to execute the
-    function
+    automatically detect interface of the python function and when serialized on the hosted Flyte platform handles the
+    writing execution command to execute the function
 
     It is advised this task is used using the @task decorator as follows
 
@@ -89,11 +108,13 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         **kwargs,
     ):
         """
-        :param task_config: Configuration object for Task. Should be a unique type for that specific Task
-        :param task_function: Python function that has type annotations and works for the task
-        :param ignore_input_vars: When supplied, these input variables will be removed from the interface. This
+        :param T task_config: Configuration object for Task. Should be a unique type for that specific Task
+        :param Callable task_function: Python function that has type annotations and works for the task
+        :param Optional[List[str]] ignore_input_vars: When supplied, these input variables will be removed from the interface. This
                                   can be used to inject some client side variables only. Prefer using ExecutionParams
-        :param task_type: String task type to be associated with this Task
+        :param Optional[ExecutionBehavior] execution_mode: Defines how the execution should behave, for example
+            executing normally or specially handling a dynamic case.
+        :param Optional[TaskResolverMixin] task_type: String task type to be associated with this Task
         """
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
@@ -142,6 +163,10 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
     def compile_into_workflow(
         self, ctx: FlyteContext, task_function: Callable, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
+        """
+        In the case of dynamic workflows, this function will produce a workflow definition at execution time which will
+        then proceed to be executed.
+        """
         if not ctx.compilation_state:
             cs = ctx.new_compilation_state("dynamic")
         else:

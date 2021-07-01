@@ -10,19 +10,21 @@ This package contains all of the most common abstractions you'll need to write F
 Basic Authoring
 ===============
 
-These are the essentials needed to get started writing tasks and workflows. The elements here correspond well with :std:ref:`Basic <cookbook:sphx_glr_auto_core_flyte_basics>` section of the cookbook.
+These are the essentials needed to get started writing tasks and workflows. The elements here correspond well with :std:ref:`Basics <cookbook:sphx_glr_auto_core_flyte_basics>` section of the user guide.
 
 .. autosummary::
    :nosignatures:
+   :template: custom.rst
    :toctree: generated/
 
-   task - This is the basic decorator to use to turn a properly type-annotated function into a Flyte task.
-   workflow - This will turn a properly type-annotated function into a Flyte workflow.
-   kwtypes - Helper function that makes it slightly easier to declare certain functions.
-   current_context - This function returns an ExecutionParameters object.
-   ExecutionParameters - This object gives the user at Task run time useful information about the execution environment.
-   FlyteContext - This is an flytekit-internal context that is sometimes useful for end-users to have access to.
-
+   task
+   workflow
+   kwtypes
+   current_context
+   ExecutionParameters
+   FlyteContext
+   map_task
+   ~core.workflow.ImperativeWorkflow
 
 Running Locally
 ------------------
@@ -37,6 +39,7 @@ in the flyte engine and hence should be used for control flow. ``dynamic workflo
 
 .. autosummary::
    :nosignatures:
+   :template: custom.rst
    :toctree: generated/
 
    conditional
@@ -47,6 +50,7 @@ Customizing Tasks & Workflows
 
 .. autosummary::
    :nosignatures:
+   :template: custom.rst
    :toctree: generated/
 
    TaskMetadata - Wrapper object that allows users to specify Task
@@ -60,22 +64,30 @@ See the :py:mod:`Dynamic <flytekit.core.dynamic_workflow_task>` module for more 
 
 .. autosummary::
    :nosignatures:
+   :template: custom.rst
    :toctree: generated/
 
    dynamic
 
-Scheduling and Notifications
+Scheduling
 ============================
-
-See the :py:mod:`Notifications Module <flytekit.core.notification>` and
-:py:mod:`Schedules Module <flytekit.core.schedule>` for more information.
 
 .. autosummary::
    :nosignatures:
+   :template: custom.rst
    :toctree: generated/
 
    CronSchedule
    FixedRate
+
+Notifications
+============================
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
    Email
    PagerDuty
    Slack
@@ -85,6 +97,7 @@ Reference Entities
 
 .. autosummary::
    :nosignatures:
+   :template: custom.rst
    :toctree: generated/
 
    get_reference_entity
@@ -99,6 +112,7 @@ Core Task Types
 
 .. autosummary::
    :nosignatures:
+   :template: custom.rst
    :toctree: generated/
 
    SQLTask
@@ -112,21 +126,11 @@ Secrets and SecurityContext
 
 .. autosummary::
    :nosignatures:
+   :template: custom.rst
    :toctree: generated/
 
    Secret
    SecurityContext
-
-Core Modules
-=============
-
-.. autosummary::
-   :nosignatures:
-   :toctree: generated/
-
-   core.dynamic_workflow_task
-   core.notification
-   core.schedule
 
 """
 
@@ -161,7 +165,7 @@ def current_context() -> ExecutionParameters:
 
     Usage
 
-    .. code-block::
+    .. code-block:: python
 
         flytekit.current_context().logging.info(...)
 

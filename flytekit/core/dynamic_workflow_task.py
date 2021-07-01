@@ -28,7 +28,7 @@ execution notwithstanding). A dynamic workflow is modeled on the backend as a ta
 body is run to produce a workflow. It is almost as if the decorator changed from ``@task`` to ``@workflow`` except workflows
 cannot make use of their inputs like native Python values whereas dynamic workflows can.
 The resulting workflow is passed back to the Flyte engine and is
-run as a :std:ref:`subworkflow <cookbook:sphx_glr_auto_core_control_flow_subworkflows.py>`.  Simple usage
+run as a :std:ref:`subworkflow <cookbook:sphx_glr_download_auto_core_control_flow_subworkflows.py>`.  Simple usage
 
 .. code-block::
 
@@ -49,5 +49,5 @@ workflow but it is here. You can even express dependencies between tasks.
         x = t1(a=a)
         return t2(b=b, x=x)
 
-See the :std:ref:`cookbook <cookbook:sphx_glr_auto_core_intermediate_subworkflows.py>` for a longer discussion.
+See the :std:ref:`cookbook <cookbook:sphx_glr_download_auto_core_control_flow_subworkflows.py>` for a longer discussion.
 """  # noqa: W293

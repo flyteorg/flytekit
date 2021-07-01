@@ -18,16 +18,41 @@ from flytekit.core.workflow import reference_workflow, workflow
 from flytekit.models.core import identifier as _identifier_model
 
 
-def test_ref():
-    @reference_task(
-        project="flytesnacks",
-        domain="development",
-        name="recipes.aaa.simple.join_strings",
-        version="553018f39e519bdb2597b652639c30ce16b99c79",
+# This is used for docs
+def test_ref_docs():
+    # docs_ref_start
+    ref_entity = get_reference_entity(
+        _identifier_model.ResourceType.WORKFLOW,
+        "project",
+        "dev",
+        "my.other.workflow",
+        "abc123",
+        inputs=kwtypes(a=str, b=int),
+        outputs={},
     )
-    def ref_t1(a: typing.List[str]) -> str:
-        ...
+    # docs_ref_end
 
+    with pytest.raises(Exception) as e:
+        ref_entity()
+    assert "You must mock this out" in f"{e}"
+
+
+@reference_task(
+    project="flytesnacks",
+    domain="development",
+    name="recipes.aaa.simple.join_strings",
+    version="553018f39e519bdb2597b652639c30ce16b99c79",
+)
+def ref_t1(a: typing.List[str]) -> str:
+    """
+    The empty function acts as a convenient skeleton to make it intuitive to call/reference this task from workflows.
+    The interface of the task must match that of the remote task. Otherwise, remote compilation of the workflow will
+    fail.
+    """
+    ...
+
+
+def test_ref():
     assert ref_t1.id.project == "flytesnacks"
     assert ref_t1.id.domain == "development"
     assert ref_t1.id.name == "recipes.aaa.simple.join_strings"
@@ -77,15 +102,16 @@ def test_ref_task_more():
         assert wf1(in1=["hello", "world"]) == "hello"
 
 
+@reference_workflow(project="proj", domain="developement", name="wf_name", version="abc")
+def ref_wf1(a: int) -> (str, str):
+    ...
+
+
 def test_reference_workflow():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         a = a + 2
         return a, "world-" + str(a)
-
-    @reference_workflow(project="proj", domain="developement", name="wf_name", version="abc")
-    def ref_wf1(a: int) -> (str, str):
-        ...
 
     @workflow
     def my_wf(a: int, b: str) -> (int, str, str):

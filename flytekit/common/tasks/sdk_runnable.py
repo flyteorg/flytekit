@@ -91,12 +91,19 @@ class SecretsManager(object):
 # TODO: Clean up working dir name
 class ExecutionParameters(object):
     """
-    This is the context object that is accessible to every @task method. It can be accessed using
+    This is a run-time user-centric context object that is accessible to every @task method. It can be accessed using
 
     .. code-block:: python
 
         flytekit.current_context()
 
+    This object provides the following
+    * a statsd handler
+    * a logging handler
+    * the execution ID as an :py:class:`flytekit.models.core.identifier.WorkflowExecutionIdentifier` object
+    * a working directory for the user to write arbitrary files to
+
+    Please do not confuse this object with the :py:class:`flytekit.FlyteContext` object.
     """
 
     @dataclass(init=False)

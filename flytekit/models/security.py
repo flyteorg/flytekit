@@ -10,6 +10,8 @@ from flytekit.models import common as _common
 @dataclass
 class Secret(_common.FlyteIdlEntity):
     """
+    See :std:ref:`cookbook:secrets` for usage examples.
+
     Args:
         group is the Name of the secret. For example in kubernetes secrets is the name of the secret
         key is optional and can be an individual secret identifier within the secret For k8s this is required
@@ -138,6 +140,11 @@ class OAuth2TokenRequest(_common.FlyteIdlEntity):
 
 @dataclass
 class SecurityContext(_common.FlyteIdlEntity):
+    """
+    This is a higher level wrapper object that for the most part users shouldn't have to worry about. You should
+    be able to just use :py:class:`flytekit.Secret` instead.
+    """
+
     run_as: Optional[Identity] = None
     secrets: Optional[List[Secret]] = None
     tokens: Optional[List[OAuth2TokenRequest]] = None
