@@ -32,9 +32,9 @@ from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.remote.workflow_execution import FlyteWorkflowExecution
 
 
-def _get_latest_version(client_method: typing.Callable, project: str, domain: str, name: str):
+def _get_latest_version(list_entities_method: typing.Callable, project: str, domain: str, name: str):
     named_entity = NamedEntityIdentifier(project, domain, name)
-    entity_list, _ = client_method(
+    entity_list, _ = list_entities_method(
         named_entity,
         limit=1,
         sort_by=Sort("created_at", Sort.Direction.DESCENDING),
@@ -43,6 +43,67 @@ def _get_latest_version(client_method: typing.Callable, project: str, domain: st
     if not admin_entity:
         raise user_exceptions.FlyteEntityNotExistException("Named entity {} not found".format(named_entity))
     return admin_entity.id.version
+
+
+def _get_entity_identifier(
+    list_entities_method: typing.Callable,
+    resource_type: ResourceType,
+    project: str,
+    domain: str,
+    name: str,
+    version: typing.Optional[str] = None,
+):
+    return Identifier(
+        resource_type,
+        project,
+        domain,
+        name,
+        version if version is not None else _get_latest_version(list_entities_method, project, domain, name),
+    )
+
+
+def _execute(
+    identifier: Identifier,
+    inputs: typing.Dict[str, typing.Any],
+    name: typing.Optional[str] = None,
+    notification_overrides=None,
+    label_overrides=None,
+    annotation_overrides=None,
+    auth_role=None,
+):
+    name = name or "f" + uuid.uuid4().hex[:19]
+    disable_all = notification_overrides == []
+    if disable_all:
+        notification_overrides = None
+    else:
+        notification_overrides = NotificationList(notification_overrides or [])
+        disable_all = None
+
+    client = get_client()
+    literal_inputs = TypeEngine.dict_to_literal_map(FlyteContextManager.current_context(), inputs)
+    try:
+        exec_id = client.create_execution(
+            identifier.project,
+            identifier.domain,
+            name,
+            ExecutionSpec(
+                identifier,
+                ExecutionMetadata(
+                    ExecutionMetadata.ExecutionMode.MANUAL,
+                    "placeholder",  # TODO: get principle
+                    0,  # TODO: Detect nesting
+                ),
+                notifications=notification_overrides,
+                disable_all=disable_all,
+                labels=label_overrides,
+                annotations=annotation_overrides,
+                auth_role=auth_role,
+            ),
+            literal_inputs,
+        )
+    except user_exceptions.FlyteEntityAlreadyExistsException:
+        exec_id = WorkflowExecutionIdentifier(identifier.project, identifier.domain, name)
+    return FlyteWorkflowExecution.promote_from_model(client.get_execution(exec_id))
 
 
 @exception_scopes.system_entry_point
@@ -73,13 +134,7 @@ class FlyteRemote(object):
     @exception_scopes.system_entry_point
     def fetch_task(self, project: str, domain: str, name: str, version: str = None) -> FlyteTask:
         client = get_client()
-        task_id = Identifier(
-            ResourceType.TASK,
-            project,
-            domain,
-            name,
-            version if version is not None else _get_latest_version(client.list_tasks_paginated, project, domain, name),
-        )
+        task_id = _get_entity_identifier(client.list_tasks_paginated, ResourceType.TASK, project, domain, name, version)
         admin_task = client.get_task(task_id)
         flyte_task = FlyteTask.promote_from_model(admin_task.closure.compiled_task.template)
         flyte_task._id = task_id
@@ -88,14 +143,8 @@ class FlyteRemote(object):
     @exception_scopes.system_entry_point
     def fetch_workflow(self, project: str, domain: str, name: str, version: str = None) -> FlyteWorkflow:
         client = get_client()
-        workflow_id = Identifier(
-            ResourceType.WORKFLOW,
-            project,
-            domain,
-            name,
-            version
-            if version is not None
-            else _get_latest_version(client.list_workflows_paginated, project, domain, name),
+        workflow_id = _get_entity_identifier(
+            client.list_workflows_paginated, ResourceType.WORKFLOW, project, domain, name, version
         )
         admin_workflow = client.get_workflow(workflow_id)
         compiled_wf = admin_workflow.closure.compiled_workflow
@@ -110,16 +159,9 @@ class FlyteRemote(object):
     @exception_scopes.system_entry_point
     def fetch_launch_plan(self, project: str, domain: str, name: str, version: str = None) -> FlyteLaunchPlan:
         client = get_client()
-        launch_plan_id = Identifier(
-            ResourceType.LAUNCH_PLAN,
-            project,
-            domain,
-            name,
-            version
-            if version is not None
-            else _get_latest_version(client.list_launch_plans_paginated, project, domain, name),
+        launch_plan_id = _get_entity_identifier(
+            client.list_launch_plans_paginated, ResourceType.LAUNCH_PLAN, project, domain, name, version
         )
-
         admin_launch_plan = client.get_launch_plan(launch_plan_id)
         flyte_launch_plan = FlyteLaunchPlan.promote_from_model(admin_launch_plan.spec)
         flyte_launch_plan._id = launch_plan_id
@@ -270,49 +312,24 @@ class FlyteRemote(object):
         annotation_overrides=None,
         auth_role=None,
     ):
-        name = name or "f" + uuid.uuid4().hex[:19]
-        disable_all = notification_overrides == []
-        if disable_all:
-            notification_overrides = None
-        else:
-            notification_overrides = NotificationList(notification_overrides or [])
-            disable_all = None
-
-        # Unlike regular workflow executions, single task executions must always specify an auth role, since there isn't
-        # any existing launch plan with a bound auth role to fall back on.
-        if auth_role is None:
-            assumable_iam_role = auth_config.ASSUMABLE_IAM_ROLE.get()
-            kubernetes_service_account = auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
-            auth_role = AuthRole(
-                assumable_iam_role=assumable_iam_role,
-                kubernetes_service_account=kubernetes_service_account,
-            )
-
-        client = get_client()
-        literal_inputs = TypeEngine.dict_to_literal_map(FlyteContextManager.current_context(), inputs)
-        try:
-            exec_id = client.create_execution(
-                entity.id.project,
-                entity.id.domain,
-                name,
-                ExecutionSpec(
-                    entity.id,
-                    ExecutionMetadata(
-                        ExecutionMetadata.ExecutionMode.MANUAL,
-                        "placeholder",  # TODO: get principle
-                        0,  # TODO: Detect nesting
-                    ),
-                    notifications=notification_overrides,
-                    disable_all=disable_all,
-                    labels=label_overrides,
-                    annotations=annotation_overrides,
-                    auth_role=auth_role,
-                ),
-                literal_inputs,
-            )
-        except user_exceptions.FlyteEntityAlreadyExistsException:
-            exec_id = WorkflowExecutionIdentifier(entity.id.project, entity.id.domain, name)
-        return FlyteWorkflowExecution.promote_from_model(client.get_execution(exec_id))
+        return _execute(
+            entity.id,
+            inputs,
+            name,
+            notification_overrides,
+            label_overrides,
+            annotation_overrides,
+            # Unlike regular workflow executions, single task executions must always specify an auth role, since there
+            # isn't any existing launch plan with a bound auth role to fall back on.
+            (
+                AuthRole(
+                    assumable_iam_role=auth_config.ASSUMABLE_IAM_ROLE.get(),
+                    kubernetes_service_account=auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
+                )
+                if auth_role is None
+                else auth_role
+            ),
+        )
 
     @execute.register
     @exception_scopes.system_entry_point
@@ -348,41 +365,9 @@ class FlyteRemote(object):
         annotation_overrides=None,
         auth_role=None,
     ):
-        # Kubernetes requires names starting with an alphabet for some resources.
-        name = name or "f" + uuid.uuid4().hex[:19]
-        disable_all = notification_overrides == []
-        if disable_all:
-            notification_overrides = None
-        else:
-            notification_overrides = NotificationList(notification_overrides or [])
-            disable_all = None
-
-        client = get_client()
-        literal_inputs = TypeEngine.dict_to_literal_map(FlyteContextManager.current_context(), inputs)
-        try:
-            exec_id = client.create_execution(
-                entity.id.project,
-                entity.id.domain,
-                name,
-                ExecutionSpec(
-                    entity.id,
-                    ExecutionMetadata(
-                        ExecutionMetadata.ExecutionMode.MANUAL,
-                        "placeholder",  # TODO: get principle
-                        0,  # TODO: Detect nesting
-                    ),
-                    notifications=notification_overrides,
-                    disable_all=disable_all,
-                    labels=label_overrides,
-                    annotations=annotation_overrides,
-                    auth_role=auth_role,
-                ),
-                literal_inputs,
-            )
-        except user_exceptions.FlyteEntityAlreadyExistsException:
-            exec_id = WorkflowExecutionIdentifier(entity.id.project, entity.id.domain, name)
-        execution = client.get_execution(exec_id)
-        return FlyteWorkflowExecution.promote_from_model(execution)
+        return _execute(
+            entity.id, inputs, name, notification_overrides, label_overrides, annotation_overrides, auth_role
+        )
 
     # Flytekit Entities
     # -----------------
