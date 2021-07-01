@@ -389,6 +389,9 @@ class TypeEngine(typing.Generic[T]):
 
     @classmethod
     def dict_to_literal_map(cls, ctx: FlyteContext, d: typing.Dict[str, typing.Any]) -> LiteralMap:
+        """
+        Given a dictionary mapping string keys to python values, convert to a LiteralMap.
+        """
         literal_map = {}
         for k, v in d.items():
             literal_map[k] = TypeEngine.to_literal(
