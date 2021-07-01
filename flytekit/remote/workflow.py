@@ -127,3 +127,6 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
             interface=_interfaces.TypedInterface.promote_from_model(base_model.interface),
             output_bindings=base_model.outputs,
         )
+
+    def __call__(self, *args, **input_map):
+        raise NotImplementedError
