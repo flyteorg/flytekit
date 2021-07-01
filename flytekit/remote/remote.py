@@ -1,6 +1,7 @@
 """Module defining main Flyte backend entrypoint."""
 
 import typing
+import uuid
 
 try:
     from functools import singledispatchmethod
@@ -9,13 +10,21 @@ except ImportError:
 
 from flytekit.common.exceptions import scopes as exception_scopes
 from flytekit.common.exceptions import user as user_exceptions
+from flytekit.configuration import auth as auth_config
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow
 from flytekit.engines.flyte.engine import get_client
 from flytekit.models.admin.common import Sort
-from flytekit.models.common import NamedEntityIdentifier
+from flytekit.models.common import Annotations, AuthRole, Labels, NamedEntityIdentifier, RawOutputDataConfig
 from flytekit.models.core.identifier import ResourceType
+from flytekit.models.execution import ExecutionMetadata, ExecutionSpec, NotificationList
+from flytekit.models.interface import ParameterMap
+from flytekit.models.launch_plan import LaunchPlanMetadata
+from flytekit.models.literals import LiteralMap
+from flytekit.models.schedule import Schedule
 from flytekit.remote.identifier import Identifier, WorkflowExecutionIdentifier
 from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.tasks.task import FlyteTask
@@ -34,6 +43,24 @@ def _get_latest_version(client_method: typing.Callable, project: str, domain: st
     if not admin_entity:
         raise user_exceptions.FlyteEntityNotExistException("Named entity {} not found".format(named_entity))
     return admin_entity.id.version
+
+
+@exception_scopes.system_entry_point
+def _create_launch_plan(workflow: FlyteWorkflow, auth_role: AuthRole):
+    launch_plan = FlyteLaunchPlan(
+        workflow_id=workflow.id,
+        entity_metadata=LaunchPlanMetadata(schedule=Schedule(""), notifications=[]),
+        default_inputs=ParameterMap({}),
+        fixed_inputs=LiteralMap(literals={}),
+        labels=Labels({}),
+        annotations=Annotations({}),
+        auth_role=auth_role,
+        raw_output_data_config=RawOutputDataConfig(""),
+    )
+    launch_plan._id = Identifier(
+        ResourceType.LAUNCH_PLAN, workflow.id.project, workflow.id.domain, workflow.id.name, workflow.id.version
+    )
+    return launch_plan
 
 
 class FlyteRemote(object):
@@ -169,8 +196,9 @@ class FlyteRemote(object):
     # ---------------------
 
     # TODO: it may not make sense to register Flyte* objects since these are already assumed to be registered in the
-    # relevant backend? There might be the use case of e.g. fetching a FlyteWorkflow, modifying it somehow, and
-    # re-registering it under a new project/domain/name?
+    # relevant backend? Is there a use case of e.g. fetching a FlyteWorkflow, modifying it somehow, and re-registering
+    # it under a new project/domain/name?
+
     @register.register
     @exception_scopes.system_entry_point
     def _(self, entity: FlyteTask):
@@ -215,7 +243,16 @@ class FlyteRemote(object):
 
     @singledispatchmethod
     @exception_scopes.system_entry_point
-    def execute(self, entity):
+    def execute(
+        self,
+        entity,
+        inputs,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+        auth_role=None,
+    ):
         raise NotImplementedError(f"entity type {type(entity)} not recognized for execution")
 
     # Flyte Remote Entities
@@ -223,23 +260,129 @@ class FlyteRemote(object):
 
     @execute.register
     @exception_scopes.system_entry_point
-    def _(self, entity: FlyteTask):
-        pass
+    def _(
+        self,
+        entity: FlyteTask,
+        inputs,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+        auth_role=None,
+    ):
+        name = name or "f" + uuid.uuid4().hex[:19]
+        disable_all = notification_overrides == []
+        if disable_all:
+            notification_overrides = None
+        else:
+            notification_overrides = NotificationList(notification_overrides or [])
+            disable_all = None
+
+        # Unlike regular workflow executions, single task executions must always specify an auth role, since there isn't
+        # any existing launch plan with a bound auth role to fall back on.
+        if auth_role is None:
+            assumable_iam_role = auth_config.ASSUMABLE_IAM_ROLE.get()
+            kubernetes_service_account = auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
+            auth_role = AuthRole(
+                assumable_iam_role=assumable_iam_role,
+                kubernetes_service_account=kubernetes_service_account,
+            )
+
+        client = get_client()
+        literal_inputs = TypeEngine.dict_to_literal_map(FlyteContextManager.current_context(), inputs)
+        try:
+            exec_id = client.create_execution(
+                entity.id.project,
+                entity.id.domain,
+                name,
+                ExecutionSpec(
+                    entity.id,
+                    ExecutionMetadata(
+                        ExecutionMetadata.ExecutionMode.MANUAL,
+                        "placeholder",  # TODO: get principle
+                        0,  # TODO: Detect nesting
+                    ),
+                    notifications=notification_overrides,
+                    disable_all=disable_all,
+                    labels=label_overrides,
+                    annotations=annotation_overrides,
+                    auth_role=auth_role,
+                ),
+                literal_inputs,
+            )
+        except user_exceptions.FlyteEntityAlreadyExistsException:
+            exec_id = WorkflowExecutionIdentifier(entity.id.project, entity.id.domain, name)
+        return FlyteWorkflowExecution.promote_from_model(client.get_execution(exec_id))
 
     @execute.register
     @exception_scopes.system_entry_point
-    def _(self, entity: FlyteWorkflow):
-        pass
+    def _(
+        self,
+        entity: FlyteWorkflow,
+        inputs,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+        auth_role=None,
+    ):
+        return self.execute(
+            _create_launch_plan(entity, auth_role),
+            inputs,
+            name,
+            notification_overrides,
+            label_overrides,
+            annotation_overrides,
+            auth_role,
+        )
 
     @execute.register
     @exception_scopes.system_entry_point
-    def _(self, entity: FlyteWorkflowExecution):
-        pass
+    def _(
+        self,
+        entity: FlyteLaunchPlan,
+        inputs,
+        name=None,
+        notification_overrides=None,
+        label_overrides=None,
+        annotation_overrides=None,
+        auth_role=None,
+    ):
+        # Kubernetes requires names starting with an alphabet for some resources.
+        name = name or "f" + uuid.uuid4().hex[:19]
+        disable_all = notification_overrides == []
+        if disable_all:
+            notification_overrides = None
+        else:
+            notification_overrides = NotificationList(notification_overrides or [])
+            disable_all = None
 
-    @execute.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: FlyteLaunchPlan):
-        pass
+        client = get_client()
+        literal_inputs = TypeEngine.dict_to_literal_map(FlyteContextManager.current_context(), inputs)
+        try:
+            exec_id = client.create_execution(
+                entity.id.project,
+                entity.id.domain,
+                name,
+                ExecutionSpec(
+                    entity.id,
+                    ExecutionMetadata(
+                        ExecutionMetadata.ExecutionMode.MANUAL,
+                        "placeholder",  # TODO: get principle
+                        0,  # TODO: Detect nesting
+                    ),
+                    notifications=notification_overrides,
+                    disable_all=disable_all,
+                    labels=label_overrides,
+                    annotations=annotation_overrides,
+                    auth_role=auth_role,
+                ),
+                literal_inputs,
+            )
+        except user_exceptions.FlyteEntityAlreadyExistsException:
+            exec_id = WorkflowExecutionIdentifier(entity.id.project, entity.id.domain, name)
+        execution = client.get_execution(exec_id)
+        return FlyteWorkflowExecution.promote_from_model(execution)
 
     # Flytekit Entities
     # -----------------

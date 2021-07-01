@@ -8,6 +8,24 @@ from flytekit.models.launch_plan import LaunchPlan
 from flytekit.models.task import Task
 from flytekit.remote.remote import FlyteRemote
 
+CLIENT_METHODS = {
+    ResourceType.WORKFLOW: "list_workflows_paginated",
+    ResourceType.TASK: "list_tasks_paginated",
+    ResourceType.LAUNCH_PLAN: "list_launch_plans_paginated",
+}
+
+REMOTE_METHODS = {
+    ResourceType.WORKFLOW: "fetch_workflow",
+    ResourceType.TASK: "fetch_task",
+    ResourceType.LAUNCH_PLAN: "fetch_launch_plan",
+}
+
+ENTITY_TYPE_TEXT = {
+    ResourceType.WORKFLOW: "Workflow",
+    ResourceType.TASK: "Task",
+    ResourceType.LAUNCH_PLAN: "Launch Plan",
+}
+
 
 @patch("flytekit.engines.flyte.engine._FlyteClientManager")
 @patch("flytekit.configuration.platform.URL")
@@ -19,7 +37,7 @@ from flytekit.remote.remote import FlyteRemote
         [LaunchPlan, ResourceType.LAUNCH_PLAN],
     ],
 )
-def test_remote_fetch_entities_task_workflow_launchplan(
+def test_remote_fetch_execute_entities_task_workflow_launchplan(
     mock_url,
     mock_client_manager,
     entity_cls,
@@ -34,36 +52,20 @@ def test_remote_fetch_entities_task_workflow_launchplan(
         for version in ["latest", "old"]
     ]
 
-    client_method = {
-        ResourceType.WORKFLOW: "list_workflows_paginated",
-        ResourceType.TASK: "list_tasks_paginated",
-        ResourceType.LAUNCH_PLAN: "list_launch_plans_paginated",
-    }[resource_type]
-
-    remote_method = {
-        ResourceType.WORKFLOW: "fetch_workflow",
-        ResourceType.TASK: "fetch_task",
-        ResourceType.LAUNCH_PLAN: "fetch_launch_plan",
-    }[resource_type]
-
     mock_client = MagicMock()
-    getattr(mock_client, client_method).return_value = admin_entities, ""
+    getattr(mock_client, CLIENT_METHODS[resource_type]).return_value = admin_entities, ""
     mock_client_manager.return_value.client = mock_client
 
     remote = FlyteRemote()
-    fetch_method = getattr(remote, remote_method)
-    flyte_workflow_latest = fetch_method("p1", "d1", "n1", "latest")
-    flyte_workflow_latest_implicit = fetch_method("p1", "d1", "n1")
-    flyte_workflow_old = fetch_method("p1", "d1", "old")
+    fetch_method = getattr(remote, REMOTE_METHODS[resource_type])
+    flyte_entity_latest = fetch_method("p1", "d1", "n1", "latest")
+    flyte_entity_latest_implicit = fetch_method("p1", "d1", "n1")
+    flyte_entity_old = fetch_method("p1", "d1", "old")
 
-    assert flyte_workflow_latest.entity_type_text == {
-        ResourceType.WORKFLOW: "Workflow",
-        ResourceType.TASK: "Task",
-        ResourceType.LAUNCH_PLAN: "Launch Plan",
-    }[resource_type]
-    assert flyte_workflow_latest.id == admin_entities[0].id
-    assert flyte_workflow_latest.id == flyte_workflow_latest_implicit.id
-    assert flyte_workflow_latest.id != flyte_workflow_old.id
+    assert flyte_entity_latest.entity_type_text == ENTITY_TYPE_TEXT[resource_type]
+    assert flyte_entity_latest.id == admin_entities[0].id
+    assert flyte_entity_latest.id == flyte_entity_latest_implicit.id
+    assert flyte_entity_latest.id != flyte_entity_old.id
 
 
 @patch("flytekit.engines.flyte.engine._FlyteClientManager")
