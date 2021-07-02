@@ -1,3 +1,4 @@
+from flytekit.configuration.statsd import DISABLE_TAGS
 from flytekit.interfaces.stats import client as _stats_client
 
 
@@ -19,7 +20,7 @@ class TaggableStats(_stats_client.ScopeableStatsProxy):
                 if kwargs.pop("per_host", False):
                     tags["_f"] = "i"
 
-                if bool(tags):
+                if bool(tags) and not DISABLE_TAGS.get():
                     stat = self._serialize_tags(stat, tags)
                 return base_func(self._p_with_prefix(stat), *args, **kwargs)
 
@@ -31,7 +32,7 @@ class TaggableStats(_stats_client.ScopeableStatsProxy):
                 if kwargs.pop("per_host", False):
                     tags["_f"] = "i"
 
-                if bool(tags):
+                if bool(tags) and not DISABLE_TAGS.get():
                     stat = self._serialize_tags(stat, tags)
                 return base_func(stat, *args, **kwargs)
 
@@ -82,4 +83,9 @@ def get_stats(prefix, tags=None):
     """
     :rtype: TaggableStats
     """
+
+    # If tagging is disabled, do not pass tags to the constructor.
+    if DISABLE_TAGS.get():
+        tags = None
+
     return TaggableStats(_stats_client.get_base_stats(prefix.lower()), prefix.lower(), tags=tags)
