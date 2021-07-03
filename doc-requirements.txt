@@ -13,10 +13,8 @@ ansiwrap==0.8.4
 appdirs==1.4.4
     # via black
 appnope==0.1.2
-    # via
-    #   ipykernel
-    #   ipython
-astroid==2.6.0
+    # via ipython
+astroid==2.6.2
     # via sphinx-autoapi
 async-generator==1.10
     # via nbclient
@@ -39,9 +37,9 @@ black==21.6b0
     # via papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.100
+boto3==1.17.105
     # via sagemaker-training
-botocore==1.20.100
+botocore==1.20.105
     # via
     #   boto3
     #   s3transfer
@@ -60,7 +58,7 @@ click==7.1.2
     #   flytekit
     #   hmsclient
     #   papermill
-croniter==1.0.13
+croniter==1.0.15
     # via flytekit
 cryptography==3.4.7
     # via
@@ -70,6 +68,8 @@ css-html-js-minify==2.5.5
     # via sphinx-material
 dataclasses-json==0.5.4
     # via flytekit
+debugpy==1.3.0
+    # via ipykernel
 decorator==5.0.9
     # via
     #   ipython
@@ -88,7 +88,7 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.19.5
+flyteidl==0.19.9
     # via flytekit
 git+git://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
@@ -106,13 +106,13 @@ idna==2.10
     # via requests
 imagesize==1.2.0
     # via sphinx
-importlib-metadata==4.5.0
+importlib-metadata==4.6.0
     # via keyring
 inotify_simple==1.2.1
     # via sagemaker-training
-ipykernel==5.5.5
+ipykernel==6.0.1
     # via flytekit
-ipython==7.24.1
+ipython==7.25.0
     # via ipykernel
 ipython-genutils==0.2.0
     # via
@@ -162,7 +162,9 @@ marshmallow-enum==1.5.1
 marshmallow-jsonschema==0.12.0
     # via flytekit
 matplotlib-inline==0.1.2
-    # via ipython
+    # via
+    #   ipykernel
+    #   ipython
 mistune==0.8.4
     # via nbconvert
 mypy-extensions==0.4.3
@@ -244,7 +246,7 @@ pynacl==1.4.0
     # via paramiko
 pyparsing==2.4.7
     # via packaging
-pyrsistent==0.17.3
+pyrsistent==0.18.0
     # via jsonschema
 pyspark==3.1.2
     # via flytekit
@@ -272,9 +274,7 @@ pyyaml==5.4.1
     #   sphinx-autoapi
 pyzmq==22.1.0
     # via jupyter-client
-readthedocs-sphinx-search==0.1.0
-    # via -r doc-requirements.in
-regex==2021.4.4
+regex==2021.7.1
     # via
     #   black
     #   docker-image-py
@@ -417,7 +417,7 @@ wrapt==1.12.1
     #   astroid
     #   deprecated
     #   flytekit
-zipp==3.4.1
+zipp==3.5.0
     # via importlib-metadata
 zope.event==4.5.0
     # via gevent
