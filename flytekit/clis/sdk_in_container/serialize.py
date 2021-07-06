@@ -135,7 +135,6 @@ def persist_registrable_entities(entities: typing.List, folder: str):
     """
     zero_padded_length = _determine_text_chars(len(entities))
     for i, entity in enumerate(entities):
-        name = ""
         fname_index = str(i).zfill(zero_padded_length)
         if isinstance(entity, _idl_admin_TaskSpec):
             name = entity.template.id.name

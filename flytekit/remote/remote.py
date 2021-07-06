@@ -8,6 +8,7 @@ try:
 except ImportError:
     from singledispatchmethod import singledispatchmethod
 
+from collections import OrderedDict
 from flytekit.common.exceptions import scopes as exception_scopes
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.configuration import auth as auth_config
@@ -15,6 +16,9 @@ from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.base_task import PythonTask
+from flytekit.core.workflow import WorkflowBase
+from flytekit.common.translator import FlyteControlPlaneEntity, FlyteLocalEntity, get_serializable
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow
 from flytekit.engines.flyte.engine import get_client
@@ -126,7 +130,13 @@ def _create_launch_plan(workflow: FlyteWorkflow, auth_role: AuthRole):
 
 
 class FlyteRemote(object):
-    """Main entrypoint for programmatically accessing Flyte remote backend."""
+    """
+    This feature is still in beta.
+
+    This is the main entrypoint for a user's programmatic interaction with a deployed Flyte remote. By 'remote' (used
+    interchangeably with 'backend' or 'deployment') we mean a hosted instance of the Flyte platform, that comes with
+    a Flyte Admin server on some known URI. This class...
+    """
 
     def __init__(self):
         # TODO: figure out what config/metadata needs to be loaded into the FlyteRemote object at initialization
@@ -183,33 +193,29 @@ class FlyteRemote(object):
     ######################
     # Serialize Entities #
     ######################
-
     @singledispatchmethod
-    @exception_scopes.system_entry_point
     def _serialize(self, entity):
         raise NotImplementedError(f"entity type {type(entity)} not recognized for serialization")
 
-    # Flyte Remote Entities
-    # ---------------------
-    @_serialize.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: FlyteTask):
-        pass
+    def _serialize_entity(self, entity: FlyteLocalEntity) -> typing.Tuple[FlyteControlPlaneEntity, OrderedDict]:
+        ctx = FlyteContextManager.current_context()  # or self.context maybe
+        dependents = OrderedDict()
+        # TODOd: Should the FlyteRemote object cache these?
+        #  If FlyteRemote caches these, then repeat calls to serialize can
+        cp_entity = get_serializable(dependents, ctx.serialization_settings, entity=entity)
+        return cp_entity, dependents
 
     @_serialize.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: FlyteWorkflow):
-        pass
+    def _(self, entity: PythonTask):
+        return self._serialize_entity(entity)
 
     @_serialize.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: FlyteWorkflowExecution):
-        pass
+    def _(self, entity: WorkflowBase):
+        return self._serialize_entity(entity)
 
     @_serialize.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: FlyteLaunchPlan):
-        pass
+    def _(self, entity: LaunchPlan):
+        return self._serialize_entity(entity)
 
     # Flytekit Entities
     # -----------------

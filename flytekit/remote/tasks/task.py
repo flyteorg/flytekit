@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
@@ -31,7 +33,7 @@ class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
         return "Task"
 
     @classmethod
-    def promote_from_model(cls, base_model: _task_model.TaskTemplate) -> "FlyteTask":
+    def promote_from_model(cls, base_model: _task_model.TaskTemplate) -> FlyteTask:
         t = cls(
             id=base_model.id,
             type=base_model.type,
