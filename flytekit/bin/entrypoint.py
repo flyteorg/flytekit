@@ -96,7 +96,11 @@ def _dispatch_execute(
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
     """
     output_file_dict = {}
-    try:
+
+    @_scopes.system_entry_point
+    def do_dispatch_execute():
+        nonlocal output_file_dict
+
         # Step1
         local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
         ctx.file_access.get_data(inputs_path, local_inputs_file)
@@ -122,6 +126,9 @@ def _dispatch_execute(
                     _error_models.ContainerError.Kind.RECOVERABLE,
                 )
             )
+
+    try:
+        do_dispatch_execute()
     except _scoped_exceptions.FlyteScopedException as e:
         _logging.error("!! Begin Error Captured by Flyte !!")
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
@@ -130,6 +137,7 @@ def _dispatch_execute(
         _logging.error(e.verbose_message)
         _logging.error("!! End Error Captured by Flyte !!")
     except Exception as e:
+        # TODO: need to preserve IgnoreOutputs exception from system_entry_point handling
         if isinstance(e, IgnoreOutputs):
             # Step 3b
             _logging.warning(f"IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}")

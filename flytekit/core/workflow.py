@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from flytekit.common import constants as _common_constants
+from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
@@ -668,7 +669,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             # Construct the default input promise bindings, but then override with the provided inputs, if any
             input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
             input_kwargs.update(kwargs)
-            workflow_outputs = self._workflow_function(**input_kwargs)
+            workflow_outputs = _exception_scopes.user_entry_point(self._workflow_function)(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
 
             # This little loop was added as part of the task resolver change. The task resolver interface itself is
@@ -740,7 +741,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         call execute from dispatch_execute which is in _local_execute, workflows should also call an execute inside
         _local_execute. This makes mocking cleaner.
         """
-        return self._workflow_function(**kwargs)
+        return _exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
 
 
 def workflow(
