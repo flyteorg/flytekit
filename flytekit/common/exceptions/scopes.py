@@ -152,6 +152,8 @@ def system_entry_point(wrapped, instance, args, kwargs):
         else:
             try:
                 return wrapped(*args, **kwargs)
+            except FlyteScopedException as scoped:
+                raise scoped
             except _user_exceptions.FlyteUserException as ee:
                 # Re-raise from here.
                 raise FlyteScopedUserException(*_exc_info())
@@ -183,6 +185,8 @@ def user_entry_point(wrapped, instance, args, kwargs):
         else:
             try:
                 return wrapped(*args, **kwargs)
+            except FlyteScopedException as scoped:
+                raise scoped
             except _user_exceptions.FlyteUserException:
                 raise FlyteScopedUserException(*_exc_info())
             except _system_exceptions.FlyteSystemException:
