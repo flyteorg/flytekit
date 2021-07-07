@@ -1,3 +1,6 @@
+import os
+import platform
+
 from flytekit.configuration import common as _config_common
 
 WORKFLOW_PACKAGES = _config_common.FlyteStringListConfigurationEntry("sdk", "workflow_packages", default=[])
@@ -20,7 +23,11 @@ This is a comma-delimited list of package strings, in order, for resolving type 
 TODO: Explain how this would be used to extend the SDK
 """
 
-LOCAL_SANDBOX = _config_common.FlyteStringConfigurationEntry("sdk", "local_sandbox", default="/tmp/flyte")
+LOCAL_SANDBOX = _config_common.FlyteStringConfigurationEntry(
+    "sdk",
+    "local_sandbox",
+    default=str(os.path.join(os.getenv("TEMP") if platform.system() == "Windows" else "/tmp", "flyte")),
+)
 """
 This is the path where SDK will place files during local executions and testing.  The SDK will not automatically
 clean up data in these directories.
