@@ -76,7 +76,7 @@ class FlyteScopedException(Exception):
         return "{}:Unknown".format(self._context)
 
     @property
-    def kind(self):
+    def kind(self) -> int:
         """
         :rtype: int
         """
@@ -132,14 +132,6 @@ _CONTEXT_STACK = [_NULL_CONTEXT]
 
 def _is_base_context():
     return _CONTEXT_STACK[-2] == _NULL_CONTEXT
-
-
-def reraise(tp, value, tb=None):
-    if value is None:
-        value = tp()
-    # if value.__traceback__ is not tb:
-    #     raise value.with_traceback(tb)
-    raise value
 
 
 @_decorator
