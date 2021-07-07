@@ -3,6 +3,10 @@
 import typing
 import uuid
 
+from flytekit.common.exceptions.user import FlyteEntityAlreadyExistsException
+from flytekit.models.admin.workflow import WorkflowSpec
+from flytekit.models.task import TaskSpec
+
 try:
     from functools import singledispatchmethod
 except ImportError:
@@ -23,7 +27,7 @@ from flytekit.models.common import Annotations, AuthRole, Labels, NamedEntityIde
 from flytekit.models.core.identifier import ResourceType
 from flytekit.models.execution import ExecutionMetadata, ExecutionSpec, NotificationList
 from flytekit.models.interface import ParameterMap
-from flytekit.models.launch_plan import LaunchPlanMetadata
+from flytekit.models.launch_plan import LaunchPlanMetadata, LaunchPlanSpec
 from flytekit.models.literals import LiteralMap
 from flytekit.models.schedule import Schedule
 from flytekit.remote.identifier import Identifier, WorkflowExecutionIdentifier
@@ -180,6 +184,27 @@ class FlyteRemote(object):
             get_client().get_execution(WorkflowExecutionIdentifier(project, domain, name))
         )
 
+    def register_task(self, id: Identifier, task_spec: TaskSpec):
+        client = get_client()
+        try:
+            client.create_task(id, task_spec=task_spec)
+        except FlyteEntityAlreadyExistsException:
+            pass
+
+    def register_workflow(self, id: Identifier, workflow_spec: WorkflowSpec):
+        client = get_client()
+        try:
+            client.create_workflow(workflow_identifier=id, workflow_spec=workflow_spec)
+        except FlyteEntityAlreadyExistsException:
+            pass
+
+    def register_launch_plan(self, id: Identifier, launch_plan_spec: LaunchPlanSpec):
+        client = get_client()
+        try:
+            client.create_launch_plan(launch_plan_identifier=id, launch_plan_spec=launch_plan_spec)
+        except FlyteEntityAlreadyExistsException:
+            pass
+
     ######################
     # Serialize Entities #
     ######################
@@ -239,35 +264,117 @@ class FlyteRemote(object):
 
     @singledispatchmethod
     @exception_scopes.system_entry_point
-    def register(self, entity):
+    def register(
+        self,
+        entity,
+        project: str,
+        domain: str,
+        version: str,
+        assumable_iam_role: str = None,
+        kubernetes_service_account: str = None,
+        output_location_prefix: str = None,
+    ):
         raise NotImplementedError(f"entity type {type(entity)} not recognized for registration")
 
     # Flyte Remote Entities
     # ---------------------
 
-    # TODO: it may not make sense to register Flyte* objects since these are already assumed to be registered in the
-    # relevant backend? Is there a use case of e.g. fetching a FlyteWorkflow, modifying it somehow, and re-registering
-    # it under a new project/domain/name?
+    @register.register
+    @exception_scopes.system_entry_point
+    def _(
+        self,
+        entity: FlyteTask,
+        project: str,
+        domain: str,
+        version: str,
+        assumable_iam_role: str = None,
+        kubernetes_service_account: str = None,
+        output_location_prefix: str = None,
+    ):
+        task_spec = self._serialize(entity)
+
+        remote = FlyteRemote()
+        remote.register_task(
+            id=Identifier(
+                resource_type=ResourceType.TASK,
+                project=project,
+                domain=domain,
+                name=entity.id.name,
+                version=version,
+            ),
+            task_spec=task_spec,
+        )
 
     @register.register
     @exception_scopes.system_entry_point
-    def _(self, entity: FlyteTask):
-        pass
+    def _(
+        self,
+        entity: FlyteWorkflow,
+        project: str,
+        domain: str,
+        version: str,
+        assumable_iam_role: str = None,
+        kubernetes_service_account: str = None,
+        output_location_prefix: str = None,
+    ):
+        workflow_spec = self._serialize(entity)
+        remote = FlyteRemote()
+        remote.register_workflow(
+            id=Identifier(
+                resource_type=ResourceType.WORKFLOW,
+                project=project,
+                domain=domain,
+                name=entity.id.name,
+                version=version,
+            ),
+            workflow_spec=workflow_spec,
+        )
 
     @register.register
     @exception_scopes.system_entry_point
-    def _(self, entity: FlyteWorkflow):
-        pass
+    def _(
+        self,
+        entity: FlyteLaunchPlan,
+        project: str,
+        domain: str,
+        version: str,
+        assumable_iam_role: str = None,
+        kubernetes_service_account: str = None,
+        output_location_prefix: str = None,
+    ):
 
-    @register.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: FlyteWorkflowExecution):
-        pass
+        launch_plan_spec = self._serialize(entity)
+        auth_assumable_iam_role = (
+            assumable_iam_role if assumable_iam_role is not None else auth_config.ASSUMABLE_IAM_ROLE.get()
+        )
+        auth_k8s_service_account = (
+            kubernetes_service_account
+            if kubernetes_service_account is not None
+            else auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
+        )
+        launch_plan_spec.auth_role.CopyFrom(
+            AuthRole(
+                assumable_iam_role=auth_assumable_iam_role, kubernetes_service_account=auth_k8s_service_account
+            ).to_flyte_idl(),
+        )
+        output_location_prefix = (
+            output_location_prefix if output_location_prefix is not None else auth_config.RAW_OUTPUT_DATA_PREFIX.get()
+        )
+        launch_plan_spec.raw_output_data_config.CopyFrom(
+            RawOutputDataConfig(output_location_prefix=output_location_prefix).to_flyte_idl()
+        )
 
-    @register.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: FlyteLaunchPlan):
-        pass
+        remote = FlyteRemote()
+        remote.register_launch_plan(
+            id=Identifier(
+                resource_type=ResourceType.LAUNCH_PLAN,
+                project=project,
+                domain=domain,
+                name=entity.id.name,
+                version=version,
+            ),
+            launch_plan_spec=launch_plan_spec,
+        )
 
     # Flytekit Entities
     # -----------------

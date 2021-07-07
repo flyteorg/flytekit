@@ -309,7 +309,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     #
     ####################################################################################################################
 
-    def create_launch_plan(self, launch_plan_identifer, launch_plan_spec):
+    def create_launch_plan(self, launch_plan_identifier, launch_plan_spec):
         """
         This will create a launch plan definition in the Admin database.  Once successful, the launch plan object can be
         retrieved via the client or viewed via the UI or command-line interfaces.
@@ -330,7 +330,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         super(SynchronousFlyteClient, self).create_launch_plan(
             _launch_plan_pb2.LaunchPlanCreateRequest(
-                id=launch_plan_identifer.to_flyte_idl(),
+                id=launch_plan_identifier.to_flyte_idl(),
                 spec=launch_plan_spec.to_flyte_idl(),
             )
         )
