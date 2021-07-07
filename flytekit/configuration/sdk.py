@@ -1,5 +1,4 @@
-import os
-import platform
+import tempfile
 
 from flytekit.configuration import common as _config_common
 
@@ -26,7 +25,7 @@ TODO: Explain how this would be used to extend the SDK
 LOCAL_SANDBOX = _config_common.FlyteStringConfigurationEntry(
     "sdk",
     "local_sandbox",
-    default=str(os.path.join(os.getenv("TEMP") if platform.system() == "Windows" else "/tmp", "flyte")),
+    default=tempfile.mkdtemp(prefix="flyte"),
 )
 """
 This is the path where SDK will place files during local executions and testing.  The SDK will not automatically
