@@ -145,37 +145,19 @@ def system_entry_point(wrapped, instance, args, kwargs):
     try:
         _CONTEXT_STACK.append(_SYSTEM_CONTEXT)
         if _is_base_context():
-            # return wrapped(*args, **kwargs)
             try:
                 return wrapped(*args, **kwargs)
             except FlyteScopedException as ex:
                 raise ex.value
-                # reraise(ex.type, ex.value, ex.traceback)
         else:
             try:
                 return wrapped(*args, **kwargs)
-            # except FlyteScopedException:
-            #     # Just pass-on the exception that is already wrapped and scoped
-            #     _reraise(*_exc_info())
             except _user_exceptions.FlyteUserException as ee:
                 # Re-raise from here.
                 raise FlyteScopedUserException(*_exc_info())
-                # import ipdb; ipdb.set_trace()
-                # ex_type, ex_value, ex_tb = _exc_info()
-                # raise FlyteScopedUserException(ex_type, ex_value, ex_tb)
-                # reraise(
-                #     FlyteScopedUserException,
-                #     FlyteScopedUserException(ex_type, ex_value, ex_tb),
-                #     ex_tb,
-                # )
             except Exception:
                 # System error, raise full stack-trace all the way up the chain.
                 raise FlyteScopedSystemException(*_exc_info(), kind=_error_model.ContainerError.Kind.RECOVERABLE)
-                # _reraise(
-                #     FlyteScopedSystemException,
-                #     FlyteScopedSystemException(*_exc_info(), kind=_error_model.ContainerError.Kind.RECOVERABLE),
-                #     _exc_info()[2],
-                # )
     finally:
         _CONTEXT_STACK.pop()
 
@@ -194,40 +176,20 @@ def user_entry_point(wrapped, instance, args, kwargs):
     try:
         _CONTEXT_STACK.append(_USER_CONTEXT)
         if _is_base_context():
-            # return wrapped(*args, **kwargs)
             try:
                 return wrapped(*args, **kwargs)
             except FlyteScopedException as ex:
                 raise ex.value
-                # _reraise(ex.type, ex.value, ex.traceback)
         else:
             try:
                 return wrapped(*args, **kwargs)
-            # except FlyteScopedException:
-            #     # Just pass on the already wrapped and scoped exception
-            #     _reraise(*_exc_info())
             except _user_exceptions.FlyteUserException:
                 raise FlyteScopedUserException(*_exc_info())
-                # _reraise(
-                #     FlyteScopedUserException,
-                #     FlyteScopedUserException(*_exc_info()),
-                #     _exc_info()[2],
-                # )
             except _system_exceptions.FlyteSystemException:
                 raise FlyteScopedSystemException(*_exc_info())
-                # _reraise(
-                #     FlyteScopedSystemException,
-                #     FlyteScopedSystemException(*_exc_info()),
-                #     _exc_info()[2],
-                # )
             except Exception:
                 # Any non-platform raised exception is a user exception.
                 # This will also catch FlyteUserException re-raised by the system_entry_point handler
                 raise FlyteScopedUserException(*_exc_info())
-                # _reraise(
-                #     FlyteScopedUserException,
-                #     FlyteScopedUserException(*_exc_info()),
-                #     _exc_info()[2],
-                # )
     finally:
         _CONTEXT_STACK.pop()
