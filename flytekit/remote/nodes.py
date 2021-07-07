@@ -13,9 +13,6 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import artifact as _artifact_mixin
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.utils import _dnsify
-from flytekit.control_plane import component_nodes as _component_nodes
-from flytekit.control_plane import identifier as _identifier
-from flytekit.control_plane.tasks.executions import FlyteTaskExecution
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.promise import NodeOutput
 from flytekit.core.type_engine import TypeEngine
@@ -26,6 +23,9 @@ from flytekit.models import node_execution as _node_execution_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.remote import component_nodes as _component_nodes
+from flytekit.remote import identifier as _identifier
+from flytekit.remote.tasks.executions import FlyteTaskExecution
 
 
 class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
@@ -35,8 +35,8 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         upstream_nodes,
         bindings,
         metadata,
-        flyte_task: "flytekit.control_plane.tasks.task.FlyteTask" = None,
-        flyte_workflow: "flytekit.control_plane.workflow.FlyteWorkflow" = None,
+        flyte_task: "flytekit.remote.tasks.task.FlyteTask" = None,
+        flyte_workflow: "flytekit.remote.workflow.FlyteWorkflow" = None,
         flyte_launch_plan=None,
         flyte_branch=None,
         parameter_mapping=True,
@@ -167,11 +167,11 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
         self._interface = None
 
     @property
-    def task_executions(self) -> List["flytekit.control_plane.tasks.executions.FlyteTaskExecution"]:
+    def task_executions(self) -> List["flytekit.remote.tasks.executions.FlyteTaskExecution"]:
         return self._task_executions or []
 
     @property
-    def subworkflow_node_executions(self) -> Dict[str, "flytekit.control_plane.nodes.FlyteNodeExecution"]:
+    def subworkflow_node_executions(self) -> Dict[str, "flytekit.remote.nodes.FlyteNodeExecution"]:
         return (
             {}
             if self._subworkflow_node_executions is None
@@ -277,19 +277,19 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
         )
 
     @property
-    def interface(self) -> "flytekit.control_plane.interface.TypedInterface":
+    def interface(self) -> "flytekit.remote.interface.TypedInterface":
         """
         Return the interface of the task or subworkflow associated with this node execution.
         """
         if self._interface is None:
+            from flytekit.remote.remote import FlyteRemote
 
-            from flytekit.control_plane.tasks.task import FlyteTask
-            from flytekit.control_plane.workflow import FlyteWorkflow
+            remote = FlyteRemote()
 
             if not self.metadata.is_parent_node:
                 # if not a parent node, assume a task execution node
                 task_id = self.task_executions[0].id.task_id
-                task = FlyteTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
+                task = remote.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
                 self._interface = task.interface
             else:
                 # otherwise assume the node is associated with a subworkflow
@@ -300,7 +300,7 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
                 # representing the subworkflow. This allows us to get the interface for guessing the types of the
                 # inputs/outputs.
                 lp_id = client.get_execution(self.id.execution_id).spec.launch_plan
-                workflow = FlyteWorkflow.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+                workflow = remote.fetch_workflow(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
                 flyte_subworkflow_node: FlyteNode = [n for n in workflow.nodes if n.id == self.id.node_id][0]
                 self._interface = flyte_subworkflow_node.target.flyte_workflow.interface
 

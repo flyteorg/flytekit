@@ -37,10 +37,11 @@ class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.Ex
         Returns the inputs of the task execution in the standard Python format that is produced by
         the type engine.
         """
-        from flytekit.control_plane.tasks.task import FlyteTask
+        from flytekit.remote.remote import FlyteRemote
 
         if self._inputs is None:
             client = _flyte_engine.get_client()
+            remote = FlyteRemote()
             execution_data = client.get_task_execution_data(self.id)
 
             # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
@@ -55,7 +56,7 @@ class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.Ex
                         _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
 
-            task = FlyteTask.fetch(
+            task = remote.fetch_task(
                 self.id.task_id.project, self.id.task_id.domain, self.id.task_id.name, self.id.task_id.version
             )
             self._inputs = TypeEngine.literal_map_to_kwargs(
@@ -73,7 +74,7 @@ class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.Ex
 
         :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
         """
-        from flytekit.control_plane.tasks.task import FlyteTask
+        from flytekit.remote.remote import FlyteRemote
 
         if not self.is_complete:
             raise _user_exceptions.FlyteAssertion(
@@ -84,6 +85,7 @@ class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.Ex
 
         if self._outputs is None:
             client = _flyte_engine.get_client()
+            remote = FlyteRemote()
             execution_data = client.get_task_execution_data(self.id)
 
             # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
@@ -98,7 +100,7 @@ class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.Ex
                         _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
 
-            task = FlyteTask.fetch(
+            task = remote.fetch_task(
                 self.id.task_id.project, self.id.task_id.domain, self.id.task_id.name, self.id.task_id.version
             )
             self._outputs = TypeEngine.literal_map_to_kwargs(
@@ -121,7 +123,7 @@ class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.Ex
         return self.closure.error
 
     def get_child_executions(self, filters=None):
-        from flytekit.control_plane import nodes as _nodes
+        from flytekit.remote import nodes as _nodes
 
         if not self.is_parent:
             raise _user_exceptions.FlyteAssertion("Only task executions marked with 'is_parent' have child executions.")

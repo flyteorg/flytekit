@@ -98,7 +98,7 @@ flake8-black==0.2.1
     # via -r dev-requirements.in
 flake8-isort==4.0.0
     # via -r dev-requirements.in
-flyteidl==0.19.6
+flyteidl==0.19.11
     # via
     #   -c requirements.txt
     #   flytekit
@@ -110,7 +110,7 @@ idna==2.10
     # via
     #   -c requirements.txt
     #   requests
-importlib-metadata==4.6.0
+importlib-metadata==4.6.1
     # via
     #   -c requirements.txt
     #   keyring
@@ -171,11 +171,11 @@ numpy==1.21.0
     #   -c requirements.txt
     #   pandas
     #   pyarrow
-packaging==20.9
+packaging==21.0
     # via
     #   -c requirements.txt
     #   pytest
-pandas==1.2.5
+pandas==1.3.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -258,7 +258,7 @@ pyyaml==5.4.1
     # via
     #   -c requirements.txt
     #   docker-compose
-regex==2021.4.4
+regex==2021.7.6
     # via
     #   -c requirements.txt
     #   black
@@ -328,7 +328,7 @@ typing-inspect==0.7.1
     # via
     #   -c requirements.txt
     #   dataclasses-json
-urllib3==1.25.11
+urllib3==1.26.6
     # via
     #   -c requirements.txt
     #   flytekit
@@ -347,7 +347,7 @@ wrapt==1.12.1
     #   -c requirements.txt
     #   deprecated
     #   flytekit
-zipp==3.4.1
+zipp==3.5.0
     # via
     #   -c requirements.txt
     #   importlib-metadata

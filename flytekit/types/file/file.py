@@ -73,9 +73,9 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
             sequence = [i for i in range(20)]
             subset = sample(sequence, 5)
             results = ",".join([str(x) for x in subset])
-            with open("/tmp/blah.csv", "w") as fh:
+            with open("/tmp/local_file.csv", "w") as fh:
                 fh.write(results)
-            return "/tmp/blah.csv"
+            return "/tmp/local_file.csv"
 
     How are these files handled?
 
@@ -90,7 +90,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     More succinctly, regardless of whether it is input or output, these rules apply:
       - ``"s3://bucket/path"`` -> will never get uploaded
       - ``"https://a.b.com/path"`` -> will never get uploaded
-      - ``"/tmp/blah"`` -> will always get uploaded
+      - ``"/tmp/local_file"`` -> will always get uploaded
 
     To specify non-default behavior:
 
@@ -101,15 +101,15 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
       ``FlyteFilePath("s3://bucket/path", remote_path="s3://other-bucket/path")``
 
     * Copy local path to a specific location.
-      ``FlyteFilePath("/tmp/blah", remote_path="s3://other-bucket/path")``
+      ``FlyteFilePath("/tmp/local_file", remote_path="s3://other-bucket/path")``
 
     * Do not copy local path, this will copy the string into the literal. For example, let's say your docker image has a
       thousand files in it, and you want to tell the next task, which file to look at. (Bad example, you shouldn't have
       that many files in your image.)
-      ``FlyteFilePath("/tmp/blah", remote_path=False)``
+      ``FlyteFilePath("/tmp/local_file", remote_path=False)``
 
     * However, we have a shorthand.
-      "file:///tmp/blah" is treated as "remote" and is by default not copied.
+      "file:///tmp/local_file" is treated as "remote" and is by default not copied.
     """
 
     @classmethod
@@ -178,7 +178,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     @property
     def remote_source(self) -> str:
         """
-        If this is an input to a task, and the original path is s3://something, flytekit will download the
+        If this is an input to a task, and the original path is ``s3://something``, flytekit will download the
         file for the user. In case the user wants access to the original path, it will be here.
         """
         return self._remote_source

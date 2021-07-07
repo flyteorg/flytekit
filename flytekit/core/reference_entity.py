@@ -18,6 +18,7 @@ from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import workflow as _workflow_model
 
 
 @dataclass
@@ -175,13 +176,11 @@ class ReferenceEntity(object):
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
         return create_task_output(vals, self.python_interface)
 
+    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
+        return _workflow_model.NodeMetadata(name=f"{self.__module__}.{self.name}")
+
     def compile(self, ctx: FlyteContext, *args, **kwargs):
-        return create_and_link_node(
-            ctx,
-            entity=self,
-            interface=self.python_interface,
-            **kwargs,
-        )
+        return create_and_link_node(ctx, entity=self, **kwargs)
 
     def __call__(self, *args, **kwargs):
         # When a Task is () aka __called__, there are three things we may do:

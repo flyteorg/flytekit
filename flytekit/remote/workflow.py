@@ -1,17 +1,15 @@
 from typing import Dict, List, Optional
 
 from flytekit.common import constants as _constants
-from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
-from flytekit.control_plane import identifier as _identifier
-from flytekit.control_plane import interface as _interfaces
-from flytekit.control_plane import nodes as _nodes
-from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import task as _task_models
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
+from flytekit.remote import identifier as _identifier
+from flytekit.remote import interface as _interfaces
+from flytekit.remote import nodes as _nodes
 
 
 class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowTemplate):
@@ -96,20 +94,6 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         return result
 
     @classmethod
-    @_exception_scopes.system_entry_point
-    def fetch(cls, project: str, domain: str, name: str, version: str):
-        workflow_id = _identifier.Identifier(_identifier_model.ResourceType.WORKFLOW, project, domain, name, version)
-        admin_workflow = _flyte_engine.get_client().get_workflow(workflow_id)
-        cwc = admin_workflow.closure.compiled_workflow
-        flyte_workflow = cls.promote_from_model(
-            base_model=cwc.primary.template,
-            sub_workflows={sw.template.id: sw.template for sw in cwc.sub_workflows},
-            tasks={t.template.id: t.template for t in cwc.tasks},
-        )
-        flyte_workflow._id = workflow_id
-        return flyte_workflow
-
-    @classmethod
     def get_non_system_nodes(cls, nodes: List[_workflow_models.Node]) -> List[_workflow_models.Node]:
         return [n for n in nodes if n.id not in {_constants.START_NODE_ID, _constants.END_NODE_ID}]
 
@@ -144,26 +128,5 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
             output_bindings=base_model.outputs,
         )
 
-    @_exception_scopes.system_entry_point
-    def register(self, project, domain, name, version):
-        # TODO
-        pass
-
-    @_exception_scopes.system_entry_point
-    def serialize(self):
-        # TODO
-        pass
-
-    @_exception_scopes.system_entry_point
-    def validate(self):
-        # TODO
-        pass
-
-    @_exception_scopes.system_entry_point
-    def create_launch_plan(self, *args, **kwargs):
-        # TODO
-        pass
-
-    @_exception_scopes.system_entry_point
     def __call__(self, *args, **input_map):
         raise NotImplementedError

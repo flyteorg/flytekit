@@ -147,6 +147,18 @@ class CronSchedule(_schedule_models.Schedule):
 
 
 class FixedRate(_schedule_models.Schedule):
+    """
+    Use this class to schedule a fixed-rate interval for a launch plan.
+
+    .. code-block:: python
+
+        from datetime import timedelta
+
+        FixedRate(duration=timedelta(minutes=10))
+
+    See the :std:ref:`fixed rate intervals` chapter in the cookbook for additional usage examples.
+    """
+
     def __init__(self, duration: datetime.timedelta, kickoff_time_input_arg: str = None):
         """
         :param datetime.timedelta duration:

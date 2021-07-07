@@ -1,5 +1,5 @@
 """
-Flytekit File Type (:mod:`flytekit.types.file`)
+Flytekit File Type
 ==========================================================
 .. currentmodule:: flytekit.types.file
 

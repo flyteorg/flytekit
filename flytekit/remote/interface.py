@@ -1,8 +1,8 @@
 from typing import Any, Dict, List, Tuple
 
-from flytekit.control_plane import nodes as _nodes
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
+from flytekit.remote import nodes as _nodes
 
 
 class TypedInterface(_interface_models.TypedInterface):
