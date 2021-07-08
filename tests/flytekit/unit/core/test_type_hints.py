@@ -1,6 +1,7 @@
 import datetime
 import functools
 import os
+import random
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -1208,3 +1209,62 @@ def test_workflow_named_tuple():
         return t1(), t1()
 
     assert wf() == ("Hello", "Hello")
+
+
+def test_conditional_asymmetric_return():
+    @task
+    def square(n: int) -> int:
+        """
+        Parameters:
+            n (float): name of the parameter for the task will be derived from the name of the input variable
+                   the type will be automatically deduced to be Types.Integer
+        Return:
+            float: The label for the output will be automatically assigned and type will be deduced from the annotation
+        """
+        return n * n
+
+    @task
+    def double(n: int) -> int:
+        """
+        Parameters:
+            n (float): name of the parameter for the task will be derived from the name of the input variable
+                   the type will be automatically deduced to be Types.Integer
+        Return:
+            float: The label for the output will be automatically assigned and type will be deduced from the annotation
+        """
+        return 2 * n
+
+    @task
+    def coin_toss(seed: int) -> bool:
+        """
+        Mimic some condition checking to see if something ran correctly
+        """
+        r = random.Random(seed)
+        if r.random() < 0.5:
+            return True
+        return False
+
+    @task
+    def sum_diff(a: int, b: int) -> (int, int):
+        """
+        sum_diff returns the sum and difference between a and b.
+        """
+        return a + b, a - b
+
+    @workflow
+    def consume_outputs(my_input: int, seed: int = 5) -> int:
+        is_heads = coin_toss(seed=seed)
+        res = (
+            conditional("double_or_square")
+            .if_(is_heads.is_true())
+            .then(square(n=my_input))
+            .else_()
+            .then(sum_diff(a=my_input, b=my_input))
+        )
+
+        # Regardless of the result, always double before returning
+        # the variable `res` in this case will carry the value of either square or double of the variable `my_input`
+        return double(n=res)
+
+    assert consume_outputs(my_input=4, seed=7) == 32
+    assert consume_outputs(my_input=4) == 16
