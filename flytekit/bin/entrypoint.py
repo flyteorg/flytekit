@@ -120,6 +120,7 @@ def _dispatch_execute(
                     "UNKNOWN_OUTPUT",
                     f"Type of output received not handled {type(outputs)} outputs: {outputs}",
                     _error_models.ContainerError.Kind.RECOVERABLE,
+                    0
                 )
             )
     except _scoped_exceptions.FlyteScopedException as e:
@@ -143,6 +144,7 @@ def _dispatch_execute(
                 "SYSTEM:Unknown",
                 exc_str,
                 _error_models.ContainerError.Kind.RECOVERABLE,
+                2
             )
         )
         _logging.error(exc_str)

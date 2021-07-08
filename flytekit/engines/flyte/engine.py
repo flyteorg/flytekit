@@ -378,7 +378,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                         except _exception_scopes.FlyteScopedException as e:
                             _logging.error("!!! Begin Error Captured by Flyte !!!")
                             output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
-                                _error_models.ContainerError(e.error_code, e.verbose_message, e.kind)
+                                _error_models.ContainerError(e.error_code, e.verbose_message, e.kind, 0)
                             )
                             _logging.error(e.verbose_message)
                             _logging.error("!!! End Error Captured by Flyte !!!")
@@ -390,6 +390,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                                     "SYSTEM:Unknown",
                                     exc_str,
                                     _error_models.ContainerError.Kind.RECOVERABLE,
+                                    0
                                 )
                             )
                             _logging.error(exc_str)
