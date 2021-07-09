@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  backend:
+    build:
+      context: /Users/nielsbantilan/miniconda3/envs/flytekit/lib/python3.7/site-packages/pytest_flyte/docker
+    privileged: true
+    ports:
+      - "30081"
+      - "30084"
+    volumes:
+      - /Users/nielsbantilan/git/flytekit/tests/flytekit/integration/remote/mock_flyte_repo:/flyteorg/src
+      - /Users/nielsbantilan/git/flytekit/.pytest_flyte/kustomization-605d6de0bc4f6aeb188bd0bd8c35f24f.yaml:/opt/flyteorg/share/deployment/kustomization.yaml:ro

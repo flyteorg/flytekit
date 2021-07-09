@@ -5,7 +5,8 @@ import time
 
 import pytest
 
-from flytekit.common.exceptions.user import FlyteAssertion
+from flytekit.common.exceptions.user import FlyteAssertion, FlyteEntityAlreadyExistsException
+from flytekit.core.launch_plan import LaunchPlan
 from flytekit.remote.remote import FlyteRemote
 
 PROJECT = "flytesnacks"
@@ -134,3 +135,56 @@ def test_fetch_execute_task(flyteclient, flyte_workflows_register):
     execution.wait_for_completion()
     assert execution.outputs["t1_int_output"] == 12
     assert execution.outputs["c"] == "world"
+
+
+def _set_env():
+    os.environ["FLYTE_INTERNAL_PROJECT"] = PROJECT
+    os.environ["FLYTE_INTERNAL_DOMAIN"] = "development"
+    os.environ["FLYTE_INTERNAL_VERSION"] = f"v{VERSION}"
+    os.environ["FLYTE_INTERNAL_IMAGE"] = "default:tag"
+
+
+def test_execute_python_task(flyteclient, flyte_workflows_register):
+    """Test execution of a @task-decorated python function that is already registered."""
+    from mock_flyte_repo.workflows.basic.basic_workflow import t1
+
+    # make sure the task name is the same as the name used during registration
+    t1._name = t1.name.replace("mock_flyte_repo.", "")
+    _set_env()
+
+    remote = FlyteRemote()
+    execution = remote.execute(t1, inputs={"a": 10})
+    execution.wait_for_completion()
+    assert execution.outputs["t1_int_output"] == 12
+    assert execution.outputs["c"] == "world"
+
+
+def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_register):
+    """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
+    from mock_flyte_repo.workflows.basic.basic_workflow import my_wf
+
+    # make sure the task name is the same as the name used during registration
+    my_wf._name = my_wf.name.replace("mock_flyte_repo.", "")
+    _set_env()
+
+    remote = FlyteRemote()
+    execution = remote.execute(my_wf, inputs={"a": 10, "b": "xyz"})
+    execution.wait_for_completion()
+    assert execution.outputs["o0"] == 12
+    assert execution.outputs["o1"] == "xyzworld"
+
+    launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
+    execution = remote.execute(launch_plan, inputs={"a": 14, "b": "foobar"})
+    execution.wait_for_completion()
+    assert execution.outputs["o0"] == 16
+    assert execution.outputs["o1"] == "foobarworld"
+
+
+def test_register(flyteclient, flyte_workflows_register):
+    _set_env()
+
+    remote = FlyteRemote()
+    flyte_task = remote.fetch_task(PROJECT, "development", "workflows.basic.basic_workflow.t1", f"v{VERSION}")
+
+    with pytest.raises(FlyteEntityAlreadyExistsException):
+        remote.register(flyte_task)

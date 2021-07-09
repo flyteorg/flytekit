@@ -2,6 +2,8 @@
 
 import typing
 import uuid
+from collections import OrderedDict
+from copy import deepcopy
 
 try:
     from functools import singledispatchmethod
@@ -10,22 +12,25 @@ except ImportError:
 
 from flytekit.common.exceptions import scopes as exception_scopes
 from flytekit.common.exceptions import user as user_exceptions
+from flytekit.common.translator import get_serializable
 from flytekit.configuration import auth as auth_config
-from flytekit.core.context_manager import FlyteContextManager
+from flytekit.configuration.internal import DOMAIN, IMAGE, PROJECT, VERSION
+from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager, Image, ImageConfig, SerializationSettings
 from flytekit.core.launch_plan import LaunchPlan
-from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
-from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.type_engine import TypeEngine
-from flytekit.core.workflow import PythonFunctionWorkflow
+from flytekit.core.workflow import WorkflowBase
 from flytekit.engines.flyte.engine import get_client
 from flytekit.models.admin.common import Sort
+from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.common import Annotations, AuthRole, Labels, NamedEntityIdentifier, RawOutputDataConfig
 from flytekit.models.core.identifier import ResourceType
 from flytekit.models.execution import ExecutionMetadata, ExecutionSpec, NotificationList
 from flytekit.models.interface import ParameterMap
-from flytekit.models.launch_plan import LaunchPlanMetadata
+from flytekit.models.launch_plan import LaunchPlanMetadata, LaunchPlanSpec
 from flytekit.models.literals import LiteralMap
 from flytekit.models.schedule import Schedule
+from flytekit.models.task import TaskSpec
 from flytekit.remote.identifier import Identifier, WorkflowExecutionIdentifier
 from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.tasks.task import FlyteTask
@@ -63,50 +68,6 @@ def _get_entity_identifier(
     )
 
 
-def _execute(
-    identifier: Identifier,
-    inputs: typing.Dict[str, typing.Any],
-    name: typing.Optional[str] = None,
-    notification_overrides=None,
-    label_overrides=None,
-    annotation_overrides=None,
-    auth_role=None,
-):
-    name = name or "f" + uuid.uuid4().hex[:19]
-    disable_all = notification_overrides == []
-    if disable_all:
-        notification_overrides = None
-    else:
-        notification_overrides = NotificationList(notification_overrides or [])
-        disable_all = None
-
-    client = get_client()
-    literal_inputs = TypeEngine.dict_to_literal_map(FlyteContextManager.current_context(), inputs)
-    try:
-        exec_id = client.create_execution(
-            identifier.project,
-            identifier.domain,
-            name,
-            ExecutionSpec(
-                identifier,
-                ExecutionMetadata(
-                    ExecutionMetadata.ExecutionMode.MANUAL,
-                    "placeholder",  # TODO: get principle
-                    0,  # TODO: Detect nesting
-                ),
-                notifications=notification_overrides,
-                disable_all=disable_all,
-                labels=label_overrides,
-                annotations=annotation_overrides,
-                auth_role=auth_role,
-            ),
-            literal_inputs,
-        )
-    except user_exceptions.FlyteEntityAlreadyExistsException:
-        exec_id = WorkflowExecutionIdentifier(identifier.project, identifier.domain, name)
-    return FlyteWorkflowExecution.promote_from_model(client.get_execution(exec_id))
-
-
 @exception_scopes.system_entry_point
 def _create_launch_plan(workflow: FlyteWorkflow, auth_role: AuthRole):
     launch_plan = FlyteLaunchPlan(
@@ -126,13 +87,91 @@ def _create_launch_plan(workflow: FlyteWorkflow, auth_role: AuthRole):
 
 
 class FlyteRemote(object):
-    """Main entrypoint for programmatically accessing Flyte remote backend."""
+    """Main entrypoint for programmatically accessing Flyte remote backend.
 
-    def __init__(self):
+    The term 'remote' is used interchangeably with 'backend' or 'deployment' and refers to a hosted instance of the
+    Flyte platform, which comes with a Flyte Admin server on some known URI.
+
+    .. warning::
+
+        This feature is in beta.
+
+    """
+
+    def __init__(
+        self,
+        project=None,
+        domain=None,
+        version=None,
+        auth_role=None,
+        notifications=None,
+        labels=None,
+        annotations=None,
+    ):
         # TODO: figure out what config/metadata needs to be loaded into the FlyteRemote object at initialization
         # - read config files, env vars
         # - create a Synchronous/Raw client
-        pass
+        # - host, ssl options for admin client
+        self.project = project or PROJECT.get()
+        self.domain = domain or DOMAIN.get()
+        self.version = version or VERSION.get()
+
+        image = IMAGE.get()
+        image = "default:tag" if image is None else image
+        name, tag = image.split(":")
+        self.image: Image = Image(name=name, fqn=image, tag=tag)
+
+        self.auth_role = (
+            auth_role
+            if auth_role is not None
+            else AuthRole(
+                assumable_iam_role=auth_config.ASSUMABLE_IAM_ROLE.get(),
+                kubernetes_service_account=auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
+            )
+        )
+        self.notifications = notifications
+        self.labels = labels
+        self.annotations = annotations
+
+        self.serialized_entity_cache = OrderedDict()
+
+    def with_overrides(
+        self,
+        project=None,
+        domain=None,
+        version=None,
+        auth_role=None,
+        notifications=None,
+        labels=None,
+        annotations=None,
+    ):
+        """Create a copy of the remote object, overriding the specified attributes."""
+        new_remote = deepcopy(self)
+        if project:
+            new_remote.project = project
+        if domain:
+            new_remote.domain = domain
+        if version:
+            new_remote.version = version
+        if auth_role:
+            new_remote.auth_role = auth_role
+        if notifications:
+            new_remote.notifications = notifications
+        if labels:
+            new_remote.labels = labels
+        if annotations:
+            new_remote.annotations = annotations
+        return new_remote
+
+    def context(self):
+        yield from FlyteContext.with_serialization_settings(
+            SerializationSettings(
+                self.project,
+                self.domain,
+                self.version,
+                ImageConfig(self.image),
+            )
+        )
 
     @exception_scopes.system_entry_point
     def fetch_task(self, project: str, domain: str, name: str, version: str = None) -> FlyteTask:
@@ -187,51 +226,8 @@ class FlyteRemote(object):
     @singledispatchmethod
     @exception_scopes.system_entry_point
     def _serialize(self, entity):
-        raise NotImplementedError(f"entity type {type(entity)} not recognized for serialization")
-
-    # Flyte Remote Entities
-    # ---------------------
-    @_serialize.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: FlyteTask):
-        pass
-
-    @_serialize.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: FlyteWorkflow):
-        pass
-
-    @_serialize.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: FlyteWorkflowExecution):
-        pass
-
-    @_serialize.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: FlyteLaunchPlan):
-        pass
-
-    # Flytekit Entities
-    # -----------------
-    @_serialize.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: PythonFunctionTask):
-        pass
-
-    @_serialize.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: PythonFunctionWorkflow):
-        pass
-
-    @_serialize.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: LaunchPlan):
-        pass
-
-    @_serialize.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: PythonCustomizedContainerTask):
-        pass
+        with self.context as ctx:
+            return get_serializable(self.serialized_entity_cache, ctx.serialization_settings, entity=entity)
 
     #####################
     # Register Entities #
@@ -252,155 +248,152 @@ class FlyteRemote(object):
     @register.register
     @exception_scopes.system_entry_point
     def _(self, entity: FlyteTask):
-        pass
+        get_client().create_task(
+            Identifier(ResourceType.TASK, self.project, self.domain, entity.id.name, self.version),
+            task_spec=TaskSpec(entity),
+        )
+        return self.fetch_task(self.project, self.domain, entity.id.name, self.version)
 
     @register.register
     @exception_scopes.system_entry_point
     def _(self, entity: FlyteWorkflow):
-        pass
-
-    @register.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: FlyteWorkflowExecution):
-        pass
+        get_client().create_workflow(
+            Identifier(ResourceType.WORKFLOW, self.project, self.domain, entity.id.name, self.version),
+            workflow_spec=WorkflowSpec(entity, entity.get_sub_workflows()),
+        )
+        return self.fetch_workflow(self.project, self.domain, entity.id.name, self.version)
 
     @register.register
     @exception_scopes.system_entry_point
     def _(self, entity: FlyteLaunchPlan):
-        pass
+        get_client().create_launch_plan(
+            Identifier(ResourceType.LAUNCH_PLAN, self.project, self.domain, entity.id.name, self.version),
+            launch_plan_spec=entity,
+        )
+        return self.fetch_launch_plan(self.project, self.domain, entity.id.name, self.version)
 
     # Flytekit Entities
     # -----------------
 
     @register.register
     @exception_scopes.system_entry_point
-    def _(self, entity: PythonFunctionTask):
-        pass
+    def _(self, entity: PythonTask):
+        get_client().create_task(
+            Identifier(ResourceType.TASK, self.project, self.domain, entity.name, self.version),
+            task_spec=self._serialize(entity),
+        )
+        return self.fetch_task(self.project, self.domain, entity.name, self.version)
 
     @register.register
     @exception_scopes.system_entry_point
-    def _(self, entity: PythonFunctionWorkflow):
-        pass
+    def _(self, entity: WorkflowBase):
+        get_client().create_workflow(
+            Identifier(ResourceType.WORKFLOW, self.project, self.domain, entity.name, self.version),
+            workflow_spec=self._serialize(entity),
+        )
+        return self.fetch_workflow(self.project, self.domain, entity.name, self.version)
 
     @register.register
     @exception_scopes.system_entry_point
     def _(self, entity: LaunchPlan):
-        pass
-
-    @register.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: PythonCustomizedContainerTask):
-        pass
+        get_client().create_launch_plan(
+            Identifier(ResourceType.LAUNCH_PLAN, self.project, self.domain, entity.name, self.version),
+            launch_plan_spec=self._serialize(entity),
+        )
+        return self.fetch_launch_plan(self.project, self.domain, entity.name, self.version)
 
     ####################
     # Execute Entities #
     ####################
 
+    def _execute(
+        self,
+        id: Identifier,
+        inputs: typing.Dict[str, typing.Any],
+        execution_name: typing.Optional[str] = None,
+    ):
+        execution_name = execution_name or "f" + uuid.uuid4().hex[:19]
+        disable_all = self.notifications == []
+        if disable_all:
+            notifications = None
+        else:
+            notifications = NotificationList(self.notifications or [])
+            disable_all = None
+
+        client = get_client()
+        literal_inputs = TypeEngine.dict_to_literal_map(FlyteContextManager.current_context(), inputs)
+        try:
+            exec_id = client.create_execution(
+                id.project,
+                id.domain,
+                execution_name,
+                ExecutionSpec(
+                    id,
+                    ExecutionMetadata(
+                        ExecutionMetadata.ExecutionMode.MANUAL,
+                        "placeholder",  # TODO: get principle
+                        0,  # TODO: Detect nesting
+                    ),
+                    notifications=notifications,
+                    disable_all=disable_all,
+                    labels=self.labels,
+                    annotations=self.annotations,
+                    auth_role=self.auth_role,
+                ),
+                literal_inputs,
+            )
+        except user_exceptions.FlyteEntityAlreadyExistsException:
+            exec_id = WorkflowExecutionIdentifier(id.project, id.domain, execution_name)
+        return FlyteWorkflowExecution.promote_from_model(client.get_execution(exec_id))
+
     @singledispatchmethod
     @exception_scopes.system_entry_point
-    def execute(
-        self,
-        entity,
-        inputs,
-        name=None,
-        notification_overrides=None,
-        label_overrides=None,
-        annotation_overrides=None,
-        auth_role=None,
-    ):
+    def execute(self, entity, inputs: typing.Dict[str, typing.Any], execution_name=None):
         raise NotImplementedError(f"entity type {type(entity)} not recognized for execution")
 
     # Flyte Remote Entities
     # ---------------------
 
-    @execute.register
+    @execute.register(FlyteTask)
+    @execute.register(FlyteLaunchPlan)
     @exception_scopes.system_entry_point
-    def _(
-        self,
-        entity: FlyteTask,
-        inputs,
-        name=None,
-        notification_overrides=None,
-        label_overrides=None,
-        annotation_overrides=None,
-        auth_role=None,
-    ):
-        return _execute(
-            entity.id,
-            inputs,
-            name,
-            notification_overrides,
-            label_overrides,
-            annotation_overrides,
-            # Unlike regular workflow executions, single task executions must always specify an auth role, since there
-            # isn't any existing launch plan with a bound auth role to fall back on.
-            (
-                AuthRole(
-                    assumable_iam_role=auth_config.ASSUMABLE_IAM_ROLE.get(),
-                    kubernetes_service_account=auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
-                )
-                if auth_role is None
-                else auth_role
-            ),
-        )
+    def _(self, entity, inputs: typing.Dict[str, typing.Any], execution_name=None):
+        return self._execute(entity.id, inputs, execution_name)
 
     @execute.register
     @exception_scopes.system_entry_point
-    def _(
-        self,
-        entity: FlyteWorkflow,
-        inputs,
-        name=None,
-        notification_overrides=None,
-        label_overrides=None,
-        annotation_overrides=None,
-        auth_role=None,
-    ):
-        return self.execute(
-            _create_launch_plan(entity, auth_role),
-            inputs,
-            name,
-            notification_overrides,
-            label_overrides,
-            annotation_overrides,
-            auth_role,
-        )
-
-    @execute.register
-    @exception_scopes.system_entry_point
-    def _(
-        self,
-        entity: FlyteLaunchPlan,
-        inputs,
-        name=None,
-        notification_overrides=None,
-        label_overrides=None,
-        annotation_overrides=None,
-        auth_role=None,
-    ):
-        return _execute(
-            entity.id, inputs, name, notification_overrides, label_overrides, annotation_overrides, auth_role
-        )
+    def _(self, entity: FlyteWorkflow, inputs: typing.Dict[str, typing.Any], execution_name=None):
+        return self.execute(_create_launch_plan(entity, self.auth_role), inputs, execution_name)
 
     # Flytekit Entities
     # -----------------
 
     @execute.register
     @exception_scopes.system_entry_point
-    def _(self, entity: PythonFunctionTask):
-        pass
+    def _(self, entity: PythonTask, inputs: typing.Dict[str, typing.Any], execution_name: str = None):
+        try:
+            flyte_task: FlyteTask = self.fetch_task(self.project, self.domain, entity.name, self.version)
+        except Exception:
+            # TODO: fast register the task if fast=True
+            flyte_task: FlyteTask = self.register(entity)
+        return self.execute(flyte_task, inputs, execution_name)
 
     @execute.register
     @exception_scopes.system_entry_point
-    def _(self, entity: PythonFunctionWorkflow):
-        pass
+    def _(self, entity: WorkflowBase, inputs: typing.Dict[str, typing.Any], execution_name=None):
+        try:
+            flyte_workflow: FlyteWorkflow = self.fetch_workflow(self.project, self.domain, entity.name, self.version)
+        except Exception:
+            flyte_workflow: FlyteWorkflow = self.register(entity)
+        return self.execute(flyte_workflow, inputs, execution_name)
 
     @execute.register
     @exception_scopes.system_entry_point
-    def _(self, entity: LaunchPlan):
-        pass
-
-    @execute.register
-    @exception_scopes.system_entry_point
-    def _(self, entity: PythonCustomizedContainerTask):
-        pass
+    def _(self, entity: LaunchPlan, inputs: typing.Dict[str, typing.Any], execution_name=None):
+        try:
+            flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(
+                self.project, self.domain, entity.name, self.version
+            )
+        except Exception:
+            flyte_launchplan: FlyteLaunchPlan = self.register(entity)
+        return self.execute(flyte_launchplan, inputs, execution_name)
