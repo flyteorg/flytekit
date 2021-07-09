@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import collections
 import inspect
 from dataclasses import dataclass
 from enum import Enum
