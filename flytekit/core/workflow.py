@@ -385,11 +385,21 @@ class ImperativeWorkflow(WorkflowBase):
 
     .. literalinclude:: ../../../tests/flytekit/unit/core/test_imperative.py
        :start-after: # docs_start
-       :end-before: # docs_start
+       :end-before: # docs_end
        :language: python
        :dedent: 4
 
-    This workflow would be identical on the backed to the
+    This workflow would be identical on the back-end to
+
+    .. literalinclude:: ../../../tests/flytekit/unit/core/test_imperative.py
+       :start-after: # docs_equivalent_start
+       :end-before: # docs_equivalent_end
+       :language: python
+       :dedent: 4
+
+    Note that the only reason we need the ``NamedTuple`` is so we can name the output the same thing as in the
+    imperative example. The imperative paradigm makes the naming of workflow outputs easier, but this isn't a big
+    deal in function-workflows because names tend to not be necessary.
     """
 
     def __init__(

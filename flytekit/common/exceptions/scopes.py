@@ -140,14 +140,15 @@ def system_entry_point(wrapped, instance, args, kwargs):
     The reason these two (see the user one below) decorators exist is to categorize non-Flyte exceptions at arbitrary
     locations. For example, while there is a separate ecosystem of Flyte-defined user and system exceptions
     (see the FlyteException hierarchy), and we can easily understand and categorize those, if flytekit comes upon
-    a random ValueError or other non-flytekit defined error, how would we know if it was a bug in flytekit versus an
+    a random ``ValueError`` or other non-flytekit defined error, how would we know if it was a bug in flytekit versus an
     error with user code or something the user called? The purpose of these decorators is to categorize those (see
     the last case in the nested try/catch below.
 
-    Decorator for wrapping functions that enter a system context. This should decorate every method a user might
-    call.  This will allow us to add differentiation between what is a user error and what is a system failure.
-    Furthermore, we will clean the exception trace so as to make more sense to the user--allowing them to know if they
-    should take action themselves or pass on to the platform owners.  We will dispatch metrics and such appropriately.
+    Decorator for wrapping functions that enter a system context. This should decorate every method that may invoke some
+    user code later on down the line. This will allow us to add differentiation between what is a user error and
+    what is a system failure. Furthermore, we will clean the exception trace so as to make more sense to the
+    user -- allowing them to know if they should take action themselves or pass on to the platform owners.
+    We will dispatch metrics and such appropriately.
     """
     try:
         _CONTEXT_STACK.append(_SYSTEM_CONTEXT)
