@@ -114,13 +114,16 @@ class ConditionalSection:
     def if_(self, expr: bool) -> Case:
         return self._condition._if(expr)
 
-    def _compute_outputs(self, n: Node) -> Union[Promise, Tuple[Promise], VoidPromise]:
+    def compute_output_set(self) -> typing.Optional[typing.Set[str]]:
+        """
+        Computes and returns the minimum set of outputs for this conditional block, based on all the cases that have
+        been registered
+        """
         output_var_sets: typing.List[typing.Set[str]] = []
         for c in self._cases:
             if c.output_promise is None and c.err is None:
-                # One node returns a void output and no error, we will default to a
-                # Void output
-                return VoidPromise(n.id)
+                # One node returns a void output and no error, we will default to None return
+                return None
             if c.output_promise is not None:
                 if isinstance(c.output_promise, tuple):
                     output_var_sets.append(set([i.var for i in c.output_promise]))
@@ -130,6 +133,12 @@ class ConditionalSection:
         if len(output_var_sets) > 1:
             for x in output_var_sets[1:]:
                 curr = curr.intersection(x)
+        return curr
+
+    def _compute_outputs(self, n: Node) -> Union[Promise, Tuple[Promise], VoidPromise]:
+        curr = self.compute_output_set()
+        if curr is None:
+            return VoidPromise(n.id)
         promises = [Promise(var=x, val=NodeOutput(node=n, var=x)) for x in curr]
         # TODO: Is there a way to add the Python interface here? Currently, it's an optional arg.
         return create_task_output(promises)
@@ -174,9 +183,21 @@ class LocalExecutedConditionalSection(ConditionalSection):
             if self._selected_case.output_promise is None and self._selected_case.err is None:
                 raise AssertionError("Bad conditional statements, did not resolve in a promise")
             elif self._selected_case.output_promise is not None:
-                return self._selected_case.output_promise
+                return self._compute_outputs(self._selected_case.output_promise)
             raise ValueError(self._selected_case.err)
         return self._condition
+
+    def _compute_outputs(self, selected_output_promise) -> Union[Promise, Tuple[Promise], VoidPromise]:
+        """
+        For the local execution case only returns the least common set of outputs
+        """
+        curr = self.compute_output_set()
+        if curr is None:
+            return VoidPromise(self.name)
+        if not isinstance(selected_output_promise, tuple):
+            selected_output_promise = (selected_output_promise,)
+        promises = [Promise(var=x, val=v.val) for x, v in zip(curr, selected_output_promise)]
+        return create_task_output(promises)
 
 
 class SkippedConditionalSection(ConditionalSection):
@@ -194,6 +215,11 @@ class SkippedConditionalSection(ConditionalSection):
         """
         if self._last_case:
             FlyteContextManager.pop_context()
+            curr = self.compute_output_set()
+            if curr is None:
+                return VoidPromise(self.name)
+            promises = [Promise(var=x, val=None) for x in curr]
+            return create_task_output(promises)
         return self._condition
 
 

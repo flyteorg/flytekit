@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import collections
 import inspect
 from dataclasses import dataclass
 from enum import Enum
@@ -262,11 +261,12 @@ class WorkflowBase(object):
             ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         ):
             if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
-                if self.python_interface and self.python_interface.output_tuple_name:
-                    variables = [k for k in self.python_interface.outputs.keys()]
-                    output_tuple = collections.namedtuple(self.python_interface.output_tuple_name, variables)
-                    nones = [None for _ in self.python_interface.outputs.keys()]
-                    return output_tuple(*nones)
+                if self.interface:
+                    output_names = list(self.interface.outputs.keys())
+                    if len(output_names) == 0:
+                        return VoidPromise(self.name)
+                    vals = [Promise(var, None) for var in output_names]
+                    return create_task_output(vals, self.python_interface)
                 else:
                     return None
             # We are already in a local execution, just continue the execution context
