@@ -135,7 +135,7 @@ def _dispatch_execute(
             _error_models.ContainerError(e.error_code, e.verbose_message, e.kind,
                                          _execution_models.ExecutionError.ErrorKind.USER)
         )
-        _logging.error("!! Begin Error Captured by Flyte !!")
+        _logging.error("!! Begin User Error Captured by Flyte !!")
         _logging.error(e.verbose_message)
         _logging.error("!! End Error Captured by Flyte !!")
 
@@ -148,17 +148,13 @@ def _dispatch_execute(
             _error_models.ContainerError(e.error_code, e.verbose_message, e.kind,
                                          _execution_models.ExecutionError.ErrorKind.SYSTEM)
         )
-        _logging.error("!! Begin Error Captured by Flyte !!")
+        _logging.error("!! Begin System Error Captured by Flyte !!")
         _logging.error(e.verbose_message)
         _logging.error("!! End Error Captured by Flyte !!")
 
     # Interpret all other exceptions (some of which may be caused by the code in the try block outside of
     # dispatch_execute) as recoverable system exceptions.
     except Exception as e:
-        if isinstance(e, IgnoreOutputs):
-            # Step 3b
-            _logging.warning(f"IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}")
-            return
         # Step 3c
         exc_str = _traceback.format_exc()
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(

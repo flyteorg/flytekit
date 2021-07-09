@@ -2,6 +2,8 @@
 Flytekit map tasks specify how to run a single task across a list of inputs. Map tasks themselves are constructed with
 a reference task as well as run-time parameters that limit execution concurrency and failure tolerations.
 """
+
+from flytekit.common.exceptions import scopes as exception_scopes
 import os
 from contextlib import contextmanager
 from itertools import count
@@ -168,7 +170,7 @@ class MapPythonTask(PythonTask):
         map_task_inputs = {}
         for k in self.interface.inputs.keys():
             map_task_inputs[k] = kwargs[k][task_index]
-        return self._run_task.execute(**map_task_inputs)
+        return exception_scopes.user_entry_point(self._run_task.execute)(**map_task_inputs)
 
     def _raw_execute(self, **kwargs) -> Any:
         """
@@ -190,7 +192,7 @@ class MapPythonTask(PythonTask):
             single_instance_inputs = {}
             for k in self.interface.inputs.keys():
                 single_instance_inputs[k] = kwargs[k][i]
-            o = self._run_task.execute(**single_instance_inputs)
+            o = exception_scopes.user_entry_point(self._run_task.execute)(**single_instance_inputs)
             if outputs_expected:
                 outputs.append(o)
 

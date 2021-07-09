@@ -8,7 +8,7 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core.errors_pb2 import ErrorDocument
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
-
+import typing
 from flytekit.bin.entrypoint import _dispatch_execute, _legacy_execute_task, execute_task_cmd
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _utils
@@ -17,9 +17,11 @@ from flytekit.configuration import TemporaryConfiguration as _TemporaryConfigura
 from flytekit.core import context_manager
 from flytekit.core.base_task import IgnoreOutputs
 from flytekit.core.promise import VoidPromise
+from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.models import literals as _literal_models
-from flytekit.models import literals as _literals
 from tests.flytekit.common import task_definitions as _task_defs
+from flytekit.models.core import errors as error_models, execution as execution_models
+from flytekit.common.exceptions import user as user_exceptions
 
 
 def _type_map_from_variable_map(variable_map):
@@ -113,8 +115,8 @@ def test_arrayjob_entrypoint_in_proc():
             _utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
 
             # construct indexlookup.pb which has array: [1]
-            mapped_index = _literals.Literal(_literals.Scalar(primitive=_literals.Primitive(integer=1)))
-            index_lookup_collection = _literals.LiteralCollection([mapped_index])
+            mapped_index = _literal_models.Literal(_literal_models.Scalar(primitive=_literal_models.Primitive(integer=1)))
+            index_lookup_collection = _literal_models.LiteralCollection([mapped_index])
             index_lookup_file = os.path.join(dir.name, "indexlookup.pb")
             _utils.write_proto_to_file(index_lookup_collection.to_flyte_idl(), index_lookup_file)
 
@@ -290,12 +292,12 @@ def test_dispatch_execute_normal(mock_write_to_file, mock_upload_dir, mock_get_d
         )
     ) as ctx:
         input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5})
-        # print(input_literal_map)
         mock_load_proto.return_value = input_literal_map.to_flyte_idl()
 
         files = OrderedDict()
         mock_write_to_file.side_effect = get_output_collector(files)
-        _dispatch_execute(ctx, t1, "inputs path", "outputs prefix")
+        # See comment in test_dispatch_execute_ignore for why we need to decorate
+        system_entry_point(_dispatch_execute)(ctx, t1, "inputs path", "outputs prefix")
         assert len(files) == 1
 
         # A successful run should've written an outputs file.
@@ -311,13 +313,14 @@ def test_dispatch_execute_normal(mock_write_to_file, mock_upload_dir, mock_get_d
 @mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
 @mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
 @mock.patch("flytekit.common.utils.write_proto_to_file")
-def test_dispatch_execute_user_error(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
+def test_dispatch_execute_user_error_non_recov(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
     mock_get_data.return_value = True
     mock_upload_dir.return_value = True
 
     @task
     def t1(a: int) -> str:
+        # Should be interpreted as a non-recoverable user error
         raise ValueError(f"some exception {a}")
 
     ctx = context_manager.FlyteContext.current_context()
@@ -327,18 +330,103 @@ def test_dispatch_execute_user_error(mock_write_to_file, mock_upload_dir, mock_g
         )
     ) as ctx:
         input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5})
-        # print(input_literal_map)
         mock_load_proto.return_value = input_literal_map.to_flyte_idl()
 
         files = OrderedDict()
         mock_write_to_file.side_effect = get_output_collector(files)
-        _dispatch_execute(ctx, t1, "inputs path", "outputs prefix")
+        # See comment in test_dispatch_execute_ignore for why we need to decorate
+        system_entry_point(_dispatch_execute)(ctx, t1, "inputs path", "outputs prefix")
         assert len(files) == 1
 
-        # A successful run should've written an outputs file.
+        # Exception should've caused an error file
         k = list(files.keys())[0]
-        assert "outputs.pb" in k
+        assert "error.pb" in k
 
         v = list(files.values())[0]
-        lm = _literal_models.LiteralMap.from_flyte_idl(v)
-        assert lm.literals["o0"].scalar.primitive.string_value == "string is: 5"
+        ed = error_models.ErrorDocument.from_flyte_idl(v)
+        assert ed.error.kind == error_models.ContainerError.Kind.NON_RECOVERABLE
+        assert "some exception 5" in ed.error.message
+        assert ed.error.origin == execution_models.ExecutionError.ErrorKind.USER
+
+
+@mock.patch("flytekit.common.utils.load_proto_from_file")
+@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
+@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.common.utils.write_proto_to_file")
+def test_dispatch_execute_user_error_recoverable(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
+    # Just leave these here, mock them out so nothing happens
+    mock_get_data.return_value = True
+    mock_upload_dir.return_value = True
+
+    @task
+    def t1(a: int) -> str:
+        return f"A is {a}"
+
+    @dynamic
+    def my_subwf(a: int) -> typing.List[str]:
+        # This also tests the dynamic/compile path
+        raise user_exceptions.FlyteRecoverableException(f"recoverable {a}")
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
+        input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5})
+        mock_load_proto.return_value = input_literal_map.to_flyte_idl()
+
+        files = OrderedDict()
+        mock_write_to_file.side_effect = get_output_collector(files)
+        # See comment in test_dispatch_execute_ignore for why we need to decorate
+        system_entry_point(_dispatch_execute)(ctx, my_subwf, "inputs path", "outputs prefix")
+        assert len(files) == 1
+
+        # Exception should've caused an error file
+        k = list(files.keys())[0]
+        assert "error.pb" in k
+
+        v = list(files.values())[0]
+        ed = error_models.ErrorDocument.from_flyte_idl(v)
+        assert ed.error.kind == error_models.ContainerError.Kind.RECOVERABLE
+        assert "recoverable 5" in ed.error.message
+        assert ed.error.origin == execution_models.ExecutionError.ErrorKind.USER
+
+
+@mock.patch("flytekit.common.utils.load_proto_from_file")
+@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
+@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.common.utils.write_proto_to_file")
+def test_dispatch_execute_system_error(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
+    # Just leave these here, mock them out so nothing happens
+    mock_get_data.return_value = True
+    mock_upload_dir.return_value = True
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
+        input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5})
+        mock_load_proto.return_value = input_literal_map.to_flyte_idl()
+
+        python_task = mock.MagicMock()
+        python_task.dispatch_execute.side_effect = Exception("some system exception")
+
+        files = OrderedDict()
+        mock_write_to_file.side_effect = get_output_collector(files)
+        # See comment in test_dispatch_execute_ignore for why we need to decorate
+        system_entry_point(_dispatch_execute)(ctx, python_task, "inputs path", "outputs prefix")
+        assert len(files) == 1
+
+        # Exception should've caused an error file
+        k = list(files.keys())[0]
+        assert "error.pb" in k
+
+        v = list(files.values())[0]
+        ed = error_models.ErrorDocument.from_flyte_idl(v)
+        # System errors default to recoverable
+        assert ed.error.kind == error_models.ContainerError.Kind.RECOVERABLE
+        assert "some system exception" in ed.error.message
+        assert ed.error.origin == execution_models.ExecutionError.ErrorKind.SYSTEM
