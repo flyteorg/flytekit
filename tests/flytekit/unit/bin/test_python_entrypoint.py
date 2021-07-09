@@ -1,27 +1,30 @@
 import os
+import typing
 from collections import OrderedDict
-from flytekit.common.exceptions.scopes import system_entry_point
+
 import mock
 import six
 from click.testing import CliRunner
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core.errors_pb2 import ErrorDocument
-from flytekit.core.task import task
-from flytekit.core.type_engine import TypeEngine
-import typing
+
 from flytekit.bin.entrypoint import _dispatch_execute, _legacy_execute_task, execute_task_cmd
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _utils
+from flytekit.common.exceptions import user as user_exceptions
+from flytekit.common.exceptions.scopes import system_entry_point
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.core import context_manager
 from flytekit.core.base_task import IgnoreOutputs
-from flytekit.core.promise import VoidPromise
 from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.promise import VoidPromise
+from flytekit.core.task import task
+from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals as _literal_models
+from flytekit.models.core import errors as error_models
+from flytekit.models.core import execution as execution_models
 from tests.flytekit.common import task_definitions as _task_defs
-from flytekit.models.core import errors as error_models, execution as execution_models
-from flytekit.common.exceptions import user as user_exceptions
 
 
 def _type_map_from_variable_map(variable_map):
@@ -115,7 +118,9 @@ def test_arrayjob_entrypoint_in_proc():
             _utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
 
             # construct indexlookup.pb which has array: [1]
-            mapped_index = _literal_models.Literal(_literal_models.Scalar(primitive=_literal_models.Primitive(integer=1)))
+            mapped_index = _literal_models.Literal(
+                _literal_models.Scalar(primitive=_literal_models.Primitive(integer=1))
+            )
             index_lookup_collection = _literal_models.LiteralCollection([mapped_index])
             index_lookup_file = os.path.join(dir.name, "indexlookup.pb")
             _utils.write_proto_to_file(index_lookup_collection.to_flyte_idl(), index_lookup_file)
@@ -269,6 +274,7 @@ def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_ge
 def get_output_collector(results: OrderedDict):
     def output_collector(proto, path):
         results[path] = proto
+
     return output_collector
 
 

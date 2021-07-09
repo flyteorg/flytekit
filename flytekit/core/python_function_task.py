@@ -19,6 +19,7 @@ from abc import ABC
 from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
+
 from flytekit.common.exceptions import scopes as exception_scopes
 from flytekit.core.base_task import TaskResolverMixin
 from flytekit.core.context_manager import (

@@ -73,7 +73,8 @@ def test_imperative():
     def my_workflow(in1: str) -> nt:
         x = t1(a=in1)
         t2()
-        return x,
+        return (x,)
+
     # docs_equivalent_end
 
     # Create launch plan from wf, that can also be serialized.

@@ -7,10 +7,10 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from flytekit.common import constants as _common_constants
+from flytekit.common.exceptions import scopes as exception_scopes
 from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
-from flytekit.common.exceptions import scopes as exception_scopes
 from flytekit.core.condition import ConditionalSection
 from flytekit.core.context_manager import (
     BranchEvalMode,

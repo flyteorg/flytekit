@@ -42,7 +42,8 @@ from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as _error_models
-from flytekit.models.core import identifier as _identifier, execution as _execution_models
+from flytekit.models.core import execution as _execution_models
+from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from flytekit.tools.module_loader import load_object_from_module
 
@@ -132,8 +133,9 @@ def _dispatch_execute(
             _logging.warning(f"User-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
             return
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
-            _error_models.ContainerError(e.error_code, e.verbose_message, e.kind,
-                                         _execution_models.ExecutionError.ErrorKind.USER)
+            _error_models.ContainerError(
+                e.error_code, e.verbose_message, e.kind, _execution_models.ExecutionError.ErrorKind.USER
+            )
         )
         _logging.error("!! Begin User Error Captured by Flyte !!")
         _logging.error(e.verbose_message)
@@ -145,8 +147,9 @@ def _dispatch_execute(
             _logging.warning(f"System-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
             return
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
-            _error_models.ContainerError(e.error_code, e.verbose_message, e.kind,
-                                         _execution_models.ExecutionError.ErrorKind.SYSTEM)
+            _error_models.ContainerError(
+                e.error_code, e.verbose_message, e.kind, _execution_models.ExecutionError.ErrorKind.SYSTEM
+            )
         )
         _logging.error("!! Begin System Error Captured by Flyte !!")
         _logging.error(e.verbose_message)

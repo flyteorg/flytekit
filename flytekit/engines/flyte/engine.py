@@ -387,10 +387,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                             exc_str = _traceback.format_exc()
                             output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
                                 _error_models.ContainerError(
-                                    "SYSTEM:Unknown",
-                                    exc_str,
-                                    _error_models.ContainerError.Kind.RECOVERABLE,
-                                    0
+                                    "SYSTEM:Unknown", exc_str, _error_models.ContainerError.Kind.RECOVERABLE, 0
                                 )
                             )
                             _logging.error(exc_str)
