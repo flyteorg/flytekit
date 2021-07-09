@@ -42,7 +42,7 @@ from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as _error_models
-from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import identifier as _identifier, execution as _execution_models
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from flytekit.tools.module_loader import load_object_from_module
 
@@ -104,7 +104,9 @@ def _dispatch_execute(
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 
         # Step2
-        outputs = task_def.dispatch_execute(ctx, idl_input_literals)
+        # Decorate the dispatch execute function before calling it, this wraps all exceptions into one
+        # of the FlyteScopedExceptions
+        outputs = _scoped_exceptions.system_entry_point(task_def.dispatch_execute)(ctx, idl_input_literals)
         # Step3a
         if isinstance(outputs, VoidPromise):
             _logging.getLogger().warning("Task produces no outputs")
@@ -120,33 +122,55 @@ def _dispatch_execute(
                     "UNKNOWN_OUTPUT",
                     f"Type of output received not handled {type(outputs)} outputs: {outputs}",
                     _error_models.ContainerError.Kind.RECOVERABLE,
-                    0
+                    _execution_models.ExecutionError.ErrorKind.SYSTEM,
                 )
             )
-    except _scoped_exceptions.FlyteScopedException as e:
-        _logging.error("!! Begin Error Captured by Flyte !!")
+
+    # Handle user-scoped errors
+    except _scoped_exceptions.FlyteScopedUserException as e:
+        if isinstance(e.value, IgnoreOutputs):
+            _logging.warning(f"User-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
+            return
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
-            _error_models.ContainerError(e.error_code, e.verbose_message, e.kind)
+            _error_models.ContainerError(e.error_code, e.verbose_message, e.kind,
+                                         _execution_models.ExecutionError.ErrorKind.USER)
         )
+        _logging.error("!! Begin Error Captured by Flyte !!")
         _logging.error(e.verbose_message)
         _logging.error("!! End Error Captured by Flyte !!")
+
+    # Handle system-scoped errors
+    except _scoped_exceptions.FlyteScopedSystemException as e:
+        if isinstance(e.value, IgnoreOutputs):
+            _logging.warning(f"System-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
+            return
+        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+            _error_models.ContainerError(e.error_code, e.verbose_message, e.kind,
+                                         _execution_models.ExecutionError.ErrorKind.SYSTEM)
+        )
+        _logging.error("!! Begin Error Captured by Flyte !!")
+        _logging.error(e.verbose_message)
+        _logging.error("!! End Error Captured by Flyte !!")
+
+    # Interpret all other exceptions (some of which may be caused by the code in the try block outside of
+    # dispatch_execute) as recoverable system exceptions.
     except Exception as e:
         if isinstance(e, IgnoreOutputs):
             # Step 3b
             _logging.warning(f"IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}")
             return
         # Step 3c
-        _logging.error(f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}")
-        _logging.error("!! Begin Unknown System Error Captured by Flyte !!")
         exc_str = _traceback.format_exc()
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(
                 "SYSTEM:Unknown",
                 exc_str,
                 _error_models.ContainerError.Kind.RECOVERABLE,
-                2
+                _execution_models.ExecutionError.ErrorKind.SYSTEM,
             )
         )
+        _logging.error(f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}")
+        _logging.error("!! Begin Unknown System Error Captured by Flyte !!")
         _logging.error(exc_str)
         _logging.error("!! End Error Captured by Flyte !!")
 

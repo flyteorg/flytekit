@@ -1,7 +1,6 @@
 from datetime import datetime as _datetime
 
 import pytz as _pytz
-import six as _six
 from flyteidl.core import literals_pb2 as _literals_pb2
 from google.protobuf.struct_pb2 import Struct
 
@@ -310,7 +309,7 @@ class BindingDataMap(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.BindingDataMap
         """
-        return _literals_pb2.BindingDataMap(bindings={k: v.to_flyte_idl() for (k, v) in _six.iteritems(self.bindings)})
+        return _literals_pb2.BindingDataMap(bindings={k: v.to_flyte_idl() for (k, v) in self.bindings.items()})
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -319,7 +318,7 @@ class BindingDataMap(_common.FlyteIdlEntity):
         :rtype: flytekit.models.literals.BindingDataMap
         """
 
-        return cls({k: BindingData.from_flyte_idl(v) for (k, v) in _six.iteritems(pb2_object.bindings)})
+        return cls({k: BindingData.from_flyte_idl(v) for (k, v) in pb2_object.bindings.items()})
 
 
 class BindingDataCollection(_common.FlyteIdlEntity):
@@ -588,7 +587,7 @@ class LiteralMap(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.LiteralMap
         """
-        return _literals_pb2.LiteralMap(literals={k: v.to_flyte_idl() for k, v in _six.iteritems(self.literals)})
+        return _literals_pb2.LiteralMap(literals={k: v.to_flyte_idl() for k, v in self.literals.items()})
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -596,7 +595,7 @@ class LiteralMap(_common.FlyteIdlEntity):
         :param flyteidl.core.literals_pb2.LiteralMap pb2_object:
         :rtype: LiteralMap
         """
-        return cls({k: Literal.from_flyte_idl(v) for k, v in _six.iteritems(pb2_object.literals)})
+        return cls({k: Literal.from_flyte_idl(v) for k, v in pb2_object.literals.items()})
 
 
 class Scalar(_common.FlyteIdlEntity):

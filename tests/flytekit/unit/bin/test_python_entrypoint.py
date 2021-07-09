@@ -1,10 +1,13 @@
 import os
-
+from collections import OrderedDict
+from flytekit.common.exceptions.scopes import system_entry_point
 import mock
 import six
 from click.testing import CliRunner
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core.errors_pb2 import ErrorDocument
+from flytekit.core.task import task
+from flytekit.core.type_engine import TypeEngine
 
 from flytekit.bin.entrypoint import _dispatch_execute, _legacy_execute_task, execute_task_cmd
 from flytekit.common import constants as _constants
@@ -223,7 +226,10 @@ def test_dispatch_execute_ignore(mock_write_to_file, mock_upload_dir, mock_get_d
         empty_literal_map = _literal_models.LiteralMap({}).to_flyte_idl()
         mock_load_proto.return_value = empty_literal_map
 
-        _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
+        # The system_entry_point decorator does different thing based on whether or not it's the
+        # first time it's called. Using it here to mimic the fact that _dispatch_execute is
+        # called by _execute_task, which also has a system_entry_point
+        system_entry_point(_dispatch_execute)(ctx, python_task, "inputs path", "outputs prefix")
         assert mock_write_to_file.call_count == 0
 
 
@@ -254,3 +260,85 @@ def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_ge
         mock_write_to_file.side_effect = verify_output
         _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
         assert mock_write_to_file.call_count == 1
+
+
+# This function collects outputs instead of writing them to a file.
+# See flytekit.common.utils.write_proto_to_file for the original
+def get_output_collector(results: OrderedDict):
+    def output_collector(proto, path):
+        results[path] = proto
+    return output_collector
+
+
+@mock.patch("flytekit.common.utils.load_proto_from_file")
+@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
+@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.common.utils.write_proto_to_file")
+def test_dispatch_execute_normal(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
+    # Just leave these here, mock them out so nothing happens
+    mock_get_data.return_value = True
+    mock_upload_dir.return_value = True
+
+    @task
+    def t1(a: int) -> str:
+        return f"string is: {a}"
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
+        input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5})
+        # print(input_literal_map)
+        mock_load_proto.return_value = input_literal_map.to_flyte_idl()
+
+        files = OrderedDict()
+        mock_write_to_file.side_effect = get_output_collector(files)
+        _dispatch_execute(ctx, t1, "inputs path", "outputs prefix")
+        assert len(files) == 1
+
+        # A successful run should've written an outputs file.
+        k = list(files.keys())[0]
+        assert "outputs.pb" in k
+
+        v = list(files.values())[0]
+        lm = _literal_models.LiteralMap.from_flyte_idl(v)
+        assert lm.literals["o0"].scalar.primitive.string_value == "string is: 5"
+
+
+@mock.patch("flytekit.common.utils.load_proto_from_file")
+@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
+@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.common.utils.write_proto_to_file")
+def test_dispatch_execute_user_error(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
+    # Just leave these here, mock them out so nothing happens
+    mock_get_data.return_value = True
+    mock_upload_dir.return_value = True
+
+    @task
+    def t1(a: int) -> str:
+        raise ValueError(f"some exception {a}")
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
+        input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5})
+        # print(input_literal_map)
+        mock_load_proto.return_value = input_literal_map.to_flyte_idl()
+
+        files = OrderedDict()
+        mock_write_to_file.side_effect = get_output_collector(files)
+        _dispatch_execute(ctx, t1, "inputs path", "outputs prefix")
+        assert len(files) == 1
+
+        # A successful run should've written an outputs file.
+        k = list(files.keys())[0]
+        assert "outputs.pb" in k
+
+        v = list(files.values())[0]
+        lm = _literal_models.LiteralMap.from_flyte_idl(v)
+        assert lm.literals["o0"].scalar.primitive.string_value == "string is: 5"

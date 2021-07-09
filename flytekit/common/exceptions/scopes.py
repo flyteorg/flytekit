@@ -137,7 +137,14 @@ def _is_base_context():
 @_decorator
 def system_entry_point(wrapped, instance, args, kwargs):
     """
-    Decorator for wrapping functions that enter a system context.  This should decorate every method a user might
+    The reason these two (see the user one below) decorators exist is to categorize non-Flyte exceptions at arbitrary
+    locations. For example, while there is a separate ecosystem of Flyte-defined user and system exceptions
+    (see the FlyteException hierarchy), and we can easily understand and categorize those, if flytekit comes upon
+    a random ValueError or other non-flytekit defined error, how would we know if it was a bug in flytekit versus an
+    error with user code or something the user called? The purpose of these decorators is to categorize those (see
+    the last case in the nested try/catch below.
+
+    Decorator for wrapping functions that enter a system context. This should decorate every method a user might
     call.  This will allow us to add differentiation between what is a user error and what is a system failure.
     Furthermore, we will clean the exception trace so as to make more sense to the user--allowing them to know if they
     should take action themselves or pass on to the platform owners.  We will dispatch metrics and such appropriately.
@@ -145,6 +152,9 @@ def system_entry_point(wrapped, instance, args, kwargs):
     try:
         _CONTEXT_STACK.append(_SYSTEM_CONTEXT)
         if _is_base_context():
+            # If this is the first time either of this decorator, or the one below is called, then we unwrap the
+            # exception. The first time these decorators are used is currently in the entrypoint.py file. The scoped
+            # exceptions are unwrapped because at that point, we want to return the underlying error to the user.
             try:
                 return wrapped(*args, **kwargs)
             except FlyteScopedException as ex:
@@ -158,6 +168,8 @@ def system_entry_point(wrapped, instance, args, kwargs):
                 # Re-raise from here.
                 raise FlyteScopedUserException(*_exc_info())
             except Exception:
+                # This is why this function exists - arbitrary exceptions that we don't know what to do with are
+                # interpreted as system errors.
                 # System error, raise full stack-trace all the way up the chain.
                 raise FlyteScopedSystemException(*_exc_info(), kind=_error_model.ContainerError.Kind.RECOVERABLE)
     finally:
@@ -167,6 +179,8 @@ def system_entry_point(wrapped, instance, args, kwargs):
 @_decorator
 def user_entry_point(wrapped, instance, args, kwargs):
     """
+    See the comment for the system_entry_point above as well.
+
     Decorator for wrapping functions that enter into a user context.  This will help us differentiate user-created
     failures even when it is re-entrant into system code.
 
@@ -178,6 +192,7 @@ def user_entry_point(wrapped, instance, args, kwargs):
     try:
         _CONTEXT_STACK.append(_USER_CONTEXT)
         if _is_base_context():
+            # See comment at this location for system_entry_point
             try:
                 return wrapped(*args, **kwargs)
             except FlyteScopedException as ex:
@@ -187,12 +202,15 @@ def user_entry_point(wrapped, instance, args, kwargs):
                 return wrapped(*args, **kwargs)
             except FlyteScopedException as scoped:
                 raise scoped
+            except _user_exceptions.FlyteRecoverableException:
+                raise FlyteScopedUserException(*_exc_info(), kind=)
             except _user_exceptions.FlyteUserException:
                 raise FlyteScopedUserException(*_exc_info())
             except _system_exceptions.FlyteSystemException:
                 raise FlyteScopedSystemException(*_exc_info())
             except Exception:
-                # Any non-platform raised exception is a user exception.
+                # This is why this function exists - arbitrary exceptions that we don't know what to do with are
+                # interpreted as user exceptions.
                 # This will also catch FlyteUserException re-raised by the system_entry_point handler
                 raise FlyteScopedUserException(*_exc_info())
     finally:
