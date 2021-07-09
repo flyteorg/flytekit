@@ -215,6 +215,11 @@ class SkippedConditionalSection(ConditionalSection):
         """
         if self._last_case:
             FlyteContextManager.pop_context()
+            curr = self.compute_output_set()
+            if curr is None:
+                return VoidPromise(self.name)
+            promises = [Promise(var=x, val=None) for x in curr]
+            return create_task_output(promises)
         return self._condition
 
 
