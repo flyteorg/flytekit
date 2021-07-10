@@ -16,7 +16,7 @@ SOURCES = {
     "flytekitplugins-kftensorflow": "kftensorflow",
     "flytekitplugins-pandera": "pandera",
     "flytekitplugins-dolt": "flytekit-dolt",
-    "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
+    "flytekitplugins-snowflake": "flytekit-snowflake",
     "flytekitplugins-athena": "flytekit-athena",
 }
 

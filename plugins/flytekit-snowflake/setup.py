@@ -4,16 +4,16 @@ PLUGIN_NAME = "snowflake"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.17.0,<1.0.0", "snowflake>=1.4.7"]
+plugin_requires = ["flytekit>=0.17.0,<1.0.0", "snowflake-connector-python[pandas]>=2.4.6"]
 
 __version__ = "0.0.0+develop"
 
 setup(
     name=microlib_name,
     version=__version__,
-    author="dolthub",
-    author_email="max@dolthub.com",
-    description="SQLAlchemy plugin for flytekit",
+    author="flyte",
+    author_email="admin@flyte.org",
+    description=f"{PLUGIN_NAME} plugin for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,

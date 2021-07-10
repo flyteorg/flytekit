@@ -3,7 +3,7 @@ from collections import OrderedDict
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
-from plugins.tests.sqlalchemy.test_task import tk as not_tk
+from plugins.tests.snowflake.test_task import tk as not_tk
 
 
 def test_sql_lhs():

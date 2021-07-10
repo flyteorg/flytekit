@@ -27,15 +27,15 @@ black==21.6b0
     # via papermill
 bleach==3.3.0
     # via nbconvert
-boto3==1.17.105
+boto3==1.17.109
     # via sagemaker-training
-botocore==1.20.105
+botocore==1.20.109
     # via
     #   boto3
     #   s3transfer
 certifi==2021.5.30
     # via requests
-cffi==1.14.5
+cffi==1.14.6
     # via
     #   bcrypt
     #   cryptography
@@ -72,7 +72,7 @@ entrypoints==0.3
     # via
     #   nbconvert
     #   papermill
-flyteidl==0.19.11
+flyteidl==0.19.12
     # via flytekit
 gevent==21.1.2
     # via sagemaker-training
@@ -123,7 +123,7 @@ keyring==23.0.1
     # via flytekit
 markupsafe==2.0.1
     # via jinja2
-marshmallow==3.12.1
+marshmallow==3.12.2
     # via
     #   dataclasses-json
     #   marshmallow-enum
@@ -273,7 +273,6 @@ six==1.16.0
     #   retrying
     #   sagemaker-training
     #   scantree
-    #   tenacity
     #   thrift
 sortedcontainers==2.4.0
     # via flytekit
@@ -281,7 +280,7 @@ statsd==3.3.0
     # via flytekit
 stringcase==1.2.0
     # via dataclasses-json
-tenacity==7.0.0
+tenacity==8.0.0
     # via papermill
 testpath==0.5.0
     # via nbconvert
