@@ -72,7 +72,7 @@ class SnowflakeTask(PythonCustomizedContainerTask[SnowflakeConfig], SQLTask[Snow
     def get_custom(self, settings: SerializationSettings) -> typing.Dict[str, typing.Any]:
         return {
             "query_template": self.query_template,
-            "config": self.task_config,
+            "config": self.task_config.to_json(),
         }
 
 
