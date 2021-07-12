@@ -1,6 +1,7 @@
 import typing
 from dataclasses import dataclass
 
+from dataclasses_json import dataclass_json
 from snowflake import connector
 
 from flytekit import current_context, kwtypes
@@ -13,6 +14,7 @@ from flytekit.models.security import Secret
 from flytekit.types.schema import FlyteSchema
 
 
+@dataclass_json
 @dataclass
 class SnowflakeConfig(object):
     """
