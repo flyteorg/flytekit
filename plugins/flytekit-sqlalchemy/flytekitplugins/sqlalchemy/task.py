@@ -18,16 +18,16 @@ from flytekit.types.schema import FlyteSchema
 class SQLAlchemyConfig(object):
     """
     Use this configuration to configure task. String should be standard
-    snowflake connector format
+    sqlalchemy connector format
     (https://docs.sqlalchemy.org/en/14/core/engines.html#database-urls).
     Database can be found:
       - within the container
       - or from a publicly accessible source
 
     Args:
-        uri: default snowflake connector
-        connect_args: snowflake kwarg overrides -- ex: host
-        secret_connect_args: flyte secrets loaded into snowflake connect args
+        uri: default sqlalchemy connector
+        connect_args: sqlalchemy kwarg overrides -- ex: host
+        secret_connect_args: flyte secrets loaded into sqlalchemy connect args
             -- ex: {"password": {"name": SECRET_NAME, "group": SECRET_GROUP}}
     """
 
@@ -44,7 +44,7 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
           referenced task type?
     """
 
-    _SQLALCHEMY_TASK_TYPE = "snowflake"
+    _SQLALCHEMY_TASK_TYPE = "sqlalchemy"
 
     def __init__(
         self,
@@ -61,7 +61,7 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
         super().__init__(
             name=name,
             task_config=task_config,
-            container_image="ghcr.io/flyteorg/flytekit:snowflake-6deb81af74ce8f3768553c188ab35660c717420a",
+            container_image="ghcr.io/flyteorg/flytekit:sqlalchemy-6deb81af74ce8f3768553c188ab35660c717420a",
             executor_type=SQLAlchemyTaskExecutor,
             task_type=self._SQLALCHEMY_TASK_TYPE,
             query_template=query_template,
