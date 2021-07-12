@@ -1871,13 +1871,11 @@ def register_files(
     for f in files:
         _click.echo(f"  {f}")
 
-    patches = None
-    if assumable_iam_role or kubernetes_service_account or output_location_prefix:
-        patches = {
-            _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
-                assumable_iam_role, kubernetes_service_account, output_location_prefix
-            )
-        }
+    patches = {
+        _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
+            assumable_iam_role, kubernetes_service_account, output_location_prefix
+        )
+    }
 
     _extract_and_register(host, insecure, project, domain, version, files, patches)
 
@@ -1978,15 +1976,12 @@ def fast_register_files(
         entity.template.container.args.extend(complete_args)
         return entity
 
-    patches = {_identifier_pb2.TASK: fast_register_task}
-    if assumable_iam_role or kubernetes_service_account or output_location_prefix:
-        patches.update(
-            {
-                _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
-                    assumable_iam_role, kubernetes_service_account, output_location_prefix
-                )
-            }
-        )
+    patches = {
+        _identifier_pb2.TASK: fast_register_task,
+        _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
+            assumable_iam_role, kubernetes_service_account, output_location_prefix
+        ),
+    }
 
     _extract_and_register(host, insecure, project, domain, version, pb_files, patches)
 
