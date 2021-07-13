@@ -1,2 +1,2 @@
-flytekit>=0.19.1
-sqlalchemy
+flytekit>=0.20.1
+flytekitplugins-sqlalchemy

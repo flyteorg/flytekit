@@ -24,7 +24,7 @@ class CronSchedule(_schedule_models.Schedule):
             cron_expression="0 10 * * ? *",
         )
 
-    See the :std:ref:`User Guide <cookbook:sphx_glr_auto_deployment_workflow_lp_schedules.py>` for further examples.
+    See the :std:ref:`User Guide <cookbook:cron schedules>` for further examples.
     """
 
     _VALID_CRON_ALIASES = [

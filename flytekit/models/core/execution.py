@@ -112,15 +112,22 @@ class TaskExecutionPhase(object):
 
 
 class ExecutionError(_common.FlyteIdlEntity):
-    def __init__(self, code, message, error_uri):
+    class ErrorKind(object):
+        UNKNOWN = _execution_pb2.ExecutionError.ErrorKind.UNKNOWN
+        USER = _execution_pb2.ExecutionError.ErrorKind.USER
+        SYSTEM = _execution_pb2.ExecutionError.ErrorKind.SYSTEM
+
+    def __init__(self, code: str, message: str, error_uri: str, kind: int):
         """
-        :param Text code:
-        :param Text message:
-        :param Text uri:
+        :param code:
+        :param message:
+        :param uri:
+        :param kind:
         """
         self._code = code
         self._message = message
         self._error_uri = error_uri
+        self._kind = kind
 
     @property
     def code(self):
@@ -143,6 +150,13 @@ class ExecutionError(_common.FlyteIdlEntity):
         """
         return self._error_uri
 
+    @property
+    def kind(self) -> int:
+        """
+        Enum value from ErrorKind
+        """
+        return self._kind
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.execution_pb2.ExecutionError
@@ -151,6 +165,7 @@ class ExecutionError(_common.FlyteIdlEntity):
             code=self.code,
             message=self.message,
             error_uri=self.error_uri,
+            kind=self.kind,
         )
 
     @classmethod
@@ -159,11 +174,7 @@ class ExecutionError(_common.FlyteIdlEntity):
         :param flyteidl.core.execution_pb2.ExecutionError p:
         :rtype: ExecutionError
         """
-        return cls(
-            code=p.code,
-            message=p.message,
-            error_uri=p.error_uri,
-        )
+        return cls(code=p.code, message=p.message, error_uri=p.error_uri, kind=p.kind)
 
 
 class TaskLog(_common.FlyteIdlEntity):

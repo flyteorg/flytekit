@@ -26,7 +26,11 @@ docker-image-py==0.1.10
     # via flytekit
 flyteidl==0.19.5
     # via flytekit
-flytekit==0.19.1
+flytekit==0.20.1
+    # via
+    #   -r requirements.in
+    #   flytekitplugins-sqlalchemy
+flytekitplugins-sqlalchemy==0.20.1
     # via -r requirements.in
 greenlet==1.1.0
     # via sqlalchemy
@@ -42,8 +46,11 @@ marshmallow==3.12.1
     # via
     #   dataclasses-json
     #   marshmallow-enum
+    #   marshmallow-jsonschema
 marshmallow-enum==1.5.1
     # via dataclasses-json
+marshmallow-jsonschema==0.12.0
+    # via flytekit
 mypy-extensions==0.4.3
     # via typing-inspect
 natsort==7.1.1
@@ -69,6 +76,8 @@ python-dateutil==2.8.1
     #   croniter
     #   flytekit
     #   pandas
+python-json-logger==2.0.1
+    # via flytekit
 pytimeparse==1.1.8
     # via flytekit
 pytz==2018.4
@@ -98,7 +107,7 @@ six==1.16.0
 sortedcontainers==2.4.0
     # via flytekit
 sqlalchemy==1.4.19
-    # via -r requirements.in
+    # via flytekitplugins-sqlalchemy
 statsd==3.3.0
     # via flytekit
 stringcase==1.2.0
