@@ -10,7 +10,6 @@ from flytekit.core.context_manager import SerializationSettings
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ShimTaskExecutor
 from flytekit.models import task as task_models
-from flytekit.models.security import Secret
 from flytekit.types.schema import FlyteSchema
 
 
@@ -27,7 +26,7 @@ class SnowflakeConfig(object):
     """
     account_name: str
     username: str
-    password: Secret
+    password: typing.Dict[str, str]
     db: str
     schema: str
     warehouse: str
@@ -81,8 +80,8 @@ class SnowflakeTaskExecutor(ShimTaskExecutor[SnowflakeTask]):
         if tt.custom["config"] is None:
             raise AssertionError("config must be set")
 
-        secret = tt.custom["config"].password
-        secret_value = current_context().secrets.get(secret.group, secret.key)
+        secret = tt.custom["config"]["password"]
+        secret_value = current_context().secrets.get(secret["group"], secret["key"])
 
         ctx = connector.connect(
             user=tt.custom["config"]["username"],
