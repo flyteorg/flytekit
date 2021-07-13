@@ -278,7 +278,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             )
             if is_fast_execution:
                 ctx = ctx.with_serialization_settings(
-                    SerializationSettings.new_builder()
+                    ctx.serialization_settings.new_builder()
                     .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
                     .build()
                 )
