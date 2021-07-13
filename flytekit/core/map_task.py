@@ -2,12 +2,14 @@
 Flytekit map tasks specify how to run a single task across a list of inputs. Map tasks themselves are constructed with
 a reference task as well as run-time parameters that limit execution concurrency and failure tolerations.
 """
+
 import os
 from contextlib import contextmanager
 from itertools import count
 from typing import Any, Dict, List, Optional, Type
 
 from flytekit.common.constants import SdkTaskType
+from flytekit.common.exceptions import scopes as exception_scopes
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, SerializationSettings
 from flytekit.core.interface import transform_interface_to_list_interface
@@ -168,7 +170,7 @@ class MapPythonTask(PythonTask):
         map_task_inputs = {}
         for k in self.interface.inputs.keys():
             map_task_inputs[k] = kwargs[k][task_index]
-        return self._run_task.execute(**map_task_inputs)
+        return exception_scopes.user_entry_point(self._run_task.execute)(**map_task_inputs)
 
     def _raw_execute(self, **kwargs) -> Any:
         """
@@ -190,7 +192,7 @@ class MapPythonTask(PythonTask):
             single_instance_inputs = {}
             for k in self.interface.inputs.keys():
                 single_instance_inputs[k] = kwargs[k][i]
-            o = self._run_task.execute(**single_instance_inputs)
+            o = exception_scopes.user_entry_point(self._run_task.execute)(**single_instance_inputs)
             if outputs_expected:
                 outputs.append(o)
 
@@ -206,16 +208,11 @@ def map_task(task_function: PythonFunctionTask, concurrency: int = None, min_suc
 
     Usage:
 
-    .. code-block:: python
-
-        @task
-        def my_mappable_task(a: int) -> str:
-            return str(a)
-
-        @workflows
-        def my_wf(x: typing.List[int]) -> typing.List[str]:
-             return flytekit.map(my_mappable_task, metadata=TaskMetadata(retries=1), requests=Resources(cpu="10M"),
-                                 concurrency=10, min_success_ratio=0.75)(a=x)
+    .. literalinclude:: ../../../tests/flytekit/unit/core/test_map_task.py
+       :start-after: # test_map_task_start
+       :end-before: # test_map_task_end
+       :language: python
+       :dedent: 4
 
     At run time, the underlying map task will be run for every value in the input collection. Task-specific attributes
     such as :py:class:`flytekit.TaskMetadata` and :py:class:`flytekit.Resources` are applied to individual instances

@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 import pytest
 
-from flytekit import LaunchPlan, map_task
+from flytekit import LaunchPlan, Resources, map_task
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
@@ -16,6 +16,29 @@ from flytekit.core.workflow import workflow
 def t1(a: int) -> str:
     b = a + 2
     return str(b)
+
+
+# This test is for documentation.
+def test_map_docs():
+    # test_map_task_start
+    @task
+    def my_mappable_task(a: int) -> str:
+        return str(a)
+
+    @workflow
+    def my_wf(x: typing.List[int]) -> typing.List[str]:
+        return map_task(
+            my_mappable_task,
+            metadata=TaskMetadata(retries=1),
+            requests=Resources(cpu="10M"),
+            concurrency=10,
+            min_success_ratio=0.75,
+        )(a=x)
+
+    # test_map_task_end
+
+    res = my_wf(x=[1, 2, 3])
+    assert res == ["1", "2", "3"]
 
 
 def test_map_task_types():

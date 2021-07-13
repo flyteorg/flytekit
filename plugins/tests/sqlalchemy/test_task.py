@@ -83,3 +83,35 @@ def test_workflow(sql_server):
         return my_task(df=sql_task(limit=limit))
 
     assert wf(limit=5) == 5
+
+
+def test_task_serialization():
+    sql_task = SQLAlchemyTask(
+        "test",
+        query_template="select TrackId, Name from tracks limit {{.inputs.limit}}",
+        inputs=kwtypes(limit=int),
+        output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
+        task_config=SQLAlchemyConfig(
+            uri=sql_server,
+        ),
+    )
+
+    tt = sql_task.serialize_to_model(sql_task.SERIALIZE_SETTINGS)
+
+    assert tt.container.args == [
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--resolver",
+        "flytekit.core.python_customized_container_task.default_task_template_resolver",
+        "--",
+        "{{.taskTemplatePath}}",
+        "flytekitplugins.sqlalchemy.task.SQLAlchemyTaskExecutor",
+    ]
+
+    assert tt.custom["query_template"] == "select TrackId, Name from tracks limit {{.inputs.limit}}"
+    assert tt.container.image != ""

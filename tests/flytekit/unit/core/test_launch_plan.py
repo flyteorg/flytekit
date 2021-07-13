@@ -24,6 +24,58 @@ serialization_settings = context_manager.SerializationSettings(
 )
 
 
+# This test is used for documentation.
+def test_lp_documentation():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        a = a + 2
+        return a, "world-" + str(a)
+
+    @workflow
+    def wf(a: int, c: str) -> (int, str):
+        x, y = t1(a=a)
+        return x, y
+
+    # fixed_and_default_start
+    launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="your_lp_name_1", default_inputs={"a": 3}, fixed_inputs={"c": "4"}
+    )
+    # fixed_and_default_end
+
+    # schedule_start
+    sched = CronSchedule("* * ? * * *", kickoff_time_input_arg="abc")
+    email_notif = notification.Email(
+        phases=[_execution_model.WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"]
+    )
+    launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="your_lp_name_2", schedule=sched, notifications=[email_notif]
+    )
+    # schedule_end
+
+    # auth_role_start
+    auth_role_model = AuthRole(assumable_iam_role="my:iam:role")
+    launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="your_lp_name_3",
+    )
+
+    labels_model = Labels({"label": "foo"})
+    annotations_model = Annotations({"annotate": "bar"})
+    launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="your_lp_name_4",
+        auth_role=auth_role_model,
+        labels=labels_model,
+        annotations=annotations_model,
+    )
+
+    raw_output_data_config = RawOutputDataConfig("s3://foo/output")
+    launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="your_lp_name_5", raw_output_data_config=raw_output_data_config
+    )
+    # auth_role_end
+
+
 def test_lp():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
@@ -64,13 +116,9 @@ def test_lp_each_parameter():
         return x, y
 
     # Fixed Inputs Parameter
-    fixed_lp = launch_plan.LaunchPlan.get_or_create(
-        workflow=wf, name="get_or_create_fixed", fixed_inputs={"a": 1, "c": "4"}
-    )
-    fixed_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_fixed")
-
+    launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_fixed", fixed_inputs={"a": 1, "c": "4"})
     with pytest.raises(AssertionError):
-        assert fixed_lp is fixed_lp1
+        launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_fixed")
 
     # Schedule Parameter
     obj = CronSchedule("* * ? * * *", kickoff_time_input_arg="abc")
@@ -80,26 +128,21 @@ def test_lp_each_parameter():
     assert schedule_lp is schedule_lp1
 
     # Default Inputs Parameter
-    default_lp = launch_plan.LaunchPlan.get_or_create(
-        workflow=wf, name="get_or_create_schedule", default_inputs={"a": 9}
-    )
-    default_lp1 = launch_plan.LaunchPlan.get_or_create(
-        workflow=wf, name="get_or_create_schedule", default_inputs={"a": 19}
-    )
-
-    # Validates both schedule and default inputs owing to the same launch plan
+    launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_schedule_def_inputs", default_inputs={"a": 9})
     with pytest.raises(AssertionError):
-        assert default_lp is default_lp1
+        launch_plan.LaunchPlan.get_or_create(
+            workflow=wf, name="get_or_create_schedule_def_inputs", default_inputs={"a": 19}
+        )
 
     # Notifications Parameter
     email_notif = notification.Email(
         phases=[_execution_model.WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"]
     )
     notification_lp = launch_plan.LaunchPlan.get_or_create(
-        workflow=wf, name="get_or_create_notification", notifications=email_notif
+        workflow=wf, name="get_or_create_notification", notifications=[email_notif]
     )
     notification_lp1 = launch_plan.LaunchPlan.get_or_create(
-        workflow=wf, name="get_or_create_notification", notifications=email_notif
+        workflow=wf, name="get_or_create_notification", notifications=[email_notif]
     )
 
     assert notification_lp is notification_lp1
@@ -107,11 +150,95 @@ def test_lp_each_parameter():
     # Auth Parameter
     auth_role_model1 = AuthRole(assumable_iam_role="my:iam:role")
     auth_role_model2 = _launch_plan_idl.Auth(kubernetes_service_account="my:service:account")
-    auth_lp = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_auth", auth_role=auth_role_model1)
-    auth_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_auth", auth_role=auth_role_model2)
-
+    launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_auth", auth_role=auth_role_model1)
     with pytest.raises(AssertionError):
-        assert auth_lp is auth_lp1
+        launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_auth", auth_role=auth_role_model2)
+
+    # Labels parameters
+    labels_model1 = Labels({"label": "foo"})
+    labels_model2 = Labels({"label": "foo"})
+    labels_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_labels", labels=labels_model1)
+    labels_lp2 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_labels", labels=labels_model2)
+    assert labels_lp1 is labels_lp2
+
+    # Annotations parameters
+    annotations_model1 = Annotations({"anno": "bar"})
+    annotations_model2 = Annotations({"anno": "bar"})
+    annotations_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_annotations", annotations=annotations_model1
+    )
+    annotations_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_annotations", annotations=annotations_model2
+    )
+    assert annotations_lp1 is annotations_lp2
+
+    # Raw output prefix parameters
+    raw_output_data_config1 = RawOutputDataConfig("s3://foo/output")
+    raw_output_data_config2 = RawOutputDataConfig("s3://foo/output")
+    raw_output_data_config_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_raw_output_prefix", raw_output_data_config=raw_output_data_config1
+    )
+    raw_output_data_config_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_raw_output_prefix", raw_output_data_config=raw_output_data_config2
+    )
+    assert raw_output_data_config_lp1 is raw_output_data_config_lp2
+
+    # Max parallelism
+    max_parallelism = 100
+    max_parallelism_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_max_parallelism",
+        max_parallelism=max_parallelism,
+    )
+    max_parallelism_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_max_parallelism",
+        max_parallelism=max_parallelism,
+    )
+    assert max_parallelism_lp1 is max_parallelism_lp2
+
+    # Labels parameters
+    labels_model1 = Labels({"label": "foo"})
+    labels_model2 = Labels({"label": "foo"})
+    labels_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_labels", labels=labels_model1)
+    labels_lp2 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_labels", labels=labels_model2)
+    assert labels_lp1 is labels_lp2
+
+    # Annotations parameters
+    annotations_model1 = Annotations({"anno": "bar"})
+    annotations_model2 = Annotations({"anno": "bar"})
+    annotations_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_annotations", annotations=annotations_model1
+    )
+    annotations_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_annotations", annotations=annotations_model2
+    )
+    assert annotations_lp1 is annotations_lp2
+
+    # Raw output prefix parameters
+    raw_output_data_config1 = RawOutputDataConfig("s3://foo/output")
+    raw_output_data_config2 = RawOutputDataConfig("s3://foo/output")
+    raw_output_data_config_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_raw_output_prefix", raw_output_data_config=raw_output_data_config1
+    )
+    raw_output_data_config_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf, name="get_or_create_raw_output_prefix", raw_output_data_config=raw_output_data_config2
+    )
+    assert raw_output_data_config_lp1 is raw_output_data_config_lp2
+
+    # Max parallelism
+    max_parallelism = 100
+    max_parallelism_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_max_parallelism",
+        max_parallelism=max_parallelism,
+    )
+    max_parallelism_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_max_parallelism",
+        max_parallelism=max_parallelism,
+    )
+    assert max_parallelism_lp1 is max_parallelism_lp2
 
     # Labels parameters
     labels_model1 = Labels({"label": "foo"})
@@ -164,8 +291,10 @@ def test_lp_each_parameter():
 
 
 def test_lp_all_parameters():
+    nt = typing.NamedTuple("OutputsBC", t1_int_output=int, c=str)
+
     @task
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+    def t1(a: int) -> nt:
         a = a + 2
         return a, "world-" + str(a)
 
@@ -195,7 +324,7 @@ def test_lp_all_parameters():
         default_inputs={"a": 3},
         fixed_inputs={"c": "4"},
         schedule=obj,
-        notifications=slack_notif,
+        notifications=[slack_notif],
         auth_role=auth_role_model,
         labels=labels,
         annotations=annotations,
@@ -207,7 +336,7 @@ def test_lp_all_parameters():
         default_inputs={"a": 3},
         fixed_inputs={"c": "4"},
         schedule=obj,
-        notifications=slack_notif,
+        notifications=[slack_notif],
         auth_role=auth_role_model,
         labels=labels,
         annotations=annotations,
@@ -216,22 +345,19 @@ def test_lp_all_parameters():
 
     assert lp is lp2
 
-    # Check for assertion error when a different scheduler is used
-    lp3 = launch_plan.LaunchPlan.get_or_create(
-        workflow=wf,
-        name="get_or_create",
-        default_inputs={"a": 3},
-        fixed_inputs={"c": "4"},
-        schedule=obj1,
-        notifications=slack_notif,
-        auth_role=auth_role_model,
-        labels=labels,
-        annotations=annotations,
-        raw_output_data_config=raw_output_data_config,
-    )
-
     with pytest.raises(AssertionError):
-        assert lp is lp3
+        launch_plan.LaunchPlan.get_or_create(
+            workflow=wf,
+            name="get_or_create",
+            default_inputs={"a": 3},
+            fixed_inputs={"c": "4"},
+            schedule=obj1,
+            notifications=[slack_notif],
+            auth_role=auth_role_model,
+            labels=labels,
+            annotations=annotations,
+            raw_output_data_config=raw_output_data_config,
+        )
 
 
 def test_lp_nodes():

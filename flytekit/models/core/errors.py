@@ -8,15 +8,18 @@ class ContainerError(_common.FlyteIdlEntity):
         NON_RECOVERABLE = _errors_pb2.ContainerError.NON_RECOVERABLE
         RECOVERABLE = _errors_pb2.ContainerError.RECOVERABLE
 
-    def __init__(self, code, message, kind):
+    def __init__(self, code: str, message: str, kind: int, origin: int):
         """
-        :param Text code: A succinct code about the error
-        :param Text message: Whatever message you want to surface about the error
-        :param int kind: A value from the ContainerError.Kind enum.
+        :param code: A succinct code about the error
+        :param message: Whatever message you want to surface about the error
+        :param kind: A value from the ContainerError.Kind enum.
+        :param origin: A value from ExecutionError.ErrorKind. Don't confuse this with error kind, even though
+          both are called kind.
         """
         self._code = code
         self._message = message
         self._kind = kind
+        self._origin = origin
 
     @property
     def code(self):
@@ -39,11 +42,18 @@ class ContainerError(_common.FlyteIdlEntity):
         """
         return self._kind
 
+    @property
+    def origin(self) -> int:
+        """
+        The origin of the error, an enum value from ExecutionError.ErrorKind
+        """
+        return self._origin
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.errors_pb2.ContainerError
         """
-        return _errors_pb2.ContainerError(code=self.code, message=self.message, kind=self.kind)
+        return _errors_pb2.ContainerError(code=self.code, message=self.message, kind=self.kind, origin=self.origin)
 
     @classmethod
     def from_flyte_idl(cls, proto):
@@ -51,7 +61,7 @@ class ContainerError(_common.FlyteIdlEntity):
         :param flyteidl.core.errors_pb2.ContainerError proto:
         :rtype: ContainerError
         """
-        return cls(proto.code, proto.message, proto.kind)
+        return cls(proto.code, proto.message, proto.kind, proto.origin)
 
 
 class ErrorDocument(_common.FlyteIdlEntity):

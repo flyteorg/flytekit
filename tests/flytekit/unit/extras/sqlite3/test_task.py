@@ -27,16 +27,20 @@ def test_task_static():
 
 
 def test_task_schema():
+    # sqlite3_start
+    DB_LOCATION = "https://cdn.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"
+
     sql_task = SQLite3Task(
         "test",
         query_template="select TrackId, Name from tracks limit {{.inputs.limit}}",
         inputs=kwtypes(limit=int),
         output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
         task_config=SQLite3Config(
-            uri=EXAMPLE_DB,
+            uri=DB_LOCATION,
             compressed=True,
         ),
     )
+    # sqlite3_end
 
     assert sql_task.output_columns is not None
     df = sql_task(limit=1)
