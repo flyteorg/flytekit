@@ -1,0 +1,2 @@
+flytekit>=0.20.1
+flytekitplugins-sqlalchemy
