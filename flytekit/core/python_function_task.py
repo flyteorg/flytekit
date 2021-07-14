@@ -22,13 +22,7 @@ from typing import Any, Callable, List, Optional, TypeVar, Union
 
 from flytekit.common.exceptions import scopes as exception_scopes
 from flytekit.core.base_task import Task, TaskResolverMixin
-from flytekit.core.context_manager import (
-    ExecutionState,
-    FastSerializationSettings,
-    FlyteContext,
-    FlyteContextManager,
-    SerializationSettings,
-)
+from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
 from flytekit.core.tracker import isnested, istestfunction
@@ -289,7 +283,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             )
             if is_fast_execution:
                 ctx = ctx.with_serialization_settings(
-                    SerializationSettings.new_builder()
+                    ctx.serialization_settings.new_builder()
                     .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
                     .build()
                 )
