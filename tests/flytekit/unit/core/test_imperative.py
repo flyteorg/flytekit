@@ -46,7 +46,7 @@ def test_imperative():
     # docs_start
     # Create the workflow with a name. This needs to be unique within the project and takes the place of the function
     # name that's used for regular decorated function-based workflows.
-    wb = Workflow(name="my.workflow")
+    wb = Workflow(name="my_workflow")
     # Adds a top level input to the workflow. This is like an input to a workflow function.
     wb.add_workflow_input("in1", str)
     # Call your tasks.
@@ -54,7 +54,7 @@ def test_imperative():
     wb.add_entity(t2)
     # This is analagous to a return statement
     wb.add_workflow_output("from_n0t1", node.outputs["o0"])
-    # docs_start
+    # docs_end
 
     assert wb(in1="hello") == "hello world"
 
@@ -66,10 +66,21 @@ def test_imperative():
     assert len(wf_spec.template.interface.inputs) == 1
     assert len(wf_spec.template.interface.outputs) == 1
 
+    # docs_equivalent_start
+    nt = typing.NamedTuple("wf_output", from_n0t1=str)
+
+    @workflow
+    def my_workflow(in1: str) -> nt:
+        x = t1(a=in1)
+        t2()
+        return (x,)
+
+    # docs_equivalent_end
+
     # Create launch plan from wf, that can also be serialized.
     lp = LaunchPlan.create("test_wb", wb)
     lp_model = get_serializable(OrderedDict(), serialization_settings, lp)
-    assert lp_model.spec.workflow_id.name == "my.workflow"
+    assert lp_model.spec.workflow_id.name == "my_workflow"
 
     wb2 = ImperativeWorkflow(name="parent.imperative")
     p_in1 = wb2.add_workflow_input("p_in1", str)
@@ -81,7 +92,7 @@ def test_imperative():
     assert wb2_spec.template.interface.inputs["p_in1"].type.simple is not None
     assert len(wb2_spec.template.interface.outputs) == 1
     assert wb2_spec.template.interface.outputs["parent_wf_output"].type.simple is not None
-    assert wb2_spec.template.nodes[0].workflow_node.sub_workflow_ref.name == "my.workflow"
+    assert wb2_spec.template.nodes[0].workflow_node.sub_workflow_ref.name == "my_workflow"
     assert len(wb2_spec.sub_workflows) == 1
 
     wb3 = ImperativeWorkflow(name="parent.imperative")

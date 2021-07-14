@@ -65,6 +65,31 @@ There is also only one :py:class:`LaunchPlan <flytekit.core.launch_plan.LaunchPl
 .. autoclass:: flytekit.core.launch_plan.LaunchPlan
    :noindex:
 
+******************
+Exception Handling
+******************
+Exception handling is done along two dimensions
+
+* System vs User: We try to differentiate between user exceptions and flytekit/system level exceptions. For instance, if flytekit
+  fails to upload its outputs, that's a system exception. If you the user raise a ``ValueError`` because of unexpected input
+  in the task code, that's a user exception.
+* Recoverable vs Non-recoverable: Recoverable errors will be retried and count against your task's retry count. Non-recoverable errors will just fail. System exceptions are by default recoverable (since there's a good chance it was just a blip).
+
+This is the user exception tree. Feel free to raise any of these exception classes. Note that the ``FlyteRecoverableException`` is the only recoverable one. All others, along with all non-flytekit defined exceptions, are non-recoverable.
+
+.. inheritance-diagram:: flytekit.common.exceptions.user.FlyteValidationException flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException flytekit.common.exceptions.user.FlyteValueException flytekit.common.exceptions.user.FlyteTimeout flytekit.common.exceptions.user.FlyteAuthenticationException flytekit.common.exceptions.user.FlyteRecoverableException
+   :parts: 1
+   :top-classes: Exception
+
+Implementation
+==============
+For those that want to dig a bit deeper, take a look at the :py:class:`flytekit.common.exceptions.scopes.FlyteScopedException` classes.
+There are also two decorators which you'll find interspersed througout the codebase.
+
+.. autofunction:: flytekit.common.exceptions.scopes.system_entry_point
+
+.. autofunction:: flytekit.common.exceptions.scopes.user_entry_point
+
 **************
 Call Patterns
 **************

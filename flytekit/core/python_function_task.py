@@ -20,6 +20,7 @@ from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
+from flytekit.common.exceptions import scopes as exception_scopes
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import (
     ExecutionState,
@@ -156,7 +157,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
         """
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
-            return self._task_function(**kwargs)
+            return exception_scopes.user_entry_point(self._task_function)(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             return self.dynamic_execute(self._task_function, **kwargs)
 
@@ -275,7 +276,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             updated_exec_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
             with FlyteContextManager.with_context(ctx.with_execution_state(updated_exec_state)):
                 logger.info("Executing Dynamic workflow, using raw inputs")
-                return task_function(**kwargs)
+                return exception_scopes.user_entry_point(task_function)(**kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             is_fast_execution = bool(
