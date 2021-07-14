@@ -1,7 +1,14 @@
 import abc as _abc
 
 
-class DataProxy(object, metaclass=_abc.ABCMeta):
+class DataProxy(object):
+    def __init__(self, name: str):
+        self._name = name
+
+    @property
+    def name(self) -> str:
+        return self._name
+
     def exists(self, path):
         """
         :param path:

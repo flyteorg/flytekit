@@ -34,6 +34,7 @@ class GCSProxy(_common_data.DataProxy):
             path passed in is correct. That is, an S3 path won't be passed in when running on GCP.
         """
         self._raw_output_data_prefix_override = raw_output_data_prefix_override
+        super(GCSProxy, self).__init__(name="gcs-gsutil")
 
     @property
     def raw_output_data_prefix_override(self) -> str:

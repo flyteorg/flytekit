@@ -14,6 +14,7 @@ from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserExce
 from flytekit.configuration import aws as _aws_config
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import common as _common_data
+from flytekit.interfaces.data.data_proxy import Data
 from flytekit.tools import subprocess as _subprocess
 
 if _sys.version_info >= (3,):
@@ -75,6 +76,7 @@ class AwsS3Proxy(_common_data.DataProxy):
             path (_get_shard_path), use this prefix instead as a base. This code assumes that the
             path passed in is correct. That is, an S3 path won't be passed in when running on GCP.
         """
+        super().__init__(name="awscli-s3")
         self._raw_output_data_prefix_override = raw_output_data_prefix_override
 
     @property
@@ -221,3 +223,6 @@ class AwsS3Proxy(_common_data.DataProxy):
         for _ in _six_moves.range(_aws_config.S3_SHARD_STRING_LENGTH.get()):
             shard += _flyte_random.random.choice(self._SHARD_CHARACTERS)
         return _aws_config.S3_SHARD_FORMATTER.get().format(shard)
+
+
+Data.register_data_plugin("s3:/", AwsS3Proxy())
