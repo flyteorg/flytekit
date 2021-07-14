@@ -141,7 +141,7 @@ def get_serializable_workflow(
             # We are currently not supporting reference workflows since these will
             # require a network call to flyteadmin to populate the WorkflowTemplate
             # object
-            if isinstance(n.flyte_entity, ReferenceEntity):
+            if isinstance(n.flyte_entity, ReferenceWorkflow):
                 raise Exception(
                     "Reference sub-workflows are currently unsupported. Use reference launch plans instead."
                 )

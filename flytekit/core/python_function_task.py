@@ -168,6 +168,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         In the case of dynamic workflows, this function will produce a workflow definition at execution time which will
         then proceed to be executed.
         """
+        # TODO: circular import
+        from flytekit.core.task import ReferenceTask
+
         if not ctx.compilation_state:
             cs = ctx.new_compilation_state("dynamic")
         else:
@@ -213,7 +216,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 # We are currently not supporting reference tasks since these will
                 # require a network call to flyteadmin to populate the TaskTemplate
                 # model
-                if isinstance(entity, ReferenceEntity):
+                if isinstance(entity, ReferenceTask):
                     raise Exception("Reference tasks are currently unsupported within dynamic tasks")
 
                 if not isinstance(model, task_models.TaskSpec):
