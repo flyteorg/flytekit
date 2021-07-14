@@ -100,10 +100,8 @@ def _should_register_with_admin(entity) -> bool:
     This is used in the code below. The translator.py module produces lots of objects (namely nodes and BranchNodes)
     that do not/should not be written to .pb file to send to admin. This function filters them out.
     """
-    return entity is not None and (
-        isinstance(entity, task_models.TaskSpec)
-        or isinstance(entity, _launch_plan_models.LaunchPlan)
-        or isinstance(entity, admin_workflow_models.WorkflowSpec)
+    return isinstance(
+        entity, (task_models.TaskSpec, _launch_plan_models.LaunchPlan, admin_workflow_models.WorkflowSpec)
     )
 
 
