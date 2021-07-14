@@ -61,7 +61,7 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
         super().__init__(
             name=name,
             task_config=task_config,
-            container_image="ghcr.io/flyteorg/flytekit:sqlalchemy-b7ccc96d46a239f12e0b65ad749d1e11d5d20f46",
+            container_image="ghcr.io/flyteorg/flytekit:sqlalchemy-6deb81af74ce8f3768553c188ab35660c717420a",
             executor_type=SQLAlchemyTaskExecutor,
             task_type=self._SQLALCHEMY_TASK_TYPE,
             query_template=query_template,
