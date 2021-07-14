@@ -21,13 +21,7 @@ from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
 from flytekit.core.base_task import TaskResolverMixin
-from flytekit.core.context_manager import (
-    ExecutionState,
-    FastSerializationSettings,
-    FlyteContext,
-    FlyteContextManager,
-    SerializationSettings,
-)
+from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
 from flytekit.core.tracker import isnested, istestfunction

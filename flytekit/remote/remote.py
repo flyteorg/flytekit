@@ -1,4 +1,6 @@
 """Module defining main Flyte backend entrypoint."""
+from __future__ import annotations
+
 import typing
 import uuid
 from collections import OrderedDict
@@ -16,22 +18,17 @@ except ImportError:
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.translator import FlyteControlPlaneEntity, FlyteLocalEntity, get_serializable
 from flytekit.configuration import auth as auth_config
-from flytekit.configuration.internal import DOMAIN, IMAGE, PROJECT, VERSION
+from flytekit.configuration.internal import DOMAIN, PROJECT, VERSION
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteContextManager, Image, ImageConfig, SerializationSettings, get_image_config
+from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings, get_image_config
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
+from flytekit.models import common as common_models
+from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models.admin.common import Sort
-from flytekit.models.admin.workflow import WorkflowSpec
-from flytekit.models.common import Annotations, AuthRole, Labels, NamedEntityIdentifier, RawOutputDataConfig, Notification
 from flytekit.models.core.identifier import ResourceType
 from flytekit.models.execution import ExecutionMetadata, ExecutionSpec, NotificationList
-from flytekit.models.interface import ParameterMap
-from flytekit.models.launch_plan import LaunchPlanMetadata
-from flytekit.models.literals import LiteralMap
-from flytekit.models.schedule import Schedule
-from flytekit.models.task import TaskSpec
 from flytekit.remote.identifier import Identifier, WorkflowExecutionIdentifier
 from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.tasks.task import FlyteTask
@@ -40,7 +37,7 @@ from flytekit.remote.workflow_execution import FlyteWorkflowExecution
 
 
 def _get_latest_version(list_entities_method: typing.Callable, project: str, domain: str, name: str):
-    named_entity = NamedEntityIdentifier(project, domain, name)
+    named_entity = common_models.NamedEntityIdentifier(project, domain, name)
     entity_list, _ = list_entities_method(
         named_entity,
         limit=1,
@@ -54,7 +51,7 @@ def _get_latest_version(list_entities_method: typing.Callable, project: str, dom
 
 def _get_entity_identifier(
     list_entities_method: typing.Callable,
-    resource_type: ResourceType,
+    resource_type: int,  # from flytekit.models.core.identifier.ResourceType
     project: str,
     domain: str,
     name: str,
@@ -67,23 +64,6 @@ def _get_entity_identifier(
         name,
         version if version is not None else _get_latest_version(list_entities_method, project, domain, name),
     )
-
-
-def _create_launch_plan(workflow: FlyteWorkflow, auth_role: AuthRole):
-    launch_plan = FlyteLaunchPlan(
-        workflow_id=workflow.id,
-        entity_metadata=LaunchPlanMetadata(schedule=Schedule(""), notifications=[]),
-        default_inputs=ParameterMap({}),
-        fixed_inputs=LiteralMap(literals={}),
-        labels=Labels({}),
-        annotations=Annotations({}),
-        auth_role=auth_role,
-        raw_output_data_config=RawOutputDataConfig(""),
-    )
-    launch_plan._id = Identifier(
-        ResourceType.LAUNCH_PLAN, workflow.id.project, workflow.id.domain, workflow.id.name, workflow.id.version
-    )
-    return launch_plan
 
 
 class FlyteRemote(object):
@@ -99,20 +79,37 @@ class FlyteRemote(object):
     """
 
     @staticmethod
-    def from_environment():
+    def from_environment(
+        project: typing.Optional[str] = None, domain: typing.Optional[str] = None, version: typing.Optional[str] = None
+    ) -> FlyteRemote:
         project = project or PROJECT.get()
         domain = domain or DOMAIN.get()
         version = version or VERSION.get()
-        client = SynchronousFlyteClient(platform_config.URL.get(), insecure=platform_config.INSECURE.get())
-        auth_role = AuthRole(
+        auth_role = common_models.AuthRole(
             assumable_iam_role=auth_config.ASSUMABLE_IAM_ROLE.get(),
             kubernetes_service_account=auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
         )
 
         raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get()
-        raw_output_data_config = RawOutputDataConfig(raw_output_data_prefix) if raw_output_data_prefix else None
+        raw_output_data_config = (
+            common_models.RawOutputDataConfig(raw_output_data_prefix) if raw_output_data_prefix else None
+        )
 
         image_config = get_image_config()
+
+        return FlyteRemote(
+            project=project,
+            domain=domain,
+            version=version,
+            flyte_admin_url=platform_config.URL.get(),
+            insecure=platform_config.INSECURE.get(),
+            auth_role=auth_role,
+            notifications=None,
+            labels=None,
+            annotations=None,
+            image_config=image_config,
+            raw_output_data_config=raw_output_data_config,
+        )
 
     def __init__(
         self,
@@ -121,12 +118,12 @@ class FlyteRemote(object):
         version: str,
         flyte_admin_url: str,
         insecure: bool,
-        auth_role: typing.Optional[AuthRole] = None,
-        notifications: typing.Optional[typing.List[Notification]] = None,
-        labels: typing.Optional[Labels] = None,
-        annotations: typing.Optional[Annotations] = None,
+        auth_role: typing.Optional[common_models.AuthRole] = None,
+        notifications: typing.Optional[typing.List[common_models.Notification]] = None,
+        labels: typing.Optional[common_models.Labels] = None,
+        annotations: typing.Optional[common_models.Annotations] = None,
         image_config: typing.Optional[ImageConfig] = None,
-        raw_output_data_config: typing.Optional[RawOutputDataConfig] = None,
+        raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None,
     ):
         remote_logger.warning("This feature is still in beta. Its interface and UX is subject to change.")
 
@@ -264,9 +261,28 @@ class FlyteRemote(object):
 
     @register.register
     def _(self, entity: LaunchPlan):
+        # See _get_patch_launch_plan_fn for what we need to patch. These are the elements of a launch plan
+        # that are not set at serialization time and are filled in either by flyte-cli register files or flytectl.
+        serialized_lp: launch_plan_models.LaunchPlan = self._serialize(entity)
+        serialized_lp.spec._auth_role = common_models.AuthRole(
+            self.auth_role.assumable_iam_role, self.auth_role.kubernetes_service_account
+        )
+        serialized_lp.spec._raw_output_data_config = RawOutputDataConfig(
+            self.raw_output_data_config.output_location_prefix
+        )
+
+        # Patch in labels and annotations
+        if self.labels:
+            for k, v in self.labels.values.items():
+                serialized_lp.spec._labels.values[k] = v
+
+        if self.annotations:
+            for k, v in self.annotations.values.items():
+                serialized_lp.spec._annotations.values[k] = v
+
         self.client.create_launch_plan(
             Identifier(ResourceType.LAUNCH_PLAN, self.project, self.domain, entity.name, self.version),
-            launch_plan_spec=self._serialize(entity),
+            launch_plan_spec=serialized_lp.spec,
         )
         return self.fetch_launch_plan(self.project, self.domain, entity.name, self.version)
 
@@ -325,9 +341,9 @@ class FlyteRemote(object):
     def _(self, entity, inputs: typing.Dict[str, typing.Any], execution_name=None):
         return self._execute(entity.id, inputs, execution_name)
 
-    @execute.register
-    def _(self, entity: FlyteWorkflow, inputs: typing.Dict[str, typing.Any], execution_name=None):
-        return self.execute(_create_launch_plan(entity, self.auth_role), inputs, execution_name)
+    # @execute.register
+    # def _(self, entity: FlyteWorkflow, inputs: typing.Dict[str, typing.Any], execution_name=None):
+    #     return self.execute(_create_launch_plan(entity, self.auth_role), inputs, execution_name)
 
     # Flytekit Entities
     # -----------------
