@@ -20,7 +20,7 @@ from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
-from flytekit.core.base_task import TaskResolverMixin
+from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import (
     ExecutionState,
     FastSerializationSettings,
@@ -201,20 +201,28 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                     }
                 )
 
-            # This is not great. The translator.py module is relied on here (see comment above) to get the tasks and
-            # subworkflow definitions. However we want to ensure that reference tasks and reference sub workflows are
-            # not used.
-            # TODO: Replace None with a class.
-            for value in model_entities.values():
-                if value is None:
-                    raise Exception(
-                        "Reference tasks are not allowed in the dynamic - a network call is necessary "
-                        "in order to retrieve the structure of the reference task."
+            # Gather underlying TaskTemplates that get referenced.
+            tts = []
+            for entity, model in model_entities.items():
+                # We only care about gathering tasks here. Launch plans are handled by
+                # propeller. Subworkflows should already be in the workflow spec.
+                if not isinstance(entity, Task):
+                    continue
+
+                # We are currently not supporting reference tasks since these will
+                # require a network call to flyteadmin to populate the TaskTemplate
+                # model
+                if isinstance(entity, ReferenceEntity):
+                    raise Exception("Reference tasks are currently unsupported within dynamic tasks")
+
+                if not isinstance(model, task_models.TaskSpec):
+                    raise TypeError(
+                        f"Unexpected type for serialized form of task. Expected {task_models.TaskSpec}, but got {type(model)}"
                     )
 
-            # Gather underlying TaskTemplates that get referenced. Launch plans are handled by propeller. Subworkflows
-            # should already be in the workflow spec.
-            tts = [v.template for v in model_entities.values() if isinstance(v, task_models.TaskSpec)]
+                # Store the valid task template so that we can pass it to the
+                # DynamicJobSpec later
+                tts.append(model.template)
 
             if ctx.serialization_settings.should_fast_serialize():
                 if (
