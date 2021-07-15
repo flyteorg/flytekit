@@ -1,15 +1,12 @@
 import typing
 from dataclasses import dataclass
 
-import pandas as pd
-from sqlalchemy import create_engine
+from flytekitplugins.sqlalchemy.executor import SQLAlchemyTaskExecutor
 
-from flytekit import current_context, kwtypes
+from flytekit import kwtypes
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.context_manager import SerializationSettings
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
-from flytekit.core.shim_task import ShimTaskExecutor
-from flytekit.models import task as task_models
 from flytekit.models.security import Secret
 from flytekit.types.schema import FlyteSchema
 
@@ -82,20 +79,3 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
             "connect_args": self.task_config.connect_args or {},
             "secret_connect_args": self.task_config.secret_connect_args,
         }
-
-
-class SQLAlchemyTaskExecutor(ShimTaskExecutor[SQLAlchemyTask]):
-    def execute_from_model(self, tt: task_models.TaskTemplate, **kwargs) -> typing.Any:
-        if tt.custom["secret_connect_args"] is not None:
-            for key, secret in tt.custom["secret_connect_args"].items():
-                value = current_context().secrets.get(secret.group, secret.key)
-                tt.custom["connect_args"][key] = value
-
-        engine = create_engine(tt.custom["uri"], connect_args=tt.custom["connect_args"], echo=False)
-        print(f"Connecting to db {tt.custom['uri']}")
-
-        interpolated_query = SQLAlchemyTask.interpolate_query(tt.custom["query_template"], **kwargs)
-        print(f"Interpolated query {interpolated_query}")
-        with engine.begin() as connection:
-            df = pd.read_sql_query(interpolated_query, connection)
-        return df

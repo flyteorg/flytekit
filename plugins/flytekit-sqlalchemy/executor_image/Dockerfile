@@ -20,5 +20,8 @@ RUN ${VENV}/bin/pip install -r /app/requirements.txt
 RUN cp ${VENV}/bin/flytekit_venv /usr/local/bin
 RUN chmod a+x /usr/local/bin/flytekit_venv
 
+# Copy code (the real executor) into the root direcdtory
+COPY flytekitplugins /app/
+
 # Enable the virtualenv for this image. Note this relies on the VENV variable we've set in this image.
 ENTRYPOINT ["/usr/local/bin/flytekit_venv"]
