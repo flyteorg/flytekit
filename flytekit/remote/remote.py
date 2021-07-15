@@ -1,12 +1,17 @@
 """Module defining main Flyte backend entrypoint."""
 from __future__ import annotations
 
+import os
 import typing
 import uuid
 from collections import OrderedDict
 from copy import deepcopy
+from datetime import datetime, timedelta
+
+from flyteidl.core import literals_pb2 as literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
+from flytekit.common import utils as common_utils
 from flytekit.configuration import platform as platform_config
 from flytekit.loggers import remote_logger
 
@@ -26,6 +31,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.models import common as common_models
 from flytekit.models import launch_plan as launch_plan_models
+from flytekit.models import literals as literal_models
 from flytekit.models.admin.common import Sort
 from flytekit.models.core.identifier import ResourceType
 from flytekit.models.execution import ExecutionMetadata, ExecutionSpec, NotificationList
@@ -376,6 +382,59 @@ class FlyteRemote(object):
         return self.execute(flyte_launchplan, inputs, execution_name)
 
     @singledispatchmethod
-    def wait_for_completion(self, execution):
+    def wait_for_completion(
+        self, execution, timeout: typing.Optional[timedelta] = None, poll_interval: typing.Optional[timedelta] = None
+    ):
         raise NotImplementedError(f"Execution type {type(execution)} cannot be waited upon.")
 
+    @wait_for_completion.register
+    def _(self, execution: FlyteWorkflowExecution, timeout, poll_interval):
+        poll_interval = poll_interval or _datetime.timedelta(seconds=30)
+        if timeout is None:
+            time_to_give_up = datetime.max
+        else:
+            time_to_give_up = datetime.utcnow() + timeout
+
+        # TODO: Assess closure for doneness
+        # TODO: Async this call and use a timeout
+        execution._closure = self.client.get_execution(execution.id).closure
+
+        raise user_exceptions.FlyteTimeout("Execution {} did not complete before timeout.".format(self))
+
+    @singledispatchmethod
+    def sync_io(
+        self, execution, timeout: typing.Optional[timedelta] = None, poll_interval: typing.Optional[timedelta] = None
+    ):
+        raise NotImplementedError(f"Execution type {type(execution)} cannot be waited upon.")
+
+    @sync_io.register
+    def _(self, execution: FlyteWorkflowExecution):
+        execution_data = self.client.get_execution_data(execution.id)
+
+        # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
+        input_map: literal_models.LiteralMap = literal_models.LiteralMap({})
+        if bool(execution_data.full_inputs.literals):
+            input_map = execution_data.full_inputs
+        elif execution_data.inputs.bytes > 0:
+            ctx = FlyteContextManager.current_context()
+            tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "inputs.pb")
+            ctx.file_access.get_data(execution_data.inputs.url, tmp_name)
+            input_map = literal_models.LiteralMap.from_flyte_idl(
+                common_utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
+            )
+
+        lp_id = execution.spec.launch_plan
+        if execution.spec.launch_plan.resource_type == ResourceType.TASK:
+            flyte_entity = self.fetch_task(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+        elif execution.spec.launch_plan.resource_type in {ResourceType.WORKFLOW, ResourceType.LAUNCH_PLAN}:
+            flyte_entity = self.fetch_workflow(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+        else:
+            raise user_exceptions.FlyteAssertion(
+                f"Resource type {execution.spec.launch_plan.resource_type} not recognized. Must be a TASK or WORKFLOW."
+            )
+
+        execution._inputs = TypeEngine.literal_map_to_kwargs(
+            ctx=FlyteContextManager.current_context(),
+            lm=input_map,
+            python_types=TypeEngine.guess_python_types(flyte_entity.interface.inputs),
+        )
