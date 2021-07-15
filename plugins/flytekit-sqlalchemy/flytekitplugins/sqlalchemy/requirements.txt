@@ -67,6 +67,8 @@ protobuf==3.17.3
     # via
     #   flyteidl
     #   flytekit
+psycopg2==2.9.1
+    # via -r requirements.in
 py==1.10.0
     # via retry
 pyarrow==3.0.0
