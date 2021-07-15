@@ -295,7 +295,7 @@ class FlyteRemote(object):
         flyte_id: Identifier,
         inputs: typing.Dict[str, typing.Any],
         execution_name: typing.Optional[str] = None,
-    ):
+    ) -> FlyteWorkflowExecution:
         execution_name = execution_name or "f" + uuid.uuid4().hex[:19]
         disable_all = self.notifications == []
         if disable_all:
@@ -315,7 +315,7 @@ class FlyteRemote(object):
                     ExecutionMetadata(
                         ExecutionMetadata.ExecutionMode.MANUAL,
                         "placeholder",  # TODO: get principle
-                        0,  # TODO: Detect nesting
+                        0,
                     ),
                     notifications=notifications,
                     disable_all=disable_all,
@@ -374,3 +374,8 @@ class FlyteRemote(object):
         except Exception:
             flyte_launchplan: FlyteLaunchPlan = self.register(entity)
         return self.execute(flyte_launchplan, inputs, execution_name)
+
+    @singledispatchmethod
+    def wait_for_completion(self, execution):
+        raise NotImplementedError(f"Execution type {type(execution)} cannot be waited upon.")
+
