@@ -27,10 +27,6 @@ docker-image-py==0.1.10
 flyteidl==0.19.5
     # via flytekit
 flytekit==0.20.1
-    # via
-    #   -r requirements.in
-    #   flytekitplugins-sqlalchemy
-flytekitplugins-sqlalchemy==0.20.1
     # via -r requirements.in
 greenlet==1.1.0
     # via sqlalchemy
@@ -107,7 +103,7 @@ six==1.16.0
 sortedcontainers==2.4.0
     # via flytekit
 sqlalchemy==1.4.19
-    # via flytekitplugins-sqlalchemy
+    # via -r requirements.in
 statsd==3.3.0
     # via flytekit
 stringcase==1.2.0
