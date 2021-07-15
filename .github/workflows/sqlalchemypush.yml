@@ -24,7 +24,7 @@ jobs:
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
           image_name: ${{ github.repository_owner }}/flytekit
-          image_tag: sqlalchemy-${{ github.sha }},sqlalchemy-${{ github.event.ref }}
+          image_tag: sqlalchemy-6deb81af74ce8f3768553c188ab35660c717420a,sqlalchemy-${{ github.event.ref }}
           registry: ghcr.io
           build_extra_args: "--compress=true --build-arg=tag=ghcr.io/${{ github.repository_owner }}/flytekit:sqlalchemy-${{ github.sha }}"
           context: "./plugins/flytekit-sqlalchemy/flytekitplugins/"
