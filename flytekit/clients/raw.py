@@ -521,6 +521,15 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.CreateExecution(create_execution_request, metadata=self._metadata)
 
+    @_handle_rpc_error()
+    def recover_execution(self, recover_execution_request):
+        """
+        This will create an execution for the given execution spec.
+        :param flyteidl.admin.execution_pb2.ExecutionRecoverRequest recover_execution_request:
+        :rtype: flyteidl.admin.execution_pb2.ExecutionRecoverResponse
+        """
+        return self._stub.RecoverExecution(recover_execution_request, metadata=self._metadata)
+
     @_handle_rpc_error(retry=True)
     def get_execution(self, get_object_request):
         """

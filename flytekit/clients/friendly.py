@@ -558,6 +558,17 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             .id
         )
 
+    def recover_execution(self, id, name: str = None):
+        """
+        :param flytekit.common.core.identifier.WorkflowExecutionIdentifier id:
+        :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier
+        """
+        return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
+            super(SynchronousFlyteClient, self)
+            .recover_execution(_execution_pb2.ExecutionRecoverRequest(id=id.to_flyte_idl(), name=name))
+            .id
+        )
+
     def get_execution(self, id):
         """
         :param flytekit.common.core.identifier.WorkflowExecutionIdentifier id:
