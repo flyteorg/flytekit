@@ -5,6 +5,7 @@ import re
 from typing import Callable, Dict, List, Optional, TypeVar
 
 from flytekit.common.tasks.raw_container import _get_container_definition
+from flytekit.common.utils import Docstring
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings
 from flytekit.core.resources import Resources, ResourceSpec
@@ -37,6 +38,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         environment: Optional[Dict[str, str]] = None,
         task_resolver: Optional[TaskResolverMixin] = None,
         secret_requests: Optional[List[Secret]] = None,
+        docstring: Docstring = None,
         **kwargs,
     ):
         """
@@ -73,6 +75,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
             name=name,
             task_config=task_config,
             security_ctx=sec_ctx,
+            docstring=docstring,
             **kwargs,
         )
         self._container_image = container_image

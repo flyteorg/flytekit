@@ -12,6 +12,7 @@ from flytekit.core.interface import (
 )
 from flytekit.models.core import types as _core_types
 from flytekit.types.file import FlyteFile
+from flytekit.common.utils import Docstring
 
 
 def test_extract_only():
@@ -175,3 +176,26 @@ def test_parameters_and_defaults():
     assert params.parameters["a"].default.scalar.primitive.integer == 7
     assert not params.parameters["b"].required
     assert params.parameters["b"].default.scalar.primitive.string_value == "eleven"
+
+
+def test_docstring():
+    ctx = context_manager.FlyteContext.current_context()
+
+    def z(a: int, b: str) -> typing.Tuple[int, str]:
+        """
+        ramen
+
+            indented ramen
+
+        :param a: ramen a
+        :param b: ramen b
+        :return: ramen ret
+        """
+        ...
+
+
+    our_interface = transform_signature_to_interface(inspect.signature(z))
+    docstring = Docstring(z.__doc__)
+    params = transform_inputs_to_parameters(ctx, our_interface, docstring.get_input_descriptions())
+    assert params.parameters["a"].var.description == "ramen a"
+    assert params.parameters["b"].var.description == "ramen b"

@@ -6,6 +6,7 @@ from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.tracker import isnested, istestfunction
 from tests.flytekit.unit.core import tasks
+from flytekit.common.utils import Docstring
 
 
 def foo():
@@ -74,6 +75,11 @@ def test_get_registerable_container_image_no_images():
 
 def test_py_func_task_get_container():
     def foo(i: int):
+        """
+        fn description
+        :param i: input i is important
+        :return: return value is empty
+        """
         pass
 
     default_img = Image(name="default", fqn="xyz.com/abc", tag="tag1")
@@ -96,3 +102,20 @@ def test_metadata():
     metadata = foo.metadata
     assert metadata.cache is True
     assert metadata.cache_version == "1.0"
+
+
+def test_docstring():
+    docstring = Docstring("""
+    :param Text module: a text module
+    :param key: ramen
+    :param empty: 
+    :param int entity_type: _identifier.ResourceType enum
+    :rtype: Text
+    :return: important return var description
+    """)
+
+    assert docstring.get_input_descriptions()['module'] == 'a text module'
+    assert docstring.get_input_descriptions()['key'] == 'ramen'
+    assert docstring.get_input_descriptions()['entity_type'] == '_identifier.ResourceType enum'
+    assert 'empty' not in docstring.get_input_descriptions()
+    assert docstring.get_output_description() == 'important return var description'

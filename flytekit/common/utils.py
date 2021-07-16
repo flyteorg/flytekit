@@ -5,6 +5,8 @@ import tempfile as _tempfile
 import time as _time
 from hashlib import sha224 as _sha224
 from pathlib import Path
+import docutils.parsers.rst
+from docutils.nodes import GenericNodeVisitor
 
 import flytekit as _flytekit
 from flytekit.configuration import sdk as _sdk_config
@@ -222,3 +224,54 @@ def fqdn_safe(module, key, entity_type=None):
     :rtype: Text
     """
     return _dnsify(fqdn(module, key, entity_type=entity_type))
+
+
+class Docstring(object):
+    def __init__(self, raw_doc):  # fn.__doc__
+        parser = docutils.parsers.rst.Parser()
+        components = (docutils.parsers.rst.Parser,)
+        settings = docutils.frontend.OptionParser(components=components).get_default_values()
+        document = docutils.utils.new_document('<rst-doc>', settings=settings)
+        parser.parse(raw_doc, document)
+        visitor = FieldVisitor(document)
+        document.walk(visitor)
+        fields = visitor.get_fields_as_dict()
+        self._inputs = {k[6:].split()[-1]: v for k, v in fields.items() if k.startswith('param ')}
+        outputs = [v for k, v in fields.items() if k.startswith('return')]
+        # not sure how to deal with return value for now
+        if len(outputs) > 0:
+            self._output = outputs[0]
+        else:
+            self._output = None
+
+    def get_input_descriptions(self):
+        return self._inputs
+
+    def get_output_description(self):
+        return self._output
+
+
+class FieldVisitor(GenericNodeVisitor):
+    def __init__(self, document):
+        super().__init__(document)
+        self._field_names = []
+        self._field_bodies = []
+
+    def default_departure(self, node):
+        pass
+
+    def visit_field_name(self, node):
+        # assume raw text for now
+        self._field_names.append(node[0].astext())
+
+    def visit_field_body(self, node):
+        # assume raw text for now
+        # with none check
+        self._field_bodies.append(node[0].astext() if len(node) > 0 else None)
+
+    def default_visit(self, node):
+        pass
+
+    def get_fields_as_dict(self):
+        # Use key name as default if value is None
+        return {k: v if v else k for k, v in zip(self._field_names, self._field_bodies)}

@@ -289,6 +289,11 @@ def test_dispatch_execute_normal(mock_write_to_file, mock_upload_dir, mock_get_d
 
     @task
     def t1(a: int) -> str:
+        """
+        need to move this docstring into a more suited unit test suite
+        :param a: a number to be converted
+        :return: detailed description about the string
+        """
         return f"string is: {a}"
 
     ctx = context_manager.FlyteContext.current_context()

@@ -43,6 +43,7 @@ from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
+from flytekit.common.utils import Docstring
 
 T = TypeVar("T")
 
@@ -127,6 +128,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             interface=mutated_interface,
             task_config=task_config,
             task_resolver=task_resolver,
+            docstring=Docstring(task_function.__doc__),
             **kwargs,
         )
 

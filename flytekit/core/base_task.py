@@ -25,6 +25,7 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Uni
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
+from flytekit.common.utils import Docstring
 from flytekit.core.context_manager import (
     BranchEvalMode,
     ExecutionState,
@@ -372,6 +373,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         task_config: T,
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
+        docstring: Docstring = None,
         **kwargs,
     ):
         """
@@ -389,7 +391,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         super().__init__(
             task_type=task_type,
             name=name,
-            interface=transform_interface_to_typed_interface(interface),
+            interface=transform_interface_to_typed_interface(interface, docstring),
             **kwargs,
         )
         self._python_interface = interface if interface else Interface()
