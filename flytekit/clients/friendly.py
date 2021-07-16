@@ -560,7 +560,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
     def recover_execution(self, id, name: str = None):
         """
+        Recreates a previously-run workflow execution that will only start executing from the last known failure point.
         :param flytekit.common.core.identifier.WorkflowExecutionIdentifier id:
+        :param name str: Optional name to assign to the newly created execution.
         :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier
         """
         return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(

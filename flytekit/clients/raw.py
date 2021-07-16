@@ -524,7 +524,7 @@ class RawSynchronousFlyteClient(object):
     @_handle_rpc_error()
     def recover_execution(self, recover_execution_request):
         """
-        This will create an execution for the given execution spec.
+        This will recreate an execution with the same spec as the one belonging to the given execution identifier.
         :param flyteidl.admin.execution_pb2.ExecutionRecoverRequest recover_execution_request:
         :rtype: flyteidl.admin.execution_pb2.ExecutionRecoverResponse
         """
