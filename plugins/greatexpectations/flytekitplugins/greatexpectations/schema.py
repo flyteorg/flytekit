@@ -69,7 +69,7 @@ class GEConfig(object):
     * When using FlyteFile for remote paths
     This is because base directory which has the dataset file 'must' be given in GE's config file
     """
-    local_file_path: str = (None,)
+    local_file_path: str = None
     checkpoint_params: typing.Optional[typing.Dict[str, typing.Union[str, typing.List[str]]]] = None
     batchrequest_config: BatchConfig = None
     data_context: str = "./great_expectations"
