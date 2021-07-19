@@ -3,7 +3,6 @@ import logging
 import os
 import typing
 from dataclasses import dataclass
-from distutils import dir_util
 from typing import Type
 
 import great_expectations as ge
@@ -156,7 +155,7 @@ class GETypeTransformer(TypeTransformer[GEType]):
                 raise ValueError("local_file_path is missing!")
 
             # copy parquet file to user-given directory
-            dir_util.copy_tree(lv.scalar.schema.uri, ge_conf.local_file_path)
+            ctx.file_access.download_directory(lv.scalar.schema.uri, ge_conf.local_file_path)
 
             temp_dataset = os.path.basename(ge_conf.local_file_path)
 
