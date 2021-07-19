@@ -33,6 +33,7 @@ from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkW
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import images, internal
 from flytekit.configuration import sdk as _sdk_config
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models.core import identifier as _identifier
@@ -414,7 +415,7 @@ class FlyteContext(object):
     Please do not confuse this object with the :py:class:`flytekit.ExecutionParameters` object.
     """
 
-    file_access: Optional[_data_proxy.FileAccessProvider]
+    file_access: Optional[FileAccessProvider]
     level: int = 0
     flyte_client: Optional[friendly_client.SynchronousFlyteClient] = None
     compilation_state: Optional[CompilationState] = None
