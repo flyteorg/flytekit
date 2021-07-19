@@ -150,7 +150,7 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
             # FlyteSchema
             if type(dataset) is FlyteSchema:
                 # copy parquet file to user-given directory
-                dir_util.copy_tree(dataset.remote_path, self._local_file_path)
+                dir_util.copy_tree(dataset.local_path, self._local_file_path)
 
             # DataFrame (Pandas, Spark, etc.)
             else:
