@@ -80,8 +80,8 @@ def test_invalid_ge_batchrequest_pandas_config():
         ),
     )
 
-    # Capture "ValueError: Got 0 batches instead of a single batch."
-    with pytest.raises(ValueError, match=r".*0 batches.*"):
+    # Capture IndexError
+    with pytest.raises(IndexError):
         task_object.execute(data="my_assets")
 
 

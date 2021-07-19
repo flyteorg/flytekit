@@ -140,8 +140,8 @@ def test_invalid_ge_schema_batchrequest_pandas_config():
     def my_wf():
         my_task(directory="my_assets")
 
-    # Capture "ValueError: Got 0 batches instead of a single batch."
-    with pytest.raises(ValueError, match=r".*0 batches.*"):
+    # Capture IndexError
+    with pytest.raises(IndexError):
         my_wf()
 
 
