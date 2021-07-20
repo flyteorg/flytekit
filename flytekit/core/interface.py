@@ -189,7 +189,10 @@ def transform_interface_to_typed_interface(
         return None
     input_descriptions, output_description = get_variable_descriptions(docstring)
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
-    outputs_map = transform_variable_map(interface.outputs)
+    output_description_dict = {}
+    if output_description and len(interface.output_names) >= 1:
+        output_description_dict[next(iter(interface.output_names))] = output_description
+    outputs_map = transform_variable_map(interface.outputs, output_description_dict)
     return _interface_models.TypedInterface(inputs_map, outputs_map)
 
 
