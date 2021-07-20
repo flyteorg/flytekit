@@ -1,4 +1,5 @@
 import pytest
+from sphinx.ext.napoleon import NumpyDocstring, GoogleDocstring
 
 from flytekit import task
 from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings
@@ -119,3 +120,94 @@ def test_docstring():
     assert docstring.get_input_descriptions()['entity_type'] == '_identifier.ResourceType enum'
     assert 'empty' not in docstring.get_input_descriptions()
     assert docstring.get_output_description() == 'important return var description'
+
+
+def test_numpy_docstring():
+#     docstring = """
+# Return (x1 == x2) element-wise.
+#
+# Unlike `numpy.equal`, this comparison is performed by first
+# stripping whitespace characters from the end of the string.  This
+# behavior is provided for backward-compatibility with numarray.
+#
+# Parameters
+# ----------
+# x1, x2 : array_like of str or unicode
+#     Input arrays of the same shape.
+#
+# Returns
+# -------
+# out : ndarray
+#     Output array of bools.
+#
+# See Also
+# --------
+# not_equal, greater_equal, less_equal, greater, less
+# """
+#     from sphinx.ext.napoleon import Config
+#     config = Config(napoleon_use_param=True, napoleon_use_rtype=True)
+#     npds = NumpyDocstring(docstring, config)
+#     print(npds)
+#
+#     config = Config(napoleon_use_param=True, napoleon_use_rtype=True)
+#     docstring = '''One line summary.
+#
+# Extended description.
+#
+# Args:
+#     arg1(int): Description of `arg1`
+#     arg2(str): Description of `arg2`
+# Returns:
+#     str: Description of return value.
+# '''
+#     print(GoogleDocstring(docstring, config))
+
+    from docstring_parser import parse
+    docstring = '''
+Short description
+
+Long description spanning multiple lines
+- First line
+- Second line
+- Third line
+
+:param name: description 1
+:param int priority: description 2
+:param str sender: description 3
+:raises ValueError: if name is invalid
+'''
+    docstring = """
+Return (x1 == x2) element-wise.
+
+Unlike `numpy.equal`, this comparison is performed by first
+stripping whitespace characters from the end of the string.  This
+behavior is provided for backward-compatibility with numarray.
+
+Parameters
+----------
+x1, x2 : array_like of str or unicode
+    Input arrays of the same shape.
+
+Returns
+-------
+out : ndarray
+    Output array of bools.
+
+See Also
+--------
+not_equal, greater_equal, less_equal, greater, less
+"""
+    docstring = '''One line summary.
+
+Extended description.
+
+Args:
+    arg1(int): Description of `arg1`
+    arg2(str): Description of `arg2`
+Returns:
+    str: Description of return value.
+'''
+    docstring = parse(docstring)
+    print(docstring.long_description)
+    print(docstring.params[1].arg_name)
+    print(docstring.returns.type_name)

@@ -373,7 +373,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         task_config: T,
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
-        docstring: Docstring = None,
+        docstring: str = None,
         **kwargs,
     ):
         """

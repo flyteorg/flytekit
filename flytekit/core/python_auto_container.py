@@ -38,7 +38,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         environment: Optional[Dict[str, str]] = None,
         task_resolver: Optional[TaskResolverMixin] = None,
         secret_requests: Optional[List[Secret]] = None,
-        docstring: Docstring = None,
+        docstring: str = None,
         **kwargs,
     ):
         """

@@ -6,9 +6,9 @@ import inspect
 import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
+from docstring_parser import parse
 
 from flytekit.common.exceptions.user import FlyteValidationException
-from flytekit.common.utils import Docstring
 from flytekit.core import context_manager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
@@ -180,17 +180,18 @@ def transform_inputs_to_parameters(
 
 def transform_interface_to_typed_interface(
     interface: typing.Optional[Interface],
-    docstring: Docstring = None,
+    docstring: str = None,
 ) -> typing.Optional[_interface_models.TypedInterface]:
     """
     Transform the given simple python native interface to FlyteIDL's interface
     """
     if interface is None:
         return None
-    input_descriptions = docstring.get_input_descriptions()
+    input_descriptions, output_description = get_variable_descriptions(docstring)
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
     outputs_map = transform_variable_map(interface.outputs)
     return _interface_models.TypedInterface(inputs_map, outputs_map)
+
 
 
 def transform_types_to_list_of_type(m: Dict[str, type]) -> Dict[str, type]:
@@ -348,3 +349,8 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
         # Handle all other single return types
         logger.debug(f"Task returns unnamed native tuple {return_annotation}")
         return {default_output_name(): return_annotation}
+
+
+def get_variable_descriptions(docstring: str) -> Tuple[Dict[str, str], Optional[str]]:
+    parsed_docstring = parse(docstring)
+    return {p.arg_name: p.description for p in parsed_docstring.params}, parsed_docstring.returns.description

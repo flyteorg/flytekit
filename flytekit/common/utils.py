@@ -225,7 +225,7 @@ def fqdn_safe(module, key, entity_type=None):
     """
     return _dnsify(fqdn(module, key, entity_type=entity_type))
 
-
+# todo delete this
 class Docstring(object):
     def __init__(self, raw_doc):  # fn.__doc__
         parser = docutils.parsers.rst.Parser()
