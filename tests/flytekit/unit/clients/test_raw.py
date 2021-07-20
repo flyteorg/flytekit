@@ -65,7 +65,7 @@ def test_update_project(mock_channel, mock_admin):
     client = _RawSynchronousFlyteClient(url="a.b.com", insecure=True)
     project = _project_pb2.Project(id="foo", name="name", description="description", state=_project_pb2.Project.ACTIVE)
     client.update_project(project)
-    mock_admin.AdminServiceStub().UpdateProject.assert_called_with(project)
+    mock_admin.AdminServiceStub().UpdateProject.assert_called_with(project, metadata=None)
 
 
 @mock.patch("flytekit.clients.raw._admin_service")

@@ -679,7 +679,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.project_pb2.Project project:
         :rtype: flyteidl.admin.project_pb2.ProjectUpdateResponse
         """
-        return self._stub.UpdateProject(project)
+        return self._stub.UpdateProject(project, metadata=self._metadata)
 
     ####################################################################################################################
     #
