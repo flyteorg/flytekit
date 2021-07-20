@@ -85,10 +85,10 @@ class GEType(object):
     """
 
     @classmethod
-    def config(cls) -> typing.Tuple[typing.Type, typing.Type[GEConfig]]:
+    def config(cls) -> typing.Tuple[Type, Type[GEConfig]]:
         return (str, GEConfig(data_source="", data_connector="", expectation_suite=""))
 
-    def __class_getitem__(cls, config: typing.Tuple[typing.Type, typing.Type[GEConfig]]) -> typing.Any:
+    def __class_getitem__(cls, config: typing.Tuple[Type, Type[GEConfig]]) -> typing.Any:
         if not (isinstance(config, tuple) or len(config) != 2):
             raise AssertionError("GEType must have both datatype and GEConfig")
 
@@ -96,7 +96,7 @@ class GEType(object):
             __origin__ = GEType
 
             @classmethod
-            def config(cls) -> typing.Tuple[typing.Type, typing.Type[GEConfig]]:
+            def config(cls) -> typing.Tuple[Type, Type[GEConfig]]:
                 return config
 
         return _GETypeClass
@@ -107,11 +107,18 @@ class GETypeTransformer(TypeTransformer[GEType]):
         super().__init__(name="GE Transformer", t=GEType)
 
     @staticmethod
-    def get_config(t: typing.Type[GEType]) -> typing.Tuple[typing.Type, typing.Type[GEConfig]]:
+    def get_config(t: Type[GEType]) -> typing.Tuple[Type, Type[GEConfig]]:
         return t.config()
 
-    def get_literal_type(self, t: Type[str]) -> LiteralType:
-        return LiteralType(simple=_type_models.SimpleType.STRUCT, metadata={})
+    def get_literal_type(self, t: Type[GEType]) -> LiteralType:
+        datatype = GETypeTransformer.get_config(t)[0]
+
+        if issubclass(datatype, str):
+            return LiteralType(simple=_type_models.SimpleType.STRING, metadata={})
+        elif issubclass(datatype, FlyteFile):
+            return FlyteFilePathTransformer().get_literal_type(datatype)
+        elif issubclass(datatype, FlyteSchema):
+            return FlyteSchemaTransformer().get_literal_type(datatype)
 
     def to_literal(
         self,
