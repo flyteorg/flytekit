@@ -130,9 +130,9 @@ class GETypeTransformer(TypeTransformer[GEType]):
         datatype = GETypeTransformer.get_config(python_type)[0]
 
         if issubclass(datatype, FlyteSchema):
-            return FlyteSchemaTransformer().to_literal(ctx, python_val, FlyteSchema, expected)
+            return FlyteSchemaTransformer().to_literal(ctx, python_val, datatype, expected)
         elif issubclass(datatype, FlyteFile):
-            return FlyteFilePathTransformer().to_literal(ctx, python_val, FlyteFile, expected)
+            return FlyteFilePathTransformer().to_literal(ctx, python_val, datatype, expected)
 
         return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val)))
 
