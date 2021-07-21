@@ -362,7 +362,9 @@ def get_variable_descriptions(docstring: str) -> Tuple[Dict[str, str], Optional[
     :return: Dict of input parameter names mapping to their descriptions, and dict of output names mapping to their descriptions.
     """
     parsed_docstring = parse(docstring)
-    return {p.arg_name: p.description for p in parsed_docstring.params}, {p.return_name: p.description for p in parsed_docstring.many_returns}
+    return {p.arg_name: p.description for p in parsed_docstring.params}, {
+        p.return_name: p.description for p in parsed_docstring.many_returns
+    }
 
 
 def remap_shared_output_descriptions(output_descriptions: Dict[str, str], outputs: Dict[str, Type]) -> Dict[str, str]:
