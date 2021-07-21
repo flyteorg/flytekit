@@ -207,7 +207,7 @@ class FlyteRemote(object):
             project or self.default_project,
             domain or self.default_domain,
             name,
-            version or self.version,
+            version,
         )
         admin_task = self.client.get_task(task_id)
         flyte_task = FlyteTask.promote_from_model(admin_task.closure.compiled_task.template)
@@ -225,7 +225,7 @@ class FlyteRemote(object):
             project or self.default_project,
             domain or self.default_domain,
             name,
-            version or self.version,
+            version,
         )
         admin_workflow = self.client.get_workflow(workflow_id)
         compiled_wf = admin_workflow.closure.compiled_workflow
@@ -248,7 +248,7 @@ class FlyteRemote(object):
             project or self.default_project,
             domain or self.default_domain,
             name,
-            version or self.version,
+            version,
         )
         admin_launch_plan = self.client.get_launch_plan(launch_plan_id)
         flyte_launch_plan = FlyteLaunchPlan.promote_from_model(admin_launch_plan.spec)

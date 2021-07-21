@@ -6,6 +6,7 @@ import time
 import pytest
 
 from flytekit.common.exceptions.user import FlyteAssertion
+from flytekit.core.launch_plan import LaunchPlan
 from flytekit.remote.remote import FlyteRemote
 
 PROJECT = "flytesnacks"
