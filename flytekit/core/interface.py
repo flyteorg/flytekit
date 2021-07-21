@@ -6,6 +6,7 @@ import inspect
 import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
+
 from docstring_parser import parse
 
 from flytekit.common.exceptions.user import FlyteValidationException
@@ -21,10 +22,10 @@ class Interface(object):
     """
 
     def __init__(
-            self,
-            inputs: typing.Optional[typing.Dict[str, Union[Type, Tuple[Type, Any]]]] = None,
-            outputs: typing.Optional[typing.Dict[str, Type]] = None,
-            output_tuple_name: Optional[str] = None,
+        self,
+        inputs: typing.Optional[typing.Dict[str, Union[Type, Tuple[Type, Any]]]] = None,
+        outputs: typing.Optional[typing.Dict[str, Type]] = None,
+        output_tuple_name: Optional[str] = None,
     ):
         """
         :param outputs: Output variables and their types as a dictionary
@@ -156,7 +157,7 @@ class Interface(object):
 
 
 def transform_inputs_to_parameters(
-        ctx: context_manager.FlyteContext, interface: Interface
+    ctx: context_manager.FlyteContext, interface: Interface
 ) -> _interface_models.ParameterMap:
     """
     Transforms the given interface (with inputs) to a Parameter Map with defaults set
@@ -178,8 +179,8 @@ def transform_inputs_to_parameters(
 
 
 def transform_interface_to_typed_interface(
-        interface: typing.Optional[Interface],
-        docstring: str = None,
+    interface: typing.Optional[Interface],
+    docstring: str = None,
 ) -> typing.Optional[_interface_models.TypedInterface]:
     """
     Transform the given simple python native interface to FlyteIDL's interface
@@ -188,8 +189,9 @@ def transform_interface_to_typed_interface(
         return None
     input_descriptions, output_description = get_variable_descriptions(docstring)
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
-    outputs_map = transform_variable_map(interface.outputs,
-                                         replicate_output_description(output_description, interface.outputs))
+    outputs_map = transform_variable_map(
+        interface.outputs, replicate_output_description(output_description, interface.outputs)
+    )
     return _interface_models.TypedInterface(inputs_map, outputs_map)
 
 
@@ -256,8 +258,9 @@ def transform_signature_to_interface(signature: inspect.Signature) -> Interface:
     return Interface(inputs, outputs, output_tuple_name=custom_name)
 
 
-def transform_variable_map(variable_map: Dict[str, type], descriptions: Dict[str, str] = {}) -> Dict[
-    str, _interface_models.Variable]:
+def transform_variable_map(
+    variable_map: Dict[str, type], descriptions: Dict[str, str] = {}
+) -> Dict[str, _interface_models.Variable]:
     """
     Given a map of str (names of inputs for instance) to their Python native types, return a map of the name to a
     Flyte Variable object with that type.

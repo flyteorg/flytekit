@@ -6,11 +6,11 @@ from typing import Dict, List
 from flytekit.core import context_manager
 from flytekit.core.interface import (
     extract_return_annotation,
+    get_variable_descriptions,
     transform_inputs_to_parameters,
+    transform_interface_to_typed_interface,
     transform_signature_to_interface,
     transform_variable_map,
-    get_variable_descriptions,
-    transform_interface_to_typed_interface,
 )
 from flytekit.models.core import types as _core_types
 from flytekit.types.file import FlyteFile
