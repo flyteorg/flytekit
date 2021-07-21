@@ -56,7 +56,7 @@ def test_remote_fetch_execute_entities_task_workflow_launchplan(
     getattr(mock_client, CLIENT_METHODS[resource_type]).return_value = admin_entities, ""
     mock_client_manager.return_value.client = mock_client
 
-    remote = FlyteRemote()
+    remote = FlyteRemote.from_environment()
     fetch_method = getattr(remote, REMOTE_METHODS[resource_type])
     flyte_entity_latest = fetch_method("p1", "d1", "n1", "latest")
     flyte_entity_latest_implicit = fetch_method("p1", "d1", "n1")
@@ -81,6 +81,6 @@ def test_remote_fetch_workflow_execution(mock_url, mock_client_manager):
     mock_client.get_execution.return_value = admin_workflow_execution
     mock_client_manager.return_value.client = mock_client
 
-    remote = FlyteRemote()
+    remote = FlyteRemote.from_environment()
     flyte_workflow_execution = remote.fetch_workflow_execution("p1", "d1", "n1")
     assert flyte_workflow_execution.id == admin_workflow_execution.id
