@@ -89,7 +89,7 @@ dockerpty==0.4.1
     # via docker-compose
 docopt==0.6.2
     # via docker-compose
-docstring-parser==0.9
+docstring-parser==0.9.1
     # via
     #   -c requirements.txt
     #   flytekit
@@ -140,7 +140,7 @@ markupsafe==2.0.1
     # via
     #   -c requirements.txt
     #   jinja2
-marshmallow==3.12.2
+marshmallow==3.13.0
     # via
     #   -c requirements.txt
     #   dataclasses-json

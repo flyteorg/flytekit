@@ -84,7 +84,7 @@ dirhash==0.2.1
     # via flytekit
 docker-image-py==0.1.10
     # via flytekit
-docstring-parser==0.9
+docstring-parser==0.9.1
     # via flytekit
 docutils==0.16
     # via sphinx
@@ -156,7 +156,7 @@ lxml==4.6.3
     # via sphinx-material
 markupsafe==2.0.1
     # via jinja2
-marshmallow==3.12.2
+marshmallow==3.13.0
     # via
     #   dataclasses-json
     #   marshmallow-enum
