@@ -21,10 +21,10 @@ class Interface(object):
     """
 
     def __init__(
-        self,
-        inputs: typing.Optional[typing.Dict[str, Union[Type, Tuple[Type, Any]]]] = None,
-        outputs: typing.Optional[typing.Dict[str, Type]] = None,
-        output_tuple_name: Optional[str] = None,
+            self,
+            inputs: typing.Optional[typing.Dict[str, Union[Type, Tuple[Type, Any]]]] = None,
+            outputs: typing.Optional[typing.Dict[str, Type]] = None,
+            output_tuple_name: Optional[str] = None,
     ):
         """
         :param outputs: Output variables and their types as a dictionary
@@ -156,16 +156,15 @@ class Interface(object):
 
 
 def transform_inputs_to_parameters(
-    ctx: context_manager.FlyteContext, interface: Interface, descriptions: Dict[str, str] = {}
+        ctx: context_manager.FlyteContext, interface: Interface
 ) -> _interface_models.ParameterMap:
     """
     Transforms the given interface (with inputs) to a Parameter Map with defaults set
-    :param descriptions:
     :param interface: the interface object
     """
     if interface is None or interface.inputs_with_defaults is None:
         return _interface_models.ParameterMap({})
-    inputs_vars = transform_variable_map(interface.inputs, descriptions)
+    inputs_vars = transform_variable_map(interface.inputs)
     params = {}
     inputs_with_def = interface.inputs_with_defaults
     for k, v in inputs_vars.items():
@@ -179,8 +178,8 @@ def transform_inputs_to_parameters(
 
 
 def transform_interface_to_typed_interface(
-    interface: typing.Optional[Interface],
-    docstring: str = None,
+        interface: typing.Optional[Interface],
+        docstring: str = None,
 ) -> typing.Optional[_interface_models.TypedInterface]:
     """
     Transform the given simple python native interface to FlyteIDL's interface
@@ -189,12 +188,9 @@ def transform_interface_to_typed_interface(
         return None
     input_descriptions, output_description = get_variable_descriptions(docstring)
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
-    output_description_dict = {}
-    if output_description and len(interface.output_names) >= 1:
-        output_description_dict[next(iter(interface.output_names))] = output_description
-    outputs_map = transform_variable_map(interface.outputs, output_description_dict)
+    outputs_map = transform_variable_map(interface.outputs,
+                                         replicate_output_description(output_description, interface.outputs))
     return _interface_models.TypedInterface(inputs_map, outputs_map)
-
 
 
 def transform_types_to_list_of_type(m: Dict[str, type]) -> Dict[str, type]:
@@ -260,7 +256,8 @@ def transform_signature_to_interface(signature: inspect.Signature) -> Interface:
     return Interface(inputs, outputs, output_tuple_name=custom_name)
 
 
-def transform_variable_map(variable_map: Dict[str, type], descriptions: Dict[str, str] = {}) -> Dict[str, _interface_models.Variable]:
+def transform_variable_map(variable_map: Dict[str, type], descriptions: Dict[str, str] = {}) -> Dict[
+    str, _interface_models.Variable]:
     """
     Given a map of str (names of inputs for instance) to their Python native types, return a map of the name to a
     Flyte Variable object with that type.
@@ -355,5 +352,24 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
 
 
 def get_variable_descriptions(docstring: str) -> Tuple[Dict[str, str], Optional[str]]:
+    """
+    Takes a Python docstring, either from `function.__doc__` or `inpect.getdoc(function)`, and returns the descriptions of the input paramenters and the output values.
+
+    :param docstring: Python docstring in Sphinx reStructuredText style, Numpydoc style, or Google style.
+    :return: Dict of input parameter names mapping to their descriptions, and the output value description.
+    """
     parsed_docstring = parse(docstring)
-    return {p.arg_name: p.description for p in parsed_docstring.params}, parsed_docstring.returns.description
+    output_description = None
+    if parsed_docstring.returns is not None:
+        output_description = parsed_docstring.returns.description
+    return {p.arg_name: p.description for p in parsed_docstring.params}, output_description
+
+
+def replicate_output_description(output_description: Optional[str], outputs: Dict[str, Type]) -> Dict[str, str]:
+    """
+    A temporary solution until named return description is better supported. If the output is a NamedTuple, the output description is replicated for each output variable.
+    :param output_description: The return value description from docstring
+    :param outputs: Interface outputs
+    :return: Dict of output variable names mapping to replicated output description
+    """
+    return {k: output_description for k, _ in outputs.items() if output_description is not None}

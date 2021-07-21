@@ -25,7 +25,6 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Uni
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.common.utils import Docstring
 from flytekit.core.context_manager import (
     BranchEvalMode,
     ExecutionState,

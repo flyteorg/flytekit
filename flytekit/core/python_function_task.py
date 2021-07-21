@@ -43,7 +43,6 @@ from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
-from flytekit.common.utils import Docstring
 
 T = TypeVar("T")
 

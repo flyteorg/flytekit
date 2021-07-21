@@ -9,10 +9,11 @@ from flytekit.core.interface import (
     transform_inputs_to_parameters,
     transform_signature_to_interface,
     transform_variable_map,
+    get_variable_descriptions,
+    transform_interface_to_typed_interface,
 )
 from flytekit.models.core import types as _core_types
 from flytekit.types.file import FlyteFile
-from flytekit.common.utils import Docstring
 
 
 def test_extract_only():
@@ -178,24 +179,113 @@ def test_parameters_and_defaults():
     assert params.parameters["b"].default.scalar.primitive.string_value == "eleven"
 
 
-def test_docstring():
-    ctx = context_manager.FlyteContext.current_context()
-
+def test_transform_interface_to_typed_interface_with_docstring():
+    # sphinx style
     def z(a: int, b: str) -> typing.Tuple[int, str]:
         """
-        ramen
+        function z
 
-            indented ramen
-
-        :param a: ramen a
-        :param b: ramen b
-        :return: ramen ret
+        :param a: foo
+        :param b: bar
+        :return: ramen
         """
         ...
 
+    our_interface = transform_signature_to_interface(inspect.signature(z))
+    typed_interface = transform_interface_to_typed_interface(our_interface, z.__doc__)
+    assert typed_interface.inputs.get("a").description == "foo"
+    assert typed_interface.inputs.get("b").description == "bar"
+    assert typed_interface.outputs.get("o1").description == "ramen"
+
+    # numpy style, multiple return values
+    def z(a: int, b: str) -> typing.Tuple[int, str]:
+        """
+        function z
+
+        Parameters
+        ----------
+        a : int
+            foo
+        b : str
+            bar
+
+        Returns
+        -------
+        out1, out2 : tuple
+            ramen
+        """
+        ...
 
     our_interface = transform_signature_to_interface(inspect.signature(z))
-    docstring = Docstring(z.__doc__)
-    params = transform_inputs_to_parameters(ctx, our_interface, docstring.get_input_descriptions())
-    assert params.parameters["a"].var.description == "ramen a"
-    assert params.parameters["b"].var.description == "ramen b"
+    typed_interface = transform_interface_to_typed_interface(our_interface, z.__doc__)
+    assert typed_interface.inputs.get("a").description == "foo"
+    assert typed_interface.inputs.get("b").description == "bar"
+    assert typed_interface.outputs.get("o0").description == "ramen"
+    assert typed_interface.outputs.get("o1").description == "ramen"
+
+
+def test_get_variable_descriptions():
+    # sphinx style
+    def z(a: int, b: str) -> typing.Tuple[int, str]:
+        """
+        function z
+
+        :param a: foo
+        :param b: bar
+        :return: ramen
+        """
+        ...
+
+    input_descriptions, output_description = get_variable_descriptions(z.__doc__)
+    assert input_descriptions["a"] == "foo"
+    assert input_descriptions["b"] == "bar"
+    assert output_description == "ramen"
+
+    # numpy style
+    def z(a: int, b: str) -> typing.Tuple[int, str]:
+        """
+        function z
+
+        Parameters
+        ----------
+        a : int
+            foo
+        b : str
+            bar
+
+        Returns
+        -------
+        out : tuple
+            ramen
+        """
+        ...
+
+    input_descriptions, output_description = get_variable_descriptions(z.__doc__)
+    assert input_descriptions["a"] == "foo"
+    assert input_descriptions["b"] == "bar"
+    assert output_description == "ramen"
+
+    # google style
+    def z(a: int, b: str) -> typing.Tuple[int, str]:
+        """function z
+
+        Args:
+            a(int): foo
+            b(str): bar
+        Returns:
+            str: ramen
+        """
+        ...
+
+    input_descriptions, output_description = get_variable_descriptions(z.__doc__)
+    assert input_descriptions["a"] == "foo"
+    assert input_descriptions["b"] == "bar"
+    assert output_description == "ramen"
+
+    # empty doc
+    def z(a: int, b: str) -> typing.Tuple[int, str]:
+        ...
+
+    input_descriptions, output_description = get_variable_descriptions(z.__doc__)
+    assert len(input_descriptions) == 0
+    assert output_description is None
