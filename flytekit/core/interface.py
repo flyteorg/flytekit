@@ -190,7 +190,7 @@ def transform_interface_to_typed_interface(
     input_descriptions, output_description = get_variable_descriptions(docstring)
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
     outputs_map = transform_variable_map(
-        interface.outputs, replicate_output_description(output_description, interface.outputs)
+        interface.outputs, remap_shared_output_descriptions(output_description, interface.outputs)
     )
     return _interface_models.TypedInterface(inputs_map, outputs_map)
 
@@ -359,20 +359,21 @@ def get_variable_descriptions(docstring: str) -> Tuple[Dict[str, str], Optional[
     Takes a Python docstring, either from `function.__doc__` or `inpect.getdoc(function)`, and returns the descriptions of the input paramenters and the output values.
 
     :param docstring: Python docstring in Sphinx reStructuredText style, Numpydoc style, or Google style.
-    :return: Dict of input parameter names mapping to their descriptions, and the output value description.
+    :return: Dict of input parameter names mapping to their descriptions, and dict of output names mapping to their descriptions.
     """
     parsed_docstring = parse(docstring)
-    output_description = None
-    if parsed_docstring.returns is not None:
-        output_description = parsed_docstring.returns.description
-    return {p.arg_name: p.description for p in parsed_docstring.params}, output_description
+    return {p.arg_name: p.description for p in parsed_docstring.params}, {p.return_name: p.description for p in parsed_docstring.many_returns}
 
 
-def replicate_output_description(output_description: Optional[str], outputs: Dict[str, Type]) -> Dict[str, str]:
+def remap_shared_output_descriptions(output_descriptions: Dict[str, str], outputs: Dict[str, Type]) -> Dict[str, str]:
     """
-    A temporary solution until named return description is better supported. If the output is a NamedTuple, the output description is replicated for each output variable.
-    :param output_description: The return value description from docstring
+    Deals with mixed styles of return value descriptions used in docstrings. If the docstring contains a single entry of return value description, that output description is shared by each output variable.
+    :param output_descriptions: Dict of output variable names mapping to output description
     :param outputs: Interface outputs
-    :return: Dict of output variable names mapping to replicated output description
+    :return: Dict of output variable names mapping to shared output description
     """
-    return {k: output_description for k, _ in outputs.items() if output_description is not None}
+    # no need to remap
+    if len(output_descriptions) != 1:
+        return output_descriptions
+    _, shared_description = next(iter(output_descriptions.items()))
+    return {k: shared_description for k, _ in outputs.items()}

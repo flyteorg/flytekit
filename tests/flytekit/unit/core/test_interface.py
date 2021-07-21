@@ -197,7 +197,7 @@ def test_transform_interface_to_typed_interface_with_docstring():
     assert typed_interface.inputs.get("b").description == "bar"
     assert typed_interface.outputs.get("o1").description == "ramen"
 
-    # numpy style, multiple return values
+    # numpy style, multiple return values, shared descriptions
     def z(a: int, b: str) -> typing.Tuple[int, str]:
         """
         function z
@@ -223,6 +223,34 @@ def test_transform_interface_to_typed_interface_with_docstring():
     assert typed_interface.outputs.get("o0").description == "ramen"
     assert typed_interface.outputs.get("o1").description == "ramen"
 
+    # numpy style, multiple return values, named
+    def z(a: int, b: str) -> typing.NamedTuple("NT", x_str=str, y_int=int):
+        """
+        function z
+
+        Parameters
+        ----------
+        a : int
+            foo
+        b : str
+            bar
+
+        Returns
+        -------
+        x_str : str
+            description for x_str
+        y_int : int
+            description for y_int
+        """
+        ...
+
+    our_interface = transform_signature_to_interface(inspect.signature(z))
+    typed_interface = transform_interface_to_typed_interface(our_interface, z.__doc__)
+    assert typed_interface.inputs.get("a").description == "foo"
+    assert typed_interface.inputs.get("b").description == "bar"
+    assert typed_interface.outputs.get("x_str").description == "description for x_str"
+    assert typed_interface.outputs.get("y_int").description == "description for y_int"
+
 
 def test_get_variable_descriptions():
     # sphinx style
@@ -236,10 +264,11 @@ def test_get_variable_descriptions():
         """
         ...
 
-    input_descriptions, output_description = get_variable_descriptions(z.__doc__)
+    input_descriptions, output_descriptions = get_variable_descriptions(z.__doc__)
     assert input_descriptions["a"] == "foo"
     assert input_descriptions["b"] == "bar"
-    assert output_description == "ramen"
+    assert len(output_descriptions) == 1
+    assert next(iter(output_descriptions.items()))[1] == "ramen"
 
     # numpy style
     def z(a: int, b: str) -> typing.Tuple[int, str]:
@@ -260,10 +289,11 @@ def test_get_variable_descriptions():
         """
         ...
 
-    input_descriptions, output_description = get_variable_descriptions(z.__doc__)
+    input_descriptions, output_descriptions = get_variable_descriptions(z.__doc__)
     assert input_descriptions["a"] == "foo"
     assert input_descriptions["b"] == "bar"
-    assert output_description == "ramen"
+    assert len(output_descriptions) == 1
+    assert next(iter(output_descriptions.items()))[1] == "ramen"
 
     # google style
     def z(a: int, b: str) -> typing.Tuple[int, str]:
@@ -277,15 +307,16 @@ def test_get_variable_descriptions():
         """
         ...
 
-    input_descriptions, output_description = get_variable_descriptions(z.__doc__)
+    input_descriptions, output_descriptions = get_variable_descriptions(z.__doc__)
     assert input_descriptions["a"] == "foo"
     assert input_descriptions["b"] == "bar"
-    assert output_description == "ramen"
+    assert len(output_descriptions) == 1
+    assert next(iter(output_descriptions.items()))[1] == "ramen"
 
     # empty doc
     def z(a: int, b: str) -> typing.Tuple[int, str]:
         ...
 
-    input_descriptions, output_description = get_variable_descriptions(z.__doc__)
+    input_descriptions, output_descriptions = get_variable_descriptions(z.__doc__)
     assert len(input_descriptions) == 0
-    assert output_description is None
+    assert len(output_descriptions) == 0

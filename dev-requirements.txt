@@ -89,7 +89,7 @@ dockerpty==0.4.1
     # via docker-compose
 docopt==0.6.2
     # via docker-compose
-docstring-parser==0.8.1
+docstring-parser==0.9
     # via
     #   -c requirements.txt
     #   flytekit
