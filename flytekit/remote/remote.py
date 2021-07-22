@@ -428,9 +428,6 @@ class FlyteRemote(object):
         entity,
         inputs: typing.Dict[str, typing.Any],
         execution_name=None,
-        project: str = None,
-        domain: str = None,
-        version: str = None,
         wait=False,
     ) -> FlyteWorkflowExecution:
         """Execute a task, workflow, or launchplan."""
@@ -445,10 +442,6 @@ class FlyteRemote(object):
         self,
         entity,
         inputs: typing.Dict[str, typing.Any],
-        project: str = None,
-        domain: str = None,
-        name: str = None,
-        version: str = None,
         execution_name=None,
         wait=False,
     ) -> FlyteWorkflowExecution:
@@ -460,10 +453,6 @@ class FlyteRemote(object):
         self,
         entity: FlyteWorkflow,
         inputs: typing.Dict[str, typing.Any],
-        project: str = None,
-        domain: str = None,
-        name: str = None,
-        version: str = None,
         execution_name=None,
         wait=False,
     ) -> FlyteWorkflowExecution:
