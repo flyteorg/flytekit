@@ -293,7 +293,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
     def get_workflow(self, id):
         """
-        This returns a single task for a given ID.
+        This returns a single workflow for a given ID.
 
         :param flytekit.models.core.identifier.Identifier id: The ID representing a given task.
         :raises: TODO
