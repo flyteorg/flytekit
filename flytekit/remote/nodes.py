@@ -1,24 +1,16 @@
 import logging as _logging
-import os as _os
 from typing import Any, Dict, List, Optional
-
-from flyteidl.core import literals_pb2 as _literals_pb2
 
 import flytekit
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.common import constants as _constants
-from flytekit.common import utils as _common_utils
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import artifact as _artifact_mixin
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.utils import _dnsify
-from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.promise import NodeOutput
-from flytekit.core.type_engine import TypeEngine
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.models import literals as _literal_models
 from flytekit.models import node_execution as _node_execution_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import execution as _execution_models
@@ -187,27 +179,6 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
         """
         Returns the inputs to the execution in the standard python format as dictated by the type engine.
         """
-        if self._inputs is None:
-            client = _flyte_engine.get_client()
-            node_execution_data = client.get_node_execution_data(self.id)
-
-            # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
-            input_map: _literal_models.LiteralMap = _literal_models.LiteralMap({})
-            if bool(node_execution_data.full_inputs.literals):
-                input_map = node_execution_data.full_inputs
-            elif node_execution_data.inputs.bytes > 0:
-                with _common_utils.AutoDeletingTempDir() as tmp_dir:
-                    tmp_name = _os.path.join(tmp_dir.name, "inputs.pb")
-                    _data_proxy.Data.get_data(node_execution_data.inputs.url, tmp_name)
-                    input_map = _literal_models.LiteralMap.from_flyte_idl(
-                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
-                    )
-
-            self._inputs = TypeEngine.literal_map_to_kwargs(
-                ctx=FlyteContextManager.current_context(),
-                lm=input_map,
-                python_types=TypeEngine.guess_python_types(self.interface.inputs),
-            )
         return self._inputs
 
     @property
@@ -223,28 +194,6 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
             )
         if self.error:
             raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
-
-        if self._outputs is None:
-            client = _flyte_engine.get_client()
-            execution_data = client.get_node_execution_data(self.id)
-
-            # Outputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
-            output_map: _literal_models.LiteralMap = _literal_models.LiteralMap({})
-            if bool(execution_data.full_outputs.literals):
-                output_map = execution_data.full_outputs
-            elif execution_data.outputs.bytes > 0:
-                with _common_utils.AutoDeletingTempDir() as tmp_dir:
-                    tmp_name = _os.path.join(tmp_dir.name, "outputs.pb")
-                    _data_proxy.Data.get_data(execution_data.outputs.url, tmp_name)
-                    output_map = _literal_models.LiteralMap.from_flyte_idl(
-                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
-                    )
-
-            self._outputs = TypeEngine.literal_map_to_kwargs(
-                ctx=FlyteContextManager.current_context(),
-                lm=output_map,
-                python_types=TypeEngine.guess_python_types(self.interface.outputs),
-            )
         return self._outputs
 
     @property
@@ -281,29 +230,6 @@ class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.E
         """
         Return the interface of the task or subworkflow associated with this node execution.
         """
-        if self._interface is None:
-            from flytekit.remote.remote import FlyteRemote
-
-            remote = FlyteRemote()
-
-            if not self.metadata.is_parent_node:
-                # if not a parent node, assume a task execution node
-                task_id = self.task_executions[0].id.task_id
-                task = remote.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
-                self._interface = task.interface
-            else:
-                # otherwise assume the node is associated with a subworkflow
-                client = _flyte_engine.get_client()
-
-                # need to get the FlyteWorkflow associated with this node execution (self), so we need to fetch the
-                # parent workflow and iterate through the parent's FlyteNodes to get the the FlyteWorkflow object
-                # representing the subworkflow. This allows us to get the interface for guessing the types of the
-                # inputs/outputs.
-                lp_id = client.get_execution(self.id.execution_id).spec.launch_plan
-                workflow = remote.fetch_workflow(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
-                flyte_subworkflow_node: FlyteNode = [n for n in workflow.nodes if n.id == self.id.node_id][0]
-                self._interface = flyte_subworkflow_node.target.flyte_workflow.interface
-
         return self._interface
 
     def sync(self):

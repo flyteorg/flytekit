@@ -23,7 +23,7 @@ bcrypt==3.2.0
     # via
     #   -c requirements.txt
     #   paramiko
-black==21.6b0
+black==21.7b0
     # via
     #   -c requirements.txt
     #   -r dev-requirements.in
@@ -32,13 +32,13 @@ certifi==2021.5.30
     # via
     #   -c requirements.txt
     #   requests
-cffi==1.14.5
+cffi==1.14.6
     # via
     #   -c requirements.txt
     #   bcrypt
     #   cryptography
     #   pynacl
-chardet==4.0.0
+charset-normalizer==2.0.3
     # via
     #   -c requirements.txt
     #   requests
@@ -94,11 +94,11 @@ flake8==3.9.2
     #   -r dev-requirements.in
     #   flake8-black
     #   flake8-isort
-flake8-black==0.2.1
+flake8-black==0.2.2
     # via -r dev-requirements.in
 flake8-isort==4.0.0
     # via -r dev-requirements.in
-flyteidl==0.19.11
+flyteidl==0.19.14
     # via
     #   -c requirements.txt
     #   flytekit
@@ -106,7 +106,7 @@ grpcio==1.38.1
     # via
     #   -c requirements.txt
     #   flytekit
-idna==2.10
+idna==3.2
     # via
     #   -c requirements.txt
     #   requests
@@ -116,7 +116,7 @@ importlib-metadata==4.6.1
     #   keyring
 iniconfig==1.1.1
     # via pytest
-isort==5.9.1
+isort==5.9.2
     # via
     #   -r dev-requirements.in
     #   flake8-isort
@@ -136,7 +136,7 @@ markupsafe==2.0.1
     # via
     #   -c requirements.txt
     #   jinja2
-marshmallow==3.12.1
+marshmallow==3.12.2
     # via
     #   -c requirements.txt
     #   dataclasses-json
@@ -263,7 +263,7 @@ regex==2021.7.6
     #   -c requirements.txt
     #   black
     #   docker-image-py
-requests==2.25.1
+requests==2.26.0
     # via
     #   -c requirements.txt
     #   docker
@@ -308,17 +308,19 @@ stringcase==1.2.0
     # via
     #   -c requirements.txt
     #   dataclasses-json
-testfixtures==6.17.1
+testfixtures==6.18.0
     # via flake8-isort
-texttable==1.6.3
+texttable==1.6.4
     # via docker-compose
 toml==0.10.2
     # via
-    #   -c requirements.txt
-    #   black
     #   coverage
     #   mypy
     #   pytest
+tomli==1.0.4
+    # via
+    #   -c requirements.txt
+    #   black
 typing-extensions==3.10.0.0
     # via
     #   -c requirements.txt

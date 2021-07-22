@@ -1,12 +1,12 @@
 from typing import Tuple, Union
 
-import six as _six
 from flyteidl.admin.launch_plan_pb2 import LaunchPlan
 from flyteidl.admin.task_pb2 import TaskSpec
 from flyteidl.admin.workflow_pb2 import WorkflowSpec
 from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.core import workflow_pb2 as _workflow_pb2
 
+from flytekit.clis.sdk_in_container.serialize import _DOMAIN_PLACEHOLDER, _PROJECT_PLACEHOLDER, _VERSION_PLACEHOLDER
 from flytekit.common.types.helpers import get_sdk_type_from_literal_type as _get_sdk_type_from_literal_type
 from flytekit.models import literals as _literals
 
@@ -24,7 +24,7 @@ def construct_literal_map_from_variable_map(variable_dict, text_args):
     """
     inputs = {}
 
-    for var_name, variable in _six.iteritems(variable_dict):
+    for var_name, variable in variable_dict.items():
         # Check to see if it's passed from click
         # If this is an input that has a default from the LP, it should've already been parsed into a string,
         # and inserted into the default for this option, so it should still be here.
@@ -63,7 +63,7 @@ def construct_literal_map_from_parameter_map(parameter_map, text_args):
     # This function can be written by calling construct_literal_map_from_variable_map also, but not that much
     # code is saved.
     inputs = {}
-    for var_name, parameter in _six.iteritems(parameter_map.parameters):
+    for var_name, parameter in parameter_map.parameters.items():
         sdk_type = _get_sdk_type_from_literal_type(parameter.var.type)
         if parameter.required:
             if var_name in text_args and text_args[var_name] is not None:
@@ -91,13 +91,13 @@ def str2bool(str):
 def _hydrate_identifier(
     project: str, domain: str, version: str, identifier: _identifier_pb2.Identifier
 ) -> _identifier_pb2.Identifier:
-    if not identifier.project or identifier.project == "{{ registration.project }}":
+    if not identifier.project or identifier.project == _PROJECT_PLACEHOLDER:
         identifier.project = project
 
-    if not identifier.domain or identifier.domain == "{{ registration.domain }}":
+    if not identifier.domain or identifier.domain == _DOMAIN_PLACEHOLDER:
         identifier.domain = domain
 
-    if not identifier.version or identifier.version == "{{ registration.version }}":
+    if not identifier.version or identifier.version == _VERSION_PLACEHOLDER:
         identifier.version = version
     return identifier
 
