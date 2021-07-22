@@ -71,7 +71,7 @@ def fetch_execute_launch_plan_with_args(flyteclient, flyte_workflows_register):
     assert execution.outputs["o1"] == "foobarworld"
 
 
-def test_monitor_workflow_execution(flyteclient, flyte_workflows_register):
+def test_monitor_workflow_execution(flyteclient, flyte_workflows_register, flyte_remote_env):
     remote = FlyteRemote.from_environment(PROJECT, "development")
     flyte_launch_plan = remote.fetch_launch_plan(name="workflows.basic.hello_world.my_wf", version=f"v{VERSION}")
     execution = remote.execute(flyte_launch_plan, {})
