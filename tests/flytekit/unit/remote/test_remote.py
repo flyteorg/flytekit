@@ -27,8 +27,9 @@ ENTITY_TYPE_TEXT = {
 }
 
 
-@patch("flytekit.engines.flyte.engine._FlyteClientManager")
+@patch("flytekit.clients.friendly.SynchronousFlyteClient")
 @patch("flytekit.configuration.platform.URL")
+@patch("flytekit.configuration.platform.INSECURE")
 @pytest.mark.parametrize(
     "entity_cls,resource_type",
     [
@@ -38,12 +39,12 @@ ENTITY_TYPE_TEXT = {
     ],
 )
 def test_remote_fetch_execute_entities_task_workflow_launchplan(
+    mock_insecure,
     mock_url,
-    mock_client_manager,
+    mock_client,
     entity_cls,
     resource_type,
 ):
-    mock_url.get.return_value = "localhost"
     admin_entities = [
         entity_cls(
             Identifier(resource_type, "p1", "d1", "n1", version),
@@ -52,15 +53,17 @@ def test_remote_fetch_execute_entities_task_workflow_launchplan(
         for version in ["latest", "old"]
     ]
 
+    mock_url.get.return_value = "localhost"
+    mock_insecure.get.return_value = True
     mock_client = MagicMock()
     getattr(mock_client, CLIENT_METHODS[resource_type]).return_value = admin_entities, ""
-    mock_client_manager.return_value.client = mock_client
 
-    remote = FlyteRemote()
+    remote = FlyteRemote.from_environment("p1", "d1")
+    remote._client = mock_client
     fetch_method = getattr(remote, REMOTE_METHODS[resource_type])
-    flyte_entity_latest = fetch_method("p1", "d1", "n1", "latest")
-    flyte_entity_latest_implicit = fetch_method("p1", "d1", "n1")
-    flyte_entity_old = fetch_method("p1", "d1", "old")
+    flyte_entity_latest = fetch_method(name="n1", version="latest")
+    flyte_entity_latest_implicit = fetch_method(name="n1")
+    flyte_entity_old = fetch_method(name="n1", version="old")
 
     assert flyte_entity_latest.entity_type_text == ENTITY_TYPE_TEXT[resource_type]
     assert flyte_entity_latest.id == admin_entities[0].id
@@ -68,19 +71,22 @@ def test_remote_fetch_execute_entities_task_workflow_launchplan(
     assert flyte_entity_latest.id != flyte_entity_old.id
 
 
-@patch("flytekit.engines.flyte.engine._FlyteClientManager")
+@patch("flytekit.clients.friendly.SynchronousFlyteClient")
 @patch("flytekit.configuration.platform.URL")
-def test_remote_fetch_workflow_execution(mock_url, mock_client_manager):
-    mock_url.get.return_value = "localhost"
+@patch("flytekit.configuration.platform.INSECURE")
+def test_remote_fetch_workflow_execution(mock_insecure, mock_url, mock_client_manager):
     admin_workflow_execution = Execution(
         id=WorkflowExecutionIdentifier("p1", "d1", "n1"),
         spec=MagicMock(),
         closure=MagicMock(),
     )
+
+    mock_url.get.return_value = "localhost"
+    mock_insecure.get.return_value = True
     mock_client = MagicMock()
     mock_client.get_execution.return_value = admin_workflow_execution
-    mock_client_manager.return_value.client = mock_client
 
-    remote = FlyteRemote()
-    flyte_workflow_execution = remote.fetch_workflow_execution("p1", "d1", "n1")
+    remote = FlyteRemote.from_environment("p1", "d1")
+    remote._client = mock_client
+    flyte_workflow_execution = remote.fetch_workflow_execution(name="n1")
     assert flyte_workflow_execution.id == admin_workflow_execution.id
