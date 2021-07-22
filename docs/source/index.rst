@@ -31,6 +31,7 @@ build workflows, and extend ``flytekit``.
    Flytekit Python <self>
    design/index
    flytekit
+   remote
    testing
    extend
    tasks.extend
