@@ -29,7 +29,19 @@ def flyte_workflows_register(docker_compose):
     )
 
 
-def test_client(flyteclient, flyte_workflows_register):
+@pytest.fixture(scope="session")
+def flyte_remote_env(docker_services):
+    os.environ["FLYTE_INTERNAL_PROJECT"] = PROJECT
+    os.environ["FLYTE_INTERNAL_DOMAIN"] = "development"
+    os.environ["FLYTE_INTERNAL_VERSION"] = f"v{VERSION}"
+    os.environ["FLYTE_INTERNAL_IMAGE"] = "default:tag"
+    os.environ["FLYTE_CLOUD_PROVIDER"] = "aws"
+    os.environ["FLYTE_AWS_ENDPOINT"] = f"http://localhost:{docker_services.port_for('backend', 30084)}"
+    os.environ["FLYTE_AWS_ACCESS_KEY_ID"] = "minio"
+    os.environ["FLYTE_AWS_SECRET_ACCESS_KEY"] = "miniostorage"
+
+
+def test_client(flyteclient, flyte_workflows_register, docker_services):
     projects = flyteclient.list_projects_paginated(limit=5, token=None)
     assert len(projects) <= 5
 
@@ -126,27 +138,12 @@ def test_fetch_execute_task(flyteclient, flyte_workflows_register):
     assert execution.outputs["c"] == "world"
 
 
-def _set_env():
-    os.environ["FLYTE_INTERNAL_PROJECT"] = PROJECT
-    os.environ["FLYTE_INTERNAL_DOMAIN"] = "development"
-    os.environ["FLYTE_INTERNAL_VERSION"] = f"v{VERSION}"
-    os.environ["FLYTE_INTERNAL_IMAGE"] = "default:tag"
-    os.environ["FLYTE_CLOUD_PROVIDER"] = "aws"
-    os.environ["FLYTE_AWS_ACCESS_KEY_ID"] = "minio"
-    os.environ["FLYTE_AWS_SECRET_ACCESS_KEY"] = "miniostorage"
-    if not os.getenv("FLYTE_AWS_ENDPOINT"):
-        # this port number is where pytest-flyte forwards minio
-        # TODO: make configure pytest-flyte so that port forwarding is standardized
-        os.environ["FLYTE_AWS_ENDPOINT"] = "http://localhost:53926"
-
-
-def test_execute_python_task(flyteclient, flyte_workflows_register):
+def test_execute_python_task(flyteclient, flyte_workflows_register, flyte_remote_env):
     """Test execution of a @task-decorated python function that is already registered."""
     from mock_flyte_repo.workflows.basic.basic_workflow import t1
 
     # make sure the task name is the same as the name used during registration
     t1._name = t1.name.replace("mock_flyte_repo.", "")
-    _set_env()
 
     remote = FlyteRemote.from_environment(PROJECT, "development")
     execution = remote.execute(t1, inputs={"a": 10}, version=f"v{VERSION}", wait=True)
@@ -154,13 +151,12 @@ def test_execute_python_task(flyteclient, flyte_workflows_register):
     assert execution.outputs["c"] == "world"
 
 
-def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_register):
+def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_register, flyte_remote_env):
     """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
     from mock_flyte_repo.workflows.basic.basic_workflow import my_wf
 
     # make sure the task name is the same as the name used during registration
     my_wf._name = my_wf.name.replace("mock_flyte_repo.", "")
-    _set_env()
 
     remote = FlyteRemote.from_environment(PROJECT, "development")
     execution = remote.execute(my_wf, inputs={"a": 10, "b": "xyz"}, version=f"v{VERSION}", wait=True)
@@ -173,8 +169,7 @@ def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_re
     assert execution.outputs["o1"] == "foobarworld"
 
 
-def test_execute_sqlite3_task(flyteclient, flyte_workflows_register):
-    _set_env()
+def test_execute_sqlite3_task(flyteclient, flyte_workflows_register, flyte_remote_env):
     remote = FlyteRemote.from_environment(PROJECT, "development")
 
     example_db = "https://cdn.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"

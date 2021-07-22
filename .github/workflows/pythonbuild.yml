@@ -52,10 +52,6 @@ jobs:
       shell: 'script -q -e -c "bash {0}"'
       run: |
         coverage run --append -m pytest tests/flytekit/integration
-      env:
-        # env var needed for remote module integration tests
-        # TODO: make configure pytest-flyte so that port forwarding is standardized
-        FLYTE_AWS_ENDPOINT: http://localhost:49153
     - name: Codecov
       uses: codecov/codecov-action@v1
       with:
