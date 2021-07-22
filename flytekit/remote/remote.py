@@ -14,6 +14,7 @@ from flyteidl.core import literals_pb2 as literals_pb2
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.common import utils as common_utils
 from flytekit.configuration import platform as platform_config
+from flytekit.configuration import sdk as sdk_config
 from flytekit.loggers import remote_logger
 
 try:
@@ -32,6 +33,9 @@ from flytekit.core.context_manager import FlyteContextManager, ImageConfig, Seri
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
+from flytekit.interfaces.data.data_proxy import FileAccessProvider
+from flytekit.interfaces.data.gcs.gcs_proxy import GCSProxy
+from flytekit.interfaces.data.s3.s3proxy import AwsS3Proxy
 from flytekit.models import common as common_models
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
@@ -108,11 +112,21 @@ class FlyteRemote(object):
         :param default_domain: default domain to use when fetching or executing flyte entities.
         """
         raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get()
+        raw_output_data_prefix = raw_output_data_prefix if raw_output_data_prefix else None
+
         return FlyteRemote(
             default_project=default_project or PROJECT.get(),
             default_domain=default_domain or DOMAIN.get(),
             flyte_admin_url=platform_config.URL.get(),
             insecure=platform_config.INSECURE.get(),
+            file_access=FileAccessProvider(
+                local_sandbox_dir=sdk_config.LOCAL_SANDBOX.get(),
+                remote_proxy={
+                    constants.CloudProvider.AWS: AwsS3Proxy(raw_output_data_prefix),
+                    constants.CloudProvider.GCP: GCSProxy(raw_output_data_prefix),
+                    constants.CloudProvider.LOCAL: None,
+                }.get(platform_config.CLOUD_PROVIDER.get(), None),
+            ),
             auth_role=common_models.AuthRole(
                 assumable_iam_role=auth_config.ASSUMABLE_IAM_ROLE.get(),
                 kubernetes_service_account=auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
@@ -132,6 +146,7 @@ class FlyteRemote(object):
         default_domain: str,
         flyte_admin_url: str,
         insecure: bool,
+        file_access: typing.Optional[FileAccessProvider] = None,
         auth_role: typing.Optional[common_models.AuthRole] = None,
         notifications: typing.Optional[typing.List[common_models.Notification]] = None,
         labels: typing.Optional[common_models.Labels] = None,
@@ -145,6 +160,7 @@ class FlyteRemote(object):
         :param default_domain: default domain to use when fetching or executing flyte entities.
         :param flyte_admin_url: url pointing to the remote backend.
         :param insecure: whether or not the enable SSL.
+        :param file_access: file access provider to use for offloading non-literal inputs/outputs.
         :param auth_role: auth role config
         :param notifications: notification config
         :param labels: label config
@@ -160,6 +176,7 @@ class FlyteRemote(object):
         self.default_project = default_project
         self.default_domain = default_domain
         self.image_config = image_config
+        self.file_access = file_access
         self.auth_role = auth_role
         self.notifications = notifications
         self.labels = labels
@@ -179,12 +196,19 @@ class FlyteRemote(object):
         """Get a randomly generated version string."""
         return uuid.uuid4().hex[:30] + str(int(time.time()))
 
+    def remote_context(self):
+        """Context manager with remote-specific configuration."""
+        return FlyteContextManager.with_context(
+            FlyteContextManager.current_context().with_file_access(self.file_access)
+        )
+
     def with_overrides(
         self,
         default_project: str = None,
         default_domain: str = None,
         flyte_admin_url: str = None,
         insecure: bool = None,
+        file_access: typing.Optional[FileAccessProvider] = None,
         auth_role: typing.Optional[common_models.AuthRole] = None,
         notifications: typing.Optional[typing.List[common_models.Notification]] = None,
         labels: typing.Optional[common_models.Labels] = None,
@@ -202,6 +226,8 @@ class FlyteRemote(object):
             new_remote.flyte_admin_url = flyte_admin_url
         if insecure:
             new_remote.insecure = insecure
+        if file_access:
+            new_remote.file_access = file_access
         if auth_role:
             new_remote.auth_role = auth_role
         if notifications:
@@ -484,7 +510,8 @@ class FlyteRemote(object):
             notifications = NotificationList(self.notifications or [])
             disable_all = None
 
-        literal_inputs = TypeEngine.dict_to_literal_map(FlyteContextManager.current_context(), inputs)
+        with self.remote_context() as ctx:
+            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs)
         try:
             # TODO: re-consider how this works. Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
@@ -811,17 +838,18 @@ class FlyteRemote(object):
 
     def _assign_inputs_and_outputs(self, execution, execution_data, interface):
         """Helper for assigning synced inputs and outputs to an execution object."""
-        execution._inputs = TypeEngine.literal_map_to_kwargs(
-            ctx=FlyteContextManager.current_context(),
-            lm=self._get_input_literal_map(execution_data),
-            python_types=TypeEngine.guess_python_types(interface.inputs),
-        )
-        if execution.is_complete and not execution.error:
-            execution._outputs = TypeEngine.literal_map_to_kwargs(
-                ctx=FlyteContextManager.current_context(),
-                lm=self._get_output_literal_map(execution_data),
-                python_types=TypeEngine.guess_python_types(interface.outputs),
+        with self.remote_context() as ctx:
+            execution._inputs = TypeEngine.literal_map_to_kwargs(
+                ctx=ctx,
+                lm=self._get_input_literal_map(execution_data),
+                python_types=TypeEngine.guess_python_types(interface.inputs),
             )
+            if execution.is_complete and not execution.error:
+                execution._outputs = TypeEngine.literal_map_to_kwargs(
+                    ctx=ctx,
+                    lm=self._get_output_literal_map(execution_data),
+                    python_types=TypeEngine.guess_python_types(interface.outputs),
+                )
         return execution
 
     def _get_input_literal_map(self, execution_data: ExecutionDataResponse) -> literal_models.LiteralMap:
@@ -829,12 +857,12 @@ class FlyteRemote(object):
         if bool(execution_data.full_inputs.literals):
             return execution_data.full_inputs
         elif execution_data.inputs.bytes > 0:
-            ctx = FlyteContextManager.current_context()
-            tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "inputs.pb")
-            ctx.file_access.get_data(execution_data.inputs.url, tmp_name)
-            return literal_models.LiteralMap.from_flyte_idl(
-                common_utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
-            )
+            with self.remote_context() as ctx:
+                tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "inputs.pb")
+                ctx.file_access.get_data(execution_data.inputs.url, tmp_name)
+                return literal_models.LiteralMap.from_flyte_idl(
+                    common_utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
+                )
         return literal_models.LiteralMap({})
 
     def _get_output_literal_map(self, execution_data: ExecutionDataResponse) -> literal_models.LiteralMap:
@@ -842,12 +870,12 @@ class FlyteRemote(object):
         if bool(execution_data.full_outputs.literals):
             return execution_data.full_outputs
         elif execution_data.outputs.bytes > 0:
-            ctx = FlyteContextManager.current_context()
-            tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "outputs.pb")
-            ctx.file_access.get_data(execution_data.outputs.url, tmp_name)
-            return literal_models.LiteralMap.from_flyte_idl(
-                common_utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
-            )
+            with self.remote_context() as ctx:
+                tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "outputs.pb")
+                ctx.file_access.get_data(execution_data.outputs.url, tmp_name)
+                return literal_models.LiteralMap.from_flyte_idl(
+                    common_utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
+                )
         return literal_models.LiteralMap({})
 
     def _get_node_execution_interface(self, node_execution: FlyteNodeExecution) -> TypedInterface:

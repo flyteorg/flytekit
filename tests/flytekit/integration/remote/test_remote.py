@@ -5,9 +5,12 @@ import time
 
 import pytest
 
+from flytekit import kwtypes
 from flytekit.common.exceptions.user import FlyteAssertion
 from flytekit.core.launch_plan import LaunchPlan
+from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
+from flytekit.types.schema import FlyteSchema
 
 PROJECT = "flytesnacks"
 VERSION = os.getpid()
@@ -128,6 +131,10 @@ def _set_env():
     os.environ["FLYTE_INTERNAL_DOMAIN"] = "development"
     os.environ["FLYTE_INTERNAL_VERSION"] = f"v{VERSION}"
     os.environ["FLYTE_INTERNAL_IMAGE"] = "default:tag"
+    os.environ["FLYTE_CLOUD_PROVIDER"] = "aws"
+    os.environ["FLYTE_AWS_ENDPOINT"] = "http://localhost:53926"  # this port number is where pytest-flyte forwards minio
+    os.environ["FLYTE_AWS_ACCESS_KEY_ID"] = "minio"
+    os.environ["FLYTE_AWS_SECRET_ACCESS_KEY"] = "miniostorage"
 
 
 def test_execute_python_task(flyteclient, flyte_workflows_register):
@@ -161,3 +168,27 @@ def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_re
     execution = remote.execute(launch_plan, inputs={"a": 14, "b": "foobar"}, version=f"v{VERSION}", wait=True)
     assert execution.outputs["o0"] == 16
     assert execution.outputs["o1"] == "foobarworld"
+
+
+def test_execute_sqlite3_task(flyteclient, flyte_workflows_register):
+    _set_env()
+    remote = FlyteRemote.from_environment(PROJECT, "development")
+
+    example_db = "https://cdn.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"
+    interactive_sql_task = SQLite3Task(
+        "basic_querying",
+        query_template="select TrackId, Name from tracks limit {{.inputs.limit}}",
+        inputs=kwtypes(limit=int),
+        output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
+        task_config=SQLite3Config(
+            uri=example_db,
+            compressed=True,
+        ),
+    )
+    registered_sql_task = remote.register(interactive_sql_task)
+    execution = remote.execute(registered_sql_task, inputs={"limit": 10}, wait=True)
+    output = execution.outputs["results"]
+    result = output.open().all()
+    assert result.__class__.__name__ == "DataFrame"
+    assert "TrackId" in result
+    assert "Name" in result
