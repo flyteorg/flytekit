@@ -141,6 +141,7 @@ from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
 from flytekit.core.condition import conditional
 from flytekit.core.container_task import ContainerTask
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
+from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.map_task import map_task
@@ -153,6 +154,9 @@ from flytekit.core.schedule import CronSchedule, FixedRate
 from flytekit.core.task import Secret, reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
+from flytekit.extras.persistence import gcs_gsutil as _gcs
+from flytekit.extras.persistence import http as _http
+from flytekit.extras.persistence import s3_awscli as _s3
 from flytekit.loggers import logger
 from flytekit.types import schema
 

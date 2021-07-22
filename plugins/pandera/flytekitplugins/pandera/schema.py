@@ -76,7 +76,7 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
             raise AssertionError("Can only covert a literal schema to a pandera schema")
 
         def downloader(x, y):
-            ctx.file_access.download_directory(x, y)
+            ctx.file_access.get_data(x, y, is_multipart=True)
 
         df = FlyteSchema(
             local_path=ctx.file_access.get_random_local_directory(),

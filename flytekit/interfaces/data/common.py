@@ -1,6 +1,3 @@
-import abc as _abc
-
-
 class DataProxy(object):
     def __init__(self, name: str):
         self._name = name

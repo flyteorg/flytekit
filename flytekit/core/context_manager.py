@@ -33,9 +33,8 @@ from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkW
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import images, internal
 from flytekit.configuration import sdk as _sdk_config
-from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 from flytekit.engines.unit import mock_stats as _mock_stats
-from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models.core import identifier as _identifier
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
@@ -463,7 +462,7 @@ class FlyteContext(object):
     def with_new_compilation_state(self) -> Builder:
         return self.with_compilation_state(self.new_compilation_state())
 
-    def with_file_access(self, fa: _data_proxy.FileAccessProvider) -> Builder:
+    def with_file_access(self, fa: FileAccessProvider) -> Builder:
         return self.new_builder().with_file_access(fa)
 
     def with_serialization_settings(self, ss: SerializationSettings) -> Builder:
@@ -498,7 +497,7 @@ class FlyteContext(object):
 
     @dataclass
     class Builder(object):
-        file_access: _data_proxy.FileAccessProvider
+        file_access: FileAccessProvider
         level: int = 0
         compilation_state: Optional[CompilationState] = None
         execution_state: Optional[ExecutionState] = None
@@ -551,7 +550,7 @@ class FlyteContext(object):
         def with_new_compilation_state(self) -> "Builder":
             return self.with_compilation_state(self.new_compilation_state())
 
-        def with_file_access(self, fa: _data_proxy.FileAccessProvider) -> "Builder":
+        def with_file_access(self, fa: FileAccessProvider) -> "Builder":
             self.file_access = fa
             return self
 
@@ -680,7 +679,7 @@ class FlyteContextManager(object):
             logging=_logging,
             tmp_dir=os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "user_space"),
         )
-        default_context = FlyteContext(file_access=_data_proxy.default_local_file_access_provider)
+        default_context = FlyteContext(file_access=default_local_file_access_provider)
         default_context = default_context.with_execution_state(
             default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
         ).build()

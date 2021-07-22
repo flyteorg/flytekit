@@ -6,13 +6,13 @@ import typing
 from abc import abstractmethod
 from distutils import dir_util as _dir_util
 from shutil import copyfile as _copyfile
-from typing import Union, Dict
+from typing import Dict, Union
 from uuid import UUID
 
-from flytekit.loggers import logger
 from flytekit.common.exceptions.user import FlyteAssertion
 from flytekit.common.utils import PerformanceTimer
 from flytekit.interfaces.random import random
+from flytekit.loggers import logger
 
 
 class UnsupportedPersistenceOp(Exception):
@@ -50,30 +50,16 @@ class DataPersistence(object):
         pass
 
     @abstractmethod
-    def download_directory(self, remote_path: str, local_path: str):
+    def get(self, from_path: str, to_path: str, recursive: bool = False):
         """
-        downloads a directory from path to path recursively
-        """
-        pass
-
-    @abstractmethod
-    def download(self, remote_path: str, local_path: str):
-        """
-        downloads a file from path to path
+        Retrieves a data from from_path and writes to the given to_path (to_path is locally accessible)
         """
         pass
 
     @abstractmethod
-    def upload(self, file_path: str, to_path: str):
+    def put(self, from_path: str, to_path: str, recursive: bool = False):
         """
-        uploads the given file to path
-        """
-        pass
-
-    @abstractmethod
-    def upload_directory(self, local_path: str, remote_path: str):
-        """
-        uploads a directory from path to path recursively
+        Stores data from from_path and writes to the given to_path (from_path is locally accessible)
         """
         pass
 
@@ -98,6 +84,7 @@ class DataPersistencePlugins(object):
 
     These plugins should always be registered. Follow the plugin registration guidelines to auto-discover your plugins.
     """
+
     _PLUGINS: Dict[str, DataPersistence] = {}
 
     @classmethod
@@ -115,7 +102,8 @@ class DataPersistencePlugins(object):
             if not force:
                 raise TypeError(
                     f"Cannot register plugin {plugin.name} for protocol {protocol} as plugin {p.name} is already"
-                    f" registered for the same protocol. You can force register the new plugin by passing force=True")
+                    f" registered for the same protocol. You can force register the new plugin by passing force=True"
+                )
 
         cls._PLUGINS[protocol] = plugin
 
@@ -146,6 +134,12 @@ class DataPersistencePlugins(object):
 
 
 class DiskPersistence(DataPersistence):
+    """
+    The simplest form of persistence that is available with default flytekit - Disk based persistence.
+    This will store all data locally and retreive the data from local. This is helpful for local execution and simulating
+    runs.
+    """
+
     PROTOCOL = "file://"
 
     def __init__(self, *args, **kwargs):
@@ -187,21 +181,22 @@ class DiskPersistence(DataPersistence):
     def exists(self, path: str):
         return _os.path.exists(self.strip_file_header(path))
 
-    def download_directory(self, from_path: str, to_path: str):
+    def get(self, from_path: str, to_path: str, recursive: bool = False):
         if from_path != to_path:
-            _dir_util.copy_tree(self.strip_file_header(from_path), self.strip_file_header(to_path))
+            if recursive:
+                _dir_util.copy_tree(self.strip_file_header(from_path), self.strip_file_header(to_path))
+            else:
+                _copyfile(self.strip_file_header(from_path), self.strip_file_header(to_path))
 
-    def download(self, from_path: str, to_path: str):
-        _copyfile(self.strip_file_header(from_path), self.strip_file_header(to_path))
-
-    def upload(self, from_path: str, to_path: str):
-        # Emulate s3's flat storage by automatically creating directory path
-        self._make_local_path(_os.path.dirname(self.strip_file_header(to_path)))
-        # Write the object to a local file in the sandbox
-        _copyfile(self.strip_file_header(from_path), self.strip_file_header(to_path))
-
-    def upload_directory(self, from_path, to_path):
-        self.download_directory(from_path, to_path)
+    def put(self, from_path: str, to_path: str, recursive: bool = False):
+        if from_path != to_path:
+            if recursive:
+                _dir_util.copy_tree(self.strip_file_header(from_path), self.strip_file_header(to_path))
+            else:
+                # Emulate s3's flat storage by automatically creating directory path
+                self._make_local_path(_os.path.dirname(self.strip_file_header(to_path)))
+                # Write the object to a local file in the sandbox
+                _copyfile(self.strip_file_header(from_path), self.strip_file_header(to_path))
 
     def construct_path(self, add_protocol: bool, *args) -> str:
         if add_protocol:
@@ -239,12 +234,13 @@ class FileAccessProvider(object):
     def local_access(self) -> DiskPersistence:
         return self._local
 
-    def construct_random_path(self, persist: DataPersistence,
-                              file_path_or_file_name: typing.Optional[str] = None) -> str:
+    def construct_random_path(
+        self, persist: DataPersistence, file_path_or_file_name: typing.Optional[str] = None
+    ) -> str:
         """
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
         """
-        key = UUID(int=random.random.getrandbits(128)).hex
+        key = UUID(int=random.getrandbits(128)).hex
         if file_path_or_file_name:
             _, tail = os.path.split(file_path_or_file_name)
             if tail:
@@ -286,28 +282,27 @@ class FileAccessProvider(object):
         """
         Downloads directory from given remote to local path
         """
-        return DataPersistencePlugins.find_plugin(remote_path).download_directory(remote_path, local_path)
+        return self.get_data(remote_path, local_path, is_multipart=True)
 
     def download(self, remote_path: str, local_path: str):
         """
         Downloads from remote to local
         """
-        return DataPersistencePlugins.find_plugin(remote_path).download(remote_path, local_path)
+        return self.get_data(remote_path, local_path)
 
     def upload(self, file_path: str, to_path: str):
         """
         :param Text file_path:
         :param Text to_path:
         """
-        return DataPersistencePlugins.find_plugin(to_path).upload(file_path, to_path)
+        return self.put_data(file_path, to_path)
 
     def upload_directory(self, local_path: str, remote_path: str):
         """
         :param Text local_path:
         :param Text remote_path:
         """
-        # TODO: https://github.com/flyteorg/flyte/issues/762 - test if this works!
-        return DataPersistencePlugins.find_plugin(remote_path).upload_directory(local_path, remote_path)
+        return self.put_data(local_path, remote_path, is_multipart=True)
 
     def get_data(self, remote_path: str, local_path: str, is_multipart=False):
         """
@@ -317,10 +312,7 @@ class FileAccessProvider(object):
         """
         try:
             with PerformanceTimer("Copying ({} -> {})".format(remote_path, local_path)):
-                if is_multipart:
-                    self.download_directory(remote_path, local_path)
-                else:
-                    self.download(remote_path, local_path)
+                DataPersistencePlugins.find_plugin(remote_path).get(remote_path, local_path, recursive=is_multipart)
         except Exception as ex:
             raise FlyteAssertion(
                 "Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
@@ -343,10 +335,7 @@ class FileAccessProvider(object):
         """
         try:
             with PerformanceTimer("Writing ({} -> {})".format(local_path, remote_path)):
-                if is_multipart:
-                    self._default_remote.upload_directory(local_path, remote_path)
-                else:
-                    self._default_remote.upload(local_path, remote_path)
+                DataPersistencePlugins.find_plugin(remote_path).put(local_path, remote_path, recursive=is_multipart)
         except Exception as ex:
             raise FlyteAssertion(
                 f"Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"
@@ -360,6 +349,5 @@ DataPersistencePlugins.register_plugin("/", DiskPersistence())
 # TODO make this use tmpdir
 tmp_dir = os.path.join("/tmp/flyte", datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
 default_local_file_access_provider = FileAccessProvider(
-    local_sandbox_dir=os.path.join(tmp_dir, "sandbox"),
-    raw_output_prefix=os.path.join(tmp_dir, "raw")
+    local_sandbox_dir=os.path.join(tmp_dir, "sandbox"), raw_output_prefix=os.path.join(tmp_dir, "raw")
 )

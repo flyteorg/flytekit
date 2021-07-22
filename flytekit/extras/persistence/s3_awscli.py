@@ -121,64 +121,32 @@ class S3Persistence(DataPersistence):
             else:
                 raise ex
 
-    def download_directory(self, remote_path, local_path):
-        """
-        :param Text remote_path: remote s3:// path
-        :param Text local_path: directory to copy to
-        """
+    def get(self, from_path: str, to_path: str, recursive: bool = False):
         S3Persistence._check_binary()
 
-        if not remote_path.startswith("s3://"):
+        if not from_path.startswith("s3://"):
             raise ValueError("Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://...")
 
-        cmd = [S3Persistence._AWS_CLI, "s3", "cp", "--recursive", remote_path, local_path]
+        if recursive:
+            cmd = [S3Persistence._AWS_CLI, "s3", "cp", "--recursive", from_path, to_path]
+        else:
+            cmd = [S3Persistence._AWS_CLI, "s3", "cp", remote_path, local_path]
         return _update_cmd_config_and_execute(cmd)
 
-    def download(self, remote_path, local_path):
-        """
-        :param Text remote_path: remote s3:// path
-        :param Text local_path: directory to copy to
-        """
-        if not remote_path.startswith("s3://"):
-            raise ValueError("Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://...")
-
-        S3Persistence._check_binary()
-        cmd = [S3Persistence._AWS_CLI, "s3", "cp", remote_path, local_path]
-        return _update_cmd_config_and_execute(cmd)
-
-    def upload(self, file_path, to_path):
-        """
-        :param Text file_path:
-        :param Text to_path:
-        """
-        S3Persistence._check_binary()
-
+    def put(self, from_path: str, to_path: str, recursive: bool = False):
         extra_args = {
             "ACL": "bucket-owner-full-control",
         }
 
+        if not to_path.startswith("s3://"):
+            raise ValueError("Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://...")
+
+        S3Persistence._check_binary()
         cmd = [S3Persistence._AWS_CLI, "s3", "cp"]
+        if recursive:
+            cmd += ["--recursive"]
         cmd.extend(_extra_args(extra_args))
-        cmd += [file_path, to_path]
-
-        return _update_cmd_config_and_execute(cmd)
-
-    def upload_directory(self, local_path, remote_path):
-        """
-        :param Text local_path:
-        :param Text remote_path:
-        """
-        extra_args = {
-            "ACL": "bucket-owner-full-control",
-        }
-
-        if not remote_path.startswith("s3://"):
-            raise ValueError("Not an S3 ARN. Please use FQN (S3 ARN) of the format s3://...")
-
-        S3Persistence._check_binary()
-        cmd = [S3Persistence._AWS_CLI, "s3", "cp", "--recursive"]
-        cmd.extend(_extra_args(extra_args))
-        cmd += [local_path, remote_path]
+        cmd += [from_path, to_path]
         return _update_cmd_config_and_execute(cmd)
 
     def construct_path(self, add_protocol: bool, *paths) -> str:

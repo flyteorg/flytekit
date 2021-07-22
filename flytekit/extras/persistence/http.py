@@ -28,10 +28,11 @@ class HttpPersistence(DataPersistence):
             )
         return rsp.status_code == type(self)._HTTP_OK
 
-    def download_directory(self, from_path: str, to_path: str):
-        raise _user_exceptions.FlyteAssertion("Reading data recursively from HTTP endpoint is not currently supported.")
-
-    def download(self, from_path: str, to_path: str):
+    def get(self, from_path: str, to_path: str, recursive: bool = False):
+        if recursive:
+            raise _user_exceptions.FlyteAssertion(
+                "Reading data recursively from HTTP endpoint is not currently supported."
+            )
         rsp = _requests.get(from_path)
         if rsp.status_code != type(self)._HTTP_OK:
             raise _user_exceptions.FlyteValueException(
@@ -41,15 +42,13 @@ class HttpPersistence(DataPersistence):
         with open(to_path, "wb") as writer:
             writer.write(rsp.content)
 
-    def upload(self, from_path: str, to_path: str):
-        raise _user_exceptions.FlyteAssertion("Writing data to HTTP endpoint is not currently supported.")
-
-    def upload_directory(self, from_path: str, to_path: str):
+    def put(self, from_path: str, to_path: str, recursive: bool = False):
         raise _user_exceptions.FlyteAssertion("Writing data to HTTP endpoint is not currently supported.")
 
     def construct_path(self, add_protocol: bool, *paths) -> str:
         raise _user_exceptions.FlyteAssertion(
-            "There are multiple ways of creating http links / paths, this is not supported by the persistence layer")
+            "There are multiple ways of creating http links / paths, this is not supported by the persistence layer"
+        )
 
 
 DataPersistencePlugins.register_plugin("http://", HttpPersistence())

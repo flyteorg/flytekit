@@ -176,7 +176,7 @@ def _dispatch_execute(
     for k, v in output_file_dict.items():
         _common_utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
 
-    ctx.file_access.upload_directory(ctx.execution_state.engine_dir, output_prefix)
+    ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     _logging.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
 
