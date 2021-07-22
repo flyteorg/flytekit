@@ -383,12 +383,12 @@ class FlyteRemote(object):
     @singledispatchmethod
     def register(
         self,
-        entity: typing.Union[PythonTask, WorkflowBase, LaunchPlan],
+        entity,
         project: str = None,
         domain: str = None,
         name: str = None,
         version: str = None,
-    ) -> typing.Union[FlyteTask, FlyteWorkflow, FlyteLaunchPlan]:
+    ):
         """Register an entity to flyte admin.
 
         :param entity: entity to register.
@@ -486,6 +486,11 @@ class FlyteRemote(object):
 
         literal_inputs = TypeEngine.dict_to_literal_map(FlyteContextManager.current_context(), inputs)
         try:
+            # TODO: re-consider how this works. Currently, this will only execute the flyte entity referenced by
+            # flyte_id in the same project and domain. However, it is possible to execute it in a different project
+            # and domain, which is specified in the first two arguments of client.create_execution. This is useful
+            # in the case that I want to use a flyte entity from e.g. project "A" but actually execute the entity on a
+            # different project "B". For now, this method doesn't support this use case.
             exec_id = self.client.create_execution(
                 flyte_id.project,
                 flyte_id.domain,
@@ -515,7 +520,7 @@ class FlyteRemote(object):
     @singledispatchmethod
     def execute(
         self,
-        entity: typing.Union[FlyteTask, FlyteLaunchPlan, FlyteWorkflow, PythonTask, WorkflowBase, LaunchPlan],
+        entity,
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
@@ -724,7 +729,7 @@ class FlyteRemote(object):
     ########################
 
     @singledispatchmethod
-    def sync(self, execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]):
+    def sync(self, execution):
         """Sync a flyte execution object with its corresponding remote state.
 
         This method syncs the inputs and outputs of the execution object and all of its child node executions.
