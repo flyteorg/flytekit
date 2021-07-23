@@ -56,7 +56,7 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl>=0.19.2,<1.0.0",
+        "flyteidl>=0.19.14,<1.0.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=2.0.0,<4.0.0",
@@ -75,7 +75,7 @@ setup(
         "six>=1.9.0,<2.0.0",
         "sortedcontainers>=1.5.9<3.0.0",
         "statsd>=3.0.0,<4.0.0",
-        "urllib3>=1.22,<1.26",
+        "urllib3>=1.22,<2.0.0",
         "wrapt>=1.0.0,<2.0.0",
         "retry==0.9.2",
         "dataclasses-json>=0.5.2",
@@ -83,6 +83,8 @@ setup(
         "natsort>=7.0.1",
         "dirhash>=0.2.1",
         "docker-image-py>=0.1.10",
+        "singledispatchmethod; python_version < '3.8.0'",
+        "docstring-parser>=0.9.0",
     ],
     extras_require=extras_require,
     scripts=[

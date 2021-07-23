@@ -28,6 +28,17 @@ from flytekit.models.core import identifier as _identifier
 
 
 class SynchronousFlyteClient(_RawSynchronousFlyteClient):
+    """
+    This is a low-level client that users can use to make direct gRPC service calls to the control plane. See the
+    :std:doc:`service spec <idl:protos/docs/service/index>`. This is more user-friendly interface than the
+    :py:class:`raw client <flytekit.clients.raw.RawSynchronousFlyteClient>` so users should try to use this class
+    first. Create a client by ::
+
+        SynchronousFlyteClient("your.domain:port", insecure=True)
+        # insecure should be True if your flyteadmin deployment doesn't have SSL enabled
+
+    """
+
     @property
     def raw(self):
         """
@@ -282,7 +293,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
     def get_workflow(self, id):
         """
-        This returns a single task for a given ID.
+        This returns a single workflow for a given ID.
 
         :param flytekit.models.core.identifier.Identifier id: The ID representing a given task.
         :raises: TODO
@@ -544,6 +555,19 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                     inputs=inputs.to_flyte_idl(),
                 )
             )
+            .id
+        )
+
+    def recover_execution(self, id, name: str = None):
+        """
+        Recreates a previously-run workflow execution that will only start executing from the last known failure point.
+        :param flytekit.common.core.identifier.WorkflowExecutionIdentifier id:
+        :param name str: Optional name to assign to the newly created execution.
+        :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier
+        """
+        return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
+            super(SynchronousFlyteClient, self)
+            .recover_execution(_execution_pb2.ExecutionRecoverRequest(id=id.to_flyte_idl(), name=name))
             .id
         )
 

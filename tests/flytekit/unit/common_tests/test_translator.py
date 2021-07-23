@@ -5,8 +5,9 @@ from flytekit import ContainerTask, Resources
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
-from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.context_manager import FastSerializationSettings, Image, ImageConfig
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
+from flytekit.core.reference_entity import ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask, task
 from flytekit.core.workflow import ReferenceWorkflow, workflow
 from flytekit.models.core import identifier as identifier_models
@@ -24,15 +25,24 @@ serialization_settings = context_manager.SerializationSettings(
 def test_references():
     rlp = ReferenceLaunchPlan("media", "stg", "some.name", "cafe", inputs=kwtypes(in1=str), outputs=kwtypes())
     lp_model = get_serializable(OrderedDict(), serialization_settings, rlp)
-    assert lp_model is None
+    assert isinstance(lp_model, ReferenceSpec)
+    assert isinstance(lp_model.template, ReferenceTemplate)
+    assert lp_model.template.id == rlp.reference.id
+    assert lp_model.template.resource_type == identifier_models.ResourceType.LAUNCH_PLAN
 
     rt = ReferenceTask("media", "stg", "some.name", "cafe", inputs=kwtypes(in1=str), outputs=kwtypes())
     task_spec = get_serializable(OrderedDict(), serialization_settings, rt)
-    assert task_spec is None
+    assert isinstance(task_spec, ReferenceSpec)
+    assert isinstance(task_spec.template, ReferenceTemplate)
+    assert task_spec.template.id == rt.reference.id
+    assert task_spec.template.resource_type == identifier_models.ResourceType.TASK
 
     rw = ReferenceWorkflow("media", "stg", "some.name", "cafe", inputs=kwtypes(in1=str), outputs=kwtypes())
     wf_spec = get_serializable(OrderedDict(), serialization_settings, rw)
-    assert wf_spec is None
+    assert isinstance(wf_spec, ReferenceSpec)
+    assert isinstance(wf_spec.template, ReferenceTemplate)
+    assert wf_spec.template.id == rw.reference.id
+    assert wf_spec.template.resource_type == identifier_models.ResourceType.WORKFLOW
 
 
 def test_basics():
@@ -50,14 +60,19 @@ def test_basics():
         d = t2(a=y, b=b)
         return x, d
 
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf, False)
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.interface.inputs) == 2
     assert len(wf_spec.template.interface.outputs) == 2
     assert len(wf_spec.template.nodes) == 2
     assert wf_spec.template.id.resource_type == identifier_models.ResourceType.WORKFLOW
 
     # Gets cached the first time around so it's not actually fast.
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t1, True)
+    ssettings = (
+        serialization_settings.new_builder()
+        .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
+        .build()
+    )
+    task_spec = get_serializable(OrderedDict(), ssettings, t1)
     assert "pyflyte-execute" in task_spec.template.container.args
 
     lp = LaunchPlan.create(
@@ -77,7 +92,12 @@ def test_fast():
     def t2(a: str, b: str) -> str:
         return b + a
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t1, True)
+    ssettings = (
+        serialization_settings.new_builder()
+        .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
+        .build()
+    )
+    task_spec = get_serializable(OrderedDict(), ssettings, t1)
     assert "pyflyte-fast-execute" in task_spec.template.container.args
 
 
@@ -97,5 +117,10 @@ def test_container():
         requests=Resources(mem="400Mi", cpu="1"),
     )
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t2, fast=True)
+    ssettings = (
+        serialization_settings.new_builder()
+        .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
+        .build()
+    )
+    task_spec = get_serializable(OrderedDict(), ssettings, t2)
     assert "pyflyte" not in task_spec.template.container.args

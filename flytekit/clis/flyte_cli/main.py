@@ -1255,6 +1255,44 @@ def relaunch_execution(project, domain, name, host, insecure, urn, principal, ve
     _click.echo("")
 
 
+@_flyte_cli.command("recover-execution", cls=_FlyteSubCommand)
+@_urn_option
+@_optional_name_option
+@_host_option
+@_insecure_option
+def recover_execution(urn, name, host, insecure):
+    """
+    Recreates a previously-run workflow execution that will only start executing from the last known failure point.
+
+    In Recover mode, users cannot change any input parameters or update the version of the execution.
+    This is extremely useful to recover from system errors and byzantine faults like
+        - loss of K8s cluster
+        - bugs in platform or instability
+        - machine failures
+        - downstream system failures (downstream services)
+        - or simply to recover executions that failed because of retry exhaustion and should complete if tried again.
+
+    You can optionally assign a name to the recreated execution you trigger or let the system assing one.
+
+    Usage:
+        $ flyte-cli recover-execution -u ex:flyteexamples:development:some-workflow:abc123 -n my_retry_name
+
+    These arguments are then collected, and passed into the `lp_args` variable as a Tuple[Text].
+    Users should use the get-execution and get-launch-plan commands to ascertain the names of inputs to use.
+    """
+    _welcome_message()
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+
+    _click.echo("Recovering execution {}\n".format(_tt(urn)))
+
+    original_workflow_execution_identifier = _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
+
+    execution_identifier_resp = client.recover_execution(id=original_workflow_execution_identifier, name=name)
+    execution_identifier = _identifier.WorkflowExecutionIdentifier.promote_from_model(execution_identifier_resp)
+    _click.secho("Launched execution: {}".format(execution_identifier), fg="blue")
+    _click.echo("")
+
+
 @_flyte_cli.command("terminate-execution", cls=_FlyteSubCommand)
 @_host_option
 @_insecure_option
@@ -1871,13 +1909,11 @@ def register_files(
     for f in files:
         _click.echo(f"  {f}")
 
-    patches = None
-    if assumable_iam_role or kubernetes_service_account or output_location_prefix:
-        patches = {
-            _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
-                assumable_iam_role, kubernetes_service_account, output_location_prefix
-            )
-        }
+    patches = {
+        _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
+            assumable_iam_role, kubernetes_service_account, output_location_prefix
+        )
+    }
 
     _extract_and_register(host, insecure, project, domain, version, files, patches)
 
@@ -1978,15 +2014,12 @@ def fast_register_files(
         entity.template.container.args.extend(complete_args)
         return entity
 
-    patches = {_identifier_pb2.TASK: fast_register_task}
-    if assumable_iam_role or kubernetes_service_account or output_location_prefix:
-        patches.update(
-            {
-                _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
-                    assumable_iam_role, kubernetes_service_account, output_location_prefix
-                )
-            }
-        )
+    patches = {
+        _identifier_pb2.TASK: fast_register_task,
+        _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
+            assumable_iam_role, kubernetes_service_account, output_location_prefix
+        ),
+    }
 
     _extract_and_register(host, insecure, project, domain, version, pb_files, patches)
 

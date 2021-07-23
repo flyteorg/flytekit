@@ -114,10 +114,10 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         entity_metadata,
         default_inputs,
         fixed_inputs,
-        labels,
-        annotations,
-        auth_role,
-        raw_output_data_config,
+        labels: _common.Labels,
+        annotations: _common.Annotations,
+        auth_role: _common.AuthRole,
+        raw_output_data_config: _common.RawOutputDataConfig,
         max_parallelism=None,
     ):
         """
@@ -127,11 +127,11 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         :param LaunchPlanMetadata entity_metadata: Metadata
         :param flytekit.models.interface.ParameterMap default_inputs: Input values to be passed for the execution
         :param flytekit.models.literals.LiteralMap fixed_inputs: Fixed, non-overridable inputs for the Launch Plan
-        :param flyteidl.admin.common_pb2.Labels:
+        :param flytekit.models.common.Labels:
             Any custom kubernetes labels to apply to workflows executed by this launch plan.
-        :param flyteidl.admin.common_pb2.Annotations annotations:
+        :param flytekit.models.common.Annotations annotations:
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
-        :param flytekit.models.common.Auth auth_role: The auth method with which to execute the workflow.
+        :param flytekit.models.common.AuthRole auth_role: The auth method with which to execute the workflow.
         :param flytekit.models.common.RawOutputDataConfig raw_output_data_config: Value for where to store offloaded
             data like Blobs and Schemas.
         :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
@@ -180,7 +180,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         return self._fixed_inputs
 
     @property
-    def labels(self):
+    def labels(self) -> _common.Labels:
         """
         The labels to execute the workflow with
         :rtype: flytekit.models.common.Labels
@@ -188,7 +188,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         return self._labels
 
     @property
-    def annotations(self):
+    def annotations(self) -> _common.Annotations:
         """
         The annotations to execute the workflow with
         :rtype: flytekit.models.common.Annotations

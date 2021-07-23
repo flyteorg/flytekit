@@ -11,23 +11,48 @@ from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.launch_plan import LaunchPlan, reference_launch_plan
 from flytekit.core.promise import VoidPromise
 from flytekit.core.reference import get_reference_entity
-from flytekit.core.reference_entity import ReferenceEntity, TaskReference
+from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate, TaskReference
 from flytekit.core.task import reference_task, task
 from flytekit.core.testing import patch, task_mock
 from flytekit.core.workflow import reference_workflow, workflow
 from flytekit.models.core import identifier as _identifier_model
 
 
-def test_ref():
-    @reference_task(
-        project="flytesnacks",
-        domain="development",
-        name="recipes.aaa.simple.join_strings",
-        version="553018f39e519bdb2597b652639c30ce16b99c79",
+# This is used for docs
+def test_ref_docs():
+    # docs_ref_start
+    ref_entity = get_reference_entity(
+        _identifier_model.ResourceType.WORKFLOW,
+        "project",
+        "dev",
+        "my.other.workflow",
+        "abc123",
+        inputs=kwtypes(a=str, b=int),
+        outputs={},
     )
-    def ref_t1(a: typing.List[str]) -> str:
-        ...
+    # docs_ref_end
 
+    with pytest.raises(Exception) as e:
+        ref_entity()
+    assert "You must mock this out" in f"{e}"
+
+
+@reference_task(
+    project="flytesnacks",
+    domain="development",
+    name="recipes.aaa.simple.join_strings",
+    version="553018f39e519bdb2597b652639c30ce16b99c79",
+)
+def ref_t1(a: typing.List[str]) -> str:
+    """
+    The empty function acts as a convenient skeleton to make it intuitive to call/reference this task from workflows.
+    The interface of the task must match that of the remote task. Otherwise, remote compilation of the workflow will
+    fail.
+    """
+    ...
+
+
+def test_ref():
     assert ref_t1.id.project == "flytesnacks"
     assert ref_t1.id.domain == "development"
     assert ref_t1.id.name == "recipes.aaa.simple.join_strings"
@@ -40,18 +65,11 @@ def test_ref():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    ss = get_serializable(OrderedDict(), serialization_settings, ref_t1)
-    assert ss is None
-
-    serialization_settings = context_manager.SerializationSettings(
-        project="proj",
-        domain="dom",
-        version="123",
-        image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
-        env={},
-    )
-    task_spec = get_serializable(OrderedDict(), serialization_settings, ref_t1)
-    assert task_spec is None
+    spec = get_serializable(OrderedDict(), serialization_settings, ref_t1)
+    assert isinstance(spec, ReferenceSpec)
+    assert isinstance(spec.template, ReferenceTemplate)
+    assert spec.template.id == ref_t1.id
+    assert spec.template.resource_type == _identifier_model.ResourceType.TASK
 
 
 def test_ref_task_more():
@@ -77,15 +95,16 @@ def test_ref_task_more():
         assert wf1(in1=["hello", "world"]) == "hello"
 
 
+@reference_workflow(project="proj", domain="developement", name="wf_name", version="abc")
+def ref_wf1(a: int) -> (str, str):
+    ...
+
+
 def test_reference_workflow():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         a = a + 2
         return a, "world-" + str(a)
-
-    @reference_workflow(project="proj", domain="developement", name="wf_name", version="abc")
-    def ref_wf1(a: int) -> (str, str):
-        ...
 
     @workflow
     def my_wf(a: int, b: str) -> (int, str, str):
@@ -198,10 +217,7 @@ def test_ref_plain_two_outputs():
 
 @pytest.mark.parametrize(
     "resource_type",
-    [
-        _identifier_model.ResourceType.LAUNCH_PLAN,
-        _identifier_model.ResourceType.TASK,
-    ],
+    [_identifier_model.ResourceType.LAUNCH_PLAN, _identifier_model.ResourceType.TASK],
 )
 def test_lps(resource_type):
     ref_entity = get_reference_entity(
@@ -285,7 +301,7 @@ def test_ref_sub_wf():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    with pytest.raises(Exception):
+    with pytest.raises(Exception, match="currently unsupported"):
         # Subworkflow as references don't work (probably ever). The reason is because we'd need to make a network call
         # to admin to get the structure of the subworkflow and the whole point of reference entities is that there
         # is no network call.
@@ -373,7 +389,7 @@ def test_ref_lp_from_decorator_with_named_outputs():
     assert ref_lp1.python_interface.outputs == {"o1": int, "o2": str}
 
 
-def test_ref_dynamic():
+def test_ref_dynamic_task():
     @reference_task(
         project="flytesnacks",
         domain="development",
@@ -407,5 +423,34 @@ def test_ref_dynamic():
     ) as ctx:
         new_exc_state = ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
         with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)) as ctx:
-            with pytest.raises(Exception):
-                my_subwf.compile_into_workflow(ctx, False, my_subwf._task_function, a=5)
+            with pytest.raises(Exception, match="currently unsupported"):
+                my_subwf.compile_into_workflow(ctx, my_subwf._task_function, a=5)
+
+
+def test_ref_dynamic_lp():
+    @dynamic
+    def my_subwf(a: int) -> typing.List[int]:
+        @reference_launch_plan(project="project", domain="domain", name="name", version="version")
+        def ref_lp1(p1: str, p2: str) -> int:
+            ...
+
+        s = []
+        for i in range(a):
+            s.append(ref_lp1(p1="hello", p2=str(a)))
+        return s
+
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContextManager.current_context().with_serialization_settings(
+            context_manager.SerializationSettings(
+                project="test_proj",
+                domain="test_domain",
+                version="abc",
+                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                env={},
+            )
+        )
+    ) as ctx:
+        new_exc_state = ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)) as ctx:
+            djspec = my_subwf.compile_into_workflow(ctx, my_subwf._task_function, a=5)
+            assert len(djspec.nodes) == 5

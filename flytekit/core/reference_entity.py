@@ -18,6 +18,7 @@ from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import workflow as _workflow_model
 
 
 @dataclass
@@ -175,13 +176,11 @@ class ReferenceEntity(object):
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
         return create_task_output(vals, self.python_interface)
 
+    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
+        return _workflow_model.NodeMetadata(name=f"{self.__module__}.{self.name}")
+
     def compile(self, ctx: FlyteContext, *args, **kwargs):
-        return create_and_link_node(
-            ctx,
-            entity=self,
-            interface=self.python_interface,
-            **kwargs,
-        )
+        return create_and_link_node(ctx, entity=self, **kwargs)
 
     def __call__(self, *args, **kwargs):
         # When a Task is () aka __called__, there are three things we may do:
@@ -211,3 +210,50 @@ class ReferenceEntity(object):
         else:
             logger.debug("Reference entity - running raw execute")
             return self.execute(**kwargs)
+
+
+# ReferenceEntity is not a registerable entity and therefore the below classes do not need to inherit from
+# flytekit.models.common.FlyteIdlEntity.
+class ReferenceTemplate(object):
+    def __init__(self, id: _identifier_model.Identifier, resource_type: int) -> None:
+        """
+        A reference template encapsulates all the information necessary to use reference entities within other
+        workflows or dynamic tasks.
+
+        :param flytekit.models.core.identifier.Identifier id: User-specified information that uniquely
+            identifies this reference.
+        :param int resource_type: The type of reference. See: flytekit.models.core.identifier.ResourceType
+        """
+        self._id = id
+        self._resource_type = resource_type
+
+    @property
+    def id(self) -> _identifier_model.Identifier:
+        """
+        User-specified information that uniquely identifies this reference.
+        :rtype: flytekit.models.core.identifier.Identifier
+        """
+        return self._id
+
+    @property
+    def resource_type(self) -> int:
+        """
+        The type of reference.
+        :rtype: flytekit.models.core.identifier.ResourceType
+        """
+        return self._resource_type
+
+
+class ReferenceSpec(object):
+    def __init__(self, template: ReferenceTemplate) -> None:
+        """
+        :param ReferenceTemplate template:
+        """
+        self._template = template
+
+    @property
+    def template(self) -> ReferenceTemplate:
+        """
+        :rtype: ReferenceTemplate
+        """
+        return self._template

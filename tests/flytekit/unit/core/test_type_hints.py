@@ -1,6 +1,7 @@
 import datetime
 import functools
 import os
+import random
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -14,7 +15,7 @@ from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import ExecutionState, Image, ImageConfig
+from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise, VoidPromise
 from flytekit.core.resources import Resources
@@ -240,11 +241,12 @@ def test_wf_output_mismatch():
         def my_wf2(a: int, b: str) -> int:
             return a, b
 
-    @workflow
-    def my_wf3(a: int, b: str) -> int:
-        return (a,)
+    with pytest.raises(AssertionError):
 
-    my_wf3(a=10, b="hello")
+        @workflow
+        def my_wf3(a: int, b: str) -> int:
+            return (a,)
+
     assert context_manager.FlyteContextManager.size() == 1
 
 
@@ -441,7 +443,7 @@ def test_wf1_with_dynamic():
     ) as ctx:
         new_exc_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
         with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)) as ctx:
-            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, False, my_subwf._task_function, a=5)
+            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
             assert len(dynamic_job_spec.tasks) == 1
 
@@ -474,6 +476,7 @@ def test_wf1_with_fast_dynamic():
                 version="abc",
                 image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
                 env={},
+                fast_serialization_settings=FastSerializationSettings(enabled=True),
             )
         )
     ) as ctx:
@@ -488,7 +491,7 @@ def test_wf1_with_fast_dynamic():
                 )
             )
         ) as ctx:
-            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, True, my_subwf._task_function, a=5)
+            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
             assert len(dynamic_job_spec.tasks) == 1
             args = " ".join(dynamic_job_spec.tasks[0].container.args)
@@ -1192,7 +1195,7 @@ def test_nested_dynamic():
     with context_manager.FlyteContextManager.with_context(ctx) as ctx:
         es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
         with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(es)) as ctx:
-            dynamic_job_spec = nested_my_subwf.compile_into_workflow(ctx, False, nested_my_subwf._task_function, a=5)
+            dynamic_job_spec = nested_my_subwf.compile_into_workflow(ctx, nested_my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
 
 
@@ -1206,3 +1209,62 @@ def test_workflow_named_tuple():
         return t1(), t1()
 
     assert wf() == ("Hello", "Hello")
+
+
+def test_conditional_asymmetric_return():
+    @task
+    def square(n: int) -> int:
+        """
+        Parameters:
+            n (float): name of the parameter for the task will be derived from the name of the input variable
+                   the type will be automatically deduced to be Types.Integer
+        Return:
+            float: The label for the output will be automatically assigned and type will be deduced from the annotation
+        """
+        return n * n
+
+    @task
+    def double(n: int) -> int:
+        """
+        Parameters:
+            n (float): name of the parameter for the task will be derived from the name of the input variable
+                   the type will be automatically deduced to be Types.Integer
+        Return:
+            float: The label for the output will be automatically assigned and type will be deduced from the annotation
+        """
+        return 2 * n
+
+    @task
+    def coin_toss(seed: int) -> bool:
+        """
+        Mimic some condition checking to see if something ran correctly
+        """
+        r = random.Random(seed)
+        if r.random() < 0.5:
+            return True
+        return False
+
+    @task
+    def sum_diff(a: int, b: int) -> (int, int):
+        """
+        sum_diff returns the sum and difference between a and b.
+        """
+        return a + b, a - b
+
+    @workflow
+    def consume_outputs(my_input: int, seed: int = 5) -> int:
+        is_heads = coin_toss(seed=seed)
+        res = (
+            conditional("double_or_square")
+            .if_(is_heads.is_true())
+            .then(square(n=my_input))
+            .else_()
+            .then(sum_diff(a=my_input, b=my_input))
+        )
+
+        # Regardless of the result, always double before returning
+        # the variable `res` in this case will carry the value of either square or double of the variable `my_input`
+        return double(n=res)
+
+    assert consume_outputs(my_input=4, seed=7) == 32
+    assert consume_outputs(my_input=4) == 16

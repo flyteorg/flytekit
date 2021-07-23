@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import collections
-import datetime
 import typing
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
+
+from typing_extensions import Protocol
 
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
@@ -96,6 +97,13 @@ def translate_inputs_to_literals(
         elif isinstance(input_val, VoidPromise):
             raise AssertionError(
                 f"Outputs of a non-output producing task {input_val.task_name} cannot be passed to another task."
+            )
+        elif isinstance(input_val, tuple):
+            raise AssertionError(
+                "Tuples are not a supported type for individual values in Flyte - got a tuple -"
+                f" {input_val}. If using named tuple in an inner task, please, de-reference the"
+                "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
+                "return v.x, instead of v, even if this has a single element"
             )
         else:
             # This handles native values, the 5 example
@@ -221,6 +229,14 @@ class ComparisonExpression(object):
 
 
 class ConjunctionExpression(object):
+    """
+    A Conjunction Expression is an expression of the form either (A and B) or (A or B).
+    where A, B are two expressions (comparsion or conjunctions) and (and, or) are logical truth operators.
+
+    A conjunctionExpression evaluates to True or False depending on the logical operator and the truth values of
+    each of the expressions A & B
+    """
+
     def __init__(
         self,
         lhs: Union[ComparisonExpression, "ConjunctionExpression"],
@@ -411,6 +427,45 @@ class Promise(object):
         return str(self.__repr__())
 
 
+def create_native_named_tuple(
+    ctx: FlyteContext, promises: Union[Promise, typing.List[Promise]], entity_interface: Interface
+) -> Optional[Tuple]:
+    """
+    Creates and returns a Named tuple with all variables that match the expected named outputs. this makes
+    it possible to run things locally and expect a more native behavior, i.e. address elements of a named tuple
+    by name.
+    """
+    if entity_interface is None:
+        raise ValueError("Interface of the entity is required to generate named outputs")
+
+    if promises is None:
+        return None
+
+    if isinstance(promises, Promise):
+        v = [v for k, v in entity_interface.outputs.items()][0]  # get output native type
+        return TypeEngine.to_python_value(ctx, promises.val, v)
+
+    if len(promises) == 0:
+        return None
+
+    named_tuple_name = "DefaultNamedTupleOutput"
+    if entity_interface.output_tuple_name:
+        named_tuple_name = entity_interface.output_tuple_name
+
+    outputs = {}
+    for p in promises:
+        if not isinstance(p, Promise):
+            raise AssertionError(
+                "Workflow outputs can only be promises that are returned by tasks. Found a value of"
+                f"type {type(p)}. Workflows cannot return local variables or constants."
+            )
+        outputs[p.var] = TypeEngine.to_python_value(ctx, p.val, entity_interface.outputs[p.var])
+
+    # Should this class be part of the Interface?
+    t = collections.namedtuple(named_tuple_name, list(outputs.keys()))
+    return t(**outputs)
+
+
 # To create a class that is a named tuple, we might have to create namedtuplemeta and manipulate the tuple
 def create_task_output(
     promises: Optional[Union[List[Promise], Promise]], entity_interface: Optional[Interface] = None
@@ -530,6 +585,14 @@ def binding_data_from_python_std(
             )
         return _literals_models.BindingData(map=m)
 
+    elif isinstance(t_value, tuple):
+        raise AssertionError(
+            "Tuples are not a supported type for individual values in Flyte - got a tuple -"
+            f" {t_value}. If using named tuple in an inner task, please, de-reference the"
+            "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
+            "return v.x, instead of v, even if this has a single element"
+        )
+
     # This is the scalar case - e.g. my_task(in1=5)
     scalar = TypeEngine.to_literal(ctx, t_value, t_value_type, expected_literal_type).scalar
     return _literals_models.BindingData(scalar=scalar)
@@ -642,13 +705,22 @@ class NodeOutput(type_models.OutputReference):
         return s
 
 
-# TODO we should accept TaskMetadata here and then extract whatever fields we want into NodeMetadata
+class SupportsNodeCreation(Protocol):
+    @property
+    def name(self) -> str:
+        ...
+
+    @property
+    def python_interface(self) -> flyte_interface.Interface:
+        ...
+
+    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
+        ...
+
+
 def create_and_link_node(
     ctx: FlyteContext,
-    entity,
-    interface: flyte_interface.Interface,
-    timeout: Optional[datetime.timedelta] = None,
-    retry_strategy: Optional[_literal_models.RetryStrategy] = None,
+    entity: SupportsNodeCreation,
     **kwargs,
 ):
     """
@@ -660,7 +732,10 @@ def create_and_link_node(
     used_inputs = set()
     bindings = []
 
+    interface = entity.python_interface
     typed_interface = flyte_interface.transform_interface_to_typed_interface(interface)
+    # Mypy needs some extra help to believe that `typed_interface` will not be `None`
+    assert typed_interface is not None
 
     for k in sorted(interface.inputs):
         var = typed_interface.inputs[k]
@@ -700,16 +775,10 @@ def create_and_link_node(
         )
     )
 
-    node_metadata = _workflow_model.NodeMetadata(
-        f"{entity.__module__}.{entity.name}",
-        timeout or datetime.timedelta(),
-        retry_strategy or _literal_models.RetryStrategy(0),
-    )
-
     non_sdk_node = Node(
         # TODO: Better naming, probably a derivative of the function name.
         id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
-        metadata=node_metadata,
+        metadata=entity.construct_node_metadata(),
         bindings=sorted(bindings, key=lambda b: b.var),
         upstream_nodes=upstream_nodes,
         flyte_entity=entity,

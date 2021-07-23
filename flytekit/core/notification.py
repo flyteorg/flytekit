@@ -5,7 +5,7 @@ the Flyte platform to send emails when a workflow run reaches certain stages (fa
 .. note::
 
     Notifications require some setup and configuration on the Flyte platform side. Please contact your Flyte platform
-    admins to get this feature enabled. See :std:doc:`flyte:howto/notifications`
+    admins to get this feature enabled. See :std:ref:`cookbook:setting up workflow notifications`
 
 Each notification type takes a list of :py:class:`flytekit.models.core.execution.WorkflowExecutionPhase` and a list of
 emails. Even though there are different notification classes in this module, they all just send email. The differentiation
@@ -59,6 +59,12 @@ class Notification(_common_model.Notification):
 class PagerDuty(Notification):
     """
     This notification should be used when sending emails to the PagerDuty service.
+
+    .. code-block:: python
+
+        from flytekit.models.core.execution import WorkflowExecutionPhase
+
+        PagerDuty(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
     """
 
     def __init__(self, phases: List[int], recipients_email: List[str]):
@@ -73,6 +79,12 @@ class PagerDuty(Notification):
 class Email(Notification):
     """
     This notification should be used when sending regular emails to people.
+
+    .. code-block:: python
+
+        from flytekit.models.core.execution import WorkflowExecutionPhase
+
+        Email(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
     """
 
     def __init__(self, phases: List[int], recipients_email: List[str]):
@@ -87,6 +99,12 @@ class Email(Notification):
 class Slack(Notification):
     """
     This notification should be used when sending emails to the Slack.
+
+    .. code-block:: python
+
+        from flytekit.models.core.execution import WorkflowExecutionPhase
+
+        Slack(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
     """
 
     def __init__(self, phases: List[int], recipients_email: List[str]):

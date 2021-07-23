@@ -3,6 +3,7 @@ import math as _math
 import os as _os
 import sys
 import tarfile as _tarfile
+import typing
 from collections import OrderedDict
 from enum import Enum as _Enum
 from typing import List
@@ -99,11 +100,57 @@ def _should_register_with_admin(entity) -> bool:
     This is used in the code below. The translator.py module produces lots of objects (namely nodes and BranchNodes)
     that do not/should not be written to .pb file to send to admin. This function filters them out.
     """
-    return entity is not None and (
-        isinstance(entity, task_models.TaskSpec)
-        or isinstance(entity, _launch_plan_models.LaunchPlan)
-        or isinstance(entity, admin_workflow_models.WorkflowSpec)
+    return isinstance(
+        entity, (task_models.TaskSpec, _launch_plan_models.LaunchPlan, admin_workflow_models.WorkflowSpec)
     )
+
+
+def get_registrable_entities(ctx: flyte_context.FlyteContext) -> typing.List:
+    """
+    Returns all entities that can be serialized and should be sent over to Flyte backend. This will filter any entities
+    that are not known to Admin
+    """
+    new_api_serializable_entities = OrderedDict()
+    # TODO: Clean up the copy() - it's here because we call get_default_launch_plan, which may create a LaunchPlan
+    #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
+    for entity in flyte_context.FlyteEntities.entities.copy():
+        if isinstance(entity, PythonTask) or isinstance(entity, WorkflowBase) or isinstance(entity, LaunchPlan):
+            get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
+
+            if isinstance(entity, WorkflowBase):
+                lp = LaunchPlan.get_default_launch_plan(ctx, entity)
+                get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp)
+
+    new_api_model_values = list(new_api_serializable_entities.values())
+    entities_to_be_serialized = list(filter(_should_register_with_admin, new_api_model_values))
+    return [v.to_flyte_idl() for v in entities_to_be_serialized]
+
+
+def persist_registrable_entities(entities: typing.List, folder: str):
+    """
+    For protobuf serializable list of entities, writes a file with the name if the entity and
+    enumeration order to the specified folder
+    """
+    zero_padded_length = _determine_text_chars(len(entities))
+    for i, entity in enumerate(entities):
+        name = ""
+        fname_index = str(i).zfill(zero_padded_length)
+        if isinstance(entity, _idl_admin_TaskSpec):
+            name = entity.template.id.name
+            fname = "{}_{}_1.pb".format(fname_index, entity.template.id.name)
+        elif isinstance(entity, _idl_admin_WorkflowSpec):
+            name = entity.template.id.name
+            fname = "{}_{}_2.pb".format(fname_index, entity.template.id.name)
+        elif isinstance(entity, _idl_admin_LaunchPlan):
+            name = entity.id.name
+            fname = "{}_{}_3.pb".format(fname_index, entity.id.name)
+        else:
+            click.secho(f"Entity is incorrect formatted {entity} - type {type(entity)}", fg="red")
+            sys.exit(-1)
+        click.secho(f"  Packaging {name} -> {fname}", dim=True)
+        fname = _os.path.join(folder, fname)
+        with open(fname, "wb") as writer:
+            writer.write(entity.SerializeToString())
 
 
 @system_entry_point
@@ -147,6 +194,12 @@ def serialize_all(
         _internal_config.IMAGE.env_var: image,
     }
 
+    if not (mode == SerializationMode.DEFAULT or mode == SerializationMode.FAST):
+        raise AssertionError(f"Unrecognized serialization mode: {mode}")
+    fast_serialization_settings = flyte_context.FastSerializationSettings(
+        enabled=mode == SerializationMode.FAST,
+        # TODO: if we want to move the destination dir as a serialization argument, we should initialize it here
+    )
     serialization_settings = flyte_context.SerializationSettings(
         project=_PROJECT_PLACEHOLDER,
         domain=_DOMAIN_PLACEHOLDER,
@@ -158,6 +211,7 @@ def serialize_all(
         entrypoint_settings=flyte_context.EntrypointSettings(
             path=_os.path.join(flytekit_virtualenv_root, _DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC)
         ),
+        fast_serialization_settings=fast_serialization_settings,
     )
     ctx = flyte_context.FlyteContextManager.current_context().with_serialization_settings(serialization_settings)
     with flyte_context.FlyteContextManager.with_context(ctx) as ctx:
@@ -181,53 +235,12 @@ def serialize_all(
 
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
 
-        mode = mode if mode else SerializationMode.DEFAULT
-
-        new_api_serializable_entities = OrderedDict()
-        # TODO: Clean up the copy() - it's here because we call get_default_launch_plan, which may create a LaunchPlan
-        #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
-        for entity in flyte_context.FlyteEntities.entities.copy():
-            # TODO: Add a reachable check. Since these entities are always added by the constructor, weird things can
-            #  happen. If someone creates a workflow inside a workflow, we don't actually want the inner workflow to be
-            #  registered. Or do we? Certainly, we don't want inner tasks to be registered because we don't know how
-            #  to reach them, but perhaps workflows should be okay to take into account generated workflows.
-            #  Also a user may import dir_b.workflows from dir_a.workflows but workflow packages might only
-            #  specify dir_a
-            if isinstance(entity, PythonTask) or isinstance(entity, WorkflowBase) or isinstance(entity, LaunchPlan):
-                if isinstance(entity, PythonTask):
-                    if mode == SerializationMode.DEFAULT:
-                        get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
-                    elif mode == SerializationMode.FAST:
-                        get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity, fast=True)
-                    else:
-                        raise AssertionError(f"Unrecognized serialization mode: {mode}")
-                else:
-                    get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
-
-                if isinstance(entity, WorkflowBase):
-                    lp = LaunchPlan.get_default_launch_plan(ctx, entity)
-                    get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp)
-
-        new_api_model_values = list(new_api_serializable_entities.values())
-        new_api_model_values = list(filter(_should_register_with_admin, new_api_model_values))
-        new_api_model_values = [v.to_flyte_idl() for v in new_api_model_values]
+        new_api_model_values = get_registrable_entities(ctx)
 
         loaded_entities = serialized_old_style_entities + new_api_model_values
-        zero_padded_length = _determine_text_chars(len(loaded_entities))
-        for i, entity in enumerate(loaded_entities):
-            fname_index = str(i).zfill(zero_padded_length)
-            if isinstance(entity, _idl_admin_TaskSpec):
-                fname = "{}_{}_1.pb".format(fname_index, entity.template.id.name)
-            elif isinstance(entity, _idl_admin_WorkflowSpec):
-                fname = "{}_{}_2.pb".format(fname_index, entity.template.id.name)
-            elif isinstance(entity, _idl_admin_LaunchPlan):
-                fname = "{}_{}_3.pb".format(fname_index, entity.id.name)
-            else:
-                raise Exception(f"Bad format {type(entity)}")
-            click.echo(f"  Writing to file: {fname}")
-            if folder:
-                fname = _os.path.join(folder, fname)
-            _write_proto_to_file(entity, fname)
+        if folder is None:
+            folder = "."
+        persist_registrable_entities(loaded_entities, folder)
 
         click.secho(f"Successfully serialized {len(loaded_entities)} flyte objects", fg="green")
 

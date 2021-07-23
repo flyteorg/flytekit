@@ -7,6 +7,7 @@ import click
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.clis.sdk_in_container.fast_register import fast_register
 from flytekit.clis.sdk_in_container.launch_plan import launch_plans
+from flytekit.clis.sdk_in_container.package import package
 from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.serialize import serialize
 from flytekit.configuration import internal as _internal_config
@@ -16,6 +17,15 @@ from flytekit.configuration import set_flyte_config_file
 from flytekit.configuration.internal import CONFIGURATION_PATH
 from flytekit.configuration.platform import URL as _URL
 from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
+
+
+def validate_package(ctx, param, values):
+    for val in values:
+        if "/" in val or "-" in val or "\\" in val:
+            raise click.BadParameter(
+                f"Illegal package value {val} for parameter: {param}. Expected for the form [a.b.c]"
+            )
+    return values
 
 
 @click.group("pyflyte", invoke_without_command=True)
@@ -31,6 +41,7 @@ from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
     "--pkgs",
     required=False,
     multiple=True,
+    callback=validate_package,
     help="Dot separated python packages to operate on.  Multiple may be specified  Please note that this "
     "option will override the option specified in the configuration file, or environment variable",
 )
@@ -39,7 +50,7 @@ from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
     "--insecure",
     required=False,
     type=bool,
-    help="Do not use SSL to connect to Admin",
+    help="Disable SSL when connecting to Flyte backend.",
 )
 @click.pass_context
 def main(ctx, config=None, pkgs=None, insecure=None):
@@ -98,6 +109,7 @@ main.add_command(register)
 main.add_command(fast_register)
 main.add_command(serialize)
 main.add_command(launch_plans)
+main.add_command(package)
 
 if __name__ == "__main__":
     main()

@@ -19,6 +19,7 @@ build workflows, and extend ``flytekit``.
    |book-reader| User Guide <https://docs.flyte.org/projects/cookbook/en/latest/index.html>
    |chalkboard| Tutorials <https://docs.flyte.org/projects/cookbook/en/latest/tutorials.html>
    |project-diagram| Concepts <https://docs.flyte.org/en/latest/concepts/basics.html>
+   |rocket| Deployment <https://docs.flyte.org/en/latest/deployment/index.html>
    |book| API Reference <https://docs.flyte.org/en/latest/reference/index.html>
    |hands-helping| Community <https://docs.flyte.org/en/latest/community/index.html>
 
@@ -30,6 +31,7 @@ build workflows, and extend ``flytekit``.
    Flytekit Python <self>
    design/index
    flytekit
+   remote
    testing
    extend
    tasks.extend

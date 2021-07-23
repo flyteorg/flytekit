@@ -93,7 +93,7 @@ def test_dynamic_conditional():
             ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
         ) as ctx:
             dynamic_job_spec = merge_sort_remotely.compile_into_workflow(
-                ctx, False, merge_sort_remotely._task_function, in1=[2, 3, 4, 5]
+                ctx, merge_sort_remotely._task_function, in1=[2, 3, 4, 5]
             )
             assert len(dynamic_job_spec.tasks) == 5
             assert len(dynamic_job_spec.subworkflows) == 1

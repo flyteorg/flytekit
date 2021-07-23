@@ -21,6 +21,20 @@ class TaskPlugins(object):
         TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
         # config_object_type is any class that will be passed to the plugin_object as task_config
         # Plugin_object_type is a derivative of ``PythonFunctionTask``
+
+    Examples of available task plugins include different query-based plugins such as
+    :py:class:`flytekitplugins.athena.task.AthenaTask` and :py:class:`flytekitplugins.hive.task.HiveTask`, ML tools like
+    :py:class:`plugins.awssagemaker.flytekitplugins.awssagemaker.training.SagemakerBuiltinAlgorithmsTask`, kubeflow
+    operators like :py:class:`plugins.kfpytorch.flytekitplugins.kfpytorch.task.PyTorchFunctionTask` and
+    :py:class:`plugins.kftensorflow.flytekitplugins.kftensorflow.task.TensorflowFunctionTask`, and generic plugins like
+    :py:class:`flytekitplugins.pod.task.PodFunctionTask` which doesn't integrate with third party tools or services.
+
+    The `task_config` is different for every task plugin type. This is filled out by users when they define a task to
+    specify plugin-specific behavior and features.  For example, with a query type task plugin, the config might store
+    information related to which database to query.
+
+    The `plugin_object_type` can be used to customize execution behavior and task serialization properties in tandem
+    with the `task_config`.
     """
 
     _PYTHONFUNCTION_TASK_PLUGINS: Dict[type, Type[PythonFunctionTask]] = {}
@@ -64,7 +78,7 @@ def task(
     cache: bool = False,
     cache_version: str = "",
     retries: int = 0,
-    interruptable: bool = False,
+    interruptible: Optional[bool] = None,
     deprecated: str = "",
     timeout: Union[_datetime.timedelta, int] = 0,
     container_image: Optional[str] = None,
@@ -111,10 +125,16 @@ def task(
            but you can always manually update this field as well to force a cache miss. You should also manually bump
            this version if the function body/business logic has changed, but the signature hasn't.
     :param retries: Number of times to retry this task during a workflow execution.
-    :param interruptable: Boolean that indicates that this task can be interrupted and/or scheduled on nodes
+    :param interruptible: [Optional] Boolean that indicates that this task can be interrupted and/or scheduled on nodes
                           with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
                           at the cost of performance penalties due to potential interruptions. Requires additional
-                          Flyte platform level configuration.
+                          Flyte platform level configuration. If no value is provided, the task will inherit this
+                          attribute from its workflow, as follows:
+                          No values set for interruptible at the task or workflow level - task is not interruptible
+                          Task has interruptible=True, but workflow has no value set - task is interruptible
+                          Workflow has interruptible=True, but task has no value set - task is interruptible
+                          Workflow has interruptible=False, but task has interruptible=True - task is interruptible
+                          Workflow has interruptible=True, but task has interruptible=False - task is not interruptible
     :param deprecated: A string that can be used to provide a warning message for deprecated task. Absence / empty str
                        indicates that the task is active and not deprecated
     :param timeout: the max amount of time for which one execution of this task should be executed for. The execution
@@ -157,7 +177,7 @@ def task(
             cache=cache,
             cache_version=cache_version,
             retries=retries,
-            interruptable=interruptable,
+            interruptible=interruptible,
             deprecated=deprecated,
             timeout=timeout,
         )
@@ -208,6 +228,12 @@ def reference_task(
     A reference task is a pointer to a task that already exists on your Flyte installation. This
     object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface.
     If at registration time the interface provided causes an issue with compilation, an error will be returned.
+
+    Example:
+
+    .. literalinclude:: ../../../tests/flytekit/unit/core/test_references.py
+       :pyobject: ref_t1
+
     """
 
     def wrapper(fn) -> ReferenceTask:

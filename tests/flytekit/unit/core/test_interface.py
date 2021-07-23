@@ -4,9 +4,11 @@ import typing
 from typing import Dict, List
 
 from flytekit.core import context_manager
+from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     extract_return_annotation,
     transform_inputs_to_parameters,
+    transform_interface_to_typed_interface,
     transform_signature_to_interface,
     transform_variable_map,
 )
@@ -175,3 +177,76 @@ def test_parameters_and_defaults():
     assert params.parameters["a"].default.scalar.primitive.integer == 7
     assert not params.parameters["b"].required
     assert params.parameters["b"].default.scalar.primitive.string_value == "eleven"
+
+
+def test_transform_interface_to_typed_interface_with_docstring():
+    # sphinx style
+    def z(a: int, b: str) -> typing.Tuple[int, str]:
+        """
+        function z
+
+        :param a: foo
+        :param b: bar
+        :return: ramen
+        """
+        ...
+
+    our_interface = transform_signature_to_interface(inspect.signature(z))
+    typed_interface = transform_interface_to_typed_interface(our_interface, Docstring(callable_=z))
+    assert typed_interface.inputs.get("a").description == "foo"
+    assert typed_interface.inputs.get("b").description == "bar"
+    assert typed_interface.outputs.get("o1").description == "ramen"
+
+    # numpy style, multiple return values, shared descriptions
+    def z(a: int, b: str) -> typing.Tuple[int, str]:
+        """
+        function z
+
+        Parameters
+        ----------
+        a : int
+            foo
+        b : str
+            bar
+
+        Returns
+        -------
+        out1, out2 : tuple
+            ramen
+        """
+        ...
+
+    our_interface = transform_signature_to_interface(inspect.signature(z))
+    typed_interface = transform_interface_to_typed_interface(our_interface, Docstring(callable_=z))
+    assert typed_interface.inputs.get("a").description == "foo"
+    assert typed_interface.inputs.get("b").description == "bar"
+    assert typed_interface.outputs.get("o0").description == "ramen"
+    assert typed_interface.outputs.get("o1").description == "ramen"
+
+    # numpy style, multiple return values, named
+    def z(a: int, b: str) -> typing.NamedTuple("NT", x_str=str, y_int=int):
+        """
+        function z
+
+        Parameters
+        ----------
+        a : int
+            foo
+        b : str
+            bar
+
+        Returns
+        -------
+        x_str : str
+            description for x_str
+        y_int : int
+            description for y_int
+        """
+        ...
+
+    our_interface = transform_signature_to_interface(inspect.signature(z))
+    typed_interface = transform_interface_to_typed_interface(our_interface, Docstring(callable_=z))
+    assert typed_interface.inputs.get("a").description == "foo"
+    assert typed_interface.inputs.get("b").description == "bar"
+    assert typed_interface.outputs.get("x_str").description == "description for x_str"
+    assert typed_interface.outputs.get("y_int").description == "description for y_int"

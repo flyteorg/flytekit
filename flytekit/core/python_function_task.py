@@ -1,11 +1,29 @@
+"""
+=========================================
+:mod:`flytekit.core.python_function_task`
+=========================================
+
+.. currentmodule:: flytekit.core.python_function_task
+
+.. autosummary::
+   :toctree: generated/
+
+   PythonFunctionTask
+   PythonInstanceTask
+
+"""
+
+
 import inspect
 from abc import ABC
 from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
-from flytekit.core.base_task import TaskResolverMixin
-from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
+from flytekit.common.exceptions import scopes as exception_scopes
+from flytekit.core.base_task import Task, TaskResolverMixin
+from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, FlyteContext, FlyteContextManager
+from flytekit.core.docstring import Docstring
 from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
 from flytekit.core.tracker import isnested, istestfunction
@@ -47,14 +65,17 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
         task_resolver: Optional[TaskResolverMixin] = None,
         **kwargs,
     ):
+        """
+        Please see class level documentation.
+        """
         super().__init__(name=name, task_config=task_config, task_type=task_type, task_resolver=task_resolver, **kwargs)
 
 
 class PythonFunctionTask(PythonAutoContainerTask[T]):
     """
     A Python Function task should be used as the base for all extensions that have a python function. It will
-    automatically detect interface of the python function and also, create the write execution command to execute the
-    function
+    automatically detect interface of the python function and when serialized on the hosted Flyte platform handles the
+    writing execution command to execute the function
 
     It is advised this task is used using the @task decorator as follows
 
@@ -83,11 +104,13 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         **kwargs,
     ):
         """
-        :param task_config: Configuration object for Task. Should be a unique type for that specific Task
-        :param task_function: Python function that has type annotations and works for the task
-        :param ignore_input_vars: When supplied, these input variables will be removed from the interface. This
+        :param T task_config: Configuration object for Task. Should be a unique type for that specific Task
+        :param Callable task_function: Python function that has type annotations and works for the task
+        :param Optional[List[str]] ignore_input_vars: When supplied, these input variables will be removed from the interface. This
                                   can be used to inject some client side variables only. Prefer using ExecutionParams
-        :param task_type: String task type to be associated with this Task
+        :param Optional[ExecutionBehavior] execution_mode: Defines how the execution should behave, for example
+            executing normally or specially handling a dynamic case.
+        :param Optional[TaskResolverMixin] task_type: String task type to be associated with this Task
         """
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
@@ -99,6 +122,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             interface=mutated_interface,
             task_config=task_config,
             task_resolver=task_resolver,
+            docstring=Docstring(callable_=task_function),
             **kwargs,
         )
 
@@ -129,13 +153,20 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
         """
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
-            return self._task_function(**kwargs)
+            return exception_scopes.user_entry_point(self._task_function)(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             return self.dynamic_execute(self._task_function, **kwargs)
 
     def compile_into_workflow(
-        self, ctx: FlyteContext, is_fast_execution: bool, task_function: Callable, **kwargs
+        self, ctx: FlyteContext, task_function: Callable, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
+        """
+        In the case of dynamic workflows, this function will produce a workflow definition at execution time which will
+        then proceed to be executed.
+        """
+        # TODO: circular import
+        from flytekit.core.task import ReferenceTask
+
         if not ctx.compilation_state:
             cs = ctx.new_compilation_state("dynamic")
         else:
@@ -146,7 +177,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             from flytekit.common.translator import get_serializable
 
             workflow_metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
-            defaults = WorkflowMetadataDefaults(interruptible=False)
+            defaults = WorkflowMetadataDefaults(
+                interruptible=self.metadata.interruptible if self.metadata.interruptible is not None else False
+            )
 
             self._wf = PythonFunctionWorkflow(task_function, metadata=workflow_metadata, default_metadata=defaults)
             self._wf.compile(**kwargs)
@@ -157,7 +190,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             # This is the only circular dependency between the translator.py module and the rest of the flytekit
             # authoring experience.
             workflow_spec: admin_workflow_models.WorkflowSpec = get_serializable(
-                model_entities, ctx.serialization_settings, wf, is_fast_execution
+                model_entities, ctx.serialization_settings, wf
             )
 
             # If no nodes were produced, let's just return the strict outputs
@@ -168,22 +201,30 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                     }
                 )
 
-            # This is not great. The translator.py module is relied on here (see comment above) to get the tasks and
-            # subworkflow definitions. However we want to ensure that reference tasks and reference sub workflows are
-            # not used.
-            # TODO: Replace None with a class.
-            for value in model_entities.values():
-                if value is None:
-                    raise Exception(
-                        "Reference tasks are not allowed in the dynamic - a network call is necessary "
-                        "in order to retrieve the structure of the reference task."
+            # Gather underlying TaskTemplates that get referenced.
+            tts = []
+            for entity, model in model_entities.items():
+                # We only care about gathering tasks here. Launch plans are handled by
+                # propeller. Subworkflows should already be in the workflow spec.
+                if not isinstance(entity, Task):
+                    continue
+
+                # We are currently not supporting reference tasks since these will
+                # require a network call to flyteadmin to populate the TaskTemplate
+                # model
+                if isinstance(entity, ReferenceTask):
+                    raise Exception("Reference tasks are currently unsupported within dynamic tasks")
+
+                if not isinstance(model, task_models.TaskSpec):
+                    raise TypeError(
+                        f"Unexpected type for serialized form of task. Expected {task_models.TaskSpec}, but got {type(model)}"
                     )
 
-            # Gather underlying TaskTemplates that get referenced. Launch plans are handled by propeller. Subworkflows
-            # should already be in the workflow spec.
-            tts = [v.template for v in model_entities.values() if isinstance(v, task_models.TaskSpec)]
+                # Store the valid task template so that we can pass it to the
+                # DynamicJobSpec later
+                tts.append(model.template)
 
-            if is_fast_execution:
+            if ctx.serialization_settings.should_fast_serialize():
                 if (
                     not ctx.execution_state
                     or not ctx.execution_state.additional_context
@@ -234,7 +275,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             updated_exec_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
             with FlyteContextManager.with_context(ctx.with_execution_state(updated_exec_state)):
                 logger.info("Executing Dynamic workflow, using raw inputs")
-                return task_function(**kwargs)
+                return exception_scopes.user_entry_point(task_function)(**kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             is_fast_execution = bool(
@@ -242,4 +283,11 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 and ctx.execution_state.additional_context
                 and ctx.execution_state.additional_context.get("dynamic_addl_distro")
             )
-            return self.compile_into_workflow(ctx, is_fast_execution, task_function, **kwargs)
+            if is_fast_execution:
+                ctx = ctx.with_serialization_settings(
+                    ctx.serialization_settings.new_builder()
+                    .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
+                    .build()
+                )
+
+            return self.compile_into_workflow(ctx, task_function, **kwargs)
