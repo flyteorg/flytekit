@@ -11,7 +11,7 @@ from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import FastSerializationSettings
 from flytekit.extend import ExecutionState, Image, ImageConfig, SerializationSettings
-from plugins.pod.flytekitplugins.pod.task import Pod, PodFunctionTask
+from flytekitplugins.pod.task import Pod, PodFunctionTask
 
 
 def get_pod_spec():
