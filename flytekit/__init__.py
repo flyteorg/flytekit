@@ -154,9 +154,7 @@ from flytekit.core.schedule import CronSchedule, FixedRate
 from flytekit.core.task import Secret, reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
-from flytekit.extras.persistence import gcs_gsutil as _gcs
-from flytekit.extras.persistence import http as _http
-from flytekit.extras.persistence import s3_awscli as _s3
+from flytekit.extras.persistence import GCSPersistence, HttpPersistence, S3Persistence
 from flytekit.loggers import logger
 from flytekit.types import schema
 

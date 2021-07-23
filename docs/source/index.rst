@@ -36,4 +36,5 @@ build workflows, and extend ``flytekit``.
    extend
    tasks.extend
    types.extend
+   data.extend
    contributing

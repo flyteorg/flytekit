@@ -63,6 +63,10 @@ def _extra_args(extra_args: Dict[str, str]) -> List[str]:
 
 
 class S3Persistence(DataPersistence):
+    """
+    DataPersistence plugin for AWS S3 (and Minio). Use aws cli to manage the transfer. The binary needs to be installed
+    separately
+    """
     PROTOCOL = "s3://"
     _AWS_CLI = "aws"
     _SHARD_CHARACTERS = [_text_type(x) for x in _six_moves.range(10)] + list(_string.ascii_lowercase)

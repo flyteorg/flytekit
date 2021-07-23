@@ -22,6 +22,16 @@ def _amend_path(path):
 
 
 class GCSPersistence(DataPersistence):
+    """
+    This DataPersistence plugin uses a preinstalled GSUtil binary in the container to download and upload data.
+
+    The binary can be installed in multiple ways including simply,
+
+    .. prompt::
+
+       pip install gsutil
+
+    """
     _GS_UTIL_CLI = "gsutil"
     PROTOCOL = "gs://"
 

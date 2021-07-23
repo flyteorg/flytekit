@@ -1,3 +1,25 @@
+"""
+======================================
+:mod:`flytekit.core.data_persistence`
+======================================
+
+.. currentmodule:: flytekit.core.data_persistence
+
+The Data persistence module is used by core flytekit and most of the core TypeTransformers to manage data fetch & store,
+between the durable backend store and the runtime environment. This is designed to be a pluggable system, with a default
+simple implementation that ships with the core.
+
+.. autosummary::
+   :toctree: generated/
+
+   DataPersistence
+   DataPersistencePlugins
+   DiskPersistence
+   FileAccessProvider
+   UnsupportedPersistenceOp
+
+"""
+
 import datetime
 import os
 import os as _os
@@ -205,6 +227,10 @@ class DiskPersistence(DataPersistence):
 
 
 class FileAccessProvider(object):
+    """
+    This is the class that is available through the FlyteContext and can be used for persisting data to the remote
+    durable store.
+    """
     def __init__(self, local_sandbox_dir: Union[str, os.PathLike], raw_output_prefix: str):
         # Local access
         if local_sandbox_dir is None or local_sandbox_dir == "":

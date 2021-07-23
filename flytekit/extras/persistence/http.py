@@ -5,6 +5,10 @@ from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugi
 
 
 class HttpPersistence(DataPersistence):
+    """
+    DataPersistence implementation for the HTTP protocol. only supports downloading from an http source. Uploads are
+    not supported currently.
+    """
     PROTOCOL_HTTP = "http"
     PROTOCOL_HTTPS = "https"
     _HTTP_OK = 200
