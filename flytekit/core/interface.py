@@ -7,10 +7,9 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
 
-from docstring_parser import parse
-
 from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.core import context_manager
+from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
@@ -180,18 +179,22 @@ def transform_inputs_to_parameters(
 
 def transform_interface_to_typed_interface(
     interface: typing.Optional[Interface],
-    docstring: str = None,
+    docstring: Optional[Docstring] = None,
 ) -> typing.Optional[_interface_models.TypedInterface]:
     """
     Transform the given simple python native interface to FlyteIDL's interface
     """
     if interface is None:
         return None
-    input_descriptions, output_description = get_variable_descriptions(docstring)
+
+    if docstring is None:
+        input_descriptions = output_descriptions = {}
+    else:
+        input_descriptions = docstring.input_descriptions
+        output_descriptions = remap_shared_output_descriptions(docstring.output_descriptions, interface.outputs)
+
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
-    outputs_map = transform_variable_map(
-        interface.outputs, remap_shared_output_descriptions(output_description, interface.outputs)
-    )
+    outputs_map = transform_variable_map(interface.outputs, output_descriptions)
     return _interface_models.TypedInterface(inputs_map, outputs_map)
 
 
@@ -352,19 +355,6 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
         # Handle all other single return types
         logger.debug(f"Task returns unnamed native tuple {return_annotation}")
         return {default_output_name(): return_annotation}
-
-
-def get_variable_descriptions(docstring: str) -> Tuple[Dict[str, str], Optional[str]]:
-    """
-    Takes a Python docstring, either from `function.__doc__` or `inpect.getdoc(function)`, and returns the descriptions of the input paramenters and the output values.
-
-    :param docstring: Python docstring in Sphinx reStructuredText style, Numpydoc style, or Google style.
-    :return: Dict of input parameter names mapping to their descriptions, and dict of output names mapping to their descriptions.
-    """
-    parsed_docstring = parse(docstring)
-    return {p.arg_name: p.description for p in parsed_docstring.params}, {
-        p.return_name: p.description for p in parsed_docstring.many_returns
-    }
 
 
 def remap_shared_output_descriptions(output_descriptions: Dict[str, str], outputs: Dict[str, Type]) -> Dict[str, str]:

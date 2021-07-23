@@ -19,6 +19,7 @@ from flytekit.core.context_manager import (
     FlyteContextManager,
     FlyteEntities,
 )
+from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     Interface,
     transform_inputs_to_parameters,
@@ -173,13 +174,14 @@ class WorkflowBase(object):
         workflow_metadata: WorkflowMetadata,
         workflow_metadata_defaults: WorkflowMetadataDefaults,
         python_interface: Interface,
+        docstring: Optional[Docstring] = None,
         **kwargs,
     ):
         self._name = name
         self._workflow_metadata = workflow_metadata
         self._workflow_metadata_defaults = workflow_metadata_defaults
         self._python_interface = python_interface
-        self._interface = transform_interface_to_typed_interface(python_interface)
+        self._interface = transform_interface_to_typed_interface(python_interface, docstring)
         self._inputs = {}
         self._unbound_inputs = set()
         self._nodes = []
@@ -640,6 +642,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         workflow_function: Callable,
         metadata: Optional[WorkflowMetadata],
         default_metadata: Optional[WorkflowMetadataDefaults],
+        docstring: Docstring = None,
     ):
         name = f"{workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
@@ -654,6 +657,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             workflow_metadata=metadata,
             workflow_metadata_defaults=default_metadata,
             python_interface=native_interface,
+            docstring=docstring,
         )
 
     @property
@@ -794,7 +798,10 @@ def workflow(
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
 
         workflow_instance = PythonFunctionWorkflow(
-            fn, metadata=workflow_metadata, default_metadata=workflow_metadata_defaults
+            fn,
+            metadata=workflow_metadata,
+            default_metadata=workflow_metadata_defaults,
+            docstring=Docstring(callable_=fn),
         )
         workflow_instance.compile()
         return workflow_instance
