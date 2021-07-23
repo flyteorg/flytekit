@@ -7,17 +7,17 @@ from setuptools.command.install import install
 
 PACKAGE_NAME = "flytekitplugins-parent"
 SOURCES = {
-    "flytekitplugins-hive": "hive",
-    "flytekitplugins-papermill": "papermill",
-    "flytekitplugins-spark": "spark",
-    "flytekitplugins-pod": "pod",
-    "flytekitplugins-kfpytorch": "kfpytorch",
-    "flytekitplugins-awssagemaker": "awssagemaker",
-    "flytekitplugins-kftensorflow": "kftensorflow",
-    "flytekitplugins-pandera": "pandera",
+    "flytekitplugins-hive": "flytekit-hive",
+    "flytekitplugins-papermill": "flytekit-papermill",
+    "flytekitplugins-spark": "flytekit-spark",
+    "flytekitplugins-pod": "flytekit-k8s-pod",
+    "flytekitplugins-kfpytorch": "flytekit-kf-pytorch",
+    "flytekitplugins-awssagemaker": "flytekit-aws-sagemaker",
+    "flytekitplugins-kftensorflow": "flytekit-kf-tensorflow",
+    "flytekitplugins-pandera": "flytekit-pandera",
     "flytekitplugins-dolt": "flytekit-dolt",
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
-    "flytekitplugins-athena": "flytekit-athena",
+    "flytekitplugins-athena": "flytekit-aws-athena",
 }
 
 
