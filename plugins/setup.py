@@ -20,7 +20,7 @@ SOURCES = {
     "flytekitplugins-athena": "flytekit-athena",
     "flytekitplugins-great_expectations": "flytekit-greatexpectations",
 }
-g
+
 
 def install_all_plugins(sources, develop=False):
     """
