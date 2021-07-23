@@ -418,3 +418,21 @@ def test_named_outputs_nested_fail():
         def my_wf() -> wf_outputs:
             # Note only Namedtuples can be created like this
             return wf_outputs(say_hello(), say_hello())
+
+
+def test_serialized_docstrings():
+    @task
+    def z(a: int, b: str) -> typing.Tuple[int, str]:
+        """
+        function z
+
+        :param a: foo
+        :param b: bar
+        :return: ramen
+        """
+        ...
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, z)
+    assert task_spec.template.interface.inputs["a"].description == "foo"
+    assert task_spec.template.interface.inputs["b"].description == "bar"
+    assert task_spec.template.interface.outputs["o0"].description == "ramen"
