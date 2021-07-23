@@ -4,7 +4,7 @@ import typing
 
 import pandas as pd
 import pytest
-from flytekitplugins.greatexpectations import BatchRequestConfig, GETask
+from flytekitplugins.great_expectations import BatchRequestConfig, GreatExpectationsTask
 from great_expectations.exceptions import ValidationError
 
 from flytekit import kwtypes, task, workflow
@@ -16,7 +16,7 @@ if "tests/greatexpectations" not in os.getcwd():
 
 
 def test_ge_simple_task():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test1",
         data_source="data",
         inputs=kwtypes(dataset=str),
@@ -43,7 +43,7 @@ def test_ge_simple_task():
 
 
 def test_ge_batchrequest_pandas_config():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test2",
         data_source="data",
         inputs=kwtypes(data=str),
@@ -55,8 +55,8 @@ def test_ge_batchrequest_pandas_config():
                     "year": "2019",
                     "month": "01",
                 },
+                "limit": 10,
             },
-            limit=10,
         ),
     )
 
@@ -65,7 +65,7 @@ def test_ge_batchrequest_pandas_config():
 
 
 def test_invalid_ge_batchrequest_pandas_config():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test3",
         data_source="data",
         inputs=kwtypes(data=str),
@@ -86,7 +86,7 @@ def test_invalid_ge_batchrequest_pandas_config():
 
 
 def test_ge_runtimebatchrequest_sqlite_config():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test4",
         data_source="sqlite_data",
         inputs=kwtypes(dataset=str),
@@ -104,7 +104,7 @@ def test_ge_runtimebatchrequest_sqlite_config():
 
 
 def test_ge_task():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test5",
         data_source="data",
         inputs=kwtypes(dataset=str),
@@ -134,7 +134,7 @@ def test_ge_task():
 
 
 def test_ge_workflow():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test6",
         data_source="data",
         inputs=kwtypes(dataset=str),
@@ -150,7 +150,7 @@ def test_ge_workflow():
 
 
 def test_ge_checkpoint_params():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test7",
         data_source="data",
         inputs=kwtypes(dataset=str),
@@ -165,7 +165,7 @@ def test_ge_checkpoint_params():
 
 
 def test_ge_remote_flytefile():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test8",
         data_source="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
@@ -180,7 +180,7 @@ def test_ge_remote_flytefile():
 
 
 def test_ge_remote_flytefile_task():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test9",
         data_source="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
@@ -205,7 +205,7 @@ def test_ge_remote_flytefile_task():
 
 
 def test_ge_local_flytefile():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test10",
         data_source="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
@@ -217,7 +217,7 @@ def test_ge_local_flytefile():
 
 
 def test_ge_local_flytefile_task():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test11",
         data_source="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
@@ -239,7 +239,7 @@ def test_ge_local_flytefile_task():
 
 
 def test_ge_local_flytefile_workflow():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test12",
         data_source="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
@@ -255,7 +255,7 @@ def test_ge_local_flytefile_workflow():
 
 
 def test_ge_remote_flytefile_workflow():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test13",
         data_source="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
@@ -276,14 +276,14 @@ def test_ge_remote_flytefile_workflow():
 
 
 def test_ge_flytefile_multiple_args():
-    task_object_one = GETask(
+    task_object_one = GreatExpectationsTask(
         name="test14",
         data_source="data",
         inputs=kwtypes(dataset=FlyteFile),
         expectation_suite="test.demo",
         data_connector="data_example_data_connector",
     )
-    task_object_two = GETask(
+    task_object_two = GreatExpectationsTask(
         name="test6",
         data_source="data",
         inputs=kwtypes(dataset=FlyteFile),
@@ -310,7 +310,7 @@ def test_ge_flytefile_multiple_args():
 
 
 def test_ge_flyteschema():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test15",
         data_source="data",
         inputs=kwtypes(dataset=FlyteSchema),
@@ -324,7 +324,7 @@ def test_ge_flyteschema():
 
 
 def test_ge_flyteschema_task():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test16",
         data_source="data",
         inputs=kwtypes(dataset=FlyteSchema),
@@ -348,7 +348,7 @@ def test_ge_flyteschema_task():
 
 
 def test_ge_flyteschema_sqlite():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test17",
         data_source="data",
         inputs=kwtypes(dataset=FlyteSchema),
@@ -372,7 +372,7 @@ def test_ge_flyteschema_sqlite():
 
 
 def test_ge_flyteschema_workflow():
-    task_object = GETask(
+    task_object = GreatExpectationsTask(
         name="test18",
         data_source="data",
         inputs=kwtypes(dataset=FlyteSchema),

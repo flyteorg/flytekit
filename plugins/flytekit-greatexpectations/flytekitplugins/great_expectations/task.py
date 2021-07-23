@@ -6,6 +6,7 @@ import typing
 from dataclasses import dataclass
 
 import great_expectations as ge
+from dataclasses_json import dataclass_json
 from great_expectations.checkpoint import SimpleCheckpoint
 from great_expectations.core.run_identifier import RunIdentifier
 from great_expectations.core.util import convert_to_json_serializable
@@ -20,6 +21,7 @@ from flytekit.types.schema import FlyteSchema
 T = typing.TypeVar("T")
 
 
+@dataclass_json
 @dataclass
 class BatchRequestConfig(object):
     """
@@ -31,17 +33,15 @@ class BatchRequestConfig(object):
         runtime_parameters: parameters to be passed at runtime
         batch_identifiers: identifiers to identify the data batch
         batch_spec_passthrough: reader method if your file doesn't have an extension
-        limit: number of data points to fetch
     """
 
     data_connector_query: typing.Optional[typing.Dict[str, typing.Any]] = None
     runtime_parameters: typing.Optional[typing.Dict[str, str]] = None
     batch_identifiers: typing.Optional[typing.Dict[str, str]] = None
     batch_spec_passthrough: typing.Optional[typing.Dict[str, typing.Any]] = None
-    limit: typing.Optional[int] = None
 
 
-class GETask(PythonInstanceTask[BatchRequestConfig]):
+class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
     """
     This task can be used to validate your data.
 
@@ -54,12 +54,12 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
         local_file_path: dataset file path useful for FlyteFile and FlyteSchema
         checkpoint_params: optional SimpleCheckpoint parameters
         task_config: batchrequest config
-        data_context: directory in which GE's configuration resides
+        context_root_dir: directory in which GreatExpectations' configuration resides
 
     TODO: Connect Data Docs to Flyte Console.
     """
 
-    _TASK_TYPE = "greatexpectations"
+    _TASK_TYPE = "great_expectations"
 
     def __init__(
         self,
@@ -71,7 +71,7 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
         local_file_path: str = None,
         checkpoint_params: typing.Optional[typing.Dict[str, typing.Union[str, typing.List[str]]]] = None,
         task_config: BatchRequestConfig = None,
-        data_context: str = "./great_expectations",
+        context_root_dir: str = "./great_expectations",
         **kwargs,
     ) -> typing.Dict[str, str]:
 
@@ -79,17 +79,17 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
         self._data_connector = data_connector
         self._expectation_suite = expectation_suite
         self._batch_request = task_config
-        self._data_context = data_context
+        self._context_root_dir = context_root_dir
         """
-        local_file_path is a must in two scenrios:
+        local_file_path is a must in two scenarios:
         * When using FlyteSchema
         * When using FlyteFile for remote paths
-        This is because base directory which has the dataset file 'must' be given in GE's config file
+        This is because base directory which has the dataset file 'must' be given in GreatExpectations' config file
         """
         self._local_file_path = local_file_path
         self._checkpoint_params = checkpoint_params
 
-        super(GETask, self).__init__(
+        super(GreatExpectationsTask, self).__init__(
             name=name,
             task_config=task_config,
             task_type=self._TASK_TYPE,
@@ -98,7 +98,7 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
         )
 
     def execute(self, **kwargs) -> typing.Any:
-        context = ge.data_context.DataContext(self._data_context)
+        context = ge.data_context.DataContext(self._context_root_dir)
 
         if len(self.python_interface.inputs.keys()) != 1:
             raise RuntimeError("Expected one input argument to validate the dataset")
@@ -172,7 +172,7 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
             "data_connector_name": self._data_connector,
         }
 
-        # GE's RuntimeBatchRequest
+        # GreatExpectations RuntimeBatchRequest
         if self._batch_request and self._batch_request.runtime_parameters:
             final_batch_request.update(
                 {
@@ -182,13 +182,12 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
                 }
             )
 
-        # GE's BatchRequest
+        # GreatExpectations BatchRequest
         elif self._batch_request:
             final_batch_request.update(
                 {
                     "data_connector_query": self._batch_request.data_connector_query,
                     "batch_spec_passthrough": self._batch_request.batch_spec_passthrough,
-                    "limit": self._batch_request.limit,
                 }
             )
 
@@ -231,7 +230,7 @@ class GETask(PythonInstanceTask[BatchRequestConfig]):
                         + "\n"
                     )
 
-            # raise a GE exception
+            # raise a GreatExpectations exception
             raise ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
         logging.info("Validation succeeded!")

@@ -20,34 +20,14 @@ from flytekit.models.types import LiteralType
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer, SchemaOpenMode
 
-
-@dataclass_json
-@dataclass
-class BatchConfig(object):
-    """
-    Use this configuration to configure Batch Request. A BatchRequest can either be
-    a simple BatchRequest or a RuntimeBatchRequest.
-
-    Args:
-        data_connector_query: query to request data batch
-        runtime_parameters: parameters to be passed at runtime
-        batch_identifiers: identifiers to identify the data batch
-        batch_spec_passthrough: reader method if your file doesn't have an extension
-        limit: number of data points to fetch
-    """
-
-    data_connector_query: typing.Optional[typing.Dict[str, typing.Any]] = None
-    runtime_parameters: typing.Optional[typing.Dict[str, str]] = None
-    batch_identifiers: typing.Optional[typing.Dict[str, str]] = None
-    batch_spec_passthrough: typing.Optional[typing.Dict[str, typing.Any]] = None
-    limit: typing.Optional[int] = None
+from .task import BatchRequestConfig
 
 
 @dataclass_json
 @dataclass
-class GEConfig(object):
+class GreatExpectationsFlyteConfig(object):
     """
-    Use this configuration to configure GE Plugin.
+    Use this configuration to configure GreatExpectations Plugin.
 
     Args:
         data_source: tell where your data lives and how to get it
@@ -56,7 +36,7 @@ class GEConfig(object):
         local_file_path: dataset file path useful for FlyteFile and FlyteSchema
         checkpoint_params: optional SimpleCheckpoint parameters
         batchrequest_config: batchrequest config
-        data_context: directory in which GE's configuration resides
+        context_root_dir: directory in which GreatExpectations' configuration resides
     """
 
     data_source: str
@@ -66,52 +46,52 @@ class GEConfig(object):
     local_file_path is a must in two scenrios:
     * When using FlyteSchema
     * When using FlyteFile for remote paths
-    This is because base directory which has the dataset file 'must' be given in GE's config file
+    This is because base directory which has the dataset file 'must' be given in GreatExpectations' config file
     """
     local_file_path: str = None
     checkpoint_params: typing.Optional[typing.Dict[str, typing.Union[str, typing.List[str]]]] = None
-    batchrequest_config: BatchConfig = None
-    data_context: str = "./great_expectations"
+    batchrequest_config: BatchRequestConfig = None
+    context_root_dir: str = "./great_expectations"
 
 
-class GEType(object):
+class GreatExpectationsType(object):
     """
-    Use this class to send the GEConfig.
+    Use this class to send the GreatExpectationsFlyteConfig.
 
     Args:
-        config: GE Plugin configuration
+        config: GreatExpectations Plugin configuration
 
     TODO: Connect Data Docs to Flyte Console.
     """
 
     @classmethod
-    def config(cls) -> typing.Tuple[Type, Type[GEConfig]]:
-        return (str, GEConfig(data_source="", data_connector="", expectation_suite=""))
+    def config(cls) -> typing.Tuple[Type, Type[GreatExpectationsFlyteConfig]]:
+        return (str, GreatExpectationsFlyteConfig(data_source="", data_connector="", expectation_suite=""))
 
-    def __class_getitem__(cls, config: typing.Tuple[Type, Type[GEConfig]]) -> typing.Any:
+    def __class_getitem__(cls, config: typing.Tuple[Type, Type[GreatExpectationsFlyteConfig]]) -> typing.Any:
         if not (isinstance(config, tuple) or len(config) != 2):
-            raise AssertionError("GEType must have both datatype and GEConfig")
+            raise AssertionError("GreatExpectationsType must have both datatype and GreatExpectationsFlyteConfig")
 
-        class _GETypeClass(GEType):
-            __origin__ = GEType
+        class _GreatExpectationsTypeClass(GreatExpectationsType):
+            __origin__ = GreatExpectationsType
 
             @classmethod
-            def config(cls) -> typing.Tuple[Type, Type[GEConfig]]:
+            def config(cls) -> typing.Tuple[Type, Type[GreatExpectationsFlyteConfig]]:
                 return config
 
-        return _GETypeClass
+        return _GreatExpectationsTypeClass
 
 
-class GETypeTransformer(TypeTransformer[GEType]):
+class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
     def __init__(self):
-        super().__init__(name="GE Transformer", t=GEType)
+        super().__init__(name="GreatExpectations Transformer", t=GreatExpectationsType)
 
     @staticmethod
-    def get_config(t: Type[GEType]) -> typing.Tuple[Type, Type[GEConfig]]:
+    def get_config(t: Type[GreatExpectationsType]) -> typing.Tuple[Type, Type[GreatExpectationsFlyteConfig]]:
         return t.config()
 
-    def get_literal_type(self, t: Type[GEType]) -> LiteralType:
-        datatype = GETypeTransformer.get_config(t)[0]
+    def get_literal_type(self, t: Type[GreatExpectationsType]) -> LiteralType:
+        datatype = GreatExpectationsTypeTransformer.get_config(t)[0]
 
         if issubclass(datatype, str):
             return LiteralType(simple=_type_models.SimpleType.STRING, metadata={})
@@ -124,10 +104,10 @@ class GETypeTransformer(TypeTransformer[GEType]):
         self,
         ctx: FlyteContext,
         python_val: typing.Union[FlyteFile, FlyteSchema, str],
-        python_type: Type[GEType],
+        python_type: Type[GreatExpectationsType],
         expected: LiteralType,
     ) -> Literal:
-        datatype = GETypeTransformer.get_config(python_type)[0]
+        datatype = GreatExpectationsTypeTransformer.get_config(python_type)[0]
 
         if issubclass(datatype, FlyteSchema):
             return FlyteSchemaTransformer().to_literal(ctx, python_val, datatype, expected)
@@ -140,15 +120,15 @@ class GETypeTransformer(TypeTransformer[GEType]):
         self,
         ctx: FlyteContext,
         lv: Literal,
-        expected_python_type: Type[GEType],
-    ) -> GEType:
+        expected_python_type: Type[GreatExpectationsType],
+    ) -> GreatExpectationsType:
         if not (lv and lv.scalar and (lv.scalar.primitive or lv.scalar.schema or lv.scalar.blob)):
             raise AssertionError("Can only validate a literal value")
 
         # fetch the configuration
-        conf_dict = GETypeTransformer.get_config(expected_python_type)[1].to_dict()
+        conf_dict = GreatExpectationsTypeTransformer.get_config(expected_python_type)[1].to_dict()
 
-        ge_conf = GEConfig(**conf_dict)
+        ge_conf = GreatExpectationsFlyteConfig(**conf_dict)
 
         # file path for FlyteSchema and FlyteFile
         temp_dataset = ""
@@ -212,7 +192,7 @@ class GETypeTransformer(TypeTransformer[GEType]):
         batchrequest_conf = ge_conf.batchrequest_config
 
         # fetch the data context
-        context = ge.data_context.DataContext(ge_conf.data_context)
+        context = ge.data_context.DataContext(ge_conf.context_root_dir)
 
         # minimalistic batch request
         final_batch_request = {
@@ -221,7 +201,7 @@ class GETypeTransformer(TypeTransformer[GEType]):
             "data_connector_name": ge_conf.data_connector,
         }
 
-        # GE's RuntimeBatchRequest
+        # GreatExpectations RuntimeBatchRequest
         if batchrequest_conf and batchrequest_conf["runtime_parameters"]:
             final_batch_request.update(
                 {
@@ -231,13 +211,12 @@ class GETypeTransformer(TypeTransformer[GEType]):
                 }
             )
 
-        # GE's BatchRequest
+        # GreatExpectations BatchRequest
         elif batchrequest_conf:
             final_batch_request.update(
                 {
                     "data_connector_query": batchrequest_conf["data_connector_query"],
                     "batch_spec_passthrough": batchrequest_conf["batch_spec_passthrough"],
-                    "limit": batchrequest_conf["limit"],
                 }
             )
 
@@ -283,7 +262,7 @@ class GETypeTransformer(TypeTransformer[GEType]):
                         + "\n"
                     )
 
-            # raise a GE exception
+            # raise a GreatExpectations exception
             raise ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
         logging.info("Validation succeeded!")
@@ -291,4 +270,4 @@ class GETypeTransformer(TypeTransformer[GEType]):
         return return_dataset
 
 
-TypeEngine.register(GETypeTransformer())
+TypeEngine.register(GreatExpectationsTypeTransformer())

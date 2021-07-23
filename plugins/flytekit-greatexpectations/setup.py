@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "greatexpectations"
+PLUGIN_NAME = "great_expectations"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 

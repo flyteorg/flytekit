@@ -18,9 +18,9 @@ SOURCES = {
     "flytekitplugins-dolt": "flytekit-dolt",
     "flytekitplugins-sqlalchemy": "flytekitplugins-sqlalchemy",
     "flytekitplugins-athena": "flytekit-athena",
-    "flytekitplugins-greatexpectations": "greatexpectations",
+    "flytekitplugins-great_expectations": "flytekit-greatexpectations",
 }
-
+g
 
 def install_all_plugins(sources, develop=False):
     """

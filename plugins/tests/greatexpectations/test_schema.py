@@ -4,7 +4,7 @@ import typing
 
 import pandas as pd
 import pytest
-from flytekitplugins.greatexpectations import BatchConfig, GEConfig, GEType
+from flytekitplugins.great_expectations import BatchRequestConfig, GreatExpectationsFlyteConfig, GreatExpectationsType
 from great_expectations.exceptions import ValidationError
 
 from flytekit import task, workflow
@@ -16,19 +16,19 @@ if "tests/greatexpectations" not in os.getcwd():
 
 
 def test_ge_type():
-    ge_config = GEConfig(
+    ge_config = GreatExpectationsFlyteConfig(
         data_source="data",
         expectation_suite="test.demo",
         data_connector="data_example_data_connector",
     )
 
-    s = GEType[str, ge_config]
+    s = GreatExpectationsType[str, ge_config]
     assert s.config()[1] == ge_config
     assert s.config()[1].data_source == "data"
 
 
 def test_ge_schema_task():
-    ge_config = GEConfig(
+    ge_config = GreatExpectationsFlyteConfig(
         data_source="data",
         expectation_suite="test.demo",
         data_connector="data_example_data_connector",
@@ -39,7 +39,7 @@ def test_ge_schema_task():
         return dataframe.shape[0]
 
     @task
-    def my_task(csv_file: GEType[str, ge_config]) -> pd.DataFrame:
+    def my_task(csv_file: GreatExpectationsType[str, ge_config]) -> pd.DataFrame:
         df = pd.read_csv(os.path.join("data", csv_file))
         df.drop(5, axis=0, inplace=True)
         return df
@@ -62,19 +62,21 @@ def test_ge_schema_task():
 
 
 def test_ge_schema_multiple_args():
-    ge_config_one = GEConfig(
+    ge_config_one = GreatExpectationsFlyteConfig(
         data_source="data",
         expectation_suite="test.demo",
         data_connector="data_example_data_connector",
     )
-    ge_config_two = GEConfig(
+    ge_config_two = GreatExpectationsFlyteConfig(
         data_source="data",
         expectation_suite="test1.demo",
         data_connector="data_example_data_connector",
     )
 
     @task
-    def get_file_name(dataset_one: GEType[str, ge_config_one], dataset_two: GEType[str, ge_config_two]) -> (int, int):
+    def get_file_name(
+        dataset_one: GreatExpectationsType[str, ge_config_one], dataset_two: GreatExpectationsType[str, ge_config_two]
+    ) -> (int, int):
         df_one = pd.read_csv(os.path.join("data", dataset_one))
         df_two = pd.read_csv(os.path.join("data", dataset_two))
         return len(df_one), len(df_two)
@@ -91,20 +93,20 @@ def test_ge_schema_multiple_args():
 def test_ge_schema_batchrequest_pandas_config():
     @task
     def my_task(
-        directory: GEType[
+        directory: GreatExpectationsType[
             str,
-            GEConfig(
+            GreatExpectationsFlyteConfig(
                 data_source="data",
                 expectation_suite="test.demo",
                 data_connector="my_data_connector",
-                batchrequest_config=BatchConfig(
+                batchrequest_config=BatchRequestConfig(
                     data_connector_query={
                         "batch_filter_parameters": {
                             "year": "2019",
                             "month": "01",  # noqa: F722
                         },
+                        "limit": 10,
                     },
-                    limit=10,
                 ),
             ),
         ]
@@ -119,11 +121,11 @@ def test_ge_schema_batchrequest_pandas_config():
 
 
 def test_invalid_ge_schema_batchrequest_pandas_config():
-    ge_config = GEConfig(
+    ge_config = GreatExpectationsFlyteConfig(
         data_source="data",
         expectation_suite="test.demo",
         data_connector="my_data_connector",
-        batchrequest_config=BatchConfig(
+        batchrequest_config=BatchRequestConfig(
             data_connector_query={
                 "batch_filter_parameters": {
                     "year": "2020",
@@ -133,7 +135,7 @@ def test_invalid_ge_schema_batchrequest_pandas_config():
     )
 
     @task
-    def my_task(directory: GEType[str, ge_config]) -> str:
+    def my_task(directory: GreatExpectationsType[str, ge_config]) -> str:
         return directory
 
     @workflow
@@ -146,11 +148,11 @@ def test_invalid_ge_schema_batchrequest_pandas_config():
 
 
 def test_ge_schema_runtimebatchrequest_sqlite_config():
-    ge_config = GEConfig(
+    ge_config = GreatExpectationsFlyteConfig(
         data_source="sqlite_data",
         expectation_suite="sqlite.movies",
         data_connector="sqlite_data_connector",
-        batchrequest_config=BatchConfig(
+        batchrequest_config=BatchRequestConfig(
             runtime_parameters={"query": "SELECT * FROM movies"},
             batch_identifiers={
                 "pipeline_stage": "validation",
@@ -159,7 +161,7 @@ def test_ge_schema_runtimebatchrequest_sqlite_config():
     )
 
     @task
-    def my_task(sqlite_db: GEType[str, ge_config]) -> int:
+    def my_task(sqlite_db: GreatExpectationsType[str, ge_config]) -> int:
         # read sqlite query results into a pandas DataFrame
         con = sqlite3.connect(os.path.join("data", sqlite_db))
         df = pd.read_sql_query("SELECT * FROM movies", con)
@@ -177,7 +179,7 @@ def test_ge_schema_runtimebatchrequest_sqlite_config():
 
 
 def test_ge_schema_checkpoint_params():
-    ge_config = GEConfig(
+    ge_config = GreatExpectationsFlyteConfig(
         data_source="data",
         expectation_suite="test.demo",
         data_connector="data_example_data_connector",
@@ -187,7 +189,7 @@ def test_ge_schema_checkpoint_params():
     )
 
     @task
-    def my_task(dataset: GEType[str, ge_config]) -> None:
+    def my_task(dataset: GreatExpectationsType[str, ge_config]) -> None:
         assert type(dataset) == str
 
     @workflow
@@ -200,13 +202,13 @@ def test_ge_schema_checkpoint_params():
 def test_ge_schema_flyteschema():
     @task
     def my_task(
-        dataframe: GEType[
+        dataframe: GreatExpectationsType[
             FlyteSchema,
-            GEConfig(
+            GreatExpectationsFlyteConfig(
                 data_source="data",
                 expectation_suite="test.demo",
                 data_connector="data_flytetype_data_connector",
-                batchrequest_config=BatchConfig(limit=10),
+                batchrequest_config=BatchRequestConfig(data_connector_query={"limit": 10}),
                 local_file_path="/tmp/test3.parquet",  # noqa: F722
             ),
         ]
@@ -225,13 +227,13 @@ def test_ge_schema_flyteschema():
 def test_ge_schema_flyteschema_literal():
     @task
     def my_task(
-        dataframe: GEType[
+        dataframe: GreatExpectationsType[
             FlyteSchema,
-            GEConfig(
+            GreatExpectationsFlyteConfig(
                 data_source="data",
                 expectation_suite="test.demo",
                 data_connector="data_flytetype_data_connector",
-                batchrequest_config=BatchConfig(limit=10),
+                batchrequest_config=BatchRequestConfig(data_connector_query={"limit": 10}),
                 local_file_path="/tmp/test3.parquet",  # noqa: F722
             ),
         ]
@@ -248,7 +250,7 @@ def test_ge_schema_flyteschema_literal():
 
 
 def test_ge_schema_remote_flytefile():
-    ge_config = GEConfig(
+    ge_config = GreatExpectationsFlyteConfig(
         data_source="data",
         expectation_suite="test.demo",
         data_connector="data_flytetype_data_connector",
@@ -256,7 +258,7 @@ def test_ge_schema_remote_flytefile():
     )
 
     @task
-    def my_task(dataset: GEType[FlyteFile[typing.TypeVar("csv")], ge_config]) -> int:
+    def my_task(dataset: GreatExpectationsType[FlyteFile[typing.TypeVar("csv")], ge_config]) -> int:
         return len(pd.read_csv(dataset))
 
     @workflow
@@ -270,7 +272,7 @@ def test_ge_schema_remote_flytefile():
 
 
 def test_ge_schema_remote_flytefile_literal():
-    ge_config = GEConfig(
+    ge_config = GreatExpectationsFlyteConfig(
         data_source="data",
         expectation_suite="test.demo",
         data_connector="data_flytetype_data_connector",
@@ -278,7 +280,7 @@ def test_ge_schema_remote_flytefile_literal():
     )
 
     @task
-    def my_task(dataset: GEType[FlyteFile[typing.TypeVar("csv")], ge_config]) -> int:
+    def my_task(dataset: GreatExpectationsType[FlyteFile[typing.TypeVar("csv")], ge_config]) -> int:
         return len(pd.read_csv(dataset))
 
     @workflow
@@ -292,14 +294,14 @@ def test_ge_schema_remote_flytefile_literal():
 
 
 def test_ge_local_flytefile():
-    ge_config = GEConfig(
+    ge_config = GreatExpectationsFlyteConfig(
         data_source="data",
         expectation_suite="test.demo",
         data_connector="data_flytetype_data_connector",
     )
 
     @task
-    def my_task(dataset: GEType[FlyteFile[typing.TypeVar("csv")], ge_config]) -> int:
+    def my_task(dataset: GreatExpectationsType[FlyteFile[typing.TypeVar("csv")], ge_config]) -> int:
         return len(pd.read_csv(dataset))
 
     @workflow
@@ -311,14 +313,14 @@ def test_ge_local_flytefile():
 
 
 def test_ge_local_flytefile_literal():
-    ge_config = GEConfig(
+    ge_config = GreatExpectationsFlyteConfig(
         data_source="data",
         expectation_suite="test.demo",
         data_connector="data_flytetype_data_connector",
     )
 
     @task
-    def my_task(dataset: GEType[FlyteFile[typing.TypeVar("csv")], ge_config]) -> int:
+    def my_task(dataset: GreatExpectationsType[FlyteFile[typing.TypeVar("csv")], ge_config]) -> int:
         return len(pd.read_csv(dataset))
 
     @workflow
