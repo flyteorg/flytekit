@@ -4,18 +4,17 @@
 FlyteRemote: A Programmatic Control Plane Interface
 ###################################################
 
-For those who require programmatic access to the control plane, :mod:`~flytekit.remote` module enables you to perform
+For those who require programmatic access to the control plane, the :mod:`~flytekit.remote` module enables you to perform
 certain operations in a python runtime environment.
 
 Since this section naturally deals with the control plane, this discussion is only relevant for those who have a Flyte
-backend set up, and have access to it (a local sandbox will suffice as well of course). These objects do not rely on the
-underlying code they represent being locally available.
+backend set up and have access to it (a :std:ref:`local sandbox <flyte:deployment-sandbox>` will suffice as well).
 
 ***************************
 Create a FlyteRemote Object
 ***************************
 
-The :class:`~flytekit.remote.FlyteRemote` class is the entrypoint for programmatically performing operations in a python
+The :class:`~flytekit.remote.remote.FlyteRemote` class is the entrypoint for programmatically performing operations in a python
 runtime. There are two ways of creating a remote object.
 
 **Initialize directly**
@@ -24,14 +23,19 @@ runtime. There are two ways of creating a remote object.
 
     from flytekit.remote import FlyteRemote
 
-    remote = FlyteRemote(default_project="project", default_domain="domain", flyte_admin_url="<url>", insecure=True)
+    remote = FlyteRemote(
+        default_project="project",
+        default_domain="domain",
+        flyte_admin_url="<url>",
+        insecure=True,
+    )
 
 **Initialize from flyte config**
 
 .. TODO: link documentation to flyte config and environment variables
 
-This will initialize a :class:`~flytekit.remote.FlyteRemote` object from your flyte config file or environment variable
-overrides
+This will initialize a :class:`~flytekit.remote.remote.FlyteRemote` object from your flyte config file or environment variable
+overrides:
 
 .. code-block:: python
 
@@ -51,7 +55,7 @@ Fetching Flyte Admin Entities
 Executing Entities
 ******************
 
-You can execute all of these flyte entities, which returns a :class:`~flytekit.remote.FlyteWorkflowExecution` object.
+You can execute all of these flyte entities, which returns a :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution` object.
 For more information on flyte entities, see the See the :ref:`remote flyte entities <remote-flyte-execution-objects>`
 reference.
 
@@ -64,22 +68,23 @@ reference.
 Waiting for Execution Completion
 ********************************
 
+You can use the :meth:`~flytekit.remote.remote.FlyteRemote.wait` method to synchronously wait for the execution to complete:
+
 .. code-block:: python
 
     completed_execution = remote.wait(execution)
 
-You can also pass in ``wait=True`` to the :method:`~flytekit.remote.FlyteRemote.execute` method to synchronously wait
-for the execution to complete before returning the execution object:
+You can also pass in ``wait=True`` to the :meth:`~flytekit.remote.remote.FlyteRemote.execute` method.
 
 .. code-block:: python
 
-    execution = remote.execute(flyte_entity, inputs={...}, wait=True)
+    completed_execution = remote.execute(flyte_entity, inputs={...}, wait=True)
 
 ********************
 Syncing Remote State
 ********************
 
-Use the :method:`~flytekit.remote.FlyteRemote.sync` method to sync the entity object's state with the remote state
+Use the :meth:`~flytekit.remote.remote.FlyteRemote.sync` method to sync the entity object's state with the remote state
 
 .. code-block:: python
 
