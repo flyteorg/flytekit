@@ -118,15 +118,13 @@ class FlyteRemote(object):
         :param default_project: default project to use when fetching or executing flyte entities.
         :param default_domain: default domain to use when fetching or executing flyte entities.
         """
-        raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get() or os.path.join(
-            sdk_config.LOCAL_SANDBOX.get(), "raw"
-        )
+        raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get()
+        raw_output_data_prefix = raw_output_data_prefix if raw_output_data_prefix else None
 
         file_access = FileAccessProvider(
             local_sandbox_dir=os.path.join(sdk_config.LOCAL_SANDBOX.get(), "control_plane_metadata"),
             raw_output_prefix=raw_output_data_prefix,
         )
-
         return cls(
             flyte_admin_url=platform_config.URL.get(),
             insecure=platform_config.INSECURE.get(),
@@ -184,15 +182,12 @@ class FlyteRemote(object):
         self._default_project = default_project
         self._default_domain = default_domain
         self._image_config = image_config
+        self._file_access = file_access
         self._auth_role = auth_role
         self._notifications = notifications
         self._labels = labels
         self._annotations = annotations
         self._raw_output_data_config = raw_output_data_config
-
-        # Save the file access object locally, but also make it available for use from the context.
-        FlyteContextManager.with_context(FlyteContextManager.current_context().with_file_access(file_access).build())
-        self._file_access = file_access
 
         # TODO: Reconsider whether we want this. Probably best to not cache.
         self._serialized_entity_cache = OrderedDict()
