@@ -26,5 +26,5 @@ dist
 .python-version
 _build/
 docs/source/generated/
-.pytest-flyte
+.pytest_flyte
 htmlcov

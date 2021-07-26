@@ -11,6 +11,45 @@ This section of the documentation provides more detailed descriptions of the hig
 API reference for specific usage details of python functions, classes, and decorators that you import to specify tasks,
 build workflows, and extend ``flytekit``.
 
+Installation
+============
+
+.. code-block::
+
+   pip install flytekit
+
+For developer environment setup instructions, see the :ref:`contributor guide <contributing>`.
+
+
+Quickstart
+==========
+
+.. code-block:: python
+
+   from flytekit import task, workflow
+
+   @task
+   def sum(x: int, y: int) -> int:
+      return x + y
+
+   @task
+   def square(z: int) -> int:
+      return z * z
+
+   @workflow
+   def my_workflow(x: int, y: int) -> int:
+      return sum(x=square(z=x), y=square(z=y))
+   
+   print(f"my_workflow output: {my_workflow(x=1, y=2)}")
+
+
+Expected output:
+
+.. code-block::
+
+   my_workflow output: 5
+
+
 .. toctree::
    :maxdepth: 1
    :hidden:
