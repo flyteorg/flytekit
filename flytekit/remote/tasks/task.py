@@ -6,6 +6,8 @@ from flytekit.remote import interface as _interfaces
 
 
 class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
+    """A class encapsulating a remote Flyte task."""
+
     def __init__(self, id, type, metadata, interface, custom, container=None, task_type_version=0, config=None):
         super(FlyteTask, self).__init__(
             id,

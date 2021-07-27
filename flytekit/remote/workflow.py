@@ -13,7 +13,7 @@ from flytekit.remote import nodes as _nodes
 
 
 class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowTemplate):
-    """A Flyte control plane construct."""
+    """A class encapsulating a remote Flyte workflow."""
 
     def __init__(
         self,

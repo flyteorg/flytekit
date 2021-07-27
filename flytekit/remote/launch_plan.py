@@ -9,6 +9,8 @@ from flytekit.remote import interface as _interface
 
 
 class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
+    """A class encapsulating a remote Flyte launch plan."""
+
     def __init__(self, *args, **kwargs):
         super(FlyteLaunchPlan, self).__init__(*args, **kwargs)
         # Set all the attributes we expect this class to have

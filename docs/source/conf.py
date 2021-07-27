@@ -52,6 +52,8 @@ extensions = [
 # build the templated autosummary files
 autosummary_generate = True
 
+autodoc_typehints = "description"
+
 # autosectionlabel throws warnings if section names are duplicated.
 # The following tells autosectionlabel to not throw a warning for
 # duplicated section names that are in different documents.

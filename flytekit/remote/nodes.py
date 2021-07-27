@@ -21,6 +21,8 @@ from flytekit.remote.tasks.executions import FlyteTaskExecution
 
 
 class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
+    """A class encapsulating a remote Flyte node."""
+
     def __init__(
         self,
         id,
@@ -150,6 +152,8 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
 
 
 class FlyteNodeExecution(_node_execution_models.NodeExecution, _artifact_mixin.ExecutionArtifact):
+    """A class encapsulating a node execution being run on a Flyte remote backend."""
+
     def __init__(self, *args, **kwargs):
         super(FlyteNodeExecution, self).__init__(*args, **kwargs)
         self._task_executions = None
