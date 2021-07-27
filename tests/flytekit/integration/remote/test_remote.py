@@ -201,7 +201,7 @@ def test_relaunch_execution():
 
     execution = remote.execute(my_wf, inputs={"a": 10, "b": "xyz"}, version=f"v{VERSION}", wait=True)
 
-    flyte_launch_plan = remote.relaunch_execution(execution.id, "relaunched")
+    flyte_launch_plan = remote.relaunch(execution.id, "relaunched")
     execution = remote.execute(flyte_launch_plan, {}, wait=True)
     assert execution.outputs["o0"] == "hello world"
     assert execution.id.name == "relaunched"
@@ -213,7 +213,7 @@ def test_recover_execution():
 
     execution = remote.execute(my_wf, inputs={"a": 10, "b": "xyz"}, version=f"v{VERSION}", wait=True)
 
-    flyte_launch_plan = remote.recover_execution(execution.id, "recovered")
+    flyte_launch_plan = remote.recover(execution.id, "recovered")
     execution = remote.execute(flyte_launch_plan, {}, wait=True)
     assert execution.outputs["o0"] == "hello world"
     assert execution.id.name == "recovered"
