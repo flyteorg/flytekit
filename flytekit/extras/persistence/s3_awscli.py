@@ -2,22 +2,14 @@ import logging
 import os as _os
 import re as _re
 import string as _string
-import sys as _sys
 import time
-from typing import Dict, List
-
-from six import moves as _six_moves
-from six import text_type as _text_type
+from shutil import which as shell_which
+from typing import Dict, List, Optional
 
 from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserException
 from flytekit.configuration import aws as _aws_config
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.tools import subprocess as _subprocess
-
-if _sys.version_info >= (3,):
-    from shutil import which as _which
-else:
-    from distutils.spawn import find_executable as _which
 
 
 def _update_cmd_config_and_execute(cmd: List[str]):
@@ -67,19 +59,20 @@ class S3Persistence(DataPersistence):
     DataPersistence plugin for AWS S3 (and Minio). Use aws cli to manage the transfer. The binary needs to be installed
     separately
     """
+
     PROTOCOL = "s3://"
     _AWS_CLI = "aws"
-    _SHARD_CHARACTERS = [_text_type(x) for x in _six_moves.range(10)] + list(_string.ascii_lowercase)
+    _SHARD_CHARACTERS = [str(x) for x in range(10)] + list(_string.ascii_lowercase)
 
-    def __init__(self):
-        super().__init__(name="awscli-s3")
+    def __init__(self, default_prefix: Optional[str] = None):
+        super().__init__(name="awscli-s3", default_prefix=default_prefix)
 
     @staticmethod
     def _check_binary():
         """
         Make sure that the AWS cli is present
         """
-        if not _which(S3Persistence._AWS_CLI):
+        if not shell_which(S3Persistence._AWS_CLI):
             raise _FlyteUserException("AWS CLI not found at Please install.")
 
     @staticmethod
@@ -120,7 +113,7 @@ class S3Persistence(DataPersistence):
             # the http status code: "An error occurred (404) when calling the HeadObject operation: Not Found"
             #  This is a best effort for returning if the object does not exist by searching
             # for existence of (404) in the error message. This should not be needed when we get off the cli and use lib
-            if _re.search("(404)", _text_type(ex)):
+            if _re.search("(404)", str(ex)):
                 return False
             else:
                 raise ex
@@ -134,7 +127,7 @@ class S3Persistence(DataPersistence):
         if recursive:
             cmd = [S3Persistence._AWS_CLI, "s3", "cp", "--recursive", from_path, to_path]
         else:
-            cmd = [S3Persistence._AWS_CLI, "s3", "cp", remote_path, local_path]
+            cmd = [S3Persistence._AWS_CLI, "s3", "cp", from_path, to_path]
         return _update_cmd_config_and_execute(cmd)
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
@@ -153,11 +146,14 @@ class S3Persistence(DataPersistence):
         cmd += [from_path, to_path]
         return _update_cmd_config_and_execute(cmd)
 
-    def construct_path(self, add_protocol: bool, *paths) -> str:
+    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
+        paths = list(paths)  # make type check happy
+        if add_prefix:
+            paths = paths.insert(0, self.default_prefix)
         path = f"{'/'.join(paths)}"
         if add_protocol:
             return f"{self.PROTOCOL}{path}"
         return path
 
 
-DataPersistencePlugins.register_plugin("s3://", S3Persistence())
+DataPersistencePlugins.register_plugin(S3Persistence.PROTOCOL, S3Persistence)

@@ -1,24 +1,20 @@
-import os as _os
-import sys as _sys
+import os
+import typing
+from shutil import which as shell_which
 
 from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserException
 from flytekit.configuration import gcp as _gcp_config
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.tools import subprocess as _subprocess
 
-if _sys.version_info >= (3,):
-    from shutil import which as _which
-else:
-    from distutils.spawn import find_executable as _which
-
 
 def _update_cmd_config_and_execute(cmd):
-    env = _os.environ.copy()
+    env = os.environ.copy()
     return _subprocess.check_call(cmd, env=env)
 
 
 def _amend_path(path):
-    return _os.path.join(path, "*") if not path.endswith("*") else path
+    return os.path.join(path, "*") if not path.endswith("*") else path
 
 
 class GCSPersistence(DataPersistence):
@@ -32,18 +28,19 @@ class GCSPersistence(DataPersistence):
        pip install gsutil
 
     """
+
     _GS_UTIL_CLI = "gsutil"
     PROTOCOL = "gs://"
 
-    def __init__(self):
-        super(GCSPersistence, self).__init__(name="gcs-gsutil")
+    def __init__(self, default_prefix: typing.Optional[str] = None):
+        super(GCSPersistence, self).__init__(name="gcs-gsutil", default_prefix=default_prefix)
 
     @staticmethod
     def _check_binary():
         """
         Make sure that the `gsutil` cli is present
         """
-        if not _which(GCSPersistence._GS_UTIL_CLI):
+        if not shell_which(GCSPersistence._GS_UTIL_CLI):
             raise _FlyteUserException("gsutil (gcloud cli) not found! Please install.")
 
     @staticmethod
@@ -104,11 +101,14 @@ class GCSPersistence(DataPersistence):
             cmd = self._maybe_with_gsutil_parallelism("cp", from_path, to_path)
         return _update_cmd_config_and_execute(cmd)
 
-    def construct_path(self, add_protocol: bool, *paths) -> str:
+    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
+        paths = list(paths)  # make type check happy
+        if add_prefix:
+            paths = paths.insert(0, self.default_prefix)
         path = f"{'/'.join(paths)}"
         if add_protocol:
             return f"{self.PROTOCOL}{path}"
         return path
 
 
-DataPersistencePlugins.register_plugin("gcs://", GCSPersistence())
+DataPersistencePlugins.register_plugin(GCSPersistence.PROTOCOL, GCSPersistence)

@@ -1,7 +1,11 @@
+import os
+import pathlib
+
 import requests as _requests
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
+from flytekit.loggers import logger
 
 
 class HttpPersistence(DataPersistence):
@@ -9,6 +13,7 @@ class HttpPersistence(DataPersistence):
     DataPersistence implementation for the HTTP protocol. only supports downloading from an http source. Uploads are
     not supported currently.
     """
+
     PROTOCOL_HTTP = "http"
     PROTOCOL_HTTPS = "https"
     _HTTP_OK = 200
@@ -43,17 +48,21 @@ class HttpPersistence(DataPersistence):
                 rsp.status_code,
                 "Request for data @ {} failed. Expected status code {}".format(from_path, type(self)._HTTP_OK),
             )
+        head, _ = os.path.split(to_path)
+        if head and head.startswith("/"):
+            logger.debug(f"HttpPersistence creating {head} so that parent dirs exist")
+            pathlib.Path(head).mkdir(parents=True, exist_ok=True)
         with open(to_path, "wb") as writer:
             writer.write(rsp.content)
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         raise _user_exceptions.FlyteAssertion("Writing data to HTTP endpoint is not currently supported.")
 
-    def construct_path(self, add_protocol: bool, *paths) -> str:
+    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
         raise _user_exceptions.FlyteAssertion(
             "There are multiple ways of creating http links / paths, this is not supported by the persistence layer"
         )
 
 
-DataPersistencePlugins.register_plugin("http://", HttpPersistence())
-DataPersistencePlugins.register_plugin("https://", HttpPersistence())
+DataPersistencePlugins.register_plugin("http://", HttpPersistence)
+DataPersistencePlugins.register_plugin("https://", HttpPersistence)

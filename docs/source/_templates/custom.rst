@@ -11,7 +11,11 @@
    
    .. rubric:: {{ _('Methods') }}
    {% for item in methods %}
+
+   {% if item != '__init__' %}
    .. automethod:: {{ item }}
+   {% endif %}
+
    {%- endfor %}
    {% endif %}
    {% endblock %}
