@@ -183,8 +183,8 @@ def test_backwards_compatible_replacement(mock_legacy_execute_task):
 
 
 @mock.patch("flytekit.common.utils.load_proto_from_file")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.common.utils.write_proto_to_file")
 def test_dispatch_execute_void(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
@@ -212,8 +212,8 @@ def test_dispatch_execute_void(mock_write_to_file, mock_upload_dir, mock_get_dat
 
 
 @mock.patch("flytekit.common.utils.load_proto_from_file")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.common.utils.write_proto_to_file")
 def test_dispatch_execute_ignore(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
@@ -241,8 +241,8 @@ def test_dispatch_execute_ignore(mock_write_to_file, mock_upload_dir, mock_get_d
 
 
 @mock.patch("flytekit.common.utils.load_proto_from_file")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.common.utils.write_proto_to_file")
 def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
@@ -279,8 +279,8 @@ def get_output_collector(results: OrderedDict):
 
 
 @mock.patch("flytekit.common.utils.load_proto_from_file")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.common.utils.write_proto_to_file")
 def test_dispatch_execute_normal(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
@@ -316,8 +316,8 @@ def test_dispatch_execute_normal(mock_write_to_file, mock_upload_dir, mock_get_d
 
 
 @mock.patch("flytekit.common.utils.load_proto_from_file")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.common.utils.write_proto_to_file")
 def test_dispatch_execute_user_error_non_recov(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
@@ -356,8 +356,8 @@ def test_dispatch_execute_user_error_non_recov(mock_write_to_file, mock_upload_d
 
 
 @mock.patch("flytekit.common.utils.load_proto_from_file")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.common.utils.write_proto_to_file")
 def test_dispatch_execute_user_error_recoverable(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
@@ -400,8 +400,8 @@ def test_dispatch_execute_user_error_recoverable(mock_write_to_file, mock_upload
 
 
 @mock.patch("flytekit.common.utils.load_proto_from_file")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.common.utils.write_proto_to_file")
 def test_dispatch_execute_system_error(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens

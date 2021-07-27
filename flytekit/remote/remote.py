@@ -118,11 +118,12 @@ class FlyteRemote(object):
         :param default_project: default project to use when fetching or executing flyte entities.
         :param default_domain: default domain to use when fetching or executing flyte entities.
         """
-        raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get()
-        raw_output_data_prefix = raw_output_data_prefix if raw_output_data_prefix else None
+        raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get() or os.path.join(
+            sdk_config.LOCAL_SANDBOX.get(), "raw"
+        )
 
         file_access = FileAccessProvider(
-            local_sandbox_dir=sdk_config.LOCAL_SANDBOX.get(),
+            local_sandbox_dir=os.path.join(sdk_config.LOCAL_SANDBOX.get(), "control_plane_metadata"),
             raw_output_prefix=raw_output_data_prefix,
         )
 
