@@ -4,7 +4,7 @@ import re as _re
 import string as _string
 import time
 from shutil import which as shell_which
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserException
 from flytekit.configuration import aws as _aws_config
@@ -64,8 +64,8 @@ class S3Persistence(DataPersistence):
     _AWS_CLI = "aws"
     _SHARD_CHARACTERS = [str(x) for x in range(10)] + list(_string.ascii_lowercase)
 
-    def __init__(self):
-        super().__init__(name="awscli-s3")
+    def __init__(self, default_prefix: Optional[str] = None):
+        super().__init__(name="awscli-s3", default_prefix=default_prefix)
 
     @staticmethod
     def _check_binary():
@@ -127,7 +127,7 @@ class S3Persistence(DataPersistence):
         if recursive:
             cmd = [S3Persistence._AWS_CLI, "s3", "cp", "--recursive", from_path, to_path]
         else:
-            cmd = [S3Persistence._AWS_CLI, "s3", "cp", remote_path, local_path]
+            cmd = [S3Persistence._AWS_CLI, "s3", "cp", from_path, to_path]
         return _update_cmd_config_and_execute(cmd)
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
@@ -146,11 +146,14 @@ class S3Persistence(DataPersistence):
         cmd += [from_path, to_path]
         return _update_cmd_config_and_execute(cmd)
 
-    def construct_path(self, add_protocol: bool, *paths) -> str:
+    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
+        paths = list(paths)  # make type check happy
+        if add_prefix:
+            paths = paths.insert(0, self.default_prefix)
         path = f"{'/'.join(paths)}"
         if add_protocol:
             return f"{self.PROTOCOL}{path}"
         return path
 
 
-DataPersistencePlugins.register_plugin(S3Persistence.PROTOCOL, S3Persistence())
+DataPersistencePlugins.register_plugin(S3Persistence.PROTOCOL, S3Persistence)

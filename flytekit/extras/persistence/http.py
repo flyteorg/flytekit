@@ -1,6 +1,7 @@
-import requests as _requests
-import pathlib
 import os
+import pathlib
+
+import requests as _requests
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
@@ -57,11 +58,11 @@ class HttpPersistence(DataPersistence):
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         raise _user_exceptions.FlyteAssertion("Writing data to HTTP endpoint is not currently supported.")
 
-    def construct_path(self, add_protocol: bool, *paths) -> str:
+    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
         raise _user_exceptions.FlyteAssertion(
             "There are multiple ways of creating http links / paths, this is not supported by the persistence layer"
         )
 
 
-DataPersistencePlugins.register_plugin("http://", HttpPersistence())
-DataPersistencePlugins.register_plugin("https://", HttpPersistence())
+DataPersistencePlugins.register_plugin("http://", HttpPersistence)
+DataPersistencePlugins.register_plugin("https://", HttpPersistence)

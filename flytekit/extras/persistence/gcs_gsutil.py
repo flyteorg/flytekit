@@ -1,4 +1,5 @@
 import os
+import typing
 from shutil import which as shell_which
 
 from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserException
@@ -31,8 +32,8 @@ class GCSPersistence(DataPersistence):
     _GS_UTIL_CLI = "gsutil"
     PROTOCOL = "gs://"
 
-    def __init__(self):
-        super(GCSPersistence, self).__init__(name="gcs-gsutil")
+    def __init__(self, default_prefix: typing.Optional[str] = None):
+        super(GCSPersistence, self).__init__(name="gcs-gsutil", default_prefix=default_prefix)
 
     @staticmethod
     def _check_binary():
@@ -100,11 +101,14 @@ class GCSPersistence(DataPersistence):
             cmd = self._maybe_with_gsutil_parallelism("cp", from_path, to_path)
         return _update_cmd_config_and_execute(cmd)
 
-    def construct_path(self, add_protocol: bool, *paths) -> str:
+    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
+        paths = list(paths)  # make type check happy
+        if add_prefix:
+            paths = paths.insert(0, self.default_prefix)
         path = f"{'/'.join(paths)}"
         if add_protocol:
             return f"{self.PROTOCOL}{path}"
         return path
 
 
-DataPersistencePlugins.register_plugin(GCSPersistence.PROTOCOL, GCSPersistence())
+DataPersistencePlugins.register_plugin(GCSPersistence.PROTOCOL, GCSPersistence)
