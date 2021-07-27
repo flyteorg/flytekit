@@ -1,5 +1,3 @@
-from typing import Optional
-
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common.exceptions import user as _user_exception
