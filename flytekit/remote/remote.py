@@ -121,15 +121,17 @@ class FlyteRemote(object):
         raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get()
         raw_output_data_prefix = raw_output_data_prefix if raw_output_data_prefix else None
 
+        file_access = FileAccessProvider(
+                local_sandbox_dir=sdk_config.LOCAL_SANDBOX.get(),
+                raw_output_prefix=raw_output_data_prefix,
+            )
+
         return cls(
             flyte_admin_url=platform_config.URL.get(),
             insecure=platform_config.INSECURE.get(),
             default_project=default_project or PROJECT.get() or None,
             default_domain=default_domain or DOMAIN.get() or None,
-            file_access=FileAccessProvider(
-                local_sandbox_dir=sdk_config.LOCAL_SANDBOX.get(),
-                raw_output_prefix=raw_output_data_prefix,
-            ),
+            file_access=file_access,
             auth_role=common_models.AuthRole(
                 assumable_iam_role=auth_config.ASSUMABLE_IAM_ROLE.get(),
                 kubernetes_service_account=auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
@@ -181,12 +183,15 @@ class FlyteRemote(object):
         self._default_project = default_project
         self._default_domain = default_domain
         self._image_config = image_config
-        self._file_access = file_access
         self._auth_role = auth_role
         self._notifications = notifications
         self._labels = labels
         self._annotations = annotations
         self._raw_output_data_config = raw_output_data_config
+
+        # Save the file access object locally, but also make it available for use from the context.
+        FlyteContextManager.with_context(FlyteContextManager.current_context().with_file_access(file_access).build())
+        self._file_access = file_access
 
         # TODO: Reconsider whether we want this. Probably best to not cache.
         self._serialized_entity_cache = OrderedDict()
@@ -254,10 +259,10 @@ class FlyteRemote(object):
 
     def with_overrides(
         self,
-        default_project: str = None,
-        default_domain: str = None,
-        flyte_admin_url: str = None,
-        insecure: bool = None,
+        default_project: typing.Optional[str] = None,
+        default_domain: typing.Optional[str] = None,
+        flyte_admin_url: typing.Optional[str] = None,
+        insecure: typing.Optional[bool] = None,
         file_access: typing.Optional[FileAccessProvider] = None,
         auth_role: typing.Optional[common_models.AuthRole] = None,
         notifications: typing.Optional[typing.List[common_models.Notification]] = None,
