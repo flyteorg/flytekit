@@ -481,7 +481,7 @@ class FlyteContext(object):
         in all other cases it is preferable to use with_execution_state
         """
         if not working_dir:
-            working_dir = self.file_access.get_random_local_directory()
+            working_dir = self.file_access.local_sandbox_dir
         return ExecutionState(working_dir=working_dir, user_space_params=self.user_space_params)
 
     @staticmethod

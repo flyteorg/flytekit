@@ -31,13 +31,12 @@ from flytekit.core.context_manager import (
     SerializationSettings,
     get_image_config,
 )
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
-from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
@@ -227,18 +226,15 @@ def setup_execution(
     )
 
     if cloud_provider == _constants.CloudProvider.AWS:
-        file_access = _data_proxy.FileAccessProvider(
+        file_access = FileAccessProvider(
             local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
-            remote_proxy=_s3proxy.AwsS3Proxy(raw_output_data_prefix),
+            raw_output_prefix=raw_output_data_prefix,
         )
     elif cloud_provider == _constants.CloudProvider.GCP:
-        file_access = _data_proxy.FileAccessProvider(
+        file_access = FileAccessProvider(
             local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
-            remote_proxy=_gcs_proxy.GCSProxy(raw_output_data_prefix),
+            raw_output_prefix=raw_output_data_prefix,
         )
-    elif cloud_provider == _constants.CloudProvider.LOCAL:
-        # A fake remote using the local disk will automatically be created
-        file_access = _data_proxy.FileAccessProvider(local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get())
     else:
         raise Exception(f"Bad cloud provider {cloud_provider}")
 

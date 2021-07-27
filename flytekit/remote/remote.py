@@ -30,12 +30,10 @@ from flytekit.configuration import auth as auth_config
 from flytekit.configuration.internal import DOMAIN, PROJECT
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings, get_image_config
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
-from flytekit.interfaces.data.data_proxy import FileAccessProvider
-from flytekit.interfaces.data.gcs.gcs_proxy import GCSProxy
-from flytekit.interfaces.data.s3.s3proxy import AwsS3Proxy
 from flytekit.models import common as common_models
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
@@ -121,11 +119,7 @@ class FlyteRemote(object):
             insecure=platform_config.INSECURE.get(),
             file_access=FileAccessProvider(
                 local_sandbox_dir=sdk_config.LOCAL_SANDBOX.get(),
-                remote_proxy={
-                    constants.CloudProvider.AWS: AwsS3Proxy(raw_output_data_prefix),
-                    constants.CloudProvider.GCP: GCSProxy(raw_output_data_prefix),
-                    constants.CloudProvider.LOCAL: None,
-                }.get(platform_config.CLOUD_PROVIDER.get(), None),
+                raw_output_prefix=raw_output_data_prefix,
             ),
             auth_role=common_models.AuthRole(
                 assumable_iam_role=auth_config.ASSUMABLE_IAM_ROLE.get(),

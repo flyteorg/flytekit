@@ -1,7 +1,10 @@
 import requests as _requests
+import pathlib
+import os
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
+from flytekit.loggers import logger
 
 
 class HttpPersistence(DataPersistence):
@@ -9,6 +12,7 @@ class HttpPersistence(DataPersistence):
     DataPersistence implementation for the HTTP protocol. only supports downloading from an http source. Uploads are
     not supported currently.
     """
+
     PROTOCOL_HTTP = "http"
     PROTOCOL_HTTPS = "https"
     _HTTP_OK = 200
@@ -43,6 +47,10 @@ class HttpPersistence(DataPersistence):
                 rsp.status_code,
                 "Request for data @ {} failed. Expected status code {}".format(from_path, type(self)._HTTP_OK),
             )
+        head, _ = os.path.split(to_path)
+        if head and head.startswith("/"):
+            logger.debug(f"HttpPersistence creating {head} so that parent dirs exist")
+            pathlib.Path(head).mkdir(parents=True, exist_ok=True)
         with open(to_path, "wb") as writer:
             writer.write(rsp.content)
 

@@ -1,4 +1,3 @@
-import datetime
 import os
 import pathlib
 from typing import Optional, Union
@@ -375,9 +374,3 @@ class FileAccessProvider(object):
                 f"Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"
                 f"Original exception: {str(ex)}"
             ) from ex
-
-
-timestamped_default_sandbox_location = os.path.join(
-    _sdk_config.LOCAL_SANDBOX.get(), datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-)
-default_local_file_access_provider = FileAccessProvider(local_sandbox_dir=timestamped_default_sandbox_location)

@@ -2,22 +2,14 @@ import logging
 import os as _os
 import re as _re
 import string as _string
-import sys as _sys
 import time
+from shutil import which as shell_which
 from typing import Dict, List
-
-from six import moves as _six_moves
-from six import text_type as _text_type
 
 from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserException
 from flytekit.configuration import aws as _aws_config
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.tools import subprocess as _subprocess
-
-if _sys.version_info >= (3,):
-    from shutil import which as _which
-else:
-    from distutils.spawn import find_executable as _which
 
 
 def _update_cmd_config_and_execute(cmd: List[str]):
@@ -67,9 +59,10 @@ class S3Persistence(DataPersistence):
     DataPersistence plugin for AWS S3 (and Minio). Use aws cli to manage the transfer. The binary needs to be installed
     separately
     """
+
     PROTOCOL = "s3://"
     _AWS_CLI = "aws"
-    _SHARD_CHARACTERS = [_text_type(x) for x in _six_moves.range(10)] + list(_string.ascii_lowercase)
+    _SHARD_CHARACTERS = [str(x) for x in range(10)] + list(_string.ascii_lowercase)
 
     def __init__(self):
         super().__init__(name="awscli-s3")
@@ -79,7 +72,7 @@ class S3Persistence(DataPersistence):
         """
         Make sure that the AWS cli is present
         """
-        if not _which(S3Persistence._AWS_CLI):
+        if not shell_which(S3Persistence._AWS_CLI):
             raise _FlyteUserException("AWS CLI not found at Please install.")
 
     @staticmethod
@@ -120,7 +113,7 @@ class S3Persistence(DataPersistence):
             # the http status code: "An error occurred (404) when calling the HeadObject operation: Not Found"
             #  This is a best effort for returning if the object does not exist by searching
             # for existence of (404) in the error message. This should not be needed when we get off the cli and use lib
-            if _re.search("(404)", _text_type(ex)):
+            if _re.search("(404)", str(ex)):
                 return False
             else:
                 raise ex
@@ -160,4 +153,4 @@ class S3Persistence(DataPersistence):
         return path
 
 
-DataPersistencePlugins.register_plugin("s3://", S3Persistence())
+DataPersistencePlugins.register_plugin(S3Persistence.PROTOCOL, S3Persistence())
