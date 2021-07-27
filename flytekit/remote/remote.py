@@ -122,9 +122,9 @@ class FlyteRemote(object):
         raw_output_data_prefix = raw_output_data_prefix if raw_output_data_prefix else None
 
         file_access = FileAccessProvider(
-                local_sandbox_dir=sdk_config.LOCAL_SANDBOX.get(),
-                raw_output_prefix=raw_output_data_prefix,
-            )
+            local_sandbox_dir=sdk_config.LOCAL_SANDBOX.get(),
+            raw_output_prefix=raw_output_data_prefix,
+        )
 
         return cls(
             flyte_admin_url=platform_config.URL.get(),
