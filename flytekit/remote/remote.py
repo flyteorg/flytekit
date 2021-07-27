@@ -119,7 +119,7 @@ class FlyteRemote(object):
         :param default_domain: default domain to use when fetching or executing flyte entities.
         """
         raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get() or os.path.join(
-            sdk_config.LOCAL_SANDBOX.get(), "raw"
+            sdk_config.LOCAL_SANDBOX.get(), "control_plane_raw"
         )
 
         file_access = FileAccessProvider(
