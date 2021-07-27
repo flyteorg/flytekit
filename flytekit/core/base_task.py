@@ -33,6 +33,7 @@ from flytekit.core.context_manager import (
     FlyteEntities,
     SerializationSettings,
 )
+from flytekit.core.docstring import Docstring
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.promise import (
     Promise,
@@ -372,6 +373,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         task_config: T,
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
+        docstring: Optional[Docstring] = None,
         **kwargs,
     ):
         """
@@ -389,7 +391,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         super().__init__(
             task_type=task_type,
             name=name,
-            interface=transform_interface_to_typed_interface(interface),
+            interface=transform_interface_to_typed_interface(interface, docstring),
             **kwargs,
         )
         self._python_interface = interface if interface else Interface()

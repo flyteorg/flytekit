@@ -58,7 +58,7 @@ def test_remote_fetch_execute_entities_task_workflow_launchplan(
     mock_client = MagicMock()
     getattr(mock_client, CLIENT_METHODS[resource_type]).return_value = admin_entities, ""
 
-    remote = FlyteRemote.from_environment("p1", "d1")
+    remote = FlyteRemote.from_config("p1", "d1")
     remote._client = mock_client
     fetch_method = getattr(remote, REMOTE_METHODS[resource_type])
     flyte_entity_latest = fetch_method(name="n1", version="latest")
@@ -86,7 +86,7 @@ def test_remote_fetch_workflow_execution(mock_insecure, mock_url, mock_client_ma
     mock_client = MagicMock()
     mock_client.get_execution.return_value = admin_workflow_execution
 
-    remote = FlyteRemote.from_environment("p1", "d1")
+    remote = FlyteRemote.from_config("p1", "d1")
     remote._client = mock_client
     flyte_workflow_execution = remote.fetch_workflow_execution(name="n1")
     assert flyte_workflow_execution.id == admin_workflow_execution.id
