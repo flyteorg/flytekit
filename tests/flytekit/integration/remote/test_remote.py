@@ -193,3 +193,27 @@ def test_execute_sqlite3_task(flyteclient, flyte_workflows_register, flyte_remot
     assert result.__class__.__name__ == "DataFrame"
     assert "TrackId" in result
     assert "Name" in result
+
+
+def test_relaunch_execution():
+    remote = FlyteRemote.from_config(PROJECT, "development")
+    from mock_flyte_repo.workflows.basic.basic_workflow import my_wf
+
+    execution = remote.execute(my_wf, inputs={"a": 10, "b": "xyz"}, version=f"v{VERSION}", wait=True)
+
+    flyte_launch_plan = remote.relaunch_execution(execution.id, "relaunched")
+    execution = remote.execute(flyte_launch_plan, {}, wait=True)
+    assert execution.outputs["o0"] == "hello world"
+    assert execution.id.name == "relaunched"
+
+
+def test_recover_execution():
+    remote = FlyteRemote.from_config(PROJECT, "development")
+    from mock_flyte_repo.workflows.basic.basic_workflow import my_wf
+
+    execution = remote.execute(my_wf, inputs={"a": 10, "b": "xyz"}, version=f"v{VERSION}", wait=True)
+
+    flyte_launch_plan = remote.recover_execution(execution.id, "recovered")
+    execution = remote.execute(flyte_launch_plan, {}, wait=True)
+    assert execution.outputs["o0"] == "hello world"
+    assert execution.id.name == "recovered"

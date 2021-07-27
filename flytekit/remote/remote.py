@@ -615,9 +615,9 @@ class FlyteRemote(object):
                     flyte_id,
                     ExecutionMetadata(
                         ExecutionMetadata.ExecutionMode.MANUAL,
-                        "placeholder",  # TODO: get principle
+                        "placeholder",
                         0,
-                    ),
+                    ),  # TODO: get principle
                     notifications=notifications,
                     disable_all=disable_all,
                     labels=self.labels,
@@ -670,6 +670,66 @@ class FlyteRemote(object):
             ``FlyteWorkflow`` entity inputs. These values are determined by referencing the entity identifier values.
         """
         raise NotImplementedError(f"entity type {type(entity)} not recognized for execution")
+
+    def relaunch(
+        self,
+        execution: FlyteWorkflowExecution,
+        execution_name: str = None,
+        wait: bool = False,
+    ) -> FlyteWorkflowExecution:
+        """Relaunches an existing workflow execution.
+
+        Relaunched executions don't permit users to change input parameters or the version of the launched workflow
+
+        :param execution: The workflow execution to relaunch
+        :param execution_name: name of the execution. If None, uses auto-generated value.
+        :param wait: if True, waits for execution to complete
+        """
+        execution_name = execution_name or "f" + uuid.uuid4().hex[:19]
+        try:
+            exec_id = self.client.relaunch_execution(
+                execution.id,
+                execution_name,
+            )
+        except user_exceptions.FlyteEntityAlreadyExistsException:
+            exec_id = WorkflowExecutionIdentifier(execution.id.project, execution.id.domain, execution_name)
+        relaunched_execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id))
+
+        if wait:
+            return self.wait(relaunched_execution)
+        return relaunched_execution
+
+    def recover(
+        self,
+        execution: FlyteWorkflowExecution,
+        execution_name: str = None,
+        wait: bool = False,
+    ) -> FlyteWorkflowExecution:
+        """Recover from an workflow execution
+
+        In Recover mode, users cannot change any input parameters or update the version of the execution.
+        This is extremely useful to recover from system errors and byzantine faults like - Loss of K8s cluster,
+        bugs in the Flyte platform or instability, machine failures, downstream system failures (from downstream
+        services), or simply to recover executions that failed because of retry exhaustion and should complete if tried
+        again.
+
+        :param execution: The workflow execution to recover
+        :param execution_name: name of the execution. If None, uses auto-generated value.
+        :param wait: if True, waits for execution to complete
+        """
+        execution_name = execution_name or "f" + uuid.uuid4().hex[:19]
+        try:
+            exec_id = self.client.recover_execution(
+                execution.id,
+                execution_name,
+            )
+        except user_exceptions.FlyteEntityAlreadyExistsException:
+            exec_id = WorkflowExecutionIdentifier(execution.id.project, execution.id.domain, execution_name)
+        recovery_execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id))
+
+        if wait:
+            return self.wait(recovery_execution)
+        return recovery_execution
 
     # Flyte Remote Entities
     # ---------------------
