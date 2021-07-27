@@ -23,7 +23,8 @@ from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
 from flytekit.core.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.core.workflow import workflow
-from flytekit.interfaces.data.data_proxy import FileAccessProvider
+# from flytekit.interfaces.data.data_proxy import FileAccessProvider
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
@@ -93,7 +94,7 @@ def test_engine_file_output():
         dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
     )
 
-    fs = FileAccessProvider(local_sandbox_dir="/tmp/flytetesting")
+    fs = FileAccessProvider(local_sandbox_dir="/tmp/flytetesting", raw_output_prefix="/tmp/flyteraw")
     ctx = context_manager.FlyteContextManager.current_context()
 
     with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)) as ctx:
