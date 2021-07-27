@@ -22,12 +22,11 @@ simple implementation that ships with the core.
 
 import datetime
 import os
-import os as _os
 import pathlib
 import typing
 from abc import abstractmethod
 from distutils import dir_util as _dir_util
-from shutil import copyfile as _copyfile
+from shutil import copyfile
 from typing import Dict, Union
 from uuid import UUID
 
@@ -48,15 +47,20 @@ class UnsupportedPersistenceOp(Exception):
 
 class DataPersistence(object):
     """
-    Base abstract type for all  DataPersistence operations. This can be plugged in using the flytekitplugins architecture
+    Base abstract type for all DataPersistence operations. This can be plugged in using the flytekitplugins architecture
     """
 
-    def __init__(self, name: str, *args, **kwargs):
+    def __init__(self, name: str, default_prefix: typing.Optional[str] = None, **kwargs):
         self._name = name
+        self._default_prefix = default_prefix
 
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def default_prefix(self) -> typing.Optional[str]:
+        return self._default_prefix
 
     def listdir(self, path: str, recursive: bool = False) -> typing.Generator[str, None, None]:
         """
@@ -86,7 +90,7 @@ class DataPersistence(object):
         pass
 
     @abstractmethod
-    def construct_path(self, add_protocol: bool, *paths) -> str:
+    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
         """
         if add_protocol is true then <protocol> is prefixed else
         Constructs a path in the format <base><delim>*args
@@ -107,10 +111,10 @@ class DataPersistencePlugins(object):
     These plugins should always be registered. Follow the plugin registration guidelines to auto-discover your plugins.
     """
 
-    _PLUGINS: Dict[str, DataPersistence] = {}
+    _PLUGINS: Dict[str, typing.Type[DataPersistence]] = {}
 
     @classmethod
-    def register_plugin(cls, protocol: str, plugin: DataPersistence, force: bool = False):
+    def register_plugin(cls, protocol: str, plugin: typing.Type[DataPersistence], force: bool = False):
         """
         Registers the supplied plugin for the specified protocol if one does not already exists.
         If one exists and force is default or False, then a TypeError is raised.
@@ -130,7 +134,7 @@ class DataPersistencePlugins(object):
         cls._PLUGINS[protocol] = plugin
 
     @classmethod
-    def find_plugin(cls, path: str) -> DataPersistence:
+    def find_plugin(cls, path: str) -> typing.Type[DataPersistence]:
         """
         Returns a plugin for the given protocol, else raise a TypeError
         """
@@ -164,19 +168,16 @@ class DiskPersistence(DataPersistence):
 
     PROTOCOL = "file://"
 
-    def __init__(self, *args, **kwargs):
-        """
-        :param Text sandbox:
-        """
-        super().__init__(name="local", *args, **kwargs)
+    def __init__(self, default_prefix: typing.Optional[str] = None, **kwargs):
+        super().__init__(name="local", default_prefix=default_prefix, **kwargs)
 
     @staticmethod
     def _make_local_path(path):
-        if not _os.path.exists(path):
+        if not os.path.exists(path):
             try:
-                _os.makedirs(path)
+                pathlib.Path(path).mkdir(parents=True, exist_ok=True)
             except OSError:  # Guard against race condition
-                if not _os.path.isdir(path):
+                if not os.path.isdir(path):
                     raise
 
     @staticmethod
@@ -201,14 +202,14 @@ class DiskPersistence(DataPersistence):
         return
 
     def exists(self, path: str):
-        return _os.path.exists(self.strip_file_header(path))
+        return os.path.exists(self.strip_file_header(path))
 
     def get(self, from_path: str, to_path: str, recursive: bool = False):
         if from_path != to_path:
             if recursive:
                 _dir_util.copy_tree(self.strip_file_header(from_path), self.strip_file_header(to_path))
             else:
-                _copyfile(self.strip_file_header(from_path), self.strip_file_header(to_path))
+                copyfile(self.strip_file_header(from_path), self.strip_file_header(to_path))
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         if from_path != to_path:
@@ -216,13 +217,14 @@ class DiskPersistence(DataPersistence):
                 _dir_util.copy_tree(self.strip_file_header(from_path), self.strip_file_header(to_path))
             else:
                 # Emulate s3's flat storage by automatically creating directory path
-                self._make_local_path(_os.path.dirname(self.strip_file_header(to_path)))
+                self._make_local_path(os.path.dirname(self.strip_file_header(to_path)))
                 # Write the object to a local file in the sandbox
-                _copyfile(self.strip_file_header(from_path), self.strip_file_header(to_path))
+                copyfile(self.strip_file_header(from_path), self.strip_file_header(to_path))
 
-    def construct_path(self, add_protocol: bool, *args) -> str:
-        if add_protocol:
-            return os.path.join(self.PROTOCOL, *args)
+    def construct_path(self, _: bool, add_prefix: bool, *args) -> str:
+        # Ignore add_protocol for now. Only complicates things
+        if add_prefix:
+            return os.path.join(self.default_prefix, *args)
         return os.path.join(*args)
 
 
@@ -231,6 +233,7 @@ class FileAccessProvider(object):
     This is the class that is available through the FlyteContext and can be used for persisting data to the remote
     durable store.
     """
+
     def __init__(self, local_sandbox_dir: Union[str, os.PathLike], raw_output_prefix: str):
         # Local access
         if local_sandbox_dir is None or local_sandbox_dir == "":
@@ -238,9 +241,9 @@ class FileAccessProvider(object):
         local_sandbox_dir_appended = os.path.join(local_sandbox_dir, "local_flytekit")
         self._local_sandbox_dir = pathlib.Path(local_sandbox_dir_appended)
         self._local_sandbox_dir.mkdir(parents=True, exist_ok=True)
-        self._local = DiskPersistence()
+        self._local = DiskPersistence(default_prefix=local_sandbox_dir_appended)
 
-        self._default_remote = DataPersistencePlugins.find_plugin(raw_output_prefix)
+        self._default_remote = DataPersistencePlugins.find_plugin(raw_output_prefix)(default_prefix=raw_output_prefix)
         self._raw_output_prefix = raw_output_prefix
 
     @staticmethod
@@ -270,10 +273,10 @@ class FileAccessProvider(object):
         if file_path_or_file_name:
             _, tail = os.path.split(file_path_or_file_name)
             if tail:
-                return persist.construct_path(False, self._raw_output_prefix, key, tail)
+                return persist.construct_path(False, True, key, tail)
             else:
                 logger.warning(f"No filename detected in {file_path_or_file_name}, generating random path")
-        return persist.construct_path(False, self._raw_output_prefix, key)
+        return persist.construct_path(False, True, key)
 
     def get_random_remote_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
         """
@@ -302,7 +305,7 @@ class FileAccessProvider(object):
         """
         checks if the given path exists
         """
-        return DataPersistencePlugins.find_plugin(path).exists(path)
+        return DataPersistencePlugins.find_plugin(path)().exists(path)
 
     def download_directory(self, remote_path: str, local_path: str):
         """
@@ -338,7 +341,7 @@ class FileAccessProvider(object):
         """
         try:
             with PerformanceTimer("Copying ({} -> {})".format(remote_path, local_path)):
-                DataPersistencePlugins.find_plugin(remote_path).get(remote_path, local_path, recursive=is_multipart)
+                DataPersistencePlugins.find_plugin(remote_path)().get(remote_path, local_path, recursive=is_multipart)
         except Exception as ex:
             raise FlyteAssertion(
                 "Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
@@ -361,7 +364,7 @@ class FileAccessProvider(object):
         """
         try:
             with PerformanceTimer("Writing ({} -> {})".format(local_path, remote_path)):
-                DataPersistencePlugins.find_plugin(remote_path).put(local_path, remote_path, recursive=is_multipart)
+                DataPersistencePlugins.find_plugin(remote_path)().put(local_path, remote_path, recursive=is_multipart)
         except Exception as ex:
             raise FlyteAssertion(
                 f"Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"
@@ -369,8 +372,8 @@ class FileAccessProvider(object):
             ) from ex
 
 
-DataPersistencePlugins.register_plugin("file://", DiskPersistence())
-DataPersistencePlugins.register_plugin("/", DiskPersistence())
+DataPersistencePlugins.register_plugin("file://", DiskPersistence)
+DataPersistencePlugins.register_plugin("/", DiskPersistence)
 
 # TODO make this use tmpdir
 tmp_dir = os.path.join("/tmp/flyte", datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))

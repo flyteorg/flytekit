@@ -10,8 +10,8 @@ the following code fetches and executes a workflow:
 
 .. code-block:: python
 
-    # create a remote object from environment variables
-    remote = FlyteRemote.from_environment()
+    # create a remote object from flyte config and environment variables
+    remote = FlyteRemote.from_config()
 
     # fetch a workflow from the flyte backend
     flyte_workflow = remote.fetch_workflow(name="my_workflow", version="v1")
@@ -22,31 +22,59 @@ the following code fetches and executes a workflow:
     # inspect the execution's outputs
     print(workflow_execution.outputs)
 
+.. _remote-entrypoint:
+
 Entrypoint
 ==========
 
 .. autosummary::
    :template: custom.rst
    :toctree: generated/
+   :nosignatures:
 
-   FlyteRemote
+   ~remote.FlyteRemote
 
-Flyte Entities
-==============
+.. _remote-flyte-entities:
+
+Entities
+========
 
 .. autosummary::
    :template: custom.rst
    :toctree: generated/
+   :nosignatures:
 
-   FlyteTask
-   FlyteWorkflow
-   FlyteLaunchPlan
-   FlyteNode
-   FlyteTaskNode
-   FlyteWorkflowNode
-   FlyteWorkflowExecution
-   FlyteTaskExecution
-   FlyteNodeExecution
+   ~tasks.task.FlyteTask
+   ~workflow.FlyteWorkflow
+   ~launch_plan.FlyteLaunchPlan
+
+.. _remote-flyte-entity-components:
+
+Entity Components
+=================
+
+.. autosummary::
+   :template: custom.rst
+   :toctree: generated/
+   :nosignatures:
+
+   ~nodes.FlyteNode
+   ~component_nodes.FlyteTaskNode
+   ~component_nodes.FlyteWorkflowNode
+
+.. _remote-flyte-execution-objects:
+
+Execution Objects
+=================
+
+.. autosummary::
+   :template: custom.rst
+   :toctree: generated/
+   :nosignatures:
+
+   ~workflow_execution.FlyteWorkflowExecution
+   ~tasks.executions.FlyteTaskExecution
+   ~nodes.FlyteNodeExecution
 
 """
 

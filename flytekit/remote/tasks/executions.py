@@ -9,6 +9,8 @@ from flytekit.models.core import execution as _execution_models
 
 
 class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.ExecutionArtifact):
+    """A class encapsulating a task execution being run on a Flyte remote backend."""
+
     def __init__(self, *args, **kwargs):
         super(FlyteTaskExecution, self).__init__(*args, **kwargs)
         self._inputs = None

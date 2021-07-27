@@ -208,8 +208,12 @@ def simple_wf() -> int:
 
 @workflow
 def my_wf_example(a: int) -> (int, int):
-    """
+    """example
+
     Workflows can have inputs and return outputs of simple or complex types.
+
+    :param a: input a
+    :return: outputs
     """
 
     x = add_5(a=a)
@@ -242,3 +246,13 @@ def test_all_node_types():
     assert len(sub_wf.nodes) == 1
     assert sub_wf.nodes[0].id == "n0"
     assert sub_wf.nodes[0].task_node.reference_id.name == "test_workflows.add_5"
+
+
+def test_wf_docstring():
+    model_wf = get_serializable(OrderedDict(), serialization_settings, my_wf_example)
+
+    assert len(model_wf.template.interface.outputs) == 2
+    assert model_wf.template.interface.outputs["o0"].description == "outputs"
+    assert model_wf.template.interface.outputs["o1"].description == "outputs"
+    assert len(model_wf.template.interface.inputs) == 1
+    assert model_wf.template.interface.inputs["a"].description == "input a"

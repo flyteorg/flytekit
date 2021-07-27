@@ -12,6 +12,8 @@ from flytekit.remote import nodes as _nodes
 
 
 class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArtifact):
+    """A class encapsulating a workflow execution being run on a Flyte remote backend."""
+
     def __init__(self, *args, **kwargs):
         super(FlyteWorkflowExecution, self).__init__(*args, **kwargs)
         self._node_executions = None
@@ -20,6 +22,7 @@ class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArt
 
     @property
     def node_executions(self) -> Dict[str, _nodes.FlyteNodeExecution]:
+        """Get a dictionary of node executions that are a part of this workflow execution."""
         return self._node_executions or {}
 
     @property
