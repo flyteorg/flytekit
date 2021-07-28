@@ -30,18 +30,18 @@ class GreatExpectationsFlyteConfig(object):
     Use this configuration to configure GreatExpectations Plugin.
 
     Args:
-        data_source: tell where your data lives and how to get it
-        expectation_suite: suite which consists of the data expectations
-        data_connector: connector to identify data batches
+        datasource_name: tell where your data lives and how to get it
+        expectation_suite_name: suite which consists of the data expectations
+        data_connector_name: connector to identify data batches
         local_file_path: dataset file path useful for FlyteFile and FlyteSchema
         checkpoint_params: optional SimpleCheckpoint parameters
-        batchrequest_config: batchrequest config
+        batch_request_config: batchrequest config
         context_root_dir: directory in which GreatExpectations' configuration resides
     """
 
-    data_source: str
-    expectation_suite: str
-    data_connector: str
+    datasource_name: str
+    expectation_suite_name: str
+    data_connector_name: str
     """
     local_file_path is a must in two scenrios:
     * When using FlyteSchema
@@ -50,7 +50,7 @@ class GreatExpectationsFlyteConfig(object):
     """
     local_file_path: str = None
     checkpoint_params: typing.Optional[typing.Dict[str, typing.Union[str, typing.List[str]]]] = None
-    batchrequest_config: BatchRequestConfig = None
+    batch_request_config: BatchRequestConfig = None
     context_root_dir: str = "./great_expectations"
 
 
@@ -66,7 +66,10 @@ class GreatExpectationsType(object):
 
     @classmethod
     def config(cls) -> typing.Tuple[Type, Type[GreatExpectationsFlyteConfig]]:
-        return (str, GreatExpectationsFlyteConfig(data_source="", data_connector="", expectation_suite=""))
+        return (
+            str,
+            GreatExpectationsFlyteConfig(datasource_name="", data_connector_name="", expectation_suite_name=""),
+        )
 
     def __class_getitem__(cls, config: typing.Tuple[Type, Type[GreatExpectationsFlyteConfig]]) -> typing.Any:
         if not (isinstance(config, tuple) or len(config) != 2):
@@ -189,7 +192,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         else:
             dataset = temp_dataset
 
-        batchrequest_conf = ge_conf.batchrequest_config
+        batchrequest_conf = ge_conf.batch_request_config
 
         # fetch the data context
         context = ge.data_context.DataContext(ge_conf.context_root_dir)
@@ -197,8 +200,8 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         # minimalistic batch request
         final_batch_request = {
             "data_asset_name": dataset,
-            "datasource_name": ge_conf.data_source,
-            "data_connector_name": ge_conf.data_connector,
+            "datasource_name": ge_conf.datasource_name,
+            "data_connector_name": ge_conf.data_connector_name,
         }
 
         # GreatExpectations RuntimeBatchRequest
@@ -225,25 +228,27 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             "validations": [
                 {
                     "batch_request": final_batch_request,
-                    "expectation_suite_name": ge_conf.expectation_suite,
+                    "expectation_suite_name": ge_conf.expectation_suite_name,
                 }
             ],
         }
 
         if ge_conf.checkpoint_params:
             checkpoint = SimpleCheckpoint(
-                f"_tmp_checkpoint_{ge_conf.expectation_suite}",
+                f"_tmp_checkpoint_{ge_conf.expectation_suite_name}",
                 context,
                 **checkpoint_config,
                 **ge_conf.checkpoint_params,
             )
         else:
-            checkpoint = SimpleCheckpoint(f"_tmp_checkpoint_{ge_conf.expectation_suite}", context, **checkpoint_config)
+            checkpoint = SimpleCheckpoint(
+                f"_tmp_checkpoint_{ge_conf.expectation_suite_name}", context, **checkpoint_config
+            )
 
         # identify every run uniquely
         run_id = RunIdentifier(
             **{
-                "run_name": ge_conf.data_source + "_run",
+                "run_name": ge_conf.datasource_name + "_run",
                 "run_time": datetime.datetime.utcnow(),
             }
         )

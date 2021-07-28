@@ -47,9 +47,9 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
 
     Args:
         name: name of the task
-        data_source: tell where your data lives and how to get it
-        expectation_suite: suite which consists of the data expectations
-        data_connector: connector to identify data batches
+        datasource_name: tell where your data lives and how to get it
+        expectation_suite_name: suite which consists of the data expectations
+        data_connector_name: connector to identify data batches
         inputs: inputs to pass to the execute() method
         local_file_path: dataset file path useful for FlyteFile and FlyteSchema
         checkpoint_params: optional SimpleCheckpoint parameters
@@ -64,9 +64,9 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
     def __init__(
         self,
         name: str,
-        data_source: str,
-        expectation_suite: str,
-        data_connector: str,
+        datasource_name: str,
+        expectation_suite_name: str,
+        data_connector_name: str,
         inputs: typing.Dict[str, typing.Type],
         local_file_path: str = None,
         checkpoint_params: typing.Optional[typing.Dict[str, typing.Union[str, typing.List[str]]]] = None,
@@ -75,10 +75,10 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
         **kwargs,
     ) -> typing.Dict[str, str]:
 
-        self._data_source = data_source
-        self._data_connector = data_connector
-        self._expectation_suite = expectation_suite
-        self._batch_request = task_config
+        self._datasource_name = datasource_name
+        self._data_connector_name = data_connector_name
+        self._expectation_suite_name = expectation_suite_name
+        self._batch_request_config = task_config
         self._context_root_dir = context_root_dir
         """
         local_file_path is a must in two scenarios:
@@ -168,26 +168,26 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
         # minimalistic batch request
         final_batch_request = {
             "data_asset_name": dataset,
-            "datasource_name": self._data_source,
-            "data_connector_name": self._data_connector,
+            "datasource_name": self._datasource_name,
+            "data_connector_name": self._data_connector_name,
         }
 
         # GreatExpectations RuntimeBatchRequest
-        if self._batch_request and self._batch_request.runtime_parameters:
+        if self._batch_request_config and self._batch_request_config.runtime_parameters:
             final_batch_request.update(
                 {
-                    "runtime_parameters": self._batch_request.runtime_parameters,
-                    "batch_identifiers": self._batch_request.batch_identifiers,
-                    "batch_spec_passthrough": self._batch_request.batch_spec_passthrough,
+                    "runtime_parameters": self._batch_request_config.runtime_parameters,
+                    "batch_identifiers": self._batch_request_config.batch_identifiers,
+                    "batch_spec_passthrough": self._batch_request_config.batch_spec_passthrough,
                 }
             )
 
         # GreatExpectations BatchRequest
-        elif self._batch_request:
+        elif self._batch_request_config:
             final_batch_request.update(
                 {
-                    "data_connector_query": self._batch_request.data_connector_query,
-                    "batch_spec_passthrough": self._batch_request.batch_spec_passthrough,
+                    "data_connector_query": self._batch_request_config.data_connector_query,
+                    "batch_spec_passthrough": self._batch_request_config.batch_spec_passthrough,
                 }
             )
 
@@ -196,22 +196,27 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             "validations": [
                 {
                     "batch_request": final_batch_request,
-                    "expectation_suite_name": self._expectation_suite,
+                    "expectation_suite_name": self._expectation_suite_name,
                 }
             ],
         }
 
         if self._checkpoint_params:
             checkpoint = SimpleCheckpoint(
-                f"_tmp_checkpoint_{self._expectation_suite}", context, **checkpoint_config, **self._checkpoint_params
+                f"_tmp_checkpoint_{self._expectation_suite_name}",
+                context,
+                **checkpoint_config,
+                **self._checkpoint_params,
             )
         else:
-            checkpoint = SimpleCheckpoint(f"_tmp_checkpoint_{self._expectation_suite}", context, **checkpoint_config)
+            checkpoint = SimpleCheckpoint(
+                f"_tmp_checkpoint_{self._expectation_suite_name}", context, **checkpoint_config
+            )
 
         # identify every run uniquely
         run_id = RunIdentifier(
             **{
-                "run_name": self._data_source + "_run",
+                "run_name": self._datasource_name + "_run",
                 "run_time": datetime.datetime.utcnow(),
             }
         )

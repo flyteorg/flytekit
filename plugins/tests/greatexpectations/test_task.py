@@ -18,10 +18,10 @@ if "tests/greatexpectations" not in os.getcwd():
 def test_ge_simple_task():
     task_object = GreatExpectationsTask(
         name="test1",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=str),
-        expectation_suite="test.demo",
-        data_connector="data_example_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_example_data_connector",
     )
 
     # valid data
@@ -45,10 +45,10 @@ def test_ge_simple_task():
 def test_ge_batchrequest_pandas_config():
     task_object = GreatExpectationsTask(
         name="test2",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(data=str),
-        expectation_suite="test.demo",
-        data_connector="my_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="my_data_connector",
         task_config=BatchRequestConfig(
             data_connector_query={
                 "batch_filter_parameters": {
@@ -67,10 +67,10 @@ def test_ge_batchrequest_pandas_config():
 def test_invalid_ge_batchrequest_pandas_config():
     task_object = GreatExpectationsTask(
         name="test3",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(data=str),
-        expectation_suite="test.demo",
-        data_connector="my_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="my_data_connector",
         task_config=BatchRequestConfig(
             data_connector_query={
                 "batch_filter_parameters": {
@@ -88,10 +88,10 @@ def test_invalid_ge_batchrequest_pandas_config():
 def test_ge_runtimebatchrequest_sqlite_config():
     task_object = GreatExpectationsTask(
         name="test4",
-        data_source="sqlite_data",
+        datasource_name="sqlite_data",
         inputs=kwtypes(dataset=str),
-        expectation_suite="sqlite.movies",
-        data_connector="sqlite_data_connector",
+        expectation_suite_name="sqlite.movies",
+        data_connector_name="sqlite_data_connector",
         task_config=BatchRequestConfig(
             runtime_parameters={"query": "SELECT * FROM movies"},
             batch_identifiers={
@@ -106,10 +106,10 @@ def test_ge_runtimebatchrequest_sqlite_config():
 def test_ge_task():
     task_object = GreatExpectationsTask(
         name="test5",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=str),
-        expectation_suite="test.demo",
-        data_connector="data_example_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_example_data_connector",
     )
 
     @task
@@ -136,10 +136,10 @@ def test_ge_task():
 def test_ge_workflow():
     task_object = GreatExpectationsTask(
         name="test6",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=str),
-        expectation_suite="test.demo",
-        data_connector="data_example_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_example_data_connector",
     )
 
     @workflow
@@ -152,10 +152,10 @@ def test_ge_workflow():
 def test_ge_checkpoint_params():
     task_object = GreatExpectationsTask(
         name="test7",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=str),
-        expectation_suite="test.demo",
-        data_connector="data_example_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_example_data_connector",
         checkpoint_params={
             "site_names": ["local_site"],
         },
@@ -167,10 +167,10 @@ def test_ge_checkpoint_params():
 def test_ge_remote_flytefile():
     task_object = GreatExpectationsTask(
         name="test8",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
-        expectation_suite="test.demo",
-        data_connector="data_flytetype_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_flytetype_data_connector",
         local_file_path="/tmp",
     )
 
@@ -182,10 +182,10 @@ def test_ge_remote_flytefile():
 def test_ge_remote_flytefile_task():
     task_object = GreatExpectationsTask(
         name="test9",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
-        expectation_suite="test.demo",
-        data_connector="data_flytetype_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_flytetype_data_connector",
         local_file_path="/tmp",
     )
 
@@ -207,10 +207,10 @@ def test_ge_remote_flytefile_task():
 def test_ge_local_flytefile():
     task_object = GreatExpectationsTask(
         name="test10",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
-        expectation_suite="test.demo",
-        data_connector="data_example_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_example_data_connector",
     )
 
     task_object.execute(dataset="yellow_tripdata_sample_2019-01.csv")
@@ -219,10 +219,10 @@ def test_ge_local_flytefile():
 def test_ge_local_flytefile_task():
     task_object = GreatExpectationsTask(
         name="test11",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
-        expectation_suite="test.demo",
-        data_connector="data_example_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_example_data_connector",
     )
 
     @task
@@ -241,10 +241,10 @@ def test_ge_local_flytefile_task():
 def test_ge_local_flytefile_workflow():
     task_object = GreatExpectationsTask(
         name="test12",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
-        expectation_suite="test.demo",
-        data_connector="data_example_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_example_data_connector",
     )
 
     @workflow
@@ -257,10 +257,10 @@ def test_ge_local_flytefile_workflow():
 def test_ge_remote_flytefile_workflow():
     task_object = GreatExpectationsTask(
         name="test13",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
-        expectation_suite="test.demo",
-        data_connector="data_flytetype_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_flytetype_data_connector",
         local_file_path="/tmp",
     )
 
@@ -278,17 +278,17 @@ def test_ge_remote_flytefile_workflow():
 def test_ge_flytefile_multiple_args():
     task_object_one = GreatExpectationsTask(
         name="test14",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile),
-        expectation_suite="test.demo",
-        data_connector="data_example_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_example_data_connector",
     )
     task_object_two = GreatExpectationsTask(
         name="test6",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile),
-        expectation_suite="test1.demo",
-        data_connector="data_example_data_connector",
+        expectation_suite_name="test1.demo",
+        data_connector_name="data_example_data_connector",
     )
 
     @task
@@ -312,10 +312,10 @@ def test_ge_flytefile_multiple_args():
 def test_ge_flyteschema():
     task_object = GreatExpectationsTask(
         name="test15",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
-        expectation_suite="test.demo",
-        data_connector="data_flytetype_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_flytetype_data_connector",
         local_file_path="/tmp/test.parquet",
     )
 
@@ -326,10 +326,10 @@ def test_ge_flyteschema():
 def test_ge_flyteschema_task():
     task_object = GreatExpectationsTask(
         name="test16",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
-        expectation_suite="test.demo",
-        data_connector="data_flytetype_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_flytetype_data_connector",
         local_file_path="/tmp/test1.parquet",
     )
 
@@ -350,10 +350,10 @@ def test_ge_flyteschema_task():
 def test_ge_flyteschema_sqlite():
     task_object = GreatExpectationsTask(
         name="test17",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
-        expectation_suite="sqlite.movies",
-        data_connector="data_flytetype_data_connector",
+        expectation_suite_name="sqlite.movies",
+        data_connector_name="data_flytetype_data_connector",
         local_file_path="/tmp/test1.parquet",
     )
 
@@ -374,10 +374,10 @@ def test_ge_flyteschema_sqlite():
 def test_ge_flyteschema_workflow():
     task_object = GreatExpectationsTask(
         name="test18",
-        data_source="data",
+        datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
-        expectation_suite="test.demo",
-        data_connector="data_flytetype_data_connector",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_flytetype_data_connector",
         local_file_path="/tmp/test1.parquet",
     )
 

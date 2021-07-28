@@ -17,21 +17,21 @@ if "tests/greatexpectations" not in os.getcwd():
 
 def test_ge_type():
     ge_config = GreatExpectationsFlyteConfig(
-        data_source="data",
-        expectation_suite="test.demo",
-        data_connector="data_example_data_connector",
+        datasource_name="data",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_example_data_connector",
     )
 
     s = GreatExpectationsType[str, ge_config]
     assert s.config()[1] == ge_config
-    assert s.config()[1].data_source == "data"
+    assert s.config()[1].datasource_name == "data"
 
 
 def test_ge_schema_task():
     ge_config = GreatExpectationsFlyteConfig(
-        data_source="data",
-        expectation_suite="test.demo",
-        data_connector="data_example_data_connector",
+        datasource_name="data",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_example_data_connector",
     )
 
     @task
@@ -63,14 +63,14 @@ def test_ge_schema_task():
 
 def test_ge_schema_multiple_args():
     ge_config_one = GreatExpectationsFlyteConfig(
-        data_source="data",
-        expectation_suite="test.demo",
-        data_connector="data_example_data_connector",
+        datasource_name="data",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_example_data_connector",
     )
     ge_config_two = GreatExpectationsFlyteConfig(
-        data_source="data",
-        expectation_suite="test1.demo",
-        data_connector="data_example_data_connector",
+        datasource_name="data",
+        expectation_suite_name="test1.demo",
+        data_connector_name="data_example_data_connector",
     )
 
     @task
@@ -96,10 +96,10 @@ def test_ge_schema_batchrequest_pandas_config():
         directory: GreatExpectationsType[
             str,
             GreatExpectationsFlyteConfig(
-                data_source="data",
-                expectation_suite="test.demo",
-                data_connector="my_data_connector",
-                batchrequest_config=BatchRequestConfig(
+                datasource_name="data",
+                expectation_suite_name="test.demo",
+                data_connector_name="my_data_connector",
+                batch_request_config=BatchRequestConfig(
                     data_connector_query={
                         "batch_filter_parameters": {
                             "year": "2019",
@@ -122,10 +122,10 @@ def test_ge_schema_batchrequest_pandas_config():
 
 def test_invalid_ge_schema_batchrequest_pandas_config():
     ge_config = GreatExpectationsFlyteConfig(
-        data_source="data",
-        expectation_suite="test.demo",
-        data_connector="my_data_connector",
-        batchrequest_config=BatchRequestConfig(
+        datasource_name="data",
+        expectation_suite_name="test.demo",
+        data_connector_name="my_data_connector",
+        batch_request_config=BatchRequestConfig(
             data_connector_query={
                 "batch_filter_parameters": {
                     "year": "2020",
@@ -149,10 +149,10 @@ def test_invalid_ge_schema_batchrequest_pandas_config():
 
 def test_ge_schema_runtimebatchrequest_sqlite_config():
     ge_config = GreatExpectationsFlyteConfig(
-        data_source="sqlite_data",
-        expectation_suite="sqlite.movies",
-        data_connector="sqlite_data_connector",
-        batchrequest_config=BatchRequestConfig(
+        datasource_name="sqlite_data",
+        expectation_suite_name="sqlite.movies",
+        data_connector_name="sqlite_data_connector",
+        batch_request_config=BatchRequestConfig(
             runtime_parameters={"query": "SELECT * FROM movies"},
             batch_identifiers={
                 "pipeline_stage": "validation",
@@ -180,9 +180,9 @@ def test_ge_schema_runtimebatchrequest_sqlite_config():
 
 def test_ge_schema_checkpoint_params():
     ge_config = GreatExpectationsFlyteConfig(
-        data_source="data",
-        expectation_suite="test.demo",
-        data_connector="data_example_data_connector",
+        datasource_name="data",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_example_data_connector",
         checkpoint_params={
             "site_names": ["local_site"],
         },
@@ -205,10 +205,10 @@ def test_ge_schema_flyteschema():
         dataframe: GreatExpectationsType[
             FlyteSchema,
             GreatExpectationsFlyteConfig(
-                data_source="data",
-                expectation_suite="test.demo",
-                data_connector="data_flytetype_data_connector",
-                batchrequest_config=BatchRequestConfig(data_connector_query={"limit": 10}),
+                datasource_name="data",
+                expectation_suite_name="test.demo",
+                data_connector_name="data_flytetype_data_connector",
+                batch_request_config=BatchRequestConfig(data_connector_query={"limit": 10}),
                 local_file_path="/tmp/test3.parquet",  # noqa: F722
             ),
         ]
@@ -230,10 +230,10 @@ def test_ge_schema_flyteschema_literal():
         dataframe: GreatExpectationsType[
             FlyteSchema,
             GreatExpectationsFlyteConfig(
-                data_source="data",
-                expectation_suite="test.demo",
-                data_connector="data_flytetype_data_connector",
-                batchrequest_config=BatchRequestConfig(data_connector_query={"limit": 10}),
+                datasource_name="data",
+                expectation_suite_name="test.demo",
+                data_connector_name="data_flytetype_data_connector",
+                batch_request_config=BatchRequestConfig(data_connector_query={"limit": 10}),
                 local_file_path="/tmp/test3.parquet",  # noqa: F722
             ),
         ]
@@ -251,9 +251,9 @@ def test_ge_schema_flyteschema_literal():
 
 def test_ge_schema_remote_flytefile():
     ge_config = GreatExpectationsFlyteConfig(
-        data_source="data",
-        expectation_suite="test.demo",
-        data_connector="data_flytetype_data_connector",
+        datasource_name="data",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_flytetype_data_connector",
         local_file_path="/tmp",
     )
 
@@ -273,9 +273,9 @@ def test_ge_schema_remote_flytefile():
 
 def test_ge_schema_remote_flytefile_literal():
     ge_config = GreatExpectationsFlyteConfig(
-        data_source="data",
-        expectation_suite="test.demo",
-        data_connector="data_flytetype_data_connector",
+        datasource_name="data",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_flytetype_data_connector",
         local_file_path="/tmp",
     )
 
@@ -295,9 +295,9 @@ def test_ge_schema_remote_flytefile_literal():
 
 def test_ge_local_flytefile():
     ge_config = GreatExpectationsFlyteConfig(
-        data_source="data",
-        expectation_suite="test.demo",
-        data_connector="data_flytetype_data_connector",
+        datasource_name="data",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_flytetype_data_connector",
     )
 
     @task
@@ -314,9 +314,9 @@ def test_ge_local_flytefile():
 
 def test_ge_local_flytefile_literal():
     ge_config = GreatExpectationsFlyteConfig(
-        data_source="data",
-        expectation_suite="test.demo",
-        data_connector="data_flytetype_data_connector",
+        datasource_name="data",
+        expectation_suite_name="test.demo",
+        data_connector_name="data_flytetype_data_connector",
     )
 
     @task
