@@ -172,7 +172,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             "data_connector_name": self._data_connector_name,
         }
 
-        # GreatExpectations RuntimeBatchRequest
+        # Great Expectations' RuntimeBatchRequest
         if self._batch_request_config and self._batch_request_config.runtime_parameters:
             final_batch_request.update(
                 {
@@ -182,7 +182,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
                 }
             )
 
-        # GreatExpectations BatchRequest
+        # Great Expectations' BatchRequest
         elif self._batch_request_config:
             final_batch_request.update(
                 {
@@ -235,7 +235,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
                         + "\n"
                     )
 
-            # raise a GreatExpectations exception
+            # raise a Great Expectations' exception
             raise ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
         logging.info("Validation succeeded!")

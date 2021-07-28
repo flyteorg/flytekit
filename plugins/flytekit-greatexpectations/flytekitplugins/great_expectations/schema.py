@@ -192,7 +192,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         else:
             dataset = temp_dataset
 
-        batchrequest_conf = ge_conf.batch_request_config
+        batch_request_conf = ge_conf.batch_request_config
 
         # fetch the data context
         context = ge.data_context.DataContext(ge_conf.context_root_dir)
@@ -204,22 +204,22 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             "data_connector_name": ge_conf.data_connector_name,
         }
 
-        # GreatExpectations RuntimeBatchRequest
-        if batchrequest_conf and batchrequest_conf["runtime_parameters"]:
+        # Great Expectations' RuntimeBatchRequest
+        if batch_request_conf and batch_request_conf["runtime_parameters"]:
             final_batch_request.update(
                 {
-                    "runtime_parameters": batchrequest_conf["runtime_parameters"],
-                    "batch_identifiers": batchrequest_conf["batch_identifiers"],
-                    "batch_spec_passthrough": batchrequest_conf["batch_spec_passthrough"],
+                    "runtime_parameters": batch_request_conf["runtime_parameters"],
+                    "batch_identifiers": batch_request_conf["batch_identifiers"],
+                    "batch_spec_passthrough": batch_request_conf["batch_spec_passthrough"],
                 }
             )
 
-        # GreatExpectations BatchRequest
-        elif batchrequest_conf:
+        # Great Expectations' BatchRequest
+        elif batch_request_conf:
             final_batch_request.update(
                 {
-                    "data_connector_query": batchrequest_conf["data_connector_query"],
-                    "batch_spec_passthrough": batchrequest_conf["batch_spec_passthrough"],
+                    "data_connector_query": batch_request_conf["data_connector_query"],
+                    "batch_spec_passthrough": batch_request_conf["batch_spec_passthrough"],
                 }
             )
 
@@ -267,7 +267,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
                         + "\n"
                     )
 
-            # raise a GreatExpectations exception
+            # raise a Great Expectations' exception
             raise ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
         logging.info("Validation succeeded!")
