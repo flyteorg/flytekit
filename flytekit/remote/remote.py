@@ -768,19 +768,19 @@ class FlyteRemote(object):
         token = None
         executions_recovered_count = 0
         while True:
-            exec_ids, next_token = self.client.list_executions_paginated(
+            executions, next_token = self.client.list_executions_paginated(
                 project,
                 domain,
                 limit=batch_size,
                 token=token,
                 filters=filters,
             )
-            for execution in exec_ids:
+            for execution in executions:
                 exec_id = WorkflowExecutionIdentifier(execution.id.project, execution.id.domain, execution.id.name)
-                original_execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id))
+                original_execution = FlyteWorkflowExecution.promote_from_model(execution)
                 recovered = self.recover(original_execution)
                 remote_logger.info(f"Triggered recovery execution for {exec_id} ==> {recovered.id}")
-            executions_recovered_count += len(exec_ids)
+            executions_recovered_count += len(executions)
 
             if not next_token:
                 break
