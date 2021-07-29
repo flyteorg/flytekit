@@ -36,7 +36,7 @@ class BatchRequestConfig(object):
     """
 
     data_connector_query: typing.Optional[typing.Dict[str, typing.Any]] = None
-    runtime_parameters: typing.Optional[typing.Dict[str, str]] = None
+    runtime_parameters: typing.Optional[typing.Dict[str, typing.Any]] = None
     batch_identifiers: typing.Optional[typing.Dict[str, str]] = None
     batch_spec_passthrough: typing.Optional[typing.Dict[str, typing.Any]] = None
 
