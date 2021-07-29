@@ -294,3 +294,5 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
             return exception_scopes.user_entry_point(task_function)(**kwargs)
+
+        raise ValueError(f"Invalid execution provided, execution state: {ctx.execution_state}")
