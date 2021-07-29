@@ -23,6 +23,8 @@ try:
 except ImportError:
     from singledispatchmethod import singledispatchmethod
 
+import flyteidl.core.execution_pb2 as _execution_pb2
+
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.common import constants
 from flytekit.common.exceptions import user as user_exceptions
@@ -38,6 +40,7 @@ from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.interfaces.data.gcs.gcs_proxy import GCSProxy
 from flytekit.interfaces.data.s3.s3proxy import AwsS3Proxy
 from flytekit.models import common as common_models
+from flytekit.models import filters as filter_models
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
 from flytekit.models.admin.common import Sort
@@ -730,6 +733,59 @@ class FlyteRemote(object):
         if wait:
             return self.wait(recovery_execution)
         return recovery_execution
+
+    def recover_executions(
+        self,
+        project: str,
+        domain: str,
+        start_date: datetime,
+        end_date: typing.Optional[datetime] = None,
+        workflow: typing.Optional[FlyteWorkflow] = None,
+    ):
+        """
+        For all executions specified by the input params, this method will recover those that failed due to a
+        :std:ref:`SYSTEM <idl:ref_flyteidl.core.ExecutionError.ErrorKind>` error from [start_date, end_date) or simply
+        from [start_date, now) if no end_date is provided.
+
+        If a reference workflow is provided, only failed executions for that specific workflow (across versions)
+        will be recovered
+        """
+        filters = [
+            filter_models.GreaterThanOrEqual("created_at", start_date.isoformat()),
+            filter_models.Equal(
+                "error_kind", _execution_pb2.ExecutionError.ErrorKind.Name(_execution_pb2.ExecutionError.SYSTEM)
+            ),
+        ]
+        if end_date is not None:
+            filters.append(filter_models.LessThan("created_at", end_date.isoformat()))
+        if workflow is not None:
+            project = workflow.id.project if workflow.id.project is not None else project
+            filters.append(filter_models.Equal("workflow.project", project))
+            domain = workflow.id.project if workflow.id.domain is not None else domain
+            filters.append(filter_models.Equal("workflow.domain", domain))
+            filters.append(filter_models.Equal("workflow.name", workflow.id.name))
+        batch_size = 20
+        token = None
+        executions_recovered_count = 0
+        while True:
+            exec_ids, next_token = self.client.list_executions_paginated(
+                project,
+                domain,
+                limit=batch_size,
+                token=token,
+                filters=filters,
+            )
+            for execution in exec_ids:
+                exec_id = WorkflowExecutionIdentifier(execution.id.project, execution.id.domain, execution.id.name)
+                original_execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id))
+                recovered = self.recover(original_execution)
+                remote_logger.info(f"Triggered recovery execution for {exec_id} ==> {recovered.id}")
+            executions_recovered_count += len(exec_ids)
+
+            if not next_token:
+                break
+            token = next_token
+        remote_logger.info(f"Recovered {executions_recovered_count} executions")
 
     # Flyte Remote Entities
     # ---------------------
