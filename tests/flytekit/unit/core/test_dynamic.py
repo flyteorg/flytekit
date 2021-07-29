@@ -60,3 +60,49 @@ def test_wf1_with_fast_dynamic():
             )
 
     assert context_manager.FlyteContextManager.size() == 1
+
+
+def test_dynamic_local():
+    @task
+    def t1(a: int) -> str:
+        a = a + 2
+        return "fast-" + str(a)
+
+    @dynamic
+    def ranged_int_to_str(a: int) -> typing.List[str]:
+        s = []
+        for i in range(a):
+            s.append(t1(a=i))
+        return s
+
+    res = my_subwf(a=5)
+    assert res == ["fast-2", "fast-3", "fast-4", "fast-5", "fast-6"]
+
+
+def test_nested_dynamic_local():
+    @task
+    def t1(a: int) -> str:
+        a = a + 2
+        return "fast-" + str(a)
+
+    @dynamic
+    def ranged_int_to_str(a: int) -> typing.List[str]:
+        s = []
+        for i in range(a):
+            s.append(t1(a=i))
+        return s
+
+    @dynamic
+    def add_and_range(a: int, b: int) -> typing.List[str]:
+        x = a + b
+        return ranged_int_to_str(a=x)
+
+    res = add_and_range(a=2, b=3)
+    assert res == ["fast-2", "fast-3", "fast-4", "fast-5", "fast-6"]
+
+    @workflow
+    def wf(a: int, b: int) -> typing.List[str]:
+        return add_and_range(a=a, b=b)
+
+    res = wf(a=2, b=3)
+    assert res == ["fast-2", "fast-3", "fast-4", "fast-5", "fast-6"]

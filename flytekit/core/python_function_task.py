@@ -291,3 +291,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 )
 
             return self.compile_into_workflow(ctx, task_function, **kwargs)
+
+        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
+            return exception_scopes.user_entry_point(task_function)(**kwargs)
