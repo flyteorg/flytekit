@@ -741,6 +741,7 @@ class FlyteRemote(object):
         start_date: datetime,
         end_date: typing.Optional[datetime] = None,
         workflow: typing.Optional[FlyteWorkflow] = None,
+        should_queue: typing.Optional[bool] = True,
     ):
         """
         For all executions specified by the input params, this method will recover those that failed due to a
@@ -748,7 +749,15 @@ class FlyteRemote(object):
         from [start_date, now) if no end_date is provided.
 
         If a reference workflow is provided, only failed executions for that specific workflow (across versions)
-        will be recovered
+        will be recovered.
+
+        :param project: The project for which to recover executions.
+        :param domain: The domain for which to recover executions
+        :param start_date: How far back to search for executions to recover, based on their creation time.
+        :param end_date: Optional, when to stop searching for executions to recover, based on their creation time.
+        :param workflow: Optional, only recover executions for a specific workflow.
+        :param should_queue: Whether to sleep between triggering batches of recovered executions to avoid overwhelming
+            the backend.
         """
         filters = [
             filter_models.GreaterThanOrEqual("created_at", start_date.isoformat()),
@@ -784,6 +793,11 @@ class FlyteRemote(object):
 
             if not next_token:
                 break
+            if should_queue:
+                remote_logger.info(
+                    f"Sleeping before launching more executions so as to not overwhelm the Flyte backend"
+                )
+                time.sleep(30)
             token = next_token
         remote_logger.info(f"Recovered {executions_recovered_count} executions")
 
