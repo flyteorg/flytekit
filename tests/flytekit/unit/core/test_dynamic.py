@@ -75,7 +75,7 @@ def test_dynamic_local():
             s.append(t1(a=i))
         return s
 
-    res = my_subwf(a=5)
+    res = ranged_int_to_str(a=5)
     assert res == ["fast-2", "fast-3", "fast-4", "fast-5", "fast-6"]
 
 
