@@ -674,8 +674,8 @@ class FlyteRemote(object):
     def relaunch(
         self,
         execution: FlyteWorkflowExecution,
-        execution_name: str = None,
-        wait: bool = False,
+        execution_name: typing.Optional[str] = None,
+        wait: typing.Optional[bool] = False,
     ) -> FlyteWorkflowExecution:
         """Relaunches an existing workflow execution.
 
@@ -702,8 +702,8 @@ class FlyteRemote(object):
     def recover(
         self,
         execution: FlyteWorkflowExecution,
-        execution_name: str = None,
-        wait: bool = False,
+        execution_name: typing.Optional[str] = None,
+        wait: typing.Optional[bool] = False,
     ) -> FlyteWorkflowExecution:
         """Recover from an workflow execution
 
