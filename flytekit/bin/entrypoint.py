@@ -186,7 +186,6 @@ def setup_execution(
     dynamic_addl_distro: str = None,
     dynamic_dest_dir: str = None,
 ):
-    cloud_provider = _platform_config.CLOUD_PROVIDER.get()
     log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
     _logging.getLogger().setLevel(log_level)
 
@@ -226,17 +225,17 @@ def setup_execution(
         tmp_dir=user_workspace_dir,
     )
 
-    if cloud_provider == _constants.CloudProvider.AWS:
+    if raw_output_data_prefix.startswith("s3:/"):
         file_access = _data_proxy.FileAccessProvider(
             local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
             remote_proxy=_s3proxy.AwsS3Proxy(raw_output_data_prefix),
         )
-    elif cloud_provider == _constants.CloudProvider.GCP:
+    elif raw_output_data_prefix.startswith("gs:/"):
         file_access = _data_proxy.FileAccessProvider(
             local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
             remote_proxy=_gcs_proxy.GCSProxy(raw_output_data_prefix),
         )
-    elif cloud_provider == _constants.CloudProvider.LOCAL:
+    elif raw_output_data_prefix.startswith("file") or raw_output_data_prefix.startswith("/"):
         # A fake remote using the local disk will automatically be created
         file_access = _data_proxy.FileAccessProvider(local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get())
     else:
