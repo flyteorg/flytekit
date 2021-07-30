@@ -243,7 +243,9 @@ def setup_execution(
             local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
             remote_proxy=_gcs_proxy.GCSProxy(raw_output_data_prefix),
         )
-    elif raw_output_data_prefix.startswith("file") or raw_output_data_prefix.startswith("/"):
+    elif raw_output_data_prefix and (
+        raw_output_data_prefix.startswith("file") or raw_output_data_prefix.startswith("/")
+    ):
         # A fake remote using the local disk will automatically be created
         file_access = _data_proxy.FileAccessProvider(local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get())
     else:
