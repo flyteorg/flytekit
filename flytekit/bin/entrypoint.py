@@ -223,6 +223,7 @@ def setup_execution(
         tmp_dir=user_workspace_dir,
     )
 
+    # TODO: Remove this check for flytekit 1.0
     if raw_output_data_prefix:
         try:
             file_access = FileAccessProvider(
