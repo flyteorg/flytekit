@@ -119,19 +119,21 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         if SDK_PYTHON_VENV.get():
             container_args.extend(SDK_PYTHON_VENV.get())
 
-        container_args.extend([
-            "pyflyte-execute",
-            "--inputs",
-            "{{.input}}",
-            "--output-prefix",
-            "{{.outputPrefix}}",
-            "--raw-output-data-prefix",
-            "{{.rawOutputDataPrefix}}",
-            "--resolver",
-            self.task_resolver.location,
-            "--",
-            *self.task_resolver.loader_args(settings, self),
-        ])
+        container_args.extend(
+            [
+                "pyflyte-execute",
+                "--inputs",
+                "{{.input}}",
+                "--output-prefix",
+                "{{.outputPrefix}}",
+                "--raw-output-data-prefix",
+                "{{.rawOutputDataPrefix}}",
+                "--resolver",
+                self.task_resolver.location,
+                "--",
+                *self.task_resolver.loader_args(settings, self),
+            ]
+        )
 
         return container_args
 
