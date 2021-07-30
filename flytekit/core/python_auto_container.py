@@ -5,6 +5,7 @@ import re
 from typing import Callable, Dict, List, Optional, TypeVar
 
 from flytekit.common.tasks.raw_container import _get_container_definition
+from flytekit.configuration.sdk import SDK_PYTHON_VENV
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings
 from flytekit.core.docstring import Docstring
@@ -114,7 +115,11 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         """
         Returns the default pyflyte-execute command used to run this on hosted Flyte platforms.
         """
-        container_args = [
+        container_args: List[str] = []
+        if SDK_PYTHON_VENV.get():
+            container_args.extend(SDK_PYTHON_VENV.get())
+
+        container_args.extend([
             "pyflyte-execute",
             "--inputs",
             "{{.input}}",
@@ -126,7 +131,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
             self.task_resolver.location,
             "--",
             *self.task_resolver.loader_args(settings, self),
-        ]
+        ])
 
         return container_args
 
@@ -153,6 +158,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         return self._get_command_fn(settings)
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
+
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
             image=get_registerable_container_image(self.container_image, settings.image_config),
