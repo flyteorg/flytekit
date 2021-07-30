@@ -226,7 +226,8 @@ def setup_execution(
         tmp_dir=user_workspace_dir,
     )
 
-    # This rather ugly hack will be going away with #559. The reason we have to check for the existence of the
+    # This rather ugly condition will be going away with #559. We first check the raw output prefix, and if missing,
+    # we fall back to the logic of checking the cloud provider. The reason we have to check for the existence of the
     # raw_output_data_prefix arg first is because it may be set to None by execute_task_cmd. That is there to support
     # the corner case of a really old propeller that is still not filling in the raw output prefix template.
     if raw_output_data_prefix:
