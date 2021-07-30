@@ -226,7 +226,7 @@ def setup_execution(
     )
 
     if cloud_provider == _constants.CloudProvider.AWS:
-        file_access = FileAccessProvider(
+        file_access = _data_proxy.FileAccessProvider(
             local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
             raw_output_prefix=raw_output_data_prefix,
         )
