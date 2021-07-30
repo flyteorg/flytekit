@@ -185,7 +185,6 @@ def setup_execution(
     dynamic_addl_distro: str = None,
     dynamic_dest_dir: str = None,
 ):
-    cloud_provider = _platform_config.CLOUD_PROVIDER.get()
     log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
     _logging.getLogger().setLevel(log_level)
 
@@ -225,18 +224,17 @@ def setup_execution(
         tmp_dir=user_workspace_dir,
     )
 
-    if cloud_provider == _constants.CloudProvider.AWS:
-        file_access = FileAccessProvider(
-            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
-            raw_output_prefix=raw_output_data_prefix,
-        )
-    elif cloud_provider == _constants.CloudProvider.GCP:
-        file_access = FileAccessProvider(
-            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
-            raw_output_prefix=raw_output_data_prefix,
-        )
+    if raw_output_data_prefix:
+        try:
+            file_access = FileAccessProvider(
+                local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
+                raw_output_prefix=raw_output_data_prefix,
+            )
+        except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
+            _logging.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
+            raise
     else:
-        raise Exception(f"Bad cloud provider {cloud_provider}")
+        raise Exception(f"No raw output prefix detected. Please upgrade your version of Propeller to 0.4.0 or later.")
 
     with FlyteContextManager.with_context(ctx.with_file_access(file_access)) as ctx:
         # TODO: This is copied from serialize, which means there's a similarity here I'm not seeing.
