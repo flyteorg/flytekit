@@ -21,3 +21,7 @@ def test_get_default_command_prefix_sdk_python_venv(mock_venv):
 
     cmd: List[str] = task.get_default_command(SerializationSettings("p", "d", "v", None))
     assert cmd[0] == "service_venv"
+
+    mock_venv.get.return_value = []
+    cmd: List[str] = task.get_default_command(SerializationSettings("p", "d", "v", None))
+    assert cmd[0] == "pyflyte-execute"
