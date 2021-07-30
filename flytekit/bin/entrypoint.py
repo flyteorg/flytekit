@@ -21,7 +21,6 @@ from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.configuration import internal as _internal_config
-from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.context_manager import (
@@ -185,14 +184,13 @@ def setup_execution(
     dynamic_addl_distro: str = None,
     dynamic_dest_dir: str = None,
 ):
-    cloud_provider = _platform_config.CLOUD_PROVIDER.get()
     log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
     _logging.getLogger().setLevel(log_level)
 
     ctx = FlyteContextManager.current_context()
 
     # Create directories
-    user_workspace_dir = ctx.file_access.local_access.get_random_directory()
+    user_workspace_dir = ctx.file_access.get_random_local_directory()
     _click.echo(f"Using user directory {user_workspace_dir}")
     pathlib.Path(user_workspace_dir).mkdir(parents=True, exist_ok=True)
     from flytekit import __version__ as _api_version
@@ -225,9 +223,18 @@ def setup_execution(
         tmp_dir=user_workspace_dir,
     )
 
-    file_access = FileAccessProvider(
-        local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
-        raw_output_prefix=raw_output_data_prefix)
+    # TODO: Remove this check for flytekit 1.0
+    if raw_output_data_prefix:
+        try:
+            file_access = FileAccessProvider(
+                local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
+                raw_output_prefix=raw_output_data_prefix,
+            )
+        except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
+            _logging.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
+            raise
+    else:
+        raise Exception(f"No raw output prefix detected. Please upgrade your version of Propeller to 0.4.0 or later.")
 
     with FlyteContextManager.with_context(ctx.with_file_access(file_access)) as ctx:
         # TODO: This is copied from serialize, which means there's a similarity here I'm not seeing.
