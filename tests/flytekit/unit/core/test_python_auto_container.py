@@ -16,6 +16,8 @@ def test_get_default_command_prefix_sdk_python_venv(mock_venv):
         None,
     )
 
+    task._task_resolver = mock.Mock()
+
     task._task_resolver._location = "location"
     task._task_resolver.loader_args = lambda a, b: ["a", "b"]
 
