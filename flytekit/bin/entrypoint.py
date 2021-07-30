@@ -186,6 +186,7 @@ def setup_execution(
     dynamic_addl_distro: str = None,
     dynamic_dest_dir: str = None,
 ):
+    cloud_provider = _platform_config.CLOUD_PROVIDER.get()
     log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
     _logging.getLogger().setLevel(log_level)
 
@@ -225,12 +226,19 @@ def setup_execution(
         tmp_dir=user_workspace_dir,
     )
 
-    if raw_output_data_prefix.startswith("s3:/"):
+    # This rather ugly hack will be going away with #559. The reason we have to check for the existence of the
+    # raw_output_data_prefix arg first is because it may be set to None by execute_task_cmd. That is there to support
+    # the corner case of a really old propeller that is still not filling in the raw output prefix template.
+    if (
+        raw_output_data_prefix and raw_output_data_prefix.startswith("s3:/")
+    ) or cloud_provider == _constants.CloudProvider.AWS:
         file_access = _data_proxy.FileAccessProvider(
             local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
             remote_proxy=_s3proxy.AwsS3Proxy(raw_output_data_prefix),
         )
-    elif raw_output_data_prefix.startswith("gs:/"):
+    elif (
+        raw_output_data_prefix and raw_output_data_prefix.startswith("gs:/")
+    ) or cloud_provider == _constants.CloudProvider.GCP:
         file_access = _data_proxy.FileAccessProvider(
             local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
             remote_proxy=_gcs_proxy.GCSProxy(raw_output_data_prefix),
