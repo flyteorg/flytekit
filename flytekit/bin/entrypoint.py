@@ -21,7 +21,6 @@ from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.configuration import internal as _internal_config
-from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.context_manager import (
@@ -191,7 +190,7 @@ def setup_execution(
     ctx = FlyteContextManager.current_context()
 
     # Create directories
-    user_workspace_dir = ctx.file_access.local_access.get_random_directory()
+    user_workspace_dir = ctx.file_access.get_random_local_directory()
     _click.echo(f"Using user directory {user_workspace_dir}")
     pathlib.Path(user_workspace_dir).mkdir(parents=True, exist_ok=True)
     from flytekit import __version__ as _api_version
