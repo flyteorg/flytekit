@@ -15,7 +15,7 @@ Flyte Admin's gRPC and HTTP points are deployed on different ports.
 INSECURE = _config_common.FlyteBoolConfigurationEntry("platform", "insecure", default=False)
 
 CLOUD_PROVIDER = _config_common.FlyteStringConfigurationEntry(
-    "platform", "cloud_provider", default=_constants.CloudProvider.AWS
+    "platform", "cloud_provider", default=_constants.CloudProvider.GCP
 )
 
 AUTH = _config_common.FlyteBoolConfigurationEntry("platform", "auth", default=False)
