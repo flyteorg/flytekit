@@ -3,12 +3,13 @@ import typing
 from collections import OrderedDict
 
 import mock
+import pytest
 import six
 from click.testing import CliRunner
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core.errors_pb2 import ErrorDocument
 
-from flytekit.bin.entrypoint import _dispatch_execute, _legacy_execute_task, execute_task_cmd
+from flytekit.bin.entrypoint import _dispatch_execute, _legacy_execute_task, execute_task_cmd, setup_execution
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _utils
 from flytekit.common.exceptions import user as user_exceptions
@@ -21,6 +22,8 @@ from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.promise import VoidPromise
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
+from flytekit.extras.persistence.gcs_gsutil import GCSPersistence
+from flytekit.extras.persistence.s3_awscli import S3Persistence
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as error_models
 from flytekit.models.core import execution as execution_models
@@ -436,3 +439,17 @@ def test_dispatch_execute_system_error(mock_write_to_file, mock_upload_dir, mock
         assert ed.error.kind == error_models.ContainerError.Kind.RECOVERABLE
         assert "some system exception" in ed.error.message
         assert ed.error.origin == execution_models.ExecutionError.ErrorKind.SYSTEM
+
+
+def test_setup_bad_prefix():
+    with pytest.raises(TypeError):
+        with setup_execution("qwerty") as ctx:
+            ...
+
+
+def test_setup_cloud_prefix():
+    with setup_execution("s3://") as ctx:
+        assert isinstance(ctx.file_access._default_remote, S3Persistence)
+
+    with setup_execution("gs://") as ctx:
+        assert isinstance(ctx.file_access._default_remote, GCSPersistence)
