@@ -225,18 +225,9 @@ def setup_execution(
         tmp_dir=user_workspace_dir,
     )
 
-    if cloud_provider == _constants.CloudProvider.AWS:
-        file_access = FileAccessProvider(
-            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
-            raw_output_prefix=raw_output_data_prefix,
-        )
-    elif cloud_provider == _constants.CloudProvider.GCP:
-        file_access = FileAccessProvider(
-            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
-            raw_output_prefix=raw_output_data_prefix,
-        )
-    else:
-        raise Exception(f"Bad cloud provider {cloud_provider}")
+    file_access = FileAccessProvider(
+        local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
+        raw_output_prefix=raw_output_data_prefix)
 
     with FlyteContextManager.with_context(ctx.with_file_access(file_access)) as ctx:
         # TODO: This is copied from serialize, which means there's a similarity here I'm not seeing.

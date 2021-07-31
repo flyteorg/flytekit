@@ -670,6 +670,11 @@ class FlyteContextManager(object):
         """
         # This is supplied so that tasks that rely on Flyte provided param functionality do not fail when run locally
         default_execution_id = _identifier.WorkflowExecutionIdentifier(project="local", domain="local", name="local")
+
+        # Ensure a local directory is available for users to work with.
+        user_space_path = os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "user_space")
+        pathlib.Path(user_space_path).mkdir(parents=True, exist_ok=True)
+
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with
         default_user_space_params = ExecutionParameters(
@@ -677,7 +682,7 @@ class FlyteContextManager(object):
             execution_date=_datetime.datetime.utcnow(),
             stats=_mock_stats.MockStats(),
             logging=_logging,
-            tmp_dir=os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "user_space"),
+            tmp_dir=user_space_path,
         )
         default_context = FlyteContext(file_access=default_local_file_access_provider)
         default_context = default_context.with_execution_state(
