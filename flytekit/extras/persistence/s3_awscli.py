@@ -58,6 +58,11 @@ class S3Persistence(DataPersistence):
     """
     DataPersistence plugin for AWS S3 (and Minio). Use aws cli to manage the transfer. The binary needs to be installed
     separately
+
+    .. prompt::
+
+       pip install awscli
+
     """
 
     PROTOCOL = "s3://"
@@ -73,22 +78,20 @@ class S3Persistence(DataPersistence):
         Make sure that the AWS cli is present
         """
         if not shell_which(S3Persistence._AWS_CLI):
-            raise _FlyteUserException("AWS CLI not found at Please install.")
+            raise _FlyteUserException("AWS CLI not found! Please install it with `pip install awscli`.")
 
     @staticmethod
-    def _split_s3_path_to_bucket_and_key(path):
+    def _split_s3_path_to_bucket_and_key(path: str) -> (str, str):
         """
-        :param Text path:
-        :rtype: (Text, Text)
+        splits a valid s3 uri into bucket and key
         """
-        path = path[len("s3://") :]
+        path = path[len("s3://"):]
         first_slash = path.index("/")
-        return path[:first_slash], path[first_slash + 1 :]
+        return path[:first_slash], path[first_slash + 1:]
 
     def exists(self, remote_path):
         """
-        :param Text remote_path: remote s3:// path
-        :rtype bool: whether the s3 file exists or not
+        Given a remoet path of the format s3://, checks if the remote file exists
         """
         S3Persistence._check_binary()
 

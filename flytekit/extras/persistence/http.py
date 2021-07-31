@@ -19,23 +19,23 @@ class HttpPersistence(DataPersistence):
     _HTTP_OK = 200
     _HTTP_FORBIDDEN = 403
     _HTTP_NOT_FOUND = 404
+    ALLOWED_CODES = {
+        _HTTP_OK,
+        _HTTP_NOT_FOUND,
+        _HTTP_FORBIDDEN,
+    }
 
     def __init__(self, *args, **kwargs):
         super(HttpPersistence, self).__init__(name="http/https", *args, **kwargs)
 
     def exists(self, path: str):
         rsp = _requests.head(path)
-        allowed_codes = {
-            type(self)._HTTP_OK,
-            type(self)._HTTP_NOT_FOUND,
-            type(self)._HTTP_FORBIDDEN,
-        }
-        if rsp.status_code not in allowed_codes:
+        if rsp.status_code not in self.ALLOWED_CODES:
             raise _user_exceptions.FlyteValueException(
                 rsp.status_code,
-                "Data at {} could not be checked for existence. Expected one of: {}".format(path, allowed_codes),
+                f"Data at {path} could not be checked for existence. Expected one of: {self.ALLOWED_CODES}",
             )
-        return rsp.status_code == type(self)._HTTP_OK
+        return rsp.status_code == self._HTTP_OK
 
     def get(self, from_path: str, to_path: str, recursive: bool = False):
         if recursive:
@@ -43,7 +43,7 @@ class HttpPersistence(DataPersistence):
                 "Reading data recursively from HTTP endpoint is not currently supported."
             )
         rsp = _requests.get(from_path)
-        if rsp.status_code != type(self)._HTTP_OK:
+        if rsp.status_code != self._HTTP_OK:
             raise _user_exceptions.FlyteValueException(
                 rsp.status_code,
                 "Request for data @ {} failed. Expected status code {}".format(from_path, type(self)._HTTP_OK),
