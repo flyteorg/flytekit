@@ -41,7 +41,7 @@ class GCSPersistence(DataPersistence):
         Make sure that the `gsutil` cli is present
         """
         if not shell_which(GCSPersistence._GS_UTIL_CLI):
-            raise _FlyteUserException("gsutil (gcloud cli) not found! Please install.")
+            raise _FlyteUserException("gsutil (gcloud cli) not found! Please install using `pip install gsutil`.")
 
     @staticmethod
     def _maybe_with_gsutil_parallelism(*gsutil_args):

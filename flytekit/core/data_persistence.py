@@ -11,6 +11,8 @@ simple implementation that ships with the core.
 
 .. autosummary::
    :toctree: generated/
+   :template: custom.rst
+   :nosignatures:
 
    DataPersistence
    DataPersistencePlugins
@@ -47,7 +49,7 @@ class UnsupportedPersistenceOp(Exception):
 
 class DataPersistence(object):
     """
-    Base abstract type for all DataPersistence operations. This can be plugged in using the flytekitplugins architecture
+    Base abstract type for all DataPersistence operations. This can be extended using the flytekitplugins architecture
     """
 
     def __init__(self, name: str, default_prefix: typing.Optional[str] = None, **kwargs):
@@ -78,7 +80,7 @@ class DataPersistence(object):
     @abstractmethod
     def get(self, from_path: str, to_path: str, recursive: bool = False):
         """
-        Retrieves a data from from_path and writes to the given to_path (to_path is locally accessible)
+        Retrieves data from from_path and writes to the given to_path (to_path is locally accessible)
         """
         pass
 
@@ -102,7 +104,7 @@ class DataPersistence(object):
 
 class DataPersistencePlugins(object):
     """
-    This is core plugin engine that stores all DataPersistence plugins. To add a new plugin use
+    DataPersistencePlugins is the core plugin registry that stores all DataPersistence plugins. To add a new plugin use
 
     .. code-block:: python
 
@@ -116,7 +118,7 @@ class DataPersistencePlugins(object):
     @classmethod
     def register_plugin(cls, protocol: str, plugin: typing.Type[DataPersistence], force: bool = False):
         """
-        Registers the supplied plugin for the specified protocol if one does not already exists.
+        Registers the supplied plugin for the specified protocol if one does not already exist.
         If one exists and force is default or False, then a TypeError is raised.
         If one does not exist then it is registered
         If one exists, but force == True then the existing plugin is overriden
@@ -161,7 +163,7 @@ class DataPersistencePlugins(object):
 
 class DiskPersistence(DataPersistence):
     """
-    The simplest form of persistence that is available with default flytekit - Disk based persistence.
+    The simplest form of persistence that is available with default flytekit - Disk-based persistence.
     This will store all data locally and retreive the data from local. This is helpful for local execution and simulating
     runs.
     """
@@ -237,7 +239,7 @@ class FileAccessProvider(object):
     def __init__(self, local_sandbox_dir: Union[str, os.PathLike], raw_output_prefix: str):
         # Local access
         if local_sandbox_dir is None or local_sandbox_dir == "":
-            raise Exception("Can't use empty path")
+            raise ValueError("FileAccessProvider needs to be created with a valid local_sandbox_dir")
         local_sandbox_dir_appended = os.path.join(local_sandbox_dir, "local_flytekit")
         self._local_sandbox_dir = pathlib.Path(local_sandbox_dir_appended)
         self._local_sandbox_dir.mkdir(parents=True, exist_ok=True)
@@ -251,9 +253,7 @@ class FileAccessProvider(object):
         """
         Deprecated. Lets find a replacement
         """
-        if path.startswith("/") or path.startswith("file://"):
-            return False
-        return True
+        return not (path.startswith("/") or path.startswith("file://"))
 
     @property
     def local_sandbox_dir(self) -> os.PathLike:
@@ -340,17 +340,12 @@ class FileAccessProvider(object):
         :param bool is_multipart:
         """
         try:
-            with PerformanceTimer("Copying ({} -> {})".format(remote_path, local_path)):
+            with PerformanceTimer(f"Copying ({remote_path} -> {local_path})"):
                 DataPersistencePlugins.find_plugin(remote_path)().get(remote_path, local_path, recursive=is_multipart)
         except Exception as ex:
             raise FlyteAssertion(
-                "Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
-                "Original exception: {error_string}".format(
-                    remote_path=remote_path,
-                    local_path=local_path,
-                    is_multipart=is_multipart,
-                    error_string=str(ex),
-                )
+                f"Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
+                f"Original exception: {str(ex)}"
             )
 
     def put_data(self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart=False):
@@ -363,7 +358,7 @@ class FileAccessProvider(object):
         :param bool is_multipart:
         """
         try:
-            with PerformanceTimer("Writing ({} -> {})".format(local_path, remote_path)):
+            with PerformanceTimer(f"Writing ({local_path} -> {remote_path})"):
                 DataPersistencePlugins.find_plugin(remote_path)().put(local_path, remote_path, recursive=is_multipart)
         except Exception as ex:
             raise FlyteAssertion(
