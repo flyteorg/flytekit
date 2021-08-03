@@ -205,6 +205,7 @@ class FeastOfflineStoreTask(PythonInstanceTask[FeastOfflineStoreConfig]):
         )
 
         fs.apply([feature_view] + entities)
+        return self._feature_offline_store_config.repo_path
 
 
 class FeastOfflineRetrieveTask(PythonInstanceTask[FeastOfflineRetrieveConfig]):
