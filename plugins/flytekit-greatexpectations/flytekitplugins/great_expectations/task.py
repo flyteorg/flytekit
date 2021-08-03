@@ -18,8 +18,6 @@ from flytekit.extend import Interface
 from flytekit.types.file.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
 
-T = typing.TypeVar("T")
-
 
 @dataclass_json
 @dataclass
