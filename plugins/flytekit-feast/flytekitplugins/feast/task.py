@@ -83,13 +83,25 @@ class FeastOfflineStoreTask(PythonInstanceTask[FeastOfflineStoreConfig]):
     _TASK_TYPE = "feast"
 
     def __init__(
-        self, name: str, task_config: FeastOfflineStoreConfig, inputs: typing.Dict[str, typing.Type], **kwargs
+        self,
+        name: str,
+        task_config: FeastOfflineStoreConfig,
+        inputs: typing.Dict[str, typing.Type],
+        outputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        **kwargs,
     ):
         self._name = name
         self._feature_offline_store_config = task_config
 
+        outputs.update({"repo_path": self._feature_offline_store_config.repo_path})
+
         super(FeastOfflineStoreTask, self).__init__(
-            name=name, task_type=self._TASK_TYPE, task_config=task_config, interface=Interface(inputs=inputs), **kwargs
+            name=name,
+            task_type=self._TASK_TYPE,
+            task_config=task_config,
+            interface=Interface(inputs=inputs),
+            outputs=outputs,
+            **kwargs,
         )
 
     def execute(self, **kwargs) -> typing.Any:
@@ -205,6 +217,7 @@ class FeastOfflineStoreTask(PythonInstanceTask[FeastOfflineStoreConfig]):
         )
 
         fs.apply([feature_view] + entities)
+
         return self._feature_offline_store_config.repo_path
 
 
