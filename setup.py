@@ -11,7 +11,6 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
     print("Minimum Python version is {}, but you are on {}".format(MIN_PYTHON_VERSION, CURRENT_PYTHON))
     sys.exit(-1)
 
-
 spark = ["pyspark>=2.4.0,<3.0.0"]
 spark3 = ["pyspark>=3.0.0"]
 sidecar = ["k8s-proto>=0.0.3,<1.0.0"]
@@ -94,7 +93,7 @@ setup(
         "flytekit/bin/entrypoint.py",
     ],
     license="apache2",
-    python_requires=">=3.7",
+    python_requires=">=3.6",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",

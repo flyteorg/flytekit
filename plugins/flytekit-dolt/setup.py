@@ -34,7 +34,7 @@ setup(
     ),
     cmdclass=dict(develop=PostDevelopCommand),
     license="apache2",
-    python_requires=">=3.7",
+    python_requires=">=3.6",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
