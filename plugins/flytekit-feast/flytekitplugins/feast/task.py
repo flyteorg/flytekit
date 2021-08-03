@@ -9,7 +9,7 @@ from feast import BigQuerySource, Entity, Feature, FeatureStore, FeatureView, Fi
 from feast.data_format import ParquetFormat
 from google.protobuf.duration_pb2 import Duration
 
-from flytekit import PythonInstanceTask
+from flytekit import kwtypes, PythonInstanceTask
 from flytekit.core.context_manager import FlyteContext
 from flytekit.extend import Interface
 from flytekit.types.schema import FlyteSchema
@@ -93,7 +93,7 @@ class FeastOfflineStoreTask(PythonInstanceTask[FeastOfflineStoreConfig]):
         self._name = name
         self._feature_offline_store_config = task_config
 
-        outputs = {"repo_path": self._feature_offline_store_config.repo_path}
+        outputs = kwtypes(repo_path=self._feature_offline_store_config.repo_path)
 
         super(FeastOfflineStoreTask, self).__init__(
             name=name,
