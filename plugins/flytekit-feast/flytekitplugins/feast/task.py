@@ -93,7 +93,7 @@ class FeastOfflineStoreTask(PythonInstanceTask[FeastOfflineStoreConfig]):
         self._name = name
         self._feature_offline_store_config = task_config
 
-        outputs.update({"repo_path": self._feature_offline_store_config.repo_path})
+        outputs = {"repo_path": self._feature_offline_store_config.repo_path}
 
         super(FeastOfflineStoreTask, self).__init__(
             name=name,
