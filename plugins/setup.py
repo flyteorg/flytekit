@@ -18,6 +18,7 @@ SOURCES = {
     "flytekitplugins-dolt": "flytekit-dolt",
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
     "flytekitplugins-athena": "flytekit-athena",
+    "flytekitplugins-feast": "flytekit-feast",
 }
 
 
