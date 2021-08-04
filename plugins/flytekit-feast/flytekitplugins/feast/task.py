@@ -9,7 +9,6 @@ from feast import BigQuerySource, Entity, Feature, FeatureStore, FeatureView, Fi
 from feast.data_format import ParquetFormat
 from google.protobuf.duration_pb2 import Duration
 
-import flytekit
 from flytekit import PythonInstanceTask
 from flytekit.core.context_manager import FlyteContext
 from flytekit.extend import Interface
@@ -130,42 +129,26 @@ class FeastOfflineStoreTask(PythonInstanceTask[FeastOfflineStoreConfig]):
                 # copy parquet file to user-given directory
                 FlyteContext.current_context().file_access.get_data(
                     dataset.remote_path,
-                    os.path.join(
-                        flytekit.current_context().working_directory,
-                        self._feature_offline_store_config.feature_view.datasource_config.local_file_path,
-                    ),
+                    self._feature_offline_store_config.feature_view.datasource_config.local_file_path,
                     is_multipart=True,
                 )
 
             # DataFrame (Pandas, Spark, etc.)
             else:
                 if not os.path.exists(
-                    os.path.join(
-                        flytekit.current_context().working_directory,
-                        self._feature_offline_store_config.feature_view.datasource_config.local_file_path,
-                    )
+                    self._feature_offline_store_config.feature_view.datasource_config.local_file_path
                 ):
                     os.makedirs(
-                        os.path.join(
-                            flytekit.current_context().working_directory,
-                            self._feature_offline_store_config.feature_view.datasource_config.local_file_path,
-                        ),
-                        exist_ok=True,
+                        self._feature_offline_store_config.feature_view.datasource_config.local_file_path, exist_ok=True
                     )
 
                 schema = FlyteSchema(
-                    local_path=os.path.join(
-                        flytekit.current_context().working_directory,
-                        self._feature_offline_store_config.feature_view.datasource_config.local_file_path,
-                    ),
+                    local_path=self._feature_offline_store_config.feature_view.datasource_config.local_file_path,
                 )
                 writer = schema.open(type(dataset))
                 writer.write(dataset)
 
-            dataset = os.path.join(
-                flytekit.current_context().working_directory,
-                self._feature_offline_store_config.feature_view.datasource_config.local_file_path,
-            )
+            dataset = self._feature_offline_store_config.feature_view.datasource_config.local_file_path
 
         if self._feature_offline_store_config.feature_view.datasource == "file":
             if FlyteContext.current_context().file_access.is_remote(dataset):
