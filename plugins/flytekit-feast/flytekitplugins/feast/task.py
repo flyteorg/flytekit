@@ -9,7 +9,7 @@ from feast import BigQuerySource, Entity, Feature, FeatureStore, FeatureView, Fi
 from feast.data_format import ParquetFormat
 from google.protobuf.duration_pb2 import Duration
 
-from flytekit import kwtypes, PythonInstanceTask
+from flytekit import PythonInstanceTask
 from flytekit.core.context_manager import FlyteContext
 from flytekit.extend import Interface
 from flytekit.types.schema import FlyteSchema
@@ -49,7 +49,6 @@ class FeastOfflineStoreConfig(object):
 @dataclass_json
 @dataclass
 class FeastOfflineRetrieveConfig(object):
-    repo_path: str
     entity_val: typing.Union[pd.DataFrame, str]
     features: typing.Dict[str, typing.List[str]]
 
@@ -57,7 +56,6 @@ class FeastOfflineRetrieveConfig(object):
 @dataclass_json
 @dataclass
 class FeastOnlineStoreConfig(object):
-    repo_path: str
     start_date: datetime.datetime
     end_date: datetime.datetime
     feature_view_names: typing.Optional[typing.List[FeatureViewConfig]] = None
@@ -66,7 +64,6 @@ class FeastOnlineStoreConfig(object):
 @dataclass_json
 @dataclass
 class FeastOnlineRetrieveConfig(object):
-    repo_path: str
     entity_rows: typing.List[typing.Dict[str, typing.Any]]
     features: typing.Dict[str, typing.List[str]]
 
@@ -80,7 +77,8 @@ def unfold_features(features_dict: typing.Dict[str, typing.List[str]]):
 
 class FeastOfflineStoreTask(PythonInstanceTask[FeastOfflineStoreConfig]):
 
-    _TASK_TYPE = "feast"
+    _TASK_TYPE: str = "feast"
+    _VAR_NAME: str = "repo_path"
 
     def __init__(
         self,
@@ -93,16 +91,23 @@ class FeastOfflineStoreTask(PythonInstanceTask[FeastOfflineStoreConfig]):
         self._name = name
         self._feature_offline_store_config = task_config
 
-        outputs = kwtypes(repo_path=self._feature_offline_store_config.repo_path)
+        outputs = {self._VAR_NAME: str}
 
-        super(FeastOfflineStoreTask, self).__init__(
+        super().__init__(
             name=name,
             task_type=self._TASK_TYPE,
             task_config=task_config,
-            interface=Interface(inputs=inputs),
-            outputs=outputs,
+            interface=Interface(inputs=inputs, outputs=outputs),
             **kwargs,
         )
+    
+    @property
+    def feature_view_name(self) -> str:
+        return self._feature_offline_store_config.feature_view.name
+    
+    @property
+    def datasource_name(self) -> str:
+        return self._feature_offline_store_config.feature_view.datasource
 
     def execute(self, **kwargs) -> typing.Any:
 
@@ -223,71 +228,117 @@ class FeastOfflineStoreTask(PythonInstanceTask[FeastOfflineStoreConfig]):
 
 class FeastOfflineRetrieveTask(PythonInstanceTask[FeastOfflineRetrieveConfig]):
 
-    _TASK_TYPE = "feast"
+    _TASK_TYPE: str = "feast"
+    _INPUT_VAR_NAME: str = "repo_path"
+    _OUTPUT_VAR_NAME: str = "dataframe"
 
     def __init__(
         self,
         name: str,
         task_config: FeastOfflineRetrieveConfig,
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        outputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         **kwargs,
     ):
         self._name = name
         self._feast_offline_retrieve_config = task_config
 
+        inputs = {self._INPUT_VAR_NAME: str}
+        outputs = {self._OUTPUT_VAR_NAME: pd.DataFrame}
+
         super(FeastOfflineRetrieveTask, self).__init__(
-            name=name, task_type=self._TASK_TYPE, task_config=task_config, interface=Interface(inputs=inputs), **kwargs
+            name=name,
+            task_type=self._TASK_TYPE,
+            task_config=task_config,
+            interface=Interface(inputs=inputs, outputs=outputs),
+            **kwargs,
         )
 
     def execute(self, **kwargs) -> pd.DataFrame:
-        fs = FeatureStore(repo_path=self._feast_offline_retrieve_config.repo_path)
+        fs = FeatureStore(repo_path=kwargs[self._INPUT_VAR_NAME])
         entity_val = self._feast_offline_retrieve_config.entity_val
 
         retrieval_job = fs.get_historical_features(
             entity_df=entity_val,
             feature_refs=unfold_features(self._feast_offline_retrieve_config.features),
         )
-        print("YES!!!!\n\n\n\n\n")
         feature_data = retrieval_job.to_df()
-        print(feature_data)
         return feature_data
 
 
 class FeastOnlineStoreTask(PythonInstanceTask[FeastOnlineStoreConfig]):
 
-    _TASK_TYPE = "feast"
+    _TASK_TYPE: str = "feast"
+    _VAR_NAME: str = "repo_path"
 
-    def __init__(self, name: str, task_config: FeastOnlineStoreConfig, **kwargs):
+    def __init__(
+        self,
+        name: str,
+        task_config: FeastOnlineStoreConfig,
+        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        outputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        **kwargs,
+    ):
         self._name = name
         self._feast_online_store_config = task_config
 
+        inputs = {self._VAR_NAME: str}
+        outputs = {self._VAR_NAME: str}
+
         super(FeastOnlineStoreTask, self).__init__(
-            name=name, task_type=self._TASK_TYPE, task_config=task_config, **kwargs
+            name=name,
+            task_type=self._TASK_TYPE,
+            task_config=task_config,
+            interface=Interface(inputs=inputs, outputs=outputs),
+            **kwargs,
         )
 
     def execute(self, **kwargs) -> typing.Any:
-        fs = FeatureStore(repo_path=self._feast_online_store_config.repo_path)
+        fs = FeatureStore(repo_path=kwargs[self._VAR_NAME])
+
+        feature_views = []
+        if self._feast_online_store_config.feature_view_names:
+            for x in self._feast_online_store_config.feature_view_names:
+                feature_views.append(x.name)
+
         fs.materialize(
             start_date=self._feast_online_store_config.start_date,
             end_date=self._feast_online_store_config.end_date,
-            feature_views=[x.name for x in self._feast_online_store_config.feature_view_names],
+            feature_views=feature_views if feature_views else None,
         )
+        return kwargs[self._VAR_NAME]
 
 
 class FeastOnlineRetrieveTask(PythonInstanceTask[FeastOfflineRetrieveConfig]):
 
-    _TASK_TYPE = "feast"
+    _TASK_TYPE: str = "feast"
+    _INPUT_VAR_NAME: str = "repo_path"
+    _OUTPUT_VAR_NAME: str = "dict"
 
-    def __init__(self, name: str, task_config: FeastOnlineRetrieveConfig, **kwargs):
+    def __init__(
+        self,
+        name: str,
+        task_config: FeastOnlineRetrieveConfig,
+        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        outputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        **kwargs,
+    ):
         self._name = name
         self._feast_online_retrieve_config = task_config
 
+        inputs = {self._INPUT_VAR_NAME: str}
+        outputs = {self._OUTPUT_VAR_NAME: typing.Dict[typing.Any, typing.Any]}
+
         super(FeastOnlineRetrieveTask, self).__init__(
-            name=name, task_type=self._TASK_TYPE, task_config=task_config, **kwargs
+            name=name,
+            task_type=self._TASK_TYPE,
+            task_config=task_config,
+            interface=Interface(inputs=inputs, outputs=outputs),
+            **kwargs,
         )
 
     def execute(self, **kwargs) -> typing.Any:
-        fs = FeatureStore(repo_path=self._feast_online_retrieve_config.repo_path)
+        fs = FeatureStore(repo_path=kwargs[self._INPUT_VAR_NAME])
 
         online_response = fs.get_online_features(
             unfold_features(self._feast_online_retrieve_config.features), self._feast_online_retrieve_config.entity_rows
