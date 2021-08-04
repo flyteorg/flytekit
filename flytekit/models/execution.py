@@ -25,7 +25,9 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
         self._mode = mode
         self._principal = principal
         self._nesting = nesting
-        self._reference_execution = reference_execution
+        self._reference_execution = (
+            reference_execution if reference_execution else _identifier.WorkflowExecutionIdentifier(None, None, None)
+        )
 
     @property
     def mode(self):
@@ -67,9 +69,7 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
             mode=self.mode,
             principal=self.principal,
             nesting=self.nesting,
-            reference_execution=self.reference_execution.to_flyte_idl()
-            if self.reference_execution is not None
-            else None,
+            reference_execution=self.reference_execution.to_flyte_idl(),
         )
 
     @classmethod
