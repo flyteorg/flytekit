@@ -16,15 +16,30 @@ _OUTPUT_MAP = _literals.LiteralMap(
 
 
 def test_execution_metadata():
-    obj = _execution.ExecutionMetadata(_execution.ExecutionMetadata.ExecutionMode.MANUAL, "tester", 1)
+    obj = _execution.ExecutionMetadata(
+        _execution.ExecutionMetadata.ExecutionMode.MANUAL,
+        "tester",
+        1,
+        _identifier.WorkflowExecutionIdentifier(
+            "project",
+            "domain",
+            "ref_exec_name",
+        ),
+    )
     assert obj.mode == _execution.ExecutionMetadata.ExecutionMode.MANUAL
     assert obj.principal == "tester"
     assert obj.nesting == 1
+    assert obj.reference_execution.project == "project"
+    assert obj.reference_execution.domain == "domain"
+    assert obj.reference_execution.name == "ref_exec_name"
     obj2 = _execution.ExecutionMetadata.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
     assert obj2.mode == _execution.ExecutionMetadata.ExecutionMode.MANUAL
     assert obj2.principal == "tester"
     assert obj2.nesting == 1
+    assert obj2.reference_execution.project == "project"
+    assert obj2.reference_execution.domain == "domain"
+    assert obj2.reference_execution.name == "ref_exec_name"
 
 
 @pytest.mark.parametrize("literal_value_pair", _parameterizers.LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE)

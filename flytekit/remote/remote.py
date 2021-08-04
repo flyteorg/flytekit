@@ -41,7 +41,8 @@ from flytekit.models import common as common_models
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
 from flytekit.models.admin.common import Sort
-from flytekit.models.core.identifier import ResourceType
+from flytekit.models.core.execution import NodeExecutionPhase
+from flytekit.models.core.identifier import NodeExecutionIdentifier, ResourceType
 from flytekit.models.execution import (
     ExecutionMetadata,
     ExecutionSpec,
@@ -1054,6 +1055,18 @@ class FlyteRemote(object):
 
     def _get_node_execution_interface(self, node_execution: FlyteNodeExecution) -> TypedInterface:
         """Return the interface of the task or subworkflow associated with this node execution."""
+        if node_execution.closure.phase == NodeExecutionPhase.RECOVERED:
+            # Fetch the original node execution from which this one was recovered so we can derive the interface
+            workflow_execution = self.client.get_execution(node_execution.id.execution_id)
+            recovered_wf_execution = workflow_execution.spec.metadata.reference_execution
+
+            node_execution = self.client.get_node_execution(
+                NodeExecutionIdentifier(
+                    execution_id=recovered_wf_execution.id,
+                    node_id=node_execution.id.node_id,
+                )
+            )
+
         if not node_execution.metadata.is_parent_node:
             # if not a parent node, assume a task execution node
             task_id = node_execution.task_executions[0].id.task_id

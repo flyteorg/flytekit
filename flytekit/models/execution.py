@@ -15,7 +15,7 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
         SCHEDULED = 1
         SYSTEM = 2
 
-    def __init__(self, mode, principal, nesting):
+    def __init__(self, mode, principal, nesting, reference_execution: _identifier.WorkflowExecutionIdentifier = None):
         """
         :param int mode: An enum value from ExecutionMetadata.ExecutionMode which specifies how the job started.
         :param Text principal: The entity that triggered the execution
@@ -25,6 +25,7 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
         self._mode = mode
         self._principal = principal
         self._nesting = nesting
+        self._reference_execution = reference_execution
 
     @property
     def mode(self):
@@ -50,11 +51,26 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
         """
         return self._nesting
 
+    @property
+    def reference_execution(self):
+        """
+        Optional, a reference workflow execution related to this execution.
+        In the case of a relaunch or a recovery, this references the original workflow execution.
+        """
+        return self._reference_execution
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionMetadata
         """
-        return _execution_pb2.ExecutionMetadata(mode=self.mode, principal=self.principal, nesting=self.nesting)
+        return _execution_pb2.ExecutionMetadata(
+            mode=self.mode,
+            principal=self.principal,
+            nesting=self.nesting,
+            reference_execution=self.reference_execution.to_flyte_idl()
+            if self.reference_execution is not None
+            else None,
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -66,6 +82,7 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
             mode=pb2_object.mode,
             principal=pb2_object.principal,
             nesting=pb2_object.nesting,
+            reference_execution=_identifier.WorkflowExecutionIdentifier.from_flyte_idl(pb2_object.reference_execution),
         )
 
 

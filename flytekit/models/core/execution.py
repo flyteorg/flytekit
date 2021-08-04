@@ -52,6 +52,7 @@ class NodeExecutionPhase(object):
     ABORTED = _execution_pb2.NodeExecution.ABORTED
     SKIPPED = _execution_pb2.NodeExecution.SKIPPED
     TIMED_OUT = _execution_pb2.NodeExecution.TIMED_OUT
+    RECOVERED = _execution_pb2.NodeExecution.RECOVERED
 
     @classmethod
     def enum_to_string(cls, int_value):
@@ -77,6 +78,8 @@ class NodeExecutionPhase(object):
             return "SKIPPED"
         elif int_value == cls.TIMED_OUT:
             return "TIMED_OUT"
+        elif int_value == cls.RECOVERED:
+            return "RECOVERED"
         else:
             return "{}".format(int_value)
 
