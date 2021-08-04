@@ -100,11 +100,11 @@ class FeastOfflineStoreTask(PythonInstanceTask[FeastOfflineStoreConfig]):
             interface=Interface(inputs=inputs, outputs=outputs),
             **kwargs,
         )
-    
+
     @property
     def feature_view_name(self) -> str:
         return self._feature_offline_store_config.feature_view.name
-    
+
     @property
     def datasource_name(self) -> str:
         return self._feature_offline_store_config.feature_view.datasource
@@ -127,9 +127,10 @@ class FeastOfflineStoreTask(PythonInstanceTask[FeastOfflineStoreConfig]):
             # FlyteSchema
             if type(dataset) is FlyteSchema:
                 # copy parquet file to user-given directory
-                FlyteContext.current_context().file_access.download_directory(
+                FlyteContext.current_context().file_access.get_data(
                     dataset.remote_path,
                     self._feature_offline_store_config.feature_view.datasource_config.local_file_path,
+                    is_multipart=True,
                 )
 
             # DataFrame (Pandas, Spark, etc.)
