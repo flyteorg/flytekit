@@ -25,7 +25,7 @@ def test_ge_simple_task():
     )
 
     # valid data
-    result = task_object.execute(dataset="yellow_tripdata_sample_2019-01.csv")
+    result = task_object(dataset="yellow_tripdata_sample_2019-01.csv")
 
     assert result["success"] is True
     assert result["statistics"]["evaluated_expectations"] == result["statistics"]["successful_expectations"]

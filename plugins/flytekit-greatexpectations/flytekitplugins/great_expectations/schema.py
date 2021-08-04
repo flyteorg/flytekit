@@ -1,9 +1,8 @@
 import datetime
 import logging
 import os
-import typing
 from dataclasses import dataclass
-from typing import Type
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import great_expectations as ge
 from dataclasses_json import dataclass_json
@@ -49,7 +48,7 @@ class GreatExpectationsFlyteConfig(object):
     This is because base directory which has the dataset file 'must' be given in GreatExpectations' config file
     """
     local_file_path: str = None
-    checkpoint_params: typing.Optional[typing.Dict[str, typing.Union[str, typing.List[str]]]] = None
+    checkpoint_params: Optional[Dict[str, Union[str, List[str]]]] = None
     batch_request_config: BatchRequestConfig = None
     context_root_dir: str = "./great_expectations"
 
@@ -65,13 +64,13 @@ class GreatExpectationsType(object):
     """
 
     @classmethod
-    def config(cls) -> typing.Tuple[Type, Type[GreatExpectationsFlyteConfig]]:
+    def config(cls) -> Tuple[Type, Type[GreatExpectationsFlyteConfig]]:
         return (
             str,
             GreatExpectationsFlyteConfig(datasource_name="", data_connector_name="", expectation_suite_name=""),
         )
 
-    def __class_getitem__(cls, config: typing.Tuple[Type, Type[GreatExpectationsFlyteConfig]]) -> typing.Any:
+    def __class_getitem__(cls, config: Tuple[Type, Type[GreatExpectationsFlyteConfig]]) -> Any:
         if not (isinstance(config, tuple) or len(config) != 2):
             raise AssertionError("GreatExpectationsType must have both datatype and GreatExpectationsFlyteConfig")
 
@@ -79,7 +78,7 @@ class GreatExpectationsType(object):
             __origin__ = GreatExpectationsType
 
             @classmethod
-            def config(cls) -> typing.Tuple[Type, Type[GreatExpectationsFlyteConfig]]:
+            def config(cls) -> Tuple[Type, Type[GreatExpectationsFlyteConfig]]:
                 return config
 
         return _GreatExpectationsTypeClass
@@ -90,7 +89,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         super().__init__(name="GreatExpectations Transformer", t=GreatExpectationsType)
 
     @staticmethod
-    def get_config(t: Type[GreatExpectationsType]) -> typing.Tuple[Type, Type[GreatExpectationsFlyteConfig]]:
+    def get_config(t: Type[GreatExpectationsType]) -> Tuple[Type, Type[GreatExpectationsFlyteConfig]]:
         return t.config()
 
     def get_literal_type(self, t: Type[GreatExpectationsType]) -> LiteralType:
@@ -106,7 +105,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
     def to_literal(
         self,
         ctx: FlyteContext,
-        python_val: typing.Union[FlyteFile, FlyteSchema, str],
+        python_val: Union[FlyteFile, FlyteSchema, str],
         python_type: Type[GreatExpectationsType],
         expected: LiteralType,
     ) -> Literal:
@@ -145,12 +144,12 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
                 raise ValueError("local_file_path is missing!")
 
             # copy parquet file to user-given directory
-            ctx.file_access.download_directory(lv.scalar.schema.uri, ge_conf.local_file_path)
+            ctx.file_access.get_data(lv.scalar.schema.uri, ge_conf.local_file_path, is_multipart=True)
 
             temp_dataset = os.path.basename(ge_conf.local_file_path)
 
             def downloader(x, y):
-                ctx.file_access.download_directory(x, y)
+                ctx.file_access.get_data(x, y, is_multipart=True)
 
             return_dataset = (
                 FlyteSchema(

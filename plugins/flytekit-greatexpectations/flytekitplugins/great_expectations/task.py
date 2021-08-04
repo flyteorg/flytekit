@@ -2,8 +2,8 @@ import datetime
 import logging
 import os
 import shutil
-import typing
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Type, Union
 
 import great_expectations as ge
 from dataclasses_json import dataclass_json
@@ -33,10 +33,10 @@ class BatchRequestConfig(object):
         batch_spec_passthrough: reader method if your file doesn't have an extension
     """
 
-    data_connector_query: typing.Optional[typing.Dict[str, typing.Any]] = None
-    runtime_parameters: typing.Optional[typing.Dict[str, typing.Any]] = None
-    batch_identifiers: typing.Optional[typing.Dict[str, str]] = None
-    batch_spec_passthrough: typing.Optional[typing.Dict[str, typing.Any]] = None
+    data_connector_query: Optional[Dict[str, Any]] = None
+    runtime_parameters: Optional[Dict[str, Any]] = None
+    batch_identifiers: Optional[Dict[str, str]] = None
+    batch_spec_passthrough: Optional[Dict[str, Any]] = None
 
 
 class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
@@ -65,14 +65,14 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
         datasource_name: str,
         expectation_suite_name: str,
         data_connector_name: str,
-        inputs: typing.Dict[str, typing.Type],
+        inputs: Dict[str, Type],
+        outputs: Optional[Dict[str, Type]] = None,
         local_file_path: str = None,
-        checkpoint_params: typing.Optional[typing.Dict[str, typing.Union[str, typing.List[str]]]] = None,
+        checkpoint_params: Optional[Dict[str, Union[str, List[str]]]] = None,
         task_config: BatchRequestConfig = None,
         context_root_dir: str = "./great_expectations",
         **kwargs,
-    ) -> typing.Dict[str, str]:
-
+    ):
         self._datasource_name = datasource_name
         self._data_connector_name = data_connector_name
         self._expectation_suite_name = expectation_suite_name
@@ -87,15 +87,17 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
         self._local_file_path = local_file_path
         self._checkpoint_params = checkpoint_params
 
+        outputs = {"result": Dict[Any, Any]}
+
         super(GreatExpectationsTask, self).__init__(
             name=name,
             task_config=task_config,
             task_type=self._TASK_TYPE,
-            interface=Interface(inputs=inputs),
+            interface=Interface(inputs=inputs, outputs=outputs),
             **kwargs,
         )
 
-    def execute(self, **kwargs) -> typing.Any:
+    def execute(self, **kwargs) -> Any:
         context = ge.data_context.DataContext(self._context_root_dir)
 
         if len(self.python_interface.inputs.keys()) != 1:
@@ -147,8 +149,8 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             # FlyteSchema
             if type(dataset) is FlyteSchema:
                 # copy parquet file to user-given directory
-                FlyteContext.current_context().file_access.download_directory(
-                    dataset.remote_path, self._local_file_path
+                FlyteContext.current_context().file_access.get_data(
+                    dataset.remote_path, self._local_file_path, is_multipart=True
                 )
 
             # DataFrame (Pandas, Spark, etc.)
