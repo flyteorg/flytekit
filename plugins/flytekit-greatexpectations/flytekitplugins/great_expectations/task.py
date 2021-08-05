@@ -49,6 +49,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
         expectation_suite_name: suite which consists of the data expectations
         data_connector_name: connector to identify data batches
         inputs: inputs to pass to the execute() method
+        is_runtime: do you want to create data batches at runtime?
         local_file_path: dataset file path useful for FlyteFile and FlyteSchema
         checkpoint_params: optional SimpleCheckpoint parameters
         task_config: batchrequest config

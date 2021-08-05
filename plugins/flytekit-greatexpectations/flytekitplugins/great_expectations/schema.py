@@ -32,6 +32,7 @@ class GreatExpectationsFlyteConfig(object):
         datasource_name: tell where your data lives and how to get it
         expectation_suite_name: suite which consists of the data expectations
         data_connector_name: connector to identify data batches
+        is_runtime: do you want to create data batches at runtime?
         local_file_path: dataset file path useful for FlyteFile and FlyteSchema
         checkpoint_params: optional SimpleCheckpoint parameters
         batch_request_config: batchrequest config
@@ -141,6 +142,8 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
 
         # FlyteSchema
         if lv.scalar.schema:
+
+            # if data batch is to be genearated, skip copying the parquet file
             if not ge_conf.is_runtime:
                 if not ge_conf.local_file_path:
                     raise ValueError("local_file_path is missing!")
