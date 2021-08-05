@@ -58,6 +58,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
     """
 
     _TASK_TYPE = "great_expectations"
+    _RUNTIME_VAR_NAME = "runtime"
 
     def __init__(
         self,
@@ -87,6 +88,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
         self._local_file_path = local_file_path
         self._checkpoint_params = checkpoint_params
 
+        inputs.update({self._RUNTIME_VAR_NAME: (bool, False)})
         outputs = {"result": Dict[Any, Any]}
 
         super(GreatExpectationsTask, self).__init__(
@@ -100,12 +102,16 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
     def execute(self, **kwargs) -> Any:
         context = ge.data_context.DataContext(self._context_root_dir)
 
-        if len(self.python_interface.inputs.keys()) != 1:
+        if len(self.python_interface.inputs.keys()) != 2:
             raise RuntimeError("Expected one input argument to validate the dataset")
 
-        dataset = kwargs[list(self.python_interface.inputs.keys())[0]]
+        runtime_check = False
+        if self._RUNTIME_VAR_NAME in kwargs:
+            runtime_check = kwargs[self._RUNTIME_VAR_NAME]
 
-        datatype = list(self.python_interface.inputs.values())[0]
+        dataset_key = list(set(self.python_interface.inputs.keys()) - set(["runtime"]))[0]
+        dataset = kwargs[dataset_key]
+        datatype = self.python_interface.inputs[dataset_key]
 
         if not issubclass(datatype, (FlyteFile, FlyteSchema, str)):
             raise RuntimeError("'dataset' has to have FlyteFile/FlyteSchema/str datatype")
@@ -142,7 +148,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
 
         # FlyteSchema
         # convert schema to parquet file
-        if issubclass(datatype, FlyteSchema):
+        if issubclass(datatype, FlyteSchema) and not runtime_check:
             if not self._local_file_path:
                 raise ValueError("local_file_path is missing!")
 
@@ -167,20 +173,27 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
 
         # minimalistic batch request
         final_batch_request = {
-            "data_asset_name": dataset,
+            "data_asset_name": "random_string" if runtime_check else dataset,
             "datasource_name": self._datasource_name,
             "data_connector_name": self._data_connector_name,
         }
 
         # Great Expectations' RuntimeBatchRequest
-        if self._batch_request_config and self._batch_request_config.runtime_parameters:
+        if self._batch_request_config and (self._batch_request_config.runtime_parameters or runtime_check):
             final_batch_request.update(
                 {
-                    "runtime_parameters": self._batch_request_config.runtime_parameters,
+                    "runtime_parameters": self._batch_request_config.runtime_parameters
+                    if self._batch_request_config.runtime_parameters
+                    else {},
                     "batch_identifiers": self._batch_request_config.batch_identifiers,
                     "batch_spec_passthrough": self._batch_request_config.batch_spec_passthrough,
                 }
             )
+
+            if runtime_check and issubclass(datatype, str):
+                final_batch_request["runtime_parameters"]["query"] = dataset
+            elif runtime_check and issubclass(datatype, FlyteSchema):
+                final_batch_request["runtime_parameters"]["batch_data"] = dataset.open().all()
 
         # Great Expectations' BatchRequest
         elif self._batch_request_config:

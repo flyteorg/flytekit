@@ -65,6 +65,17 @@ datasources:
         class_name: RuntimeDataConnector
         batch_identifiers:
           - pipeline_stage
+  my_pandas_datasource:
+    execution_engine:
+      module_name: great_expectations.execution_engine
+      class_name: PandasExecutionEngine
+    module_name: great_expectations.datasource
+    class_name: Datasource
+    data_connectors:
+      my_runtime_data_connector:
+        class_name: RuntimeDataConnector
+        batch_identifiers:
+          - pipeline_stage
 config_variables_file_path: uncommitted/config_variables.yml
 
 # The plugins_directory will be added to your python path for custom modules

@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import typing
+from typing_extensions import runtime
 
 import pandas as pd
 import pytest
@@ -39,7 +40,7 @@ def test_ge_simple_task():
             != invalid_result["statistics"]["successful_expectations"]
         )
 
-    assert task_object.python_interface.inputs == {"dataset": str}
+    assert task_object.python_interface.inputs == {"dataset": str, "runtime": bool}
 
 
 def test_ge_batchrequest_pandas_config():
@@ -93,19 +94,43 @@ def test_ge_runtimebatchrequest_sqlite_config():
         expectation_suite_name="sqlite.movies",
         data_connector_name="sqlite_data_connector",
         task_config=BatchRequestConfig(
-            runtime_parameters={"query": "SELECT * FROM movies"},
             batch_identifiers={
                 "pipeline_stage": "validation",
             },
         ),
     )
 
-    task_object.execute(dataset="movies.sqlite")
+    @workflow
+    def runtime_sqlite_wf():
+        task_object(dataset="SELECT * FROM movies", runtime=True)
+
+    runtime_sqlite_wf()
 
 
-def test_ge_task():
+def test_ge_runtimebatchrequest_pandas_config():
     task_object = GreatExpectationsTask(
         name="test5",
+        datasource_name="my_pandas_datasource",
+        inputs=kwtypes(dataset=FlyteSchema),
+        expectation_suite_name="test.demo",
+        data_connector_name="my_runtime_data_connector",
+        task_config=BatchRequestConfig(
+            batch_identifiers={
+                "pipeline_stage": "validation",
+            },
+        ),
+    )
+
+    @workflow
+    def runtime_pandas_wf(df: pd.DataFrame):
+        task_object(dataset=df, runtime=True)
+
+    runtime_pandas_wf(df=pd.read_csv("data/yellow_tripdata_sample_2019-01.csv"))
+
+
+def test_ge_with_task():
+    task_object = GreatExpectationsTask(
+        name="test6",
         datasource_name="data",
         inputs=kwtypes(dataset=str),
         expectation_suite_name="test.demo",
@@ -114,17 +139,18 @@ def test_ge_task():
 
     @task
     def my_task(csv_file: str) -> int:
-        task_object(dataset=csv_file)
         df = pd.read_csv(os.path.join("data", csv_file))
         return df.shape[0]
 
     @workflow
     def valid_wf(dataset: str = "yellow_tripdata_sample_2019-01.csv") -> int:
+        task_object(dataset=dataset, runtime=False)
         return my_task(csv_file=dataset)
 
     @pytest.mark.xfail(strict=True)
     @workflow
     def invalid_wf(dataset: str = "yellow_tripdata_sample_2019-02.csv") -> int:
+        task_object(dataset=dataset, runtime=False)
         return my_task(csv_file=dataset)
 
     valid_result = valid_wf()
@@ -135,7 +161,7 @@ def test_ge_task():
 
 def test_ge_workflow():
     task_object = GreatExpectationsTask(
-        name="test6",
+        name="test7",
         datasource_name="data",
         inputs=kwtypes(dataset=str),
         expectation_suite_name="test.demo",
@@ -144,14 +170,14 @@ def test_ge_workflow():
 
     @workflow
     def valid_wf(dataset: str = "yellow_tripdata_sample_2019-01.csv") -> None:
-        task_object(dataset=dataset)
+        task_object(dataset=dataset, runtime=False)
 
     valid_wf()
 
 
 def test_ge_checkpoint_params():
     task_object = GreatExpectationsTask(
-        name="test7",
+        name="test8",
         datasource_name="data",
         inputs=kwtypes(dataset=str),
         expectation_suite_name="test.demo",
@@ -166,7 +192,7 @@ def test_ge_checkpoint_params():
 
 def test_ge_remote_flytefile():
     task_object = GreatExpectationsTask(
-        name="test8",
+        name="test9",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
         expectation_suite_name="test.demo",
@@ -179,9 +205,9 @@ def test_ge_remote_flytefile():
     )
 
 
-def test_ge_remote_flytefile_task():
+def test_ge_remote_flytefile_with_task():
     task_object = GreatExpectationsTask(
-        name="test9",
+        name="test10",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
         expectation_suite_name="test.demo",
@@ -191,11 +217,11 @@ def test_ge_remote_flytefile_task():
 
     @task
     def my_task(dataset: FlyteFile[typing.TypeVar("csv")]) -> int:
-        task_object.execute(dataset=dataset)
         return len(pd.read_csv(dataset))
 
     @workflow
     def my_wf(dataset: FlyteFile[typing.TypeVar("csv")]) -> int:
+        task_object(dataset=dataset, runtime=False)
         return my_task(dataset=dataset)
 
     result = my_wf(
@@ -206,7 +232,7 @@ def test_ge_remote_flytefile_task():
 
 def test_ge_local_flytefile():
     task_object = GreatExpectationsTask(
-        name="test10",
+        name="test11",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
         expectation_suite_name="test.demo",
@@ -216,29 +242,7 @@ def test_ge_local_flytefile():
     task_object.execute(dataset="yellow_tripdata_sample_2019-01.csv")
 
 
-def test_ge_local_flytefile_task():
-    task_object = GreatExpectationsTask(
-        name="test11",
-        datasource_name="data",
-        inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
-        expectation_suite_name="test.demo",
-        data_connector_name="data_example_data_connector",
-    )
-
-    @task
-    def my_task(dataset: FlyteFile[typing.TypeVar("csv")]) -> int:
-        task_object.execute(dataset=dataset)
-        return len(pd.read_csv(dataset))
-
-    @workflow
-    def my_wf(dataset: FlyteFile[typing.TypeVar("csv")]) -> int:
-        return my_task(dataset=dataset)
-
-    result = my_wf(dataset="data/yellow_tripdata_sample_2019-01.csv")
-    assert result == 10000
-
-
-def test_ge_local_flytefile_workflow():
+def test_ge_local_flytefile_with_task():
     task_object = GreatExpectationsTask(
         name="test12",
         datasource_name="data",
@@ -247,16 +251,38 @@ def test_ge_local_flytefile_workflow():
         data_connector_name="data_example_data_connector",
     )
 
+    @task
+    def my_task(dataset: FlyteFile[typing.TypeVar("csv")]) -> int:
+        return len(pd.read_csv(dataset))
+
+    @workflow
+    def my_wf(dataset: FlyteFile[typing.TypeVar("csv")]) -> int:
+        task_object(dataset=dataset, runtime=False)
+        return my_task(dataset=dataset)
+
+    result = my_wf(dataset="data/yellow_tripdata_sample_2019-01.csv")
+    assert result == 10000
+
+
+def test_ge_local_flytefile_workflow():
+    task_object = GreatExpectationsTask(
+        name="test13",
+        datasource_name="data",
+        inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
+        expectation_suite_name="test.demo",
+        data_connector_name="data_example_data_connector",
+    )
+
     @workflow
     def valid_wf(dataset: FlyteFile[typing.TypeVar("csv")] = "data/yellow_tripdata_sample_2019-01.csv") -> None:
-        task_object(dataset=dataset)
+        task_object(dataset=dataset, runtime=False)
 
     valid_wf()
 
 
 def test_ge_remote_flytefile_workflow():
     task_object = GreatExpectationsTask(
-        name="test13",
+        name="test14",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
         expectation_suite_name="test.demo",
@@ -270,14 +296,14 @@ def test_ge_remote_flytefile_workflow():
             typing.TypeVar("csv")
         ] = "https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-01.csv",
     ) -> None:
-        task_object(dataset=dataset)
+        task_object(dataset=dataset, runtime=False)
 
     valid_wf()
 
 
 def test_ge_flytefile_multiple_args():
     task_object_one = GreatExpectationsTask(
-        name="test14",
+        name="test15",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile),
         expectation_suite_name="test.demo",
@@ -293,8 +319,6 @@ def test_ge_flytefile_multiple_args():
 
     @task
     def get_file_name(dataset_one: FlyteFile, dataset_two: FlyteFile) -> (int, int):
-        task_object_one(dataset=dataset_one)
-        task_object_two(dataset=dataset_two)
         df_one = pd.read_csv(os.path.join("data", dataset_one))
         df_two = pd.read_csv(os.path.join("data", dataset_two))
         return len(df_one), len(df_two)
@@ -304,6 +328,8 @@ def test_ge_flytefile_multiple_args():
         dataset_one: FlyteFile = "data/yellow_tripdata_sample_2019-01.csv",
         dataset_two: FlyteFile = "data/yellow_tripdata_sample_2019-02.csv",
     ) -> (int, int):
+        task_object_one(dataset=dataset_one, runtime=False)
+        task_object_two(dataset=dataset_two, runtime=False)
         return get_file_name(dataset_one=dataset_one, dataset_two=dataset_two)
 
     assert wf() == (10000, 10000)
@@ -311,7 +337,7 @@ def test_ge_flytefile_multiple_args():
 
 def test_ge_flyteschema():
     task_object = GreatExpectationsTask(
-        name="test15",
+        name="test16",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
         expectation_suite_name="test.demo",
@@ -323,9 +349,9 @@ def test_ge_flyteschema():
     task_object(dataset=df)
 
 
-def test_ge_flyteschema_task():
+def test_ge_flyteschema_with_task():
     task_object = GreatExpectationsTask(
-        name="test16",
+        name="test17",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
         expectation_suite_name="test.demo",
@@ -335,11 +361,11 @@ def test_ge_flyteschema_task():
 
     @task
     def my_task(dataframe: pd.DataFrame) -> int:
-        task_object(dataset=dataframe)
         return dataframe.shape[0]
 
     @workflow
     def valid_wf(dataframe: pd.DataFrame) -> int:
+        task_object(dataset=dataframe, runtime=False)
         return my_task(dataframe=dataframe)
 
     df = pd.read_csv("data/yellow_tripdata_sample_2019-01.csv")
@@ -349,7 +375,7 @@ def test_ge_flyteschema_task():
 
 def test_ge_flyteschema_sqlite():
     task_object = GreatExpectationsTask(
-        name="test17",
+        name="test18",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
         expectation_suite_name="sqlite.movies",
@@ -357,13 +383,9 @@ def test_ge_flyteschema_sqlite():
         local_file_path="/tmp/test1.parquet",
     )
 
-    @task
-    def my_task(dataset: FlyteSchema):
-        task_object.execute(dataset=dataset)
-
     @workflow
     def my_wf(dataset: FlyteSchema):
-        my_task(dataset=dataset)
+        task_object(dataset=dataset, runtime=False)
 
     con = sqlite3.connect(os.path.join("data", "movies.sqlite"))
     df = pd.read_sql_query("SELECT * FROM movies", con)
@@ -373,7 +395,7 @@ def test_ge_flyteschema_sqlite():
 
 def test_ge_flyteschema_workflow():
     task_object = GreatExpectationsTask(
-        name="test18",
+        name="test19",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
         expectation_suite_name="test.demo",
@@ -383,7 +405,7 @@ def test_ge_flyteschema_workflow():
 
     @workflow
     def my_wf(dataframe: pd.DataFrame):
-        task_object(dataset=dataframe)
+        task_object(dataset=dataframe, runtime=False)
 
     df = pd.read_csv("data/yellow_tripdata_sample_2019-01.csv")
     my_wf(dataframe=df)
